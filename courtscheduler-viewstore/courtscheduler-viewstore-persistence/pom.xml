@@ -8,23 +8,6 @@
 
     <artifactId>courtscheduler-viewstore-persistence</artifactId>
 
-    <build>
-        <plugins>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <forkCount>3</forkCount>
-                    <reuseForks>true</reuseForks>
-                    <argLine>-Xmx1024m -XX:MaxPermSize=256m</argLine>
-                </configuration>
-            </plugin>
-
-
-        </plugins>
-    </build>
-
     <dependencies>
         <dependency>
             <groupId>uk.gov.justice.services</groupId>
@@ -171,6 +154,13 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
             <version>${org.mockito.mockito-core.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>activemq-ra</artifactId>
+            <scope>test</scope>
+            <version>${activemq-ra.version}</version>
         </dependency>
 
     </dependencies>
