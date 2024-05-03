@@ -1,19 +1,14 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>courtscheduler-parent</artifactId>
-        <version>17.0.1-CSP1-SNAPSHOT</version>
+        <version>17.0.2-CSP1-SNAPSHOT</version>
     </parent>
-
-    <artifactId>courtscheduler-persistence</artifactId>
+    <artifactId>courtscheduler-viewstore</artifactId>
     <packaging>pom</packaging>
-
     <modules>
-        <module>courtscheduler-jdbc</module>
-        <module>courtscheduler-liquibase</module>
-        <module>courtscheduler-persistence-api</module>
+        <module>courtscheduler-viewstore-liquibase</module>
+        <module>courtscheduler-viewstore-persistence</module>
     </modules>
 </project>

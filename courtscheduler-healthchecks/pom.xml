@@ -5,7 +5,7 @@
     <parent>
         <artifactId>courtscheduler-parent</artifactId>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-        <version>17.0.1-CSP1-SNAPSHOT</version>
+        <version>17.0.2-CSP1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -23,7 +23,7 @@
         </dependency>
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-            <artifactId>courtscheduler-jdbc</artifactId>
+            <artifactId>courtscheduler-viewstore-persistence</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -35,7 +35,7 @@
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
+            <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

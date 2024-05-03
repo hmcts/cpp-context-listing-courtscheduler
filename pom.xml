@@ -10,7 +10,7 @@
 
     <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
     <artifactId>courtscheduler-parent</artifactId>
-    <version>17.0.1-CSP1-SNAPSHOT</version>
+    <version>17.0.2-CSP1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>CourtScheduler Service - Parent Module</name>
@@ -20,12 +20,29 @@
         </sonar.jacoco.itReportPath>
         <sonar.report.export.path>sonar-report.json</sonar.report.export.path>
         <sonar.scm.provider>git</sonar.scm.provider>
+        <mvn.site.url>file://${project.build.directory}/site</mvn.site.url>
+        <gihub.benas.random-beans.version>3.7.0</gihub.benas.random-beans.version>
+        <cglib.version>3.3.0</cglib.version>
+        <org.mockito.mockito-core.version>2.24.0</org.mockito.mockito-core.version>
+        <junit-dataprovider.version>1.13.1</junit-dataprovider.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- junit-dataprovider should come from test utils once moved -->
+            <dependency>
+                <groupId>com.tngtech.java</groupId>
+                <artifactId>junit-dataprovider</artifactId>
+                <version>${junit-dataprovider.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <modules>
         <module>courtscheduler-api</module>
         <module>courtscheduler-integration-test</module>
-        <module>courtscheduler-persistence</module>
+        <module>courtscheduler-viewstore</module>
         <module>courtscheduler-service</module>
         <module>courtscheduler-healthchecks</module>
 

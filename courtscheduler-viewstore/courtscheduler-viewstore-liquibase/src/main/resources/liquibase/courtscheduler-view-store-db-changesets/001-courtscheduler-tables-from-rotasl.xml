@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="001.01" author="ragubalan">
+        <createTable tableName="court_room_mapping">
+            <column name="id" type="VARCHAR(100)"/>
+            <column name="location_id" type="NUMERIC">
+                <constraints nullable="false"/>
+            </column>
+            <column name="venue_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="venue_id" type="NUMERIC">
+                <constraints nullable="false"/>
+            </column>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_house_id" type="VARCHAR(100)"/>
+            <column name="court_house_name" type="VARCHAR(255)"/>
+            <column name="court_room_name" type="VARCHAR(255)"/>
+            <column name="operational_unit" type="VARCHAR(255)"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="court_room_number" type="NUMERIC"/>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_court_room_mapping"
+                     tableName="court_room_mapping">
+            <column name="location_id"/>
+            <column name="venue_name"/>
+        </createIndex>
+        <createIndex indexName="idx_court_room_mapping_venue_id_location_id"
+                     tableName="court_room_mapping">
+            <column name="location_id"/>
+            <column name="venue_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001.02" author="ragubalan">
+        <createTable tableName="court_room_session_allocation">
+            <column name="court_room_session_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="court_session" type="VARCHAR(10)"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="max_slot" type="NUMERIC"/>
+            <column name="max_duration_mins" type="NUMERIC"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_court_room_session_allocation"
+                     tableName="court_room_session_allocation">
+            <column name="oucode"/>
+            <column name="court_room_id"/>
+            <column name="court_session"/>
+            <column name="rota_business_type"/>
+        </createIndex>
+        <createIndex indexName="idx_court_room_session_allocation_court_room_id"
+                     tableName="court_room_session_allocation">
+            <column name="court_room_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001.03" author="ragubalan">
+        <createTable tableName="allocated_listings">
+            <column name="id" type="VARCHAR(100)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="court_schedule_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="booking_id" type="VARCHAR(100)"/>
+            <column name="hearing_id" type="VARCHAR(100)"/>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="duration" type="NUMERIC"/>
+            <column name="hearing_start_time" type="timestamp with timezone"/>
+            <column name="created_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createIndex indexName="idx_allocated_listing_updated_on"
+                     tableName="allocated_listings">
+            <column name="updated_on"/>
+        </createIndex>
+        <createIndex tableName="allocated_listings"
+                     indexName="idx_allocated_listings_court_schedule_id">
+            <column name="court_schedule_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001.04" author="ragubalan">
+        <createTable tableName="court_schedule">
+            <column name="id" type="VARCHAR(100)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="court_listing_profile_id" type="VARCHAR(100)"/>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_number" type="NUMERIC"/>
+            <column name="court_room_id" type="VARCHAR(100)"/>
+            <column name="court_house_id" type="VARCHAR(100)"/>
+            <column name="court_house_name" type="VARCHAR(255)"/>
+            <column name="court_room_name" type="VARCHAR(255)"/>
+            <column name="operational_unit" type="VARCHAR(255)"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="court_session" type="VARCHAR(10)"/>
+            <column name="session_start" type="DATE"/>
+            <column name="panel" type="VARCHAR(10)"/>
+            <column name="max_slot" type="NUMERIC"/>
+            <column name="max_duration_mins" type="NUMERIC"/>
+            <column name="available_slot" type="NUMERIC"/>
+            <column name="available_duration_mins" type="NUMERIC"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="is_slot_based" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createIndex tableName="court_schedule"
+                     indexName="compo_panel_idx">
+            <column name="panel"/>
+            <column name="session_start"/>
+            <column name="oucode"/>
+            <column name="rota_business_type"/>
+            <column name="court_session"/>
+            <column name="court_house_name"/>
+            <column name="court_room_name"/>
+            <column name="available_duration_mins"/>
+            <column name="active"/>
+        </createIndex>
+        <createIndex indexName="idx_court_schedule_updated_on"
+                     tableName="court_schedule">
+            <column name="updated_on"/>
+        </createIndex>
+        <createIndex indexName="idx_court_schedule_active_oucode_session_start"
+                     tableName="court_schedule">
+            <column name="oucode"/>
+            <column name="active"/>
+            <column name="session_start"/>
+        </createIndex>
+
+        <sql>
+            CREATE INDEX idx_court_schedule_act_sst ON court_schedule ( active ASC , session_start
+            ASC );
+        </sql>
+        <sql>
+            CREATE INDEX idx_court_schedule_cr_ss_ms ON court_schedule (court_room_number,
+            session_start, max_slot);
+        </sql>
+    </changeSet>
+
+    <changeSet id="001.05" author="ragubalan">
+        <createTable tableName="court_schedule_judiciary">
+            <column name="court_schedule_id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true"
+                             primaryKeyName="combination_primary_key"/>
+            </column>
+            <column name="court_listing_profile_id" type="VARCHAR(100)"/>
+            <column name="judiciary_id" type="VARCHAR(100)">
+                <constraints nullable="true" primaryKey="true"
+                             primaryKeyName="combination_primary_key"/>
+            </column>
+            <column name="rota_judiciary_id" type="VARCHAR(100)"/>
+            <column name="title" type="VARCHAR(100)"/>
+            <column name="forenames" type="VARCHAR(100)"/>
+            <column name="surname" type="VARCHAR(100)"/>
+            <column name="email" type="VARCHAR(100)"/>
+            <column name="judiciary_type" type="VARCHAR(100)"/>
+            <column name="is_bench_chairman" type="BOOLEAN"/>
+            <column name="is_deputy" type="BOOLEAN"/>
+            <column name="position" type="VARCHAR(100)"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createIndex indexName="idx_court_schedule_judiciary"
+                     tableName="court_schedule_judiciary">
+            <column name="court_schedule_id"/>
+            <column name="court_listing_profile_id"/>
+            <column name="active"/>
+        </createIndex>
+        <createIndex indexName="idx_court_schedule_judiciary_updated_on"
+                     tableName="court_schedule_judiciary">
+            <column name="updated_on"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001.06" author="ragubalan">
+        <createTable tableName="judiciary_mapping">
+            <column name="judiciary_id" type="VARCHAR(100)"/>
+            <column name="title" type="VARCHAR(100)"/>
+            <column name="forenames" type="VARCHAR(100)"/>
+            <column name="surname" type="VARCHAR(100)"/>
+            <column name="email" type="VARCHAR(100)"/>
+            <column name="judiciary_type" type="VARCHAR(100)"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_judiciary_mapping"
+                     tableName="judiciary_mapping">
+            <column name="email"/>
+        </createIndex>
+        <sql>
+            CREATE INDEX IF NOT EXISTS idx_judiciary_mapping_lowercase ON judiciary_mapping (lower (email));
+        </sql>
+    </changeSet>
+
+    <changeSet id="001.07" author="ragubalan">
+        <createTable tableName="provisional_booking">
+            <column name="booking_id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true"
+                             primaryKeyName="pk_provisional_booking"/>
+            </column>
+            <column name="court_schedule_id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true"
+                             primaryKeyName="pk_provisional_booking"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="hearing_start_time" type="timestamp with timezone"/>
+            <column name="updated_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="created_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createIndex indexName="idx_provisional_booking"
+                     tableName="provisional_booking">
+            <column name="booking_id"/>
+            <column name="court_schedule_id"/>
+            <column name="active"/>
+        </createIndex>
+        <createIndex indexName="idx_provisional_booking_active_court_schedule_id"
+                     tableName="provisional_booking">
+            <column name="active"/>
+            <column name="court_schedule_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001.08" author="ragubalan">
+        <createTable tableName="business_type">
+            <column name="id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_business_type"/>
+            </column>
+            <column name="seq_num" type="NUMERIC"/>
+            <column name="type_code" type="VARCHAR(10)"/>
+            <column name="type_description" type="VARCHAR(100)"/>
+            <column name="slot" type="BOOLEAN"/>
+            <column name="duration" type="BOOLEAN"/>
+            <column name="active" type="BOOLEAN" defaultValue="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_business_type"/>
+            </column>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_business_type"
+                     tableName="business_type">
+            <column name="type_code"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="001.09" author="ragubalan">
+        <createTable tableName="rota_file_process_history">
+            <column name="file_name_prefix" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true"
+                             primaryKeyName="pk_rota_file_process_history"/>
+            </column>
+            <column name="file_date" type="DATETIME">
+                <constraints nullable="false" primaryKey="true"
+                             primaryKeyName="pk_rota_file_process_history"/>
+            </column>
+            <column name="processed_on" type="DATETIME"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001.10" author="ragubalan">
+        <createTable tableName="organisation_unit_hmi_status">
+            <column name="oucode" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_hmi_listing_enabled" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_hmi_scheduling_enabled" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_hmi_pubhub_enabled" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_on" type="DATETIME"/>
+            <column name="court_centre_id" type="VARCHAR(36)"/>
+            <column name="court_id" type="VARCHAR(10)"/>
+        </createTable>
+
+        <createIndex tableName="organisation_unit_hmi_status"
+                     indexName="organisation_unit_hmi_status_oucode_idx">
+            <column name="oucode"/>
+        </createIndex>
+
+    </changeSet>
+</databaseChangeLog>
