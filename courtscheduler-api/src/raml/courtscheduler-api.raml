@@ -1,0 +1,58 @@
+#%RAML 0.8
+title: Court Scheduler API
+baseUri: http://localhost:8080/courtscheduler-api/rest/courtscheduler
+mediaType: application/json
+protocols: [ HTTP, HTTPS ]
+
+/courtschedule:
+  description: |
+    Create Court Schedule
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.create+json
+          name: courtscheduler.create
+      ...
+
+    body:
+      application/vnd.courtscheduler.create+json:
+        schema: !include json/schema/courtscheduler.create.json
+        example: !include json/courtscheduler.create.json
+
+    responses:
+      202:
+        description: OK
+  get:
+    description: |
+      Query via parameters
+      ...
+      (mapping):
+          responseType: application/vnd.courtscheduler.get+json
+          name: courtscheduler.get
+      ...
+    queryParameters:
+      courtCentreId:
+        type: string
+        required: true
+      courtRoomId:
+        type: string
+        required: false
+      businessType:
+        type: string
+        required: false
+      startDate:
+        type: string
+        required: true
+      numberOfWeeks:
+        type: string
+        required: true
+      endDate:
+        type: string
+        required: false
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.get+json:
+            schema: !include json/schema/courtscheduler.get.json
+            example: !include json/courtscheduler.get.json

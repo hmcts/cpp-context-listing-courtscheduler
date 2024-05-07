@@ -1,0 +1,25 @@
+package uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl;
+
+import uk.gov.moj.cpp.accesscontrol.drools.Outcome;
+import uk.gov.moj.cpp.accesscontrol.drools.Action;
+import uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants;
+
+global uk.gov.moj.cpp.accesscontrol.common.providers.UserAndGroupProvider userAndGroupProvider;
+
+rule "API - Action - courtscheduler.create"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.create");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.get"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end

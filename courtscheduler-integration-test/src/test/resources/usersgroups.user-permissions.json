@@ -1,0 +1,16 @@
+{
+  "permissions": [
+    {
+      "object": "CourtSchedule",
+      "action": "Create"
+    },
+    {
+      "object": "CourtSchedule",
+      "action": "Edit"
+    },
+    {
+      "object": "CourtSchedule",
+      "action": "View"
+    }
+  ]
+}

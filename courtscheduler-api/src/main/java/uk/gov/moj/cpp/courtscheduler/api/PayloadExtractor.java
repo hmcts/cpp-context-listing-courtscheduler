@@ -1,4 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.api;
+
 import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 

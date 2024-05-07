@@ -24,6 +24,7 @@
         <sonar.coverage.exclusions>
             **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*
         </sonar.coverage.exclusions>
+        <usersgroups.version>8.0.21</usersgroups.version>
     </properties>
 
     <modules>
@@ -56,5 +57,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
