@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+# Script that runs, liquibase, deploys wars and runs integration tests
+
+CONTEXT_NAME=courtscheduler
+
+FRAMEWORK_LIBRARIES_VERSION=17.3.0
+FRAMEWORK_VERSION=17.3.0
+EVENT_STORE_VERSION=17.3.0
+
+DOCKER_CONTAINER_REGISTRY_HOST_NAME=crmdvrepo01
+
+LIQUIBASE_COMMAND=update
+#LIQUIBASE_COMMAND=dropAll
+
+#fail script on error
+set -e
+
+[ -z "$CPP_DOCKER_DIR" ] && echo "Please export CPP_DOCKER_DIR environment variable pointing to cpp-developers-docker repo (https://github.com/hmcts/cpp-developers-docker) checked out locally" && exit 1
+WILDFLY_DEPLOYMENT_DIR="$CPP_DOCKER_DIR/containers/wildfly/deployments"
+
+source $CPP_DOCKER_DIR/docker-utility-functions.sh
+source $CPP_DOCKER_DIR/build-scripts/integration-test-scipt-functions.sh
+
+function runLiquibase {
+  mvn -f ${CONTEXT_NAME}-viewstore/${CONTEXT_NAME}-viewstore-liquibase/pom.xml -Dliquibase.url=jdbc:postgresql://localhost:5432/courtscheduler -Dliquibase.username=system -Dliquibase.password=system -Dliquibase.logLevel=info resources:resources liquibase:${LIQUIBASE_COMMAND}
+  echo "Finished executing liquibase"
+}
+
+buildDeployAndTest() {
+  loginToDockerContainerRegistry
+  buildWarsForContextsWithoutServiceModule
+  undeployWarsFromDocker
+  buildAndStartContainers
+  runLiquibase
+  deployWiremock
+  deployWarsForContextsWithoutServiceModule
+  healthchecksForContextsWithoutServiceModule
+  integrationTests
+}
+
+buildDeployAndTest
