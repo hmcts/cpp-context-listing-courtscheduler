@@ -4,9 +4,9 @@
 
 CONTEXT_NAME=courtscheduler
 
-FRAMEWORK_LIBRARIES_VERSION=17.3.0
-FRAMEWORK_VERSION=17.3.0
-EVENT_STORE_VERSION=17.3.0
+FRAMEWORK_LIBRARIES_VERSION=17.5.1
+FRAMEWORK_VERSION=17.4.2
+EVENT_STORE_VERSION=17.4.2
 
 DOCKER_CONTAINER_REGISTRY_HOST_NAME=crmdvrepo01
 
@@ -23,7 +23,7 @@ source $CPP_DOCKER_DIR/docker-utility-functions.sh
 source $CPP_DOCKER_DIR/build-scripts/integration-test-scipt-functions.sh
 
 function runLiquibase {
-  mvn -f ${CONTEXT_NAME}-viewstore/${CONTEXT_NAME}-viewstore-liquibase/pom.xml -Dliquibase.url=jdbc:postgresql://localhost:5432/courtscheduler -Dliquibase.username=system -Dliquibase.password=system -Dliquibase.logLevel=info resources:resources liquibase:${LIQUIBASE_COMMAND}
+  mvn -f ${CONTEXT_NAME}-viewstore/${CONTEXT_NAME}-viewstore-liquibase/pom.xml -Dliquibase.url=jdbc:postgresql://localhost:5432/courtscheduler -Dliquibase.username=courtscheduler -Dliquibase.password=courtscheduler -Dliquibase.logLevel=info resources:resources liquibase:${LIQUIBASE_COMMAND}
   echo "Finished executing liquibase"
 }
 
@@ -35,7 +35,7 @@ buildDeployAndTest() {
   runLiquibase
   deployWiremock
   deployWarsForContextsWithoutServiceModule
-  healthchecksForContextsWithoutServiceModule
+#  healthchecksForContextsWithoutServiceModule
   integrationTests
 }
 

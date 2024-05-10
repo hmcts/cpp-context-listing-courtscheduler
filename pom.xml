@@ -5,7 +5,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.common</groupId>
         <artifactId>service-parent-pom</artifactId>
-        <version>17.21.1</version>
+        <version>17.21.5</version>
     </parent>
 
     <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
@@ -16,38 +16,15 @@
     <name>CourtScheduler Service - Parent Module</name>
 
     <properties>
+        <gihub.benas.random-beans.version>3.7.0</gihub.benas.random-beans.version>
         <sonar.jacoco.itReportPath>${project.basedir}/../target/jacoco-it.exec
         </sonar.jacoco.itReportPath>
         <sonar.report.export.path>sonar-report.json</sonar.report.export.path>
         <sonar.scm.provider>git</sonar.scm.provider>
-        <mvn.site.url>file://${project.build.directory}/site</mvn.site.url>
-        <gihub.benas.random-beans.version>3.7.0</gihub.benas.random-beans.version>
-        <cglib.version>3.3.0</cglib.version>
-        <org.mockito.mockito-core.version>2.24.0</org.mockito.mockito-core.version>
-        <junit-dataprovider.version>1.13.1</junit-dataprovider.version>
-        <activemq-ra.version>5.14.5</activemq-ra.version>
         <sonar.coverage.exclusions>
             **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*
         </sonar.coverage.exclusions>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <!-- junit-dataprovider should come from test utils once moved -->
-            <dependency>
-                <groupId>com.tngtech.java</groupId>
-                <artifactId>junit-dataprovider</artifactId>
-                <version>${junit-dataprovider.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.activemq</groupId>
-                <artifactId>activemq-ra</artifactId>
-                <scope>test</scope>
-                <version>${activemq-ra.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <modules>
         <module>courtscheduler-api</module>

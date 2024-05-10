@@ -18,10 +18,6 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>uk.gov.justice.event-store</groupId>
-            <artifactId>healthchecks</artifactId>
-        </dependency>
-        <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
             <artifactId>courtscheduler-viewstore-persistence</artifactId>
             <version>${project.version}</version>
