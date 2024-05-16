@@ -8,6 +8,7 @@
     <artifactId>courtscheduler-viewstore</artifactId>
     <packaging>pom</packaging>
     <modules>
+        <module>courtscheduler-jdbc</module>
         <module>courtscheduler-viewstore-liquibase</module>
         <module>courtscheduler-viewstore-persistence</module>
     </modules>

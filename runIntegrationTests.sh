@@ -35,8 +35,8 @@ buildDeployAndTest() {
   runLiquibase
   deployWiremock
   deployWarsForContextsWithoutServiceModule
-#  healthchecksForContextsWithoutServiceModule
-  integrationTests
+  healthchecksForContextsWithoutServiceModule
+#  integrationTests
 }
 
 buildDeployAndTest
