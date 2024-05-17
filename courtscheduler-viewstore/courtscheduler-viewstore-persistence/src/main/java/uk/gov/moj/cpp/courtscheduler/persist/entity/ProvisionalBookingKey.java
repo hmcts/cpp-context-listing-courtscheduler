@@ -1,17 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import javax.persistence.Column;
-import javax.persistence.Embeddable;
+import javax.persistence.*;
 import java.io.Serializable;
 import java.util.Objects;
 
 @Embeddable
+@SuppressWarnings({"squid:S1948"})
 public class ProvisionalBookingKey implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Column(name = "court_schedule_id", nullable = false)
-    private String courtScheduleId;
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "court_schedule_id", insertable = false, updatable = false)
+    private CourtSchedule courtSchedule;
+
 
     @Column(name = "booking_id", nullable = false)
     private String bookingId;
@@ -20,17 +22,17 @@ public class ProvisionalBookingKey implements Serializable {
         //For JPA
     }
 
-    public ProvisionalBookingKey(String courtScheduleId, String bookingId) {
-        this.courtScheduleId = courtScheduleId;
+    public ProvisionalBookingKey(CourtSchedule courtSchedule, String bookingId) {
+        this.courtSchedule = courtSchedule;
         this.bookingId = bookingId;
     }
 
-    public String getCourtScheduleId() {
-        return courtScheduleId;
+    public CourtSchedule getCourtSchedule() {
+        return courtSchedule;
     }
 
-    public void setCourtScheduleId(String courtScheduleId) {
-        this.courtScheduleId = courtScheduleId;
+    public void setCourtSchedule(CourtSchedule courtSchedule) {
+        this.courtSchedule = courtSchedule;
     }
 
     public String getBookingId() {
@@ -50,18 +52,18 @@ public class ProvisionalBookingKey implements Serializable {
             return false;
         }
         final ProvisionalBookingKey that = (ProvisionalBookingKey) o;
-        return Objects.equals(courtScheduleId, that.courtScheduleId) && Objects.equals(bookingId, that.bookingId);
+        return Objects.equals(courtSchedule.getCourtScheduleId(), that.getCourtSchedule().getCourtScheduleId()) && Objects.equals(bookingId, that.bookingId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(courtScheduleId, bookingId);
+        return Objects.hash(courtSchedule.getCourtScheduleId(), bookingId);
     }
 
     @Override
     public String toString() {
         return "ProvisionalBookingKey{" +
-                "courtScheduleId=" + courtScheduleId +
+                "courtScheduleId=" + courtSchedule.getCourtScheduleId() +
                 ", bookingId=" + bookingId +
                 '}';
     }

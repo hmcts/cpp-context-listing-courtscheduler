@@ -13,6 +13,7 @@ public final class PermissionConstants {
     private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
 
     private static final String COURT_SCHEDULE_OBJECT = "CourtSchedule";
+    private static final String HEARING_SLOTS_OBJECT = "HearingSlots";
     private static final String CREATE_ACTION = "Create";
     private static final String UPDATE_ACTION = "Edit";
     private static final String VIEW_ACTION = "View";
@@ -41,6 +42,15 @@ public final class PermissionConstants {
     public static String updateCourtSchedulePermission() throws JsonProcessingException {
         final ExpectedPermission expectedPermission = builder()
                 .withObject(COURT_SCHEDULE_OBJECT)
+                .withAction(UPDATE_ACTION)
+                .build();
+
+        return objectMapper.writeValueAsString(expectedPermission);
+    }
+
+    public static String updateHearingSlotsPermission() throws JsonProcessingException {
+        final ExpectedPermission expectedPermission = builder()
+                .withObject(HEARING_SLOTS_OBJECT)
                 .withAction(UPDATE_ACTION)
                 .build();
 

@@ -2,9 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.accesscontrol;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.createCourtSchedulePermission;
-import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getCourtSchedulePermission;
-import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.updateCourtSchedulePermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.*;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -37,5 +35,13 @@ class PermissionConstantsTest {
         final String createCourtSchedulePermissionStr = updateCourtSchedulePermission();
 
         assertThat(createCourtSchedulePermissionStr, is(expectedCreateCourtSchedulePermissionStr.replaceAll("\n",  "")));
+    }
+
+    @Test
+    void shouldUpdateHearingSlotsPermission() throws JsonProcessingException {
+        final String expectedUpdateHearingSlotsPermissionStr = getPayload("update-hearing-slots-permission.json");
+        final String updateHearingSlotsPermissionStr = updateHearingSlotsPermission();
+
+        assertThat(updateHearingSlotsPermissionStr, is(expectedUpdateHearingSlotsPermissionStr.replaceAll("\n",  "")));
     }
 }

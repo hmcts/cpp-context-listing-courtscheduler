@@ -1,30 +1,37 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import java.sql.Timestamp;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import javax.persistence.*;
+import java.util.Date;
 
 @Entity
 @Table(name = "provisional_booking")
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 public class ProvisionalBooking {
 
-    @Id
+    @EmbeddedId
     private ProvisionalBookingKey provisionalBookingKey;
 
     @Column(name = "active", nullable = false)
     private Boolean active;
 
+    @UpdateTimestamp
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private Timestamp updatedOn;
+    private java.util.Date updatedOn;
 
+    @CreationTimestamp
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
-    private Timestamp createdOn;
+    private java.util.Date createdOn;
 
+
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "hearing_start_time", nullable = false)
-    private String hearingStartTime;
+    private java.util.Date hearingStartTime;
+
 
     public ProvisionalBooking() {
         //For JPA
@@ -46,27 +53,28 @@ public class ProvisionalBooking {
         this.active = active;
     }
 
-    public Timestamp getUpdatedOn() {
+    public java.util.Date getUpdatedOn() {
         return updatedOn;
     }
 
-    public void setUpdatedOn(Timestamp updatedOn) {
+    public void setUpdatedOn(java.util.Date updatedOn) {
         this.updatedOn = updatedOn;
     }
 
-    public Timestamp getCreatedOn() {
+    public java.util.Date getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(Timestamp createdOn) {
+    public void setCreatedOn(java.util.Date createdOn) {
         this.createdOn = createdOn;
     }
 
-    public String getHearingStartTime() {
+    public Date getHearingStartTime() {
         return hearingStartTime;
     }
 
-    public void setHearingStartTime(String hearingStartTime) {
+    public void setHearingStartTime(Date hearingStartTime) {
         this.hearingStartTime = hearingStartTime;
     }
+
 }

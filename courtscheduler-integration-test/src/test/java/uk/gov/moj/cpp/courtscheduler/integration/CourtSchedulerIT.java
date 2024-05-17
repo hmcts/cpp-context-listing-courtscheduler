@@ -9,6 +9,7 @@ import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
 
+import org.junit.jupiter.api.BeforeEach;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.http.HeaderConstants;
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
@@ -21,7 +22,7 @@ import javax.ws.rs.core.Response;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
+import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
 
 
 class CourtSchedulerIT {
@@ -34,14 +35,20 @@ class CourtSchedulerIT {
     private final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
     protected static final RestClient REST_CLIENT = new RestClient();
 
+    private final DatabaseSeeder databaseSeeder = new DatabaseSeeder();
+
     @BeforeAll
     public static void setUp() {
         setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
     }
 
+    @BeforeEach
+    public void cleanTheDatabase() throws Exception {
+        databaseSeeder.cleanDb();
+    }
+
     @Test
     void shouldCreateCourtSchedule() {
-//        setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         final String createCourtSchedulePayload = getPayload("create-court-schedule.json");
 
         final Response response = postCommand(URL, "application/vnd.courtscheduler.create+json", createCourtSchedulePayload);

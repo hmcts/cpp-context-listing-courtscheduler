@@ -56,3 +56,88 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.get+json:
             schema: !include json/schema/courtscheduler.get.json
             example: !include json/courtscheduler.get.json
+
+/hearingslots:
+  post:
+    description:  |
+      You can allocate a hearing slot through this POST request
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.update.hearing.slots+json
+          name: courtscheduler.update.hearing.slots
+      ...
+    body:
+      application/vnd.courtscheduler.update.hearing.slots+json:
+        example:
+          !include json/courtscheduler.update.hearing.slots.json
+        schema:
+          !include json/schema/courtscheduler.update.hearing.slots.json
+    responses:
+      204:
+        description: No Content
+#TODO for later stories
+#  get:
+#    description: |
+#      Retrieve available hearing slots from database for the given criteria
+#    queryParameters:
+#        panel:
+#            description: panel Type ( ADULT/YOUTH/ADULT,YOUTH)
+#            type: string
+#            required: true
+#        sessionStartDate:
+#            description: startDate
+#            type: string
+#            required: true
+#        sessionEndDate:
+#            description: endDate
+#            type: string
+#            required: true
+#        oucodeL2Code:
+#            description: Operational unit
+#            type: string
+#            required: false
+#        ouCode:
+#            description: Courthouse oucode
+#            type: string
+#            required: false
+#        courtRoomId:
+#            description: courtRoomId
+#            type: string
+#            required: false
+#        courtRoomNumber:
+#            description: courtRoomNumber
+#            type: string
+#            required: false
+#        businessType:
+#            description: businessType
+#            type: string
+#            required: false
+#        courtSession:
+#            description: AM/PM/AD or comma separeted --> AM,PM,AD
+#            type: string
+#            required: false
+#        pageSize:
+#            description: Number of records to be displayed per page
+#            type: string
+#            required: true
+#        pageNumber:
+#            description: currentPageNumber details
+#            type: string
+#            required: true
+#    responses:
+#        200:
+#            description: OK
+#            body:
+#              application/vnd.courtscheduler.put.hearing.slots+json:
+#                example:
+#                  !include json/courtscheduler.get.hearing.slots.json
+#                schema:
+#                  !include json/schema/courtscheduler.get.hearing.slots.json
+#
+#/hearingSlots/{hearingId}:
+#  delete:
+#    description:  |
+#      Remove hearing slot associated to given hearingId
+#    responses:
+#      204:
+#          description: No Content

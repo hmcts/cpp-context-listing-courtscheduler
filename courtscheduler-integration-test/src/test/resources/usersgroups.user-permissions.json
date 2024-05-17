@@ -11,6 +11,14 @@
     {
       "object": "CourtSchedule",
       "action": "View"
+    },
+    {
+      "object": "HearingSlots",
+      "action": "Edit"
+    },
+    {
+      "object": "HearingSlots",
+      "action": "View"
     }
   ]
 }

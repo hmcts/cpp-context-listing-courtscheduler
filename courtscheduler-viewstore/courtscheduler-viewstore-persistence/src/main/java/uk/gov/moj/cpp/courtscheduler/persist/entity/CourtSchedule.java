@@ -1,9 +1,9 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import javax.persistence.*;
 import java.time.LocalDate;
 import java.util.Objects;
 
@@ -13,6 +13,7 @@ import java.util.Objects;
 public class CourtSchedule {
 
     @Id
+    @Column(name = "id", nullable = false)
     private String courtScheduleId;
 
     @Column(name = "court_listing_profile_id", nullable = false)
@@ -50,6 +51,17 @@ public class CourtSchedule {
     private Integer availableSlots;
     @Column(name = "available_duration_mins", nullable = false)
     private Integer availableDuration;
+
+
+    @CreationTimestamp
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_on", nullable = false)
+    private java.util.Date createdOn;
+
+    @UpdateTimestamp
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_on", nullable = false)
+    private java.util.Date updatedOn;
 
     public CourtSchedule() {
         //For JPA
@@ -203,23 +215,33 @@ public class CourtSchedule {
         this.availableDuration = availableDuration;
     }
 
+    public java.util.Date getCreatedOn() {
+        return createdOn;
+    }
+
+    public void setCreatedOn(java.util.Date createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    public java.util.Date getUpdatedOn() {
+        return updatedOn;
+    }
+
+    public void setUpdatedOn(java.util.Date updatedOn) {
+        this.updatedOn = updatedOn;
+    }
+
     @Override
     public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        final CourtSchedule that = (CourtSchedule) o;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CourtSchedule that = (CourtSchedule) o;
         return Objects.equals(courtScheduleId, that.courtScheduleId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(courtScheduleId, listingProfileId, ouCode, courtRoomId, courtRoomNumber, courtHouseId,
-                courtHouseName, courtRoomName, operationalUnit, businessType, panel, courtSession,
-                slotBased, sessionDate, maxSlots, maxDuration, availableSlots, availableDuration);
+        return Objects.hash(courtScheduleId);
     }
 
     @Override
@@ -243,6 +265,8 @@ public class CourtSchedule {
                 ", maxDuration=" + maxDuration +
                 ", availableSlots=" + availableSlots +
                 ", availableDuration=" + availableDuration +
+                ", createdOn=" + createdOn +
+                ", updatedOn=" + updatedOn +
                 '}';
     }
 }

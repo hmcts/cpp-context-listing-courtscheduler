@@ -1,14 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import javax.persistence.*;
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Objects;
 
 @Entity
-@Table(name = "allocated_listing")
+@Table(name = "allocated_listings")
 public class AllocatedListing {
 
     @Id
@@ -29,20 +30,25 @@ public class AllocatedListing {
     @Column(name = "court_room_id", nullable = false)
     private Integer courtRoomId;
 
-    @Column(name = "rota_business_type", nullable = false)
+    @Column(name = "rota_business_type")
     private String rotaBusinessType;
 
     @Column(name = "duration", nullable = false)
     private Integer duration;
 
-    @Column(name = "created_on", nullable = false)
-    private Timestamp createdOn;
-
-    @Column(name = "updated_on", nullable = false)
-    private Timestamp updatedOn;
-
     @Column(name = "hearing_start_time", nullable = false)
-    private Timestamp hearingStartTime;
+    @Temporal(TemporalType.TIMESTAMP)
+    private java.util.Date hearingStartTime;
+
+    @UpdateTimestamp
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_on", nullable = false)
+    private java.util.Date updatedOn;
+
+    @CreationTimestamp
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_on", nullable = false)
+    private java.util.Date createdOn;
 
     public AllocatedListing() {
         //For JPA
@@ -112,28 +118,28 @@ public class AllocatedListing {
         this.duration = duration;
     }
 
-    public Timestamp getCreatedOn() {
-        return new Timestamp(createdOn.getTime());
+    public Date getCreatedOn() {
+        return createdOn;
     }
 
-    public void setCreatedOn(Timestamp createdOn) {
-        this.createdOn = new Timestamp(createdOn.getTime());
+    public void setCreatedOn(Date createdOn) {
+        this.createdOn = createdOn;
     }
 
-    public Timestamp getUpdatedOn() {
-        return new Timestamp(updatedOn.getTime());
+    public Date getUpdatedOn() {
+        return updatedOn;
     }
 
-    public void setUpdatedOn(Timestamp updatedOn) {
-        this.updatedOn = new Timestamp(updatedOn.getTime());
+    public void setUpdatedOn(Date updatedOn) {
+        this.updatedOn = updatedOn;
     }
 
-    public Timestamp getHearingStartTime() {
-        return new Timestamp(hearingStartTime.getTime());
+    public Date getHearingStartTime() {
+        return hearingStartTime;
     }
 
-    public void setHearingStartTime(Timestamp hearingStartTime) {
-        this.hearingStartTime = new Timestamp(hearingStartTime.getTime());
+    public void setHearingStartTime(Date hearingStartTime) {
+        this.hearingStartTime = hearingStartTime;
     }
 
     @Override

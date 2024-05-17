@@ -23,3 +23,12 @@ rule "API - Action - courtscheduler.get"
   then
     $outcome.setSuccess(true);
 end
+
+rule "API - Action - courtscheduler.update.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.update.hearing.slots");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.updateHearingSlotsPermission()));
+  then
+    $outcome.setSuccess(true);
+end

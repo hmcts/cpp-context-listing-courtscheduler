@@ -16,24 +16,36 @@
     <name>CourtScheduler Service - Parent Module</name>
 
     <properties>
-        <gihub.benas.random-beans.version>3.7.0</gihub.benas.random-beans.version>
         <sonar.jacoco.itReportPath>${project.basedir}/../target/jacoco-it.exec
         </sonar.jacoco.itReportPath>
         <sonar.report.export.path>sonar-report.json</sonar.report.export.path>
         <sonar.scm.provider>git</sonar.scm.provider>
+        <mvn.site.url>file://${project.build.directory}/site</mvn.site.url>
+        <gihub.benas.random-beans.version>3.7.0</gihub.benas.random-beans.version>
+        <build-helper-maven-plugin.version>3.1.0</build-helper-maven-plugin.version>
+        <cglib.version>3.3.0</cglib.version>
+        <commons.lang3.version>3.9</commons.lang3.version>
+        <org.mockito.mockito-core.version>2.24.0</org.mockito.mockito-core.version>
+        <junit-dataprovider.version>1.13.1</junit-dataprovider.version>
+        <activemq-ra.version>5.14.5</activemq-ra.version>
+        <test-utils-enveloper-provider.version>5.1.2</test-utils-enveloper-provider.version>
+        <cpp-platform-test-utils.version>8.0.17</cpp-platform-test-utils.version>
+        <jackson.databind.version>2.10.0</jackson.databind.version>
         <sonar.coverage.exclusions>
-            **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*
+            **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,
+            **/uk/gov/moj/cpp/courtscheduler/domain/**/*
         </sonar.coverage.exclusions>
         <usersgroups.version>8.0.21</usersgroups.version>
     </properties>
 
+
     <modules>
+        <module>courtscheduler-domain</module>
         <module>courtscheduler-api</module>
         <module>courtscheduler-integration-test</module>
         <module>courtscheduler-viewstore</module>
         <module>courtscheduler-service</module>
         <module>courtscheduler-healthchecks</module>
-
     </modules>
 
     <build>
@@ -57,4 +69,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>

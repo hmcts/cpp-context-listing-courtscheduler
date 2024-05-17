@@ -1,0 +1,10 @@
+{
+  "hearingSlots": [
+    {
+      "duration": 20,
+      "hearingId": "2669bdd9-2620-42e2-8310-43b66a91b4cf",
+      "bookingId": "2262a5cc-621a-40a5-ae98-a6cacc299432",
+      "courtScheduleId": "01ec21a8-85a9-41c6-8b32-19835241641e"
+    }
+  ]
+}

@@ -28,6 +28,12 @@
 
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+            <artifactId>courtscheduler-domain</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
             <artifactId>courtscheduler-service</artifactId>
             <version>${project.version}</version>
         </dependency>
