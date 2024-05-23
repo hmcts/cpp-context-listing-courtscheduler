@@ -121,66 +121,6 @@
                     "hearingStartTime",
                     "count"
                   ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "hearingStartTime": {
-                      "type": "string"
-                    },
-                    "count": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "hearingStartTime",
-                    "count"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "hearingStartTime": {
-                      "type": "string"
-                    },
-                    "count": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "hearingStartTime",
-                    "count"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "hearingStartTime": {
-                      "type": "string"
-                    },
-                    "count": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "hearingStartTime",
-                    "count"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "hearingStartTime": {
-                      "type": "string"
-                    },
-                    "count": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "hearingStartTime",
-                    "count"
-                  ]
                 }
               ]
             }

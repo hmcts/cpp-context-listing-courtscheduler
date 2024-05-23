@@ -1,38 +1,54 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import org.apache.deltaspike.data.api.AbstractEntityRepository;
-import org.apache.deltaspike.data.api.Repository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
-
-import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import static java.lang.String.format;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
+
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
+import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
+import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
+
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
+
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.deltaspike.data.api.AbstractEntityRepository;
+import org.apache.deltaspike.data.api.Repository;
+import org.modelmapper.ModelMapper;
 
 @Repository(forEntity = CourtSchedule.class)
 public abstract class CourtScheduleRepository extends AbstractEntityRepository<CourtSchedule, String> {
 
     @Inject
+    EntityManager entityManager;
+    @Inject
+    CourtScheduleCriteria courtScheduleCriteria;
+    @Inject
     private AllocatedListingRepository allocatedListingRepository;
-
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
 
     public void saveBookedSlots(final List<AllocatedSlot> slots, final boolean isProvisionalSlot) {
-
-
         final Optional<String> hearingId = getHearingId(slots);
 
         hearingId.ifPresent(this::releaseOldAllocatedListings);
@@ -74,7 +90,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return allocatedListingRepository.findByHearingId(hearingId);
     }
 
-
     protected void releaseAllocatedSlotsOrDurationFromCourtSchedule(final List<AllocatedListing> allocatedListings) {
 
         allocatedListings.forEach(allocatedListing -> {
@@ -105,7 +120,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         allocatedListings.forEach(allocatedListing -> this.allocatedListingRepository.remove(allocatedListing));
     }
 
-
     private List<AllocatedSlot> getUpdatedAllocatedSlots(final List<AllocatedSlot> allocatedSlots) {
 
         final List<AllocatedSlot> matchedSlots = new ArrayList<>();
@@ -129,7 +143,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         return matchedSlots;
     }
-
 
     protected void updateCourtSchedule(final List<AllocatedSlot> allocatedSlots) {
         allocatedSlots.forEach(allocatedSlot -> {
@@ -165,6 +178,79 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             ProvisionalBooking provisionalBooking = byBookingId.get();
             provisionalBooking.setActive(false);
             this.provisionalBookingRepository.save(provisionalBooking);
+        }
+    }
+
+    public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam hearingSlotRequestParam) {
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = new ArrayList<>();
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries = new ArrayList<>();
+        final Set<String> courtScheduleIds = new TreeSet<>();
+        final int pageSize = Integer.parseInt(hearingSlotRequestParam.pageSize());
+        final int pageNumber = Integer.parseInt(hearingSlotRequestParam.pageNumber());
+
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+        courtScheduleCriteria.createCourtScheduleCriteria(hearingSlotRequestParam, criteriaBuilder, criteriaQuery);
+        List<CourtSchedule> courtScheduleList =
+                entityManager.createQuery(criteriaQuery).setFirstResult((pageNumber-1) * pageSize).setMaxResults(pageSize).getResultList();
+        courtScheduleList.forEach((e) -> courtScheduleIds.add(e.getCourtScheduleId()));
+        int resultSize = courtScheduleList.size();
+
+        final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
+        final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
+
+        ModelMapper modelMapper = new ModelMapper();
+        courtScheduleList.forEach(courtSchedule -> {
+            courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class));
+        });
+        courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> {
+            courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class));
+        });
+
+        courtSchedules.forEach(courtSchedule -> {
+                    addJudiciaries(courtScheduleJudiciaries, courtSchedule);
+                    addSlotStartTimes(slotStartTimeList, courtSchedule);
+                }
+        );
+
+        return Pair.of(resultSize, courtSchedules);
+    }
+
+    private List<CourtScheduleJudiciary> getCourtScheduleJudiciaries(List<CourtSchedule> courtScheduleList) {
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<CourtScheduleJudiciary> criteriaQuery = criteriaBuilder.createQuery(CourtScheduleJudiciary.class);
+        courtScheduleCriteria.createCourtScheduleJudiciaryCriteria(courtScheduleList, criteriaBuilder, criteriaQuery);
+        return entityManager.createQuery(criteriaQuery).getResultList();
+    }
+
+    private Map<String, List<SlotStartTime>> getCountBasedAllocatedListing(final Set<String> courtScheduleIds) {
+        final Map<String, List<SlotStartTime>> resultStringListMap = new HashMap<>();
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<AllocatedListing> criteriaQuery = criteriaBuilder.createQuery(AllocatedListing.class);
+        courtScheduleCriteria.createAllocatedListingCriteria(courtScheduleIds, criteriaQuery);
+        List<AllocatedListing> allocatedListing = entityManager.createQuery(criteriaQuery).getResultList();
+        final long count = allocatedListing.size();
+        allocatedListing.forEach((e) -> {
+            final List<SlotStartTime> slotStartTimes = resultStringListMap.computeIfAbsent(e.getCourtScheduleId(), k -> new ArrayList<>());
+            slotStartTimes.add(new SlotStartTime(toIsoString((Timestamp) e.getHearingStartTime()), count));
+        });
+
+        return resultStringListMap;
+    }
+
+    private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
+                                final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
+        Optional.of(courtScheduleJudiciaries.stream()
+                        .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtListingProfileId().equals(courtSchedule.getListingProfileId()))
+                        .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
+                        .toList())
+                .ifPresent(courtSchedule.getJudiciaries()::addAll);
+    }
+
+    private void addSlotStartTimes(final Map<String, List<SlotStartTime>> slotStartTimes, final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
+        final List<SlotStartTime> yes = slotStartTimes.get(courtSchedule.getCourtScheduleId());
+        if (isNotEmpty(yes)) {
+            courtSchedule.getSlotStartTimes().addAll(yes);
         }
     }
 }

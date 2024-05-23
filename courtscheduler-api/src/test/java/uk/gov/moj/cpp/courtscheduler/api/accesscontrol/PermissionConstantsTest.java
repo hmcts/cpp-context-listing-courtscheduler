@@ -44,4 +44,12 @@ class PermissionConstantsTest {
 
         assertThat(updateHearingSlotsPermissionStr, is(expectedUpdateHearingSlotsPermissionStr.replaceAll("\n",  "")));
     }
+
+    @Test
+    void shouldViewHearingSlotsPermission() throws JsonProcessingException {
+        final String expectedUpdateHearingSlotsPermissionStr = getPayload("get-hearing-slots-permission.json");
+        final String hearingSlotsPermission = getHearingSlotsPermission();
+
+        assertThat(hearingSlotsPermission, is(expectedUpdateHearingSlotsPermissionStr.replaceAll("\n",  "")));
+    }
 }

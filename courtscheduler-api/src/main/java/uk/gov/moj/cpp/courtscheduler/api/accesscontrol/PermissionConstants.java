@@ -56,4 +56,13 @@ public final class PermissionConstants {
 
         return objectMapper.writeValueAsString(expectedPermission);
     }
+
+    public static String getHearingSlotsPermission() throws JsonProcessingException {
+        final ExpectedPermission expectedPermission = builder()
+                .withObject(HEARING_SLOTS_OBJECT)
+                .withAction(VIEW_ACTION)
+                .build();
+
+        return objectMapper.writeValueAsString(expectedPermission);
+    }
 }

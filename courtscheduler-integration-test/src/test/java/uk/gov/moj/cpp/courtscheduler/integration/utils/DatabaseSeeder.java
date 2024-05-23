@@ -3,12 +3,14 @@ package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.ZonedDateTime;
 
 public class DatabaseSeeder {
@@ -31,6 +33,28 @@ public class DatabaseSeeder {
     private static final String PROVISIONAL_BOOKING_INSERT_SQL = "INSERT INTO provisional_booking (" +
             "court_schedule_id, booking_id, active, updated_on, created_on, hearing_start_time) \n" +
             "VALUES(?, ?, ?, ?, ?, ?)";
+
+    public static final String UPSERT_CSJ_QRY =
+            " INSERT INTO COURT_SCHEDULE_JUDICIARY" +
+                    " (court_schedule_id, court_listing_profile_id, " +
+                    " judiciary_id, rota_judiciary_id, title, forenames, surname, email, judiciary_type, is_bench_chairman, is_deputy, position) " +
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" +
+                    " ON CONFLICT ON CONSTRAINT combination_primary_key DO " +
+                    " UPDATE SET " +
+                    " court_listing_profile_id = ?," +
+                    " judiciary_id = ?," +
+                    " rota_judiciary_id = ?," +
+                    " title = ?," +
+                    " forenames = ?," +
+                    " surname = ?," +
+                    " email = ?," +
+                    " judiciary_type = ?," +
+                    " is_bench_chairman = ?," +
+                    " is_deputy = ?," +
+                    " position = ?," +
+                    " updated_on = CURRENT_TIMESTAMP" +
+                    " WHERE  COURT_SCHEDULE_JUDICIARY.court_schedule_id = ? AND COURT_SCHEDULE_JUDICIARY.judiciary_id = ? " +
+                    ";";
 
     private static final String COURT_SCHEDULE_DELETE_SQL = "DELETE FROM court_schedule";
     private static final String ALLOCATED_LISTING_DELETE_SQL = "DELETE FROM allocated_listings";
@@ -123,6 +147,45 @@ public class DatabaseSeeder {
             preparedStatement.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
             preparedStatement.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
             preparedStatement.executeUpdate();
+        }
+    }
+
+    public Integer saveJudiciarySchedule(final CourtScheduleJudiciary mapping) throws Exception {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement stmt = connection.prepareStatement(UPSERT_CSJ_QRY)) {
+                    int idx =0;
+                    stmt.setString(++idx, mapping.getId().getCourtScheduleId());
+                    stmt.setString(++idx, mapping.getCourtListingProfileId());
+                    stmt.setString(++idx, mapping.getId().getJudiciaryId());
+                    stmt.setString(++idx, mapping.getRotaJudiciaryId());
+                    stmt.setString(++idx, mapping.getTitle());
+                    stmt.setString(++idx, mapping.getForenames());
+                    stmt.setString(++idx, mapping.getSurname());
+                    stmt.setString(++idx, mapping.getEmail());
+                    stmt.setString(++idx, mapping.getJudiciaryType());
+                    stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
+                    stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
+                    stmt.setString(++idx, mapping.getPosition());
+
+                    stmt.setString(++idx, mapping.getCourtListingProfileId());
+                    stmt.setString(++idx, mapping.getId().getJudiciaryId());
+                    stmt.setString(++idx, mapping.getRotaJudiciaryId());
+                    stmt.setString(++idx, mapping.getTitle());
+                    stmt.setString(++idx, mapping.getForenames());
+                    stmt.setString(++idx, mapping.getSurname());
+                    stmt.setString(++idx, mapping.getEmail());
+                    stmt.setString(++idx, mapping.getJudiciaryType());
+                    stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
+                    stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
+                    stmt.setString(++idx, mapping.getPosition());
+
+                    stmt.setString(++idx, mapping.getId().getCourtScheduleId());
+                    stmt.setString(++idx, mapping.getId().getJudiciaryId());
+
+                    stmt.addBatch();
+            return stmt.executeBatch().length;
+        } catch (SQLException ex) {
+            throw new Exception(ex);
         }
     }
 

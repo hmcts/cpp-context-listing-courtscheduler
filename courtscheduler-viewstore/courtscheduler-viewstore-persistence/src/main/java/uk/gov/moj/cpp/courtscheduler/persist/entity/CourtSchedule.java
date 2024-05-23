@@ -38,7 +38,8 @@ public class CourtSchedule {
     private String panel;
     @Column(name = "court_session", nullable = false)
     private String courtSession;
-
+    @Column(name = "active", nullable = false)
+    private boolean active;
     @Column(name = "is_slot_based", nullable = false)
     private boolean slotBased;
     @Column(name = "session_start", nullable = false)

@@ -1,27 +1,35 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import com.google.common.collect.Lists;
-import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
-import javax.inject.Inject;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static io.github.benas.randombeans.api.EnhancedRandom.random;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
+import javax.inject.Inject;
+
+import com.google.common.collect.Lists;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 @RunWith(CdiTestRunner.class)
 public class CourtScheduleRepositoryTest {
@@ -29,7 +37,8 @@ public class CourtScheduleRepositoryTest {
     private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
-
+    @Inject
+    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
 
@@ -226,5 +235,37 @@ public class CourtScheduleRepositoryTest {
         Optional<ProvisionalBooking> byBookingId = provisionalBookingRepository.findByBookingId(provisionalBooking.getProvisionalBookingKey().getBookingId());
         assertThat(byBookingId.isPresent(), is(true));
         assertThat(byBookingId.get().getActive(), is(false));
+    }
+
+    @Test
+    public void shouldGetCourtSchedules() {
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setPanel("ADULT");
+        courtSchedule.setSessionDate(LocalDate.now());
+        courtSchedule.setOperationalUnit("BA124");
+        courtSchedule.setOuCode("BA124");
+        courtSchedule.setSessionDate(LocalDate.now());
+        courtScheduleRepository.saveAndFlush(courtSchedule);
+        final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciaryKey courtScheduleJudiciaryKey = random(CourtScheduleJudiciaryKey.class);
+        courtScheduleJudiciaryKey.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        courtScheduleJudiciaryKey.setJudiciaryId(courtSchedule.getCourtScheduleId());
+        courtScheduleJudiciary.setId(courtScheduleJudiciaryKey);
+        courtScheduleJudiciary.setCourtListingProfileId(courtScheduleJudiciary.getCourtListingProfileId());
+        courtScheduleJudiciaryRepository.saveAndFlush(courtScheduleJudiciary);
+        final AllocatedListing allocatedListing = random(AllocatedListing.class);
+        allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        allocatedListingRepository.saveAndFlush(allocatedListing);
+        HearingSlotRequestParam hearingSlotRequestParam = createHearingSlotRequest("1");
+
+        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> response = courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam);
+
+        assertNotNull(response);
+    }
+
+    private HearingSlotRequestParam createHearingSlotRequest(String pageSize) {
+        return new HearingSlotRequestParam("ADULT", LocalDate.now().toString(), LocalDate.now().toString(),
+                "BA124", "BA124", pageSize, "1", "ID123",
+                "123", "buss", "session");
     }
 }
