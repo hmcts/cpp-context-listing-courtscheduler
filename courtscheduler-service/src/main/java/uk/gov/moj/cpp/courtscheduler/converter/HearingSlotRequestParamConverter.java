@@ -5,7 +5,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
 import javax.json.JsonObject;
 
-public class RequestParamConverter implements Converter<JsonObject, HearingSlotRequestParam> {
+public class HearingSlotRequestParamConverter implements Converter<JsonObject, HearingSlotRequestParam> {
     @Override
     public HearingSlotRequestParam convert(final JsonObject jsonObject) {
         final String panel = jsonObject.getString(RequestParameterConstant.PANEL.getLabel());

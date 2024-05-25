@@ -19,7 +19,10 @@ public enum RequestParameterConstant {
     PROVISIONAL_SLOTS("provisionalSlots"),
     PAGE_NUMBER("pageNumber"),
     SLOT_DETAILS("slotDetails"),
-    BOOKING_IDS("bookingIds");
+    BOOKING_IDS("bookingIds"),
+
+    FROM_DATE("fromDate"),
+    TO_DATE("toDate");
 
     private final String name;
 

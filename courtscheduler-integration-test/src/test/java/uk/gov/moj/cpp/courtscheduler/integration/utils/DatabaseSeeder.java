@@ -60,6 +60,8 @@ public class DatabaseSeeder {
     private static final String ALLOCATED_LISTING_DELETE_SQL = "DELETE FROM allocated_listings";
     private static final String PROVISIONAL_BOOKING_DELETE_SQL = "DELETE FROM provisional_booking";
 
+    private static final String COURT_SCHEDULE_JUDICIARY_DELETE_SQL = "DELETE FROM court_schedule_judiciary";
+
     private final ConnectionProvider connectionProvider = new ConnectionProvider();
 
     public void cleanCourtScheduleTable() throws SQLException {
@@ -71,14 +73,21 @@ public class DatabaseSeeder {
 
     public void cleanAllocatedListingTable() throws SQLException {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_DELETE_SQL)) {
+             final PreparedStatement preparedStatement = connection.prepareStatement(ALLOCATED_LISTING_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
 
     public void cleanProvisionalBookingTable() throws SQLException {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_DELETE_SQL)) {
+             final PreparedStatement preparedStatement = connection.prepareStatement(PROVISIONAL_BOOKING_DELETE_SQL)) {
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    public void cleanCourtScheduleJudiciaryTable() throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
@@ -197,5 +206,6 @@ public class DatabaseSeeder {
         cleanProvisionalBookingTable();
         cleanAllocatedListingTable();
         cleanCourtScheduleTable();
+        cleanCourtScheduleJudiciaryTable();
     }
 }

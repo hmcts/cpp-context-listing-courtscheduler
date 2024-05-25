@@ -152,3 +152,78 @@ protocols: [ HTTP, HTTPS ]
         body:
           example: !include json/courtscheduler.create.provisional.booking.response.json
           schema:  !include json/schema/courtscheduler.create.provisional.booking.response.json
+
+/mi/court_schedules:
+  get:
+    description: |
+      Query via parameters
+        ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.export.court_schedule+json
+            name: courtscheduler.export.court_schedule
+        ...
+    queryParameters:
+      fromDate:
+        description: from date of the data range
+        type: string
+        required: true
+      toDate:
+        description: to date of the data range
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.export.court_schedule+json:
+            example: !include json/courtscheduler.export.court_schedule.json
+            schema: !include json/schema/courtscheduler.export.court_schedule.json
+
+/mi/court_schedule_judiciaries:
+  get:
+    description: |
+      Query via parameters
+        ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.export.court_schedule_judiciary+json
+            name: courtscheduler.export.court_schedule_judiciary
+        ...
+    queryParameters:
+      fromDate:
+        description: from date of the data range
+        type: string
+        required: true
+      toDate:
+        description: to date of the data range
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.export.court_schedule_judiciary+json:
+            example: !include json/courtscheduler.export.court_schedule_judiciary.json
+            schema: !include json/schema/courtscheduler.export.court_schedule_judiciary.json
+
+/mi/allocated_listings:
+  get:
+    description: |
+      Query via parameters
+        ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.export.allocated_listings+json
+            name: courtscheduler.export.allocated_listings
+        ...
+    queryParameters:
+      fromDate:
+        description: from date of the data range
+        type: string
+        required: true
+      toDate:
+        description: to date of the data range
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.export.allocated_listings+json:
+            example: !include json/courtscheduler.export.allocated_listings.json
+            schema: !include json/schema/courtscheduler.export.allocated_listings.json

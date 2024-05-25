@@ -38,6 +38,10 @@
             **/uk/gov/moj/cpp/courtscheduler/api/PayloadExtractor.java,
             **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java
         </sonar.coverage.exclusions>
+        <sonar.cpd.exclusions>
+            **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,
+            **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
+        </sonar.cpd.exclusions>
         <usersgroups.version>8.0.21</usersgroups.version>
     </properties>
 

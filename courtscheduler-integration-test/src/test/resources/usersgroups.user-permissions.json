@@ -19,6 +19,18 @@
     {
       "object": "HearingSlots",
       "action": "View"
+    },
+    {
+      "object": "CourtSchedule",
+      "action": "Export"
+    },
+    {
+      "object": "AllocatedListings",
+      "action": "Export"
+    },
+    {
+      "object": "CourtScheduleJudiciary",
+      "action": "Export"
     }
   ]
 }

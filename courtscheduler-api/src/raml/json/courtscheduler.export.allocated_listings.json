@@ -1,0 +1,17 @@
+{
+  "allocatedListings": [
+    {
+      "id": "pTkHhNqVe",
+      "courtScheduleId": "ltOXQ",
+      "bookingId": "puspUaANGQJqGTfBcvbtrY",
+      "hearingId": "VSjOwOjoGTtxtqmRgMZ",
+      "oucode": "kowRqSQaLihSlKz",
+      "courtRoomId": 1120644387,
+      "rotaBusinessType": "lBxSDDHsijdvWdDRuoPHKPBzgYho",
+      "duration": 654418375,
+      "hearingStartTime": "Mar 22, 2015, 12:33:19 AM",
+      "updatedOn": "May 24, 2023, 9:32:35 AM",
+      "createdOn": "Apr 23, 2019, 8:21:30 PM"
+    }
+  ]
+}

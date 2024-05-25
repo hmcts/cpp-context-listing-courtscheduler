@@ -2,11 +2,13 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 import java.util.function.BiPredicate;
 
 @SuppressWarnings({"squid:S00116", "squid:S2201"})
-public class MiExtractRange {
+public class MiFilterCriteria {
 
     private final String fromDate;
     private final String toDate;
@@ -26,11 +28,17 @@ public class MiExtractRange {
 
     private final BiPredicate<LocalDate, LocalDate> FROM_NOT_AFTER_TO = (from, to) -> !this.fromLocalDate.isAfter(toLocalDate);
 
-    public MiExtractRange(final String fromDate, final String toDate) {
+    public MiFilterCriteria(final String fromDate, final String toDate) {
         this.fromLocalDate = LocalDate.parse(fromDate);
         this.toLocalDate = LocalDate.parse(toDate);
         this.fromDate = fromDate;
         this.toDate = toDate;
+    }
+    public MiFilterCriteria(final LocalDate fromDate, final LocalDate toDate) {
+        this.fromLocalDate = fromDate;
+        this.toLocalDate = toDate;
+        this.fromDate = fromDate.format(DateTimeFormatter.BASIC_ISO_DATE);
+        this.toDate = toDate.format(DateTimeFormatter.BASIC_ISO_DATE);;
     }
 
     public String getFromDate() {
@@ -39,6 +47,14 @@ public class MiExtractRange {
 
     public String getToDate() {
         return toDate;
+    }
+
+    public LocalDate getFromLocalDate() {
+        return fromLocalDate;
+    }
+
+    public LocalDate getToLocalDate() {
+        return toLocalDate;
     }
 
     public boolean isValid() {
@@ -50,8 +66,22 @@ public class MiExtractRange {
     @Override
     public String toString() {
         return "MiExtractRange{" +
-                "fromDate='" + fromDate + '\'' +
+                ", fromDate='" + fromDate + '\'' +
                 ", toDate='" + toDate + '\'' +
                 '}';
+
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        MiFilterCriteria that = (MiFilterCriteria) o;
+        return Objects.equals(fromDate, that.fromDate) && Objects.equals(toDate, that.toDate);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(fromDate, toDate);
     }
 }

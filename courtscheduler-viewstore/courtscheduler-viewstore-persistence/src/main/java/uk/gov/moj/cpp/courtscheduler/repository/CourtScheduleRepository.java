@@ -1,14 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static java.lang.String.format;
-import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
-
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.deltaspike.data.api.AbstractEntityRepository;
+import org.apache.deltaspike.data.api.Repository;
+import org.modelmapper.ModelMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -16,25 +16,18 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
 
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
-
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import java.sql.Timestamp;
+import java.util.*;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.deltaspike.data.api.AbstractEntityRepository;
-import org.apache.deltaspike.data.api.Repository;
-import org.modelmapper.ModelMapper;
+import static java.lang.String.format;
+import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 @Repository(forEntity = CourtSchedule.class)
 public abstract class CourtScheduleRepository extends AbstractEntityRepository<CourtSchedule, String> {
@@ -47,6 +40,25 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     private AllocatedListingRepository allocatedListingRepository;
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
+
+    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
+        List<CourtSchedule> courtScheduleList = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
+                DateUtils.getDate(miFilterCriteria.getFromLocalDate()),
+                DateUtils.getDate(miFilterCriteria.getToLocalDate()));
+        return courtScheduleList.stream().map(courtScheduleEntity -> new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
+                .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
+                .withAvailableSlots(courtScheduleEntity.getAvailableSlots())
+                .withBusinessType(courtScheduleEntity.getBusinessType())
+                .withCourtHouseId(courtScheduleEntity.getCourtHouseId())
+                .withCourtHouseName(courtScheduleEntity.getCourtHouseName())
+                .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
+                .withCourtRoomName(courtScheduleEntity.getCourtRoomName())
+                .withCourtSession(courtScheduleEntity.getCourtSession())
+                .build()).toList();
+    }
+
+    protected abstract List<CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
 
     public void saveBookedSlots(final List<AllocatedSlot> slots, final boolean isProvisionalSlot) {
         final Optional<String> hearingId = getHearingId(slots);
@@ -192,7 +204,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
         courtScheduleCriteria.createCourtScheduleCriteria(hearingSlotRequestParam, criteriaBuilder, criteriaQuery);
         List<CourtSchedule> courtScheduleList =
-                entityManager.createQuery(criteriaQuery).setFirstResult((pageNumber-1) * pageSize).setMaxResults(pageSize).getResultList();
+                entityManager.createQuery(criteriaQuery).setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize).getResultList();
         courtScheduleList.forEach((e) -> courtScheduleIds.add(e.getCourtScheduleId()));
         int resultSize = courtScheduleList.size();
 

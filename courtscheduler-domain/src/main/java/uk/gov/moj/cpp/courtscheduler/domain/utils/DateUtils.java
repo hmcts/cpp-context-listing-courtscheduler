@@ -8,6 +8,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -15,7 +17,6 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-
 
 
 public class DateUtils {
@@ -87,6 +88,15 @@ public class DateUtils {
             return null;
         }
         return Date.valueOf(localDate);
+    }
+
+
+    public static final java.util.Date getDate(LocalDate localDate) {
+        try {
+            return new SimpleDateFormat("yyyy-MM-dd").parse(localDate.toString());
+        } catch (ParseException e) {
+            throw new IllegalArgumentException(String.format("Passed localDate:%s cannot be parsed with format:yyyy-MM-dd", localDate));
+        }
     }
 
     public static String createDefaultHearingStartTime(final String session, final String sessionDate) {

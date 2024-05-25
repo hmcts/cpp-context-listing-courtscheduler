@@ -15,15 +15,15 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class RequestParamConverterTest {
+class HearingSlotRequestParamConverterTest {
 
     @InjectMocks
-    RequestParamConverter requestParamConverter;
+    HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
 
     @Test
     public void shouldConvertJsonObjectToRequestParam() {
         JsonObject jsonObject = toJsonObject();
-        HearingSlotRequestParam hearingSlotRequestParam = requestParamConverter.convert(jsonObject);
+        HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(jsonObject);
 
         assertNotNull(hearingSlotRequestParam);
         assertEquals("BA124", hearingSlotRequestParam.ouCode());
