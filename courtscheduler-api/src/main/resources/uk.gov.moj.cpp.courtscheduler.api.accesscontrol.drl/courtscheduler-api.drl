@@ -41,3 +41,12 @@ rule "API - Action - courtscheduler.get.hearing.slots"
   then
     $outcome.setSuccess(true);
 end
+
+rule "API - Action - courtscheduler.create.provisional.booking"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.create.provisional.booking");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createProvisionalBookingPermission()));
+  then
+    $outcome.setSuccess(true);
+end

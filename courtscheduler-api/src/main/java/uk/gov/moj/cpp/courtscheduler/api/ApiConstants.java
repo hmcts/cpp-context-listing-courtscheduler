@@ -7,4 +7,8 @@ public class ApiConstants {
     public static final String MANDATORY_SEARCH_CRITERIA = "Mandatory Search Criteria ";
     public static final String CANNOT_BE_NULL = " cannot be null";
     public static final String ERROR_MESSAGE = "errorMessage";
+    public static final String MANDATORY_DATA_MISSING = "Provisional slot missing one of the following mandatory information (courtScheduleId)";
+    public static final String PAYLOAD_NOT_CORRECT = "Request body payload is incorrect";
+    public static final String PAYLOAD_CANNOT_EMPTY = "Request body cannot be empty";
+    public static final String BOOKING_REFERENCE = "bookingId";
 }

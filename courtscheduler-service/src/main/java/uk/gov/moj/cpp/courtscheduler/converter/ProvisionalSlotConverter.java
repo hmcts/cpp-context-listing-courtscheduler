@@ -1,20 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
+import static java.lang.String.format;
+
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 
-import java.util.List;
-
-import static java.lang.String.format;
-
-public class ProvisionalSlotConverter implements Converter<String, List<ProvisionalSlot>> {
+public class ProvisionalSlotConverter implements Converter<String, ProvisionalBookingSlots> {
 
     private ObjectMapper mapper = new ObjectMapper();
 
     @Override
-    public List<ProvisionalSlot> convert(final String payload) {
+    public ProvisionalBookingSlots convert(final String payload) {
         try {
             return mapper.readValue(payload, new TypeReference<>() {
             });

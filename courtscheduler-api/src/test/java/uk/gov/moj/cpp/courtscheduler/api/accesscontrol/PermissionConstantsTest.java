@@ -2,7 +2,12 @@ package uk.gov.moj.cpp.courtscheduler.api.accesscontrol;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.*;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.createCourtSchedulePermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.createProvisionalBookingPermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getCourtSchedulePermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getHearingSlotsPermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.updateCourtSchedulePermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.updateHearingSlotsPermission;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -47,9 +52,17 @@ class PermissionConstantsTest {
 
     @Test
     void shouldViewHearingSlotsPermission() throws JsonProcessingException {
-        final String expectedUpdateHearingSlotsPermissionStr = getPayload("get-hearing-slots-permission.json");
+        final String expectedViewHearingSlotsPermissionStr = getPayload("get-hearing-slots-permission.json");
         final String hearingSlotsPermission = getHearingSlotsPermission();
 
-        assertThat(hearingSlotsPermission, is(expectedUpdateHearingSlotsPermissionStr.replaceAll("\n",  "")));
+        assertThat(hearingSlotsPermission, is(expectedViewHearingSlotsPermissionStr.replaceAll("\n",  "")));
+    }
+
+    @Test
+    void shouldCreateProvisionalBookingPermission() throws JsonProcessingException {
+        final String expectedCreateProvisionalBookingPermissionStr = getPayload("create-provisional-booking-permission.json");
+        final String hearingSlotsPermission = createProvisionalBookingPermission();
+
+        assertThat(hearingSlotsPermission, is(expectedCreateProvisionalBookingPermissionStr.replaceAll("\n",  "")));
     }
 }

@@ -1,34 +1,36 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.After;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static java.util.UUID.randomUUID;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
-import javax.inject.Inject;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static io.github.benas.randombeans.api.EnhancedRandom.random;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.Assert.assertThat;
+import javax.inject.Inject;
 
+import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
+import org.junit.After;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 @RunWith(CdiTestRunner.class)
 public class ProvisionalBookingRepositoryTest {
 
     @Inject
     CourtScheduleRepository courtScheduleRepository;
-
     @Inject
     private ProvisionalBookingRepository provisionalBookingRepository;
-
     @After
     public void tearDown() {
         List<ProvisionalBooking> all = provisionalBookingRepository.findAll();
@@ -82,7 +84,6 @@ public class ProvisionalBookingRepositoryTest {
 
     }
 
-
     @Test
     public void shouldFindByBookingId() {
         final ProvisionalBooking provisionalBooking = random(ProvisionalBooking.class);
@@ -92,7 +93,18 @@ public class ProvisionalBookingRepositoryTest {
         Optional<ProvisionalBooking> byBookingId = provisionalBookingRepository.findByBookingId(provisionalBooking.getProvisionalBookingKey().getBookingId());
 
         assertThat(byBookingId.isPresent(), is(true));
-
     }
 
+    @Test
+    public void shouldSaveProvisionalBooking() {
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        final ProvisionalSlot provisionalSlot = new ProvisionalSlot(courtSchedule.getCourtScheduleId(),
+                "2020-01-01T11:00:00.000Z");
+        final String bookingId = randomUUID().toString();
+
+        courtScheduleRepository.save(courtSchedule);
+        provisionalBookingRepository.saveProvisionalBooking(provisionalSlot, bookingId, courtSchedule);
+
+        assertNotNull(provisionalBookingRepository.findByBookingId(bookingId).get());
+    }
 }

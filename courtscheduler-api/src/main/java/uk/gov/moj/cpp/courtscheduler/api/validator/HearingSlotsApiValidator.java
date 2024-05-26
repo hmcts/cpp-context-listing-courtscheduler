@@ -62,16 +62,6 @@ public class HearingSlotsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject getMessage(final String value) {
-        return buildErrorResponse(MANDATORY_SEARCH_CRITERIA + value + CANNOT_BE_NULL);
-    }
-
-    private JsonObject buildErrorResponse(String errorMessage) {
-        return createObjectBuilder()
-                .add(ERROR_MESSAGE, errorMessage)
-                .build();
-    }
-
     private boolean isInvalidDateFormat(final String date) {
         try {
             LocalDates.from(date);
@@ -80,5 +70,15 @@ public class HearingSlotsApiValidator {
             return true;
         }
         return false;
+    }
+
+    private JsonObject getMessage(final String value) {
+        return buildErrorResponse(MANDATORY_SEARCH_CRITERIA + value + CANNOT_BE_NULL);
+    }
+
+    private JsonObject buildErrorResponse(String errorMessage) {
+        return createObjectBuilder()
+                .add(ERROR_MESSAGE, errorMessage)
+                .build();
     }
 }

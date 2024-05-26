@@ -14,15 +14,14 @@ protocols: [ HTTP, HTTPS ]
           requestType: application/vnd.courtscheduler.create+json
           name: courtscheduler.create
       ...
-
     body:
       application/vnd.courtscheduler.create+json:
         schema: !include json/schema/courtscheduler.create.json
         example: !include json/courtscheduler.create.json
-
     responses:
       202:
         description: OK
+
   get:
     description: |
       Query via parameters
@@ -75,6 +74,7 @@ protocols: [ HTTP, HTTPS ]
     responses:
       204:
         description: No Content
+
   get:
     description: |
       Query via parameters
@@ -134,3 +134,21 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.get.hearing.slots+json:
             example: !include json/courtscheduler.get.hearing.slots.json
             schema: !include json/schema/courtscheduler.get.hearing.slots.json
+
+/provisionalBooking:
+  post:
+    description:  |
+      You can book slot provisionally by giving corresponding courtScheduleId(s) inside request body
+      ...
+        (mapping):
+            requestType: application/vnd.courtscheduler.create.provisional.booking+json
+            name: courtscheduler.create.provisional.booking
+      ...
+    body:
+      application/vnd.courtscheduler.create.provisional.booking+json:
+        example:  !include json/courtscheduler.create.provisional.booking.json
+    responses:
+      200:
+        body:
+          example: !include json/courtscheduler.create.provisional.booking.response.json
+          schema:  !include json/schema/courtscheduler.create.provisional.booking.response.json
