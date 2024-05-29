@@ -1,11 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import com.google.common.collect.Lists;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static java.util.UUID.randomUUID;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
+
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.messaging.Envelope;
 import uk.gov.justice.services.messaging.JsonEnvelope;
@@ -19,19 +20,24 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
+import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsUpdateService;
 
-import javax.json.JsonObject;
-import javax.json.JsonValue;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 
-import static java.util.UUID.randomUUID;
-import static org.mockito.Mockito.*;
-import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
+
+import com.google.common.collect.Lists;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class CourtSchedulerApiTest {
@@ -41,7 +47,8 @@ class CourtSchedulerApiTest {
     private SlotsUpdateService slotsUpdateService;
     @Mock
     private SlotsSearchService slotsSearchService;
-
+    @Mock
+    private ProvisionalBookingService provisionalBookingService;
     @Mock
     private MiService miService;
     @Mock
@@ -144,6 +151,20 @@ class CourtSchedulerApiTest {
 
         verify(miService, atLeastOnce()).getAllocatedListings(miFilterCriteriaRequestParamConverter.convert(jsonObject));
         verify(enveloper, atLeastOnce()).withMetadataFrom(exportAllocatedListingsEnvelope, requestName);
+    }
+
+    @Test
+    void shouldCreateProvisionalBooking() throws IOException {
+        String payload = FileUtil.getPayload("create.provisional.booking.json");
+        final String requestName = "courtscheduler.create.provisional.booking";
+        final JsonEnvelope createCourtScheduleJsonEnvelope = createEnvelope(requestName, payloadToObject(payload));
+
+        when(enveloper.withMetadataFrom(createCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
+        when(provisionalBookingService.bookProvisionalSlots(any())).thenReturn(JsonObject.EMPTY_JSON_OBJECT);
+
+        courtSchedulerApi.createProvisionalBooking(createCourtScheduleJsonEnvelope);
+
+        verify(enveloper, atLeastOnce()).withMetadataFrom(createCourtScheduleJsonEnvelope, requestName);
     }
 
 

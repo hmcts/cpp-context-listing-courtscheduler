@@ -1,28 +1,41 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
+import static javax.json.Json.createObjectBuilder;
+
 import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.HearingSlotRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.converter.ProvisionalSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
+import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsUpdateService;
 
-import javax.inject.Inject;
-import javax.json.JsonObject;
 import java.util.List;
 
-import static javax.json.Json.createObjectBuilder;
+import javax.inject.Inject;
+import javax.json.JsonObject;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @CustomServiceComponent("Courtscheduler.API")
 public class CourtSchedulerApi {
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(CourtSchedulerApi.class.getName());
     private static final String ALLOCATED_LISTINGS = "allocatedListings";
     private static final String COURT_SCHEDULES = "courtSchedules";
     private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
@@ -32,13 +45,16 @@ public class CourtSchedulerApi {
     private SlotsUpdateService slotsUpdateService;
     @Inject
     private SlotsSearchService slotsSearchService;
-
+    @Inject
+    private ProvisionalBookingService provisionalBookingService;
     @Inject
     private MiService miService;
     private final AllocatedSlotConverter converter = new AllocatedSlotConverter();
     private final HearingSlotsApiValidator validator = new HearingSlotsApiValidator();
     private final HearingSlotRequestParamConverter hearingSlotRequestParamConverter = new HearingSlotRequestParamConverter();
     private final MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter = new MiFilterCriteriaRequestParamConverter();
+    private final ProvisionalSlotConverter provisionalSlotConverter = new ProvisionalSlotConverter();
+    private final ProvisionalBookingApiValidator provisionalBookingApiValidator = new ProvisionalBookingApiValidator();
 
     @Handles("courtscheduler.create")
     public JsonEnvelope createCourtSchedule(final JsonEnvelope envelope) {
@@ -113,6 +129,20 @@ public class CourtSchedulerApi {
                 .add(ALLOCATED_LISTINGS, listToJsonArrayConverter.convert(allocatedListings))
                 .build();
         return envelopeFor(envelope, responseObject, ALLOCATED_LISTINGS);
+    }
+
+    @Handles("courtscheduler.create.provisional.booking")
+    public JsonEnvelope createProvisionalBooking(final JsonEnvelope envelope) {
+        ProvisionalBookingSlots provisionalBookingSlots = provisionalSlotConverter.convert(envelope.payloadAsJsonObject().toString());
+        LOGGER.info("Converted JsonEnvelope with ProvisionalBookingSlots : {}", provisionalBookingSlots);
+        JsonObject validate = provisionalBookingApiValidator.createProvisionalBookingValidation(provisionalBookingSlots);
+
+        if(!validate.isEmpty()) {
+            return envelopeFor(envelope, validate, "error");
+        }
+
+        JsonObject responseObject = provisionalBookingService.bookProvisionalSlots(provisionalBookingSlots);
+        return envelopeFor(envelope, responseObject, ApiConstants.BOOKING_REFERENCE);
     }
 
 

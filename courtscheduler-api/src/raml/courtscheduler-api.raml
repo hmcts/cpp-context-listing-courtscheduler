@@ -146,6 +146,7 @@ protocols: [ HTTP, HTTPS ]
       ...
     body:
       application/vnd.courtscheduler.create.provisional.booking+json:
+        schema:  !include json/schema/courtscheduler.create.provisional.booking.json
         example:  !include json/courtscheduler.create.provisional.booking.json
     responses:
       200:

@@ -12,31 +12,36 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_CANNOT_EMPT
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_NOT_CORRECT;
 
 import uk.gov.moj.cpp.courtscheduler.converter.ConverterException;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 
 import java.util.List;
 
 import javax.json.JsonObject;
 
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 public class ProvisionalBookingApiValidator {
-    private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(ProvisionalBookingApiValidator.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProvisionalBookingApiValidator.class.getName());
 
     public JsonObject createProvisionalBookingValidation(ProvisionalBookingSlots provisionalBookingSlots) {
 
-        if (provisionalBookingSlots != null && !provisionalBookingSlots.getProvisionalSlots().isEmpty()) {
+        if (provisionalBookingSlots != null
+                && provisionalBookingSlots.getProvisionalSlots() != null
+                && !provisionalBookingSlots.getProvisionalSlots().isEmpty()) {
             LOGGER.info("Processing provisionalBooking with payload : {}", provisionalBookingSlots);
             try {
                 if (isPostPayloadValid(provisionalBookingSlots.getProvisionalSlots())) {
+                    LOGGER.info("Payload Validation Passed");
                     return EMPTY_JSON_OBJECT;
                 }
             } catch (ConverterException converterException) {
                 LOGGER.error("provisionalSlot payload is incorrect : {}", converterException.getMessage());
                 return getMessage(PAYLOAD_NOT_CORRECT);
             }
+            LOGGER.info("Mandatory data missing on Provisional Booking Payload : {}", provisionalBookingSlots);
             return getMessage(MANDATORY_DATA_MISSING);
         } else {
             return getMessage(PAYLOAD_CANNOT_EMPTY);

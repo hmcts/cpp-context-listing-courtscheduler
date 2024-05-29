@@ -31,6 +31,10 @@
     {
       "object": "CourtScheduleJudiciary",
       "action": "Export"
+    },
+    {
+      "object": "ProvisionalBooking",
+      "action": "Create"
     }
   ]
 }
