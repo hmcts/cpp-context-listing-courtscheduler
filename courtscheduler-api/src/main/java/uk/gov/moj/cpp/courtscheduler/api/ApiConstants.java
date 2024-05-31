@@ -11,4 +11,7 @@ public class ApiConstants {
     public static final String PAYLOAD_NOT_CORRECT = "Request body payload is incorrect";
     public static final String PAYLOAD_CANNOT_EMPTY = "Request body cannot be empty";
     public static final String BOOKING_REFERENCE = "bookingId";
+    public static final String BOOKING_IDS = "bookingIds";
+    public static final String ERROR = "error";
+    public static final String HEARING_SLOTS = "hearingSlots";
 }

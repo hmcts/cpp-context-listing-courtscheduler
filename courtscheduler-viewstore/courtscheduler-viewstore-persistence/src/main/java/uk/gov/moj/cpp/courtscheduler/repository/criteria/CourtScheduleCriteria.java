@@ -26,8 +26,8 @@ import org.apache.commons.lang3.StringUtils;
 
 @ApplicationScoped
 public class CourtScheduleCriteria {
-    public void createCourtScheduleCriteria(final HearingSlotRequestParam hearingSlotRequestParam,
-                                            CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtSchedule> criteriaQuery) {
+    public void createHearingSlotsCourtScheduleCriteria(final HearingSlotRequestParam hearingSlotRequestParam,
+                                                        CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtSchedule> criteriaQuery) {
         Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
         Predicate activePredicate = criteriaBuilder.equal(root.get("active"), true);
         Predicate panelPredicate;

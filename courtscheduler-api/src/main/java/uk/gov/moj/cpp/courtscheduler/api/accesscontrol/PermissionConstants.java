@@ -78,6 +78,15 @@ public final class PermissionConstants {
         return objectMapper.writeValueAsString(expectedPermission);
     }
 
+    public static String getProvisionalBookingPermission() throws JsonProcessingException {
+        final ExpectedPermission expectedPermission = builder()
+                .withObject(PROVISIONAL_BOOKING_OBJECT)
+                .withAction(VIEW_ACTION)
+                .build();
+
+        return objectMapper.writeValueAsString(expectedPermission);
+    }
+
     public static String exportCourtSchedulesPermission() throws JsonProcessingException {
         final ExpectedPermission expectedPermission = builder()
                 .withObject(COURT_SCHEDULE_OBJECT)

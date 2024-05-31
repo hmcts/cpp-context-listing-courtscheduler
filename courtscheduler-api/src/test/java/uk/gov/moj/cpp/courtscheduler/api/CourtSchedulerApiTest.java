@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.UUID.randomUUID;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -165,6 +166,21 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.createProvisionalBooking(createCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(createCourtScheduleJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldRetrieveProvisionalBookingSlots() throws IOException {
+        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.get.provisional.booking.json"));
+        final String requestName = "courtscheduler.get.provisional.booking";
+        final JsonEnvelope getProvisionalBookingEnvelope = createEnvelope(requestName, jsonObject);
+
+        when(enveloper.withMetadataFrom(getProvisionalBookingEnvelope, requestName)).thenReturn(function);
+        when(provisionalBookingService.fetchProvisionalSlots(any())).thenReturn(JsonObject.EMPTY_JSON_OBJECT);
+
+        courtSchedulerApi.getProvisionalBooking(getProvisionalBookingEnvelope);
+
+        verify(provisionalBookingService, atLeastOnce()).fetchProvisionalSlots(anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(getProvisionalBookingEnvelope, requestName);
     }
 
 

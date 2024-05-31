@@ -1,6 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static javax.json.Json.createObjectBuilder;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
 
 import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
@@ -20,6 +22,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
@@ -78,11 +81,11 @@ public class CourtSchedulerApi {
         JsonObject validate = validator.getHearingSlotsValidation(hearingSlotRequestParam);
 
         if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, "error");
+            return envelopeFor(envelope, validate, ERROR);
         }
 
         JsonObject responseObject = slotsSearchService.search(hearingSlotRequestParam);
-        return envelopeFor(envelope, responseObject, "hearingSlots");
+        return envelopeFor(envelope, responseObject, HEARING_SLOTS);
     }
 
     @Handles("courtscheduler.export.court_schedule")
@@ -138,13 +141,26 @@ public class CourtSchedulerApi {
         JsonObject validate = provisionalBookingApiValidator.createProvisionalBookingValidation(provisionalBookingSlots);
 
         if(!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, "error");
+            return envelopeFor(envelope, validate, ERROR);
         }
 
         JsonObject responseObject = provisionalBookingService.bookProvisionalSlots(provisionalBookingSlots);
         return envelopeFor(envelope, responseObject, ApiConstants.BOOKING_REFERENCE);
     }
 
+    @Handles("courtscheduler.get.provisional.booking")
+    public JsonEnvelope getProvisionalBooking(final JsonEnvelope envelope) {
+        final String bookingIds = envelope.payloadAsJsonObject().getString(RequestParameterConstant.BOOKING_IDS.getLabel());
+        LOGGER.info("BookingIds to retrieve Provisional Booking : {}", bookingIds);
+        JsonObject validate = provisionalBookingApiValidator.getProvisionalBookingValidation(bookingIds);
+
+        if(!validate.isEmpty()) {
+            return envelopeFor(envelope, validate, ERROR);
+        }
+
+        JsonObject responseObject = provisionalBookingService.fetchProvisionalSlots(bookingIds);
+        return envelopeFor(envelope, responseObject, ApiConstants.BOOKING_REFERENCE);
+    }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonObject jsonObject, String key) {
         return enveloper.withMetadataFrom(originalEnvelope, originalEnvelope.metadata().name())

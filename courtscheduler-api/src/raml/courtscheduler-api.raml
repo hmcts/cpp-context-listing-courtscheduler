@@ -154,6 +154,26 @@ protocols: [ HTTP, HTTPS ]
           example: !include json/courtscheduler.create.provisional.booking.response.json
           schema:  !include json/schema/courtscheduler.create.provisional.booking.response.json
 
+  get:
+    description:  |
+      Query via parameters
+      ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.get.provisional.booking+json
+            name: courtscheduler.get.provisional.booking
+      ...
+    queryParameters:
+      bookingIds:
+        description: booking ids as comma separated
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.get.provisional.booking+json:
+            example: !include json/courtscheduler.get.provisional.booking.json
+            schema:  !include json/schema/courtscheduler.get.provisional.booking.json
+
 /mi/court_schedules:
   get:
     description: |

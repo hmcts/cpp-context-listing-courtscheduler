@@ -12,6 +12,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +94,26 @@ public class ProvisionalBookingRepositoryTest {
         Optional<ProvisionalBooking> byBookingId = provisionalBookingRepository.findByBookingId(provisionalBooking.getProvisionalBookingKey().getBookingId());
 
         assertThat(byBookingId.isPresent(), is(true));
+    }
+
+    @Test
+    public void shouldFindByProvisionalBookingList_providedBookingIds() {
+        List<String> bookingIds = new ArrayList<>();
+        String bookingId = random(String.class);
+        bookingIds.add(bookingId);
+        final ProvisionalBooking provisionalBooking1 = random(ProvisionalBooking.class);
+        final ProvisionalBooking provisionalBooking2 = random(ProvisionalBooking.class);
+        provisionalBooking1.getProvisionalBookingKey().setBookingId(bookingId);
+        provisionalBooking2.getProvisionalBookingKey().setBookingId(bookingId);
+        courtScheduleRepository.save(provisionalBooking1.getProvisionalBookingKey().getCourtSchedule());
+        courtScheduleRepository.save(provisionalBooking2.getProvisionalBookingKey().getCourtSchedule());
+        provisionalBookingRepository.save(provisionalBooking1);
+        provisionalBookingRepository.save(provisionalBooking2);
+
+        List<ProvisionalBooking> provisionalBookingList = provisionalBookingRepository.findByBookingIdIn(bookingIds);
+
+        assertThat(provisionalBookingList.isEmpty(), is(false));
+        assertThat(provisionalBookingList.size(), is(2));
     }
 
     @Test

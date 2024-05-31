@@ -51,6 +51,15 @@ rule "API - Action - courtscheduler.create.provisional.booking"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.get.provisional.booking"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get.provisional.booking");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getProvisionalBookingPermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.export.court_schedule"
   when
     $outcome: Outcome();

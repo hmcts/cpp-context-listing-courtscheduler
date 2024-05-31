@@ -1,9 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import static java.util.Optional.ofNullable;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.BOOKING_IDS;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_DATA_MISSING;
@@ -16,6 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 
 import java.util.List;
+import java.util.Optional;
 
 import javax.json.JsonObject;
 
@@ -46,6 +49,17 @@ public class ProvisionalBookingApiValidator {
         } else {
             return getMessage(PAYLOAD_CANNOT_EMPTY);
         }
+    }
+
+    public JsonObject getProvisionalBookingValidation(final String bookingIds) {
+        LOGGER.info("Validating BookingIds : {}", bookingIds);
+
+        final Optional<String> optionalBookingIds = ofNullable(bookingIds);
+
+        if (optionalBookingIds.isEmpty()) {
+            return getMessage(BOOKING_IDS);
+        }
+        return EMPTY_JSON_OBJECT;
     }
 
     private boolean isPostPayloadValid(final List<ProvisionalSlot> slots) {

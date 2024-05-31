@@ -202,7 +202,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
-        courtScheduleCriteria.createCourtScheduleCriteria(hearingSlotRequestParam, criteriaBuilder, criteriaQuery);
+        courtScheduleCriteria.createHearingSlotsCourtScheduleCriteria(hearingSlotRequestParam, criteriaBuilder, criteriaQuery);
         List<CourtSchedule> courtScheduleList =
                 entityManager.createQuery(criteriaQuery).setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize).getResultList();
         courtScheduleList.forEach((e) -> courtScheduleIds.add(e.getCourtScheduleId()));
@@ -228,7 +228,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return Pair.of(resultSize, courtSchedules);
     }
 
-    private List<CourtScheduleJudiciary> getCourtScheduleJudiciaries(List<CourtSchedule> courtScheduleList) {
+    public List<CourtScheduleJudiciary> getCourtScheduleJudiciaries(List<CourtSchedule> courtScheduleList) {
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<CourtScheduleJudiciary> criteriaQuery = criteriaBuilder.createQuery(CourtScheduleJudiciary.class);
         courtScheduleCriteria.createCourtScheduleJudiciaryCriteria(courtScheduleList, criteriaBuilder, criteriaQuery);
