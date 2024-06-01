@@ -119,5 +119,4 @@ public class DateUtils {
     public static String toMeridian(final String isoDateTime) {
         return getMeridian(toZonedDateTime(isoDateTime));
     }
-
 }

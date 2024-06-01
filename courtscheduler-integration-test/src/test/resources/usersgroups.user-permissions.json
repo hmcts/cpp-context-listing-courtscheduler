@@ -35,6 +35,10 @@
     {
       "object": "ProvisionalBooking",
       "action": "Create"
+    },
+    {
+      "object": "ProvisionalBooking",
+      "action": "View"
     }
   ]
 }

@@ -1,6 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
+
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -11,7 +15,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.time.ZonedDateTime;
+import java.util.Collection;
 
 public class DatabaseSeeder {
 
@@ -56,6 +60,7 @@ public class DatabaseSeeder {
                     " WHERE  COURT_SCHEDULE_JUDICIARY.court_schedule_id = ? AND COURT_SCHEDULE_JUDICIARY.judiciary_id = ? " +
                     ";";
 
+    public static final String INSERT_PROVISIONAL_SLOTS_QRY = "INSERT INTO provisional_booking (booking_id, court_schedule_id, hearing_start_time) VALUES (?, ?, ?)";
     private static final String COURT_SCHEDULE_DELETE_SQL = "DELETE FROM court_schedule";
     private static final String ALLOCATED_LISTING_DELETE_SQL = "DELETE FROM allocated_listings";
     private static final String PROVISIONAL_BOOKING_DELETE_SQL = "DELETE FROM provisional_booking";
@@ -198,8 +203,20 @@ public class DatabaseSeeder {
         }
     }
 
-    private Timestamp asTimestamp(final ZonedDateTime dateTime) {
-        return new Timestamp(dateTime.toInstant().getEpochSecond() * 1000L);
+    public void bookSlots(final Collection<ProvisionalSlot> provisionalSlots, final String bookingId) {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement stmt = connection.prepareStatement(INSERT_PROVISIONAL_SLOTS_QRY)) {
+            for (final ProvisionalSlot provisionalSlot : provisionalSlots) {
+                stmt.setString(1, bookingId);
+                stmt.setString(2, provisionalSlot.getCourtScheduleId());
+                stmt.setTimestamp(3, toRoundedTimestamp(provisionalSlot.getHearingStartTime()));
+
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
+        } catch (SQLException ex) {
+            throw new PersistenceStoreException(ex);
+        }
     }
 
     public void cleanDb() throws SQLException {
