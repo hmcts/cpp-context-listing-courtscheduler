@@ -85,6 +85,7 @@ class HearingSlotIT {
         setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         String updateHearingSlotsPayload = getPayload("courtscheduler.update.hearing.slots.json");
         updateHearingSlotsPayload = updateHearingSlotsPayload.replace("HEARING_ID", hearingId);
+        updateHearingSlotsPayload = updateHearingSlotsPayload.replace("COURT_SCHEDULE_ID", courtScheduleId);
 
         final Response response = postCommand(URL, "application/vnd.courtscheduler.update.hearing.slots+json", updateHearingSlotsPayload);
 

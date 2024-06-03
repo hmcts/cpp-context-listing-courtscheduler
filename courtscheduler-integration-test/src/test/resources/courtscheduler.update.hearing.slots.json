@@ -6,7 +6,8 @@
       "session": "AM",
       "courtRoomId": "2330",
       "ouCode": "B01LY00",
-      "hearingId": "HEARING_ID"
+      "hearingId": "HEARING_ID",
+      "courtScheduleId": "COURT_SCHEDULE_ID"
     }
   ]
 }

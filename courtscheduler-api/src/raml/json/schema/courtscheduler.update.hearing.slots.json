@@ -10,6 +10,18 @@
           "hearingId": {
             "type": "string"
           },
+          "courtScheduleId": {
+            "type": "string"
+          },
+          "bookingId": {
+            "type": "string"
+          },
+          "hearingStartTime": {
+            "type": "string"
+          },
+          "isSlotBased": {
+            "type": "boolean"
+          },
           "ouCode": {
             "type": "string"
           },
@@ -27,6 +39,7 @@
           }
         },
         "required": [
+          "courtScheduleId",
           "hearingId",
           "ouCode",
           "courtRoomId",
