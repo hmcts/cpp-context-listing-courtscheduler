@@ -9,8 +9,8 @@ public class HearingSlotRequestParamConverter implements Converter<JsonObject, H
     @Override
     public HearingSlotRequestParam convert(final JsonObject jsonObject) {
         final String panel = jsonObject.getString(RequestParameterConstant.PANEL.getLabel());
-        final String startDate = jsonObject.getString(RequestParameterConstant.START_DATE.getLabel());
-        final String endDate = jsonObject.getString(RequestParameterConstant.END_DATE.getLabel());
+        final String startDate = jsonObject.getString(RequestParameterConstant.SESSION_START_DATE.getLabel());
+        final String endDate = jsonObject.getString(RequestParameterConstant.SESSION_END_DATE.getLabel());
         final String ouLevel = jsonObject.getString(RequestParameterConstant.OU_LEVEL2.getLabel());
         final String ouCode = jsonObject.getString(RequestParameterConstant.OU_CODE.getLabel());
         final String pageSize = jsonObject.getString(RequestParameterConstant.PAGE_SIZE.getLabel());

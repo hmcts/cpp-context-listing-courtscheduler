@@ -15,7 +15,7 @@
           },
           "businessType": {"type": "string"},
           "duration": {"type": "number"},
-          "panelType": {
+          "panel": {
             "type": "string",
             "enum": ["YOUTH", "ADULT"]
           },
@@ -23,25 +23,25 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+              "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             }
           }
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "duration", "panelType", "repeatDays"]
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "duration", "panel", "repeatDays"]
       }
     },
     "repeatPattern": {
       "type": "object",
       "properties": {
-        "repeatPattern": {"type": "string",  "enum": ["ONCE", "EVERY_WEEK"]},
+        "frequency": {"type": "string",  "enum": ["ONCE", "EVERY_WEEK"]},
         "repeatFor" : {"type": "integer"},
         "startDate": {"type": "string", "format": "date"},
         "endDate": {"type": "string", "format": "date"}
       },
-      "required": ["repeatPattern", "startDate", "repeatFor"]
+      "required": ["startDate", "repeatFor"]
     }
   },
-  "required": ["sessions", "repeatPattern"],
+  "required": ["sessions"],
   "definitions": {
     "uuid": {
       "type": "string",

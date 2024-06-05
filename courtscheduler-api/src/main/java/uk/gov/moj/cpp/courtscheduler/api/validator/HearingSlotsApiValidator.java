@@ -36,13 +36,13 @@ public class HearingSlotsApiValidator {
         }
 
         if (StringUtils.isBlank(hearingSlotRequestParam.sessionStartDate())) {
-            return getMessage(RequestParameterConstant.START_DATE.getLabel());
+            return getMessage(RequestParameterConstant.SESSION_START_DATE.getLabel());
         } else if (isInvalidDateFormat(hearingSlotRequestParam.sessionStartDate())) {
             return getMessage(format(START_DATE_IS_IN_BAD_FORMAT, hearingSlotRequestParam.sessionStartDate()));
         }
 
         if (StringUtils.isBlank(hearingSlotRequestParam.sessionEndDate())) {
-            return getMessage(RequestParameterConstant.END_DATE.getLabel());
+            return getMessage(RequestParameterConstant.SESSION_END_DATE.getLabel());
         } else if (isInvalidDateFormat(hearingSlotRequestParam.sessionEndDate())) {
             return getMessage(format(END_DATE_IS_IN_BAD_FORMAT, hearingSlotRequestParam.sessionEndDate()));
         }

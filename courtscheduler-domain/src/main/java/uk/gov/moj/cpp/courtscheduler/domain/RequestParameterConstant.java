@@ -5,6 +5,7 @@ public enum RequestParameterConstant {
 
     PANEL("panel"),
     COURT_SESSION("courtSession"),
+    COURT_CENTRE_ID("courtCentreId"),
     OU_LEVEL2("oucodeL2Code"),
     OU_CODE("ouCode"),
     COURT_ROOM("courtRoomId"),
@@ -12,8 +13,8 @@ public enum RequestParameterConstant {
     COURT_CENTRE("courtCentreId"),
 
     COURT_ROOM_NUMBER("courtRoomNumber"),
-    START_DATE("sessionStartDate"),
-    END_DATE("sessionEndDate"),
+    SESSION_START_DATE("sessionStartDate"),
+    SESSION_END_DATE("sessionEndDate"),
     BUSINESS_TYPE("businessType"),
     PAGE_SIZE("pageSize"),
     RESULTS("results"),
@@ -26,7 +27,17 @@ public enum RequestParameterConstant {
     BOOKING_IDS("bookingIds"),
 
     FROM_DATE("fromDate"),
-    TO_DATE("toDate");
+
+    TO_DATE("toDate"),
+    SESSION_TYPE("sessionType"),
+    DURATION("duration"),
+    REPEAT_DAYS("repeatDays"),
+    REPEAT_PATTERN("repeatPattern"),
+    REPEAT_FREQUENCY("frequency"),
+    REPEAT_FOR("repeatFor"),
+    START_DATE("startDate"),
+    END_DATE("endDate"),
+    ;
 
     private final String name;
 

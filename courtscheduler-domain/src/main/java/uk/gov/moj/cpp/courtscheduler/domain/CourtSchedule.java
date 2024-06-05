@@ -234,6 +234,10 @@ public class CourtSchedule {
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
+        public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
+            return new CourtSchedule.CourtScheduleBuilder();
+        }
+
 
         public CourtScheduleBuilder withCourtScheduleId(final String courtScheduleId) {
             this.courtScheduleId = courtScheduleId;

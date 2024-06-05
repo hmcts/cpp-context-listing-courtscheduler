@@ -12,10 +12,12 @@ import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.CourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.CourtScheduleRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.HearingSlotRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.MiFilterCriteriaRequestParamConverter;
@@ -26,6 +28,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
@@ -35,6 +38,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
+import uk.gov.moj.cpp.courtscheduler.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsUpdateService;
@@ -58,6 +62,8 @@ public class CourtSchedulerApi {
     @Inject
     private Enveloper enveloper;
     @Inject
+    private SessionsService sessionsService;
+    @Inject
     private SlotsUpdateService slotsUpdateService;
     @Inject
     private SlotsSearchService slotsSearchService;
@@ -74,10 +80,13 @@ public class CourtSchedulerApi {
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
 
     private final AllocatedSlotConverter converter = new AllocatedSlotConverter();
+    private final HearingSlotsApiValidator validator = new HearingSlotsApiValidator();
+    private final SessionsApiValidator sessionsApiValidator = new SessionsApiValidator();
     private final HearingSlotsApiValidator hearingSlotsApiValidator = new HearingSlotsApiValidator();
     private final CourtScheduleApiValidator courtScheduleApiValidator = new CourtScheduleApiValidator();
     private final HearingSlotRequestParamConverter hearingSlotRequestParamConverter = new HearingSlotRequestParamConverter();
     private final CourtScheduleRequestParamConverter courtScheduleRequestParamConverter = new CourtScheduleRequestParamConverter();
+    private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter = new CreateSessionsRequestParamConverter();
     private final MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter = new MiFilterCriteriaRequestParamConverter();
     private final ProvisionalSlotConverter provisionalSlotConverter = new ProvisionalSlotConverter();
     private final ProvisionalBookingApiValidator provisionalBookingApiValidator = new ProvisionalBookingApiValidator();
@@ -88,6 +97,16 @@ public class CourtSchedulerApi {
 
     @Handles("courtscheduler.create")
     public JsonEnvelope createCourtSchedule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
+        JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+        if (!validate.isEmpty()) {
+            return envelopeFor(envelope, validate, ERROR);
+        }
+
+        sessionsService.create(createSessionRequestParam);
+
+
         return enveloper.withMetadataFrom(envelope, "courtscheduler.create").apply(createObjectBuilder().build());
     }
 
@@ -180,6 +199,7 @@ public class CourtSchedulerApi {
                 .build();
         return envelopeFor(envelope, responseObject, COURT_SCHEDULES);
     }
+
 
     @Handles("courtscheduler.export.court_schedule_judiciary")
     public JsonEnvelope exportCourtScheduleJudiciary(final JsonEnvelope envelope) {

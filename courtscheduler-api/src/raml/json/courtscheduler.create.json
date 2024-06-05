@@ -6,7 +6,7 @@
       "sessionType": "AM",
       "businessType": "Business Type 1",
       "duration": 2,
-      "panelType": "YOUTH",
+      "panel": "YOUTH",
       "repeatDays": ["MON", "WED", "FRI"]
     },
     {
@@ -15,12 +15,12 @@
       "sessionType": "PM",
       "businessType": "Business Type 2",
       "duration": 3,
-      "panelType": "ADULT",
+      "panel": "ADULT",
       "repeatDays": ["TUE", "THU"]
     }
   ],
   "repeatPattern": {
-    "repeatPattern": "EVERY_WEEK",
+    "frequency": "EVERY_WEEK",
     "repeatFor": 4,
     "startDate": "2024-01-01",
     "endDate": "2024-01-29"

@@ -9,8 +9,8 @@ public class CourtScheduleRequestParamConverter implements Converter<JsonObject,
     @Override
     public CourtScheduleRequestParam convert(final JsonObject jsonObject) {
         final String courtCentreId = jsonObject.getString(RequestParameterConstant.COURT_CENTRE.getLabel());
-        final String startDate = jsonObject.getString(RequestParameterConstant.START_DATE.getLabel());
-        final String endDate = jsonObject.getString(RequestParameterConstant.END_DATE.getLabel());
+        final String startDate = jsonObject.getString(RequestParameterConstant.SESSION_START_DATE.getLabel());
+        final String endDate = jsonObject.getString(RequestParameterConstant.SESSION_END_DATE.getLabel());
         final String pageSize = jsonObject.getString(RequestParameterConstant.PAGE_SIZE.getLabel());
         final String pageNumber = jsonObject.getString(RequestParameterConstant.PAGE_NUMBER.getLabel());
         final String courtRoomId = jsonObject.containsKey(RequestParameterConstant.COURT_ROOM.getLabel()) ?

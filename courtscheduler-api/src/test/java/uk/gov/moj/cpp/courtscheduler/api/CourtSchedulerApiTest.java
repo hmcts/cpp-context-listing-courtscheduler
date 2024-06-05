@@ -31,6 +31,7 @@ import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsRemoveService;
+import uk.gov.moj.cpp.courtscheduler.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsUpdateService;
 
@@ -57,6 +58,8 @@ class CourtSchedulerApiTest {
     private SlotsUpdateService slotsUpdateService;
     @Mock
     private SlotsRemoveService slotsRemoveService;
+    @Mock
+    private SessionsService sessionsService;
     @Mock
     private SlotsSearchService slotsSearchService;
     @Mock
@@ -90,6 +93,7 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(createCourtScheduleJsonEnvelope, requestName);
+        verify(sessionsService, atLeastOnce()).create(any());
     }
 
     @Test
