@@ -3,12 +3,14 @@ package uk.gov.moj.cpp.courtscheduler.api;
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createObjectBuilder;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
 
 import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
 import uk.gov.justice.services.core.enveloper.Enveloper;
@@ -28,6 +30,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
+import uk.gov.moj.cpp.courtscheduler.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsUpdateService;
 
@@ -53,6 +56,8 @@ class CourtSchedulerApiTest {
     @Mock
     private SlotsUpdateService slotsUpdateService;
     @Mock
+    private SlotsRemoveService slotsRemoveService;
+    @Mock
     private SlotsSearchService slotsSearchService;
     @Mock
     private ProvisionalBookingService provisionalBookingService;
@@ -68,6 +73,10 @@ class CourtSchedulerApiTest {
     private Function<Object, JsonEnvelope> function;
     @InjectMocks
     private CourtSchedulerApi courtSchedulerApi;
+    @Mock
+    private JsonObject payload;
+    @Mock
+    private JsonEnvelope envelope;
 
     @Test
     void shouldCreateCourtSchedule() throws IOException {
@@ -149,6 +158,21 @@ class CourtSchedulerApiTest {
 
         verify(slotsSearchService, atLeastOnce()).search(hearingSlotRequestParamConverter.convert(jsonObject));
         verify(enveloper, atLeastOnce()).withMetadataFrom(getHearingSlotsEnvelope, requestName);
+    }
+
+    @Test
+    void shouldRemoveHearingSlots() {
+        final String hearingId = randomUUID().toString();
+        final String requestName = "courtscheduler.remove.hearing.slots";
+
+        given(envelope.payloadAsJsonObject()).willReturn(payload);
+        when(enveloper.withMetadataFrom(envelope, requestName)).thenReturn(function);
+        when(payload.getString(HEARING_ID)).thenReturn(hearingId);
+
+        courtSchedulerApi.removeHearingSlots(envelope);
+
+        verify(slotsRemoveService, atLeastOnce()).remove(hearingId);
+        verify(enveloper, atLeastOnce()).withMetadataFrom(envelope, requestName);
     }
 
     @Test

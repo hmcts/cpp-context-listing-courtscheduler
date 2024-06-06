@@ -94,6 +94,21 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.delete.response.json
             example: !include json/courtscheduler.delete.response.json
 
+/hearingslots/{hearingId}:
+  delete:
+    description:  |
+      You can remove slots for the given hearing with hearingId through this DELETE request
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.remove.hearing.slots+json
+          name: courtscheduler.remove.hearing.slots
+      ...
+    body:
+      application/vnd.courtscheduler.remove.hearing.slots+json:
+    responses:
+      202:
+        description: Request Accepted
+
 /hearingslots:
   post:
     description:  |

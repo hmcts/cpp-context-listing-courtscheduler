@@ -21,6 +21,10 @@
       "action": "View"
     },
     {
+      "object": "HearingSlots",
+      "action": "Delete"
+    },
+    {
       "object": "CourtSchedule",
       "action": "Export"
     },

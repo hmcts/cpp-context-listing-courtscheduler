@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api;
 import static javax.json.Json.createObjectBuilder;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
 
 import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
 import uk.gov.justice.services.core.annotation.CustomServiceComponent;
@@ -34,6 +35,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
+import uk.gov.moj.cpp.courtscheduler.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsUpdateService;
 
@@ -59,6 +61,8 @@ public class CourtSchedulerApi {
     private SlotsUpdateService slotsUpdateService;
     @Inject
     private SlotsSearchService slotsSearchService;
+    @Inject
+    private SlotsRemoveService slotsRemoveService;
     @Inject
     private ProvisionalBookingService provisionalBookingService;
     @Inject
@@ -152,8 +156,15 @@ public class CourtSchedulerApi {
         return envelopeFor(envelope, responseObject, HEARING_SLOTS);
     }
 
+    @Handles("courtscheduler.remove.hearing.slots")
+    public JsonEnvelope removeHearingSlots(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        final String hearingId = payload.getString(HEARING_ID);
 
+        slotsRemoveService.remove(hearingId);
 
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.remove.hearing.slots").apply(createObjectBuilder().build());
+    }
 
     @Handles("courtscheduler.export.court_schedule")
     public JsonEnvelope exportCourtSchedule(final JsonEnvelope envelope) {

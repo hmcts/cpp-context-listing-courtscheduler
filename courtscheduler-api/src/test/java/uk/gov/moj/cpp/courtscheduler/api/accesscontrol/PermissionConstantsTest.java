@@ -10,6 +10,7 @@ import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstant
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.exportCourtSchedulesPermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getCourtSchedulePermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getHearingSlotsPermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.removeHearingSlotsPermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.updateCourtSchedulePermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.updateHearingSlotsPermission;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
@@ -56,6 +57,12 @@ class PermissionConstantsTest {
     void shouldViewHearingSlotsPermission() throws JsonProcessingException {
         assertThat(getHearingSlotsPermission(),
                 is(getPayload("get-hearing-slots-permission.json").replaceAll("\n", "")));
+    }
+
+    @Test
+    void shouldRemoveHearingSlotsPermission() throws JsonProcessingException {
+        assertThat(removeHearingSlotsPermission(),
+                is(getPayload("remove-hearing-slots-permission.json").replaceAll("\n", "")));
     }
 
     @Test

@@ -80,6 +80,15 @@ public final class PermissionConstants {
         return objectMapper.writeValueAsString(expectedPermission);
     }
 
+    public static String removeHearingSlotsPermission() throws JsonProcessingException {
+        final ExpectedPermission expectedPermission = builder()
+                .withObject(HEARING_SLOTS_OBJECT)
+                .withAction(DELETE_ACTION)
+                .build();
+
+        return objectMapper.writeValueAsString(expectedPermission);
+    }
+
     public static String createProvisionalBookingPermission() throws JsonProcessingException {
         final ExpectedPermission expectedPermission = builder()
                 .withObject(PROVISIONAL_BOOKING_OBJECT)

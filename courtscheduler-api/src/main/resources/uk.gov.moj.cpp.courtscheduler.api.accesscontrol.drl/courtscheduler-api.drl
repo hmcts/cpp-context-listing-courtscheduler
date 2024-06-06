@@ -60,6 +60,15 @@ rule "API - Action - courtscheduler.get.hearing.slots"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.remove.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.remove.hearing.slots");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.removeHearingSlotsPermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.create.provisional.booking"
   when
     $outcome: Outcome();

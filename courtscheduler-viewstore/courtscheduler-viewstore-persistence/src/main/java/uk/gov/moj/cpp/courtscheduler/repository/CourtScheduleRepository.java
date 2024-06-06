@@ -277,7 +277,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .findFirst();
     }
 
-    private void releaseOldAllocatedListings(final String hearingId) {
+    public void releaseOldAllocatedListings(final String hearingId) {
         final List<AllocatedListing> allocatedListings = getExistingAllocatedListings(hearingId);
 
         if (isNotEmpty(allocatedListings)) {
