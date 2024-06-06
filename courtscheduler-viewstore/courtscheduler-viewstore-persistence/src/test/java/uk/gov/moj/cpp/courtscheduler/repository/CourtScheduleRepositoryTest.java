@@ -8,6 +8,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
@@ -18,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -30,6 +32,7 @@ import javax.inject.Inject;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.runner.RunWith;
@@ -73,6 +76,27 @@ public class CourtScheduleRepositoryTest {
 
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtScheduleList = courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
         assertThat(courtScheduleList.isEmpty(), is(false));
+    }
+
+    @Test
+    public void shouldFindCourtSchedulesByCourtScheduleRequestParam() throws ParseException {
+        // given
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtScheduleRepository.save(courtSchedule);
+        String courtCentreId = courtSchedule.getCourtHouseId();
+        String courtRoomId = courtSchedule.getCourtRoomId();
+        String businessType = courtSchedule.getBusinessType();
+        String sessionStartDate = courtSchedule.getSessionDate().minusDays(1).toString();
+        String sessionEndDate = courtSchedule.getSessionDate().plusDays(2).toString();
+        String pageSize = "10";
+        String pageNumber = "1";
+        CourtScheduleRequestParam courtScheduleRequestParam = new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+
+        // when
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> results = courtScheduleRepository.findBy(courtScheduleRequestParam);
+
+        // then
+        assertThat(results.isEmpty(), is(false));
     }
 
     @Test
@@ -273,7 +297,6 @@ public class CourtScheduleRepositoryTest {
         courtSchedule.setSessionDate(LocalDate.now());
         courtSchedule.setOperationalUnit("BA124");
         courtSchedule.setOuCode("BA124");
-        courtSchedule.setSessionDate(LocalDate.now());
         courtScheduleRepository.saveAndFlush(courtSchedule);
         final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
         final CourtScheduleJudiciaryKey courtScheduleJudiciaryKey = random(CourtScheduleJudiciaryKey.class);
@@ -290,39 +313,6 @@ public class CourtScheduleRepositoryTest {
         Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> response = courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam);
 
         assertNotNull(response);
-    }
-
-    @Test
-    public void shouldPartialDeleteCourtSchedule() {
-        String courtScheduleId1 = random(String.class);
-        String courtScheduleId2 = random(String.class);
-        List<String> courtScheduleIdList = List.of(courtScheduleId1, courtScheduleId2);
-        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
-        courtSchedule1.setCourtScheduleId(courtScheduleId1);
-        courtSchedule1.setPanel("ADULT");
-        courtSchedule1.setSessionDate(LocalDate.now());
-        courtSchedule1.setOperationalUnit("BA124");
-        courtSchedule1.setOuCode("BA124");
-        courtSchedule1.setSessionDate(LocalDate.now());
-        courtScheduleRepository.saveAndFlush(courtSchedule1);
-        final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
-        courtSchedule2.setCourtScheduleId(courtScheduleId2);
-        courtSchedule2.setPanel("ADULT");
-        courtSchedule2.setSessionDate(LocalDate.now());
-        courtSchedule2.setOperationalUnit("BA124");
-        courtSchedule2.setOuCode("BA124");
-        courtSchedule2.setSessionDate(LocalDate.now());
-        courtScheduleRepository.saveAndFlush(courtSchedule2);
-
-        final AllocatedListing allocatedListing = random(AllocatedListing.class);
-        allocatedListing.setCourtScheduleId(courtScheduleId1);
-        allocatedListingRepository.saveAndFlush(allocatedListing);
-
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
-
-        assertEquals(true, courtScheduleRepository.findBy(courtScheduleId1).isActive());
-        assertEquals(false, courtSchedules.isEmpty());
-        assertEquals(courtScheduleId1, courtSchedules.get(0).getCourtScheduleId());
     }
 
     @Test

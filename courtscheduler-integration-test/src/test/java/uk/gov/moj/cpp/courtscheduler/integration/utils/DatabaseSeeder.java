@@ -1,8 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
-
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -10,12 +8,10 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
+import java.sql.*;
 import java.util.Collection;
+
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 public class DatabaseSeeder {
 
@@ -116,7 +112,7 @@ public class DatabaseSeeder {
             preparedStatement.setString(11, courtSchedule.getPanel());
             preparedStatement.setString(12, courtSchedule.getCourtSession());
             preparedStatement.setBoolean(13, courtSchedule.isSlotBased());
-            preparedStatement.setTimestamp(14, new Timestamp(System.currentTimeMillis()));
+            preparedStatement.setDate(14, Date.valueOf(courtSchedule.getSessionDate()));
             preparedStatement.setInt(15, courtSchedule.getMaxSlots());
             preparedStatement.setInt(16, courtSchedule.getMaxDuration());
             preparedStatement.setInt(17, courtSchedule.getAvailableSlots());
@@ -167,36 +163,36 @@ public class DatabaseSeeder {
     public Integer saveJudiciarySchedule(final CourtScheduleJudiciary mapping) throws Exception {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
              final PreparedStatement stmt = connection.prepareStatement(UPSERT_CSJ_QRY)) {
-                    int idx =0;
-                    stmt.setString(++idx, mapping.getId().getCourtScheduleId());
-                    stmt.setString(++idx, mapping.getCourtListingProfileId());
-                    stmt.setString(++idx, mapping.getId().getJudiciaryId());
-                    stmt.setString(++idx, mapping.getRotaJudiciaryId());
-                    stmt.setString(++idx, mapping.getTitle());
-                    stmt.setString(++idx, mapping.getForenames());
-                    stmt.setString(++idx, mapping.getSurname());
-                    stmt.setString(++idx, mapping.getEmail());
-                    stmt.setString(++idx, mapping.getJudiciaryType());
-                    stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
-                    stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
-                    stmt.setString(++idx, mapping.getPosition());
+            int idx = 0;
+            stmt.setString(++idx, mapping.getId().getCourtScheduleId());
+            stmt.setString(++idx, mapping.getCourtListingProfileId());
+            stmt.setString(++idx, mapping.getId().getJudiciaryId());
+            stmt.setString(++idx, mapping.getRotaJudiciaryId());
+            stmt.setString(++idx, mapping.getTitle());
+            stmt.setString(++idx, mapping.getForenames());
+            stmt.setString(++idx, mapping.getSurname());
+            stmt.setString(++idx, mapping.getEmail());
+            stmt.setString(++idx, mapping.getJudiciaryType());
+            stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
+            stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
+            stmt.setString(++idx, mapping.getPosition());
 
-                    stmt.setString(++idx, mapping.getCourtListingProfileId());
-                    stmt.setString(++idx, mapping.getId().getJudiciaryId());
-                    stmt.setString(++idx, mapping.getRotaJudiciaryId());
-                    stmt.setString(++idx, mapping.getTitle());
-                    stmt.setString(++idx, mapping.getForenames());
-                    stmt.setString(++idx, mapping.getSurname());
-                    stmt.setString(++idx, mapping.getEmail());
-                    stmt.setString(++idx, mapping.getJudiciaryType());
-                    stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
-                    stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
-                    stmt.setString(++idx, mapping.getPosition());
+            stmt.setString(++idx, mapping.getCourtListingProfileId());
+            stmt.setString(++idx, mapping.getId().getJudiciaryId());
+            stmt.setString(++idx, mapping.getRotaJudiciaryId());
+            stmt.setString(++idx, mapping.getTitle());
+            stmt.setString(++idx, mapping.getForenames());
+            stmt.setString(++idx, mapping.getSurname());
+            stmt.setString(++idx, mapping.getEmail());
+            stmt.setString(++idx, mapping.getJudiciaryType());
+            stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
+            stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
+            stmt.setString(++idx, mapping.getPosition());
 
-                    stmt.setString(++idx, mapping.getId().getCourtScheduleId());
-                    stmt.setString(++idx, mapping.getId().getJudiciaryId());
+            stmt.setString(++idx, mapping.getId().getCourtScheduleId());
+            stmt.setString(++idx, mapping.getId().getJudiciaryId());
 
-                    stmt.addBatch();
+            stmt.addBatch();
             return stmt.executeBatch().length;
         } catch (SQLException ex) {
             throw new Exception(ex);

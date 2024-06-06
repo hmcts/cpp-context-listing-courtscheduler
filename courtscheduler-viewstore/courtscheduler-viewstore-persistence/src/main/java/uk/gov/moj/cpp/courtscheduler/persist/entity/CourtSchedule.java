@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.Objects;
 
 import javax.persistence.Column;
@@ -63,12 +64,12 @@ public class CourtSchedule {
     @CreationTimestamp
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
-    private java.util.Date createdOn;
+    private Date createdOn;
 
     @UpdateTimestamp
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private java.util.Date updatedOn;
+    private Date updatedOn;
 
     public CourtSchedule() {
         //For JPA

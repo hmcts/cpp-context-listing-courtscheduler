@@ -6,7 +6,9 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
+import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
@@ -51,21 +53,25 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
 
+    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findBy(CourtScheduleRequestParam courtScheduleRequestParam) {
+
+        final int pageSize = Integer.parseInt(courtScheduleRequestParam.pageSize());
+        final int pageNumber = Integer.parseInt(courtScheduleRequestParam.pageNumber());
+
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+        courtScheduleCriteria.getCourtScheduleCriteria(courtScheduleRequestParam, criteriaBuilder, criteriaQuery);
+        List<CourtSchedule> resultList = entityManager.createQuery(criteriaQuery)
+                .setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize)
+                .getResultList();
+        return resultList.stream().map(CourtSchedulerConverter::convert).toList();
+    }
+
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
         List<CourtSchedule> courtScheduleList = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
                 DateUtils.getDate(miFilterCriteria.getFromLocalDate()),
                 DateUtils.getDate(miFilterCriteria.getToLocalDate()));
-        return courtScheduleList.stream().map(courtScheduleEntity -> new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
-                .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
-                .withAvailableSlots(courtScheduleEntity.getAvailableSlots())
-                .withBusinessType(courtScheduleEntity.getBusinessType())
-                .withCourtHouseId(courtScheduleEntity.getCourtHouseId())
-                .withCourtHouseName(courtScheduleEntity.getCourtHouseName())
-                .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
-                .withCourtRoomName(courtScheduleEntity.getCourtRoomName())
-                .withCourtSession(courtScheduleEntity.getCourtSession())
-                .build()).toList();
+        return courtScheduleList.stream().map(CourtSchedulerConverter::convert).toList();
     }
 
     public void saveBookedSlots(final List<AllocatedSlot> slots, final boolean isProvisionalSlot) {

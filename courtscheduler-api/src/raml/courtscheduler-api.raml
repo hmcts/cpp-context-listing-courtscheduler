@@ -28,7 +28,7 @@ protocols: [ HTTP, HTTPS ]
       ...
       (mapping):
           responseType: application/vnd.courtscheduler.get+json
-          name: courtscheduler.get
+          name: courtscheduler.get.court_schedule
       ...
     queryParameters:
       courtCentreId:
@@ -40,21 +40,26 @@ protocols: [ HTTP, HTTPS ]
       businessType:
         type: string
         required: false
-      startDate:
+      sessionStartDate:
         type: string
         required: true
-      numberOfWeeks:
+      sessionEndDate:
         type: string
         required: true
-      endDate:
+      pageSize:
+        description: Number of records to be displayed per page
         type: string
-        required: false
+        required: true
+      pageNumber:
+        description: currentPageNumber details
+        type: string
+        required: true
     responses:
       200:
         body:
           application/vnd.courtscheduler.get+json:
-            schema: !include json/schema/courtscheduler.get.json
-            example: !include json/courtscheduler.get.json
+            schema: !include json/schema/courtscheduler.get.court_schedule.json
+            example: !include json/courtscheduler.get.court_schedule.json
 
   delete:
     description: |

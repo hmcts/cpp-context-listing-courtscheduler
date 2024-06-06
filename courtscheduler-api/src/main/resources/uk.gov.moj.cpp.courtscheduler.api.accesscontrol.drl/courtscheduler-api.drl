@@ -18,7 +18,7 @@ end
 rule "API - Action - courtscheduler.get"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.get");
+    $action: Action(name == "courtscheduler.get.court_schedule");
         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);

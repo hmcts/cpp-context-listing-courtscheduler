@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.repository.criteria;
 
 import static java.util.stream.Collectors.joining;
 
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_;
@@ -72,11 +73,37 @@ public class CourtScheduleCriteria {
                 criteriaBuilder.asc(root.get(CourtSchedule_.BUSINESS_TYPE)));
     }
 
+    public void getCourtScheduleCriteria(final CourtScheduleRequestParam courtScheduleRequestParam,
+                                         CriteriaBuilder criteriaBuilder,
+                                         CriteriaQuery<CourtSchedule> criteriaQuery) {
+        Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
+
+        if (StringUtils.isNotBlank(courtScheduleRequestParam.courtRoomId())) {
+            criteriaBuilder.and(criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_ID), courtScheduleRequestParam.courtRoomId()));
+        }
+
+        if (StringUtils.isNotBlank(courtScheduleRequestParam.businessType())) {
+            criteriaBuilder.and(criteriaBuilder.equal(root.get(CourtSchedule_.BUSINESS_TYPE), courtScheduleRequestParam.businessType()));
+        }
+
+        Predicate sessionDateBetweenPredicate = criteriaBuilder.between(root.get(CourtSchedule_.SESSION_DATE),
+                LocalDate.parse(courtScheduleRequestParam.sessionStartDate()),
+                LocalDate.parse(courtScheduleRequestParam.sessionEndDate()));
+
+        criteriaQuery.select(root).where(criteriaBuilder.and(criteriaBuilder.equal(root.get(CourtSchedule_.COURT_HOUSE_ID),
+                courtScheduleRequestParam.courtCentreId()), sessionDateBetweenPredicate));
+
+        criteriaQuery.orderBy(
+                criteriaBuilder.asc(root.get(CourtSchedule_.COURT_ROOM_ID)),
+                criteriaBuilder.asc(root.get(CourtSchedule_.SESSION_DATE)));
+
+    }
+
     public void createCourtScheduleJudiciaryCriteria(List<CourtSchedule> courtScheduleList,
                                                      CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtScheduleJudiciary> criteriaQuery) {
         Root<CourtScheduleJudiciary> root = criteriaQuery.from(CourtScheduleJudiciary.class);
         courtScheduleList.forEach((e) -> {
-            if(StringUtils.isNotBlank(e.getCourtScheduleId()) && StringUtils.isNotBlank(e.getListingProfileId())) {
+            if (StringUtils.isNotBlank(e.getCourtScheduleId()) && StringUtils.isNotBlank(e.getListingProfileId())) {
                 Predicate activePredicate = criteriaBuilder.equal(root.get("active"), true);
                 Predicate courtScheduleIdPredicate = criteriaBuilder.equal(root.get(CourtScheduleJudiciary_.id)
                         .get(CourtScheduleJudiciaryKey_.COURT_SCHEDULE_ID), e.getCourtScheduleId());

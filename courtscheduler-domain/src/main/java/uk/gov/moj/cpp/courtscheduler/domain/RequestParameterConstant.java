@@ -8,6 +8,9 @@ public enum RequestParameterConstant {
     OU_LEVEL2("oucodeL2Code"),
     OU_CODE("ouCode"),
     COURT_ROOM("courtRoomId"),
+
+    COURT_CENTRE("courtCentreId"),
+
     COURT_ROOM_NUMBER("courtRoomNumber"),
     START_DATE("sessionStartDate"),
     END_DATE("sessionEndDate"),
