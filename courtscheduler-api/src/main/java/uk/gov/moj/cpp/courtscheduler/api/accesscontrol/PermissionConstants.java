@@ -1,11 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.api.accesscontrol;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static uk.gov.moj.cpp.accesscontrol.drools.ExpectedPermission.builder;
+
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.moj.cpp.accesscontrol.drools.ExpectedPermission;
 
-import static uk.gov.moj.cpp.accesscontrol.drools.ExpectedPermission.builder;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public final class PermissionConstants {
 
@@ -19,6 +20,7 @@ public final class PermissionConstants {
     private static final String CREATE_ACTION = "Create";
     private static final String UPDATE_ACTION = "Edit";
     private static final String VIEW_ACTION = "View";
+    private static final String DELETE_ACTION = "Delete";
     private static final String EXPORT_ACTION = "Export";
 
     private PermissionConstants() {
@@ -37,6 +39,15 @@ public final class PermissionConstants {
         final ExpectedPermission expectedPermission = builder()
                 .withObject(COURT_SCHEDULE_OBJECT)
                 .withAction(VIEW_ACTION)
+                .build();
+
+        return objectMapper.writeValueAsString(expectedPermission);
+    }
+
+    public static String deleteCourtSchedulePermission() throws JsonProcessingException {
+        final ExpectedPermission expectedPermission = builder()
+                .withObject(COURT_SCHEDULE_OBJECT)
+                .withAction(DELETE_ACTION)
                 .build();
 
         return objectMapper.writeValueAsString(expectedPermission);

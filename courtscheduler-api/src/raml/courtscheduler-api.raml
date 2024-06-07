@@ -56,6 +56,24 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.get.json
             example: !include json/courtscheduler.get.json
 
+  delete:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.delete+json
+          name: courtscheduler.delete
+      ...
+    body:
+      application/vnd.courtscheduler.delete+json:
+        schema: !include json/schema/courtscheduler.delete.json
+        example: !include json/courtscheduler.delete.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.delete.response+json:
+            schema: !include json/schema/courtscheduler.delete.response.json
+            example: !include json/courtscheduler.delete.response.json
+
 /hearingslots:
   post:
     description:  |

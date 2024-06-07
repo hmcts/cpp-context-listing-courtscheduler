@@ -16,6 +16,7 @@ public enum RequestParameterConstant {
     RESULTS("results"),
     PAGE_COUNT("pageCount"),
     HEARING_SLOTS("hearingSlots"),
+    SESSIONS("sessions"),
     PROVISIONAL_SLOTS("provisionalSlots"),
     PAGE_NUMBER("pageNumber"),
     SLOT_DETAILS("slotDetails"),

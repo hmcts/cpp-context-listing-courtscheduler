@@ -17,9 +17,11 @@ import uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.HearingSlotRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
@@ -51,6 +53,8 @@ class CourtSchedulerApiTest {
     @Mock
     private ProvisionalBookingService provisionalBookingService;
     @Mock
+    private CourtScheduleService courtScheduleService;
+    @Mock
     private MiService miService;
     @Mock
     private Function<Object, JsonEnvelope> function;
@@ -69,6 +73,23 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(createCourtScheduleJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldDeleteCourtSchedule() throws IOException {
+        String payload = FileUtil.getPayload("delete-courtscheduler-sessions.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.delete";
+        final SessionsConverter sessionsConverter = new SessionsConverter();
+
+        final JsonEnvelope deleteCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonObject);
+
+        when(enveloper.withMetadataFrom(deleteCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
+        when(courtScheduleService.deleteCourtScheduleSessions(sessionsConverter.convert(jsonObject.toString()))).thenReturn(JsonObject.EMPTY_JSON_OBJECT);
+
+        courtSchedulerApi.deleteCourtSchedule(deleteCourtScheduleJsonEnvelope);
+
+        verify(enveloper, atLeastOnce()).withMetadataFrom(deleteCourtScheduleJsonEnvelope, requestName);
     }
 
     @Test

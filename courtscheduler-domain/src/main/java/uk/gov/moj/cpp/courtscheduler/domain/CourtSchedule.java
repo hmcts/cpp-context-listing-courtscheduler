@@ -132,6 +132,86 @@ public class CourtSchedule {
 
     public boolean isSlotBased() { return slotBased; }
 
+    public void setCourtScheduleId(final String courtScheduleId) {
+        this.courtScheduleId = courtScheduleId;
+    }
+
+    public void setListingProfileId(final String listingProfileId) {
+        this.listingProfileId = listingProfileId;
+    }
+
+    public void setOuCode(final String ouCode) {
+        this.ouCode = ouCode;
+    }
+
+    public void setCourtRoomId(final String courtRoomId) {
+        this.courtRoomId = courtRoomId;
+    }
+
+    public void setCourtRoomNumber(final Integer courtRoomNumber) {
+        this.courtRoomNumber = courtRoomNumber;
+    }
+
+    public void setCourtHouseId(final String courtHouseId) {
+        this.courtHouseId = courtHouseId;
+    }
+
+    public void setCourtHouseName(final String courtHouseName) {
+        this.courtHouseName = courtHouseName;
+    }
+
+    public void setCourtRoomName(final String courtRoomName) {
+        this.courtRoomName = courtRoomName;
+    }
+
+    public void setOperationalUnit(final String operationalUnit) {
+        this.operationalUnit = operationalUnit;
+    }
+
+    public void setBusinessType(final String businessType) {
+        this.businessType = businessType;
+    }
+
+    public void setPanel(final String panel) {
+        this.panel = panel;
+    }
+
+    public void setCourtSession(final String courtSession) {
+        this.courtSession = courtSession;
+    }
+
+    public void setSlotBased(final boolean slotBased) {
+        this.slotBased = slotBased;
+    }
+
+    public void setSessionDate(final LocalDate sessionDate) {
+        this.sessionDate = sessionDate;
+    }
+
+    public void setMaxSlots(final Integer maxSlots) {
+        this.maxSlots = maxSlots;
+    }
+
+    public void setMaxDuration(final Integer maxDuration) {
+        this.maxDuration = maxDuration;
+    }
+
+    public void setAvailableSlots(final Integer availableSlots) {
+        this.availableSlots = availableSlots;
+    }
+
+    public void setAvailableDuration(final Integer availableDuration) {
+        this.availableDuration = availableDuration;
+    }
+
+    public void setJudiciaries(final List<CourtScheduleJudiciary> judiciaries) {
+        this.judiciaries = judiciaries;
+    }
+
+    public void setSlotStartTimes(final List<SlotStartTime> slotStartTimes) {
+        this.slotStartTimes = slotStartTimes;
+    }
+
     public static final class CourtScheduleBuilder {
         private String courtScheduleId;
         private String ouCode;

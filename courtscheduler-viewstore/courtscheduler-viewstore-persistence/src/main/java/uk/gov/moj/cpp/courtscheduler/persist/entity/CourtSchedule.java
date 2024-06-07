@@ -1,11 +1,17 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import javax.persistence.*;
 import java.time.LocalDate;
 import java.util.Objects;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 @Entity
@@ -232,6 +238,14 @@ public class CourtSchedule {
         this.updatedOn = updatedOn;
     }
 
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(final boolean active) {
+        this.active = active;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -268,6 +282,7 @@ public class CourtSchedule {
                 ", availableDuration=" + availableDuration +
                 ", createdOn=" + createdOn +
                 ", updatedOn=" + updatedOn +
+                ", active=" + active +
                 '}';
     }
 }

@@ -1,7 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import org.apache.deltaspike.data.api.AbstractEntityRepository;
-import org.apache.deltaspike.data.api.Repository;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -9,11 +7,16 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import java.util.Date;
 import java.util.List;
 
+import org.apache.deltaspike.data.api.AbstractEntityRepository;
+import org.apache.deltaspike.data.api.Repository;
+
 @Repository(forEntity = AllocatedListing.class)
 public abstract class AllocatedListingRepository extends AbstractEntityRepository<AllocatedListing, String> {
     abstract List<AllocatedListing> findByHearingId(final String hearingId);
 
     abstract List<AllocatedListing> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
+
+    abstract List<AllocatedListing> findByCourtScheduleId(final String courtScheduleId);
 
     public List<uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
         List<AllocatedListing> allocatedListings = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
@@ -29,5 +32,4 @@ public abstract class AllocatedListingRepository extends AbstractEntityRepositor
             return allocatedListing;
         }).toList();
     }
-
 }

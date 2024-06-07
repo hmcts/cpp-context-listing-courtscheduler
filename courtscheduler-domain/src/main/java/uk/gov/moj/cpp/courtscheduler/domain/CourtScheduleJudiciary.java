@@ -96,6 +96,54 @@ public class CourtScheduleJudiciary {
         return isDeputy;
     }
 
+    public void setJudiciaryId(final String judiciaryId) {
+        this.judiciaryId = judiciaryId;
+    }
+
+    public void setRotaJudiciaryId(final String rotaJudiciaryId) {
+        this.rotaJudiciaryId = rotaJudiciaryId;
+    }
+
+    public void setTitle(final String title) {
+        this.title = title;
+    }
+
+    public void setForenames(final String forenames) {
+        this.forenames = forenames;
+    }
+
+    public void setSurname(final String surname) {
+        this.surname = surname;
+    }
+
+    public void setEmailAddress(final String emailAddress) {
+        this.emailAddress = emailAddress;
+    }
+
+    public void setCourtScheduleId(final String courtScheduleId) {
+        this.courtScheduleId = courtScheduleId;
+    }
+
+    public void setCourtListingProfileId(final String courtListingProfileId) {
+        this.courtListingProfileId = courtListingProfileId;
+    }
+
+    public void setJudiciaryType(final String judiciaryType) {
+        this.judiciaryType = judiciaryType;
+    }
+
+    public void setPosition(final String position) {
+        this.position = position;
+    }
+
+    public void setBenchChairman(final Boolean benchChairman) {
+        isBenchChairman = benchChairman;
+    }
+
+    public void setDeputy(final Boolean deputy) {
+        isDeputy = deputy;
+    }
+
     public static Builder judiciary() {
         return new CourtScheduleJudiciary.Builder();
     }

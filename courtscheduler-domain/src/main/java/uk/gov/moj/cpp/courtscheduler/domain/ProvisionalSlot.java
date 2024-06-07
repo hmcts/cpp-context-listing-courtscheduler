@@ -23,5 +23,13 @@ public class ProvisionalSlot {
     }
 
     public String getHearingStartTime() { return hearingStartTime; }
+
+    public void setCourtScheduleId(final String courtScheduleId) {
+        this.courtScheduleId = courtScheduleId;
+    }
+
+    public void setHearingStartTime(final String hearingStartTime) {
+        this.hearingStartTime = hearingStartTime;
+    }
 }
 

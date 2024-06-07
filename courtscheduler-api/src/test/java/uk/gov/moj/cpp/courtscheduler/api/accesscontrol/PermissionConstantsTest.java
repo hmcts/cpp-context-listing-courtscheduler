@@ -1,14 +1,23 @@
 package uk.gov.moj.cpp.courtscheduler.api.accesscontrol;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.createCourtSchedulePermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.createProvisionalBookingPermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.deleteCourtSchedulePermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.exportAllocatedListingsPermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.exportCourtScheduleJudiciariesPermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.exportCourtSchedulesPermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getCourtSchedulePermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getHearingSlotsPermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.updateCourtSchedulePermission;
+import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.updateHearingSlotsPermission;
+import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.*;
-import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
 
 @ExtendWith(MockitoExtension.class)
 class PermissionConstantsTest {
@@ -25,6 +34,11 @@ class PermissionConstantsTest {
                 is(getPayload("get-court-schedule-permission.json").replaceAll("\n", "")));
     }
 
+    @Test
+    void shouldDeleteSchedulePermission() throws JsonProcessingException {
+        assertThat(deleteCourtSchedulePermission(),
+                is(getPayload("delete-court-schedule-permission.json").replaceAll("\n", "")));
+    }
 
     @Test
     void shouldUpdateSchedulePermission() throws JsonProcessingException {
