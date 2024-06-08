@@ -4,6 +4,7 @@ import uk.gov.moj.cpp.courtscheduler.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -26,6 +27,10 @@ public class CourtScheduleService {
 
     public List<CourtSchedule> getCourtSchedules(CourtScheduleRequestParam courtScheduleRequestParam) {
         return courtScheduleRepository.findBy(courtScheduleRequestParam);
+    }
+
+    public Result update(CourtSchedule courtSchedule) {
+        return courtScheduleRepository.update(courtSchedule);
     }
 
     public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam) {

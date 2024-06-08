@@ -22,6 +22,21 @@ protocols: [ HTTP, HTTPS ]
       202:
         description: OK
 
+  put:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.update+json
+          name: courtscheduler.update
+      ...
+    body:
+      application/vnd.courtscheduler.update+json:
+        schema: !include json/schema/courtscheduler.update.json
+        example: !include json/courtscheduler.update.json
+    responses:
+      202:
+        description: OK
+
   get:
     description: |
       Query via parameters

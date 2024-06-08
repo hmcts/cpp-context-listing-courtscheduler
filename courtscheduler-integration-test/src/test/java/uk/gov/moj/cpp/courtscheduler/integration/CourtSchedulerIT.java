@@ -37,13 +37,41 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldUpdateCourtSchedule() throws SQLException {
+        UUID courtScheduleId = UUID.randomUUID();
+        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        expected.setCourtScheduleId(courtScheduleId.toString());
+        databaseSeeder.insertCourtSchedule(expected);
+
+        String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
+        String changedCourtHouseId = UUID.randomUUID().toString();
+        String changedCourtRoomId = UUID.randomUUID().toString();
+        String changedBusinessType = RANDOM.nextObject(String.class);
+        String changedSessionType = "AM";
+        String changedSessionDate = RANDOM.nextObject(LocalDate.class).toString();
+        String changedPanel = "YOUTH";
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_HOUSE_ID", changedCourtHouseId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_HOUSE_ID", changedCourtHouseId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", changedSessionType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_DATE", changedSessionDate);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", changedPanel);
+
+        final Response response = putCommand(RELATIVE_URL, "application/vnd.courtscheduler.update+json", USER_ID, updateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    @Test
     void shouldGetCourtSchedules() throws SQLException, JsonProcessingException {
-        String courtScheduleId = UUID.randomUUID().toString();
+        UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         LocalDate fromDate = expected.getSessionDate().minusDays(1);
         LocalDate toDate = expected.getSessionDate().plusDays(1);
 
-        expected.setCourtScheduleId(courtScheduleId);
+        expected.setCourtScheduleId(courtScheduleId.toString());
         databaseSeeder.insertCourtSchedule(expected);
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");

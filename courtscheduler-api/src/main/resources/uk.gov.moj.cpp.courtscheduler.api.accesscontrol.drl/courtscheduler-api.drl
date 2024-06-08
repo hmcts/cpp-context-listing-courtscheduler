@@ -15,7 +15,16 @@ rule "API - Action - courtscheduler.create"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.get"
+rule "API - Action - courtscheduler.update.court_schedule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.update");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.updateCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.get.court_schedule"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.get.court_schedule");

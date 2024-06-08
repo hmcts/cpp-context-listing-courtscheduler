@@ -305,4 +305,13 @@
         </createIndex>
 
     </changeSet>
+
+    <changeSet id="001.11" author="sibyg">
+        <addUniqueConstraint
+                columnNames="court_house_id, court_room_id, rota_business_type, panel, court_session, session_start"
+                constraintName="unique_session"
+                tableName="court_schedule"
+        />
+    </changeSet>
+
 </databaseChangeLog>

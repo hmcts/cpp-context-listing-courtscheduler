@@ -11,6 +11,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import javax.json.JsonObject;
 
@@ -29,7 +30,7 @@ class ProvisionalBookingApiValidatorTest {
     void shouldValidateSuccessfully() {
         ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
         List<ProvisionalSlot> provisionalSlotList = new ArrayList<>();
-        ProvisionalSlot provisionalSlot = new ProvisionalSlot("2523432432");
+        ProvisionalSlot provisionalSlot = new ProvisionalSlot(UUID.randomUUID().toString());
         provisionalSlotList.add(provisionalSlot);
         provisionalBookingSlots.setProvisionalSlots(provisionalSlotList);
 

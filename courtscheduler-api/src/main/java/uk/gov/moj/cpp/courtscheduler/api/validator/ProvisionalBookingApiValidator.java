@@ -64,7 +64,7 @@ public class ProvisionalBookingApiValidator {
 
     private boolean isPostPayloadValid(final List<ProvisionalSlot> slots) {
         return isNotEmpty(slots) && slots.stream()
-                .noneMatch(slot -> isBlank(slot.getCourtScheduleId()));
+                .noneMatch(slot -> slot.getCourtScheduleId() == null);
     }
 
     private JsonObject getMessage(final String value) {

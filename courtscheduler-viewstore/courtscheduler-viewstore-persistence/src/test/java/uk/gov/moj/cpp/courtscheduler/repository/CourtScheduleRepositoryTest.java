@@ -11,6 +11,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -19,7 +20,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -66,6 +66,34 @@ public class CourtScheduleRepositoryTest {
     }
 
     @Test
+    public void shouldUpdateCourtSchedule() {
+        // given
+        String panel = random(String.class);
+        String businessType = random(String.class);
+        LocalDate sessionDate = random(LocalDate.class);
+
+        CourtSchedule courtScheduleEntity = random(CourtSchedule.class);
+        courtScheduleRepository.save(courtScheduleEntity);
+
+        uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule updatedCourtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
+                .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
+                .withAvailableSlots(courtScheduleEntity.getAvailableSlots())
+                .withBusinessType(businessType)
+                .withCourtHouseId(courtScheduleEntity.getCourtHouseId())
+                .withCourtHouseName(courtScheduleEntity.getCourtHouseName())
+                .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
+                .withCourtRoomName(courtScheduleEntity.getCourtRoomName())
+                .withCourtSession(courtScheduleEntity.getCourtSession())
+                .withSessionDate(sessionDate)
+                .withPanel(panel)
+                .build();
+
+        Result result = courtScheduleRepository.update(updatedCourtSchedule);
+        assertThat(result.isSuccess(), is(true));
+    }
+
+    @Test
     public void shouldFindCourtSchedulesUpdatedBetweenDates() {
         CourtSchedule courtSchedule = random(CourtSchedule.class);
         LocalDate fromDate = LocalDate.now().minusDays(1);
@@ -79,7 +107,7 @@ public class CourtScheduleRepositoryTest {
     }
 
     @Test
-    public void shouldFindCourtSchedulesByCourtScheduleRequestParam() throws ParseException {
+    public void shouldFindCourtSchedulesByCourtScheduleRequestParam() {
         // given
         CourtSchedule courtSchedule = random(CourtSchedule.class);
         courtScheduleRepository.save(courtSchedule);

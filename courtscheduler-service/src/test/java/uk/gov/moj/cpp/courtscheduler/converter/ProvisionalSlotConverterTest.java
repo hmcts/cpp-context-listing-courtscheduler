@@ -30,10 +30,10 @@ public class ProvisionalSlotConverterTest {
 
         assertThat(provisionalBookingSlots.getProvisionalSlots().size(),is(2));
         final ProvisionalSlot provisionalSlot1 = provisionalBookingSlots.getProvisionalSlots().get(0);
-        assertThat(provisionalSlot1.getCourtScheduleId(), is("000f36bc-f33a-42ea-8a6c-8103636c5341"));
+        assertThat(provisionalSlot1.getCourtScheduleId().toString(), is("000f36bc-f33a-42ea-8a6c-8103636c5341"));
 
         final ProvisionalSlot provisionalSlot2 = provisionalBookingSlots.getProvisionalSlots().get(1);
-        assertThat(provisionalSlot2.getCourtScheduleId(), is("001b1891-cbe9-45fe-a0b9-2168d50a25a2"));
+        assertThat(provisionalSlot2.getCourtScheduleId().toString(), is("001b1891-cbe9-45fe-a0b9-2168d50a25a2"));
     }
 
     @Test

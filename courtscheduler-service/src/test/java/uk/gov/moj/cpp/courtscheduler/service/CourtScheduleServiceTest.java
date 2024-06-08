@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -55,6 +56,17 @@ class CourtScheduleServiceTest {
         JsonObject response = courtScheduleService.deleteCourtScheduleSessions(sessionsParam);
 
         assertTrue(response.get("sessions").asJsonArray().isEmpty());
+    }
+
+    @Test
+    public void shouldUpdateCourtSchedule() {
+        // given
+        CourtSchedule courtSchedule = new CourtSchedule();
+        given(courtScheduleRepository.update(courtSchedule)).willReturn(Result.SUCCESS());
+
+        Result result = courtScheduleService.update(courtSchedule);
+
+        assertThat(result.isSuccess(), is(true));
     }
 
     private CourtScheduleRequestParam courtScheduleRequestParam() {

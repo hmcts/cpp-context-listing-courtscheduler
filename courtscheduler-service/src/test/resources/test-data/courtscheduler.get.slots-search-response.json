@@ -23,15 +23,15 @@
       "availableDuration": 182,
       "judiciaries": [
         {
-          "judiciaryId": "123",
+          "judiciaryId": "JUDICIARY_ID_1",
           "position": "RIGHT_WINGER"
         },
         {
-          "judiciaryId": "124",
+          "judiciaryId": "JUDICIARY_ID_2",
           "position": "LEFT_WINGER"
         },
         {
-          "judiciaryId": "125",
+          "judiciaryId": "JUDICIARY_ID_3",
           "position": "CHAIR"
         }
       ],

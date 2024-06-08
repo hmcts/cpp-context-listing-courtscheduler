@@ -10,8 +10,8 @@ import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.http.HeaderConstants;
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder;
-import uk.gov.justice.services.test.utils.core.rest.RestClient;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.RestClientExtender;
 
 import javax.ws.rs.core.Response;
 import java.net.URLEncoder;
@@ -31,7 +31,7 @@ public abstract class AbstractIT {
     protected static final EnhancedRandom RANDOM = new EnhancedRandomBuilder()
             .maxStringLength(5)
             .build();
-    protected static final RestClient REST_CLIENT = new RestClient();
+    protected static final RestClientExtender REST_CLIENT = new RestClientExtender();
     protected final DatabaseSeeder databaseSeeder = new DatabaseSeeder();
 
     @BeforeAll
@@ -57,6 +57,15 @@ public abstract class AbstractIT {
                 .build();
 
         return REST_CLIENT.postCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
+    }
+
+    protected Response putCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
+
+        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
+                .withHeader(HeaderConstants.USER_ID, userId)
+                .build();
+
+        return REST_CLIENT.putCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
     }
 
     protected RequestParams getRequestParams(final String path, final String contentType, final UUID userId, final Map<String, Object> queryParams) {

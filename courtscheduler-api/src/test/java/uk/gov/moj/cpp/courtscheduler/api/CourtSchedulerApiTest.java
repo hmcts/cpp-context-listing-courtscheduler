@@ -1,13 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.UUID.randomUUID;
+import static javax.json.Json.createObjectBuilder;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
 
+import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.messaging.Envelope;
 import uk.gov.justice.services.messaging.JsonEnvelope;
@@ -21,6 +24,7 @@ import uk.gov.moj.cpp.courtscheduler.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
@@ -56,6 +60,10 @@ class CourtSchedulerApiTest {
     private CourtScheduleService courtScheduleService;
     @Mock
     private MiService miService;
+
+    @Mock
+    private ObjectToJsonObjectConverter objectToJsonObjectConverter;
+
     @Mock
     private Function<Object, JsonEnvelope> function;
     @InjectMocks
@@ -90,6 +98,25 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.deleteCourtSchedule(deleteCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(deleteCourtScheduleJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldUpdateCourtSchedule() throws IOException {
+        final JsonObject jsonPayloadObject = payloadToObject(FileUtil.getPayload("update-court-schedule.json"));
+        final String requestName = "courtscheduler.update.court_schedule";
+
+        final JsonEnvelope updateCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        when(enveloper.withMetadataFrom(updateCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
+        Result success = Result.SUCCESS();
+        when(courtScheduleService.update(any(CourtSchedule.class))).thenReturn(success);
+        when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
+                .add(RESULTS, "ok")
+                .build());
+
+        courtSchedulerApi.updateCourtSchedule(updateCourtScheduleJsonEnvelope);
+
+        verify(enveloper, atLeastOnce()).withMetadataFrom(updateCourtScheduleJsonEnvelope, requestName);
     }
 
     @Test

@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "courtScheduleId": {
+      "$ref": "#/definitions/uuid"
+    },
+    "courtHouseId": {
+      "$ref": "#/definitions/uuid"
+    },
+    "courtRoomId": {
+      "$ref": "#/definitions/uuid"
+    },
+    "sessionType": {
+      "type": "string",
+      "enum": [
+        "AM",
+        "PM",
+        "AD"
+      ]
+    },
+    "businessType": {
+      "type": "string"
+    },
+    "sessionDate": {
+      "type": "string"
+    },
+    "panel": {
+      "type": "string",
+      "enum": [
+        "YOUTH",
+        "ADULT"
+      ]
+    }
+  },
+  "required": [
+    "courtScheduleId",
+    "courtHouseId",
+    "courtRoomId",
+    "sessionType",
+    "businessType",
+    "sessionDate",
+    "panel"
+  ],
+  "definitions": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+    }
+  }
+}

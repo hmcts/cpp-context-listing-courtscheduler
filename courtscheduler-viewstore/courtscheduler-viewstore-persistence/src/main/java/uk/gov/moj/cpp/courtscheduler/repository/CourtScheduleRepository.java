@@ -11,6 +11,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
@@ -52,6 +53,30 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     private AllocatedListingRepository allocatedListingRepository;
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
+
+
+    public Result update(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
+
+        CourtSchedule courtScheduleEntity = findBy(courtSchedule.getCourtScheduleId());
+        if (courtScheduleEntity.isSlotBased() != courtSchedule.isSlotBased()) {
+            Result.FAILED(String.format("Slot Type mismatch, Existing:%s, New:%s",
+                    courtScheduleEntity.isSlotBased(), courtSchedule.isSlotBased()));
+        }
+
+        courtScheduleEntity.setAvailableDuration(courtSchedule.getAvailableDuration());
+        courtScheduleEntity.setAvailableSlots(courtSchedule.getAvailableSlots());
+        courtScheduleEntity.setBusinessType(courtSchedule.getBusinessType());
+        courtScheduleEntity.setCourtHouseId(courtSchedule.getCourtHouseId());
+        courtScheduleEntity.setCourtHouseName(courtSchedule.getCourtHouseName());
+        courtScheduleEntity.setCourtRoomId(courtSchedule.getCourtRoomId());
+        courtScheduleEntity.setCourtRoomName(courtSchedule.getCourtRoomName());
+        courtScheduleEntity.setCourtSession(courtSchedule.getCourtSession());
+        courtScheduleEntity.setSessionDate(courtSchedule.getSessionDate());
+        courtScheduleEntity.setPanel(courtSchedule.getPanel());
+
+        this.save(courtScheduleEntity);
+        return Result.SUCCESS();
+    }
 
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findBy(CourtScheduleRequestParam courtScheduleRequestParam) {
 

@@ -9,12 +9,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey_;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking_;
 
 import java.time.LocalDate;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
