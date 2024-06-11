@@ -13,10 +13,6 @@
       "action": "View"
     },
     {
-      "object": "CourtSchedule",
-      "action": "Delete"
-    },
-    {
       "object": "HearingSlots",
       "action": "Edit"
     },
