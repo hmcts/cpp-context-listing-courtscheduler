@@ -46,4 +46,21 @@ public class RestClientExtender extends RestClient {
 
         return response;
     }
+
+    public Response patchCommand(final String url, final String contentType, final String requestPayload, final MultivaluedMap<String, Object> headers) {
+        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(contentType));
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Making POST request to '{}' with Content Type '{}'", url, contentType);
+            LOGGER.info("Request payload: '{}'", requestPayload);
+            LOGGER.info("Headers: {}", headers);
+        }
+
+        Response response = ResteasyClientBuilderFactory.clientBuilder().build().target(url).request().headers(headers).method("PATCH", entity);
+        if (LOGGER.isInfoEnabled()) {
+            Response.StatusType statusType = response.getStatusInfo();
+            LOGGER.info("Received response status '{}' '{}'", statusType.getStatusCode(), statusType.getReasonPhrase());
+        }
+
+        return response;
+    }
 }

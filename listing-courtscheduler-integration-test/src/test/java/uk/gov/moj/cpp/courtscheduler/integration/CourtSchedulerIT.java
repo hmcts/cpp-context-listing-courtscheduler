@@ -21,6 +21,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
 
 
 class CourtSchedulerIT extends AbstractIT {
@@ -95,5 +96,21 @@ class CourtSchedulerIT extends AbstractIT {
 
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
 
+    }
+
+    @Test
+    void shouldRemoveCourtSchedule() throws Exception {
+        String courtScheduleId = UUID.randomUUID().toString();
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
+        String deleteHearingSlotsPayload = getPayload("courtscheduler.delete-sessions.json");
+        deleteHearingSlotsPayload = deleteHearingSlotsPayload.replace("COURT_SCHEDULE_ID", courtScheduleId);
+
+        final Response response = patchCommand(RELATIVE_URL, "application/vnd.courtscheduler.delete+json", USER_ID, deleteHearingSlotsPayload);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
     }
 }
