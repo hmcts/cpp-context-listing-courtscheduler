@@ -6,6 +6,7 @@
 *.war
 *.ear
 *.rar
+*.puml
 
 # Thumbnails
 Thumbs.db
@@ -49,10 +50,13 @@ target/
 
 # Misc
 *~
-bin/
 *.log
 *.orig
 *.sonar
 deployWars.sh
 buildContexts.sh
+
+
+lightning-jenkins.properties
+**/.DS_Store
 
