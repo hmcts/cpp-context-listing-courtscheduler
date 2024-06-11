@@ -1,0 +1,18 @@
+{
+  "userId": "USER_ID",
+  "firstName": "Richard",
+  "lastName": "Chapman",
+  "email": "richard.chapman@acme.com",
+  "userType": "USER",
+  "prosecutingAuthorityAccess": "TFL",
+  "organisationId": "ORGANISATION_ID",
+  "groups": [
+    "System Users"
+  ],
+  "permissions": [
+    {
+      "object": "CourtSchedule",
+      "action": "Create"
+    }
+  ]
+}

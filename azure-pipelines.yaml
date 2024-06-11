@@ -23,18 +23,20 @@ resources:
 pool:
   name: "MDV-ADO-AGENT-AKS-01"
   demands:
-    - identifier -equals centos-j17
+    - identifier -equals centos8-j17
 
 variables:
-  sonarqubeProject: "" # update eg: uk.gov.moj.cpp.listing:listing-parent
+  sonarqubeProject: "uk.gov.moj.cpp.courtscheduler:courtscheduler-parent" # update eg: uk.gov.moj.cpp.listing:listing-parent
 
 stages:
   - ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
       - template: pipelines/context-verify.yaml@cppAzureDevOpsTemplates
         parameters:
           sonarqube_project: ${{ variables['sonarqubeProject'] }}
+          sonarQubeType: 'sonarQubeAKS'
 
   - ${{ if eq(variables['Build.Reason'], 'IndividualCI') }}:
       - template: pipelines/context-validation.yaml@cppAzureDevOpsTemplates
         parameters:
           repo: "$(Build.Repository.Name)"
+          sonarQubeType: 'sonarQubeAKS'

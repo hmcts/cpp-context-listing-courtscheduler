@@ -1,0 +1,48 @@
+{
+  "permissions": [
+    {
+      "object": "CourtSchedule",
+      "action": "Create"
+    },
+    {
+      "object": "CourtSchedule",
+      "action": "Edit"
+    },
+    {
+      "object": "CourtSchedule",
+      "action": "View"
+    },
+    {
+      "object": "HearingSlots",
+      "action": "Edit"
+    },
+    {
+      "object": "HearingSlots",
+      "action": "View"
+    },
+    {
+      "object": "HearingSlots",
+      "action": "Delete"
+    },
+    {
+      "object": "CourtSchedule",
+      "action": "Export"
+    },
+    {
+      "object": "AllocatedListings",
+      "action": "Export"
+    },
+    {
+      "object": "CourtScheduleJudiciary",
+      "action": "Export"
+    },
+    {
+      "object": "ProvisionalBooking",
+      "action": "Create"
+    },
+    {
+      "object": "ProvisionalBooking",
+      "action": "View"
+    }
+  ]
+}

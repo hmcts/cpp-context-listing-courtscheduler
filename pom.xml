@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>uk.gov.moj.cpp.common</groupId>
+        <artifactId>service-parent-pom</artifactId>
+        <version>17.21.5</version>
+    </parent>
+
+    <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+    <artifactId>courtscheduler-parent</artifactId>
+    <version>17.0.2-CSP1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>CourtScheduler Service - Parent Module</name>
+
+    <properties>
+        <sonar.jacoco.itReportPath>${project.basedir}/../target/jacoco-it.exec
+        </sonar.jacoco.itReportPath>
+        <sonar.report.export.path>sonar-report.json</sonar.report.export.path>
+        <sonar.scm.provider>git</sonar.scm.provider>
+        <mvn.site.url>file://${project.build.directory}/site</mvn.site.url>
+        <gihub.benas.random-beans.version>3.7.0</gihub.benas.random-beans.version>
+        <build-helper-maven-plugin.version>3.1.0</build-helper-maven-plugin.version>
+        <cglib.version>3.3.0</cglib.version>
+        <commons.lang3.version>3.9</commons.lang3.version>
+        <org.mockito.mockito-core.version>2.24.0</org.mockito.mockito-core.version>
+        <junit-dataprovider.version>1.13.1</junit-dataprovider.version>
+        <activemq-ra.version>5.14.5</activemq-ra.version>
+        <test-utils-enveloper-provider.version>5.1.2</test-utils-enveloper-provider.version>
+        <cpp-platform-test-utils.version>8.0.17</cpp-platform-test-utils.version>
+        <jackson.databind.version>2.10.0</jackson.databind.version>
+        <sonar.coverage.exclusions>
+            **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,
+            **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
+            **/uk/gov/moj/cpp/courtscheduler/exception/**/*,
+            **/uk/gov/moj/cpp/courtscheduler/api/PayloadExtractor.java,
+            **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java,
+            **/uk/gov/moj/cpp/courtscheduler/converter/SessionsConverter.java,
+            **/uk/gov/moj/cpp/courtscheduler/converter/CourtScheduleConverter.java
+        </sonar.coverage.exclusions>
+        <sonar.cpd.exclusions>
+            **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,
+            **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
+        </sonar.cpd.exclusions>
+        <usersgroups.version>8.0.37</usersgroups.version>
+        <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
+    </properties>
+
+
+    <modules>
+        <module>courtscheduler-domain</module>
+        <module>courtscheduler-api</module>
+        <module>courtscheduler-integration-test</module>
+        <module>courtscheduler-viewstore</module>
+        <module>courtscheduler-service</module>
+        <module>courtscheduler-healthchecks</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>external.atlassian.jgitflow</groupId>
+                <artifactId>jgitflow-maven-plugin</artifactId>
+                <version>${jgitflow-maven-plugin.version}</version>
+                <configuration>
+                    <flowInitContext>
+                        <masterBranchName>dev/release</masterBranchName>
+                        <developBranchName>main</developBranchName>
+                        <featureBranchPrefix>dev/feature-</featureBranchPrefix>
+                        <releaseBranchPrefix>dev/release-</releaseBranchPrefix>
+                        <hotfixBranchPrefix>dev/hotfix-</hotfixBranchPrefix>
+                        <versionTagPrefix>v</versionTagPrefix>
+                    </flowInitContext>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <enableSshAgent>true</enableSshAgent>
+                    <pushReleases>true</pushReleases>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>3.11.0.3922</version>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

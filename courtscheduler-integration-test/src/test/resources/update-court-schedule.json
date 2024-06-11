@@ -1,0 +1,9 @@
+{
+  "courtHouseId": "COURT_HOUSE_ID",
+  "courtScheduleId": "COURT_SCHEDULE_ID",
+  "courtRoomId": "COURT_ROOM_ID",
+  "sessionType": "SESSION_TYPE",
+  "sessionDate": "SESSION_DATE",
+  "businessType": "BUSINESS_TYPE",
+  "panel": "PANEL"
+}
