@@ -1,5 +1,6 @@
 #ARG base_image=crmdvrepo01.azurecr.io/wildfly:310122
-FROM {base_image}
+ARG baseImageTag
+FROM crmdvrepo01.azurecr.io/hmcts/wildfly:${baseImageTag}
 ARG version
 ARG repo_loc=https://libraries-internal.mdv.cpp.nonlive/artifactory/repocentral
 ARG wildfly_home=/opt/jboss/wildfly
@@ -20,4 +21,4 @@ COPY scripts/liquibase.sh /tmp/liquibase/liquibase.sh
 RUN chown ${wildfly_user}:${wildfly_user} /tmp/liquibase/liquibase.sh && chmod 755 /tmp/liquibase/liquibase.sh
 RUN mkdir /opt/cpp-tools
 USER ${wildfly_user}
-LABEL base_image {base_image}
+LABEL base_image {baseImageTag}

@@ -45,6 +45,7 @@
             **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
         </sonar.cpd.exclusions>
         <usersgroups.version>8.0.37</usersgroups.version>
+        <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
     </properties>
 
 
@@ -62,10 +63,11 @@
             <plugin>
                 <groupId>external.atlassian.jgitflow</groupId>
                 <artifactId>jgitflow-maven-plugin</artifactId>
+                <version>${jgitflow-maven-plugin.version}</version>
                 <configuration>
                     <flowInitContext>
                         <masterBranchName>dev/release</masterBranchName>
-                        <developBranchName>master</developBranchName>
+                        <developBranchName>main</developBranchName>
                         <featureBranchPrefix>dev/feature-</featureBranchPrefix>
                         <releaseBranchPrefix>dev/release-</releaseBranchPrefix>
                         <hotfixBranchPrefix>dev/hotfix-</hotfixBranchPrefix>
