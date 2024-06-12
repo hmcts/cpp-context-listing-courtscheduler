@@ -52,7 +52,7 @@
     <modules>
         <module>courtscheduler-domain</module>
         <module>courtscheduler-api</module>
-        <module>courtscheduler-integration-test</module>
+        <module>listing-courtscheduler-integration-test</module>
         <module>courtscheduler-viewstore</module>
         <module>courtscheduler-service</module>
         <module>courtscheduler-healthchecks</module>

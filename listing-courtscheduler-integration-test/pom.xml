@@ -8,7 +8,7 @@
         <version>17.0.2-CSP1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>courtscheduler-integration-test</artifactId>
+    <artifactId>listing-courtscheduler-integration-test</artifactId>
 
     <!-- Test dependencies -->
     <dependencies>
@@ -120,7 +120,7 @@
 
         </profile>
         <profile>
-            <id>courtscheduler-integration-test</id>
+            <id>listing-courtscheduler-integration-test</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
