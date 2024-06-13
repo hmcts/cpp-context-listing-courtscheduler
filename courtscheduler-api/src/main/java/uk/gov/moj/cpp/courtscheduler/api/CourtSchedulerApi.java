@@ -10,6 +10,8 @@ import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.messaging.JsonEnvelope;
+import uk.gov.moj.cpp.courtscheduler.api.domain.CourtScheduleView;
+import uk.gov.moj.cpp.courtscheduler.api.domain.CourtSessionsView;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
@@ -131,13 +133,12 @@ public class CourtSchedulerApi {
             return envelopeFor(envelope, validate, ERROR);
         }
 
-        List<CourtSchedule> courtSchedules = courtScheduleService.getCourtSchedules(courtScheduleRequestParam);
-        final ListToJsonArrayConverter<CourtSchedule> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
+        List<CourtSessionsView> courtSessionsViews = courtScheduleService.getCourtSchedules(courtScheduleRequestParam)
+                .stream().map(CourtScheduleToViewConverter::convert).toList();
 
-        JsonObject responseObject = createObjectBuilder()
-                .add(COURT_SCHEDULES, listToJsonArrayConverter.convert(courtSchedules))
-                .build();
-        return envelopeFor(envelope, responseObject, COURT_SCHEDULES);
+        return envelopeFor(envelope, createObjectBuilder()
+                .add(COURT_SCHEDULES, new ListToJsonArrayConverter<CourtSessionsView>().convert(courtSessionsViews))
+                .build(), COURT_SCHEDULES);
     }
 
     @Handles("courtscheduler.update")
@@ -260,7 +261,8 @@ public class CourtSchedulerApi {
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonObject jsonObject, String key) {
-        return enveloper.withMetadataFrom(originalEnvelope, originalEnvelope.metadata().name())
-                .apply(createObjectBuilder().add(key, jsonObject).build());
+        JsonObject build = createObjectBuilder().add(key, jsonObject).build();
+        String name = originalEnvelope.metadata().name();
+        return enveloper.withMetadataFrom(originalEnvelope, name).apply(build);
     }
 }

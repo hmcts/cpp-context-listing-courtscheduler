@@ -16,6 +16,7 @@
       "panel": "PANEL",
       "courtSession": "AM",
       "slotBased": false,
+      "active": true,
       "sessionDate": "2020-12-01",
       "maxSlots": 125,
       "maxDuration": 182,

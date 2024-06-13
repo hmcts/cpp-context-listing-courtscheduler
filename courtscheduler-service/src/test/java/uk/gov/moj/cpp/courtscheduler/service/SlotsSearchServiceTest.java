@@ -138,6 +138,7 @@ class SlotsSearchServiceTest {
                 .withAvailableDuration(182)
                 .withMaxSlots(125)
                 .withJudiciaries(courtScheduleJudiciary)
+                .withActive(true)
                 .build();
     }
 
