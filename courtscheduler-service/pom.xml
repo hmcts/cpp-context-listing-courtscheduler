@@ -5,7 +5,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>courtscheduler-parent</artifactId>
-        <version>17.0.2-CSP2-SNAPSHOT</version>
+        <version>17.0.4-CSP1-SNAPSHOT</version>
     </parent>
 
     <artifactId>courtscheduler-service</artifactId>
