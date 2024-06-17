@@ -77,6 +77,15 @@ public abstract class AbstractIT {
         return REST_CLIENT.putCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
     }
 
+    protected Response patchCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
+
+        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
+                .withHeader(HeaderConstants.USER_ID, userId)
+                .build();
+
+        return REST_CLIENT.patchCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
+    }
+
     protected RequestParams getRequestParams(final String path, final String contentType, final UUID userId, final Map<String, Object> queryParams) {
         final String url = (isEmpty(queryParams)) ? BASE_URL + path : (BASE_URL + path + "?" + createUrlFromParam(queryParams));
         RequestParamsBuilder requestParamsBuilder = RequestParamsBuilder.requestParams(url, contentType);
