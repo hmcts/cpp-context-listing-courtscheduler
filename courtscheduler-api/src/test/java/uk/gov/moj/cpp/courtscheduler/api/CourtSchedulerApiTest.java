@@ -19,14 +19,8 @@ import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil;
-import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.HearingSlotRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.SessionsConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.converter.*;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
@@ -131,6 +125,23 @@ class CourtSchedulerApiTest {
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(updateCourtScheduleJsonEnvelope, requestName);
     }
+
+    @Test
+    void shouldGetCourtSchedules() throws IOException {
+        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("get-court-schedule.json"));
+        final String requestName = "courtscheduler.get.court_schedule";
+        final JsonEnvelope exportCourtScheduleEnvelope = createEnvelope(requestName, jsonObject);
+        when(enveloper.withMetadataFrom(exportCourtScheduleEnvelope, requestName)).thenReturn(function);
+
+        List<CourtSchedule> courtSchedules = Lists.newArrayList();
+        when(courtScheduleService.getCourtSchedules(any())).thenReturn(courtSchedules);
+
+        courtSchedulerApi.getCourtSchedule(exportCourtScheduleEnvelope);
+
+        verify(courtScheduleService, atLeastOnce()).getCourtSchedules(any());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(exportCourtScheduleEnvelope, requestName);
+    }
+
 
     @Test
     void shouldUpdateHearingSlots() throws IOException {

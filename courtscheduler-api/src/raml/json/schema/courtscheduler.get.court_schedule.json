@@ -7,77 +7,95 @@
       "items": {
         "type": "object",
         "properties": {
-          "courtScheduleId": {
-            "type": "string"
-          },
-          "active": {
-            "type": "boolean"
-          },
-          "availableDuration": {
-            "type": "integer"
-          },
-          "availableSlots": {
-            "type": "integer"
-          },
-          "businessType": {
-            "type": "string"
-          },
-          "courtHouseId": {
-            "type": "string"
-          },
-          "courtHouseName": {
-            "type": "string"
-          },
           "courtRoomId": {
             "type": "string"
           },
           "courtRoomName": {
             "type": "string"
           },
-          "courtRoomNumber": {
-            "type": "integer"
-          },
-          "courtSession": {
-            "type": "string"
-          },
-          "createdOn": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "listingProfileId": {
-            "type": "string"
-          },
-          "maxDuration": {
-            "type": "integer"
-          },
-          "maxSlots": {
-            "type": "integer"
-          },
-          "operationalUnit": {
-            "type": "string"
-          },
-          "ouCode": {
-            "type": "string"
-          },
-          "panel": {
-            "type": "string"
-          },
-          "sessionDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "slotBased": {
-            "type": "boolean"
-          },
-          "hasHearingsBooked": {
-            "type": "boolean"
-          },
-          "updatedOn": {
-            "type": "string",
-            "format": "date-time"
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "courtScheduleId": {
+                  "type": "string"
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "availableDuration": {
+                  "type": "integer"
+                },
+                "availableSlots": {
+                  "type": "integer"
+                },
+                "businessType": {
+                  "type": "string"
+                },
+                "courtHouseId": {
+                  "type": "string"
+                },
+                "courtHouseName": {
+                  "type": "string"
+                },
+                "courtRoomNumber": {
+                  "type": "integer"
+                },
+                "courtSession": {
+                  "type": "string"
+                },
+                "createdOn": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "listingProfileId": {
+                  "type": "string"
+                },
+                "maxDuration": {
+                  "type": "integer"
+                },
+                "maxSlots": {
+                  "type": "integer"
+                },
+                "operationalUnit": {
+                  "type": "string"
+                },
+                "ouCode": {
+                  "type": "string"
+                },
+                "panel": {
+                  "type": "string"
+                },
+                "sessionDate": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "slotBased": {
+                  "type": "boolean"
+                },
+                "hasHearingsBooked": {
+                  "type": "boolean"
+                },
+                "updatedOn": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "courtCentreId",
+                "session_date",
+                "businessType",
+                "panel"
+              ]
+            }
           }
         },
-        "required": ["courtCentreId","courtRoomId", "session_date", "businessType", "panel", "hasHearingsBooked"]
+        "required": [
+          "courtRoomId",
+          "courtRoomName",
+          "sessions"
+        ]
       }
     }
   }
