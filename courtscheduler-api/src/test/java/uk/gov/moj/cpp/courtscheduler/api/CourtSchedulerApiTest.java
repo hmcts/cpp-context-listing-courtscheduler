@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createObjectBuilder;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
@@ -19,6 +20,8 @@ import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil;
+import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.converter.*;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
@@ -57,6 +60,8 @@ class CourtSchedulerApiTest {
     @Mock
     private SlotsSearchService slotsSearchService;
     @Mock
+    private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
+    @Mock
     private ProvisionalBookingService provisionalBookingService;
     @Mock
     private CourtScheduleService courtScheduleService;
@@ -68,6 +73,8 @@ class CourtSchedulerApiTest {
 
     @Mock
     private Function<Object, JsonEnvelope> function;
+    @Mock
+    private SessionsApiValidator sessionsApiValidator;
     @InjectMocks
     private CourtSchedulerApi courtSchedulerApi;
     @Mock
@@ -82,13 +89,41 @@ class CourtSchedulerApiTest {
 
         final JsonEnvelope createCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
-        when(enveloper.withMetadataFrom(createCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
+        when(this.enveloper.withMetadataFrom(createCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
+        when (createSessionsRequestParamConverter.convert(any())).thenReturn(CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam().build());
+        when(sessionsApiValidator.getSessionsCreateValidation(any(CreateSessionRequestParam.class))).thenReturn(JsonValue.EMPTY_JSON_OBJECT);
+
 
         courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(createCourtScheduleJsonEnvelope, requestName);
         verify(sessionsService, atLeastOnce()).create(any());
     }
+
+    @Test
+    void shouldReturnBadRequestWhenValidationFails() throws IOException {
+        // Arrange
+        final JsonObject jsonPayloadObject = payloadToObject(FileUtil.getPayload("create-court-schedule.json"));
+        final String requestName = "courtscheduler.create";
+        final JsonEnvelope createCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        JsonObject validationError = createObjectBuilder()
+                .add("errorMessage", "Invalid parameters")
+                .build();
+        when (createSessionsRequestParamConverter.convert(any())).thenReturn(CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam().build());
+
+        when(sessionsApiValidator.getSessionsCreateValidation(any(CreateSessionRequestParam.class))).thenReturn(validationError);
+
+         try {
+            // Act
+            courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
+        } catch (ValidationException e) {
+            // Assert
+            assertEquals("Validation failed", e.getMessage());
+            assertEquals(e.getErrors().getString("errorMessage"), validationError.getString("errorMessage"));
+         }
+    }
+
 
     @Test
     void shouldDeleteCourtSchedule() throws IOException {

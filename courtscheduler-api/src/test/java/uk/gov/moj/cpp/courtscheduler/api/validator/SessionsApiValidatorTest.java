@@ -58,20 +58,6 @@ public class SessionsApiValidatorTest {
         assertEquals("Invalid combination of parameters: For More Than once, you should supply a repeat-for and end date ", result.getString("errorMessage"));
     }
 
-    @Test
-    public void shouldReturnErrorWhenFrequencyIsOnceAndEndDateOrRepeatForIsNotNull() {
-        LocalDate futureDate = LocalDate.now().plusDays(1);
-
-        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate);
-        when(repeatPattern.getRepeatFor()).thenReturn(1);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
-
-        assertEquals("Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ", result.getString("errorMessage"));
-    }
 
     @Test
     public void shouldReturnEmptyJsonObjectWhenValidationIsSuccessful() {

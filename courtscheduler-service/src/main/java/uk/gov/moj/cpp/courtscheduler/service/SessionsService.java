@@ -52,7 +52,7 @@ public class SessionsService {
             }
         }
 
-        if(repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
+        else if(repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
             //calculate real dates based on startdate, enddate and  frequency
             final LocalDate startDate = repeatPattern.getStartDate();
             final LocalDate endDate = repeatPattern.getEndDate();

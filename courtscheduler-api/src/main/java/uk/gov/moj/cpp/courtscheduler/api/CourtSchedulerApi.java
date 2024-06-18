@@ -16,6 +16,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.CourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.CourtScheduleRequestParamConverter;
@@ -79,16 +80,20 @@ public class CourtSchedulerApi {
     private CourtScheduleService courtScheduleService;
 
     @Inject
+    private SessionsApiValidator sessionsApiValidator;
+
+    @Inject
+    private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
+
+    @Inject
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
 
     private final AllocatedSlotConverter converter = new AllocatedSlotConverter();
     private final HearingSlotsApiValidator validator = new HearingSlotsApiValidator();
-    private final SessionsApiValidator sessionsApiValidator = new SessionsApiValidator();
     private final HearingSlotsApiValidator hearingSlotsApiValidator = new HearingSlotsApiValidator();
     private final CourtScheduleApiValidator courtScheduleApiValidator = new CourtScheduleApiValidator();
     private final HearingSlotRequestParamConverter hearingSlotRequestParamConverter = new HearingSlotRequestParamConverter();
     private final CourtScheduleRequestParamConverter courtScheduleRequestParamConverter = new CourtScheduleRequestParamConverter();
-    private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter = new CreateSessionsRequestParamConverter();
     private final MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter = new MiFilterCriteriaRequestParamConverter();
     private final ProvisionalSlotConverter provisionalSlotConverter = new ProvisionalSlotConverter();
     private final ProvisionalBookingApiValidator provisionalBookingApiValidator = new ProvisionalBookingApiValidator();
@@ -103,7 +108,7 @@ public class CourtSchedulerApi {
         CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
         JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
+           throw new ValidationException(validate);
         }
 
         sessionsService.create(createSessionRequestParam);
