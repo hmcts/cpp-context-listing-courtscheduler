@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import java.io.Serializable;
+
 import javax.json.JsonObject;
 
 public class ValidationException extends RuntimeException {
