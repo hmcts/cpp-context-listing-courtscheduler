@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 import javax.json.JsonObject;
 
-public class ValidationException extends RuntimeException {
+public class ValidationException extends RuntimeException implements Serializable {
     private final JsonObject errors;
 
     public ValidationException(JsonObject errors) {
