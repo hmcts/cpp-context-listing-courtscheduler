@@ -4,7 +4,7 @@
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
       "courtRoomId": "550e8400-e29b-41d4-a716-446655440001",
       "sessionType": "AM",
-      "businessType": "Business Type 1",
+      "businessType": "Type1",
       "duration": 2,
       "panel": "YOUTH",
       "repeatDays": ["Monday", "Wednesday", "Friday"]
@@ -13,7 +13,7 @@
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
       "courtRoomId": "550e8400-e29b-41d4-a716-446655440003",
       "sessionType": "PM",
-      "businessType": "Business Type 2",
+      "businessType": "Type1",
       "duration": 3,
       "panel": "ADULT",
       "repeatDays": ["Tuesday", "Thursday"]
@@ -22,7 +22,7 @@
   "repeatPattern": {
     "frequency": "EVERY_WEEK",
     "repeatFor": 4,
-    "startDate": "2024-01-01",
-    "endDate": "2024-01-29"
+    "startDate": "2025-01-01",
+    "endDate": "2025-01-29"
   }
 }
