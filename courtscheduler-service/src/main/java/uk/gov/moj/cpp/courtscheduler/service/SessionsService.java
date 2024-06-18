@@ -29,7 +29,30 @@ public class SessionsService {
         final List<Session> sessionList = createSessionRequestParam.getSessionList();
         final RepeatPattern repeatPattern = createSessionRequestParam.getRepeatPattern();
 
-        if(repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
+        if(repeatPattern.getFrequency().equals(RepeatFrequency.ONCE)) {
+            for (Session session : sessionList) {
+                for(DayOfWeek dayOfWeek : session.getRepeatDays()) {
+                    final CourtSchedule courtSchedule = CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                            .withCourtScheduleId(UUID.randomUUID().toString())
+                            .withMaxDuration(session.getSlotsOrDuration())
+                            .withAvailableDuration(session.getSlotsOrDuration())
+                            .withMaxSlots(session.getSlotsOrDuration())
+                            .withAvailableSlots(session.getSlotsOrDuration())
+                            .withBusinessType(session.getBusinessType())
+                            .withCourtHouseId(session.getCourtCentreId())
+                            .withCourtRoomId(session.getCourtRoomId())
+                            .withSlotBased(true)
+                            .withActive(true)
+                            .withSessionDate(repeatPattern.getStartDate().with(TemporalAdjusters.next(dayOfWeek)))
+                            .withCourtSession(session.getSessionType())
+                            .withPanel(session.getPanelType())
+                            .build();
+                    courtScheduleList.add(courtSchedule);
+                }
+            }
+        }
+
+        else if(repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
             //calculate real dates based on startdate, enddate and  frequency
             final LocalDate startDate = repeatPattern.getStartDate();
             final LocalDate endDate = repeatPattern.getEndDate();
@@ -49,7 +72,8 @@ public class SessionsService {
                                 .withCourtHouseId(session.getCourtCentreId())
                                 .withCourtRoomId(session.getCourtRoomId())
                                 .withSlotBased(true)
-                                .withSessionDate(startDate.with(TemporalAdjusters.next(dayOfWeek)))
+                                .withActive(true)
+                                .withSessionDate(startDate.plusWeeks(weekNumber).with(TemporalAdjusters.next(dayOfWeek)))
                                 .withCourtSession(session.getSessionType())
                                 .withPanel(session.getPanelType())
                                 .build();

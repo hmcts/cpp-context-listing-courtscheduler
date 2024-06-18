@@ -1,20 +1,21 @@
-package uk.gov.moj.cpp.courtscheduler.domain;
+package uk.gov.moj.cpp.courtscheduler.api.domain;
+
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
-public class CourtSchedule {
+public class CourtScheduleView {
 
     private String courtScheduleId;
     private String listingProfileId;
     private String ouCode;
-    private String courtRoomId;
     private Integer courtRoomNumber;
     private String courtHouseId;// same as courtCentreId
     private String courtHouseName;
-    private String courtRoomName;
     private String operationalUnit;
     private String businessType;
     private String panel;
@@ -29,15 +30,13 @@ public class CourtSchedule {
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
-    protected CourtSchedule(final CourtScheduleBuilder builder) {
+    protected CourtScheduleView(final CourtScheduleViewBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
         this.listingProfileId = builder.listingProfileId;
         this.ouCode = builder.ouCode;
-        this.courtRoomId = builder.courtRoomId;
         this.courtRoomNumber = builder.courtRoomNumber;
         this.courtHouseName = builder.courtHouseName;
         this.courtHouseId = builder.courtHouseId;
-        this.courtRoomName = builder.courtRoomName;
         this.operationalUnit = builder.operationalUnit;
         this.businessType = builder.businessType;
         this.panel = builder.panel;
@@ -53,7 +52,7 @@ public class CourtSchedule {
         this.active = builder.active;
     }
 
-    public CourtSchedule() {
+    public CourtScheduleView() {
     }
 
     public String getOperationalUnit() {
@@ -88,16 +87,8 @@ public class CourtSchedule {
         return courtHouseId;
     }
 
-    public String getCourtRoomId() {
-        return courtRoomId;
-    }
-
     public Integer getCourtRoomNumber() {
         return courtRoomNumber;
-    }
-
-    public String getCourtRoomName() {
-        return courtRoomName;
     }
 
     public String getBusinessType() {
@@ -136,10 +127,6 @@ public class CourtSchedule {
         return slotBased;
     }
 
-    public boolean isActive() {
-        return active;
-    }
-
     public void setCourtScheduleId(final String courtScheduleId) {
         this.courtScheduleId = courtScheduleId;
     }
@@ -150,10 +137,6 @@ public class CourtSchedule {
 
     public void setOuCode(final String ouCode) {
         this.ouCode = ouCode;
-    }
-
-    public void setCourtRoomId(final String courtRoomId) {
-        this.courtRoomId = courtRoomId;
     }
 
     public void setCourtRoomNumber(final Integer courtRoomNumber) {
@@ -168,10 +151,6 @@ public class CourtSchedule {
         this.courtHouseName = courtHouseName;
     }
 
-    public void setCourtRoomName(final String courtRoomName) {
-        this.courtRoomName = courtRoomName;
-    }
-
     public void setOperationalUnit(final String operationalUnit) {
         this.operationalUnit = operationalUnit;
     }
@@ -182,10 +161,6 @@ public class CourtSchedule {
 
     public void setPanel(final String panel) {
         this.panel = panel;
-    }
-
-    public void setActive(final Boolean active) {
-        this.active = active;
     }
 
     public void setCourtSession(final String courtSession) {
@@ -224,15 +199,13 @@ public class CourtSchedule {
         this.slotStartTimes = slotStartTimes;
     }
 
-    public static final class CourtScheduleBuilder {
+    public static final class CourtScheduleViewBuilder {
         private String courtScheduleId;
         private String ouCode;
         private String listingProfileId;
-        private String courtRoomId;
         private Integer courtRoomNumber;
         private String courtHouseName;
         private String courtHouseId;// same as courtCentreId
-        private String courtRoomName;
         private String operationalUnit;
         private String businessType;
         private String panel;
@@ -247,128 +220,118 @@ public class CourtSchedule {
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
-        public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
-            return new CourtSchedule.CourtScheduleBuilder();
+        public static CourtScheduleViewBuilder courtSchedule() {
+            return new CourtScheduleViewBuilder();
         }
 
 
-        public CourtScheduleBuilder withCourtScheduleId(final String courtScheduleId) {
+        public CourtScheduleViewBuilder withCourtScheduleId(final String courtScheduleId) {
             this.courtScheduleId = courtScheduleId;
             return this;
         }
 
-        public CourtScheduleBuilder withPanel(final String panel) {
+        public CourtScheduleViewBuilder withPanel(final String panel) {
             this.panel = panel;
             return this;
         }
 
-        public CourtScheduleBuilder withListingProfileId(final String listingProfileId) {
+        public CourtScheduleViewBuilder withListingProfileId(final String listingProfileId) {
             this.listingProfileId = listingProfileId;
             return this;
         }
 
-        public CourtScheduleBuilder withOuCode(final String ouCode) {
+        public CourtScheduleViewBuilder withOuCode(final String ouCode) {
             this.ouCode = ouCode;
             return this;
         }
 
-        public CourtScheduleBuilder withCourtHouseName(final String courtHouseName) {
+        public CourtScheduleViewBuilder withCourtHouseName(final String courtHouseName) {
             this.courtHouseName = courtHouseName;
             return this;
         }
 
-        public CourtScheduleBuilder withCourtHouseId(final String courtHouseId) {
+        public CourtScheduleViewBuilder withCourtHouseId(final String courtHouseId) {
             this.courtHouseId = courtHouseId;
             return this;
         }
 
-        public CourtScheduleBuilder withCourtRoomId(final String courtRoomId) {
-            this.courtRoomId = courtRoomId;
-            return this;
-        }
-
-        public CourtScheduleBuilder withCourtRoomNumber(final Integer courtRoomNumber) {
+        public CourtScheduleViewBuilder withCourtRoomNumber(final Integer courtRoomNumber) {
             this.courtRoomNumber = courtRoomNumber;
             return this;
         }
 
-        public CourtScheduleBuilder withCourtRoomName(final String courtRoomName) {
-            this.courtRoomName = courtRoomName;
-            return this;
-        }
-
-        public CourtScheduleBuilder withOperationalUnit(final String operationalUnit) {
+        public CourtScheduleViewBuilder withOperationalUnit(final String operationalUnit) {
             this.operationalUnit = operationalUnit;
             return this;
         }
 
-        public CourtScheduleBuilder withBusinessType(final String businessType) {
+        public CourtScheduleViewBuilder withBusinessType(final String businessType) {
             this.businessType = businessType;
             return this;
         }
 
-        public CourtScheduleBuilder withCourtSession(final String courtSession) {
+        public CourtScheduleViewBuilder withCourtSession(final String courtSession) {
             this.courtSession = courtSession;
             return this;
         }
 
-        public CourtScheduleBuilder withSlotBased(final boolean slotBased) {
+        public CourtScheduleViewBuilder withSlotBased(final boolean slotBased) {
             this.slotBased = slotBased;
             return this;
         }
 
-        public CourtScheduleBuilder withActive(final boolean active) {
+        public CourtScheduleViewBuilder withActive(final boolean active) {
             this.active = active;
             return this;
         }
 
-        public CourtScheduleBuilder withSessionDate(final LocalDate sessionDate) {
+        public CourtScheduleViewBuilder withSessionDate(final LocalDate sessionDate) {
             this.sessionDate = sessionDate;
             return this;
         }
 
-        public CourtScheduleBuilder withAvailableSlots(final Integer availableSlot) {
+        public CourtScheduleViewBuilder withAvailableSlots(final Integer availableSlot) {
             this.availableSlots = availableSlot;
             return this;
         }
 
-        public CourtScheduleBuilder withAvailableDuration(final Integer availableDuration) {
+        public CourtScheduleViewBuilder withAvailableDuration(final Integer availableDuration) {
             this.availableDuration = availableDuration;
             return this;
         }
 
-        public CourtScheduleBuilder withMaxSlots(final Integer maxSlot) {
+        public CourtScheduleViewBuilder withMaxSlots(final Integer maxSlot) {
             this.maxSlots = maxSlot;
             return this;
         }
 
-        public CourtScheduleBuilder withMaxDuration(final Integer maxDuration) {
+        public CourtScheduleViewBuilder withMaxDuration(final Integer maxDuration) {
             this.maxDuration = maxDuration;
             return this;
         }
 
-        public CourtScheduleBuilder withJudiciaries(final List<CourtScheduleJudiciary> judiciaries) {
+        public CourtScheduleViewBuilder withJudiciaries(final List<CourtScheduleJudiciary> judiciaries) {
             this.judiciaries = judiciaries;
             return this;
         }
 
-        public CourtScheduleBuilder addJudiciary(final CourtScheduleJudiciary courtScheduleJudiciary) {
+        public CourtScheduleViewBuilder addJudiciary(final CourtScheduleJudiciary courtScheduleJudiciary) {
             this.judiciaries.add(courtScheduleJudiciary);
             return this;
         }
 
-        public CourtScheduleBuilder withSlotStartTimes(final List<SlotStartTime> slotStartTimes) {
+        public CourtScheduleViewBuilder withSlotStartTimes(final List<SlotStartTime> slotStartTimes) {
             this.slotStartTimes = slotStartTimes;
             return this;
         }
 
-        public CourtScheduleBuilder addSlotStartTime(final SlotStartTime slotStartTime) {
+        public CourtScheduleViewBuilder addSlotStartTime(final SlotStartTime slotStartTime) {
             this.slotStartTimes.add(slotStartTime);
             return this;
         }
 
-        public CourtSchedule build() {
-            return new CourtSchedule(this);
+        public CourtScheduleView build() {
+            return new CourtScheduleView(this);
         }
     }
 }

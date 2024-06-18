@@ -38,7 +38,6 @@ public class SessionsApiValidator {
 
         final LocalDate patternStartDate = createSessionRequestParam.getRepeatPattern().getStartDate();
         final LocalDate patternEndDate =  createSessionRequestParam.getRepeatPattern().getEndDate();
-        final Integer repeatFor = createSessionRequestParam.getRepeatPattern().getRepeatFor();
         final RepeatFrequency repeatFrequency = createSessionRequestParam.getRepeatPattern().getFrequency();
 
         LOGGER.info("Validating CREATE Sessions  input : {}", createSessionRequestParam);
@@ -51,9 +50,6 @@ public class SessionsApiValidator {
             return getMessageForInvalidParameterCombination(RepeatFrequency.EVERY_WEEK);
         }
 
-        if (repeatFrequency == RepeatFrequency.ONCE && (patternEndDate != null || repeatFor != null)) {
-            return getMessageForInvalidParameterCombination(RepeatFrequency.ONCE);
-        }
 
         return EMPTY_JSON_OBJECT;
     }

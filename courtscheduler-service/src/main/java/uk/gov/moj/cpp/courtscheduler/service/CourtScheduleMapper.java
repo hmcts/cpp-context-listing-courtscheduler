@@ -28,8 +28,9 @@ public class CourtScheduleMapper {
         entity.setBusinessType(domain.getBusinessType());
         entity.setPanel(domain.getPanel());
         entity.setCourtSession(domain.getCourtSession());
-        entity.setSessionDate(domain.getSessionDate());
+        entity.setActive(domain.isActive());
         entity.setSlotBased(domain.isSlotBased());
+        entity.setSessionDate(domain.getSessionDate());
         entity.setMaxSlots(domain.getMaxSlots());
         entity.setMaxDuration(domain.getMaxDuration());
         entity.setAvailableSlots(domain.getAvailableSlots());
