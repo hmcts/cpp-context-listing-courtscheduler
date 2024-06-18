@@ -10,12 +10,11 @@ import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.moj.cpp.courtscheduler.api.domain.CourtScheduleView;
 import uk.gov.moj.cpp.courtscheduler.api.domain.CourtSessionsView;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.converter.CourtScheduleConverter;
@@ -78,18 +77,12 @@ public class CourtSchedulerApi {
     private MiService miService;
     @Inject
     private CourtScheduleService courtScheduleService;
-
     @Inject
     private SessionsApiValidator sessionsApiValidator;
-
-    @Inject
-    private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
-
     @Inject
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
 
     private final AllocatedSlotConverter converter = new AllocatedSlotConverter();
-    private final HearingSlotsApiValidator validator = new HearingSlotsApiValidator();
     private final HearingSlotsApiValidator hearingSlotsApiValidator = new HearingSlotsApiValidator();
     private final CourtScheduleApiValidator courtScheduleApiValidator = new CourtScheduleApiValidator();
     private final HearingSlotRequestParamConverter hearingSlotRequestParamConverter = new HearingSlotRequestParamConverter();
@@ -98,8 +91,8 @@ public class CourtSchedulerApi {
     private final ProvisionalSlotConverter provisionalSlotConverter = new ProvisionalSlotConverter();
     private final ProvisionalBookingApiValidator provisionalBookingApiValidator = new ProvisionalBookingApiValidator();
     private final SessionsConverter sessionsConverter = new SessionsConverter();
-
     private final CourtScheduleConverter courtScheduleConverter = new CourtScheduleConverter();
+    private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter = new CreateSessionsRequestParamConverter();
 
 
     @Handles("courtscheduler.create")

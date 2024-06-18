@@ -90,10 +90,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope createCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
         when(this.enveloper.withMetadataFrom(createCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
-        when (createSessionsRequestParamConverter.convert(any())).thenReturn(CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam().build());
         when(sessionsApiValidator.getSessionsCreateValidation(any(CreateSessionRequestParam.class))).thenReturn(JsonValue.EMPTY_JSON_OBJECT);
-
-
         courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(createCourtScheduleJsonEnvelope, requestName);
@@ -110,7 +107,6 @@ class CourtSchedulerApiTest {
         JsonObject validationError = createObjectBuilder()
                 .add("errorMessage", "Invalid parameters")
                 .build();
-        when (createSessionsRequestParamConverter.convert(any())).thenReturn(CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam().build());
 
         when(sessionsApiValidator.getSessionsCreateValidation(any(CreateSessionRequestParam.class))).thenReturn(validationError);
 
