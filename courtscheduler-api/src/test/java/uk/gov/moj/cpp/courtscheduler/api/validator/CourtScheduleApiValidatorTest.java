@@ -29,6 +29,14 @@ class CourtScheduleApiValidatorTest {
         assertEquals(MANDATORY_SEARCH_CRITERIA + RequestParameterConstant.START_DATE.getLabel() + CANNOT_BE_NULL, response.getString("errorMessage"));
     }
 
+    @Test
+    void shouldReturnSuccessWhenOptionalFieldsMissing() {
+
+        JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(createRequestWithOptionalFieldsOnly());
+
+        assertEquals(EMPTY_JSON_OBJECT, response);
+    }
+
     private CourtScheduleRequestParam createRequestParam() {
         String courtCentreId = "courtCentreId";
         String courtRoomId = "courtRoomId";
@@ -48,6 +56,15 @@ class CourtScheduleApiValidatorTest {
         String pageSize = "10";
         String pageNumber = "1";
         return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, null, sessionEndDate, pageSize, pageNumber);
+    }
+
+    private CourtScheduleRequestParam createRequestWithOptionalFieldsOnly() {
+        String courtCentreId = "courtCentreId";
+        String sessionStartDate = "2024-12-01";
+        String sessionEndDate = "2024-12-03";
+        String pageSize = "10";
+        String pageNumber = "1";
+        return new CourtScheduleRequestParam(courtCentreId, null, null, sessionStartDate, sessionEndDate, pageSize, pageNumber);
     }
 
 

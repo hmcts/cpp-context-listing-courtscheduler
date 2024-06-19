@@ -29,11 +29,6 @@ public class CourtScheduleApiValidator {
             return getMessage(RequestParameterConstant.COURT_CENTRE.getLabel());
         }
 
-        if (StringUtils.isBlank(courtScheduleRequestParam.courtRoomId())) {
-            return getMessage(RequestParameterConstant.COURT_ROOM.getLabel());
-        }
-
-
         if (StringUtils.isBlank(courtScheduleRequestParam.sessionStartDate())) {
             return getMessage(RequestParameterConstant.START_DATE.getLabel());
         } else if (isInvalidDateFormat(courtScheduleRequestParam.sessionStartDate())) {
