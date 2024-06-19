@@ -37,7 +37,7 @@ rule "API - Action - courtscheduler.delete"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.delete");
-        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.deleteCourtSchedulePermission()));
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.updateCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
 end
