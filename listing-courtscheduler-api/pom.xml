@@ -4,11 +4,11 @@
 
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-        <artifactId>courtscheduler-parent</artifactId>
+        <artifactId>listing-courtscheduler-parent</artifactId>
         <version>17.0.10-CSP1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>courtscheduler-api</artifactId>
+    <artifactId>listing-courtscheduler-api</artifactId>
     <packaging>war</packaging>
 
     <properties>
@@ -28,13 +28,13 @@
 
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-            <artifactId>courtscheduler-domain</artifactId>
+            <artifactId>listing-courtscheduler-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-            <artifactId>courtscheduler-service</artifactId>
+            <artifactId>listing-courtscheduler-service</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

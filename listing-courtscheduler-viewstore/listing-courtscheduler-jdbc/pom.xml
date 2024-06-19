@@ -4,11 +4,11 @@
 
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-        <artifactId>courtscheduler-viewstore</artifactId>
+        <artifactId>listing-courtscheduler-viewstore</artifactId>
         <version>17.0.10-CSP1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>courtscheduler-jdbc</artifactId>
+    <artifactId>listing-courtscheduler-jdbc</artifactId>
 
     <dependencies>
         <dependency>
@@ -18,7 +18,7 @@
         </dependency>
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-            <artifactId>courtscheduler-viewstore-persistence</artifactId>
+            <artifactId>listing-courtscheduler-viewstore-persistence</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
