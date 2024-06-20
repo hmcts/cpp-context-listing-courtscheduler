@@ -6,7 +6,7 @@ ARG repo_loc=https://libraries-internal.mdv.cpp.nonlive/artifactory/repocentral
 ARG wildfly_home=/opt/jboss/wildfly
 ARG wildfly_user=jboss
 ARG context_group_name=courtscheduler
-ARG context_name=courtscheduler
+ARG context_name=listing-courtscheduler
 
 # service war file
 ADD ${repo_loc}/uk/gov/moj/cpp/${context_group_name}/${context_name}-api/${version}/${context_name}-api-${version}.war ${wildfly_home}/standalone/deployments/
