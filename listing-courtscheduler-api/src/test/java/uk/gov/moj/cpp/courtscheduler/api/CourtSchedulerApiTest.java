@@ -1,18 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import static java.util.UUID.randomUUID;
-import static javax.json.Json.createObjectBuilder;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
-import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
-
+import com.google.common.collect.Lists;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.messaging.Envelope;
@@ -22,38 +15,26 @@ import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
-import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.CreateSessionsRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.HearingSlotRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.SessionsConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
-import uk.gov.moj.cpp.courtscheduler.service.MiService;
-import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
-import uk.gov.moj.cpp.courtscheduler.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.service.SlotsRemoveService;
-import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
-import uk.gov.moj.cpp.courtscheduler.service.SlotsUpdateService;
+import uk.gov.moj.cpp.courtscheduler.converter.*;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.service.*;
 
+import javax.json.JsonObject;
+import javax.json.JsonValue;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-
-import com.google.common.collect.Lists;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static java.util.UUID.randomUUID;
+import static javax.json.Json.createObjectBuilder;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.*;
+import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
+import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
 
 @ExtendWith(MockitoExtension.class)
 class CourtSchedulerApiTest {
@@ -155,7 +136,7 @@ class CourtSchedulerApiTest {
 
         when(enveloper.withMetadataFrom(updateCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
         Result success = Result.SUCCESS();
-        when(courtScheduleService.update(any(CourtSchedule.class))).thenReturn(success);
+        when(courtScheduleService.update(any(UpdateCourtSchedule.class))).thenReturn(success);
         when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
                 .add(RESULTS, "ok")
                 .build());

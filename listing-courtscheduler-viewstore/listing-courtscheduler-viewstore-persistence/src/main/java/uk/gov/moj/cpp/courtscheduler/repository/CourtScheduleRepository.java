@@ -55,24 +55,16 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     ProvisionalBookingRepository provisionalBookingRepository;
 
 
-    public Result update(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
+    public Result update(uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updateCourtSchedule) {
 
-        CourtSchedule courtScheduleEntity = findBy(courtSchedule.getCourtScheduleId());
-        if (courtScheduleEntity.isSlotBased() != courtSchedule.isSlotBased()) {
-            Result.FAILED(String.format("Slot Type mismatch, Existing:%s, New:%s",
-                    courtScheduleEntity.isSlotBased(), courtSchedule.isSlotBased()));
-        }
+        CourtSchedule courtScheduleEntity = findBy(updateCourtSchedule.getCourtScheduleId());
 
-        courtScheduleEntity.setAvailableDuration(courtSchedule.getAvailableDuration());
-        courtScheduleEntity.setAvailableSlots(courtSchedule.getAvailableSlots());
-        courtScheduleEntity.setBusinessType(courtSchedule.getBusinessType());
-        courtScheduleEntity.setCourtHouseId(courtSchedule.getCourtHouseId());
-        courtScheduleEntity.setCourtHouseName(courtSchedule.getCourtHouseName());
-        courtScheduleEntity.setCourtRoomId(courtSchedule.getCourtRoomId());
-        courtScheduleEntity.setCourtRoomName(courtSchedule.getCourtRoomName());
-        courtScheduleEntity.setCourtSession(courtSchedule.getCourtSession());
-        courtScheduleEntity.setSessionDate(courtSchedule.getSessionDate());
-        courtScheduleEntity.setPanel(courtSchedule.getPanel());
+        courtScheduleEntity.setCourtHouseId(updateCourtSchedule.getCourtHouseId());
+        courtScheduleEntity.setCourtRoomId(updateCourtSchedule.getCourtRoomId());
+        courtScheduleEntity.setBusinessType(updateCourtSchedule.getBusinessType());
+        courtScheduleEntity.setCourtSession(updateCourtSchedule.getSessionType());
+        courtScheduleEntity.setSessionDate(updateCourtSchedule.getSessionDate());
+        courtScheduleEntity.setPanel(updateCourtSchedule.getPanel());
 
         this.save(courtScheduleEntity);
         return Result.SUCCESS();

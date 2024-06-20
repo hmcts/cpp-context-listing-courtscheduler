@@ -1,11 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
 import uk.gov.moj.cpp.courtscheduler.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.util.List;
@@ -29,8 +25,8 @@ public class CourtScheduleService {
         return courtScheduleRepository.findBy(courtScheduleRequestParam);
     }
 
-    public Result update(CourtSchedule courtSchedule) {
-        return courtScheduleRepository.update(courtSchedule);
+    public Result update(UpdateCourtSchedule updateCourtSchedule) {
+        return courtScheduleRepository.update(updateCourtSchedule);
     }
 
     public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam) {
