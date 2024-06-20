@@ -14,7 +14,8 @@ public class UpdateCourtSchedule {
     private String businessType;
     private LocalDate sessionDate;
     private String panel;
-
+    private Integer availableSlots;
+    private Integer availableDuration;
 
     protected UpdateCourtSchedule(final UpdateCourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -24,6 +25,8 @@ public class UpdateCourtSchedule {
         this.sessionType = builder.sessionType;
         this.panel = builder.panel;
         this.sessionDate = builder.sessionDate;
+        this.availableSlots = builder.availableSlots;
+        this.availableDuration = builder.availableDuration;
     }
 
     public UpdateCourtSchedule() {
@@ -90,6 +93,22 @@ public class UpdateCourtSchedule {
         this.sessionDate = sessionDate;
     }
 
+    public Integer getAvailableSlots() {
+        return availableSlots;
+    }
+
+    public Integer getAvailableDuration() {
+        return availableDuration;
+    }
+
+    public void setAvailableSlots(final Integer availableSlots) {
+        this.availableSlots = availableSlots;
+    }
+
+    public void setAvailableDuration(final Integer availableDuration) {
+        this.availableDuration = availableDuration;
+    }
+
 
     public static final class UpdateCourtScheduleBuilder {
         private String courtScheduleId;
@@ -99,6 +118,9 @@ public class UpdateCourtSchedule {
         private String businessType;
         private LocalDate sessionDate;
         private String panel;
+
+        private Integer availableSlots = 0;
+        private Integer availableDuration = 0;
 
         public static UpdateCourtSchedule.UpdateCourtScheduleBuilder courtSchedule() {
             return new UpdateCourtSchedule.UpdateCourtScheduleBuilder();
@@ -139,6 +161,16 @@ public class UpdateCourtSchedule {
 
         public UpdateCourtScheduleBuilder withSessionDate(final LocalDate sessionDate) {
             this.sessionDate = sessionDate;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withAvailableSlots(final Integer availableSlot) {
+            this.availableSlots = availableSlot;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withAvailableDuration(final Integer availableDuration) {
+            this.availableDuration = availableDuration;
             return this;
         }
 
