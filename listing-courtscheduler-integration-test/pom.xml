@@ -4,8 +4,8 @@
 
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-        <artifactId>courtscheduler-parent</artifactId>
-        <version>17.0.6-CSP1-SNAPSHOT</version>
+        <artifactId>listing-courtscheduler-parent</artifactId>
+        <version>17.0.11-CSP1-SNAPSHOT</version>
     </parent>
 
     <artifactId>listing-courtscheduler-integration-test</artifactId>
@@ -76,7 +76,7 @@
 
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-            <artifactId>courtscheduler-viewstore-persistence</artifactId>
+            <artifactId>listing-courtscheduler-viewstore-persistence</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>

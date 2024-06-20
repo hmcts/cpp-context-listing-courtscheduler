@@ -26,7 +26,7 @@ import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
 
 public abstract class AbstractIT {
-    protected final String BASE_URL = "http://" + getHost() + ":8080/courtscheduler-api/rest/courtscheduler";
+    protected final String BASE_URL = "http://" + getHost() + ":8080/listing-courtscheduler-api/rest/courtscheduler";
     protected static final UUID USER_ID = fromString("bb593957-08a8-4d41-a5c1-7674d38d4f43");
     protected static final EnhancedRandom RANDOM = new EnhancedRandomBuilder()
             .maxStringLength(5)
@@ -75,6 +75,15 @@ public abstract class AbstractIT {
                 .build();
 
         return REST_CLIENT.putCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
+    }
+
+    protected Response patchCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
+
+        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
+                .withHeader(HeaderConstants.USER_ID, userId)
+                .build();
+
+        return REST_CLIENT.patchCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
     }
 
     protected RequestParams getRequestParams(final String path, final String contentType, final UUID userId, final Map<String, Object> queryParams) {

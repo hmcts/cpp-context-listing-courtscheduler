@@ -1,0 +1,115 @@
+package uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl;
+
+import uk.gov.moj.cpp.accesscontrol.drools.Outcome;
+import uk.gov.moj.cpp.accesscontrol.drools.Action;
+import uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants;
+
+global uk.gov.moj.cpp.accesscontrol.common.providers.UserAndGroupProvider userAndGroupProvider;
+
+rule "API - Action - courtscheduler.create"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.create");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.update.court_schedule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.update");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.updateCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.get.court_schedule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get.court_schedule");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.delete"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.delete");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.updateCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.update.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.update.hearing.slots");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.updateHearingSlotsPermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.get.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get.hearing.slots");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getHearingSlotsPermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.remove.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.remove.hearing.slots");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.removeHearingSlotsPermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.create.provisional.booking"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.create.provisional.booking");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createProvisionalBookingPermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.get.provisional.booking"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get.provisional.booking");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getProvisionalBookingPermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.export.court_schedule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.export.court_schedule");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.exportCourtSchedulesPermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.export.court_schedule_judiciary"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.export.court_schedule_judiciary");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.exportCourtScheduleJudiciariesPermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.export.allocated_listings"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.export.allocated_listings");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.exportAllocatedListingsPermission()));
+  then
+    $outcome.setSuccess(true);
+end
