@@ -2,7 +2,7 @@
 
 # Script that runs, liquibase, deploys wars and runs integration tests
 
-CONTEXT_NAME=courtscheduler
+CONTEXT_NAME=listing-courtscheduler
 
 FRAMEWORK_LIBRARIES_VERSION=17.5.1
 FRAMEWORK_VERSION=17.4.2

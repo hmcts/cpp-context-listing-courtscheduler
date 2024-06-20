@@ -2,13 +2,14 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-        <artifactId>courtscheduler-viewstore</artifactId>
+        <artifactId>listing-courtscheduler-parent</artifactId>
         <version>17.0.10-CSP1-SNAPSHOT</version>
     </parent>
-    <artifactId>courtscheduler-viewstore-liquibase</artifactId>
-
-    <properties>
-        <sonar.skip>true</sonar.skip>
-    </properties>
-
+    <artifactId>listing-courtscheduler-viewstore</artifactId>
+    <packaging>pom</packaging>
+    <modules>
+        <module>listing-courtscheduler-jdbc</module>
+        <module>listing-courtscheduler-viewstore-liquibase</module>
+        <module>listing-courtscheduler-viewstore-persistence</module>
+    </modules>
 </project>

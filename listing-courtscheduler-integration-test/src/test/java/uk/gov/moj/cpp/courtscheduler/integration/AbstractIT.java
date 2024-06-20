@@ -26,7 +26,7 @@ import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
 
 public abstract class AbstractIT {
-    protected final String BASE_URL = "http://" + getHost() + ":8080/courtscheduler-api/rest/courtscheduler";
+    protected final String BASE_URL = "http://" + getHost() + ":8080/listing-courtscheduler-api/rest/courtscheduler";
     protected static final UUID USER_ID = fromString("bb593957-08a8-4d41-a5c1-7674d38d4f43");
     protected static final EnhancedRandom RANDOM = new EnhancedRandomBuilder()
             .maxStringLength(5)

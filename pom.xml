@@ -9,7 +9,7 @@
     </parent>
 
     <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-    <artifactId>courtscheduler-parent</artifactId>
+    <artifactId>listing-courtscheduler-parent</artifactId>
     <version>17.0.10-CSP1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
@@ -49,12 +49,12 @@
     </properties>
 
     <modules>
-        <module>courtscheduler-domain</module>
-        <module>courtscheduler-api</module>
+        <module>listing-courtscheduler-domain</module>
+        <module>listing-courtscheduler-api</module>
         <module>listing-courtscheduler-integration-test</module>
-        <module>courtscheduler-viewstore</module>
-        <module>courtscheduler-service</module>
-        <module>courtscheduler-healthchecks</module>
+        <module>listing-courtscheduler-viewstore</module>
+        <module>listing-courtscheduler-service</module>
+        <module>listing-courtscheduler-healthchecks</module>
     </modules>
 
     <build>

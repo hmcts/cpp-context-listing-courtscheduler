@@ -2,11 +2,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-        <artifactId>courtscheduler-viewstore</artifactId>
+        <artifactId>listing-courtscheduler-viewstore</artifactId>
         <version>17.0.10-CSP1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>courtscheduler-viewstore-persistence</artifactId>
+    <artifactId>listing-courtscheduler-viewstore-persistence</artifactId>
 
     <dependencies>
         <dependency>
@@ -16,7 +16,7 @@
         </dependency>
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-            <artifactId>courtscheduler-domain</artifactId>
+            <artifactId>listing-courtscheduler-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
