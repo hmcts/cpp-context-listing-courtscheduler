@@ -51,6 +51,7 @@ class CourtSchedulerIT extends AbstractIT {
         String changedSessionType = "AM";
         String changedSessionDate = RANDOM.nextObject(LocalDate.class).toString();
         String changedPanel = "YOUTH";
+        Integer availableDuration = RANDOM.nextInt();
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_HOUSE_ID", changedCourtHouseId);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_HOUSE_ID", changedCourtHouseId);

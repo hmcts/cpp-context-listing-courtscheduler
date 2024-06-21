@@ -31,16 +31,39 @@
         "YOUTH",
         "ADULT"
       ]
+    },
+    "availableSlots": {
+      "type": "integer"
+    },
+    "availableDuration": {
+      "type": "integer"
     }
   },
-  "required": [
-    "courtScheduleId",
-    "courtHouseId",
-    "courtRoomId",
-    "sessionType",
-    "businessType",
-    "sessionDate",
-    "panel"
+  "oneOf": [
+    {
+      "required": [
+        "courtScheduleId",
+        "courtHouseId",
+        "courtRoomId",
+        "sessionType",
+        "businessType",
+        "sessionDate",
+        "panel",
+        "availableSlots"
+      ]
+    },
+    {
+      "required": [
+        "courtScheduleId",
+        "courtHouseId",
+        "courtRoomId",
+        "sessionType",
+        "businessType",
+        "sessionDate",
+        "panel",
+        "availableDuration"
+      ]
+    }
   ],
   "definitions": {
     "uuid": {
