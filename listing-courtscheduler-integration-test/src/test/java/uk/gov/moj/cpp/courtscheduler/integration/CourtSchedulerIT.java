@@ -51,6 +51,7 @@ class CourtSchedulerIT extends AbstractIT {
         String changedSessionType = "AM";
         String changedSessionDate = RANDOM.nextObject(LocalDate.class).toString();
         String changedPanel = "YOUTH";
+        Integer availableDuration = RANDOM.nextInt();
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_HOUSE_ID", changedCourtHouseId);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_HOUSE_ID", changedCourtHouseId);
@@ -81,11 +82,10 @@ class CourtSchedulerIT extends AbstractIT {
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("BUSINESS_TYPE", expected.getBusinessType());
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("SESSION_START_DATE", fromDate.toString());
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("SESSION_END_DATE", toDate.toString());
-        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_SIZE", "1");
-        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_NUMBER", "10");
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_SIZE", "10");
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_NUMBER", "1");
 
-        Map<String, Object> map = mapper.readValue(getCourtScheduleRequestParams, new TypeReference<>() {
-        });
+        Map<String, Object> map = mapper.readValue(getCourtScheduleRequestParams, new TypeReference<>() {});
 
         final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get+json", USER_ID, map);
 
@@ -96,6 +96,11 @@ class CourtSchedulerIT extends AbstractIT {
 
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
 
+        assertThat(jsonObject
+                .getJsonObject("courtSchedules")
+                .getJsonArray("courtSchedules").get(0).asJsonObject()
+                .get("session").asJsonObject()
+                .getString("courtScheduleId"), is(expected.getCourtScheduleId()));
     }
 
     @Test

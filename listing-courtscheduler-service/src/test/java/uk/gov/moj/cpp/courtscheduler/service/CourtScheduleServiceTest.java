@@ -1,28 +1,23 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
+
+import javax.json.JsonObject;
+import java.util.ArrayList;
+import java.util.List;
+
 import static io.smallrye.common.constraint.Assert.assertTrue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
-
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.json.JsonObject;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class CourtScheduleServiceTest {
@@ -61,10 +56,10 @@ class CourtScheduleServiceTest {
     @Test
     public void shouldUpdateCourtSchedule() {
         // given
-        CourtSchedule courtSchedule = new CourtSchedule();
-        given(courtScheduleRepository.update(courtSchedule)).willReturn(Result.SUCCESS());
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        given(courtScheduleRepository.update(updateCourtSchedule)).willReturn(Result.SUCCESS());
 
-        Result result = courtScheduleService.update(courtSchedule);
+        Result result = courtScheduleService.update(updateCourtSchedule);
 
         assertThat(result.isSuccess(), is(true));
     }

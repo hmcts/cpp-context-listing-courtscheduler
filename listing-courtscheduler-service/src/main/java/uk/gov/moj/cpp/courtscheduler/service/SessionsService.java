@@ -28,6 +28,8 @@ public class SessionsService {
         final List<CourtSchedule> courtScheduleList = new ArrayList<>();
         final List<Session> sessionList = createSessionRequestParam.getSessionList();
         final RepeatPattern repeatPattern = createSessionRequestParam.getRepeatPattern();
+        final LocalDate startDate = repeatPattern.getStartDate();
+        final LocalDate endDate = repeatPattern.getEndDate();
 
         if(repeatPattern.getFrequency().equals(RepeatFrequency.ONCE)) {
             for (Session session : sessionList) {
@@ -43,7 +45,7 @@ public class SessionsService {
                             .withCourtRoomId(session.getCourtRoomId())
                             .withSlotBased(true)
                             .withActive(true)
-                            .withSessionDate(repeatPattern.getStartDate().with(TemporalAdjusters.next(dayOfWeek)))
+                            .withSessionDate(repeatPattern.getStartDate().with(TemporalAdjusters.nextOrSame(dayOfWeek)))
                             .withCourtSession(session.getSessionType())
                             .withPanel(session.getPanelType())
                             .build();
@@ -54,14 +56,16 @@ public class SessionsService {
 
         else if(repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
             //calculate real dates based on startdate, enddate and  frequency
-            final LocalDate startDate = repeatPattern.getStartDate();
-            final LocalDate endDate = repeatPattern.getEndDate();
             final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
-            long weekNumber = 1; //start with first week
+            long weekNumber = 0; //start with first week
 
             while (weekNumber <= weeksBetween) {
                 for (Session session : sessionList) {
                     for(DayOfWeek dayOfWeek : session.getRepeatDays()) {
+                        LocalDate sessionDateCandidate = startDate.plusWeeks(weekNumber).with(TemporalAdjusters.nextOrSame(dayOfWeek));
+                        if(sessionDateCandidate.isAfter(endDate)) {
+                            continue;
+                        }
                         final CourtSchedule courtSchedule = CourtSchedule.CourtScheduleBuilder.courtSchedule()
                                 .withCourtScheduleId(UUID.randomUUID().toString())
                                 .withMaxDuration(session.getSlotsOrDuration())
@@ -73,7 +77,7 @@ public class SessionsService {
                                 .withCourtRoomId(session.getCourtRoomId())
                                 .withSlotBased(true)
                                 .withActive(true)
-                                .withSessionDate(startDate.plusWeeks(weekNumber).with(TemporalAdjusters.next(dayOfWeek)))
+                                .withSessionDate(sessionDateCandidate)
                                 .withCourtSession(session.getSessionType())
                                 .withPanel(session.getPanelType())
                                 .build();
