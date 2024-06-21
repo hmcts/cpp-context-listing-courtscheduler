@@ -37,11 +37,9 @@ import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
 import org.apache.deltaspike.data.api.Repository;
-import org.hibernate.exception.ConstraintViolationException;
 import org.modelmapper.ModelMapper;
 
 @Repository(forEntity = CourtSchedule.class)
@@ -60,11 +58,24 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         try {
             if(saveFlow)
                 this.save(courtSchedule);
-        } catch ( ConstraintViolationException constraintViolationException) {
-            CourtSchedule persistedCourtSchedule = this.findBy(courtSchedule.getCourtScheduleId());
-            if(ObjectUtils.allNotNull(persistedCourtSchedule.getAvailableSlots(), courtSchedule.getAvailableSlots()) &&
-                    persistedCourtSchedule.getAvailableSlots().intValue() != courtSchedule.getAvailableSlots().intValue()) {
-                this.save(courtSchedule);
+        } catch ( Exception constraintViolationException) {
+            if(constraintViolationException.getCause().toString().contains("ARJUNA016053")) {
+                CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+                CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+                courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
+                CourtSchedule persistedCourtSchedule = entityManager.createQuery(criteriaQuery).getSingleResult();
+
+                if((persistedCourtSchedule.getMaxSlots() > 0
+                        && persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue())
+                        ||(persistedCourtSchedule.getMaxDuration() > 0
+                        && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue())
+                        || (courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0)) {
+                    persistedCourtSchedule.setMaxSlots(courtSchedule.getMaxSlots());
+                    persistedCourtSchedule.setMaxDuration(courtSchedule.getMaxDuration());
+                    persistedCourtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots());
+                    persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
+                    this.save(persistedCourtSchedule);
+                }
             }
         }
         return courtSchedule;
@@ -150,12 +161,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
 
         ModelMapper modelMapper = new ModelMapper();
-        courtScheduleList.forEach(courtSchedule -> {
-            courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class));
-        });
-        courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> {
-            courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class));
-        });
+        courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
+        courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
 
         courtSchedules.forEach(courtSchedule -> {
                     addJudiciaries(courtScheduleJudiciaries, courtSchedule);

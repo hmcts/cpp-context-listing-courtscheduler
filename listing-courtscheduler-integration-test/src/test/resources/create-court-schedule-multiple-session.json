@@ -1,0 +1,28 @@
+{
+  "sessions": [
+    {
+      "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
+      "courtRoomId": "550e8400-e29b-41d4-a716-446655440001",
+      "sessionType": "AM",
+      "businessType": "Type1",
+      "duration": 2,
+      "panel": "YOUTH",
+      "repeatDays": ["Monday", "Wednesday", "Friday"]
+    },
+    {
+      "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
+      "courtRoomId": "550e8400-e29b-41d4-a716-446655440001",
+      "sessionType": "AM",
+      "businessType": "Type1",
+      "duration": 2,
+      "panel": "YOUTH",
+      "repeatDays": ["Monday", "Wednesday", "Friday"]
+    }
+  ],
+  "repeatPattern": {
+    "frequency": "EVERY_WEEK",
+    "repeatFor": 4,
+    "startDate": "2025-01-01",
+    "endDate": "2025-01-29"
+  }
+}
