@@ -48,6 +48,8 @@
         <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
     </properties>
 
+
+
     <modules>
         <module>listing-courtscheduler-domain</module>
         <module>listing-courtscheduler-api</module>
