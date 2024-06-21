@@ -55,74 +55,6 @@ class SessionsServiceTest {
 
     }
 
-    private List<Session> sessionListWithSingleSession() {
-        Session session = Session.SessionBuilder.session()
-                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
-                .withSlotsOrDuration(2)
-                .withBusinessType("DVLA")
-                .withCourtCentreId(randomUUID().toString())
-                .withCourtRoomId(randomUUID().toString())
-                .withSessionType("AM")
-                .withPanelType("Adult")
-                .build();
-
-        return Collections.singletonList(session);
-    }
-
-    private Session singleSession(Set<DayOfWeek> daysOfWeek,boolean slotBased) {
-        Session session = Session.SessionBuilder.session()
-                .withRepeatDays(daysOfWeek)
-                .withSlotsOrDuration(20)
-                .withBusinessType(slotBased ? "DVLA" : "TRL")
-                .withCourtCentreId(randomUUID().toString())
-                .withCourtRoomId(randomUUID().toString())
-                .withSessionType("AM")
-                .withPanelType("Adult")
-                .build();
-
-        return session;
-    }
-
-    private List<Session> createMultipleSessions() {
-        Session session1 = Session.SessionBuilder.session()
-                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
-                .withSlotsOrDuration(2)
-                .withBusinessType("DVLA")
-                .withCourtCentreId(randomUUID().toString())
-                .withCourtRoomId(randomUUID().toString())
-                .withSessionType("AM")
-                .withPanelType("Adult")
-                .build();
-
-        Session session2 = Session.SessionBuilder.session()
-                .withRepeatDays(Collections.singleton(DayOfWeek.TUESDAY))
-                .withSlotsOrDuration(2)
-                .withBusinessType("DVLA")
-                .withCourtCentreId(randomUUID().toString())
-                .withCourtRoomId(randomUUID().toString())
-                .withSessionType("AM")
-                .withPanelType("Adult")
-                .build();
-
-        return Arrays.asList(session1, session2);
-    }
-
-    private RepeatPattern createRepeatPattern(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor) {
-        return RepeatPattern.RepeatPatternBuilder.repeatPattern()
-                .withFrequency(frequency)
-                .withStartDate(startDate)
-                .withEndDate(endDate)
-                .withRepeatFor(repeatFor)
-                .build();
-    }
-
-    private CreateSessionRequestParam createSessionRequest(List<Session> sessionList, RepeatPattern repeatPattern) {
-        return CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam()
-                .withSessionList(sessionList)
-                .withRepeatPattern(repeatPattern)
-                .build();
-
-    }
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingToday() {
@@ -245,21 +177,7 @@ class SessionsServiceTest {
         });
     }
 
-    private LocalDate findTheLastDateThatIsInOneOfTheWeekDays(final LocalDate endDate, final Set<DayOfWeek> allSessionDays) {
-        LocalDate lastDate = endDate;
-        while (!allSessionDays.contains(lastDate.getDayOfWeek())) {
-            lastDate = lastDate.minusDays(1);
-        }
-        return lastDate;
-    }
 
-    private LocalDate findTheFirstDateThatIsInOneOfTheWeekDays(final LocalDate startDate, final Set<DayOfWeek> allSessionDays) {
-        LocalDate firstDate = startDate;
-        while (!allSessionDays.contains(firstDate.getDayOfWeek())) {
-            firstDate = firstDate.plusDays(1);
-        }
-        return firstDate;
-    }
 
     @Test
     void shouldCreateMuiltipleCourtSchedulesForEveryWeekFrequency() {
@@ -294,6 +212,16 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, times(1)).save(any(CourtSchedule.class));
     }
 
+    @Test
+    void shouldCreateMultipleCourtSchedulesForOnceFrequency() {
+        final LocalDate startDate = LocalDate.of(2024,06,20);
+        final Session session =  singleSession(WEEK_DAYS_FIRST_HALF,true);
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(Collections.singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(3), RepeatFrequency.ONCE, 1));
+        sessionsService.create(createSessionRequest);
+        verify(courtScheduleRepository, times(3)).save(any(CourtSchedule.class));
+    }
+
+
 
     private Map<LocalDate,DayOfWeek> getDayOfWeekMap(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor,List<DayOfWeek> daysOfWeek) {
         final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
@@ -313,4 +241,90 @@ class SessionsServiceTest {
         }
         return dayOfWeekMap;
     }
+
+    private LocalDate findTheLastDateThatIsInOneOfTheWeekDays(final LocalDate endDate, final Set<DayOfWeek> allSessionDays) {
+        LocalDate lastDate = endDate;
+        while (!allSessionDays.contains(lastDate.getDayOfWeek())) {
+            lastDate = lastDate.minusDays(1);
+        }
+        return lastDate;
+    }
+
+    private LocalDate findTheFirstDateThatIsInOneOfTheWeekDays(final LocalDate startDate, final Set<DayOfWeek> allSessionDays) {
+        LocalDate firstDate = startDate;
+        while (!allSessionDays.contains(firstDate.getDayOfWeek())) {
+            firstDate = firstDate.plusDays(1);
+        }
+        return firstDate;
+    }
+
+    private List<Session> sessionListWithSingleSession() {
+        Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(randomUUID().toString())
+                .withCourtRoomId(randomUUID().toString())
+                .withSessionType("AM")
+                .withPanelType("Adult")
+                .build();
+
+        return Collections.singletonList(session);
+    }
+
+    private Session singleSession(Set<DayOfWeek> daysOfWeek,boolean slotBased) {
+        Session session = Session.SessionBuilder.session()
+                .withRepeatDays(daysOfWeek)
+                .withSlotsOrDuration(20)
+                .withBusinessType(slotBased ? "DVLA" : "TRL")
+                .withCourtCentreId(randomUUID().toString())
+                .withCourtRoomId(randomUUID().toString())
+                .withSessionType("AM")
+                .withPanelType("Adult")
+                .build();
+
+        return session;
+    }
+
+    private List<Session> createMultipleSessions() {
+        Session session1 = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(randomUUID().toString())
+                .withCourtRoomId(randomUUID().toString())
+                .withSessionType("AM")
+                .withPanelType("Adult")
+                .build();
+
+        Session session2 = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.TUESDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(randomUUID().toString())
+                .withCourtRoomId(randomUUID().toString())
+                .withSessionType("AM")
+                .withPanelType("Adult")
+                .build();
+
+        return Arrays.asList(session1, session2);
+    }
+
+    private RepeatPattern createRepeatPattern(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor) {
+        return RepeatPattern.RepeatPatternBuilder.repeatPattern()
+                .withFrequency(frequency)
+                .withStartDate(startDate)
+                .withEndDate(endDate)
+                .withRepeatFor(repeatFor)
+                .build();
+    }
+
+    private CreateSessionRequestParam createSessionRequest(List<Session> sessionList, RepeatPattern repeatPattern) {
+        return CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam()
+                .withSessionList(sessionList)
+                .withRepeatPattern(repeatPattern)
+                .build();
+
+    }
+
 }
