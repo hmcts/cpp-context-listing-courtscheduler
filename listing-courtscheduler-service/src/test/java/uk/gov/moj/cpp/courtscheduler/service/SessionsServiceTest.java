@@ -130,8 +130,8 @@ class SessionsServiceTest {
                 singleSession(WEEK_DAYS_FIRST_HALF,true),
                 singleSession(WEEK_DAYS_SECOND_HALF,false)
         );
-        final LocalDate startDate = LocalDate.now();
-        final LocalDate endDate = LocalDate.now().plusMonths(1);
+        final LocalDate startDate = LocalDate.of(2024,06,20);
+        final LocalDate endDate = startDate.plusMonths(1);
         final Set<DayOfWeek> allSessionDays = sessions.stream().map(Session::getRepeatDays).reduce((first, second) -> {
             Set<DayOfWeek> allDays = new HashSet<>(first);
             allDays.addAll(second);
@@ -161,8 +161,8 @@ class SessionsServiceTest {
         final List<Session> sessions = Arrays.asList(
                 singleSession(WEEK_DAYS_FIRST_HALF,true)
         );
-        final LocalDate startDate = LocalDate.now().plusWeeks(2);
-        final LocalDate endDate = LocalDate.now().plusMonths(3);
+        final LocalDate startDate = LocalDate.of(2024,06,20).plusWeeks(2);
+        final LocalDate endDate = startDate.plusMonths(3);
         final Set<DayOfWeek> allSessionDays = sessions.stream().map(Session::getRepeatDays).reduce((first, second) -> {
             Set<DayOfWeek> allDays = new HashSet<>(first);
             allDays.addAll(second);
@@ -174,7 +174,7 @@ class SessionsServiceTest {
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
         sessionsService.create(createSessionRequest);
-        verify(courtScheduleRepository, times(33)).save(courtScheduleArgumentCaptor.capture());
+        verify(courtScheduleRepository, times(39)).save(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getAllValues();
 
         assertEquals(firstDate, capturedCourtSchedules.stream().map(CourtSchedule::getSessionDate).sorted().findFirst().get());
@@ -191,8 +191,8 @@ class SessionsServiceTest {
         final List<Session> sessions = Arrays.asList(
                 singleSession(WEEK_DAYS_FIRST_HALF,true)
         );
-        final LocalDate startDate = LocalDate.now().plusWeeks(2);
-        final LocalDate endDate = LocalDate.now().plusMonths(3);
+        final LocalDate startDate = LocalDate.of(2024,06,20).plusWeeks(2);
+        final LocalDate endDate = startDate.plusMonths(3);
         final Set<DayOfWeek> allSessionDays = sessions.stream().map(Session::getRepeatDays).reduce((first, second) -> {
             Set<DayOfWeek> allDays = new HashSet<>(first);
             allDays.addAll(second);
@@ -204,7 +204,7 @@ class SessionsServiceTest {
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 2));
         sessionsService.create(createSessionRequest);
-        verify(courtScheduleRepository, times(18)).save(courtScheduleArgumentCaptor.capture());
+        verify(courtScheduleRepository, times(21)).save(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getAllValues();
 
         assertEquals(firstDate, capturedCourtSchedules.stream().map(CourtSchedule::getSessionDate).sorted().findFirst().get());
@@ -221,8 +221,8 @@ class SessionsServiceTest {
         final List<Session> sessions = Arrays.asList(
                 singleSession(WEEK_DAYS_FIRST_HALF,true)
         );
-        final LocalDate startDate = LocalDate.now().plusWeeks(2);
-        final LocalDate endDate = LocalDate.now().plusMonths(3);
+        final LocalDate startDate = LocalDate.of(2024,06,20).plusWeeks(2);
+        final LocalDate endDate = startDate.plusMonths(3);
         final int repeatWeeks = 3;
         final Set<DayOfWeek> allSessionDays = sessions.stream().map(Session::getRepeatDays).reduce((first, second) -> {
             Set<DayOfWeek> allDays = new HashSet<>(first);
@@ -234,7 +234,7 @@ class SessionsServiceTest {
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, repeatWeeks));
         sessionsService.create(createSessionRequest);
-        verify(courtScheduleRepository, times(12)).save(courtScheduleArgumentCaptor.capture());
+        verify(courtScheduleRepository, times(15)).save(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getAllValues();
 
         assertEquals(firstDate, capturedCourtSchedules.stream().map(CourtSchedule::getSessionDate).sorted().findFirst().get());
