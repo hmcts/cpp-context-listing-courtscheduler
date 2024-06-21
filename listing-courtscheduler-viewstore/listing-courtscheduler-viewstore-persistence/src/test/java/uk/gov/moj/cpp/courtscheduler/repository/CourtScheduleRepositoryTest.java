@@ -33,7 +33,6 @@ import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
 import org.hibernate.exception.ConstraintViolationException;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.runner.RunWith;
@@ -112,6 +111,16 @@ public class CourtScheduleRepositoryTest {
         CourtSchedule courtSchedule = random(CourtSchedule.class);
         courtScheduleRepository.save(courtSchedule);
         String courtCentreId = courtSchedule.getCourtHouseId();
+        final CourtScheduleRequestParam courtScheduleRequestParam = getCourtScheduleRequestParam(courtSchedule, courtCentreId);
+
+        // when
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> results = courtScheduleRepository.findBy(courtScheduleRequestParam);
+
+        // then
+        assertThat(results.isEmpty(), is(false));
+    }
+
+    private static CourtScheduleRequestParam getCourtScheduleRequestParam(final CourtSchedule courtSchedule, final String courtCentreId) {
         String courtRoomId = courtSchedule.getCourtRoomId();
         String businessType = courtSchedule.getBusinessType();
         String sessionStartDate = courtSchedule.getSessionDate().minusDays(1).toString();
@@ -119,12 +128,7 @@ public class CourtScheduleRepositoryTest {
         String pageSize = "10";
         String pageNumber = "1";
         CourtScheduleRequestParam courtScheduleRequestParam = new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
-
-        // when
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> results = courtScheduleRepository.findBy(courtScheduleRequestParam);
-
-        // then
-        assertThat(results.isEmpty(), is(false));
+        return courtScheduleRequestParam;
     }
 
     @Test
@@ -174,6 +178,45 @@ public class CourtScheduleRepositoryTest {
 
         assertThat(by, notNullValue());
 
+    }
+
+    @Test
+    public void shouldSaveOrUpdateMultipleSessions() {
+        String courtScheduleId = random(String.class);
+        String courtHouseId = random(String.class);
+        String courtRoomId = random(String.class);
+        String businessType = random(String.class);
+        String panel = random(String.class);
+        String courtSession = random(String.class);
+        LocalDate date = LocalDate.now();
+
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setCourtHouseId(courtHouseId);
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setBusinessType(businessType);
+        courtSchedule.setPanel(panel);
+        courtSchedule.setCourtSession(courtSession);
+        courtSchedule.setSessionDate(date);
+        courtSchedule.setAvailableSlots(2);
+
+        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setCourtScheduleId(courtScheduleId);
+        courtSchedule1.setCourtHouseId(courtHouseId);
+        courtSchedule1.setCourtRoomId(courtRoomId);
+        courtSchedule1.setBusinessType(businessType);
+        courtSchedule1.setPanel(panel);
+        courtSchedule1.setCourtSession(courtSession);
+        courtSchedule1.setSessionDate(date);
+        courtSchedule1.setAvailableSlots(4);
+
+        courtScheduleRepository.save(courtSchedule, true);
+        CourtSchedule by = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
+        assertEquals(2, by.getAvailableSlots().intValue());
+
+        courtScheduleRepository.save(courtSchedule1, true);
+        CourtSchedule by1 = courtScheduleRepository.findBy(courtSchedule1.getCourtScheduleId());
+        assertEquals(4, by1.getAvailableSlots().intValue());
     }
 
     @Test
