@@ -37,6 +37,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
 import org.apache.deltaspike.data.api.Repository;
@@ -55,11 +56,15 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
 
-    public CourtSchedule save(CourtSchedule courtSchedule) {
+    public CourtSchedule save(CourtSchedule courtSchedule, boolean saveFlow) {
         try {
-
+            this.save(courtSchedule);
         } catch ( ConstraintViolationException constraintViolationException) {
-
+            CourtSchedule persistedCourtSchedule = this.findBy(courtSchedule.getCourtScheduleId());
+            if(ObjectUtils.allNotNull(persistedCourtSchedule.getAvailableSlots(), courtSchedule.getAvailableSlots()) &&
+                    persistedCourtSchedule.getAvailableSlots().intValue() != courtSchedule.getAvailableSlots().intValue()) {
+                this.save(courtSchedule);
+            }
         }
         return courtSchedule;
     }

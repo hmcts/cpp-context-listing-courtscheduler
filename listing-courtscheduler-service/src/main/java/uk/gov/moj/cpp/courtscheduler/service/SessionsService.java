@@ -93,6 +93,6 @@ public class SessionsService {
         for( CourtSchedule courtSchedule : courtScheduleList) {
             courtScheduleEntities.add(CourtScheduleMapper.toEntity(courtSchedule));
         }
-        courtScheduleEntities.forEach(courtScheduleRepository::save);
+        courtScheduleEntities.forEach(courtSchedule -> courtScheduleRepository.save(courtSchedule, true));
     }
 }

@@ -32,10 +32,12 @@ import javax.inject.Inject;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 
 @RunWith(CdiTestRunner.class)
 public class CourtScheduleRepositoryTest {
@@ -49,6 +51,8 @@ public class CourtScheduleRepositoryTest {
     ProvisionalBookingRepository provisionalBookingRepository;
     @Inject
     AllocatedListingRepository allocatedListingRepository;
+    @Mock
+    ConstraintViolationException constraintViolationException;
 
     @AfterEach
     public void tearDown() {

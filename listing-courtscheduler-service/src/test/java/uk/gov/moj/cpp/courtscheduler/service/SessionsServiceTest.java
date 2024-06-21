@@ -1,18 +1,18 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
 import static java.util.UUID.randomUUID;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
+import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
+import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -28,11 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
-import javax.ejb.Local;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class SessionsServiceTest {
@@ -75,7 +78,7 @@ class SessionsServiceTest {
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
         sessionsService.create(createSessionRequest);
-        verify(courtScheduleRepository, times(27)).save(courtScheduleArgumentCaptor.capture());
+        verify(courtScheduleRepository, times(27)).save(courtScheduleArgumentCaptor.capture(), eq(true));
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getAllValues();
 
         assertEquals(firstDate, capturedCourtSchedules.stream().map(CourtSchedule::getSessionDate).sorted().findFirst().get());
@@ -106,7 +109,7 @@ class SessionsServiceTest {
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
         sessionsService.create(createSessionRequest);
-        verify(courtScheduleRepository, times(39)).save(courtScheduleArgumentCaptor.capture());
+        verify(courtScheduleRepository, times(39)).save(courtScheduleArgumentCaptor.capture(), eq(true));
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getAllValues();
 
         assertEquals(firstDate, capturedCourtSchedules.stream().map(CourtSchedule::getSessionDate).sorted().findFirst().get());
@@ -136,7 +139,7 @@ class SessionsServiceTest {
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 2));
         sessionsService.create(createSessionRequest);
-        verify(courtScheduleRepository, times(21)).save(courtScheduleArgumentCaptor.capture());
+        verify(courtScheduleRepository, times(21)).save(courtScheduleArgumentCaptor.capture(), eq(true));
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getAllValues();
 
         assertEquals(firstDate, capturedCourtSchedules.stream().map(CourtSchedule::getSessionDate).sorted().findFirst().get());
@@ -166,7 +169,7 @@ class SessionsServiceTest {
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, repeatWeeks));
         sessionsService.create(createSessionRequest);
-        verify(courtScheduleRepository, times(15)).save(courtScheduleArgumentCaptor.capture());
+        verify(courtScheduleRepository, times(15)).save(courtScheduleArgumentCaptor.capture(), eq(true));
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getAllValues();
 
         assertEquals(firstDate, capturedCourtSchedules.stream().map(CourtSchedule::getSessionDate).sorted().findFirst().get());
@@ -187,7 +190,7 @@ class SessionsServiceTest {
 
         sessionsService.create(createSessionRequest);
 
-        verify(courtScheduleRepository, times(8)).save(courtScheduleCaptor.capture());
+        verify(courtScheduleRepository, times(8)).save(courtScheduleCaptor.capture(), eq(true));
 
         List<CourtSchedule> capturedCourtSchedules = courtScheduleCaptor.getAllValues();
         Map<LocalDate,DayOfWeek> getDayOfWeekMapExpected = getDayOfWeekMap(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
@@ -209,7 +212,7 @@ class SessionsServiceTest {
     void shouldCreateSingleCourtSchedulesForOnceFrequency() {
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
         sessionsService.create(createSessionRequest);
-        verify(courtScheduleRepository, times(1)).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).save(any(CourtSchedule.class), eq(true));
     }
 
     @Test
@@ -218,7 +221,7 @@ class SessionsServiceTest {
         final Session session =  singleSession(WEEK_DAYS_FIRST_HALF,true);
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(Collections.singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(3), RepeatFrequency.ONCE, 1));
         sessionsService.create(createSessionRequest);
-        verify(courtScheduleRepository, times(3)).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(3)).save(any(CourtSchedule.class), eq(true));
     }
 
 
@@ -326,5 +329,4 @@ class SessionsServiceTest {
                 .build();
 
     }
-
 }
