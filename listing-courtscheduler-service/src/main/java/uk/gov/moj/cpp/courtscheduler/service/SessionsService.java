@@ -95,8 +95,4 @@ public class SessionsService {
         }
         courtScheduleEntities.forEach(courtScheduleRepository::save);
     }
-
-    public void update() {
-        // Implement the update method logic here
-    }
 }

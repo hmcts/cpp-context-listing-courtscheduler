@@ -40,6 +40,7 @@ import javax.persistence.criteria.CriteriaQuery;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
 import org.apache.deltaspike.data.api.Repository;
+import org.hibernate.exception.ConstraintViolationException;
 import org.modelmapper.ModelMapper;
 
 @Repository(forEntity = CourtSchedule.class)
@@ -54,6 +55,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
 
+    public CourtSchedule save(CourtSchedule courtSchedule) {
+        try {
+
+        } catch ( ConstraintViolationException constraintViolationException) {
+
+        }
+        return courtSchedule;
+    }
 
     public Result update(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
 
