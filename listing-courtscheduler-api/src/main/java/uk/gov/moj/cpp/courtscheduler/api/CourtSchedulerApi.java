@@ -16,27 +16,8 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
-import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.CourtScheduleConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.CourtScheduleRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.CreateSessionsRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.HearingSlotRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.ProvisionalSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.SessionsConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.converter.*;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
@@ -92,6 +73,7 @@ public class CourtSchedulerApi {
     private final ProvisionalBookingApiValidator provisionalBookingApiValidator = new ProvisionalBookingApiValidator();
     private final SessionsConverter sessionsConverter = new SessionsConverter();
     private final CourtScheduleConverter courtScheduleConverter = new CourtScheduleConverter();
+    private final UpdateCourtScheduleConverter updateCourtScheduleConverter = new UpdateCourtScheduleConverter();
     private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter = new CreateSessionsRequestParamConverter();
 
 
@@ -141,9 +123,9 @@ public class CourtSchedulerApi {
 
     @Handles("courtscheduler.update")
     public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
-        CourtSchedule courtSchedule = courtScheduleConverter.convert(envelope.payloadAsJsonObject());
+        UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(envelope.payloadAsJsonObject());
 
-        Result result = courtScheduleService.update(courtSchedule);
+        Result result = courtScheduleService.update(updateCourtSchedule);
         JsonObject responseObject = createObjectBuilder()
                 .add(RESULTS, objectToJsonObjectConverter.convert(result))
                 .build();

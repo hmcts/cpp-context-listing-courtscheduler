@@ -1,18 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static java.lang.String.format;
-import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
-
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.deltaspike.data.api.AbstractEntityRepository;
+import org.apache.deltaspike.data.api.Repository;
+import org.modelmapper.ModelMapper;
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -21,22 +14,18 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
 
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
-
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import java.sql.Timestamp;
+import java.util.*;
 
+import static java.lang.String.format;
+import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
@@ -69,24 +58,22 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return courtSchedule;
     }
 
-    public Result update(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
+    public Result update(uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updateCourtSchedule) {
 
-        CourtSchedule courtScheduleEntity = findBy(courtSchedule.getCourtScheduleId());
-        if (courtScheduleEntity.isSlotBased() != courtSchedule.isSlotBased()) {
-            Result.FAILED(String.format("Slot Type mismatch, Existing:%s, New:%s",
-                    courtScheduleEntity.isSlotBased(), courtSchedule.isSlotBased()));
+        CourtSchedule courtScheduleEntity = findBy(updateCourtSchedule.getCourtScheduleId());
+
+        courtScheduleEntity.setCourtHouseId(updateCourtSchedule.getCourtHouseId());
+        courtScheduleEntity.setCourtRoomId(updateCourtSchedule.getCourtRoomId());
+        courtScheduleEntity.setBusinessType(updateCourtSchedule.getBusinessType());
+        courtScheduleEntity.setCourtSession(updateCourtSchedule.getSessionType());
+        courtScheduleEntity.setSessionDate(updateCourtSchedule.getSessionDate());
+        courtScheduleEntity.setPanel(updateCourtSchedule.getPanel());
+        if (updateCourtSchedule.getAvailableDuration() != null) {
+            courtScheduleEntity.setAvailableDuration(updateCourtSchedule.getAvailableDuration());
         }
-
-        courtScheduleEntity.setAvailableDuration(courtSchedule.getAvailableDuration());
-        courtScheduleEntity.setAvailableSlots(courtSchedule.getAvailableSlots());
-        courtScheduleEntity.setBusinessType(courtSchedule.getBusinessType());
-        courtScheduleEntity.setCourtHouseId(courtSchedule.getCourtHouseId());
-        courtScheduleEntity.setCourtHouseName(courtSchedule.getCourtHouseName());
-        courtScheduleEntity.setCourtRoomId(courtSchedule.getCourtRoomId());
-        courtScheduleEntity.setCourtRoomName(courtSchedule.getCourtRoomName());
-        courtScheduleEntity.setCourtSession(courtSchedule.getCourtSession());
-        courtScheduleEntity.setSessionDate(courtSchedule.getSessionDate());
-        courtScheduleEntity.setPanel(courtSchedule.getPanel());
+        if (updateCourtSchedule.getAvailableSlots() != null) {
+            courtScheduleEntity.setAvailableSlots(updateCourtSchedule.getAvailableSlots());
+        }
 
         this.save(courtScheduleEntity);
         return Result.SUCCESS();
@@ -180,7 +167,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         courtScheduleIdList.forEach(courtScheduleId -> {
             List<AllocatedListing> allocatedListings = allocatedListingRepository.findByCourtScheduleId(courtScheduleId);
             CourtSchedule courtSchedule = findBy(courtScheduleId);
-            if(allocatedListings != null && !allocatedListings.isEmpty()) {
+            if (allocatedListings != null && !allocatedListings.isEmpty()) {
                 uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule domainCourtSchedule =
                         modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class);
                 errorDeleteCourtSchedules.add(domainCourtSchedule);

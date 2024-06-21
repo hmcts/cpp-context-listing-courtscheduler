@@ -79,16 +79,12 @@ public class CourtScheduleRepositoryTest {
         CourtSchedule courtScheduleEntity = random(CourtSchedule.class);
         courtScheduleRepository.save(courtScheduleEntity);
 
-        uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule updatedCourtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
+        uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updatedCourtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder()
                 .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
-                .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
-                .withAvailableSlots(courtScheduleEntity.getAvailableSlots())
-                .withBusinessType(businessType)
                 .withCourtHouseId(courtScheduleEntity.getCourtHouseId())
-                .withCourtHouseName(courtScheduleEntity.getCourtHouseName())
+                .withBusinessType(businessType)
+                .withSessionType(courtScheduleEntity.getCourtSession())
                 .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
-                .withCourtRoomName(courtScheduleEntity.getCourtRoomName())
-                .withCourtSession(courtScheduleEntity.getCourtSession())
                 .withSessionDate(sessionDate)
                 .withPanel(panel)
                 .build();
