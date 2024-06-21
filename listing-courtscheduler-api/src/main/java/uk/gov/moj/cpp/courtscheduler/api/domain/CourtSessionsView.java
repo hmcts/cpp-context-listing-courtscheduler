@@ -3,9 +3,19 @@ package uk.gov.moj.cpp.courtscheduler.api.domain;
 public class CourtSessionsView {
     private String courtRoomId;
     private String courtRoomName;
-
     private CourtScheduleView session;
 
+    public String getCourtRoomId() {
+        return courtRoomId;
+    }
+
+    public String getCourtRoomName() {
+        return courtRoomName;
+    }
+
+    public CourtScheduleView getSession() {
+        return session;
+    }
 
     public static final class CourtSessionsViewBuilder {
         private String courtRoomId;
