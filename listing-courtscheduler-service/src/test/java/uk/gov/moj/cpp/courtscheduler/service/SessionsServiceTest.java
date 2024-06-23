@@ -184,7 +184,9 @@ class SessionsServiceTest {
 
     @Test
     void shouldCreateMuiltipleCourtSchedulesForEveryWeekFrequency() {
-        final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.EVERY_WEEK, 1));
+        final LocalDate startDate = LocalDate.of(2024,06,20);
+        final LocalDate endDate = startDate.plusMonths(1);
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
 
         ArgumentCaptor<CourtSchedule> courtScheduleCaptor = ArgumentCaptor.forClass(CourtSchedule.class);
 
