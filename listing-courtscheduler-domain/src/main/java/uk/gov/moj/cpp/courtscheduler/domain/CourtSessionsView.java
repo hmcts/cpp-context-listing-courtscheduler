@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.domain;
+package uk.gov.moj.cpp.courtscheduler.domain;
 
 public class CourtSessionsView {
     private String courtRoomId;
