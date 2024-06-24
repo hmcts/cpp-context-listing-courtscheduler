@@ -1,18 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
+import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.UUID.randomUUID;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
+import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
+import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -28,11 +29,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
-import javax.ejb.Local;
+import org.apache.deltaspike.data.api.QueryInvocationException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class SessionsServiceTest {
@@ -41,20 +46,16 @@ class SessionsServiceTest {
 
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
-
     @InjectMocks
     private SessionsService sessionsService;
-
     @Captor
     private ArgumentCaptor<CourtSchedule> courtScheduleArgumentCaptor;
-
 
     @BeforeEach
     void setUp() {
 
 
     }
-
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingToday() {
@@ -87,6 +88,48 @@ class SessionsServiceTest {
         });
     }
 
+    @Test
+    public void shouldUpdateMultipleSessions_OnMaxSlotsValue_GreaterThanZero() {
+        String courtHouseId = random(String.class);
+        String courtRoomId = random(String.class);
+        String businessType = "DVLA";
+        String panel = random(String.class);
+        String courtSession = random(String.class);
+
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions_WithSameUniqueConstraint(businessType,
+                        courtHouseId, courtRoomId, courtSession, panel, 2),
+                createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+
+        ArgumentCaptor<CourtSchedule> courtScheduleCaptor = ArgumentCaptor.forClass(CourtSchedule.class);
+
+        sessionsService.create(createSessionRequest);
+
+        verify(courtScheduleRepository, times(1)).save(courtScheduleCaptor.capture());
+
+        final CreateSessionRequestParam createSessionRequest1 = createSessionRequest(createMultipleSessions_WithSameUniqueConstraint(businessType,
+                        courtHouseId, courtRoomId, courtSession, panel, 4),
+                createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+
+        ArgumentCaptor<CourtSchedule> courtScheduleCaptor1 = ArgumentCaptor.forClass(CourtSchedule.class);
+        when(courtScheduleRepository.save(any())).thenThrow(QueryInvocationException.class);
+        sessionsService.create(createSessionRequest1);
+        verify(courtScheduleRepository, times(1)).update(courtScheduleCaptor1.capture());
+
+        List<CourtSchedule> capturedCourtSchedules = courtScheduleCaptor1.getAllValues();
+        Map<LocalDate,DayOfWeek> getDayOfWeekMapExpected =
+                getDayOfWeekMap(LocalDate.now(), LocalDate.now().plusMonths(1),
+                        RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
+
+        assertEquals(1, capturedCourtSchedules.size());
+        assertEquals("DVLA", capturedCourtSchedules.get(0).getBusinessType());
+        assertEquals(4, capturedCourtSchedules.get(0).getMaxSlots());
+
+        //assert that capturedCourtSchedules are created on the correct dates and days of week considering getDayOfWeekMapExpected
+        capturedCourtSchedules.forEach(courtSchedule -> {
+            assertEquals(true,courtSchedule.isActive());
+            assertEquals("DVLA",courtSchedule.getBusinessType());
+        });
+    }
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingWithLaterDate() {
@@ -177,11 +220,11 @@ class SessionsServiceTest {
         });
     }
 
-
-
     @Test
-    void shouldCreateMuiltipleCourtSchedulesForEveryWeekFrequency() {
-        final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.EVERY_WEEK, 1));
+    void shouldCreateMultipleCourtSchedulesForEveryWeekFrequency() {
+        final LocalDate startDate = LocalDate.of(2024,06,20);
+        final LocalDate endDate = startDate.plusMonths(1);
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
 
         ArgumentCaptor<CourtSchedule> courtScheduleCaptor = ArgumentCaptor.forClass(CourtSchedule.class);
 
@@ -190,7 +233,7 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, times(8)).save(courtScheduleCaptor.capture());
 
         List<CourtSchedule> capturedCourtSchedules = courtScheduleCaptor.getAllValues();
-        Map<LocalDate,DayOfWeek> getDayOfWeekMapExpected = getDayOfWeekMap(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
+        Map<LocalDate,DayOfWeek> getDayOfWeekMapExpected = getDayOfWeekMap(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
 
         assertEquals(8, capturedCourtSchedules.size());
 
@@ -220,8 +263,6 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(3)).save(any(CourtSchedule.class));
     }
-
-
 
     private Map<LocalDate,DayOfWeek> getDayOfWeekMap(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor,List<DayOfWeek> daysOfWeek) {
         final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
@@ -310,6 +351,21 @@ class SessionsServiceTest {
         return Arrays.asList(session1, session2);
     }
 
+    private List<Session> createMultipleSessions_WithSameUniqueConstraint(String businessType, String courtHouseId,
+                                                                          String courtRoomId, String courtSession, String panel, int slotDuration) {
+        Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(slotDuration)
+                .withBusinessType(businessType)
+                .withCourtCentreId(courtHouseId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType(courtSession)
+                .withPanelType(panel)
+                .build();
+
+        return List.of(session);
+    }
+
     private RepeatPattern createRepeatPattern(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor) {
         return RepeatPattern.RepeatPatternBuilder.repeatPattern()
                 .withFrequency(frequency)
@@ -326,5 +382,4 @@ class SessionsServiceTest {
                 .build();
 
     }
-
 }

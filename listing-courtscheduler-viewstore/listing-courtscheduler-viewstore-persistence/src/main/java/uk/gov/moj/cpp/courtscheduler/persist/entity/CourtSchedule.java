@@ -248,16 +248,40 @@ public class CourtSchedule {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        CourtSchedule that = (CourtSchedule) o;
-        return Objects.equals(courtScheduleId, that.courtScheduleId);
+        final CourtSchedule that = (CourtSchedule) o;
+        return isActive() == that.isActive()
+                && isSlotBased() == that.isSlotBased()
+                && Objects.equals(getCourtScheduleId(), that.getCourtScheduleId())
+                && Objects.equals(getListingProfileId(), that.getListingProfileId())
+                && Objects.equals(getOuCode(), that.getOuCode())
+                && Objects.equals(getCourtRoomId(), that.getCourtRoomId())
+                && Objects.equals(getCourtRoomNumber(), that.getCourtRoomNumber())
+                && Objects.equals(getCourtHouseId(), that.getCourtHouseId())
+                && Objects.equals(getCourtHouseName(), that.getCourtHouseName())
+                && Objects.equals(getCourtRoomName(), that.getCourtRoomName())
+                && Objects.equals(getOperationalUnit(), that.getOperationalUnit())
+                && Objects.equals(getBusinessType(), that.getBusinessType())
+                && Objects.equals(getPanel(), that.getPanel())
+                && Objects.equals(getCourtSession(), that.getCourtSession())
+                && Objects.equals(getSessionDate(), that.getSessionDate())
+                && Objects.equals(getMaxSlots(), that.getMaxSlots())
+                && Objects.equals(getMaxDuration(), that.getMaxDuration())
+                && Objects.equals(getAvailableSlots(), that.getAvailableSlots())
+                && Objects.equals(getAvailableDuration(), that.getAvailableDuration())
+                && Objects.equals(getCreatedOn(), that.getCreatedOn())
+                && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(courtScheduleId);
+        return Objects.hash(getCourtScheduleId(), getListingProfileId(), getOuCode(),
+                getCourtRoomId(), getCourtRoomNumber(), getCourtHouseId(), getCourtHouseName(),
+                getCourtRoomName(), getOperationalUnit(), getBusinessType(), getPanel(), getCourtSession(),
+                isActive(), isSlotBased(), getSessionDate(), getMaxSlots(), getMaxDuration(), getAvailableSlots(),
+                getAvailableDuration(), getCreatedOn(), getUpdatedOn());
     }
 
     @Override
@@ -275,6 +299,7 @@ public class CourtSchedule {
                 ", businessType='" + businessType + '\'' +
                 ", panel='" + panel + '\'' +
                 ", courtSession='" + courtSession + '\'' +
+                ", active=" + active +
                 ", slotBased=" + slotBased +
                 ", sessionDate=" + sessionDate +
                 ", maxSlots=" + maxSlots +
@@ -283,7 +308,6 @@ public class CourtSchedule {
                 ", availableDuration=" + availableDuration +
                 ", createdOn=" + createdOn +
                 ", updatedOn=" + updatedOn +
-                ", active=" + active +
                 '}';
     }
 }

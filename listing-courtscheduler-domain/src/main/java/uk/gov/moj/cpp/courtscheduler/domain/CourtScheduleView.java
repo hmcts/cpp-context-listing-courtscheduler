@@ -1,7 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.domain;
-
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
+package uk.gov.moj.cpp.courtscheduler.domain;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

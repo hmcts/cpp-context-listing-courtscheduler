@@ -121,4 +121,33 @@ public class CourtScheduleCriteria {
                 root.get(AllocatedListing_.COURT_SCHEDULE_ID),
                 root.get(AllocatedListing_.HEARING_START_TIME));
     }
+
+    public void createMultipleSessionsCourtScheduleCriteria(CourtSchedule courtSchedule,
+                                                            CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtSchedule> criteriaQuery) {
+        Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
+        if (StringUtils.isNotBlank(courtSchedule.getCourtHouseId())) {
+            Predicate courtHouseIdPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_HOUSE_ID), courtSchedule.getCourtHouseId());
+            criteriaQuery.where(criteriaBuilder.and(courtHouseIdPredicate));
+        }
+        if (StringUtils.isNotBlank(courtSchedule.getCourtRoomId())) {
+            Predicate courtRoomIdPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_ID), courtSchedule.getCourtRoomId());
+            criteriaQuery.where(criteriaBuilder.and(courtRoomIdPredicate));
+        }
+        if (StringUtils.isNotBlank(courtSchedule.getCourtRoomId())) {
+            Predicate businessTypePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.BUSINESS_TYPE), courtSchedule.getBusinessType());
+            criteriaQuery.where(criteriaBuilder.and(businessTypePredicate));
+        }
+        if (StringUtils.isNotBlank(courtSchedule.getCourtRoomId())) {
+            Predicate panelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), courtSchedule.getPanel());
+            criteriaQuery.where(criteriaBuilder.and(panelPredicate));
+        }
+        if (StringUtils.isNotBlank(courtSchedule.getCourtRoomId())) {
+            Predicate courtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), courtSchedule.getCourtSession());
+            criteriaQuery.where(criteriaBuilder.and(courtSessionPredicate));
+        }
+        if (StringUtils.isNotBlank(courtSchedule.getCourtRoomId())) {
+            Predicate sessionDatePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.SESSION_DATE), courtSchedule.getSessionDate());
+            criteriaQuery.where(criteriaBuilder.and(sessionDatePredicate));
+        }
+    }
 }
