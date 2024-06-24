@@ -31,7 +31,6 @@ import java.util.Set;
 
 import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -222,7 +221,6 @@ class SessionsServiceTest {
     }
 
     @Test
-    @Disabled
     void shouldCreateMultipleCourtSchedulesForEveryWeekFrequency() {
         final LocalDate startDate = LocalDate.of(2024,06,20);
         final LocalDate endDate = startDate.plusMonths(1);
@@ -232,12 +230,12 @@ class SessionsServiceTest {
 
         sessionsService.create(createSessionRequest);
 
-        verify(courtScheduleRepository, times(10)).save(courtScheduleCaptor.capture());
+        verify(courtScheduleRepository, times(8)).save(courtScheduleCaptor.capture());
 
         List<CourtSchedule> capturedCourtSchedules = courtScheduleCaptor.getAllValues();
-        Map<LocalDate,DayOfWeek> getDayOfWeekMapExpected = getDayOfWeekMap(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
+        Map<LocalDate,DayOfWeek> getDayOfWeekMapExpected = getDayOfWeekMap(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
 
-        assertEquals(10, capturedCourtSchedules.size());
+        assertEquals(8, capturedCourtSchedules.size());
 
         assertEquals("DVLA", capturedCourtSchedules.get(0).getBusinessType());
 
