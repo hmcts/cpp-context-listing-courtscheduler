@@ -21,6 +21,8 @@ import java.util.UUID;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.apache.deltaspike.data.api.QueryInvocationException;
+
 @ApplicationScoped
 public class SessionsService {
 
@@ -92,7 +94,13 @@ public class SessionsService {
         List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleList.stream()
                 .map(CourtScheduleMapper::toEntity)
                 .toList();
-        courtScheduleEntities.forEach(courtScheduleRepository::save);
+        courtScheduleEntities.forEach(courtSchedule -> {
+            try {
+                courtScheduleRepository.save(courtSchedule);
+            } catch (QueryInvocationException queryInvocationException) {
+                courtScheduleRepository.update(courtSchedule);
+            }
+        });
     }
 
     private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsorDuration) {

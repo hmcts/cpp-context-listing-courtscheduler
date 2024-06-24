@@ -54,6 +54,25 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
 
+    public CourtSchedule update(CourtSchedule courtSchedule) {
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+        courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
+        CourtSchedule persistedCourtSchedule = entityManager.createQuery(criteriaQuery).getSingleResult();
+
+        if((persistedCourtSchedule.getMaxSlots() > 0
+                && persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue())
+                ||(persistedCourtSchedule.getMaxDuration() > 0
+                && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue())
+                || (courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0)) {
+            persistedCourtSchedule.setMaxSlots(courtSchedule.getMaxSlots());
+            persistedCourtSchedule.setMaxDuration(courtSchedule.getMaxDuration());
+            persistedCourtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots());
+            persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
+            this.save(persistedCourtSchedule);
+        }
+        return courtSchedule;
+    }
 
     public Result update(uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updateCourtSchedule) {
 
@@ -135,12 +154,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
 
         ModelMapper modelMapper = new ModelMapper();
-        courtScheduleList.forEach(courtSchedule -> {
-            courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class));
-        });
-        courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> {
-            courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class));
-        });
+        courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
+        courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
 
         courtSchedules.forEach(courtSchedule -> {
                     addJudiciaries(courtScheduleJudiciaries, courtSchedule);

@@ -40,6 +40,15 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldCreateOrUpdateCourtSchedule() {
+        final String createCourtSchedulePayload = getPayload("create-court-schedule-multiple-session.json");
+
+        final Response response = postCommand(RELATIVE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    @Test
     void shouldUpdateCourtSchedule() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);

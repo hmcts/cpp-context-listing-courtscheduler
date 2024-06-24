@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import uk.gov.moj.cpp.courtscheduler.api.domain.CourtScheduleView;
-import uk.gov.moj.cpp.courtscheduler.api.domain.CourtSessionsView;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 
 public class CourtScheduleToViewConverter {
