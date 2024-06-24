@@ -28,7 +28,17 @@
         </dependency>
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+            <artifactId>listing-courtscheduler-referencedata-service</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
             <artifactId>listing-courtscheduler-healthchecks</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+            <artifactId>listing-courtscheduler-cache</artifactId>
             <version>${project.version}</version>
         </dependency>
 

@@ -1,10 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
+import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
+import uk.gov.moj.cpp.courtscheduler.referencedata.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
@@ -24,6 +27,11 @@ public class SessionsService {
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
 
+
+    @Inject
+    private ReferenceDataCache referenceDataCache;
+
+
     public void create(CreateSessionRequestParam createSessionRequestParam) {
         final List<CourtSchedule> courtScheduleList = new ArrayList<>();
         final List<Session> sessionList = createSessionRequestParam.getSessionList();
@@ -31,69 +39,85 @@ public class SessionsService {
         final LocalDate startDate = repeatPattern.getStartDate();
         final LocalDate endDate = repeatPattern.getEndDate();
 
-        if(repeatPattern.getFrequency().equals(RepeatFrequency.ONCE)) {
+        if (repeatPattern.getFrequency().equals(RepeatFrequency.ONCE)) {
+            processOnceFrequency(sessionList, startDate, courtScheduleList);
+        } else if (repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
+            processWeeklyFrequency(sessionList, startDate, endDate, repeatPattern.getRepeatFor(), courtScheduleList);
+        }
+
+        saveCourtSchedules(courtScheduleList);
+    }
+
+    private void processOnceFrequency(List<Session> sessionList, LocalDate startDate, List<CourtSchedule> courtScheduleList) {
+        for (Session session : sessionList) {
+            for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
+                LocalDate sessionDateCandidate = startDate.with(TemporalAdjusters.nextOrSame(dayOfWeek));
+                CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate);
+                courtScheduleList.add(courtSchedule);
+            }
+        }
+    }
+
+    private void processWeeklyFrequency(List<Session> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList) {
+        final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
+        for (long weekNumber = 0; weekNumber <= weeksBetween; weekNumber += repeatFor) {
             for (Session session : sessionList) {
-                for(DayOfWeek dayOfWeek : session.getRepeatDays()) {
-                    final CourtSchedule courtSchedule = CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                            .withCourtScheduleId(UUID.randomUUID().toString())
-                            .withMaxDuration(session.getSlotsOrDuration())
-                            .withAvailableDuration(session.getSlotsOrDuration())
-                            .withMaxSlots(session.getSlotsOrDuration())
-                            .withAvailableSlots(session.getSlotsOrDuration())
-                            .withBusinessType(session.getBusinessType())
-                            .withCourtHouseId(session.getCourtCentreId())
-                            .withCourtRoomId(session.getCourtRoomId())
-                            .withSlotBased(true)
-                            .withActive(true)
-                            .withSessionDate(repeatPattern.getStartDate().with(TemporalAdjusters.nextOrSame(dayOfWeek)))
-                            .withCourtSession(session.getSessionType())
-                            .withPanel(session.getPanelType())
-                            .build();
+                for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
+                    LocalDate sessionDateCandidate = startDate.plusWeeks(weekNumber).with(TemporalAdjusters.nextOrSame(dayOfWeek));
+                    if (sessionDateCandidate.isAfter(endDate)) {
+                        continue;
+                    }
+                    CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate);
                     courtScheduleList.add(courtSchedule);
                 }
             }
         }
+    }
 
-        else if(repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
-            //calculate real dates based on startdate, enddate and  frequency
-            final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
-            long weekNumber = 0; //start with first week
+    private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate) {
+        final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder();
+        courtScheduleBuilder.withCourtScheduleId(UUID.randomUUID().toString())
+                .withBusinessType(session.getBusinessType())
+                .withCourtHouseId(session.getCourtCentreId())
+                .withCourtRoomId(session.getCourtRoomId())
+                .withActive(true)
+                .withSessionDate(sessionDateCandidate)
+                .withCourtSession(session.getSessionType())
+                .withPanel(session.getPanelType());
+        enrichSession(courtScheduleBuilder, session.getSlotsOrDuration());
+        return courtScheduleBuilder.build();
+    }
 
-            while (weekNumber <= weeksBetween) {
-                for (Session session : sessionList) {
-                    for(DayOfWeek dayOfWeek : session.getRepeatDays()) {
-                        LocalDate sessionDateCandidate = startDate.plusWeeks(weekNumber).with(TemporalAdjusters.nextOrSame(dayOfWeek));
-                        if(sessionDateCandidate.isAfter(endDate)) {
-                            continue;
-                        }
-                        final CourtSchedule courtSchedule = CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                                .withCourtScheduleId(UUID.randomUUID().toString())
-                                .withMaxDuration(session.getSlotsOrDuration())
-                                .withAvailableDuration(session.getSlotsOrDuration())
-                                .withMaxSlots(session.getSlotsOrDuration())
-                                .withAvailableSlots(session.getSlotsOrDuration())
-                                .withBusinessType(session.getBusinessType())
-                                .withCourtHouseId(session.getCourtCentreId())
-                                .withCourtRoomId(session.getCourtRoomId())
-                                .withSlotBased(true)
-                                .withActive(true)
-                                .withSessionDate(sessionDateCandidate)
-                                .withCourtSession(session.getSessionType())
-                                .withPanel(session.getPanelType())
-                                .build();
-                        courtScheduleList.add(courtSchedule);
-                    }
-                }
-                weekNumber += repeatPattern.getRepeatFor();
-            }
-
-        }
-
-        List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = new ArrayList<>();
-        for( CourtSchedule courtSchedule : courtScheduleList) {
-            courtScheduleEntities.add(CourtScheduleMapper.toEntity(courtSchedule));
-        }
+    private void saveCourtSchedules(List<CourtSchedule> courtScheduleList) {
+        List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleList.stream()
+                .map(CourtScheduleMapper::toEntity)
+                .toList();
         courtScheduleEntities.forEach(courtScheduleRepository::save);
+    }
+
+    private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsorDuration) {
+        final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType()).orElseThrow(() -> new RuntimeException("Business Type not found" + builder.getBusinessType()));
+        final CourtRoom courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException("Court Room not found" + builder.getCourtRoomId()));
+        if (businessType.isSlot()) {
+            builder.withSlotBased(true);
+            builder.withMaxSlots(maxSlotsorDuration);
+            builder.withAvailableSlots(maxSlotsorDuration);
+            builder.withMaxDuration(0);
+            builder.withAvailableDuration(0);
+        } else {
+            builder.withSlotBased(false);
+            builder.withMaxDuration(maxSlotsorDuration);
+            builder.withAvailableDuration(maxSlotsorDuration);
+            builder.withMaxSlots(0);
+            builder.withAvailableSlots(0);
+        }
+
+        if (courtRoom != null) {
+            builder.withOuCode(courtRoom.getOucode());
+            builder.withCourtRoomNumber(courtRoom.getCppCourtRoomId());
+            builder.withCourtHouseName(courtRoom.getOucodeL3Name());
+            builder.withOperationalUnit(courtRoom.getOucodeL2Code());
+        }
     }
 
     public void update() {
