@@ -54,29 +54,22 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
 
-    public CourtSchedule save(CourtSchedule courtSchedule, boolean saveFlow) {
-        try {
-            if(saveFlow)
-                this.save(courtSchedule);
-        } catch ( Exception constraintViolationException) {
-            if(constraintViolationException.getCause().toString().contains("ARJUNA016053")) {
-                CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-                CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
-                courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
-                CourtSchedule persistedCourtSchedule = entityManager.createQuery(criteriaQuery).getSingleResult();
+    public CourtSchedule update(CourtSchedule courtSchedule) {
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+        courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
+        CourtSchedule persistedCourtSchedule = entityManager.createQuery(criteriaQuery).getSingleResult();
 
-                if((persistedCourtSchedule.getMaxSlots() > 0
-                        && persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue())
-                        ||(persistedCourtSchedule.getMaxDuration() > 0
-                        && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue())
-                        || (courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0)) {
-                    persistedCourtSchedule.setMaxSlots(courtSchedule.getMaxSlots());
-                    persistedCourtSchedule.setMaxDuration(courtSchedule.getMaxDuration());
-                    persistedCourtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots());
-                    persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
-                    this.save(persistedCourtSchedule);
-                }
-            }
+        if((persistedCourtSchedule.getMaxSlots() > 0
+                && persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue())
+                ||(persistedCourtSchedule.getMaxDuration() > 0
+                && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue())
+                || (courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0)) {
+            persistedCourtSchedule.setMaxSlots(courtSchedule.getMaxSlots());
+            persistedCourtSchedule.setMaxDuration(courtSchedule.getMaxDuration());
+            persistedCourtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots());
+            persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
+            this.save(persistedCourtSchedule);
         }
         return courtSchedule;
     }

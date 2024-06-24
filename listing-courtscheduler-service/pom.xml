@@ -31,6 +31,18 @@
             <artifactId>listing-courtscheduler-healthchecks</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.benas</groupId>
+            <artifactId>random-beans</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>objenesis</artifactId>
+                    <groupId>org.objenesis</groupId>
+                </exclusion>
+            </exclusions>
+            <version>${gihub.benas.random-beans.version}</version>
+        </dependency>
 
         <!-- Test dependencies -->
         <dependency>

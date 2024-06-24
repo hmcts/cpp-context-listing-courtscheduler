@@ -18,6 +18,8 @@ import java.util.UUID;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.apache.deltaspike.data.api.QueryInvocationException;
+
 @ApplicationScoped
 public class SessionsService {
 
@@ -53,7 +55,6 @@ public class SessionsService {
                 }
             }
         }
-
         else if(repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
             //calculate real dates based on startdate, enddate and  frequency
             final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
@@ -93,6 +94,12 @@ public class SessionsService {
         for( CourtSchedule courtSchedule : courtScheduleList) {
             courtScheduleEntities.add(CourtScheduleMapper.toEntity(courtSchedule));
         }
-        courtScheduleEntities.forEach(courtSchedule -> courtScheduleRepository.save(courtSchedule, true));
+        courtScheduleEntities.forEach(courtSchedule -> {
+            try {
+                courtScheduleRepository.save(courtSchedule);
+            } catch (QueryInvocationException queryInvocationException) {
+                courtScheduleRepository.update(courtSchedule);
+            }
+        });
     }
 }
