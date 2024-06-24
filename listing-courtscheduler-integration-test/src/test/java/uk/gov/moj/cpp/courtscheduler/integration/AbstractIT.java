@@ -1,10 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.benas.randombeans.EnhancedRandomBuilder;
-import io.github.benas.randombeans.api.EnhancedRandom;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
+import static java.util.UUID.fromString;
+import static org.apache.commons.collections.MapUtils.isEmpty;
+import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
+import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.requestParams;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+
 import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.http.HeaderConstants;
@@ -13,17 +14,18 @@ import uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.RestClientExtender;
 
-import javax.ws.rs.core.Response;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
-import static java.util.UUID.fromString;
-import static org.apache.commons.collections.MapUtils.isEmpty;
-import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
-import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.requestParams;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+import javax.ws.rs.core.Response;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.benas.randombeans.EnhancedRandomBuilder;
+import io.github.benas.randombeans.api.EnhancedRandom;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 public abstract class AbstractIT {
     protected final String BASE_URL = "http://" + getHost() + ":8080/listing-courtscheduler-api/rest/courtscheduler";

@@ -1,11 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import java.sql.Timestamp;
+import java.util.Objects;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import java.sql.Timestamp;
-import java.util.Objects;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 @Entity

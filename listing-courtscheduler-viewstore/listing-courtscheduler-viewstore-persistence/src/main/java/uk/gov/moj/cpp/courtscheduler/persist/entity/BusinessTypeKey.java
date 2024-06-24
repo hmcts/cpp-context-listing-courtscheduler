@@ -1,10 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import javax.persistence.Column;
-import javax.persistence.Embeddable;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.UUID;
+
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
 
 @Embeddable
 public class BusinessTypeKey implements Serializable {

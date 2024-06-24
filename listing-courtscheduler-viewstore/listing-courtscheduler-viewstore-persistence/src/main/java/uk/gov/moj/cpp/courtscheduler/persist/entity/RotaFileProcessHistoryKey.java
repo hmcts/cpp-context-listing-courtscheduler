@@ -1,10 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import javax.persistence.Column;
-import javax.persistence.Embeddable;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.Objects;
+
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
 
 @Embeddable
 public class RotaFileProcessHistoryKey implements Serializable {

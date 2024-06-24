@@ -1,7 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import org.apache.deltaspike.data.api.AbstractEntityRepository;
-import org.apache.deltaspike.data.api.Repository;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -9,6 +7,9 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 
 import java.util.Date;
 import java.util.List;
+
+import org.apache.deltaspike.data.api.AbstractEntityRepository;
+import org.apache.deltaspike.data.api.Repository;
 
 @Repository(forEntity = CourtScheduleJudiciary.class)
 public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey> {

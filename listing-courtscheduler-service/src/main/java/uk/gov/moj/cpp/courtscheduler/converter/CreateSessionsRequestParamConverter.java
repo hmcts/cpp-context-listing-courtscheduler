@@ -1,22 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
 
 public class CreateSessionsRequestParamConverter implements Converter<JsonObject, CreateSessionRequestParam> {
     @Override

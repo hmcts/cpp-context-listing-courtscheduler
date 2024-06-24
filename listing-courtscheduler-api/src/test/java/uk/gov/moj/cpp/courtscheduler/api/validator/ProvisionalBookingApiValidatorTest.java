@@ -6,8 +6,8 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_CANNOT_EMPTY;
 
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 
 import java.util.ArrayList;
 import java.util.List;

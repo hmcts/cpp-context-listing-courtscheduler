@@ -1,10 +1,9 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.mockito.BDDMockito.given;
+
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
@@ -16,9 +15,11 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.mockito.BDDMockito.given;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class MiServiceTest {

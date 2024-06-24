@@ -1,12 +1,17 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import javax.persistence.*;
-import java.sql.Timestamp;
 import java.util.Date;
 import java.util.Objects;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "allocated_listings")

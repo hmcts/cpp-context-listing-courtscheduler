@@ -21,6 +21,9 @@ public class CourtScheduleView {
     private String panel;
     private String courtSession;
     private boolean slotBased;
+
+
+
     private boolean active;
     private LocalDate sessionDate;
     private Integer maxSlots;
@@ -125,6 +128,9 @@ public class CourtScheduleView {
 
     public boolean isSlotBased() {
         return slotBased;
+    }
+    public boolean isActive() {
+        return active;
     }
 
     public void setCourtScheduleId(final String courtScheduleId) {

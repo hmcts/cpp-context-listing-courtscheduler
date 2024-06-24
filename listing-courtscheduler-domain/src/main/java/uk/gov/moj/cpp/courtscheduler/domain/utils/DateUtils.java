@@ -1,17 +1,22 @@
 package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum.fromName;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.MeridianHelper.getMeridian;
+
 import uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum;
 
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum.fromName;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.MeridianHelper.getMeridian;
 
 
 public class DateUtils {

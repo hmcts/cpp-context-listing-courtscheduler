@@ -1,25 +1,26 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlots;
-
-import java.util.List;
-
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlots;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 @ExtendWith(MockitoExtension.class)
-public class AllocatedSlotConverterTest {
+ class AllocatedSlotConverterTest {
 
     private AllocatedSlotConverter converter = new AllocatedSlotConverter();
 
     @Test
-    public void shouldConvertAllocatedSlot() {
+     void shouldConvertAllocatedSlot() {
         final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots.json");
 
         AllocatedSlots allocatedSlots = converter.convert(payload);
@@ -49,7 +50,7 @@ public class AllocatedSlotConverterTest {
     }
 
     @Test
-    public void shouldConvertAllocatedSlotWithBookingId() {
+     void shouldConvertAllocatedSlotWithBookingId() {
         final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots-with-bookingid.json");
 
         AllocatedSlots allocatedSlots = converter.convert(payload);

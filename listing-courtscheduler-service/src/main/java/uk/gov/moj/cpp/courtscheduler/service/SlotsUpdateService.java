@@ -1,8 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static java.lang.String.format;
+
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
@@ -10,13 +9,20 @@ import uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import java.sql.Timestamp;
-import java.util.*;
-import java.util.stream.Collectors;
 
-import static java.lang.String.format;
+import org.apache.commons.collections.CollectionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @ApplicationScoped

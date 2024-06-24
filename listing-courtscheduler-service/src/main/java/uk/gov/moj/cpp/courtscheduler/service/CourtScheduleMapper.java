@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import java.time.LocalDate;
 
 public class CourtScheduleMapper {
 

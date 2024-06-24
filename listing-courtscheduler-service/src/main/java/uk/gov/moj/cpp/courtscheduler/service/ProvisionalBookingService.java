@@ -65,9 +65,8 @@ public class ProvisionalBookingService {
         List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciaries(courtScheduleList);
 
         provisionalBookings.forEach(provisionalBooking -> provisionalBookingInfoArrayList.add(buildProvisionalInfo(provisionalBooking)));
-        courtScheduleJudiciaries.forEach(courtScheduleJudiciary -> {
-            courtScheduleJudiciariesArrayList.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class));
-        });
+        courtScheduleJudiciaries.forEach(courtScheduleJudiciary ->
+            courtScheduleJudiciariesArrayList.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
 
         provisionalBookingInfoArrayList.forEach(provisionalBooking ->
                 Optional.of(courtScheduleJudiciariesArrayList.stream()

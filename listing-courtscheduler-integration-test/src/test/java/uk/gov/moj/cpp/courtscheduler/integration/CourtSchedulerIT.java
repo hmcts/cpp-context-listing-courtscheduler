@@ -1,19 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import org.junit.jupiter.api.Test;
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-import uk.gov.justice.services.test.utils.core.http.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-
-import javax.json.JsonObject;
-import javax.ws.rs.core.Response;
-import java.sql.SQLException;
-import java.time.LocalDate;
-import java.util.Map;
-import java.util.UUID;
-
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -22,6 +8,22 @@ import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+
+import uk.gov.justice.services.test.utils.core.http.RequestParams;
+import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.json.JsonObject;
+import javax.ws.rs.core.Response;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import org.junit.jupiter.api.Test;
 
 
 class CourtSchedulerIT extends AbstractIT {

@@ -1,6 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
+
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -8,10 +10,13 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.Collection;
-
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 public class DatabaseSeeder {
 

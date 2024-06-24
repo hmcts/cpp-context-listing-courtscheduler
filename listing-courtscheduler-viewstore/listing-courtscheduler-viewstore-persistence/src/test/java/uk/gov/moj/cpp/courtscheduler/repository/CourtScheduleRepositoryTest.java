@@ -32,7 +32,6 @@ import javax.inject.Inject;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.runner.RunWith;

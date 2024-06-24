@@ -1,23 +1,24 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
 import static java.util.UUID.randomUUID;
-import static org.junit.jupiter.api.Assertions.*;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
-import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
+import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
+import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.referencedata.service.ReferenceDataCache;
-import uk.gov.moj.cpp.courtscheduler.referencedata.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
@@ -33,16 +34,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
-
-import javax.ejb.Local;
 import javax.json.JsonObject;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class SessionsServiceTest {
