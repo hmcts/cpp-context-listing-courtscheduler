@@ -9,7 +9,12 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey_;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking_;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
@@ -40,10 +45,8 @@ public abstract class ProvisionalBookingRepository extends AbstractFullEntityRep
         cq.where(root.get(ProvisionalBooking_.provisionalBookingKey).get(ProvisionalBookingKey_.bookingId).in(bookingSlotsExpr));
         TypedQuery<ProvisionalBooking> tq = entityManager.createQuery(cq);
         tq.setParameter(bookingSlotsExpr, bookingSlots);
-        tq.getResultList().forEach(provisionalBooking -> {
-            courtScheduleInfoMap.put(provisionalBooking.getProvisionalBookingKey().getCourtSchedule().getCourtScheduleId(), provisionalBooking.getHearingStartTime());
-        });
-
+        tq.getResultList().forEach(provisionalBooking ->
+            courtScheduleInfoMap.put(provisionalBooking.getProvisionalBookingKey().getCourtSchedule().getCourtScheduleId(), provisionalBooking.getHearingStartTime()));
         return courtScheduleInfoMap;
     }
 

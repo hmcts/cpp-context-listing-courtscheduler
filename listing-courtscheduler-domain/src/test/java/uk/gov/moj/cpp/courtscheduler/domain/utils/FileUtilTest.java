@@ -1,13 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
-import org.junit.jupiter.api.Test;
-
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.time.OffsetDateTime;
 import java.util.logging.Logger;
+
+import org.junit.jupiter.api.Test;
 
 
 public class FileUtilTest {

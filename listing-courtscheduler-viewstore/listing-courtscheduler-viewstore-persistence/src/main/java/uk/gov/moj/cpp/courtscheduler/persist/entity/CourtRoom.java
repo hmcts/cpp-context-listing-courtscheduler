@@ -1,10 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import java.util.Objects;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import java.util.Objects;
 
 @SuppressWarnings({"squid:S1845"})
 @Entity

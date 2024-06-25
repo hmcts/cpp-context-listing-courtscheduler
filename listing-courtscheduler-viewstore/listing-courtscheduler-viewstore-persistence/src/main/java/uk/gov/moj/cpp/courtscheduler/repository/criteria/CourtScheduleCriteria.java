@@ -102,7 +102,7 @@ public class CourtScheduleCriteria {
     public void createCourtScheduleJudiciaryCriteria(List<CourtSchedule> courtScheduleList,
                                                      CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtScheduleJudiciary> criteriaQuery) {
         Root<CourtScheduleJudiciary> root = criteriaQuery.from(CourtScheduleJudiciary.class);
-        courtScheduleList.forEach((e) -> {
+        courtScheduleList.forEach(e -> {
             if (StringUtils.isNotBlank(e.getCourtScheduleId()) && StringUtils.isNotBlank(e.getListingProfileId())) {
                 Predicate activePredicate = criteriaBuilder.equal(root.get("active"), true);
                 Predicate courtScheduleIdPredicate = criteriaBuilder.equal(root.get(CourtScheduleJudiciary_.id)

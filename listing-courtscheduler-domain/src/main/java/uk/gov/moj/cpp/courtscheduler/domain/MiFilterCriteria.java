@@ -38,7 +38,7 @@ public class MiFilterCriteria {
         this.fromLocalDate = fromDate;
         this.toLocalDate = toDate;
         this.fromDate = fromDate.format(DateTimeFormatter.BASIC_ISO_DATE);
-        this.toDate = toDate.format(DateTimeFormatter.BASIC_ISO_DATE);;
+        this.toDate = toDate.format(DateTimeFormatter.BASIC_ISO_DATE);
     }
 
     public String getFromDate() {

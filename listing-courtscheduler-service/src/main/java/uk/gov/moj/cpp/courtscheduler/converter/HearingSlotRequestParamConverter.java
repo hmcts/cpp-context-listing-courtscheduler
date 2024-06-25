@@ -24,9 +24,7 @@ public class HearingSlotRequestParamConverter implements Converter<JsonObject, H
         final String courtSession = jsonObject.containsKey(RequestParameterConstant.COURT_SESSION.getLabel()) ?
                 jsonObject.getString(RequestParameterConstant.COURT_SESSION.getLabel()) : null;
 
-        HearingSlotRequestParam hearingSlotRequestParam =
-                new HearingSlotRequestParam(panel, startDate, endDate, ouLevel, ouCode, pageSize,
-                        pageNumber, courtRoomId, courtRoomNumber, businessType, courtSession);
-        return hearingSlotRequestParam;
+        return new HearingSlotRequestParam(panel, startDate, endDate, ouLevel, ouCode, pageSize,
+                pageNumber, courtRoomId, courtRoomNumber, businessType, courtSession);
     }
 }

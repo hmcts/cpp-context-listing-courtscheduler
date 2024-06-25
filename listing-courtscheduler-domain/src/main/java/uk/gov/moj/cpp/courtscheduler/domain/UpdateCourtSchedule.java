@@ -1,8 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 public class UpdateCourtSchedule {

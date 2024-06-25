@@ -1,13 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
-import org.postgresql.Driver;
+import static java.lang.String.format;
+import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
+
 import uk.gov.justice.services.jdbc.persistence.DataAccessException;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 
-import static java.lang.String.format;
-import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
+import org.postgresql.Driver;
 
 public class ConnectionProvider {
 

@@ -9,12 +9,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
+import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
+import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.referencedata.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
@@ -27,7 +32,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+
+import javax.json.JsonObject;
 
 import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +55,10 @@ class SessionsServiceTest {
 
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
+
+    @Mock
+    private ReferenceDataCache referenceDataCache;
+
     @InjectMocks
     private SessionsService sessionsService;
     @Captor
@@ -60,10 +73,10 @@ class SessionsServiceTest {
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingToday() {
         final List<Session> sessions = Arrays.asList(
-                singleSession(WEEK_DAYS_FIRST_HALF,true),
-                singleSession(WEEK_DAYS_SECOND_HALF,false)
+                singleSession(WEEK_DAYS_FIRST_HALF, true),
+                singleSession(WEEK_DAYS_SECOND_HALF, false)
         );
-        final LocalDate startDate = LocalDate.of(2024,06,20);
+        final LocalDate startDate = LocalDate.of(2024, 06, 20);
         final LocalDate endDate = startDate.plusMonths(1);
         final Set<DayOfWeek> allSessionDays = sessions.stream().map(Session::getRepeatDays).reduce((first, second) -> {
             Set<DayOfWeek> allDays = new HashSet<>(first);
@@ -73,6 +86,9 @@ class SessionsServiceTest {
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
         LocalDate lastDate = findTheLastDateThatIsInOneOfTheWeekDays(endDate, allSessionDays);
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode("TRL")).thenReturn(returnBusinessTypeObject("TRL", false));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
         sessionsService.create(createSessionRequest);
@@ -89,12 +105,15 @@ class SessionsServiceTest {
     }
 
     @Test
-    public void shouldUpdateMultipleSessions_OnMaxSlotsValue_GreaterThanZero() {
+    void shouldUpdateMultipleSessions_OnMaxSlotsValue_GreaterThanZero() {
         String courtHouseId = random(String.class);
         String courtRoomId = random(String.class);
         String businessType = "DVLA";
         String panel = random(String.class);
         String courtSession = random(String.class);
+
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions_WithSameUniqueConstraint(businessType,
                         courtHouseId, courtRoomId, courtSession, panel, 2),
@@ -116,7 +135,7 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, times(1)).update(courtScheduleCaptor1.capture());
 
         List<CourtSchedule> capturedCourtSchedules = courtScheduleCaptor1.getAllValues();
-        Map<LocalDate,DayOfWeek> getDayOfWeekMapExpected =
+        Map<LocalDate, DayOfWeek> getDayOfWeekMapExpected =
                 getDayOfWeekMap(LocalDate.now(), LocalDate.now().plusMonths(1),
                         RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
 
@@ -126,17 +145,92 @@ class SessionsServiceTest {
 
         //assert that capturedCourtSchedules are created on the correct dates and days of week considering getDayOfWeekMapExpected
         capturedCourtSchedules.forEach(courtSchedule -> {
-            assertEquals(true,courtSchedule.isActive());
-            assertEquals("DVLA",courtSchedule.getBusinessType());
+            assertEquals(true, courtSchedule.isActive());
+            assertEquals("DVLA", courtSchedule.getBusinessType());
         });
     }
+
+    private Map<String, BusinessType> getBusinessTypeMap() {
+        final Map<String, BusinessType> businessTypeMap = new HashMap<>();
+        JsonObject businessTypeJson = getPayload("/test-data/referencedata.get.businesstypes.json");
+        businessTypeJson.getJsonArray("rotaBusinessTypes").forEach(businessType -> {
+            BusinessType businessTypeObj = BusinessType.BusinessTypeBuilder.aBusinessType()
+                    .withTypeCode(((JsonObject) businessType).getString("typeCode"))
+                    .withTypeDescription(((JsonObject) businessType).getString("typeDescription"))
+                    .build();
+            businessTypeMap.put(businessTypeObj.getTypeCode(), businessTypeObj);
+        });
+        return businessTypeMap;
+    }
+
+    private Map<UUID, CourtRoom> getCourtRoomMap() {
+        final Map<UUID, CourtRoom> courtRoomMap = new HashMap<>();
+        JsonObject courtRoomJson = getPayload("/test-data/referencedata.get.rota.courtrooms.json");
+        courtRoomJson.getJsonArray("cpRotaCourtRoomMappings").forEach(courtRoom -> {
+            try {
+                CourtRoom.CourtRoomBuilder courtRoomBuilder = CourtRoom.CourtRoomBuilder.aCourtRoom();
+                //Mandatory
+                courtRoomBuilder
+                        .withOucode(((JsonObject) courtRoom).getString("oucode"))
+                        .withCppCourtRoomId(((JsonObject) courtRoom).getInt("cppCourtRoomId"))
+                        .withOucode(((JsonObject) courtRoom).getString("oucode"));
+                //Optional
+                if (((JsonObject) courtRoom).containsKey("rotaLocationId")) {
+                    courtRoomBuilder.withRotaLocationId(((JsonObject) courtRoom).getInt("rotaLocationId"));
+                }
+                if (((JsonObject) courtRoom).containsKey("rotaVenueName")) {
+                    courtRoomBuilder.withRotaVenueName(((JsonObject) courtRoom).getString("rotaVenueName"));
+                }
+                if (((JsonObject) courtRoom).containsKey("rotaVenueId")) {
+                    courtRoomBuilder.withRotaVenueId(((JsonObject) courtRoom).getInt("rotaVenueId"));
+                }
+                if (((JsonObject) courtRoom).containsKey("oucodeL3Name")) {
+                    courtRoomBuilder.withOucodeL3Name(((JsonObject) courtRoom).getString("oucodeL3Name"));
+                }
+                if (((JsonObject) courtRoom).containsKey("oucodeL2Name")) {
+                    courtRoomBuilder.withOucodeL2Name(((JsonObject) courtRoom).getString("oucodeL2Name"));
+                }
+                if (((JsonObject) courtRoom).containsKey("oucodeL2Code")) {
+                    courtRoomBuilder.withOucodeL2Code(((JsonObject) courtRoom).getString("oucodeL2Code"));
+                }
+                if (((JsonObject) courtRoom).containsKey("oucodeUUID")) {
+                    courtRoomBuilder.withOucodeUUID(((JsonObject) courtRoom).getString("oucodeUUID"));
+                }
+                if (((JsonObject) courtRoom).containsKey("courtroomName")) {
+                    courtRoomBuilder.withCourtRoomName(((JsonObject) courtRoom).getString("courtroomName"));
+                }
+                if (((JsonObject) courtRoom).containsKey("id")) {
+                    courtRoomBuilder.withCourtRoomId(((JsonObject) courtRoom).getString("id"));
+                }
+                final CourtRoom courtRoomObj = courtRoomBuilder.build();
+
+                courtRoomMap.put(UUID.fromString(courtRoomObj.getCourtroomId()), courtRoomObj);
+            } catch (Exception e) {
+                System.out.println("courtRoom: " + ((JsonObject) courtRoom).getString("id"));
+                e.printStackTrace();
+            }
+        });
+        return courtRoomMap;
+    }
+
+    private Optional<BusinessType> returnBusinessTypeObject(final String businessTypeCode, boolean isSlotBased) {
+        return Optional.of(BusinessType.BusinessTypeBuilder.aBusinessType()
+                .withId(randomUUID().toString())
+                .withSeqNum(1)
+                .withTypeCode(businessTypeCode)
+                .withTypeDescription(businessTypeCode + "BusinessType")
+                .withSlot(isSlotBased)
+                .withDuration(!isSlotBased)
+                .build());
+    }
+
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingWithLaterDate() {
         final List<Session> sessions = Arrays.asList(
-                singleSession(WEEK_DAYS_FIRST_HALF,true)
+                singleSession(WEEK_DAYS_FIRST_HALF, true)
         );
-        final LocalDate startDate = LocalDate.of(2024,06,20).plusWeeks(2);
+        final LocalDate startDate = LocalDate.of(2024, 06, 20).plusWeeks(2);
         final LocalDate endDate = startDate.plusMonths(3);
         final Set<DayOfWeek> allSessionDays = sessions.stream().map(Session::getRepeatDays).reduce((first, second) -> {
             Set<DayOfWeek> allDays = new HashSet<>(first);
@@ -146,6 +240,8 @@ class SessionsServiceTest {
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
         LocalDate lastDate = findTheLastDateThatIsInOneOfTheWeekDays(endDate, allSessionDays);
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
         sessionsService.create(createSessionRequest);
@@ -164,9 +260,9 @@ class SessionsServiceTest {
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEvery2WeekStartingWithLaterDate() {
         final List<Session> sessions = Arrays.asList(
-                singleSession(WEEK_DAYS_FIRST_HALF,true)
+                singleSession(WEEK_DAYS_FIRST_HALF, true)
         );
-        final LocalDate startDate = LocalDate.of(2024,06,20).plusWeeks(2);
+        final LocalDate startDate = LocalDate.of(2024, 06, 20).plusWeeks(2);
         final LocalDate endDate = startDate.plusMonths(3);
         final Set<DayOfWeek> allSessionDays = sessions.stream().map(Session::getRepeatDays).reduce((first, second) -> {
             Set<DayOfWeek> allDays = new HashSet<>(first);
@@ -176,6 +272,8 @@ class SessionsServiceTest {
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
         LocalDate lastDate = findTheLastDateThatIsInOneOfTheWeekDays(endDate, allSessionDays);
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 2));
         sessionsService.create(createSessionRequest);
@@ -194,9 +292,9 @@ class SessionsServiceTest {
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEvery3WeekStartingWithLaterDate() {
         final List<Session> sessions = Arrays.asList(
-                singleSession(WEEK_DAYS_FIRST_HALF,true)
+                singleSession(WEEK_DAYS_FIRST_HALF, true)
         );
-        final LocalDate startDate = LocalDate.of(2024,06,20).plusWeeks(2);
+        final LocalDate startDate = LocalDate.of(2024, 06, 20).plusWeeks(2);
         final LocalDate endDate = startDate.plusMonths(3);
         final int repeatWeeks = 3;
         final Set<DayOfWeek> allSessionDays = sessions.stream().map(Session::getRepeatDays).reduce((first, second) -> {
@@ -206,6 +304,8 @@ class SessionsServiceTest {
         }).get();
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, repeatWeeks));
         sessionsService.create(createSessionRequest);
@@ -222,18 +322,20 @@ class SessionsServiceTest {
 
     @Test
     void shouldCreateMultipleCourtSchedulesForEveryWeekFrequency() {
-        final LocalDate startDate = LocalDate.of(2024,06,20);
+        final LocalDate startDate = LocalDate.of(2024, 06, 20);
         final LocalDate endDate = startDate.plusMonths(1);
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
 
         ArgumentCaptor<CourtSchedule> courtScheduleCaptor = ArgumentCaptor.forClass(CourtSchedule.class);
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         sessionsService.create(createSessionRequest);
 
         verify(courtScheduleRepository, times(8)).save(courtScheduleCaptor.capture());
 
         List<CourtSchedule> capturedCourtSchedules = courtScheduleCaptor.getAllValues();
-        Map<LocalDate,DayOfWeek> getDayOfWeekMapExpected = getDayOfWeekMap(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
+        Map<LocalDate, DayOfWeek> getDayOfWeekMapExpected = getDayOfWeekMap(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
 
         assertEquals(8, capturedCourtSchedules.size());
 
@@ -243,40 +345,44 @@ class SessionsServiceTest {
         capturedCourtSchedules.forEach(courtSchedule -> {
             assertTrue(getDayOfWeekMapExpected.containsKey(courtSchedule.getSessionDate()));
             assertEquals(getDayOfWeekMapExpected.get(courtSchedule.getSessionDate()), courtSchedule.getSessionDate().getDayOfWeek());
-            assertEquals(true,courtSchedule.isActive());
-            assertEquals("DVLA",courtSchedule.getBusinessType());
+            assertEquals(true, courtSchedule.isActive());
+            assertEquals("DVLA", courtSchedule.getBusinessType());
         });
     }
 
     @Test
     void shouldCreateSingleCourtSchedulesForOnceFrequency() {
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
         sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).save(any(CourtSchedule.class));
     }
 
     @Test
     void shouldCreateMultipleCourtSchedulesForOnceFrequency() {
-        final LocalDate startDate = LocalDate.of(2024,06,20);
-        final Session session =  singleSession(WEEK_DAYS_FIRST_HALF,true);
+        final LocalDate startDate = LocalDate.of(2024, 06, 20);
+        final Session session = singleSession(WEEK_DAYS_FIRST_HALF, true);
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(Collections.singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(3), RepeatFrequency.ONCE, 1));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
         sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(3)).save(any(CourtSchedule.class));
     }
 
-    private Map<LocalDate,DayOfWeek> getDayOfWeekMap(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor,List<DayOfWeek> daysOfWeek) {
+    private Map<LocalDate, DayOfWeek> getDayOfWeekMap(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor, List<DayOfWeek> daysOfWeek) {
         final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
         long weekNumber = 0; //start with first week
-        Map<LocalDate,DayOfWeek> dayOfWeekMap = new HashMap<>();
+        Map<LocalDate, DayOfWeek> dayOfWeekMap = new HashMap<>();
 
-        if(frequency.equals(RepeatFrequency.ONCE)){
-            dayOfWeekMap.put(startDate,daysOfWeek.get(0));
+        if (frequency.equals(RepeatFrequency.ONCE)) {
+            dayOfWeekMap.put(startDate, daysOfWeek.get(0));
             return dayOfWeekMap;
         }
         //else RepeatFrequency.EVERY_WEEK
         while (weekNumber <= weeksBetween) {
-            for(DayOfWeek dayOfWeek : daysOfWeek) {
-                dayOfWeekMap.put(startDate.plusWeeks(weekNumber).with(TemporalAdjusters.next(dayOfWeek)),dayOfWeek);
+            for (DayOfWeek dayOfWeek : daysOfWeek) {
+                dayOfWeekMap.put(startDate.plusWeeks(weekNumber).with(TemporalAdjusters.next(dayOfWeek)), dayOfWeek);
             }
             weekNumber += repeatFor;
         }
@@ -313,7 +419,7 @@ class SessionsServiceTest {
         return Collections.singletonList(session);
     }
 
-    private Session singleSession(Set<DayOfWeek> daysOfWeek,boolean slotBased) {
+    private Session singleSession(Set<DayOfWeek> daysOfWeek, boolean slotBased) {
         Session session = Session.SessionBuilder.session()
                 .withRepeatDays(daysOfWeek)
                 .withSlotsOrDuration(20)
@@ -381,5 +487,11 @@ class SessionsServiceTest {
                 .withRepeatPattern(repeatPattern)
                 .build();
 
+    }
+
+
+    public JsonObject getPayload(String path) {
+        StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
+        return stringToJsonObjectConverter.convert(fileToString(path));
     }
 }

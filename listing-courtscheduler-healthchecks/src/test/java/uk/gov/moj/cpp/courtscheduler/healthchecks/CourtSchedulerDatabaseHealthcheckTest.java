@@ -1,5 +1,20 @@
 package uk.gov.moj.cpp.courtscheduler.healthchecks;
 
+import static java.util.Optional.of;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import uk.gov.justice.services.healthcheck.api.HealthcheckResult;
+import uk.gov.justice.services.healthcheck.utils.database.TableChecker;
+import uk.gov.moj.cpp.systemidmapper.persistence.repository.CourtSchedulerDataSourceProvider;
+
+import java.sql.SQLException;
+
+import javax.sql.DataSource;
+
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,17 +22,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
-import uk.gov.justice.services.healthcheck.api.HealthcheckResult;
-import uk.gov.justice.services.healthcheck.utils.database.TableChecker;
-import uk.gov.moj.cpp.systemidmapper.persistence.repository.CourtSchedulerDataSourceProvider;
-
-import javax.sql.DataSource;
-import java.sql.SQLException;
-
-import static java.util.Optional.of;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class CourtSchedulerDatabaseHealthcheckTest {

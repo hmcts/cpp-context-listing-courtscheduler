@@ -225,6 +225,7 @@ public class CourtSchedule {
     }
 
     public static final class CourtScheduleBuilder {
+
         private String courtScheduleId;
         private String ouCode;
         private String listingProfileId;
@@ -249,6 +250,90 @@ public class CourtSchedule {
 
         public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
             return new CourtSchedule.CourtScheduleBuilder();
+        }
+
+        public List<SlotStartTime> getSlotStartTimes() {
+            return slotStartTimes;
+        }
+
+        public List<CourtScheduleJudiciary> getJudiciaries() {
+            return judiciaries;
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+
+        public boolean isSlotBased() {
+            return slotBased;
+        }
+
+        public String getCourtSession() {
+            return courtSession;
+        }
+
+        public Integer getAvailableDuration() {
+            return availableDuration;
+        }
+
+        public Integer getAvailableSlots() {
+            return availableSlots;
+        }
+
+        public Integer getMaxDuration() {
+            return maxDuration;
+        }
+
+        public Integer getMaxSlots() {
+            return maxSlots;
+        }
+
+        public LocalDate getSessionDate() {
+            return sessionDate;
+        }
+
+        public String getPanel() {
+            return panel;
+        }
+
+        public String getBusinessType() {
+            return businessType;
+        }
+
+        public String getOperationalUnit() {
+            return operationalUnit;
+        }
+
+        public String getCourtRoomName() {
+            return courtRoomName;
+        }
+
+        public String getCourtHouseId() {
+            return courtHouseId;
+        }
+
+        public String getCourtHouseName() {
+            return courtHouseName;
+        }
+
+        public Integer getCourtRoomNumber() {
+            return courtRoomNumber;
+        }
+
+        public String getCourtRoomId() {
+            return courtRoomId;
+        }
+
+        public String getListingProfileId() {
+            return listingProfileId;
+        }
+
+        public String getOuCode() {
+            return ouCode;
+        }
+
+        public String getCourtScheduleId() {
+            return courtScheduleId;
         }
 
 

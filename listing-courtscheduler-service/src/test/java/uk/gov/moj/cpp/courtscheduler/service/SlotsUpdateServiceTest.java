@@ -1,5 +1,26 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
+import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
+
+import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingInfo;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
+
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,20 +31,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingInfo;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
-import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
-
-import java.util.*;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
-import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
 
 @ExtendWith(MockitoExtension.class)
 public class SlotsUpdateServiceTest {

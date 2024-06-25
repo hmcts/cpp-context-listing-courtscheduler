@@ -1,7 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import uk.gov.justice.services.test.utils.core.rest.RestClient;
 import uk.gov.justice.services.test.utils.core.rest.ResteasyClientBuilderFactory;
 
@@ -9,6 +7,9 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RestClientExtender extends RestClient {
 

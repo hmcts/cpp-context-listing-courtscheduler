@@ -1,14 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.lang3.StringUtils;
+import static java.lang.String.format;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.createDefaultHearingStartTime;
+
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlots;
 
 import java.io.IOException;
 
-import static java.lang.String.format;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.createDefaultHearingStartTime;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.StringUtils;
 
 public class AllocatedSlotConverter implements Converter<String, AllocatedSlots> {
 
