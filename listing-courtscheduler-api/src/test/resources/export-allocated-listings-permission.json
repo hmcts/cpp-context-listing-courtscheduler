@@ -1,6 +1,6 @@
 {
 "object":"AllocatedListings",
-"action":"Export",
-"key":"AllocatedListings_Export",
-"keyWithOutSource":"AllocatedListings_Export"
+"action":"View-mi",
+"key":"AllocatedListings_View-mi",
+"keyWithOutSource":"AllocatedListings_View-mi"
 }

@@ -1,6 +1,6 @@
 {
 "object":"CourtSchedule",
-"action":"Export",
-"key":"CourtSchedule_Export",
-"keyWithOutSource":"CourtSchedule_Export"
+"action":"View-mi",
+"key":"CourtSchedule_View-mi",
+"keyWithOutSource":"CourtSchedule_View-mi"
 }
