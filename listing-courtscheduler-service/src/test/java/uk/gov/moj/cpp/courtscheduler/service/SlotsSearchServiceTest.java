@@ -133,6 +133,7 @@ class SlotsSearchServiceTest {
                 .withCourtRoomName("Court name1")
                 .withOperationalUnit("UNN")
                 .withBusinessType("BYS")
+                .withBusinessDescription(null)
                 .withPanel("PANEL")
                 .withCourtSession("AM")
                 .withMaxDuration(182)

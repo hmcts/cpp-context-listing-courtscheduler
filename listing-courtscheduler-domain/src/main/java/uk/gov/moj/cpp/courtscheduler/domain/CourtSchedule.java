@@ -17,6 +17,7 @@ public class CourtSchedule {
     private String courtRoomName;
     private String operationalUnit;
     private String businessType;
+    private String businessDescription;
     private String panel;
     private String courtSession;
     private boolean slotBased;
@@ -40,6 +41,7 @@ public class CourtSchedule {
         this.courtRoomName = builder.courtRoomName;
         this.operationalUnit = builder.operationalUnit;
         this.businessType = builder.businessType;
+        this.businessDescription = builder.businessDescription;
         this.panel = builder.panel;
         this.courtSession = builder.courtSession;
         this.sessionDate = builder.sessionDate;
@@ -224,6 +226,18 @@ public class CourtSchedule {
         this.slotStartTimes = slotStartTimes;
     }
 
+    public String getBusinessDescription() {
+        return businessDescription;
+    }
+
+    public void setBusinessDescription(String businessDescription) {
+        this.businessDescription = businessDescription;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
     public static final class CourtScheduleBuilder {
 
         private String courtScheduleId;
@@ -236,6 +250,7 @@ public class CourtSchedule {
         private String courtRoomName;
         private String operationalUnit;
         private String businessType;
+        private String businessDescription;
         private String panel;
         private LocalDate sessionDate;
         private Integer maxSlots = 0;
@@ -298,6 +313,10 @@ public class CourtSchedule {
 
         public String getBusinessType() {
             return businessType;
+        }
+
+        public String getBusinessDescription() {
+            return businessDescription;
         }
 
         public String getOperationalUnit() {
@@ -389,6 +408,11 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withBusinessType(final String businessType) {
             this.businessType = businessType;
+            return this;
+        }
+
+        public CourtScheduleBuilder withBusinessDescription(final String businessDescription) {
+            this.businessDescription = businessDescription;
             return this;
         }
 

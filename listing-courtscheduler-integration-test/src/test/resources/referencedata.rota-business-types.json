@@ -1,0 +1,40 @@
+{
+  "rotaBusinessTypes": [
+    {
+      "id": "c9bb572b-2769-4da6-a41b-c8d7f15fc4a8",
+      "seqNum": 10,
+      "typeCode": "APP",
+      "typeDescription": "Applications",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2019-01-01",
+      "validTo": "2019-12-31"
+    },
+    {
+      "id": "adf657c7-1da1-4c52-800b-4fbe4b4c10ad",
+      "seqNum": 20,
+      "typeCode": "BAIL",
+      "typeDescription": "Bail Case",
+      "slot": true,
+      "duration": false,
+      "validTo": "2019-12-31"
+    },
+    {
+      "id": "5f2c78fe-bfe5-4467-86d3-48f8df044330",
+      "seqNum": 200,
+      "typeCode": "REM",
+      "typeDescription": "Remands",
+      "slot": false,
+      "duration": true,
+      "validFrom": "2018-12-01"
+    },
+    {
+      "id": "38dd526f-afe4-4c0a-a08c-b106621cdf52",
+      "seqNum": 250,
+      "typeCode": "TRI",
+      "typeDescription": "Trial",
+      "slot": false,
+      "duration": true
+    }
+  ]
+}

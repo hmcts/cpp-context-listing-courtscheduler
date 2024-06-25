@@ -51,6 +51,7 @@ import java.util.List;
 
 import javax.inject.Inject;
 import javax.json.JsonObject;
+import javax.json.JsonValue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,7 +105,7 @@ public class CourtSchedulerApi {
         CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
         JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         if (!validate.isEmpty()) {
-           throw new ValidationException(validate);
+            throw new ValidationException(validate);
         }
 
         sessionsService.create(createSessionRequestParam);
@@ -137,9 +138,7 @@ public class CourtSchedulerApi {
         List<CourtSessionsView> courtSessionsViews = courtScheduleService.getCourtSchedules(courtScheduleRequestParam)
                 .stream().map(CourtScheduleToViewConverter::convert).toList();
 
-        return envelopeFor(envelope, createObjectBuilder()
-                .add(COURT_SCHEDULES, new ListToJsonArrayConverter<CourtSessionsView>().convert(courtSessionsViews))
-                .build(), COURT_SCHEDULES);
+        return envelopeFor(envelope, new ListToJsonArrayConverter<CourtSessionsView>().convert(courtSessionsViews), COURT_SCHEDULES);
     }
 
     @Handles("courtscheduler.update")
@@ -261,8 +260,8 @@ public class CourtSchedulerApi {
         return envelopeFor(envelope, responseObject, ApiConstants.BOOKING_REFERENCE);
     }
 
-    private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonObject jsonObject, String key) {
-        JsonObject build = createObjectBuilder().add(key, jsonObject).build();
+    private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {
+        JsonObject build = createObjectBuilder().add(key, jsonValue).build();
         String name = originalEnvelope.metadata().name();
         return enveloper.withMetadataFrom(originalEnvelope, name).apply(build);
     }

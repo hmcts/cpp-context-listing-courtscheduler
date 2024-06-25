@@ -13,6 +13,7 @@
       "courtRoomName": "Court name1",
       "operationalUnit": "UNN",
       "businessType": "BYS",
+      "businessDescription": null,
       "panel": "PANEL",
       "courtSession": "AM",
       "slotBased": false,

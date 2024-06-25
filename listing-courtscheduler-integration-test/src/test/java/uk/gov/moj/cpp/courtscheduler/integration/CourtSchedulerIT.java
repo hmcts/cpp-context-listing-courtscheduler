@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
@@ -79,6 +80,8 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGetCourtSchedules() throws SQLException, JsonProcessingException {
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types.json");
+
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         LocalDate fromDate = expected.getSessionDate().minusDays(1);
