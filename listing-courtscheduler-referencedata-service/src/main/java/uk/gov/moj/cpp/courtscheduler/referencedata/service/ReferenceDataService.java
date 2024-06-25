@@ -96,7 +96,7 @@ public class ReferenceDataService {
                         createObjectBuilder().add("typeCode", typeCode).build());
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        final List<BusinessType> businessTypeList=  JsonObjects.getJsonArray(payload, "rotaBusinessTypes")
+        final List<BusinessType> businessTypeList = JsonObjects.getJsonArray(payload, "rotaBusinessTypes").orElseThrow(() -> new RuntimeException("No business type found: " + typeCode))
                 .stream()
                 .map(JsonObject.class::cast)
                 .map(this::toBusinessType)
@@ -118,12 +118,13 @@ public class ReferenceDataService {
                         createObjectBuilder().build());
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        return JsonObjects.getJsonArray(payload, "cpRotaCourtRoomMappings")
+        final List<CourtRoom> courtRoomList = JsonObjects.getJsonArray(payload, "cpRotaCourtRoomMappings").orElseThrow(() -> new RuntimeException("No court room found: " + courtRoomId))
                 .stream()
                 .map(JsonObject.class::cast)
-                .filter(jsonObject -> jsonObject.getString("id").equals(courtRoomId))
-                .findFirst()
-                .map(this::toCourtRoom);
+                .filter(jsonObject -> courtRoomId.equals(jsonObject.getString("courtRoomId")))
+                .map(this::toCourtRoom)
+                .toList();
+        return CollectionUtils.isEmpty(courtRoomList) ? Optional.empty() : Optional.of(courtRoomList.get(0));
     }
 
 

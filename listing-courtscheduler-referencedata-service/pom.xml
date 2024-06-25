@@ -37,8 +37,32 @@
             <version>${project.version}</version>
         </dependency>
         <!-- Test Dependencies -->
-
-
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.justice.services</groupId>
+            <artifactId>test-utils-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.common.library.utils</groupId>
+            <artifactId>cpp-platform-test-utils</artifactId>
+            <version>${cpp-platform-test-utils.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

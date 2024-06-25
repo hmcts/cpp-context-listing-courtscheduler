@@ -9,19 +9,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
-import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
-import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -47,17 +36,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import org.apache.deltaspike.data.api.QueryInvocationException;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import javax.json.JsonObject;
 
+import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -124,7 +105,7 @@ class SessionsServiceTest {
     }
 
     @Test
-    public void shouldUpdateMultipleSessions_OnMaxSlotsValue_GreaterThanZero() {
+    void shouldUpdateMultipleSessions_OnMaxSlotsValue_GreaterThanZero() {
         String courtHouseId = random(String.class);
         String courtRoomId = random(String.class);
         String businessType = "DVLA";
@@ -154,7 +135,7 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, times(1)).update(courtScheduleCaptor1.capture());
 
         List<CourtSchedule> capturedCourtSchedules = courtScheduleCaptor1.getAllValues();
-        Map<LocalDate,DayOfWeek> getDayOfWeekMapExpected =
+        Map<LocalDate, DayOfWeek> getDayOfWeekMapExpected =
                 getDayOfWeekMap(LocalDate.now(), LocalDate.now().plusMonths(1),
                         RepeatFrequency.EVERY_WEEK, 1, Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY));
 
@@ -164,10 +145,11 @@ class SessionsServiceTest {
 
         //assert that capturedCourtSchedules are created on the correct dates and days of week considering getDayOfWeekMapExpected
         capturedCourtSchedules.forEach(courtSchedule -> {
-            assertEquals(true,courtSchedule.isActive());
-            assertEquals("DVLA",courtSchedule.getBusinessType());
+            assertEquals(true, courtSchedule.isActive());
+            assertEquals("DVLA", courtSchedule.getBusinessType());
         });
     }
+
     private Map<String, BusinessType> getBusinessTypeMap() {
         final Map<String, BusinessType> businessTypeMap = new HashMap<>();
         JsonObject businessTypeJson = getPayload("/test-data/referencedata.get.businesstypes.json");
@@ -340,7 +322,7 @@ class SessionsServiceTest {
 
     @Test
     void shouldCreateMultipleCourtSchedulesForEveryWeekFrequency() {
-        final LocalDate startDate = LocalDate.of(2024,06,20);
+        final LocalDate startDate = LocalDate.of(2024, 06, 20);
         final LocalDate endDate = startDate.plusMonths(1);
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
 
@@ -388,7 +370,7 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, times(3)).save(any(CourtSchedule.class));
     }
 
-    private Map<LocalDate,DayOfWeek> getDayOfWeekMap(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor,List<DayOfWeek> daysOfWeek) {
+    private Map<LocalDate, DayOfWeek> getDayOfWeekMap(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor, List<DayOfWeek> daysOfWeek) {
         final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
         long weekNumber = 0; //start with first week
         Map<LocalDate, DayOfWeek> dayOfWeekMap = new HashMap<>();
@@ -508,7 +490,7 @@ class SessionsServiceTest {
     }
 
 
-    private JsonObject getPayload(String path) {
+    public JsonObject getPayload(String path) {
         StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         return stringToJsonObjectConverter.convert(fileToString(path));
     }
