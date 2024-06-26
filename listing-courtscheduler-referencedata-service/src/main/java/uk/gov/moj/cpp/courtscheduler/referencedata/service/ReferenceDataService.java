@@ -34,6 +34,8 @@ public class ReferenceDataService {
     private static final String PUBLIC_HOLIDAYS = "publicHolidays";
     private static final String DATE = "date";
 
+    public ReferenceDataService() {
+    }
 
 
     public List<LocalDate> getPublicHolidays(final String division, final LocalDate fromDate, final LocalDate toDate, final Requester requester) {

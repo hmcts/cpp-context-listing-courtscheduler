@@ -56,6 +56,10 @@ public class ReferenceDataCache {
     public static final String ROTA_BUSINESS_TYPE_CACHE_PREFIX = "RotaBusinessType_";
     public static final String ROTA_COURTROOM_CACHE_PREFIX = "RotaCourtRoom_";
 
+    public ReferenceDataCache() {
+        System.out.println("ReferenceDataCache constructor");
+    }
+
     public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode) {
         if (parseBoolean(redisCommonCacheEnabled)) {
             return getBusinessTypeByCodeFromTheCache(businessTypeCode);

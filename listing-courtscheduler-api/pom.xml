@@ -77,6 +77,11 @@
             <artifactId>access-control-common-providers</artifactId>
         </dependency>
         <dependency>
+            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+            <artifactId>listing-courtscheduler-referencedata-service</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>uk.gov.moj.cpp.common</groupId>
             <artifactId>system-users-library</artifactId>
         </dependency>
