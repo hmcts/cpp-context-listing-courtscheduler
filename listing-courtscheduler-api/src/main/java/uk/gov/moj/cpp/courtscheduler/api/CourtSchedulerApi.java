@@ -1,60 +1,26 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import static javax.json.Json.createObjectBuilder;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
 import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
-import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
-import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.CourtScheduleConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.CourtScheduleRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.CreateSessionsRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.HearingSlotRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.ProvisionalSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.SessionsConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.UpdateCourtScheduleConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
-import uk.gov.moj.cpp.courtscheduler.service.MiService;
-import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
-import uk.gov.moj.cpp.courtscheduler.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.service.SlotsRemoveService;
-import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
-import uk.gov.moj.cpp.courtscheduler.service.SlotsUpdateService;
-
-import java.util.List;
+import uk.gov.moj.cpp.courtscheduler.api.validator.*;
+import uk.gov.moj.cpp.courtscheduler.converter.*;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.service.*;
 
 import javax.inject.Inject;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
+import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static javax.json.Json.createObjectBuilder;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
 
 @CustomServiceComponent("Courtscheduler.API")
 public class CourtSchedulerApi {
@@ -135,10 +101,11 @@ public class CourtSchedulerApi {
             return envelopeFor(envelope, validate, ERROR);
         }
 
-        List<CourtSessionsView> courtSessionsViews = courtScheduleService.getCourtSchedules(courtScheduleRequestParam)
-                .stream().map(CourtScheduleToViewConverter::convert).toList();
+        List<CourtSchedule> courtSchedules = courtScheduleService.getCourtSchedules(courtScheduleRequestParam);
 
-        return envelopeFor(envelope, new ListToJsonArrayConverter<CourtSessionsView>().convert(courtSessionsViews), COURT_SCHEDULES);
+        List<CourtSessionsView> courtSessionsViewList = CourtScheduleToViewConverter.getCourtSessionsViews(courtSchedules);
+
+        return envelopeFor(envelope, new ListToJsonArrayConverter<CourtSessionsView>().convert(courtSessionsViewList), COURT_SCHEDULES);
     }
 
     @Handles("courtscheduler.update")
