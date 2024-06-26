@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.referencedata.service;
+package uk.gov.moj.cpp.courtscheduler.service;
 
 import static java.util.Collections.emptyList;
 import static java.util.UUID.randomUUID;

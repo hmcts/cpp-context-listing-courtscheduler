@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.referencedata.service;
+package uk.gov.moj.cpp.courtscheduler.service;
 
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Objects.isNull;
@@ -9,6 +9,8 @@ import uk.gov.justice.services.common.configuration.Value;
 import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
+import uk.gov.justice.services.core.annotation.Component;
+import uk.gov.justice.services.core.annotation.ServiceComponent;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
@@ -34,10 +36,10 @@ public class ReferenceDataCache {
     @Inject
     private CacheService cacheService;
 
-    @Inject
-    private ReferenceDataService referenceDataService;
+    final ReferenceDataService referenceDataService = new ReferenceDataService();
 
     @Inject
+    @ServiceComponent(Component.EVENT_PROCESSOR)
     private Requester requester;
 
     @Inject
@@ -69,10 +71,10 @@ public class ReferenceDataCache {
     }
 
     public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId) {
-        if (parseBoolean(redisCommonCacheEnabled) ) {
+        if (parseBoolean(redisCommonCacheEnabled)) {
             return getCourtRoomByIdFromTheCache(courtRoomId);
         } else {
-            return referenceDataService.getRotaCourtRoomByCourtRoomId(courtRoomId,requester);
+            return referenceDataService.getRotaCourtRoomByCourtRoomId(courtRoomId, requester);
         }
     }
 

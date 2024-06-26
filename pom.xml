@@ -50,12 +50,8 @@
         <lettuce.core.version>5.2.1.RELEASE</lettuce.core.version>
     </properties>
 
-
-
-
     <modules>
         <module>listing-courtscheduler-domain</module>
-        <module>listing-courtscheduler-referencedata-service</module>
         <module>listing-courtscheduler-api</module>
         <module>listing-courtscheduler-integration-test</module>
         <module>listing-courtscheduler-viewstore</module>

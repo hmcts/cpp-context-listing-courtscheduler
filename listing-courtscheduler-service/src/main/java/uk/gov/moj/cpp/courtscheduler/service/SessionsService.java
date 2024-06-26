@@ -7,7 +7,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
-import uk.gov.moj.cpp.courtscheduler.referencedata.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
@@ -30,8 +29,7 @@ public class SessionsService {
     private CourtScheduleRepository courtScheduleRepository;
 
 
-    @Inject
-    private ReferenceDataCache referenceDataCache;
+    final ReferenceDataCache referenceDataCache = new ReferenceDataCache();
 
 
     public void create(CreateSessionRequestParam createSessionRequestParam) {

@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.referencedata.service;
+package uk.gov.moj.cpp.courtscheduler.service;
 
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -16,6 +16,7 @@ import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.justice.services.test.utils.framework.api.JsonObjectConvertersFactory;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.referencedata.service.ReferenceDataService;
 
 import java.time.LocalDate;
 import java.util.List;
