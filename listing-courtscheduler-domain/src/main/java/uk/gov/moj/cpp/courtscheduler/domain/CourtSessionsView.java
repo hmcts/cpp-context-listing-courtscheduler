@@ -1,9 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class CourtSessionsView {
     private String courtRoomId;
     private String courtRoomName;
-    private CourtScheduleView session;
+    private List<CourtScheduleView> sessions = new ArrayList<>();
 
     public String getCourtRoomId() {
         return courtRoomId;
@@ -13,43 +16,16 @@ public class CourtSessionsView {
         return courtRoomName;
     }
 
-    public CourtScheduleView getSession() {
-        return session;
+    public List<CourtScheduleView>  getSessions() {
+        return sessions;
     }
 
-    public static final class CourtSessionsViewBuilder {
-        private String courtRoomId;
-        private String courtRoomName;
-        private CourtScheduleView session;
+    public void addSession(CourtScheduleView session) {
+        this.sessions.add(session);
+    }
 
-        public CourtSessionsViewBuilder() {
-        }
-
-        public static CourtSessionsViewBuilder aCourtSessionsView() {
-            return new CourtSessionsViewBuilder();
-        }
-
-        public CourtSessionsViewBuilder withCourtRoomId(String courtRoomId) {
-            this.courtRoomId = courtRoomId;
-            return this;
-        }
-
-        public CourtSessionsViewBuilder withCourtRoomName(String courtRoomName) {
-            this.courtRoomName = courtRoomName;
-            return this;
-        }
-
-        public CourtSessionsViewBuilder withSession(CourtScheduleView session) {
-            this.session = session;
-            return this;
-        }
-
-        public CourtSessionsView build() {
-            CourtSessionsView courtSessionsView = new CourtSessionsView();
-            courtSessionsView.courtRoomId = this.courtRoomId;
-            courtSessionsView.session = this.session;
-            courtSessionsView.courtRoomName = this.courtRoomName;
-            return courtSessionsView;
-        }
+    public CourtSessionsView(String courtRoomId, String courtRoomName) {
+        this.courtRoomId = courtRoomId;
+        this.courtRoomName = courtRoomName;
     }
 }

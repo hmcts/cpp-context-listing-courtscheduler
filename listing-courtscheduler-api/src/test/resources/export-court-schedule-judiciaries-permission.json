@@ -1,6 +1,6 @@
 {
 "object":"CourtScheduleJudiciary",
-"action":"Export",
-"key":"CourtScheduleJudiciary_Export",
-"keyWithOutSource":"CourtScheduleJudiciary_Export"
+"action":"View-mi",
+"key":"CourtScheduleJudiciary_View-mi",
+"keyWithOutSource":"CourtScheduleJudiciary_View-mi"
 }

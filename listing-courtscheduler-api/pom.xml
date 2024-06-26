@@ -5,7 +5,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listing-courtscheduler-parent</artifactId>
-        <version>17.0.19-CSP1-SNAPSHOT</version>
+        <version>17.0.20-CSP1-SNAPSHOT</version>
     </parent>
 
     <artifactId>listing-courtscheduler-api</artifactId>
@@ -111,6 +111,19 @@
             <groupId>uk.gov.justice.services</groupId>
             <artifactId>test-utils-core</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.benas</groupId>
+            <artifactId>random-beans</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>objenesis</artifactId>
+                    <groupId>org.objenesis</groupId>
+                </exclusion>
+            </exclusions>
+            <version>${gihub.benas.random-beans.version}</version>
         </dependency>
     </dependencies>
 
