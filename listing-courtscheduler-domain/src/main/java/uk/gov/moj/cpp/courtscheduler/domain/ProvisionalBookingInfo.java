@@ -46,11 +46,6 @@ public class ProvisionalBookingInfo extends CourtSchedule {
             return this;
         }
 
-        public ProvisionalBookingInfoBuilder withCourtScheduleId(final String courtScheduleId) {
-            courtScheduleBuilder.withCourtScheduleId(courtScheduleId);
-            return this;
-        }
-
         public ProvisionalBookingInfoBuilder withPanel(final String panel) {
             courtScheduleBuilder.withPanel(panel);
             return this;

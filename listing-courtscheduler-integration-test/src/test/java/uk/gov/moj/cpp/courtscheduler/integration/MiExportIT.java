@@ -9,6 +9,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayloa
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.CourtScheduleIdGenerator;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -32,9 +33,8 @@ class MiExportIT extends AbstractIT {
     void shouldExportCourtSchedules() throws SQLException, JsonProcessingException {
         LocalDate fromDate = LocalDate.now().minusDays(1);
         LocalDate toDate = LocalDate.now().plusDays(1);
-        String courtScheduleId = UUID.randomUUID().toString();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
-        expected.setCourtScheduleId(courtScheduleId);
+        expected.setCourtScheduleId(CourtScheduleIdGenerator.getCourtScheduleId(expected.getCourtRoomId(), expected.getSessionDate(), expected.getCourtSession(), expected.getBusinessType()));
 
         String exportMiDataRequestParams = getPayload("courtscheduler.export.mi_data_query.json");
         exportMiDataRequestParams = exportMiDataRequestParams.replace("FROM_DATE", fromDate.toString());
@@ -56,7 +56,7 @@ class MiExportIT extends AbstractIT {
 
         assertThat(jsonObject.getJsonObject("courtSchedules")
                 .getJsonArray("courtSchedules").get(0)
-                .asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
+                .asJsonObject().getString("courtScheduleId"), is(expected.getCourtScheduleId()));
     }
 
     @Test
