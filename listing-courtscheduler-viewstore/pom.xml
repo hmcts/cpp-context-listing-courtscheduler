@@ -3,7 +3,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listing-courtscheduler-parent</artifactId>
-        <version>17.0.22-CSP1-SNAPSHOT</version>
+        <version>17.0.23-CSP1-SNAPSHOT</version>
     </parent>
     <artifactId>listing-courtscheduler-viewstore</artifactId>
     <packaging>pom</packaging>
