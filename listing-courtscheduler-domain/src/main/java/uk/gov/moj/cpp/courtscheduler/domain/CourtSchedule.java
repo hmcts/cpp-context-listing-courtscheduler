@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import uk.gov.moj.cpp.courtscheduler.domain.utils.CourtScheduleIdGenerator;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +33,6 @@ public class CourtSchedule {
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
     protected CourtSchedule(final CourtScheduleBuilder builder) {
-        this.courtScheduleId = builder.courtScheduleId;
         this.listingProfileId = builder.listingProfileId;
         this.ouCode = builder.ouCode;
         this.courtRoomId = builder.courtRoomId;
@@ -53,6 +54,7 @@ public class CourtSchedule {
         this.slotStartTimes = builder.slotStartTimes;
         this.slotBased = builder.slotBased;
         this.active = builder.active;
+        this.courtScheduleId = CourtScheduleIdGenerator.getCourtScheduleId(this.courtRoomId, this.sessionDate, this.courtSession, this.businessType);
     }
 
     public CourtSchedule() {
@@ -240,7 +242,6 @@ public class CourtSchedule {
 
     public static final class CourtScheduleBuilder {
 
-        private String courtScheduleId;
         private String ouCode;
         private String listingProfileId;
         private String courtRoomId;
@@ -349,16 +350,6 @@ public class CourtSchedule {
 
         public String getOuCode() {
             return ouCode;
-        }
-
-        public String getCourtScheduleId() {
-            return courtScheduleId;
-        }
-
-
-        public CourtScheduleBuilder withCourtScheduleId(final String courtScheduleId) {
-            this.courtScheduleId = courtScheduleId;
-            return this;
         }
 
         public CourtScheduleBuilder withPanel(final String panel) {

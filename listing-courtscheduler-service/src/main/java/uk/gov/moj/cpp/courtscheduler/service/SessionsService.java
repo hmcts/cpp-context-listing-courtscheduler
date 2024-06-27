@@ -1,27 +1,18 @@
 package uk.gov.moj.cpp.courtscheduler.service;
 
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
-import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
-import uk.gov.moj.cpp.courtscheduler.domain.Session;
+import org.apache.deltaspike.data.api.QueryInvocationException;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.referencedata.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-
-import org.apache.deltaspike.data.api.QueryInvocationException;
 
 @ApplicationScoped
 public class SessionsService {
@@ -78,7 +69,7 @@ public class SessionsService {
 
     private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate) {
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder();
-        courtScheduleBuilder.withCourtScheduleId(UUID.randomUUID().toString())
+        courtScheduleBuilder
                 .withBusinessType(session.getBusinessType())
                 .withCourtHouseId(session.getCourtCentreId())
                 .withCourtRoomId(session.getCourtRoomId())
