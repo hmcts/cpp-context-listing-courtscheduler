@@ -64,7 +64,7 @@ public class StubUtil {
         waitForStubToBeReady(urlPath, ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE);
     }
 
-    public void stubGetReferenceDataRotaBusinessTypeByTypeCode(final String responsePath,final String typeCode) {
+    public static void stubGetReferenceDataRotaBusinessTypeByTypeCode(final String responsePath,final String typeCode) {
         configureFor(HOST, PORT);
         reset();
 

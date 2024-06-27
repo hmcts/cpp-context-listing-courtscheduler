@@ -9,6 +9,7 @@ import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypeByTypeCode;
 
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
@@ -34,7 +35,7 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtSchedule() {
-      //  stubGetReferenceDataRotaBusinessTypeByTypeCode("referencedata.rota-business-types.json","Type1");
+        stubGetReferenceDataRotaBusinessTypeByTypeCode("referencedata.rota-business-types.json","Type1");
         final String createCourtSchedulePayload = getPayload("create-court-schedule.json");
 
         final Response response = postCommand(RELATIVE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);

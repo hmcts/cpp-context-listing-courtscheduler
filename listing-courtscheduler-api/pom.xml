@@ -7,7 +7,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listing-courtscheduler-parent</artifactId>
-        <version>17.0.20-CSP1-SNAPSHOT</version>
+        <version>17.0.23-CSP1-SNAPSHOT</version>
     </parent>
 
     <artifactId>listing-courtscheduler-api</artifactId>
@@ -150,6 +150,18 @@
                         <groupId>uk.gov.moj.cpp.usersgroups</groupId>
                         <artifactId>usersgroups-query-api</artifactId>
                         <version>${usersgroups.version}</version>
+                        <classifier>raml</classifier>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>*</groupId>
+                                <artifactId>*</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                    <dependency>
+                        <groupId>uk.gov.moj.cpp.referencedata</groupId>
+                        <artifactId>referencedata-query-api</artifactId>
+                        <version>${referencedata.version}</version>
                         <classifier>raml</classifier>
                         <exclusions>
                             <exclusion>

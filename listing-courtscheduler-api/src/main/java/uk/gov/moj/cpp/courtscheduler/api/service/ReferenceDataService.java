@@ -124,7 +124,7 @@ public class ReferenceDataService {
         final List<CourtRoom> courtRoomList = JsonObjects.getJsonArray(payload, "cpRotaCourtRoomMappings").orElseThrow(() -> new RuntimeException("No court room found: " + courtRoomId))
                 .stream()
                 .map(JsonObject.class::cast)
-                .filter(jsonObject -> courtRoomId.equals(jsonObject.getString("courtRoomId")))
+                .filter(jsonObject -> courtRoomId.equals(jsonObject.getString("id")))
                 .map(this::toCourtRoom)
                 .toList();
         return CollectionUtils.isEmpty(courtRoomList) ? Optional.empty() : Optional.of(courtRoomList.get(0));
