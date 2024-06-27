@@ -22,21 +22,6 @@ protocols: [ HTTP, HTTPS ]
       202:
         description: OK
 
-  put:
-    description: |
-      ...
-      (mapping):
-          requestType: application/vnd.courtscheduler.update+json
-          name: courtscheduler.update
-      ...
-    body:
-      application/vnd.courtscheduler.update+json:
-        schema: !include json/schema/courtscheduler.update.json
-        example: !include json/courtscheduler.update.json
-    responses:
-      202:
-        description: OK
-
   get:
     description: |
       Query via parameters
@@ -76,7 +61,24 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.get.court_schedule.json
             example: !include json/courtscheduler.get.court_schedule.json
 
-  patch:
+/courtschedule/edit:
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.update+json
+          name: courtscheduler.update
+      ...
+    body:
+      application/vnd.courtscheduler.update+json:
+        schema: !include json/schema/courtscheduler.update.json
+        example: !include json/courtscheduler.update.json
+    responses:
+      202:
+        description: OK
+
+/courtschedule/delete:
+  post:
     description: |
       ...
       (mapping):
@@ -110,7 +112,7 @@ protocols: [ HTTP, HTTPS ]
         description: Request Accepted
 
 /hearingslots:
-  put:
+  post:
     description:  |
       You can allocate a hearing slot through this POST request
       ...
