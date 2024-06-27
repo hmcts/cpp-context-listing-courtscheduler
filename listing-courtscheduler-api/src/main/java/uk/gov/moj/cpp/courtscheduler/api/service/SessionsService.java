@@ -121,6 +121,7 @@ public class SessionsService {
 
         if (courtRoom != null) {
             builder.withOuCode(courtRoom.getOucode());
+            builder.withCourtRoomName(courtRoom.getCourtroomName());
             builder.withCourtRoomNumber(courtRoom.getCppCourtRoomId());
             builder.withCourtHouseName(courtRoom.getOucodeL3Name());
             builder.withOperationalUnit(courtRoom.getOucodeL2Code());

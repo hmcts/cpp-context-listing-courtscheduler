@@ -156,7 +156,7 @@ public class ReferenceDataService {
                 .withOucodeL2Code(jsonObject.getString("oucodeL2Code"))
                 .withOucodeUUID(jsonObject.getString("oucodeUUID"))
                 .withCourtRoomName(jsonObject.getString("courtroomName"))
-                .withCourtRoomId(jsonObject.getString("courtRoomId"))
+                .withCourtRoomId(jsonObject.getString("courtroomId"))
                 .build();
     }
 
