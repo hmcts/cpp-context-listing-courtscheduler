@@ -10,6 +10,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayloa
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
+
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -33,6 +34,7 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtSchedule() {
+      //  stubGetReferenceDataRotaBusinessTypeByTypeCode("referencedata.rota-business-types.json","Type1");
         final String createCourtSchedulePayload = getPayload("create-court-schedule.json");
 
         final Response response = postCommand(RELATIVE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);

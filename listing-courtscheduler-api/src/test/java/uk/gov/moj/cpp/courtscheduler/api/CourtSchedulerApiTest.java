@@ -15,31 +15,34 @@ import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEA
 
 import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
 import uk.gov.justice.services.core.enveloper.Enveloper;
+import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.Envelope;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
+import uk.gov.moj.cpp.courtscheduler.api.service.CourtScheduleService;
+import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
+import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
-import uk.gov.moj.cpp.courtscheduler.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.CreateSessionsRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.HearingSlotRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.converter.SessionsConverter;
+
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleService;
-import uk.gov.moj.cpp.courtscheduler.service.MiService;
-import uk.gov.moj.cpp.courtscheduler.service.ProvisionalBookingService;
-import uk.gov.moj.cpp.courtscheduler.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.service.SlotsRemoveService;
-import uk.gov.moj.cpp.courtscheduler.service.SlotsSearchService;
-import uk.gov.moj.cpp.courtscheduler.service.SlotsUpdateService;
+
 
 import java.io.IOException;
 import java.util.List;
@@ -68,6 +71,8 @@ class CourtSchedulerApiTest {
     private SessionsService sessionsService;
     @Mock
     private SlotsSearchService slotsSearchService;
+    @Mock
+    private Requester requester;
     @Mock
     private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
     @Mock
@@ -103,7 +108,7 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(createCourtScheduleJsonEnvelope, requestName);
-        verify(sessionsService, atLeastOnce()).create(any());
+        verify(sessionsService, atLeastOnce()).create(any(),any());
     }
 
     @Test

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -31,12 +33,17 @@
             <artifactId>listing-courtscheduler-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
-
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-            <artifactId>listing-courtscheduler-service</artifactId>
+            <artifactId>listing-courtscheduler-cache</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+            <artifactId>listing-courtscheduler-viewstore-persistence</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>uk.gov.justice.metrics</groupId>
             <artifactId>metrics-servlet</artifactId>
@@ -77,13 +84,13 @@
             <artifactId>access-control-common-providers</artifactId>
         </dependency>
         <dependency>
-            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-            <artifactId>listing-courtscheduler-referencedata-service</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>uk.gov.moj.cpp.common</groupId>
             <artifactId>system-users-library</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+            <artifactId>listing-courtscheduler-healthchecks</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- Test dependencies -->
@@ -110,6 +117,12 @@
         <dependency>
             <groupId>uk.gov.justice.services</groupId>
             <artifactId>test-utils-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.common.library.utils</groupId>
+            <artifactId>cpp-platform-test-utils</artifactId>
+            <version>${cpp-platform-test-utils.version}</version>
             <scope>test</scope>
         </dependency>
 

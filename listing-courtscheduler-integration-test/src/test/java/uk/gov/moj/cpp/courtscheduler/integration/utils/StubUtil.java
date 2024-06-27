@@ -3,20 +3,29 @@ package uk.gov.moj.cpp.courtscheduler.integration.utils;
 import uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.reset;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.http.HttpHeaders.CONTENT_TYPE;
 import static org.apache.http.HttpStatus.SC_OK;
 import static uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils.stubPingFor;
+import static uk.gov.justice.services.common.http.HeaderConstants.ID;
+import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.WiremockTestHelper.waitForStubToBeReady;
 
 import java.util.UUID;
 
 public class StubUtil {
+    private static final String HOST = getHost();
+    private static final int PORT = 8080;
 
     private static final String CONTENT_TYPE_QUERY_PERMISSION = "application/vnd.usersgroups.get-logged-in-user-permissions+json";
     private static final String USER_DETAILS_URL = "/usersgroups-service/query/api/rest/usersgroups/users/logged-in-user";
@@ -25,8 +34,9 @@ public class StubUtil {
     private static final String REFERENCE_DATA_SERVICE_NAME = "referencedata-service";
 
     private static final String QUERY_RELATIVE_URL = "/referencedata-service/query/api/rest/referencedata/rota-business-types";
+    private static final String QUERY_RELATIVE_URL_BY_TYPECODE = "/referencedata-service/query/api/rest/referencedata/rota-business-types?typeCode=%s";
 
-    private static final String QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.rota-business-types+json";
+    private static final String ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.rota-business-types+json";
 
     public static void setupLoggedInUsersPermissionQueryStub(final String userId) {
         stubPingFor("usersgroups-service");
@@ -48,10 +58,29 @@ public class StubUtil {
         stubFor(get(urlPathEqualTo(urlPath))
                 .willReturn(aResponse().withStatus(SC_OK)
                         .withHeader("CPPID", randomUUID().toString())
-                        .withHeader("Content-Type", QUERY_MEDIA_TYPE)
+                        .withHeader("Content-Type", ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
 
-        waitForStubToBeReady(urlPath, QUERY_MEDIA_TYPE);
+        waitForStubToBeReady(urlPath, ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE);
+    }
+
+    public void stubGetReferenceDataRotaBusinessTypeByTypeCode(final String responsePath,final String typeCode) {
+        configureFor(HOST, PORT);
+        reset();
+
+        stubPingFor(REFERENCE_DATA_SERVICE_NAME);
+
+        final String url = format(QUERY_RELATIVE_URL_BY_TYPECODE, typeCode);
+        stubFor(get(urlPathMatching(url))
+                .withHeader("Accept", equalTo(ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE))
+                .willReturn(aResponse()
+                        .withStatus(OK.getStatusCode())
+                        .withHeader("Content-Type", ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE)
+                        .withHeader(ID, randomUUID().toString())
+                        .withBody(getPayload(responsePath))));
+
+
+        waitForStubToBeReady(url, ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE);
     }
 
     public static void stubGetUserDetails(final String userId, final String organisationId, final String fileName) {

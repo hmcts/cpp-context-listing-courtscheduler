@@ -12,7 +12,7 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CR
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_CANNOT_EMPTY;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_NOT_CORRECT;
 
-import uk.gov.moj.cpp.courtscheduler.converter.ConverterException;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ConverterException;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 

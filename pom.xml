@@ -55,7 +55,6 @@
         <module>listing-courtscheduler-api</module>
         <module>listing-courtscheduler-integration-test</module>
         <module>listing-courtscheduler-viewstore</module>
-        <module>listing-courtscheduler-service</module>
         <module>listing-courtscheduler-healthchecks</module>
         <module>listing-courtscheduler-cache</module>
     </modules>
