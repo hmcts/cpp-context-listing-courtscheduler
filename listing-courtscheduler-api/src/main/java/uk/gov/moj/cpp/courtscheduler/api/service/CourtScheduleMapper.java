@@ -43,7 +43,6 @@ public class CourtScheduleMapper {
         }
 
         return uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(entity.getCourtScheduleId())
                 .withListingProfileId(entity.getListingProfileId())
                 .withOuCode(entity.getOuCode())
                 .withCourtRoomId(entity.getCourtRoomId())

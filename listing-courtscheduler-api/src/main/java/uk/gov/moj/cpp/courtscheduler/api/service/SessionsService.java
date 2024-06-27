@@ -77,7 +77,7 @@ public class SessionsService {
 
     private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate,Requester requester) {
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder();
-        courtScheduleBuilder.withCourtScheduleId(UUID.randomUUID().toString())
+        courtScheduleBuilder
                 .withBusinessType(session.getBusinessType())
                 .withCourtHouseId(session.getCourtCentreId())
                 .withCourtRoomId(session.getCourtRoomId())

@@ -82,7 +82,7 @@ public class ProvisionalBookingService {
     private ProvisionalBookingInfo buildProvisionalInfo(final ProvisionalBooking provisionalBooking) {
         final ProvisionalBookingInfo.ProvisionalBookingInfoBuilder provisionalBookingInfoBuilder = new ProvisionalBookingInfo.ProvisionalBookingInfoBuilder();
         CourtSchedule courtSchedule = provisionalBooking.getProvisionalBookingKey().getCourtSchedule();
-        provisionalBookingInfoBuilder.withCourtScheduleId(courtSchedule.getCourtScheduleId())
+        provisionalBookingInfoBuilder
                 .withListingProfileId(courtSchedule.getListingProfileId())
                 .withOuCode(courtSchedule.getOuCode())
                 .withCourtHouseId(courtSchedule.getCourtHouseId())
