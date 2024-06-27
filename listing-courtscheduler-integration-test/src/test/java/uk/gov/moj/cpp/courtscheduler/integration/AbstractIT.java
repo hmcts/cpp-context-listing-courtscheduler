@@ -11,6 +11,7 @@ import uk.gov.justice.services.common.http.HeaderConstants;
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder;
 import uk.gov.justice.services.test.utils.core.rest.RestClient;
+import uk.gov.justice.services.test.utils.core.rest.ResteasyClientBuilderFactory;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
 
 import java.net.URLEncoder;
@@ -18,6 +19,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,7 +49,6 @@ public abstract class AbstractIT extends RestClient {
     }
 
     protected ObjectMapper mapper = new ObjectMapper();
-
     protected final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
 
     protected Response postCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
@@ -58,7 +61,6 @@ public abstract class AbstractIT extends RestClient {
     }
 
     protected Response deleteCommand(final String path, final String contentType, final UUID userId) {
-
         final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
                 .withHeader(HeaderConstants.USER_ID, userId)
                 .build();
@@ -73,6 +75,21 @@ public abstract class AbstractIT extends RestClient {
         return requestParamsBuilder.build();
     }
 
+    protected Response putCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
+
+        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
+                .withHeader(HeaderConstants.USER_ID, userId)
+                .build();
+
+        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(requestParams.getMediaType()));
+        return ResteasyClientBuilderFactory.clientBuilder().build().target(requestParams.getUrl()).request().headers(requestParams.getHeaders()).put(entity);
+    }
+
+    public Response putCommand(final String url, final String contentType, final String requestPayload, final MultivaluedMap<String, Object> headers) {
+        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(contentType));
+        Response response = ResteasyClientBuilderFactory.clientBuilder().build().target(url).request().headers(headers).put(entity);
+        return response;
+    }
 
     protected String createUrlFromParam(final Map<String, Object> queryParam) {
         final StringBuilder sb = new StringBuilder();
