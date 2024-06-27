@@ -6,19 +6,22 @@ import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.ge
 import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.requestParams;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
 
-import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.http.HeaderConstants;
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder;
+import uk.gov.justice.services.test.utils.core.rest.RestClient;
+import uk.gov.justice.services.test.utils.core.rest.ResteasyClientBuilderFactory;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
-import uk.gov.moj.cpp.courtscheduler.integration.utils.RestClientExtender;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,13 +30,12 @@ import io.github.benas.randombeans.api.EnhancedRandom;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 
-public abstract class AbstractIT {
+public abstract class AbstractIT extends RestClient {
     protected final String BASE_URL = "http://" + getHost() + ":8080/listing-courtscheduler-api/rest/courtscheduler";
     protected static final UUID USER_ID = fromString("bb593957-08a8-4d41-a5c1-7674d38d4f43");
     protected static final EnhancedRandom RANDOM = new EnhancedRandomBuilder()
             .maxStringLength(5)
             .build();
-    protected static final RestClientExtender REST_CLIENT = new RestClientExtender();
     protected final DatabaseSeeder databaseSeeder = new DatabaseSeeder();
 
     @BeforeAll
@@ -47,10 +49,7 @@ public abstract class AbstractIT {
     }
 
     protected ObjectMapper mapper = new ObjectMapper();
-
     protected final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
-
-    protected final JsonObjectToObjectConverter jsonObjectToObjectConverter = new JsonObjectToObjectConverter(mapper);
 
     protected Response postCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
 
@@ -58,34 +57,15 @@ public abstract class AbstractIT {
                 .withHeader(HeaderConstants.USER_ID, userId)
                 .build();
 
-        return REST_CLIENT.postCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
+        return super.postCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
     }
 
     protected Response deleteCommand(final String path, final String contentType, final UUID userId) {
-
         final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
                 .withHeader(HeaderConstants.USER_ID, userId)
                 .build();
 
-        return REST_CLIENT.deleteCommand(requestParams.getUrl(), requestParams.getMediaType(), requestParams.getHeaders());
-    }
-
-    protected Response putCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
-
-        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
-                .withHeader(HeaderConstants.USER_ID, userId)
-                .build();
-
-        return REST_CLIENT.putCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
-    }
-
-    protected Response patchCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
-
-        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
-                .withHeader(HeaderConstants.USER_ID, userId)
-                .build();
-
-        return REST_CLIENT.patchCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
+        return super.deleteCommand(requestParams.getUrl(), requestParams.getMediaType(), requestParams.getHeaders());
     }
 
     protected RequestParams getRequestParams(final String path, final String contentType, final UUID userId, final Map<String, Object> queryParams) {
@@ -95,6 +75,21 @@ public abstract class AbstractIT {
         return requestParamsBuilder.build();
     }
 
+    protected Response putCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
+
+        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
+                .withHeader(HeaderConstants.USER_ID, userId)
+                .build();
+
+        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(requestParams.getMediaType()));
+        return ResteasyClientBuilderFactory.clientBuilder().build().target(requestParams.getUrl()).request().headers(requestParams.getHeaders()).put(entity);
+    }
+
+    public Response putCommand(final String url, final String contentType, final String requestPayload, final MultivaluedMap<String, Object> headers) {
+        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(contentType));
+        Response response = ResteasyClientBuilderFactory.clientBuilder().build().target(url).request().headers(headers).put(entity);
+        return response;
+    }
 
     protected String createUrlFromParam(final Map<String, Object> queryParam) {
         final StringBuilder sb = new StringBuilder();

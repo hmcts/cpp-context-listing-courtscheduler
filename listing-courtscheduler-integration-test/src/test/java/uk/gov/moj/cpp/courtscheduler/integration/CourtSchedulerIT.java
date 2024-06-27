@@ -32,14 +32,16 @@ import org.junit.jupiter.api.Test;
 
 class CourtSchedulerIT extends AbstractIT {
 
-    private static final String RELATIVE_URL = "/courtschedule";
+    private static final String BASE_RESOURCE_URL = "/courtschedule";
+    private static final String UPDATE_URL = "/edit";
+    private static final String DELETE_URL = "/delete";
 
     @Test
     void shouldCreateCourtSchedule() {
         stubGetReferenceDataRotaBusinessTypeByTypeCode("referencedata.rota-business-types.json","Type1");
         final String createCourtSchedulePayload = getPayload("create-court-schedule.json");
 
-        final Response response = postCommand(RELATIVE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
+        final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
@@ -48,7 +50,7 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldCreateOrUpdateCourtSchedule() {
         final String createCourtSchedulePayload = getPayload("create-court-schedule-multiple-session.json");
 
-        final Response response = postCommand(RELATIVE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
+        final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
@@ -77,7 +79,7 @@ class CourtSchedulerIT extends AbstractIT {
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_DATE", changedSessionDate);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", changedPanel);
 
-        final Response response = putCommand(RELATIVE_URL, "application/vnd.courtscheduler.update+json", USER_ID, updateCourtSchedulePayload);
+        final Response response = postCommand(BASE_RESOURCE_URL+UPDATE_URL, "application/vnd.courtscheduler.update+json", USER_ID, updateCourtSchedulePayload);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
@@ -105,7 +107,7 @@ class CourtSchedulerIT extends AbstractIT {
         Map<String, Object> map = mapper.readValue(getCourtScheduleRequestParams, new TypeReference<>() {
         });
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get+json", USER_ID, map);
+        final RequestParams requestParams = getRequestParams(BASE_RESOURCE_URL, "application/vnd.courtscheduler.get+json", USER_ID, map);
 
 
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
@@ -128,7 +130,7 @@ class CourtSchedulerIT extends AbstractIT {
         String deleteHearingSlotsPayload = getPayload("courtscheduler.delete-sessions.json");
         deleteHearingSlotsPayload = deleteHearingSlotsPayload.replace("COURT_SCHEDULE_ID", courtScheduleId);
 
-        final Response response = patchCommand(RELATIVE_URL, "application/vnd.courtscheduler.delete+json", USER_ID, deleteHearingSlotsPayload);
+        final Response response = postCommand(BASE_RESOURCE_URL+DELETE_URL, "application/vnd.courtscheduler.delete+json", USER_ID, deleteHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
     }
