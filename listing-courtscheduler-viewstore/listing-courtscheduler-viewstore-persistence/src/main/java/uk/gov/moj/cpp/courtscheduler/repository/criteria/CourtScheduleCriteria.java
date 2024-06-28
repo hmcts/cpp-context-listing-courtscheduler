@@ -40,9 +40,15 @@ public class CourtScheduleCriteria {
         Predicate dateBetween = criteriaBuilder.between(root.get(CourtSchedule_.SESSION_DATE),
                 LocalDate.parse(hearingSlotRequestParam.sessionStartDate()),
                 LocalDate.parse(hearingSlotRequestParam.sessionEndDate()));
-        Predicate ouLevelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.OPERATIONAL_UNIT), hearingSlotRequestParam.oucodeL2Code());
-        Predicate ouCodePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), hearingSlotRequestParam.ouCode());
-        criteriaQuery.select(root).where(criteriaBuilder.and(activePredicate, panelPredicate, dateBetween, ouLevelPredicate, ouCodePredicate));
+        criteriaQuery.select(root).where(criteriaBuilder.and(activePredicate, panelPredicate, dateBetween));
+        if (StringUtils.isNotBlank(hearingSlotRequestParam.oucodeL2Code())) {
+            Predicate ouLevelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.OPERATIONAL_UNIT), hearingSlotRequestParam.oucodeL2Code());
+            criteriaQuery.where(criteriaBuilder.and(ouLevelPredicate));
+        }
+        if (StringUtils.isNotBlank(hearingSlotRequestParam.ouCode())) {
+            Predicate ouCodePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), hearingSlotRequestParam.ouCode());
+            criteriaQuery.where(criteriaBuilder.and(ouCodePredicate));
+        }
         if (StringUtils.isNotBlank(hearingSlotRequestParam.courtRoomId())) {
             Predicate courtRoomPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_ID),
                     hearingSlotRequestParam.courtRoomId());
