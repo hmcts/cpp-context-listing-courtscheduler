@@ -16,6 +16,9 @@ public final class CourtSchedulerConverter {
                 .withCourtRoomName(courtScheduleEntity.getCourtRoomName())
                 .withCourtSession(courtScheduleEntity.getCourtSession())
                 .withSessionDate(courtScheduleEntity.getSessionDate())
+                .withSlotBased(courtScheduleEntity.isSlotBased())
+                .withActive(courtScheduleEntity.isActive())
+                .withPanel(courtScheduleEntity.getPanel())
                 .build();
     }
 }
