@@ -2,18 +2,18 @@
   "sessions": [
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
-      "courtRoomId": "550e8400-e29b-41d4-a716-446655440001",
+      "courtRoomId": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5",
       "sessionType": "AM",
-      "businessType": "Type1",
+      "businessType": "DVLA",
       "duration": 2,
       "panel": "YOUTH",
       "repeatDays": ["Monday", "Wednesday", "Friday"]
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
-      "courtRoomId": "550e8400-e29b-41d4-a716-446655440001",
+      "courtRoomId": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5",
       "sessionType": "AM",
-      "businessType": "Type1",
+      "businessType": "DVLA",
       "duration": 2,
       "panel": "YOUTH",
       "repeatDays": ["Monday", "Wednesday", "Friday"]
