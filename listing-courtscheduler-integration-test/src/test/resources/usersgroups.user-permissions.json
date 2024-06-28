@@ -30,15 +30,7 @@
     },
     {
       "object": "CourtSchedule",
-      "action": "View-mi"
-    },
-    {
-      "object": "AllocatedListings",
-      "action": "View-mi"
-    },
-    {
-      "object": "CourtScheduleJudiciary",
-      "action": "View-mi"
+      "action": "Mi-extract"
     },
     {
       "object": "ProvisionalBooking",

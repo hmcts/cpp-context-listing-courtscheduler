@@ -100,7 +100,7 @@ rule "API - Action - courtscheduler.export.court_schedule_judiciary"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.export.court_schedule_judiciary");
-        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.exportCourtScheduleJudiciariesPermission()));
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.exportCourtSchedulesPermission()));
   then
     $outcome.setSuccess(true);
 end
@@ -109,7 +109,7 @@ rule "API - Action - courtscheduler.export.allocated_listings"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.export.allocated_listings");
-        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.exportAllocatedListingsPermission()));
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.exportCourtSchedulesPermission()));
   then
     $outcome.setSuccess(true);
 end

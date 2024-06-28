@@ -128,7 +128,8 @@ class CourtSchedulerIT extends AbstractIT {
 
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
 
-        assertThat(jsonObject.getJsonArray("courtSchedules").getJsonObject(0).getJsonArray("sessions").getJsonObject(0).getString("courtScheduleId"), is(expected.getCourtScheduleId()));
+        JsonObject courtScheduleJsonObject = jsonObject.getJsonArray("courtSchedules").getJsonObject(0).getJsonArray("sessions").getJsonObject(0);
+        assertThat(courtScheduleJsonObject.getString("courtScheduleId"), is(expected.getCourtScheduleId()));
     }
 
     @Test

@@ -17,6 +17,7 @@ public class CourtScheduleToViewConverter {
             CourtScheduleView courtScheduleView = new CourtScheduleView.CourtScheduleViewBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
                     .withActive(courtSchedule.isActive())
+                    .withSlotBased(courtSchedule.isSlotBased())
                     .withAvailableDuration(courtSchedule.getAvailableDuration())
                     .withAvailableSlots(courtSchedule.getAvailableSlots())
                     .withBusinessType(courtSchedule.getBusinessType())
