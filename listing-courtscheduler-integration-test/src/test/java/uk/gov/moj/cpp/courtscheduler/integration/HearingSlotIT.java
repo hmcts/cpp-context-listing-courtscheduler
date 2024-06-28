@@ -1,5 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import uk.gov.justice.services.test.utils.core.http.RequestParams;
+import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.*;
+
+import javax.json.JsonObject;
+import javax.ws.rs.core.Response;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.UUID;
+
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -10,25 +24,6 @@ import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
-
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-import uk.gov.justice.services.test.utils.core.http.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
-
-import java.sql.SQLException;
-import java.util.Map;
-import java.util.UUID;
-
-import javax.ws.rs.core.Response;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
 
 
 class HearingSlotIT extends AbstractIT {
@@ -89,14 +84,26 @@ class HearingSlotIT extends AbstractIT {
 
         setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         String hearingSlotsRequestParams = getPayload("courtscheduler.get.hearing.slots.json");
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> map = mapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {
+
+        LocalDate fromDate = courtSchedule.getSessionDate().minusDays(1);
+        LocalDate toDate = courtSchedule.getSessionDate().plusDays(1);
+
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("PANEL", courtSchedule.getPanel());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("OU_CODE", courtSchedule.getOuCode());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_START_DATE", fromDate.toString());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_END_DATE", toDate.toString());
+
+        Map<String, Object> map = new ObjectMapper().readValue(hearingSlotsRequestParams, new TypeReference<>() {
         });
 
         final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, map);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
+        assertThat(jsonObject.getJsonObject("hearingSlots").getJsonArray("hearingSlots").getJsonObject(0).getString("courtScheduleId"),
+                is(courtSchedule.getCourtScheduleId()));
+
     }
 
     @Test
