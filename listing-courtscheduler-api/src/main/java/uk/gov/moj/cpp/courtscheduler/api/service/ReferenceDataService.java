@@ -22,7 +22,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
+import javax.json.JsonString;
 
 import org.apache.commons.collections.CollectionUtils;
 
@@ -86,7 +88,7 @@ public class ReferenceDataService {
                         createObjectBuilder().build());
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        return JsonObjects.getJsonArray(payload, "rotaBusinessTypes")
+        return JsonObjects.getJsonArray(payload, "rotaBusinessTypes").orElseThrow(() -> new RuntimeException("No business type found: "))
                 .stream()
                 .map(JsonObject.class::cast)
                 .map(this::toBusinessType)
@@ -119,12 +121,17 @@ public class ReferenceDataService {
         final JsonEnvelope envelope =
                 envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME).build(),
                         createObjectBuilder().build());
-
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        final List<CourtRoom> courtRoomList = JsonObjects.getJsonArray(payload, "cpRotaCourtRoomMappings").orElseThrow(() -> new RuntimeException("No court room found: " + courtRoomId))
-                .stream()
+        JsonArray courtRoomMappings = payload.getJsonArray("cpRotaCourtRoomMappings");
+        if (courtRoomMappings == null) {
+            throw new RuntimeException("No court room found: " + courtRoomId);
+        }
+        List<CourtRoom> courtRoomList = courtRoomMappings.stream()
                 .map(JsonObject.class::cast)
-                .filter(jsonObject -> courtRoomId.equals(jsonObject.getString("id")))
+                .filter(jsonObject -> {
+                    JsonString id = jsonObject.getJsonString("courtroomId");
+                    return id != null && courtRoomId.equals(id.getString());
+                })
                 .map(this::toCourtRoom)
                 .toList();
         return CollectionUtils.isEmpty(courtRoomList) ? Optional.empty() : Optional.of(courtRoomList.get(0));
