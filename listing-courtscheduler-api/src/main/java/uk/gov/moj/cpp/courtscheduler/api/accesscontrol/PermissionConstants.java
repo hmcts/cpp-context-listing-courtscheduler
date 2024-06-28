@@ -15,13 +15,11 @@ public final class PermissionConstants {
     private static final String COURT_SCHEDULE_OBJECT = "CourtSchedule";
     private static final String HEARING_SLOTS_OBJECT = "HearingSlots";
     private static final String PROVISIONAL_BOOKING_OBJECT = "ProvisionalBooking";
-    private static final String COURT_SCHEDULE_JUDICIARY_OBJECT = "CourtScheduleJudiciary";
-    private static final String ALLOCATED_LISTINGS_OBJECT = "AllocatedListings";
     private static final String CREATE_ACTION = "Create";
     private static final String UPDATE_ACTION = "Edit";
     private static final String VIEW_ACTION = "View";
     private static final String DELETE_ACTION = "Delete";
-    private static final String EXPORT_ACTION = "View-mi";
+    private static final String EXPORT_ACTION = "Mi-extract";
     private static final String CREATE_HEARING = "Create-hearing";
     private static final String CREATE_PROVISIONAL = "Create-provisional";
     private static final String DELETE_HEARING = "Delete-hearing";
@@ -115,24 +113,6 @@ public final class PermissionConstants {
     public static String exportCourtSchedulesPermission() throws JsonProcessingException {
         final ExpectedPermission expectedPermission = builder()
                 .withObject(COURT_SCHEDULE_OBJECT)
-                .withAction(EXPORT_ACTION)
-                .build();
-
-        return objectMapper.writeValueAsString(expectedPermission);
-    }
-
-    public static String exportCourtScheduleJudiciariesPermission() throws JsonProcessingException {
-        final ExpectedPermission expectedPermission = builder()
-                .withObject(COURT_SCHEDULE_JUDICIARY_OBJECT)
-                .withAction(EXPORT_ACTION)
-                .build();
-
-        return objectMapper.writeValueAsString(expectedPermission);
-    }
-
-    public static String exportAllocatedListingsPermission() throws JsonProcessingException {
-        final ExpectedPermission expectedPermission = builder()
-                .withObject(ALLOCATED_LISTINGS_OBJECT)
                 .withAction(EXPORT_ACTION)
                 .build();
 

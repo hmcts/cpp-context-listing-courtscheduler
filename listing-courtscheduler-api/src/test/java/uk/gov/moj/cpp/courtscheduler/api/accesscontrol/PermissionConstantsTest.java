@@ -5,8 +5,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.createCourtSchedulePermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.createProvisionalBookingPermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.deleteCourtSchedulePermission;
-import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.exportAllocatedListingsPermission;
-import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.exportCourtScheduleJudiciariesPermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.exportCourtSchedulesPermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getCourtSchedulePermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getHearingSlotsPermission;
@@ -82,17 +80,5 @@ class PermissionConstantsTest {
     void shouldExportCourtSchedulesPermission() throws JsonProcessingException {
         assertThat(exportCourtSchedulesPermission(),
                 is(getPayload("export-court-schedules-permission.json").replaceAll("\n", "")));
-    }
-
-    @Test
-    void shouldExportCourtScheduleJudiciariesPermission() throws JsonProcessingException {
-        assertThat(exportCourtScheduleJudiciariesPermission(),
-                is(getPayload("export-court-schedule-judiciaries-permission.json").replaceAll("\n", "")));
-    }
-
-    @Test
-    void shouldExportAllocatedListingsPermission() throws JsonProcessingException {
-        assertThat(exportAllocatedListingsPermission(),
-                is(getPayload("export-allocated-listings-permission.json").replaceAll("\n", "")));
     }
 }
