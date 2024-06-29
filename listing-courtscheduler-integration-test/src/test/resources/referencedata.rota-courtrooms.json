@@ -26,7 +26,7 @@
       "oucodeL2Code": "12",
       "oucodeUUID": "22c69328-70af-3e27-80c5-1a79e24903d2",
       "courtroomName": "Courtroom 01",
-      "courtroomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c"
+      "courtroomId": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5"
     },
     {
       "id": "0b60424c-8099-3f5c-87ff-683e0d9d19db",
@@ -40,7 +40,7 @@
       "oucodeL2Code": "37",
       "oucodeUUID": "f8f5f4e8-2b1e-36f9-9653-3be2c84c4a13",
       "courtroomName": "Courtroom 02",
-      "courtroomId": "1c602697-6085-37c3-9977-706f4788d2bb"
+      "courtroomId": "0b60424c-8099-3f5c-87ff-683e0d9d19db"
     },
     {
       "id": "0f2af3c1-8e0a-3276-b1da-14bcbf85f842",

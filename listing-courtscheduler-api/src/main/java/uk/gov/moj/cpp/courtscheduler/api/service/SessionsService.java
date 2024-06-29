@@ -30,7 +30,7 @@ public class SessionsService {
     private CourtScheduleRepository courtScheduleRepository;
 
 
-    private final ReferenceDataCache referenceDataCache = new ReferenceDataCache();
+    final ReferenceDataCache referenceDataCache = new ReferenceDataCache();
 
 
     public void create(CreateSessionRequestParam createSessionRequestParam, Requester requester) {
