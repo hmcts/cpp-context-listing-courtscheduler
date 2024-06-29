@@ -47,6 +47,9 @@ public class ReferenceDataCache {
     private JsonObjectToObjectConverter jsonObjectToObjectConverter;
 
     @Inject
+    private Requester requester;
+
+    @Inject
     @Value(key = "redisCommonCacheEnabled", defaultValue = "false")
     private String redisCommonCacheEnabled;
 

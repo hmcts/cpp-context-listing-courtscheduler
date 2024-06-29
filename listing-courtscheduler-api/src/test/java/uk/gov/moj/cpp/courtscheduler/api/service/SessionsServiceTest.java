@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,7 +41,6 @@ import javax.json.JsonObject;
 
 import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -50,7 +50,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-@Disabled
 class SessionsServiceTest {
     private static final Set<DayOfWeek> WEEK_DAYS_FIRST_HALF = new HashSet<>(Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY));
     private static final Set<DayOfWeek> WEEK_DAYS_SECOND_HALF = new HashSet<>(Arrays.asList(DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY));
@@ -91,9 +90,9 @@ class SessionsServiceTest {
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
         LocalDate lastDate = findTheLastDateThatIsInOneOfTheWeekDays(endDate, allSessionDays);
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA",requester)).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaBusinessTypeByCode("TRL",requester)).thenReturn(returnBusinessTypeObject("TRL", false));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),requester)).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("TRL"),eq(requester))).thenReturn(returnBusinessTypeObject("TRL", false));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
         sessionsService.create(createSessionRequest,requester);
         verify(courtScheduleRepository, times(27)).save(courtScheduleArgumentCaptor.capture());
@@ -116,8 +115,8 @@ class SessionsServiceTest {
         String panel = random(String.class);
         String courtSession = random(String.class);
 
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA",requester)).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),requester)).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions_WithSameUniqueConstraint(businessType,
                         courtHouseId, courtRoomId, courtSession, panel, 2),
@@ -244,8 +243,8 @@ class SessionsServiceTest {
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
         LocalDate lastDate = findTheLastDateThatIsInOneOfTheWeekDays(endDate, allSessionDays);
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA",requester)).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),requester)).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
         sessionsService.create(createSessionRequest,requester);
@@ -276,8 +275,8 @@ class SessionsServiceTest {
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
         LocalDate lastDate = findTheLastDateThatIsInOneOfTheWeekDays(endDate, allSessionDays);
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA",requester)).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),requester)).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 2));
         sessionsService.create(createSessionRequest,requester);
@@ -308,8 +307,8 @@ class SessionsServiceTest {
         }).get();
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA",requester)).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),requester)).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, repeatWeeks));
         sessionsService.create(createSessionRequest,requester);
@@ -331,8 +330,8 @@ class SessionsServiceTest {
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
 
         ArgumentCaptor<CourtSchedule> courtScheduleCaptor = ArgumentCaptor.forClass(CourtSchedule.class);
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA",requester)).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),requester)).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         sessionsService.create(createSessionRequest,requester);
 
@@ -357,8 +356,8 @@ class SessionsServiceTest {
     @Test
     void shouldCreateSingleCourtSchedulesForOnceFrequency() {
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA",requester)).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),requester)).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
         sessionsService.create(createSessionRequest,requester);
         verify(courtScheduleRepository, times(1)).save(any(CourtSchedule.class));
     }
@@ -368,8 +367,8 @@ class SessionsServiceTest {
         final LocalDate startDate = LocalDate.of(2024, 06, 20);
         final Session session = singleSession(WEEK_DAYS_FIRST_HALF, true);
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(Collections.singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(3), RepeatFrequency.ONCE, 1));
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA",requester)).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),requester)).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
         sessionsService.create(createSessionRequest,requester);
         verify(courtScheduleRepository, times(3)).save(any(CourtSchedule.class));
     }
