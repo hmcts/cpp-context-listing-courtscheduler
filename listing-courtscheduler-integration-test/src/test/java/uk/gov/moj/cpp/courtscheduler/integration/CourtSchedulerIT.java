@@ -8,7 +8,9 @@ import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
+
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
@@ -25,6 +27,7 @@ import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 
@@ -34,21 +37,33 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String UPDATE_URL = "/edit";
     private static final String DELETE_URL = "/delete";
 
+    @BeforeAll
+    public static void setUp() {
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
+        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
+    }
+
     @Test
-    void shouldCreateCourtSchedule() {
-        final String createCourtSchedulePayload = getPayload("create-court-schedule.json");
-
+    void shouldCreateSlotBasedSchedule() {
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
+        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
+        final String createCourtSchedulePayload = getPayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
+    }
+
+    @Test
+    void shouldCreateDurationBasedSchedule() {
+        final String createCourtSchedulePayload = getPayload("create-court-schedule-duration-based.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
     @Test
     void shouldCreateOrUpdateCourtSchedule() {
         final String createCourtSchedulePayload = getPayload("create-court-schedule-multiple-session.json");
-
         final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
-
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
@@ -76,14 +91,14 @@ class CourtSchedulerIT extends AbstractIT {
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_DATE", changedSessionDate);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", changedPanel);
 
-        final Response response = postCommand(BASE_RESOURCE_URL+UPDATE_URL, "application/vnd.courtscheduler.update+json", USER_ID, updateCourtSchedulePayload);
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, "application/vnd.courtscheduler.update+json", USER_ID, updateCourtSchedulePayload);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
     @Test
     void shouldGetCourtSchedules() throws SQLException, JsonProcessingException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types.json");
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
 
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         LocalDate fromDate = expected.getSessionDate().minusDays(1);
@@ -128,7 +143,7 @@ class CourtSchedulerIT extends AbstractIT {
         String deleteHearingSlotsPayload = getPayload("courtscheduler.delete-sessions.json");
         deleteHearingSlotsPayload = deleteHearingSlotsPayload.replace("COURT_SCHEDULE_ID", courtScheduleId);
 
-        final Response response = postCommand(BASE_RESOURCE_URL+DELETE_URL, "application/vnd.courtscheduler.delete+json", USER_ID, deleteHearingSlotsPayload);
+        final Response response = postCommand(BASE_RESOURCE_URL + DELETE_URL, "application/vnd.courtscheduler.delete+json", USER_ID, deleteHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
     }

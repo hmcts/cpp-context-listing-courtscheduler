@@ -4,19 +4,19 @@
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
       "courtRoomId": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5",
       "sessionType": "AM",
-      "businessType": "DVLA",
-      "duration": 2,
+      "businessType": "TRL",
+      "duration": 20,
       "panel": "YOUTH",
       "repeatDays": ["Monday", "Wednesday", "Friday"]
     },
     {
-      "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
-      "courtRoomId": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5",
-      "sessionType": "AM",
-      "businessType": "DVLA",
-      "duration": 2,
-      "panel": "YOUTH",
-      "repeatDays": ["Monday", "Wednesday", "Friday"]
+      "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
+      "courtRoomId": "0b60424c-8099-3f5c-87ff-683e0d9d19db",
+      "sessionType": "PM",
+      "businessType": "TRL",
+      "duration": 20,
+      "panel": "ADULT",
+      "repeatDays": ["Tuesday", "Thursday"]
     }
   ],
   "repeatPattern": {

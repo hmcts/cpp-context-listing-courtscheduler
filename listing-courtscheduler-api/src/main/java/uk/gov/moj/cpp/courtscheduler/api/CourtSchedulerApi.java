@@ -5,12 +5,29 @@ import org.slf4j.LoggerFactory;
 import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
 import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
+import uk.gov.justice.services.core.annotation.ServiceComponent;
 import uk.gov.justice.services.core.enveloper.Enveloper;
+import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.service.CourtScheduleService;
+import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
+import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.*;
-import uk.gov.moj.cpp.courtscheduler.converter.*;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
-import uk.gov.moj.cpp.courtscheduler.service.*;
 
 import javax.inject.Inject;
 import javax.json.JsonObject;
@@ -18,6 +35,7 @@ import javax.json.JsonValue;
 import java.util.List;
 
 import static javax.json.Json.createObjectBuilder;
+import static uk.gov.justice.services.core.annotation.Component.COMMAND_API;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
@@ -34,6 +52,8 @@ public class CourtSchedulerApi {
     private Enveloper enveloper;
     @Inject
     private SessionsService sessionsService;
+    @Inject
+    private Requester requester;
     @Inject
     private SlotsUpdateService slotsUpdateService;
     @Inject
@@ -70,11 +90,12 @@ public class CourtSchedulerApi {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
         JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
 
-        sessionsService.create(createSessionRequestParam);
+        sessionsService.create(createSessionRequestParam,requester);
 
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.create").apply(createObjectBuilder().build());

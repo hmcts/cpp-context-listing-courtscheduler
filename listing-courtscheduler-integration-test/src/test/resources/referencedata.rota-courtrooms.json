@@ -1,0 +1,74 @@
+{
+  "cpRotaCourtRoomMappings": [
+    {
+      "id": "02e22f64-f377-3e67-85f4-35a30a5faa76",
+      "rotaLocationId": 77,
+      "rotaVenueName": "Court 9",
+      "cppCourtRoomId": 2988,
+      "rotaVenueId": 0,
+      "oucode": "B43KQ00",
+      "oucodeL3Name": "Reading Magistrates' Court",
+      "oucodeL2Name": "Thames Valley",
+      "oucodeL2Code": "43",
+      "oucodeUUID": "49db2271-1941-3847-a7fb-dbd92b035e40",
+      "courtroomName": "Courtroom 09",
+      "courtroomId": "41a41156-0ca9-3352-999e-8d26274bb1aa"
+    },
+    {
+      "id": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5",
+      "rotaLocationId": 27,
+      "rotaVenueName": "Court 01",
+      "cppCourtRoomId": 1769,
+      "rotaVenueId": 0,
+      "oucode": "B12JR00",
+      "oucodeL3Name": "Northallerton Magistrates' Court",
+      "oucodeL2Name": "North Yorkshire",
+      "oucodeL2Code": "12",
+      "oucodeUUID": "22c69328-70af-3e27-80c5-1a79e24903d2",
+      "courtroomName": "Courtroom 01",
+      "courtroomId": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5"
+    },
+    {
+      "id": "0b60424c-8099-3f5c-87ff-683e0d9d19db",
+      "rotaLocationId": 339,
+      "rotaVenueName": "Ipswich Crown Court 2",
+      "cppCourtRoomId": 1175,
+      "rotaVenueId": 0,
+      "oucode": "C37IP00",
+      "oucodeL3Name": "Ipswich Crown Court",
+      "oucodeL2Name": "Suffolk",
+      "oucodeL2Code": "37",
+      "oucodeUUID": "f8f5f4e8-2b1e-36f9-9653-3be2c84c4a13",
+      "courtroomName": "Courtroom 02",
+      "courtroomId": "0b60424c-8099-3f5c-87ff-683e0d9d19db"
+    },
+    {
+      "id": "0f2af3c1-8e0a-3276-b1da-14bcbf85f842",
+      "rotaLocationId": 27,
+      "rotaVenueName": "Court 02",
+      "cppCourtRoomId": 1770,
+      "rotaVenueId": 0,
+      "oucode": "B12JR00",
+      "oucodeL3Name": "Northallerton Magistrates' Court",
+      "oucodeL2Name": "North Yorkshire",
+      "oucodeL2Code": "12",
+      "oucodeUUID": "22c69328-70af-3e27-80c5-1a79e24903d2",
+      "courtroomName": "Courtroom 02",
+      "courtroomId": "0c0607c4-ef9b-374e-a2ec-0a92662c2adf"
+    },
+    {
+      "id": "2208c5ec-8e59-30ea-a78c-c780b2cefb0a",
+      "rotaLocationId": 209,
+      "rotaVenueName": "Court 5",
+      "cppCourtRoomId": 234,
+      "rotaVenueId": 0,
+      "oucode": "B04BP00",
+      "oucodeL3Name": "Blackburn Magistrates' Court",
+      "oucodeL2Name": "Lancashire",
+      "oucodeL2Code": "4",
+      "oucodeUUID": "e1f5c483-466e-322a-8f04-8e32d1c8211b",
+      "courtroomName": "Courtroom 05",
+      "courtroomId": "631004ef-78ce-3c2e-9937-4a1cc34ab1b7"
+    }
+  ]
+}
