@@ -52,6 +52,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
     @Inject
+    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+    @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
 
     public CourtSchedule update(CourtSchedule courtSchedule) {
@@ -184,8 +186,9 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                         modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class);
                 errorDeleteCourtSchedules.add(domainCourtSchedule);
             } else {
-                courtSchedule.setActive(false);
-                save(courtSchedule);
+                List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId);
+                courtScheduleJudiciaries.forEach(courtScheduleJudiciary -> courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary));
+                remove(courtSchedule);
             }
         });
         return errorDeleteCourtSchedules;

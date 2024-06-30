@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
+import org.apache.deltaspike.data.api.Query;
 import org.apache.deltaspike.data.api.Repository;
 
 @Repository(forEntity = CourtScheduleJudiciary.class)
@@ -16,6 +17,8 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
     abstract CourtScheduleJudiciary findByEmail(String email);
 
     abstract List<CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
+    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId = ?1")
+    abstract List<CourtScheduleJudiciary> findByCourtScheduleId(String courtScheduleId);
 
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
         List<CourtScheduleJudiciary> courtScheduleJudiciaries = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
