@@ -12,8 +12,16 @@ public class UpdateCourtSchedule {
     private String businessType;
     private LocalDate sessionDate;
     private String panel;
+
+
+
     private Integer availableSlots;
     private Integer availableDuration;
+
+
+
+    private Integer maxSlots;
+    private Integer maxDuration;
 
     protected UpdateCourtSchedule(final UpdateCourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -25,6 +33,8 @@ public class UpdateCourtSchedule {
         this.sessionDate = builder.sessionDate;
         this.availableSlots = builder.availableSlots;
         this.availableDuration = builder.availableDuration;
+        this.maxSlots = builder.maxSlots;
+        this.maxDuration = builder.maxDuration;
     }
 
     public UpdateCourtSchedule() {
@@ -58,6 +68,14 @@ public class UpdateCourtSchedule {
 
     public String getSessionType() {
         return sessionType;
+    }
+
+    public Integer getMaxDuration() {
+        return maxDuration;
+    }
+
+    public Integer getMaxSlots() {
+        return maxSlots;
     }
 
     public void setCourtScheduleId(final String courtScheduleId) {
@@ -107,6 +125,16 @@ public class UpdateCourtSchedule {
         this.availableDuration = availableDuration;
     }
 
+    public UpdateCourtSchedule setMaxSlots(final Integer maxSlots) {
+        this.maxSlots = maxSlots;
+        return this;
+    }
+
+    public UpdateCourtSchedule setMaxDuration(final Integer maxDuration) {
+        this.maxDuration = maxDuration;
+        return this;
+    }
+
 
     public static final class UpdateCourtScheduleBuilder {
         private String courtScheduleId;
@@ -119,6 +147,8 @@ public class UpdateCourtSchedule {
 
         private Integer availableSlots = 0;
         private Integer availableDuration = 0;
+        private Integer maxSlots = 0;
+        private Integer maxDuration = 0;
 
         public static UpdateCourtSchedule.UpdateCourtScheduleBuilder courtSchedule() {
             return new UpdateCourtSchedule.UpdateCourtScheduleBuilder();
@@ -169,6 +199,16 @@ public class UpdateCourtSchedule {
 
         public UpdateCourtScheduleBuilder withAvailableDuration(final Integer availableDuration) {
             this.availableDuration = availableDuration;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withMaxSlots(final Integer maxSlots) {
+            this.maxSlots = maxSlots;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withMaxDuration(final Integer maxDuration) {
+            this.maxDuration = maxDuration;
             return this;
         }
 
