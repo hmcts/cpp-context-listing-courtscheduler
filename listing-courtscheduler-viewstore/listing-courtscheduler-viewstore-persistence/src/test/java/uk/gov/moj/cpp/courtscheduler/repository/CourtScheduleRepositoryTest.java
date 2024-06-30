@@ -1,5 +1,35 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
+import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
+
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
+
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import javax.inject.Inject;
+
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
@@ -8,25 +38,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import uk.gov.moj.cpp.courtscheduler.domain.*;
-import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.*;
-
-import javax.inject.Inject;
-import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static io.github.benas.randombeans.api.EnhancedRandom.random;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.*;
 
 @RunWith(CdiTestRunner.class)
 public class CourtScheduleRepositoryTest {
@@ -361,9 +372,8 @@ public class CourtScheduleRepositoryTest {
 
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
 
-        assertEquals(false, courtScheduleRepository.findBy(courtScheduleId1).isActive());
-        assertEquals(false, courtScheduleRepository.findBy(courtScheduleId2).isActive());
-        assertEquals(false, courtScheduleRepository.findBy(courtScheduleId1).isActive());
+        assertNull( courtScheduleRepository.findBy(courtScheduleId1));
+        assertNull( courtScheduleRepository.findBy(courtScheduleId2));
         assertEquals(true, courtSchedules.isEmpty());
     }
 
