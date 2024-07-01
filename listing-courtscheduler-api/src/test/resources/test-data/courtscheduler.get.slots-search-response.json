@@ -23,6 +23,8 @@
       "maxDuration": 182,
       "availableSlots": 125,
       "availableDuration": 182,
+      "createdOn": null,
+      "updatedOn": null,
       "judiciaries": [
         {
           "judiciaryId": "JUDICIARY_ID_1",

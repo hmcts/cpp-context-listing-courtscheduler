@@ -139,7 +139,7 @@ public class CourtSchedulerApi {
             return envelopeFor(envelope, validate, ERROR);
         }
 
-        List<CourtSchedule> courtSchedules = courtScheduleService.getCourtSchedules(courtScheduleRequestParam);
+        List<CourtSchedule> courtSchedules = courtScheduleService.getCourtSchedules(courtScheduleRequestParam, requester);
 
         List<CourtSessionsView> courtSessionsViewList = CourtScheduleToViewConverter.getCourtSessionsViews(courtSchedules);
 

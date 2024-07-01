@@ -3,10 +3,10 @@
     {
       "id": "c9bb572b-2769-4da6-a41b-c8d7f15fc4a8",
       "seqNum": 10,
-      "typeCode": "DVLA",
-      "typeDescription": "DVLA",
-      "slot": true,
-      "duration": false,
+      "typeCode": "TRL",
+      "typeDescription": "Trial",
+      "slot": false,
+      "duration": true,
       "validFrom": "2019-01-01",
       "validTo": "2019-12-31"
     }

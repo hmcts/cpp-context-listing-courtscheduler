@@ -2,17 +2,9 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
-
-import java.util.List;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -20,17 +12,25 @@ import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
+import java.util.List;
 
 @ApplicationScoped
 public class CourtScheduleService {
+
+    private static final String BUSINESS_TYPE_NOT_FOUND = "Business Type not found";
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
+    protected ReferenceDataCache referenceDataCache = new ReferenceDataCache();
 
-    public List<CourtSchedule> getCourtSchedules(CourtScheduleRequestParam courtScheduleRequestParam) {
-        return courtScheduleRepository.findBy(courtScheduleRequestParam);
+    public List<CourtSchedule> getCourtSchedules(CourtScheduleRequestParam courtScheduleRequestParam, Requester requester) {
+        List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtScheduleRequestParam);
+        courtSchedules.forEach(courtSchedule -> {
+            courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester));
+        });
+        return courtSchedules;
     }
 
     public Result update(UpdateCourtSchedule updateCourtSchedule, Requester requester) {
@@ -42,7 +42,7 @@ public class CourtScheduleService {
         if (maxSlotsOrDurationChanged(updateCourtSchedule, persistedCourtSchedule)) {
             updateAvailability(updateCourtSchedule, persistedCourtSchedule);
         }
-        final Result result= courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule);
+        final Result result = courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule);
         return result;
     }
 
@@ -67,8 +67,8 @@ public class CourtScheduleService {
 
     private static boolean isBusinessTypeChangeAllowed(final String updatedBusinessTypeCode, final Requester requester, final String persistedBusinessTypeCode) {
         final ReferenceDataCache referenceDataCache = new ReferenceDataCache();
-        final BusinessType persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode, requester).orElseThrow(() -> new RuntimeException("Business Type not found" + persistedBusinessTypeCode));
-        final BusinessType updatedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(updatedBusinessTypeCode, requester).orElseThrow(() -> new RuntimeException("Business Type not found" + updatedBusinessTypeCode));
+        final BusinessType persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + persistedBusinessTypeCode));
+        final BusinessType updatedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(updatedBusinessTypeCode, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + updatedBusinessTypeCode));
         return (persistedBusinessType.isSlot() && !updatedBusinessType.isSlot()) || (!persistedBusinessType.isSlot() && updatedBusinessType.isSlot());
     }
 
@@ -80,5 +80,9 @@ public class CourtScheduleService {
         return Json.createObjectBuilder()
                 .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
                 .build();
+    }
+
+    private String enrichBusinessDescription(final String businessType, final Requester requester) {
+        return referenceDataCache.getRotaBusinessTypeByCode(businessType, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + businessType)).getTypeDescription();
     }
 }

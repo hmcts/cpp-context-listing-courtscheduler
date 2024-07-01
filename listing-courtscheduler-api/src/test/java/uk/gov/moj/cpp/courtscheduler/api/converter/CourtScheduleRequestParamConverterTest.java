@@ -1,19 +1,18 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
-
+import org.junit.jupiter.api.Test;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 
 import javax.json.JsonObject;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 class CourtScheduleRequestParamConverterTest {
 
     CourtScheduleRequestParamConverter courtScheduleRequestParamConverter = new CourtScheduleRequestParamConverter();
-
+    
     @Test
     void shouldConvertJsonObjectToRequestParam() {
         JsonObject jsonObject = toJsonObject();

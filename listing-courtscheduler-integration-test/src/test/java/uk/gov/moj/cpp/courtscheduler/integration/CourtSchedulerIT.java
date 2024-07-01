@@ -105,6 +105,9 @@ class CourtSchedulerIT extends AbstractIT {
         LocalDate toDate = expected.getSessionDate().plusDays(1);
 
         expected.setCourtScheduleId(CourtScheduleIdGenerator.getCourtScheduleId(expected.getCourtRoomId(), expected.getSessionDate(), expected.getCourtSession(), expected.getBusinessType()));
+        expected.setSlotBased(false);
+        expected.setMaxDuration(5);
+        expected.setAvailableDuration(5);
         databaseSeeder.insertCourtSchedule(expected);
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");

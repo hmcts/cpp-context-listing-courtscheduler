@@ -17,13 +17,17 @@ public class CourtScheduleToViewConverter {
             CourtScheduleView courtScheduleView = new CourtScheduleView.CourtScheduleViewBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
                     .withActive(courtSchedule.isActive())
+                    .withHasHearingsBooked(courtSchedule.hasHearingsBooked())
                     .withSlotBased(courtSchedule.isSlotBased())
                     .withAvailableDuration(courtSchedule.getAvailableDuration())
                     .withAvailableSlots(courtSchedule.getAvailableSlots())
                     .withBusinessType(courtSchedule.getBusinessType())
+                    .withBusinessDescription(courtSchedule.getBusinessDescription())
                     .withCourtHouseId(courtSchedule.getCourtHouseId())
                     .withCourtHouseName(courtSchedule.getCourtHouseName())
                     .withCourtRoomNumber(courtSchedule.getCourtRoomNumber())
+                    .withCourtRoomId(courtSchedule.getCourtRoomId())
+                    .withCourtRoomName(courtSchedule.getCourtRoomName())
                     .withCourtSession(courtSchedule.getCourtSession())
                     .withListingProfileId(courtSchedule.getListingProfileId())
                     .withMaxDuration(courtSchedule.getMaxDuration())
@@ -32,6 +36,8 @@ public class CourtScheduleToViewConverter {
                     .withOuCode(courtSchedule.getOuCode())
                     .withPanel(courtSchedule.getPanel())
                     .withSessionDate(courtSchedule.getSessionDate())
+                    .withCreatedOn(courtSchedule.getCreatedOn())
+                    .withUpdatedOn(courtSchedule.getUpdatedOn())
                     .build();
             CourtSessionsView courtSessionsView;
             if (courtSessionsViews.containsKey(courtRoomId)) {

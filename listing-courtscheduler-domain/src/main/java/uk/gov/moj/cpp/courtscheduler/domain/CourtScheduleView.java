@@ -15,13 +15,18 @@ public class CourtScheduleView {
     private String courtHouseName;
     private String operationalUnit;
     private String businessType;
+    private String businessDescription;
+
+    private String courtRoomId;
+    private String courtRoomName;
+
     private String panel;
     private String courtSession;
     private boolean slotBased;
 
-
-
     private boolean active;
+
+    private boolean hasHearingsBooked;
     private LocalDate sessionDate;
     private Integer maxSlots;
     private Integer maxDuration;
@@ -30,15 +35,21 @@ public class CourtScheduleView {
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
+    private String createdOn;
+    private String updatedOn;
+
     protected CourtScheduleView(final CourtScheduleViewBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
         this.listingProfileId = builder.listingProfileId;
+        this.courtRoomId = builder.courtRoomId;
+        this.courtRoomName = builder.courtRoomName;
         this.ouCode = builder.ouCode;
         this.courtRoomNumber = builder.courtRoomNumber;
         this.courtHouseName = builder.courtHouseName;
         this.courtHouseId = builder.courtHouseId;
         this.operationalUnit = builder.operationalUnit;
         this.businessType = builder.businessType;
+        this.businessDescription = builder.businessDescription;
         this.panel = builder.panel;
         this.courtSession = builder.courtSession;
         this.sessionDate = builder.sessionDate;
@@ -50,6 +61,9 @@ public class CourtScheduleView {
         this.slotStartTimes = builder.slotStartTimes;
         this.slotBased = builder.slotBased;
         this.active = builder.active;
+        this.hasHearingsBooked = builder.hasHearingsBooked;
+        this.createdOn = builder.createdOn;
+        this.updatedOn = builder.updatedOn;
     }
 
     public CourtScheduleView() {
@@ -130,6 +144,10 @@ public class CourtScheduleView {
         return active;
     }
 
+    public boolean isHasHearingsBooked() {
+        return hasHearingsBooked;
+    }
+
     public void setCourtScheduleId(final String courtScheduleId) {
         this.courtScheduleId = courtScheduleId;
     }
@@ -202,15 +220,69 @@ public class CourtScheduleView {
         this.slotStartTimes = slotStartTimes;
     }
 
+    public String getBusinessDescription() {
+        return businessDescription;
+    }
+
+    public void setBusinessDescription(String businessDescription) {
+        this.businessDescription = businessDescription;
+    }
+
+    public String getCourtRoomId() {
+        return courtRoomId;
+    }
+
+    public void setCourtRoomId(String courtRoomId) {
+        this.courtRoomId = courtRoomId;
+    }
+
+    public String getCourtRoomName() {
+        return courtRoomName;
+    }
+
+    public void setCourtRoomName(String courtRoomName) {
+        this.courtRoomName = courtRoomName;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public void setHasHearingsBooked(boolean hasHearingsBooked) {
+        this.hasHearingsBooked = hasHearingsBooked;
+    }
+
+    public String getCreatedOn() {
+        return createdOn;
+    }
+
+    public void setCreatedOn(String createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    public String getUpdatedOn() {
+        return updatedOn;
+    }
+
+    public void setUpdatedOn(String updatedOn) {
+        this.updatedOn = updatedOn;
+    }
+
     public static final class CourtScheduleViewBuilder {
+
         private String courtScheduleId;
         private String ouCode;
         private String listingProfileId;
+
+        private String courtRoomId;
+        private String courtRoomName;
         private Integer courtRoomNumber;
         private String courtHouseName;
         private String courtHouseId;// same as courtCentreId
         private String operationalUnit;
         private String businessType;
+        private String businessDescription;
+
         private String panel;
         private LocalDate sessionDate;
         private Integer maxSlots = 0;
@@ -220,8 +292,12 @@ public class CourtScheduleView {
         private String courtSession;
         private boolean slotBased;
         private boolean active;
+        private boolean hasHearingsBooked;
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
+
+        private String createdOn;
+        private String updatedOn;
 
         public static CourtScheduleViewBuilder courtSchedule() {
             return new CourtScheduleViewBuilder();
@@ -248,11 +324,20 @@ public class CourtScheduleView {
             return this;
         }
 
+        public CourtScheduleViewBuilder withCourtRoomId(final String courtRoomId) {
+            this.courtRoomId = courtRoomId;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withCourtRoomName(final String courtRoomName) {
+            this.courtRoomName = courtRoomName;
+            return this;
+        }
+
         public CourtScheduleViewBuilder withCourtHouseName(final String courtHouseName) {
             this.courtHouseName = courtHouseName;
             return this;
         }
-
         public CourtScheduleViewBuilder withCourtHouseId(final String courtHouseId) {
             this.courtHouseId = courtHouseId;
             return this;
@@ -273,6 +358,12 @@ public class CourtScheduleView {
             return this;
         }
 
+        public CourtScheduleViewBuilder withBusinessDescription(final String businessDescription) {
+            this.businessDescription = businessDescription;
+            return this;
+        }
+
+
         public CourtScheduleViewBuilder withCourtSession(final String courtSession) {
             this.courtSession = courtSession;
             return this;
@@ -287,6 +378,12 @@ public class CourtScheduleView {
             this.active = active;
             return this;
         }
+
+        public CourtScheduleViewBuilder withHasHearingsBooked(final boolean hasHearingsBooked) {
+            this.hasHearingsBooked = hasHearingsBooked;
+            return this;
+        }
+
 
         public CourtScheduleViewBuilder withSessionDate(final LocalDate sessionDate) {
             this.sessionDate = sessionDate;
@@ -332,6 +429,16 @@ public class CourtScheduleView {
             this.slotStartTimes.add(slotStartTime);
             return this;
         }
+
+        public CourtScheduleViewBuilder withCreatedOn(final String createdOn) {
+            this.createdOn = createdOn;
+            return this;
+        }
+        public CourtScheduleViewBuilder withUpdatedOn(final String updatedOn) {
+            this.updatedOn = updatedOn;
+            return this;
+        }
+
 
         public CourtScheduleView build() {
             return new CourtScheduleView(this);
