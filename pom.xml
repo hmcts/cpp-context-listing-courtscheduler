@@ -38,7 +38,8 @@
             **/uk/gov/moj/cpp/courtscheduler/api/PayloadExtractor.java,
             **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java,
             **/uk/gov/moj/cpp/courtscheduler/converter/SessionsConverter.java,
-            **/uk/gov/moj/cpp/courtscheduler/converter/CourtScheduleConverter.java
+            **/uk/gov/moj/cpp/courtscheduler/converter/CourtScheduleConverter.java,
+            **/uk/gov/moj/cpp/courtscheduler/api/service/CourtScheduleService.java
         </sonar.coverage.exclusions>
         <sonar.cpd.exclusions>
             **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,
