@@ -5,12 +5,11 @@ import java.text.SimpleDateFormat;
 
 public final class CourtSchedulerConverter {
 
-    public final static DateFormat DATE_FORMAT = new SimpleDateFormat("MMM dd, yyyy, HH:mm:ss a");
-
     private CourtSchedulerConverter() {
     }
 
     public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
+        final  DateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy, HH:mm:ss a");
         return new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
                 .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
                 .withMaxDuration(courtScheduleEntity.getMaxDuration())
@@ -26,8 +25,8 @@ public final class CourtSchedulerConverter {
                 .withSlotBased(courtScheduleEntity.isSlotBased())
                 .withActive(courtScheduleEntity.isActive())
                 .withPanel(courtScheduleEntity.getPanel())
-                .withCreatedOn(DATE_FORMAT.format(courtScheduleEntity.getCreatedOn()))
-                .withUpdatedOn(DATE_FORMAT.format(courtScheduleEntity.getUpdatedOn()))
+                .withCreatedOn(dateFormat.format(courtScheduleEntity.getCreatedOn()))
+                .withUpdatedOn(dateFormat.format(courtScheduleEntity.getUpdatedOn()))
                 .build();
     }
 }
