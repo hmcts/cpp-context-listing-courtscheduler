@@ -20,12 +20,12 @@ public class UpdateCourtScheduleConverter implements Converter<JsonObject, Updat
                 .withPanel(jsonObject.getString("panel"))
                 .withSessionDate(LocalDate.parse(jsonObject.getString("sessionDate")));
 
-        if (jsonObject.containsKey("availableSlots")) {
-            courtScheduleBuilder.withAvailableSlots(jsonObject.getInt("availableSlots"));
+        if (jsonObject.containsKey("maxSlots")) {
+            courtScheduleBuilder.withMaxSlots(jsonObject.getInt("maxSlots"));
         }
 
-        if (jsonObject.containsKey("availableDuration")) {
-            courtScheduleBuilder.withAvailableSlots(jsonObject.getInt("availableDuration"));
+        if (jsonObject.containsKey("maxDuration")) {
+            courtScheduleBuilder.withMaxSlots(jsonObject.getInt("maxDuration"));
         }
 
         return courtScheduleBuilder.build();

@@ -89,7 +89,7 @@ public class CourtScheduleRepositoryTest {
                 .withPanel(panel)
                 .build();
 
-        Result result = courtScheduleRepository.update(updatedCourtSchedule);
+        Result result = courtScheduleRepository.update(courtScheduleEntity,updatedCourtSchedule);
         assertThat(result.isSuccess(), is(true));
     }
 

@@ -1,11 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static javax.json.Json.createObjectBuilder;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
+
 import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
 import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
-import uk.gov.justice.services.core.annotation.ServiceComponent;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
@@ -26,19 +28,34 @@ import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
-import uk.gov.moj.cpp.courtscheduler.api.validator.*;
-import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
+import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+
+import java.util.List;
 
 import javax.inject.Inject;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
-import java.util.List;
 
-import static javax.json.Json.createObjectBuilder;
-import static uk.gov.justice.services.core.annotation.Component.COMMAND_API;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @CustomServiceComponent("Courtscheduler.API")
 public class CourtSchedulerApi {
@@ -95,7 +112,7 @@ public class CourtSchedulerApi {
             throw new ValidationException(validate);
         }
 
-        sessionsService.create(createSessionRequestParam,requester);
+        sessionsService.create(createSessionRequestParam, requester);
 
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.create").apply(createObjectBuilder().build());
@@ -132,8 +149,7 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.update")
     public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
         UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(envelope.payloadAsJsonObject());
-
-        Result result = courtScheduleService.update(updateCourtSchedule);
+        Result result = courtScheduleService.update(updateCourtSchedule,requester);
         JsonObject responseObject = createObjectBuilder()
                 .add(RESULTS, objectToJsonObjectConverter.convert(result))
                 .build();

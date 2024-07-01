@@ -56,6 +56,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
 
+    //update on Create when needed
     public CourtSchedule update(CourtSchedule courtSchedule) {
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
@@ -76,24 +77,19 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return courtSchedule;
     }
 
-    public Result update(uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updateCourtSchedule) {
+    public Result update(CourtSchedule persistedCourtSchedule, uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updateCourtSchedule) {
+        //SessionDate and CourtHouseId should not be updated
+        persistedCourtSchedule.setCourtRoomId(updateCourtSchedule.getCourtRoomId());
+        persistedCourtSchedule.setBusinessType(updateCourtSchedule.getBusinessType());
+        persistedCourtSchedule.setCourtSession(updateCourtSchedule.getSessionType());
+        persistedCourtSchedule.setPanel(updateCourtSchedule.getPanel());
+        persistedCourtSchedule.setMaxSlots(updateCourtSchedule.getMaxDuration());
+        persistedCourtSchedule.setAvailableSlots(updateCourtSchedule.getAvailableSlots());
+        persistedCourtSchedule.setMaxDuration(updateCourtSchedule.getMaxDuration());
+        persistedCourtSchedule.setAvailableDuration(updateCourtSchedule.getAvailableDuration());
+        persistedCourtSchedule.setUpdatedOn(new Date());
 
-        CourtSchedule courtScheduleEntity = findBy(updateCourtSchedule.getCourtScheduleId());
-
-        courtScheduleEntity.setCourtHouseId(updateCourtSchedule.getCourtHouseId());
-        courtScheduleEntity.setCourtRoomId(updateCourtSchedule.getCourtRoomId());
-        courtScheduleEntity.setBusinessType(updateCourtSchedule.getBusinessType());
-        courtScheduleEntity.setCourtSession(updateCourtSchedule.getSessionType());
-        courtScheduleEntity.setSessionDate(updateCourtSchedule.getSessionDate());
-        courtScheduleEntity.setPanel(updateCourtSchedule.getPanel());
-        if (updateCourtSchedule.getAvailableDuration() != null) {
-            courtScheduleEntity.setAvailableDuration(updateCourtSchedule.getAvailableDuration());
-        }
-        if (updateCourtSchedule.getAvailableSlots() != null) {
-            courtScheduleEntity.setAvailableSlots(updateCourtSchedule.getAvailableSlots());
-        }
-
-        this.save(courtScheduleEntity);
+        this.save(persistedCourtSchedule);
         return Result.SUCCESS();
     }
 
