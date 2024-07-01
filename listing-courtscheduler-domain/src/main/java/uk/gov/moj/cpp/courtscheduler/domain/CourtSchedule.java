@@ -26,11 +26,14 @@ public class CourtSchedule {
     private boolean active;
     private LocalDate sessionDate;
     private Integer maxSlots;
-    private Integer maxDuration;
     private Integer availableSlots;
+    private Integer maxDuration;
     private Integer availableDuration;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
+
+    private String createdOn;
+    private String updatedOn;
 
     protected CourtSchedule(final CourtScheduleBuilder builder) {
         this.listingProfileId = builder.listingProfileId;
@@ -55,6 +58,8 @@ public class CourtSchedule {
         this.slotBased = builder.slotBased;
         this.active = builder.active;
         this.courtScheduleId = CourtScheduleIdGenerator.getCourtScheduleId(this.courtRoomId, this.sessionDate, this.courtSession, this.businessType);
+        this.createdOn = builder.createdOn;
+        this.updatedOn = builder.updatedOn;
     }
 
     public CourtSchedule() {
@@ -240,6 +245,29 @@ public class CourtSchedule {
         this.active = active;
     }
 
+    public String getCreatedOn() {
+        return createdOn;
+    }
+
+    public void setCreatedOn(String createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    public String getUpdatedOn() {
+        return updatedOn;
+    }
+
+    public void setUpdatedOn(String updatedOn) {
+        this.updatedOn = updatedOn;
+    }
+
+    public boolean hasHearingsBooked() {
+        return (slotBased) ?
+                maxSlots.compareTo(availableSlots) != 0 :
+                maxDuration.compareTo(availableDuration) != 0;
+
+    }
+
     public static final class CourtScheduleBuilder {
 
         private String ouCode;
@@ -263,6 +291,9 @@ public class CourtSchedule {
         private boolean active;
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
+
+        private String createdOn;
+        private String updatedOn;
 
         public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
             return new CourtSchedule.CourtScheduleBuilder();
@@ -466,6 +497,17 @@ public class CourtSchedule {
             this.slotStartTimes.add(slotStartTime);
             return this;
         }
+
+        public CourtScheduleBuilder withCreatedOn(final String createdOn) {
+            this.createdOn = createdOn;
+            return this;
+        }
+
+        public CourtScheduleBuilder withUpdatedOn(final String updatedOn) {
+            this.updatedOn = updatedOn;
+            return this;
+        }
+        
 
         public CourtSchedule build() {
             return new CourtSchedule(this);

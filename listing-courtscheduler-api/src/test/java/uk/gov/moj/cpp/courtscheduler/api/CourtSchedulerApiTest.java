@@ -107,7 +107,7 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(createCourtScheduleJsonEnvelope, requestName);
-        verify(sessionsService, atLeastOnce()).create(any(),any());
+        verify(sessionsService, atLeastOnce()).create(any(), any());
     }
 
     @Test
@@ -178,11 +178,11 @@ class CourtSchedulerApiTest {
         when(enveloper.withMetadataFrom(exportCourtScheduleEnvelope, requestName)).thenReturn(function);
 
         List<CourtSchedule> courtSchedules = Lists.newArrayList();
-        when(courtScheduleService.getCourtSchedules(any())).thenReturn(courtSchedules);
+        when(courtScheduleService.getCourtSchedules(any(), any())).thenReturn(courtSchedules);
 
         courtSchedulerApi.getCourtSchedule(exportCourtScheduleEnvelope);
 
-        verify(courtScheduleService, atLeastOnce()).getCourtSchedules(any());
+        verify(courtScheduleService, atLeastOnce()).getCourtSchedules(any(), any());
         verify(enveloper, atLeastOnce()).withMetadataFrom(exportCourtScheduleEnvelope, requestName);
     }
 
