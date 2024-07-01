@@ -72,7 +72,7 @@ class CourtScheduleServiceTest {
     }
 
     @Test
-    @Disabled
+    @Disabled("will be fixed with DD-33608")
     void shouldUpdateCourtScheduleWhenNoBusinessTypeChange() {
        final String courtScheduleId = randomUUID().toString();
        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId,"DVLA");

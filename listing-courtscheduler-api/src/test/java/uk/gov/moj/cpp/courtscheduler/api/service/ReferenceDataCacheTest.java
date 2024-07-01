@@ -70,7 +70,7 @@ class ReferenceDataCacheTest {
     }
 
     @Test
-    @Disabled
+    @Disabled("will be fixed with DD-33608")
     void shouldReturnBusinessTypeFromServiceWhenCacheDisabled() {
         setCommonCacheDisabled();
         final JsonObject responsePayload = mockBusinessType(BUSINESS_TYPE_CODE);
@@ -93,7 +93,7 @@ class ReferenceDataCacheTest {
     }
 
     @Test
-    @Disabled
+    @Disabled("will be fixed with DD-33608")
     void shouldReturnCourtRoomFromServiceWhenCacheDisabled() {
         setCommonCacheDisabled();
 
