@@ -5,6 +5,7 @@ import static io.smallrye.common.constraint.Assert.assertTrue;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -82,7 +83,6 @@ class CourtScheduleServiceTest {
         updateCourtSchedule.setSessionDate(random(LocalDate.class));
         updateCourtSchedule.setSessionType(random(String.class));
 
-       // given(courtScheduleRepository.update(updateCourtSchedule)).willReturn(Result.SUCCESS());
         when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0L);
         Result result = courtScheduleService.update(updateCourtSchedule,requester);

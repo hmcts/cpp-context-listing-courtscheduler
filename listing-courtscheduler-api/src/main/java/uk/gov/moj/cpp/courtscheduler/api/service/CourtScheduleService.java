@@ -30,8 +30,7 @@ public class CourtScheduleService {
     private AllocatedListingRepository allocatedListingRepository;
 
     public List<CourtSchedule> getCourtSchedules(CourtScheduleRequestParam courtScheduleRequestParam) {
-        List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtScheduleRequestParam);
-        return courtSchedules;
+        return courtScheduleRepository.findBy(courtScheduleRequestParam);
     }
 
     public Result update(UpdateCourtSchedule updateCourtSchedule, Requester requester) {
@@ -43,7 +42,8 @@ public class CourtScheduleService {
         if (maxSlotsOrDurationChanged(updateCourtSchedule, persistedCourtSchedule)) {
             updateAvailability(updateCourtSchedule, persistedCourtSchedule);
         }
-        return courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule);
+        final Result result= courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule);
+        return result;
     }
 
     private void updateAvailability(final UpdateCourtSchedule updateCourtSchedule, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
