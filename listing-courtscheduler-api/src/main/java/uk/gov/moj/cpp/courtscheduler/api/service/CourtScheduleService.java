@@ -84,7 +84,7 @@ public class CourtScheduleService {
     }
 
     private static boolean isUpdateRequestParamsAreValidForUpdate(final UpdateCourtSchedule updateCourtSchedule, final boolean isSlotBased) {
-        return (isSlotBased && Objects.isNull(updateCourtSchedule.getMaxDuration())) || (!isSlotBased && Objects.isNull(updateCourtSchedule.getMaxSlots()));
+        return (isSlotBased && updateCourtSchedule.getMaxDuration().equals(0)) || (!isSlotBased && updateCourtSchedule.getMaxSlots().equals(0));
     }
 
     public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam) {
