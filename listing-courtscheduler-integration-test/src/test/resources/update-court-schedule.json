@@ -6,5 +6,5 @@
   "sessionDate": "SESSION_DATE",
   "businessType": "BUSINESS_TYPE",
   "panel": "PANEL",
-  "availableDuration": 10
+  "maxDuration": 10
 }

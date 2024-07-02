@@ -96,7 +96,7 @@ public class SessionsService {
         courtScheduleEntities.forEach(courtSchedule -> {
             try {
                 courtScheduleRepository.save(courtSchedule);
-            } catch (QueryInvocationException queryInvocationException) {
+            } catch (Exception exception) {
                 courtScheduleRepository.update(courtSchedule);
             }
         });
