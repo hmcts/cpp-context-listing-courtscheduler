@@ -5,6 +5,7 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
 
+import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
 import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
 import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
@@ -150,6 +151,9 @@ public class CourtSchedulerApi {
     public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
         UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(envelope.payloadAsJsonObject());
         Result result = courtScheduleService.update(updateCourtSchedule,requester);
+        if(!result.isSuccess()){
+            throw new BadRequestException(result.getMsg());
+        }
         JsonObject responseObject = createObjectBuilder()
                 .add(RESULTS, objectToJsonObjectConverter.convert(result))
                 .build();

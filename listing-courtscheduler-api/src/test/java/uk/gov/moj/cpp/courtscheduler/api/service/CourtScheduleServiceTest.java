@@ -82,7 +82,7 @@ class CourtScheduleServiceTest {
         updateCourtSchedule.setSessionType(random(String.class));
 
         when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
-        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0L);
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         Result result = courtScheduleService.update(updateCourtSchedule, requester);
         assertThat(result.isSuccess(), is(true));
     }

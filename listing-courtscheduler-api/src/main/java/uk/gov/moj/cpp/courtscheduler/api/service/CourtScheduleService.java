@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
+import static java.util.Objects.nonNull;
+
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
@@ -13,6 +15,7 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import java.util.List;
+import java.util.Objects;
 
 @ApplicationScoped
 public class CourtScheduleService {
@@ -35,6 +38,9 @@ public class CourtScheduleService {
 
     public Result update(UpdateCourtSchedule updateCourtSchedule, Requester requester) {
         uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = courtScheduleRepository.findBy(updateCourtSchedule.getCourtScheduleId());
+        if (Objects.isNull(persistedCourtSchedule)) {
+            return new Result("Court Schedule not found", false);
+        }
         final String persistedBusinessType = persistedCourtSchedule.getBusinessType();
         if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType)) {
             return new Result("Business Type cannot be changed from Slot to Non-Slot and vice versa", false);
@@ -47,29 +53,38 @@ public class CourtScheduleService {
     }
 
     private void updateAvailability(final UpdateCourtSchedule updateCourtSchedule, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
-        final Long totalListedDuration = allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(updateCourtSchedule.getCourtScheduleId());
+        final Integer totalListedDuration = allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(updateCourtSchedule.getCourtScheduleId());
         //Assuming that businessType won't be changing from slot to non-slot or vice versa
         if (persistedCourtSchedule.isSlotBased()) {
-            updateCourtSchedule.setAvailableSlots(updateCourtSchedule.getMaxSlots() - totalListedDuration.intValue());
+            updateCourtSchedule.setAvailableSlots(updateCourtSchedule.getMaxSlots() - (nonNull(totalListedDuration) ? totalListedDuration : 0));
+            updateCourtSchedule.setMaxDuration(0);
+            updateCourtSchedule.setAvailableDuration(0);
         } else {
-            updateCourtSchedule.setAvailableDuration(updateCourtSchedule.getMaxDuration() - totalListedDuration.intValue());
+            updateCourtSchedule.setAvailableDuration(updateCourtSchedule.getMaxDuration() - (nonNull(totalListedDuration) ? totalListedDuration: 0));
+            updateCourtSchedule.setMaxSlots(0);
+            updateCourtSchedule.setAvailableSlots(0);
+
         }
     }
 
 
     private static boolean maxSlotsOrDurationChanged(final UpdateCourtSchedule updateCourtSchedule, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
-        return (!updateCourtSchedule.getMaxDuration().equals(persistedCourtSchedule.getMaxDuration())) || (updateCourtSchedule.getMaxSlots().equals(persistedCourtSchedule.getMaxSlots()));
+        return (!updateCourtSchedule.getMaxDuration().equals(persistedCourtSchedule.getMaxDuration())) || (!updateCourtSchedule.getMaxSlots().equals(persistedCourtSchedule.getMaxSlots()));
     }
 
     private static boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType) {
-        return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule.getBusinessType(), requester, persistedBusinessType);
+        return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule, requester, persistedBusinessType);
     }
 
-    private static boolean isBusinessTypeChangeAllowed(final String updatedBusinessTypeCode, final Requester requester, final String persistedBusinessTypeCode) {
+    private static boolean isBusinessTypeChangeAllowed(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessTypeCode) {
         final ReferenceDataCache referenceDataCache = new ReferenceDataCache();
         final BusinessType persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + persistedBusinessTypeCode));
-        final BusinessType updatedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(updatedBusinessTypeCode, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + updatedBusinessTypeCode));
-        return (persistedBusinessType.isSlot() && !updatedBusinessType.isSlot()) || (!persistedBusinessType.isSlot() && updatedBusinessType.isSlot());
+        final BusinessType updatedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(updateCourtSchedule.getBusinessType(), requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + updateCourtSchedule.getBusinessType()));
+        return persistedBusinessType.isSlot()==updatedBusinessType.isSlot() && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
+    }
+
+    private static boolean isUpdateRequestParamsAreValidForUpdate(final UpdateCourtSchedule updateCourtSchedule, final boolean isSlotBased) {
+        return (isSlotBased && Objects.isNull(updateCourtSchedule.getMaxDuration())) || (!isSlotBased && Objects.isNull(updateCourtSchedule.getMaxSlots()));
     }
 
     public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam) {

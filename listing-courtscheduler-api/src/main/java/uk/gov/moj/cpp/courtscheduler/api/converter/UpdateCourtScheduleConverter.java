@@ -25,7 +25,7 @@ public class UpdateCourtScheduleConverter implements Converter<JsonObject, Updat
         }
 
         if (jsonObject.containsKey("maxDuration")) {
-            courtScheduleBuilder.withMaxSlots(jsonObject.getInt("maxDuration"));
+            courtScheduleBuilder.withMaxDuration(jsonObject.getInt("maxDuration"));
         }
 
         return courtScheduleBuilder.build();

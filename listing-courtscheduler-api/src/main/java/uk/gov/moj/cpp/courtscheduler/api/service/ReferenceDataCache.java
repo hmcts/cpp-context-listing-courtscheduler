@@ -47,9 +47,6 @@ public class ReferenceDataCache {
     private JsonObjectToObjectConverter jsonObjectToObjectConverter;
 
     @Inject
-    private Requester requester;
-
-    @Inject
     @Value(key = "redisCommonCacheEnabled", defaultValue = "false")
     private String redisCommonCacheEnabled;
 
@@ -65,8 +62,10 @@ public class ReferenceDataCache {
 
     public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode,Requester requester) {
         if (parseBoolean(redisCommonCacheEnabled)) {
+            LOGGER.info("redisCommonCacheEnabled is true");
             return getBusinessTypeByCodeFromTheCache(businessTypeCode,requester);
         } else {
+            LOGGER.info("redisCommonCacheEnabled is false");
             return referenceDataService.getRotaBusinessTypeByCode(businessTypeCode, requester);
         }
     }
