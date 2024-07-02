@@ -4,6 +4,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.CourtScheduleIdGenerator;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
@@ -32,8 +33,8 @@ public class CourtSchedule {
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
-    private String createdOn;
-    private String updatedOn;
+    private Date createdOn;
+    private Date updatedOn;
 
     protected CourtSchedule(final CourtScheduleBuilder builder) {
         this.listingProfileId = builder.listingProfileId;
@@ -245,19 +246,19 @@ public class CourtSchedule {
         this.active = active;
     }
 
-    public String getCreatedOn() {
+    public Date getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(String createdOn) {
+    public void setCreatedOn(Date createdOn) {
         this.createdOn = createdOn;
     }
 
-    public String getUpdatedOn() {
+    public Date getUpdatedOn() {
         return updatedOn;
     }
 
-    public void setUpdatedOn(String updatedOn) {
+    public void setUpdatedOn(Date updatedOn) {
         this.updatedOn = updatedOn;
     }
 
@@ -292,8 +293,8 @@ public class CourtSchedule {
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
-        private String createdOn;
-        private String updatedOn;
+        private Date createdOn;
+        private Date updatedOn;
 
         public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
             return new CourtSchedule.CourtScheduleBuilder();
@@ -498,16 +499,16 @@ public class CourtSchedule {
             return this;
         }
 
-        public CourtScheduleBuilder withCreatedOn(final String createdOn) {
+        public CourtScheduleBuilder withCreatedOn(final Date createdOn) {
             this.createdOn = createdOn;
             return this;
         }
 
-        public CourtScheduleBuilder withUpdatedOn(final String updatedOn) {
+        public CourtScheduleBuilder withUpdatedOn(final Date updatedOn) {
             this.updatedOn = updatedOn;
             return this;
         }
-        
+
 
         public CourtSchedule build() {
             return new CourtSchedule(this);

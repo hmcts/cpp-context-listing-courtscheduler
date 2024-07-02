@@ -36,8 +36,6 @@ public class CourtScheduleToViewConverter {
                     .withOuCode(courtSchedule.getOuCode())
                     .withPanel(courtSchedule.getPanel())
                     .withSessionDate(courtSchedule.getSessionDate())
-                    .withCreatedOn(courtSchedule.getCreatedOn())
-                    .withUpdatedOn(courtSchedule.getUpdatedOn())
                     .build();
             CourtSessionsView courtSessionsView;
             if (courtSessionsViews.containsKey(courtRoomId)) {
