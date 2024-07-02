@@ -35,9 +35,6 @@ public class CourtScheduleView {
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
-    private String createdOn;
-    private String updatedOn;
-
     protected CourtScheduleView(final CourtScheduleViewBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
         this.listingProfileId = builder.listingProfileId;
@@ -62,8 +59,6 @@ public class CourtScheduleView {
         this.slotBased = builder.slotBased;
         this.active = builder.active;
         this.hasHearingsBooked = builder.hasHearingsBooked;
-        this.createdOn = builder.createdOn;
-        this.updatedOn = builder.updatedOn;
     }
 
     public CourtScheduleView() {
@@ -140,6 +135,7 @@ public class CourtScheduleView {
     public boolean isSlotBased() {
         return slotBased;
     }
+
     public boolean isActive() {
         return active;
     }
@@ -252,22 +248,6 @@ public class CourtScheduleView {
         this.hasHearingsBooked = hasHearingsBooked;
     }
 
-    public String getCreatedOn() {
-        return createdOn;
-    }
-
-    public void setCreatedOn(String createdOn) {
-        this.createdOn = createdOn;
-    }
-
-    public String getUpdatedOn() {
-        return updatedOn;
-    }
-
-    public void setUpdatedOn(String updatedOn) {
-        this.updatedOn = updatedOn;
-    }
-
     public static final class CourtScheduleViewBuilder {
 
         private String courtScheduleId;
@@ -295,9 +275,6 @@ public class CourtScheduleView {
         private boolean hasHearingsBooked;
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
-
-        private String createdOn;
-        private String updatedOn;
 
         public static CourtScheduleViewBuilder courtSchedule() {
             return new CourtScheduleViewBuilder();
@@ -338,6 +315,7 @@ public class CourtScheduleView {
             this.courtHouseName = courtHouseName;
             return this;
         }
+
         public CourtScheduleViewBuilder withCourtHouseId(final String courtHouseId) {
             this.courtHouseId = courtHouseId;
             return this;
@@ -427,15 +405,6 @@ public class CourtScheduleView {
 
         public CourtScheduleViewBuilder addSlotStartTime(final SlotStartTime slotStartTime) {
             this.slotStartTimes.add(slotStartTime);
-            return this;
-        }
-
-        public CourtScheduleViewBuilder withCreatedOn(final String createdOn) {
-            this.createdOn = createdOn;
-            return this;
-        }
-        public CourtScheduleViewBuilder withUpdatedOn(final String updatedOn) {
-            this.updatedOn = updatedOn;
             return this;
         }
 

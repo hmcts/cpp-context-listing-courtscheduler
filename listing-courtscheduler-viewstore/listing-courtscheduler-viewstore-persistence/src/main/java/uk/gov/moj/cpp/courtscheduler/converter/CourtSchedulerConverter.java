@@ -1,15 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-
 public final class CourtSchedulerConverter {
 
     private CourtSchedulerConverter() {
     }
 
     public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
-        final  DateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy, HH:mm:ss a");
         return new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
                 .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
                 .withMaxDuration(courtScheduleEntity.getMaxDuration())
@@ -25,8 +21,8 @@ public final class CourtSchedulerConverter {
                 .withSlotBased(courtScheduleEntity.isSlotBased())
                 .withActive(courtScheduleEntity.isActive())
                 .withPanel(courtScheduleEntity.getPanel())
-                .withCreatedOn(dateFormat.format(courtScheduleEntity.getCreatedOn()))
-                .withUpdatedOn(dateFormat.format(courtScheduleEntity.getUpdatedOn()))
+                .withCreatedOn(courtScheduleEntity.getCreatedOn())
+                .withUpdatedOn(courtScheduleEntity.getUpdatedOn())
                 .build();
     }
 }

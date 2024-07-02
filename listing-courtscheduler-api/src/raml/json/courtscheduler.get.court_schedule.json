@@ -22,9 +22,7 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "hasHearingsBooked": false,
-          "createdOn": "Dec 27, 2027, 6:06:32 PM",
-          "updatedOn": "Apr 24, 2017, 7:34:23 AM"
+          "hasHearingsBooked": false
         },
         {
           "courtScheduleId": "AjmueCnClLfGZXNpngWHdOelSWXhE",
@@ -44,9 +42,7 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "hasHearingsBooked": false,
-          "createdOn": "Dec 29, 2027, 6:06:32 PM",
-          "updatedOn": "Apr 24, 2017, 7:34:23 AM"
+          "hasHearingsBooked": false
         }
       ]
     },
@@ -72,9 +68,7 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "hasHearingsBooked": false,
-          "createdOn": "Dec 27, 2027, 6:06:32 PM",
-          "updatedOn": "Apr 24, 2017, 7:34:23 AM"
+          "hasHearingsBooked": false
         },
         {
           "courtScheduleId": "dffg",
@@ -94,9 +88,7 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "hasHearingsBooked": false,
-          "createdOn": "Dec 29, 2027, 6:06:32 PM",
-          "updatedOn": "Apr 24, 2017, 7:34:23 AM"
+          "hasHearingsBooked": false
         }
       ]
     }
