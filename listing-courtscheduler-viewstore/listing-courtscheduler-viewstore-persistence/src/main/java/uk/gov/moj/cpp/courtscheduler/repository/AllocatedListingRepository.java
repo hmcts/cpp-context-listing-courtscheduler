@@ -17,8 +17,8 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
 
     abstract List<AllocatedListing> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
 
-    public Long findTotalAllocatedDurationByCourtScheduleId(final String courtScheduleId) {
-        return criteria().select(Long.class, sum(AllocatedListing_.duration)).eq(AllocatedListing_.courtScheduleId, courtScheduleId).getSingleResult();
+    public Integer findTotalAllocatedDurationByCourtScheduleId(final String courtScheduleId) {
+        return criteria().select(Integer.class, sum(AllocatedListing_.duration)).eq(AllocatedListing_.courtScheduleId, courtScheduleId).getSingleResult();
     }
 
     abstract List<AllocatedListing> findByCourtScheduleId(final String courtScheduleId);

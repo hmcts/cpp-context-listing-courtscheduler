@@ -20,4 +20,6 @@ public class Result {
     public boolean isSuccess() {
         return success;
     }
+
+    public String getMsg() {return msg;}
 }

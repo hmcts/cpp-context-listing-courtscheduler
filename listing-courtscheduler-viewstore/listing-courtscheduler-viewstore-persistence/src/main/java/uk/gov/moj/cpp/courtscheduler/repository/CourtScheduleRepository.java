@@ -83,7 +83,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         persistedCourtSchedule.setBusinessType(updateCourtSchedule.getBusinessType());
         persistedCourtSchedule.setCourtSession(updateCourtSchedule.getSessionType());
         persistedCourtSchedule.setPanel(updateCourtSchedule.getPanel());
-        persistedCourtSchedule.setMaxSlots(updateCourtSchedule.getMaxDuration());
+        persistedCourtSchedule.setMaxSlots(updateCourtSchedule.getMaxSlots());
         persistedCourtSchedule.setAvailableSlots(updateCourtSchedule.getAvailableSlots());
         persistedCourtSchedule.setMaxDuration(updateCourtSchedule.getMaxDuration());
         persistedCourtSchedule.setAvailableDuration(updateCourtSchedule.getAvailableDuration());

@@ -12,6 +12,9 @@
             <property name="jboss.as.jpa.providerModule" value="org.hibernate"/>
             <property name="tomee.jpa.factory.lazy" value="true" />
             <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.use_sql_comments" value="true"/>
+            <property name="hibernate.type" value="trace"/>
         </properties>
     </persistence-unit>
 </persistence>

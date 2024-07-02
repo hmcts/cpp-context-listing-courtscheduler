@@ -5,6 +5,8 @@ public enum RequestParameterConstant {
 
     PANEL("panel"),
     COURT_SESSION("courtSession"),
+
+    COURT_SCHEDULE_ID("courtScheduleId"),
     COURT_CENTRE_ID("courtCentreId"),
     OU_LEVEL2("oucodeL2Code"),
     OU_CODE("ouCode"),

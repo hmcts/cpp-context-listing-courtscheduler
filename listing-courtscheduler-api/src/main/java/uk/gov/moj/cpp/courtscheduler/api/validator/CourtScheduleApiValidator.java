@@ -1,6 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
 import static java.lang.String.format;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 import static java.util.logging.Level.WARNING;
 import static java.util.logging.Logger.getGlobal;
 import static javax.json.Json.createObjectBuilder;
@@ -25,6 +27,8 @@ import org.slf4j.LoggerFactory;
 
 public class CourtScheduleApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleApiValidator.class.getName());
+    private static final String MISSING_BOTH_DURATION_AND_SLOTS = "At least one of maxSlots or maxDuration should be supplied";
+    private static final String BOTH_DURATION_AND_SLOTS_SUPPLIED = "Either maxSlots or maxDuration should be supplied";
 
     @SuppressWarnings("squid:MethodCyclomaticComplexity")
     public JsonObject getCourtSchedulesValidation(final CourtScheduleRequestParam courtScheduleRequestParam) {
