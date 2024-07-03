@@ -55,7 +55,7 @@ rule "API - Action - courtscheduler.get.hearing.slots"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.get.hearing.slots");
-        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getHearingSlotsPermission()));
+        eval(userAndGroupProvider.isSystemUser($action));
   then
     $outcome.setSuccess(true);
 end
@@ -64,7 +64,7 @@ rule "API - Action - courtscheduler.remove.hearing.slots"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.remove.hearing.slots");
-        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.removeHearingSlotsPermission()));
+        eval(userAndGroupProvider.isSystemUser($action));
   then
     $outcome.setSuccess(true);
 end
@@ -73,7 +73,7 @@ rule "API - Action - courtscheduler.create.provisional.booking"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.create.provisional.booking");
-        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createProvisionalBookingPermission()));
+        eval(userAndGroupProvider.isSystemUser($action));
   then
     $outcome.setSuccess(true);
 end
@@ -82,7 +82,7 @@ rule "API - Action - courtscheduler.get.provisional.booking"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.get.provisional.booking");
-        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getProvisionalBookingPermission()));
+        eval(userAndGroupProvider.isSystemUser($action));
   then
     $outcome.setSuccess(true);
 end

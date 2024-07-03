@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.api;
 
 import static javax.json.Json.createObjectBuilder;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
 
 import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
@@ -150,8 +149,8 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.update")
     public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
         UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(envelope.payloadAsJsonObject());
-        Result result = courtScheduleService.update(updateCourtSchedule,requester);
-        if(!result.isSuccess()){
+        Result result = courtScheduleService.update(updateCourtSchedule, requester);
+        if (!result.isSuccess()) {
             throw new BadRequestException(result.getMsg());
         }
         JsonObject responseObject = createObjectBuilder()
@@ -181,7 +180,7 @@ public class CourtSchedulerApi {
         }
 
         JsonObject responseObject = slotsSearchService.search(hearingSlotRequestParam);
-        return envelopeFor(envelope, responseObject, HEARING_SLOTS);
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 
     @Handles("courtscheduler.remove.hearing.slots")
@@ -274,3 +273,4 @@ public class CourtSchedulerApi {
         return enveloper.withMetadataFrom(originalEnvelope, name).apply(build);
     }
 }
+
