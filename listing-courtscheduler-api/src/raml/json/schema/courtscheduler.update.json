@@ -5,13 +5,10 @@
     "courtScheduleId": {
       "$ref": "#/definitions/uuid"
     },
-    "courtHouseId": {
-      "$ref": "#/definitions/uuid"
-    },
     "courtRoomId": {
       "$ref": "#/definitions/uuid"
     },
-    "sessionType": {
+    "courtSession": {
       "type": "string",
       "enum": [
         "AM",
@@ -20,9 +17,6 @@
       ]
     },
     "businessType": {
-      "type": "string"
-    },
-    "sessionDate": {
       "type": "string"
     },
     "panel": {
@@ -43,11 +37,9 @@
     {
       "required": [
         "courtScheduleId",
-        "courtHouseId",
         "courtRoomId",
-        "sessionType",
+        "courtSession",
         "businessType",
-        "sessionDate",
         "panel",
         "maxSlots"
       ]
@@ -55,11 +47,9 @@
     {
       "required": [
         "courtScheduleId",
-        "courtHouseId",
         "courtRoomId",
-        "sessionType",
+        "courtSession",
         "businessType",
-        "sessionDate",
         "panel",
         "maxDuration"
       ]
