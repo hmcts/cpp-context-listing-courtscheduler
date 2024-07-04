@@ -42,7 +42,6 @@ public abstract class AbstractIT extends RestClient {
     @BeforeAll
     public static void setUp() {
         setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
-        setupUserAsSystemUser(USER_ID.toString());
     }
 
     @BeforeEach
