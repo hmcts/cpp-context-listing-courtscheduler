@@ -12,7 +12,6 @@ import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
@@ -97,7 +96,6 @@ public class CourtSchedulerApi {
     private final ProvisionalSlotConverter provisionalSlotConverter = new ProvisionalSlotConverter();
     private final ProvisionalBookingApiValidator provisionalBookingApiValidator = new ProvisionalBookingApiValidator();
     private final SessionsConverter sessionsConverter = new SessionsConverter();
-    private final CourtScheduleConverter courtScheduleConverter = new CourtScheduleConverter();
     private final UpdateCourtScheduleConverter updateCourtScheduleConverter = new UpdateCourtScheduleConverter();
     private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter = new CreateSessionsRequestParamConverter();
 
@@ -180,7 +178,7 @@ public class CourtSchedulerApi {
         }
 
         JsonObject responseObject = slotsSearchService.search(hearingSlotRequestParam);
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
+        return envelopeFor(envelope, responseObject);
     }
 
     @Handles("courtscheduler.remove.hearing.slots")
@@ -272,5 +270,8 @@ public class CourtSchedulerApi {
         String name = originalEnvelope.metadata().name();
         return enveloper.withMetadataFrom(originalEnvelope, name).apply(build);
     }
-}
 
+    private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue) {
+        return enveloper.withMetadataFrom(originalEnvelope, originalEnvelope.metadata().name()).apply(jsonValue);
+    }
+}
