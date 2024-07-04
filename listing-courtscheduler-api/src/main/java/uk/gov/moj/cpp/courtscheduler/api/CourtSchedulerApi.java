@@ -148,8 +148,8 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.update")
     public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
         UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(envelope.payloadAsJsonObject());
-        Result result = courtScheduleService.update(updateCourtSchedule,requester);
-        if(!result.isSuccess()){
+        Result result = courtScheduleService.update(updateCourtSchedule, requester);
+        if (!result.isSuccess()) {
             throw new BadRequestException(result.getMsg());
         }
         JsonObject responseObject = createObjectBuilder()
@@ -179,7 +179,7 @@ public class CourtSchedulerApi {
         }
 
         JsonObject responseObject = slotsSearchService.search(hearingSlotRequestParam);
-        return envelopeFor(envelope, responseObject, HEARING_SLOTS);
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 
     @Handles("courtscheduler.remove.hearing.slots")
