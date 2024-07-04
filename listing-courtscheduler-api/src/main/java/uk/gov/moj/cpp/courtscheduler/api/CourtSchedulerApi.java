@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.api;
 
 import static javax.json.Json.createObjectBuilder;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.HEARING_SLOTS;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
 
 import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
