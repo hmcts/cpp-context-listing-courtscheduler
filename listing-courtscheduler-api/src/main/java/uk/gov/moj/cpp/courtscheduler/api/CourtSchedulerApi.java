@@ -12,7 +12,6 @@ import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
@@ -97,7 +96,6 @@ public class CourtSchedulerApi {
     private final ProvisionalSlotConverter provisionalSlotConverter = new ProvisionalSlotConverter();
     private final ProvisionalBookingApiValidator provisionalBookingApiValidator = new ProvisionalBookingApiValidator();
     private final SessionsConverter sessionsConverter = new SessionsConverter();
-    private final CourtScheduleConverter courtScheduleConverter = new CourtScheduleConverter();
     private final UpdateCourtScheduleConverter updateCourtScheduleConverter = new UpdateCourtScheduleConverter();
     private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter = new CreateSessionsRequestParamConverter();
 
@@ -273,4 +271,3 @@ public class CourtSchedulerApi {
         return enveloper.withMetadataFrom(originalEnvelope, name).apply(build);
     }
 }
-

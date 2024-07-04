@@ -13,6 +13,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary_;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule_;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -29,6 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 public class CourtScheduleCriteria {
     public void createHearingSlotsCourtScheduleCriteria(final HearingSlotRequestParam hearingSlotRequestParam,
                                                         CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtSchedule> criteriaQuery) {
+        List<Predicate> predicateList = new ArrayList<>();
         Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
         Predicate activePredicate = criteriaBuilder.equal(root.get("active"), true);
         Predicate panelPredicate;
@@ -40,37 +42,39 @@ public class CourtScheduleCriteria {
         Predicate dateBetween = criteriaBuilder.between(root.get(CourtSchedule_.SESSION_DATE),
                 LocalDate.parse(hearingSlotRequestParam.sessionStartDate()),
                 LocalDate.parse(hearingSlotRequestParam.sessionEndDate()));
-        criteriaQuery.select(root).where(criteriaBuilder.and(activePredicate, panelPredicate, dateBetween));
+        predicateList.add(activePredicate);predicateList.add(panelPredicate);predicateList.add(dateBetween);
         if (StringUtils.isNotBlank(hearingSlotRequestParam.oucodeL2Code())) {
             Predicate ouLevelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.OPERATIONAL_UNIT), hearingSlotRequestParam.oucodeL2Code());
-            criteriaQuery.where(criteriaBuilder.and(ouLevelPredicate));
+            predicateList.add(ouLevelPredicate);
         }
         if (StringUtils.isNotBlank(hearingSlotRequestParam.ouCode())) {
             Predicate ouCodePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), hearingSlotRequestParam.ouCode());
-            criteriaQuery.where(criteriaBuilder.and(ouCodePredicate));
+            predicateList.add(ouCodePredicate);
         }
         if (StringUtils.isNotBlank(hearingSlotRequestParam.courtRoomId())) {
             Predicate courtRoomPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_ID),
                     hearingSlotRequestParam.courtRoomId());
-            criteriaQuery.where(criteriaBuilder.and(courtRoomPredicate));
+            predicateList.add(courtRoomPredicate);
         }
         if (StringUtils.isNotBlank(hearingSlotRequestParam.courtRoomNumber())) {
             Predicate courtRoomNumberPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_NUMBER),
                     hearingSlotRequestParam.courtRoomNumber());
-            criteriaQuery.where(criteriaBuilder.and(courtRoomNumberPredicate));
+            predicateList.add(courtRoomNumberPredicate);
         }
         if (StringUtils.isNotBlank(hearingSlotRequestParam.businessType())) {
             Predicate businessTypePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.BUSINESS_TYPE),
                     hearingSlotRequestParam.businessType());
-            criteriaQuery.where(criteriaBuilder.and(businessTypePredicate));
+            predicateList.add(businessTypePredicate);
         }
         if (StringUtils.isNotBlank(hearingSlotRequestParam.courtSession())) {
             final String courtSessionParam = hearingSlotRequestParam.courtSession();
             final String courtSessionPlaceholder = Arrays.stream(courtSessionParam.split(","))
                     .map(s -> "?").collect(joining(","));
             Predicate courtSessionPredicate = root.get(CourtSchedule_.COURT_SESSION).in(courtSessionPlaceholder);
-            criteriaQuery.where(criteriaBuilder.and(courtSessionPredicate));
+            predicateList.add(courtSessionPredicate);
         }
+
+        criteriaQuery.select(root).where(predicateList.toArray(new Predicate[] {}));
 
         criteriaQuery.orderBy(criteriaBuilder.asc(root.get(CourtSchedule_.SESSION_DATE)),
                 criteriaBuilder.asc(root.get(CourtSchedule_.COURT_HOUSE_NAME)),
