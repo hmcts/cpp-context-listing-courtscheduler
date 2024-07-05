@@ -1,19 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-import uk.gov.justice.services.test.utils.core.http.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.*;
-
-import javax.json.JsonObject;
-import javax.ws.rs.core.Response;
-import java.sql.SQLException;
-import java.time.LocalDate;
-import java.util.Map;
-import java.util.UUID;
-
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -23,12 +9,39 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
+
+import uk.gov.justice.services.test.utils.core.http.RequestParams;
+import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
+
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.json.JsonObject;
+import javax.ws.rs.core.Response;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 
 class HearingSlotIT extends AbstractIT {
 
     private static final String RELATIVE_URL = "/hearingslots";
+
+    @BeforeAll
+    static void setupSystemUser() {
+        setupUserAsSystemUser(USER_ID.toString());
+    }
 
     @Test
     void shouldUpdateHearingSlot() throws SQLException {
@@ -49,7 +62,6 @@ class HearingSlotIT extends AbstractIT {
         provisionalBooking.setProvisionalBookingKey(new ProvisionalBookingKey(courtSchedule, bookingId));
         databaseSeeder.insertProvisionalBooking(provisionalBooking);
 
-        setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         String updateHearingSlotsPayload = getPayload("courtscheduler.update.hearing.slots.json");
         updateHearingSlotsPayload = updateHearingSlotsPayload.replace("HEARING_ID", hearingId);
         updateHearingSlotsPayload = updateHearingSlotsPayload.replace("COURT_SCHEDULE_ID", courtScheduleId);
@@ -82,7 +94,6 @@ class HearingSlotIT extends AbstractIT {
         allocatedListing.setBookingId(bookingId);
         databaseSeeder.insertAllocatedListing(allocatedListing);
 
-        setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         String hearingSlotsRequestParams = getPayload("courtscheduler.get.hearing.slots.json");
 
         LocalDate fromDate = courtSchedule.getSessionDate().minusDays(1);
@@ -101,7 +112,7 @@ class HearingSlotIT extends AbstractIT {
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
-        assertThat(jsonObject.getJsonObject("hearingSlots").getJsonArray("hearingSlots").getJsonObject(0).getString("courtScheduleId"),
+        assertThat(((JsonObject)jsonObject.getJsonArray("hearingSlots").get(0)).getString("courtScheduleId"),
                 is(courtSchedule.getCourtScheduleId()));
 
     }
@@ -125,7 +136,6 @@ class HearingSlotIT extends AbstractIT {
         provisionalBooking.setProvisionalBookingKey(new ProvisionalBookingKey(courtSchedule, bookingId));
         databaseSeeder.insertProvisionalBooking(provisionalBooking);
 
-        setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
 
         final Response response = deleteCommand(format("%s/%s", RELATIVE_URL, hearingId), "application/vnd.courtscheduler.remove.hearing.slots+json", USER_ID);
 

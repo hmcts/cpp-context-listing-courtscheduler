@@ -10,9 +10,12 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.http.HttpHeaders.CONTENT_TYPE;
 import static org.apache.http.HttpStatus.SC_OK;
 import static uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils.stubPingFor;
+import static uk.gov.justice.services.common.http.HeaderConstants.ID;
 import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.WiremockTestHelper.waitForStubToBeReady;
+
+import uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils;
 
 import java.util.UUID;
 
@@ -44,6 +47,15 @@ public class StubUtil {
                         .withBody(getPayload("usersgroups.user-permissions.json"))));
 
         waitForStubToBeReady("/usersgroups-service/query/api/rest/usersgroups/users/logged-in-user/permissions", CONTENT_TYPE_QUERY_PERMISSION);
+    }
+
+    public static void setupUserAsSystemUser(String userId) {
+        InternalEndpointMockUtils.stubPingFor("usersgroups-service");
+        stubFor(get(urlPathEqualTo("/usersgroups-service/query/api/rest/usersgroups/users/" + userId + "/groups"))
+                .willReturn(aResponse().withStatus(SC_OK)
+                        .withHeader(ID, randomUUID().toString())
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(getPayload("stub-data/usersgroups.get-groups-by-user.json"))));
     }
 
     public static void stubGetReferenceDataRotaBusinessTypes(final String responsePath) {

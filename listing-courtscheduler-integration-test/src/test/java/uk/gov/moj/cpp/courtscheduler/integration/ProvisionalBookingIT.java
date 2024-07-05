@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
@@ -25,11 +26,17 @@ import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 public class ProvisionalBookingIT extends AbstractIT {
 
     private final String RELATIVE_PATH = "/provisionalBooking";
+
+    @BeforeAll
+    static void setupSystemUser() {
+        setupUserAsSystemUser(USER_ID.toString());
+    }
 
     @Test
     void shouldCreateProvisionalHearingSlot() throws SQLException {
@@ -38,7 +45,7 @@ public class ProvisionalBookingIT extends AbstractIT {
         courtSchedule.setCourtScheduleId(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
+
         String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json");
         provisionalBookingPayload = provisionalBookingPayload.replace("COURTSCHEDULER_ID", courtScheduleId);
 
@@ -51,10 +58,13 @@ public class ProvisionalBookingIT extends AbstractIT {
     void shouldRetrieveProvisionalBooking() throws Exception {
         String courtScheduleId = UUID.randomUUID().toString();
         String bookingId = UUID.randomUUID().toString();
+        setupUserAsSystemUser(USER_ID.toString());
+
 
         CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
+
 
         final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
         final CourtScheduleJudiciaryKey courtScheduleJudiciaryKey = random(CourtScheduleJudiciaryKey.class);
@@ -67,7 +77,6 @@ public class ProvisionalBookingIT extends AbstractIT {
         final ProvisionalSlot provisionalSlot = new ProvisionalSlot(courtSchedule.getCourtScheduleId(), "2020-01-01T11:00:00.000Z");
         databaseSeeder.bookSlots(List.of(provisionalSlot), bookingId);
 
-        setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         String provisionalBooking = getPayload("courtscheduler.get.provisional.booking.json");
         provisionalBooking = provisionalBooking.replace("BOOKING_ID", bookingId);
         ObjectMapper mapper = new ObjectMapper();
