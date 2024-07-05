@@ -58,7 +58,7 @@ class ProvisionalBookingServiceTest {
         JsonObject response = provisionalBookingService.bookProvisionalSlots(provisionalBookingSlots);
 
         assertNotNull(response);
-        assertNotNull(response.getString("bookingIds"));
+        assertNotNull(response.getString("bookingId"));
     }
 
     @Test

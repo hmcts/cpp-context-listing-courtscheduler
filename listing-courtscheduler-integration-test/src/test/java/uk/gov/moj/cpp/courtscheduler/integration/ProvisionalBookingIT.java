@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
@@ -26,6 +27,7 @@ import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +54,9 @@ public class ProvisionalBookingIT extends AbstractIT {
         final Response response = postCommand(RELATIVE_PATH, "application/vnd.courtscheduler.create.provisional.booking+json", USER_ID, provisionalBookingPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
+        String responseString = response.readEntity(String.class); // Ensure to read the entity as String
+        JSONObject responseJson = new JSONObject(responseString);
+        assertThat(responseJson.get("bookingId"), notNullValue());
     }
 
     @Test
