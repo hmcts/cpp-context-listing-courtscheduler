@@ -248,7 +248,7 @@ public class CourtSchedulerApi {
         }
 
         JsonObject responseObject = provisionalBookingService.bookProvisionalSlots(provisionalBookingSlots);
-        return envelopeFor(envelope, responseObject, ApiConstants.BOOKING_REFERENCE);
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 
     @Handles("courtscheduler.get.provisional.booking")

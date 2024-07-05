@@ -29,6 +29,7 @@ import org.modelmapper.ModelMapper;
 
 @ApplicationScoped
 public class ProvisionalBookingService {
+    private static final String BOOKING_ID = "bookingId";
     @Inject
     private ProvisionalBookingRepository provisionalBookingRepository;
     @Inject
@@ -47,7 +48,7 @@ public class ProvisionalBookingService {
         });
 
         return Json.createObjectBuilder()
-                .add(RequestParameterConstant.BOOKING_IDS.getLabel(),bookingId)
+                .add(BOOKING_ID,bookingId)
                 .build();
     }
 
