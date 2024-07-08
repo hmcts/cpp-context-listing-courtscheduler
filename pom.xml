@@ -41,6 +41,7 @@
             **/uk/gov/moj/cpp/courtscheduler/api/service/CourtScheduleService.java,
             **/uk/gov/moj/cpp/courtscheduler/api/converter/UpdateCourtScheduleConverter.java,
             **/uk/gov/moj/cpp/courtscheduler/repository/AllocatedListingRepository.java,
+            **/uk/gov/moj/cpp/courtscheduler/repository/CourtScheduleRepository.java,
             **/uk/gov/moj/cpp/courtscheduler/api/CourtSchedulerApi.java,
             **/uk/gov/moj/cpp/courtscheduler/api/service/ReferenceDataCache.java
 
