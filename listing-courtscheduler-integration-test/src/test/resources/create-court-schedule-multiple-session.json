@@ -2,7 +2,7 @@
   "sessions": [
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
-      "courtRoomId": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5",
+      "courtRoomId": "41a41156-0ca9-3352-999e-8d26274bb1aa",
       "sessionType": "AM",
       "businessType": "DVLA",
       "duration": 2,
@@ -11,7 +11,7 @@
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
-      "courtRoomId": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5",
+      "courtRoomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c",
       "sessionType": "AM",
       "businessType": "DVLA",
       "duration": 2,

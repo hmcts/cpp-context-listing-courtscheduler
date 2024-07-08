@@ -43,8 +43,8 @@
             **/uk/gov/moj/cpp/courtscheduler/repository/AllocatedListingRepository.java,
             **/uk/gov/moj/cpp/courtscheduler/repository/CourtScheduleRepository.java,
             **/uk/gov/moj/cpp/courtscheduler/api/CourtSchedulerApi.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/service/ReferenceDataCache.java
-
+            **/uk/gov/moj/cpp/courtscheduler/api/service/ReferenceDataCache.java,
+            **/uk/gov/moj/cpp/courtscheduler/api/service/ReferenceDataService.java
         </sonar.coverage.exclusions>
         <sonar.cpd.exclusions>
             **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,

@@ -26,7 +26,10 @@ public class CourtScheduleService {
     private CourtScheduleRepository courtScheduleRepository;
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
-    protected ReferenceDataCache referenceDataCache = new ReferenceDataCache();
+
+    @Inject
+    private ReferenceDataCache referenceDataCache;
+
 
     public List<CourtSchedule> getCourtSchedules(CourtScheduleRequestParam courtScheduleRequestParam, Requester requester) {
         List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtScheduleRequestParam);
@@ -72,12 +75,11 @@ public class CourtScheduleService {
         return (!updateCourtSchedule.getMaxDuration().equals(persistedCourtSchedule.getMaxDuration())) || (!updateCourtSchedule.getMaxSlots().equals(persistedCourtSchedule.getMaxSlots()));
     }
 
-    private static boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType) {
+    private  boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType) {
         return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule, requester, persistedBusinessType);
     }
 
-    private static boolean isBusinessTypeChangeAllowed(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessTypeCode) {
-        final ReferenceDataCache referenceDataCache = new ReferenceDataCache();
+    private  boolean isBusinessTypeChangeAllowed(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessTypeCode) {
         final BusinessType persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + persistedBusinessTypeCode));
         final BusinessType updatedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(updateCourtSchedule.getBusinessType(), requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + updateCourtSchedule.getBusinessType()));
         return persistedBusinessType.isSlot()==updatedBusinessType.isSlot() && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());

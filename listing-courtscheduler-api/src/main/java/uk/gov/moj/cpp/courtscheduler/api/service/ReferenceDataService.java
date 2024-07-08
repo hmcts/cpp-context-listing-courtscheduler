@@ -72,7 +72,7 @@ public class ReferenceDataService {
                         createObjectBuilder().build());
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        return JsonObjects.getJsonArray(payload, "cpRotaCourtRoomMappings")
+        return JsonObjects.getJsonArray(payload, "cpRotaCourtRoomMappings").orElseThrow(() -> new RuntimeException("No courtrooms  found: "))
                 .stream()
                 .map(JsonObject.class::cast)
                 .map(this::toCourtRoom)

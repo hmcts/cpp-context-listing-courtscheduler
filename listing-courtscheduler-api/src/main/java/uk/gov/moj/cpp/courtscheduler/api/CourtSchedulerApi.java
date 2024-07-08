@@ -87,17 +87,29 @@ public class CourtSchedulerApi {
     @Inject
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
 
-    private final AllocatedSlotConverter converter = new AllocatedSlotConverter();
-    private final HearingSlotsApiValidator hearingSlotsApiValidator = new HearingSlotsApiValidator();
-    private final CourtScheduleApiValidator courtScheduleApiValidator = new CourtScheduleApiValidator();
-    private final HearingSlotRequestParamConverter hearingSlotRequestParamConverter = new HearingSlotRequestParamConverter();
-    private final CourtScheduleRequestParamConverter courtScheduleRequestParamConverter = new CourtScheduleRequestParamConverter();
-    private final MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter = new MiFilterCriteriaRequestParamConverter();
-    private final ProvisionalSlotConverter provisionalSlotConverter = new ProvisionalSlotConverter();
-    private final ProvisionalBookingApiValidator provisionalBookingApiValidator = new ProvisionalBookingApiValidator();
-    private final SessionsConverter sessionsConverter = new SessionsConverter();
-    private final UpdateCourtScheduleConverter updateCourtScheduleConverter = new UpdateCourtScheduleConverter();
-    private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter = new CreateSessionsRequestParamConverter();
+    @Inject
+    private  AllocatedSlotConverter converter;
+
+    @Inject
+    private  HearingSlotsApiValidator hearingSlotsApiValidator;
+    @Inject
+    private  CourtScheduleApiValidator courtScheduleApiValidator;
+    @Inject
+    private  HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
+    @Inject
+    private  CourtScheduleRequestParamConverter courtScheduleRequestParamConverter;
+    @Inject
+    private  MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter;
+    @Inject
+    private  ProvisionalSlotConverter provisionalSlotConverter;
+    @Inject
+    private  ProvisionalBookingApiValidator provisionalBookingApiValidator;
+    @Inject
+    private  SessionsConverter sessionsConverter;
+    @Inject
+    private  UpdateCourtScheduleConverter updateCourtScheduleConverter;
+    @Inject
+    private  CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
 
 
     @Handles("courtscheduler.create")

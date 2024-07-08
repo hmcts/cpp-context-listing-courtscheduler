@@ -39,13 +39,12 @@ class CourtSchedulerIT extends AbstractIT {
 
     @BeforeAll
     public static void setUp() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
         stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
     }
 
     @Test
     void shouldCreateSlotBasedSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
         stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
         final String createCourtSchedulePayload = getPayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
@@ -55,6 +54,7 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateDurationBasedSchedule() {
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
         final String createCourtSchedulePayload = getPayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -62,6 +62,8 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateOrUpdateCourtSchedule() {
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
+
         final String createCourtSchedulePayload = getPayload("create-court-schedule-multiple-session.json");
         final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -69,15 +71,17 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldUpdateCourtSchedule() throws SQLException {
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setBusinessType("DVLA");
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
         String changedCourtHouseId = UUID.randomUUID().toString();
         String changedCourtRoomId = UUID.randomUUID().toString();
-        String changedBusinessType = RANDOM.nextObject(String.class);
+        String changedBusinessType = "DVLA";
         String changedSessionType = "AM";
         String changedSessionDate = RANDOM.nextObject(LocalDate.class).toString();
         String changedPanel = "YOUTH";
@@ -98,11 +102,12 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGetCourtSchedules() throws SQLException, JsonProcessingException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
 
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         LocalDate fromDate = expected.getSessionDate().minusDays(1);
         LocalDate toDate = expected.getSessionDate().plusDays(1);
+        expected.setBusinessType("TRL");
 
         expected.setCourtScheduleId(CourtScheduleIdGenerator.getCourtScheduleId(expected.getCourtRoomId(), expected.getSessionDate(), expected.getCourtSession(), expected.getBusinessType()));
         expected.setSlotBased(false);
