@@ -44,7 +44,7 @@ import org.apache.deltaspike.data.api.Repository;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+@SuppressWarnings({"squid:S1312", "squid:S2629","squid:S6813"})
 @Repository(forEntity = CourtSchedule.class)
 public abstract class CourtScheduleRepository extends AbstractEntityRepository<CourtSchedule, String> {
 
