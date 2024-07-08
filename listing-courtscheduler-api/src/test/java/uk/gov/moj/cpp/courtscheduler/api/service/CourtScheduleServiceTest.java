@@ -54,7 +54,6 @@ class CourtScheduleServiceTest {
     @Test
     void shouldGetCourtSchedulesBetweenLastUpdatedOn() {
         // given
-        courtScheduleService.referenceDataCache = referenceDataCache;
         CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParam();
         CourtSchedule courtSchedule = new CourtSchedule();
         given(courtScheduleRepository.findBy(courtScheduleRequestParam)).willReturn(List.of(courtSchedule));

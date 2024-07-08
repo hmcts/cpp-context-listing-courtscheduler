@@ -29,9 +29,8 @@ public class SessionsService {
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
 
-
-    final ReferenceDataCache referenceDataCache = new ReferenceDataCache();
-
+    @Inject
+    private ReferenceDataCache referenceDataCache;
 
     public void create(CreateSessionRequestParam createSessionRequestParam, Requester requester) {
         final List<CourtSchedule> courtScheduleList = new ArrayList<>();

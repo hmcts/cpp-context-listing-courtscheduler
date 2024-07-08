@@ -26,7 +26,7 @@
       "oucodeL2Code": "12",
       "oucodeUUID": "22c69328-70af-3e27-80c5-1a79e24903d2",
       "courtroomName": "Courtroom 01",
-      "courtroomId": "0a48cb96-48d8-3f1c-a8dd-3d45b40b0ff5"
+      "courtroomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c"
     },
     {
       "id": "0b60424c-8099-3f5c-87ff-683e0d9d19db",
@@ -40,7 +40,7 @@
       "oucodeL2Code": "37",
       "oucodeUUID": "f8f5f4e8-2b1e-36f9-9653-3be2c84c4a13",
       "courtroomName": "Courtroom 02",
-      "courtroomId": "0b60424c-8099-3f5c-87ff-683e0d9d19db"
+      "courtroomId": "1c602697-6085-37c3-9977-706f4788d2bb"
     },
     {
       "id": "0f2af3c1-8e0a-3276-b1da-14bcbf85f842",
@@ -69,6 +69,48 @@
       "oucodeUUID": "e1f5c483-466e-322a-8f04-8e32d1c8211b",
       "courtroomName": "Courtroom 05",
       "courtroomId": "631004ef-78ce-3c2e-9937-4a1cc34ab1b7"
+    },
+    {
+      "id": "010b4b06-4bb8-3d25-9981-74952e9d52c3",
+      "rotaLocationId": 313,
+      "rotaVenueName": "Court 4",
+      "cppCourtRoomId": 1911,
+      "rotaVenueId": 25640,
+      "oucode": "B50KH00",
+      "oucodeL3Name": "Plymouth Magistrates' Court",
+      "oucodeL2Name": "Devon and Cornwall",
+      "oucodeL2Code": "50",
+      "oucodeUUID": "ea5b97f1-cbd0-3412-9998-a7580dc86edf",
+      "courtroomName": "Courtroom 04",
+      "courtroomId": "68be9ae9-2aac-34ca-8b58-eb9efd35e5cd"
+    },
+    {
+      "id": "014cf317-e02a-337b-befc-f35a003ef785",
+      "rotaLocationId": 4,
+      "rotaVenueName": "Ct 02 LAV HILL",
+      "cppCourtRoomId": 2331,
+      "rotaVenueId": 25747,
+      "oucode": "B01LY00",
+      "oucodeL3Name": "Lavender Hill Magistrates' Court",
+      "oucodeL2Name": "London",
+      "oucodeL2Code": "1",
+      "oucodeUUID": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+      "courtroomName": "Courtroom 02",
+      "courtroomId": "b4562684-9209-3ec4-a544-7f80dabd94d8"
+    },
+    {
+      "id": "028179b2-a3ca-3130-b236-eaf05cc3b902",
+      "rotaLocationId": 256,
+      "rotaVenueName": "Court 06",
+      "cppCourtRoomId": 834,
+      "rotaVenueId": 24652,
+      "oucode": "B30PI00",
+      "oucodeL3Name": "Derby Justice Centre (aka Derby St Mary Adult)",
+      "oucodeL2Name": "Derbyshire",
+      "oucodeL2Code": "30",
+      "oucodeUUID": "14876ea1-5f7c-32ef-9fbd-aa0b63193550",
+      "courtroomName": "Courtroom 06",
+      "courtroomId": "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"
     }
   ]
 }
