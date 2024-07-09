@@ -14,7 +14,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule_;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -67,10 +66,8 @@ public class CourtScheduleCriteria {
             predicateList.add(businessTypePredicate);
         }
         if (StringUtils.isNotBlank(hearingSlotRequestParam.courtSession())) {
-            final String courtSessionParam = hearingSlotRequestParam.courtSession();
-            final String courtSessionPlaceholder = Arrays.stream(courtSessionParam.split(","))
-                    .map(s -> "?").collect(joining(","));
-            Predicate courtSessionPredicate = root.get(CourtSchedule_.COURT_SESSION).in(courtSessionPlaceholder);
+            Predicate courtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION),
+                    hearingSlotRequestParam.courtSession());
             predicateList.add(courtSessionPredicate);
         }
 

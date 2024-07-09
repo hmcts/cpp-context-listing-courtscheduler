@@ -330,6 +330,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule.setSessionDate(LocalDate.now());
         courtSchedule.setOperationalUnit("BA124");
         courtSchedule.setOuCode("BA124");
+        courtSchedule.setCourtSession("AM");
         courtScheduleRepository.saveAndFlush(courtSchedule);
         final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
         final CourtScheduleJudiciaryKey courtScheduleJudiciaryKey = random(CourtScheduleJudiciaryKey.class);
