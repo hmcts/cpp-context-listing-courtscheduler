@@ -7,6 +7,7 @@ public final class CourtSchedulerConverter {
 
     public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
         return new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
                 .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
                 .withMaxDuration(courtScheduleEntity.getMaxDuration())
                 .withAvailableSlots(courtScheduleEntity.getAvailableSlots())
