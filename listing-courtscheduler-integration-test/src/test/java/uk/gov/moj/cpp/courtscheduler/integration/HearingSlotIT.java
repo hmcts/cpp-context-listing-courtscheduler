@@ -78,6 +78,7 @@ class HearingSlotIT extends AbstractIT {
         String hearingId = UUID.randomUUID().toString();
         CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setCourtSession("AM");
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
@@ -104,8 +105,7 @@ class HearingSlotIT extends AbstractIT {
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_START_DATE", fromDate.toString());
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_END_DATE", toDate.toString());
 
-        Map<String, Object> map = new ObjectMapper().readValue(hearingSlotsRequestParams, new TypeReference<>() {
-        });
+        Map<String, Object> map = new ObjectMapper().readValue(hearingSlotsRequestParams, new TypeReference<>() {});
 
         final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, map);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
@@ -114,7 +114,6 @@ class HearingSlotIT extends AbstractIT {
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
         assertThat(((JsonObject)jsonObject.getJsonArray("hearingSlots").get(0)).getString("courtScheduleId"),
                 is(courtSchedule.getCourtScheduleId()));
-
     }
 
     @Test
