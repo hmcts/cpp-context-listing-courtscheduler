@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
+import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createObjectBuilder;
@@ -15,9 +16,12 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -27,7 +31,9 @@ import javax.json.JsonObject;
 import javax.json.JsonString;
 
 import org.apache.commons.collections.CollectionUtils;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+@SuppressWarnings({"squid:S1312", "squid:S2629","squid:S6813","squid:S112"})
 @ApplicationScoped
 public class ReferenceDataService {
     private static final String REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME = "referencedata.query.public-holidays";
@@ -35,8 +41,13 @@ public class ReferenceDataService {
     private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME = "referencedata.query.cp-rota-courtroom-mappings";
     private static final String PUBLIC_HOLIDAYS = "publicHolidays";
     private static final String DATE = "date";
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataService.class);
+    private static final String CP_ROTA_COURT_ROOM_MAPPINGS = "cpRotaCourtRoomMappings";
+    private static final String COURTROOM_ID = "courtroomId";
+
 
     public ReferenceDataService() {
+        //Default constructor
     }
 
 
@@ -72,19 +83,48 @@ public class ReferenceDataService {
                         createObjectBuilder().build());
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        return JsonObjects.getJsonArray(payload, "cpRotaCourtRoomMappings").orElseThrow(() -> new RuntimeException("No courtrooms  found: "))
+        final int resultsCount = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS).orElseThrow(() -> new RuntimeException("No courtrooms  found: ")).size();
+        LOGGER.error("Total courtrooms found: {}", resultsCount);
+        Set<String> seenCourtRoomIds = new HashSet<>();
+        Set<String> duplicateCourtRoomIds = new HashSet<>();
+
+        List<CourtRoom> courtRooms = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS)
+                .orElseThrow(() -> new RuntimeException("No courtrooms found: "))
                 .stream()
                 .map(JsonObject.class::cast)
-                .map(this::toCourtRoom)
+                .map(jsonObject -> {
+                    try {
+                        String courtRoomId = jsonObject.getString(COURTROOM_ID);
+                        if (!seenCourtRoomIds.add(courtRoomId)) {
+                            duplicateCourtRoomIds.add(courtRoomId);
+                            return null;
+                        }
+                        return toCourtRoom(jsonObject);
+                    } catch (Exception e) {
+                        LOGGER.error(format("Error while converting court room with ID: %d", jsonObject.getInt("cppCourtRoomId")));
+                        LOGGER.error(format("Skipping the failed records, %d records left", resultsCount - 1));
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (!duplicateCourtRoomIds.isEmpty()) {
+            LOGGER.error(format("Duplicate courtroom IDs found: %s", duplicateCourtRoomIds));
+        }
+
+        // Return only distinct courtrooms based on their IDs
+        return courtRooms.stream()
+                .filter(Objects::nonNull)
+                .distinct()
                 .toList();
     }
-
 
 
     public List<BusinessType> getRotaBusinessTypes(final Requester requester) {
 
         final JsonEnvelope envelope =
-                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME).build(),
+                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(ReferenceDataService.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME).build(),
                         createObjectBuilder().build());
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
@@ -109,11 +149,12 @@ public class ReferenceDataService {
         return CollectionUtils.isEmpty(businessTypeList) ? Optional.empty() : Optional.of(businessTypeList.get(0));
 
     }
-    public Map<String,BusinessType> getRotaBusinessTypesMap(final Requester requester) {
+
+    public Map<String, BusinessType> getRotaBusinessTypesMap(final Requester requester) {
         return getRotaBusinessTypes(requester).stream().collect(Collectors.toMap(BusinessType::getTypeCode, b -> b));
     }
 
-    public  Map<UUID,CourtRoom> getCourtRoomsMap(final Requester requester) {
+    public Map<UUID, CourtRoom> getCourtRoomsMap(final Requester requester) {
         return getRotaCourtRoomMappings(requester).stream().collect(Collectors.toMap(courtRoom -> UUID.fromString(courtRoom.getCourtroomId()), c -> c));
     }
 
@@ -122,21 +163,20 @@ public class ReferenceDataService {
                 envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME).build(),
                         createObjectBuilder().build());
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        JsonArray courtRoomMappings = payload.getJsonArray("cpRotaCourtRoomMappings");
+        JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
         if (courtRoomMappings == null) {
             throw new RuntimeException("No court room found: " + courtRoomId);
         }
         List<CourtRoom> courtRoomList = courtRoomMappings.stream()
                 .map(JsonObject.class::cast)
                 .filter(jsonObject -> {
-                    JsonString id = jsonObject.getJsonString("courtroomId");
+                    JsonString id = jsonObject.getJsonString(COURTROOM_ID);
                     return id != null && courtRoomId.equals(id.getString());
                 })
                 .map(this::toCourtRoom)
                 .toList();
         return CollectionUtils.isEmpty(courtRoomList) ? Optional.empty() : Optional.of(courtRoomList.get(0));
     }
-
 
 
     private BusinessType toBusinessType(JsonObject jsonObject) {
@@ -163,7 +203,7 @@ public class ReferenceDataService {
                 .withOucodeL2Code(jsonObject.getString("oucodeL2Code"))
                 .withOucodeUUID(jsonObject.getString("oucodeUUID"))
                 .withCourtRoomName(jsonObject.getString("courtroomName"))
-                .withCourtRoomId(jsonObject.getString("courtroomId"))
+                .withCourtRoomId(jsonObject.getString(COURTROOM_ID))
                 .build();
     }
 
