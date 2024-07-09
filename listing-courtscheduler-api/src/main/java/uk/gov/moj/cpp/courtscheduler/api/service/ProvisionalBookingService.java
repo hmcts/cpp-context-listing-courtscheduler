@@ -6,7 +6,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PROV
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.exception.SlotsBookException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;

@@ -1,15 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
-import io.github.benas.randombeans.api.EnhancedRandom;
-import org.junit.jupiter.api.Test;
-
-import java.time.LocalDate;
-
 import static java.util.UUID.nameUUIDFromBytes;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.CourtScheduleIdGenerator.getCourtScheduleId;
+
+import java.time.LocalDate;
+
+import io.github.benas.randombeans.api.EnhancedRandom;
+import org.junit.jupiter.api.Test;
 
 class CourtScheduleIdGeneratorTest {
 

@@ -1,14 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import org.junit.jupiter.api.Test;
+import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
 
 import java.util.List;
 
-import static io.github.benas.randombeans.api.EnhancedRandom.random;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import org.junit.jupiter.api.Test;
 
 class CourtScheduleToViewConverterTest {
     @Test

@@ -8,15 +8,10 @@ import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.REFERENCED
 import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.mockBusinessType;
 import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.mockCourtRooms;
-import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
-import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.Envelope;
-import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.justice.services.messaging.Metadata;
-import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.justice.services.test.utils.framework.api.JsonObjectConvertersFactory;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -24,12 +19,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import javax.json.Json;
-import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
-import javax.json.JsonValue;
 
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;

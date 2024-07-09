@@ -12,7 +12,6 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
-import io.github.benas.randombeans.api.EnhancedRandom;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.CourtScheduleIdGenerator;
@@ -28,6 +27,7 @@ import java.util.List;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
+import io.github.benas.randombeans.api.EnhancedRandom;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

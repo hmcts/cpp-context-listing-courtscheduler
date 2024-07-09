@@ -16,12 +16,9 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-
-import org.apache.deltaspike.data.api.QueryInvocationException;
 
 @ApplicationScoped
 public class SessionsService {

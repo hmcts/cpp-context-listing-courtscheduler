@@ -5,6 +5,7 @@ import static io.smallrye.common.constraint.Assert.assertTrue;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -28,7 +29,6 @@ import java.util.Optional;
 
 import javax.json.JsonObject;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -78,7 +78,6 @@ class CourtScheduleServiceTest {
     }
 
     @Test
-    @Disabled("will be fixed with DD-33608")
     void shouldUpdateCourtScheduleWhenNoBusinessTypeChange() {
         final String courtScheduleId = randomUUID().toString();
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
@@ -91,6 +90,7 @@ class CourtScheduleServiceTest {
 
         when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any())).thenReturn(Result.SUCCESS());
         Result result = courtScheduleService.update(updateCourtSchedule, requester);
         assertThat(result.isSuccess(), is(true));
     }

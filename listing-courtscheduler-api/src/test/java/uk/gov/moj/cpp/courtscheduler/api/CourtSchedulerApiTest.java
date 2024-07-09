@@ -43,13 +43,11 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -61,7 +59,6 @@ import javax.json.JsonObject;
 import javax.json.JsonValue;
 
 import com.google.common.collect.Lists;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -192,8 +189,7 @@ class CourtSchedulerApiTest {
 
         when(enveloper.withMetadataFrom(updateCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
         Result success = Result.SUCCESS();
-        when(courtScheduleService.update(any(UpdateCourtSchedule.class), eq(requester))).thenReturn(success);
-        when(updateCourtScheduleConverter.convert(any())).thenReturn(new UpdateCourtSchedule());
+        when(courtScheduleService.update(any(), eq(requester))).thenReturn(success);
         when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
                 .add(RESULTS, "ok")
                 .build());

@@ -11,7 +11,6 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLogg
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
-
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.CourtScheduleIdGenerator;
