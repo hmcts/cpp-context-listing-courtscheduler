@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class CourtRoom {
 
     private String id;
@@ -12,7 +14,9 @@ public class CourtRoom {
     private String oucodeL2Name;
     private String oucodeL2Code;
     private String oucodeUUID;
+    @JsonProperty("courtroomName")
     private String courtRoomName;
+    @JsonProperty("courtroomId")
     private String courtRoomId;
 
     public String getId() {

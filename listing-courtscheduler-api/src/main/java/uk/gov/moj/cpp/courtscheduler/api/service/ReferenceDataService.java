@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.UUID.randomUUID;
-import static java.util.stream.Collectors.toList;
 import static javax.json.Json.createObjectBuilder;
 import static uk.gov.justice.services.messaging.JsonEnvelope.envelopeFrom;
 import static uk.gov.justice.services.messaging.JsonEnvelope.metadataBuilder;
@@ -24,7 +23,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -35,7 +33,7 @@ import javax.json.JsonString;
 import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+@SuppressWarnings({"squid:S1312", "squid:S2629","squid:S6813","squid:S112"})
 @ApplicationScoped
 public class ReferenceDataService {
     private static final String REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME = "referencedata.query.public-holidays";
@@ -43,10 +41,13 @@ public class ReferenceDataService {
     private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME = "referencedata.query.cp-rota-courtroom-mappings";
     private static final String PUBLIC_HOLIDAYS = "publicHolidays";
     private static final String DATE = "date";
-    private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataCache.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataService.class);
+    private static final String CP_ROTA_COURT_ROOM_MAPPINGS = "cpRotaCourtRoomMappings";
+    private static final String COURTROOM_ID = "courtroomId";
 
 
     public ReferenceDataService() {
+        //Default constructor
     }
 
 
@@ -82,18 +83,18 @@ public class ReferenceDataService {
                         createObjectBuilder().build());
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        final int resultsCount = JsonObjects.getJsonArray(payload, "cpRotaCourtRoomMappings").orElseThrow(() -> new RuntimeException("No courtrooms  found: ")).size();
+        final int resultsCount = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS).orElseThrow(() -> new RuntimeException("No courtrooms  found: ")).size();
         LOGGER.error("Total courtrooms found: {}", resultsCount);
         Set<String> seenCourtRoomIds = new HashSet<>();
         Set<String> duplicateCourtRoomIds = new HashSet<>();
 
-        List<CourtRoom> courtRooms = JsonObjects.getJsonArray(payload, "cpRotaCourtRoomMappings")
+        List<CourtRoom> courtRooms = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS)
                 .orElseThrow(() -> new RuntimeException("No courtrooms found: "))
                 .stream()
                 .map(JsonObject.class::cast)
                 .map(jsonObject -> {
                     try {
-                        String courtRoomId = jsonObject.getString("courtroomId");
+                        String courtRoomId = jsonObject.getString(COURTROOM_ID);
                         if (!seenCourtRoomIds.add(courtRoomId)) {
                             duplicateCourtRoomIds.add(courtRoomId);
                             return null;
@@ -106,7 +107,7 @@ public class ReferenceDataService {
                     }
                 })
                 .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+                .toList();
 
         if (!duplicateCourtRoomIds.isEmpty()) {
             LOGGER.error(format("Duplicate courtroom IDs found: %s", duplicateCourtRoomIds));
@@ -116,7 +117,7 @@ public class ReferenceDataService {
         return courtRooms.stream()
                 .filter(Objects::nonNull)
                 .distinct()
-                .collect(Collectors.toList());
+                .toList();
     }
 
 
@@ -162,14 +163,14 @@ public class ReferenceDataService {
                 envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME).build(),
                         createObjectBuilder().build());
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        JsonArray courtRoomMappings = payload.getJsonArray("cpRotaCourtRoomMappings");
+        JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
         if (courtRoomMappings == null) {
             throw new RuntimeException("No court room found: " + courtRoomId);
         }
         List<CourtRoom> courtRoomList = courtRoomMappings.stream()
                 .map(JsonObject.class::cast)
                 .filter(jsonObject -> {
-                    JsonString id = jsonObject.getJsonString("courtroomId");
+                    JsonString id = jsonObject.getJsonString(COURTROOM_ID);
                     return id != null && courtRoomId.equals(id.getString());
                 })
                 .map(this::toCourtRoom)
@@ -202,7 +203,7 @@ public class ReferenceDataService {
                 .withOucodeL2Code(jsonObject.getString("oucodeL2Code"))
                 .withOucodeUUID(jsonObject.getString("oucodeUUID"))
                 .withCourtRoomName(jsonObject.getString("courtroomName"))
-                .withCourtRoomId(jsonObject.getString("courtroomId"))
+                .withCourtRoomId(jsonObject.getString(COURTROOM_ID))
                 .build();
     }
 
