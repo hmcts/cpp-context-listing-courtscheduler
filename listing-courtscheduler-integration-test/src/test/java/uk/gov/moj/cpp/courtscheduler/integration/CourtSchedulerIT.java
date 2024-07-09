@@ -11,10 +11,8 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLogg
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
-
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.domain.utils.CourtScheduleIdGenerator;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.sql.SQLException;
@@ -104,15 +102,16 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldGetCourtSchedules() throws SQLException, JsonProcessingException {
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
 
+        UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         LocalDate fromDate = expected.getSessionDate().minusDays(1);
         LocalDate toDate = expected.getSessionDate().plusDays(1);
         expected.setBusinessType("TRL");
 
-        expected.setCourtScheduleId(CourtScheduleIdGenerator.getCourtScheduleId(expected.getCourtRoomId(), expected.getSessionDate(), expected.getCourtSession(), expected.getBusinessType()));
         expected.setSlotBased(false);
         expected.setMaxDuration(5);
         expected.setAvailableDuration(5);
+        expected.setCourtScheduleId(courtScheduleId.toString());
         databaseSeeder.insertCourtSchedule(expected);
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");
