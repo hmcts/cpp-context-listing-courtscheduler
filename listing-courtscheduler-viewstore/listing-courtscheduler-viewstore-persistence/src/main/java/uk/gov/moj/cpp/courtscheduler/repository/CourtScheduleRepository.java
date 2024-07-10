@@ -156,8 +156,9 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         courtScheduleCriteria.createHearingSlotsCourtScheduleCriteria(hearingSlotRequestParam, criteriaBuilder, criteriaQuery);
         List<CourtSchedule> courtScheduleList =
                 entityManager.createQuery(criteriaQuery).setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize).getResultList();
+        List<CourtSchedule> totalCourtScheduleList = entityManager.createQuery(criteriaQuery).getResultList();
         courtScheduleList.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
-        int resultSize = courtScheduleList.size();
+        int resultSize = totalCourtScheduleList.size();
 
         final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
         final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
