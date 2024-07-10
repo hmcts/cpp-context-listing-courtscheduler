@@ -8,12 +8,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -44,7 +39,8 @@ import org.apache.deltaspike.data.api.Repository;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-@SuppressWarnings({"squid:S1312", "squid:S2629","squid:S6813"})
+
+@SuppressWarnings({"squid:S1312", "squid:S2629", "squid:S6813"})
 @Repository(forEntity = CourtSchedule.class)
 public abstract class CourtScheduleRepository extends AbstractEntityRepository<CourtSchedule, String> {
 
@@ -78,12 +74,15 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
             persistedCourtSchedule.setCreatedOn(persistedCourtSchedule.getCreatedOn());
             persistedCourtSchedule.setUpdatedOn(new Date());
+
             this.save(persistedCourtSchedule);
         }
         return courtSchedule;
     }
 
-    public Result update(CourtSchedule persistedCourtSchedule, uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updateCourtSchedule) {
+    public Result update(CourtSchedule persistedCourtSchedule,
+                         uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updateCourtSchedule,
+                         Optional<CourtRoom> courtRoom) {
         //SessionDate and CourtHouseId should not be updated
         persistedCourtSchedule.setCourtRoomId(updateCourtSchedule.getCourtRoomId());
         persistedCourtSchedule.setBusinessType(updateCourtSchedule.getBusinessType());
@@ -94,6 +93,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         persistedCourtSchedule.setMaxDuration(updateCourtSchedule.getMaxDuration());
         persistedCourtSchedule.setAvailableDuration(updateCourtSchedule.getAvailableDuration());
         persistedCourtSchedule.setUpdatedOn(new Date());
+
+        if (courtRoom.isPresent()) {
+            persistedCourtSchedule.setOuCode(courtRoom.get().getOucode());
+            persistedCourtSchedule.setCourtRoomName(courtRoom.get().getCourtroomName());
+            persistedCourtSchedule.setCourtRoomNumber(courtRoom.get().getCppCourtRoomId());
+            persistedCourtSchedule.setCourtHouseName(courtRoom.get().getOucodeL3Name());
+            persistedCourtSchedule.setOperationalUnit(courtRoom.get().getOucodeL2Code());
+        }
 
         this.save(persistedCourtSchedule);
         return Result.SUCCESS();

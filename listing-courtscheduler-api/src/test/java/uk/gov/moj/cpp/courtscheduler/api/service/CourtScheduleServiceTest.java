@@ -1,40 +1,30 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
+
+import javax.json.JsonObject;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static io.smallrye.common.constraint.Assert.assertTrue;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
-
-import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import javax.json.JsonObject;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class CourtScheduleServiceTest {
@@ -83,12 +73,47 @@ class CourtScheduleServiceTest {
         UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setBusinessType("DVLA");
-        updateCourtSchedule.setSessionDate(random(LocalDate.class));
         updateCourtSchedule.setSessionType(random(String.class));
-
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(updateCourtSchedule.getCourtRoomId()), eq(requester))).thenReturn(Optional.of(random(CourtRoom.class)));
         when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        Result result = courtScheduleService.update(updateCourtSchedule, requester);
+        assertThat(result.isSuccess(), is(true));
+    }
+
+    @Test
+    void shouldUpdateCourtScheduleWhenNoCourtRoomChange() {
+        final String courtScheduleId = randomUUID().toString();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(random(String.class));
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        Result result = courtScheduleService.update(updateCourtSchedule, requester);
+        assertThat(result.isSuccess(), is(true));
+    }
+
+
+    @Test
+    void shouldUpdateCourtScheduleWhenSlotBasedChange() {
+        final String courtScheduleId = randomUUID().toString();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setSlotBased(true);
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(random(String.class));
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
         Result result = courtScheduleService.update(updateCourtSchedule, requester);
         assertThat(result.isSuccess(), is(true));
     }
@@ -96,12 +121,10 @@ class CourtScheduleServiceTest {
     @Test
     void shouldReturnFailure_WhenCourtScheduleId_NotFound() {
         final String courtScheduleId = randomUUID().toString();
-        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
         // given
         UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setBusinessType("DVLA");
-        updateCourtSchedule.setSessionDate(random(LocalDate.class));
         updateCourtSchedule.setSessionType(random(String.class));
 
         when(courtScheduleRepository.findBy(anyString())).thenReturn(null);
@@ -119,7 +142,6 @@ class CourtScheduleServiceTest {
         UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setBusinessType("DVLA");
-        updateCourtSchedule.setSessionDate(random(LocalDate.class));
         updateCourtSchedule.setSessionType(random(String.class));
 
         when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);

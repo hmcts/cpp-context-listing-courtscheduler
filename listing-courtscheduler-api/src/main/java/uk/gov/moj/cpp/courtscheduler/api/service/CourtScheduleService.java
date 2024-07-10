@@ -4,18 +4,13 @@ import static java.util.Objects.nonNull;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -56,8 +51,18 @@ public class CourtScheduleService {
         if (maxSlotsOrDurationChanged(updateCourtSchedule, persistedCourtSchedule)) {
             updateAvailability(updateCourtSchedule, persistedCourtSchedule);
         }
-        final Result result = courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule);
-        return result;
+
+        String courtRoomId = updateCourtSchedule.getCourtRoomId();
+
+        final Optional<CourtRoom> courtRoom;
+        if (courtRoomId != null && !courtRoomId.equalsIgnoreCase(persistedCourtSchedule.getCourtRoomId())) {
+            courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId,requester).orElseThrow(() -> new RuntimeException("Court Room not found" + courtRoomId)));
+        } else {
+            courtRoom = Optional.empty();
+        }
+
+
+        return courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule, courtRoom);
     }
 
     private void updateAvailability(final UpdateCourtSchedule updateCourtSchedule, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
