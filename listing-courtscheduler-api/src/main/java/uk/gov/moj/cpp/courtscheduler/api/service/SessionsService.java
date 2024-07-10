@@ -126,8 +126,4 @@ public class SessionsService {
             builder.withOperationalUnit(courtRoom.getOucodeL2Code());
         }
     }
-
-    public void update() {
-        // Implement the update method logic here
-    }
 }

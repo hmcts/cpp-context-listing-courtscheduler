@@ -1,16 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.UUID.randomUUID;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
 import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME;
-import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME;
 import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.mockBusinessType;
-import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.mockCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_BUSINESS_TYPE_CACHE_PREFIX;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURTROOM_CACHE_PREFIX;
 
@@ -19,13 +15,14 @@ import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.Envelope;
-import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
+import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
+
+import java.util.Optional;
 
 import javax.json.JsonObject;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -70,7 +67,6 @@ class ReferenceDataCacheTest {
     }
 
     @Test
-    @Disabled("will be fixed with DD-33608")
     void shouldReturnBusinessTypeFromServiceWhenCacheDisabled() {
         setCommonCacheDisabled();
         final JsonObject responsePayload = mockBusinessType(BUSINESS_TYPE_CODE);
@@ -79,7 +75,7 @@ class ReferenceDataCacheTest {
                 .withId(randomUUID())
                 .withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME)
                 .build(), responsePayload);
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+        when(referenceDataService.getRotaBusinessTypeByCode(eq(BUSINESS_TYPE_CODE), eq(requester))).thenReturn(Optional.of(new BusinessType()));
         referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE_CODE,requester);
         verify(referenceDataService).getRotaBusinessTypeByCode(BUSINESS_TYPE_CODE, requester);
     }
@@ -93,26 +89,11 @@ class ReferenceDataCacheTest {
     }
 
     @Test
-    @Disabled("will be fixed with DD-33608")
     void shouldReturnCourtRoomFromServiceWhenCacheDisabled() {
         setCommonCacheDisabled();
 
-        final JsonObject businessTypePayload = mockBusinessType(BUSINESS_TYPE_CODE);
-        final JsonObject courtRoomPayload = mockCourtRooms(COURT_ROOM_ID);
-
-        final Envelope<Object> businessTypeEnvelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME)
-                .build(), businessTypePayload);
-
-        final Envelope<Object> courtRoomEnvelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME)
-                .build(), courtRoomPayload);
-
-        when(requester.requestAsAdmin(any(), any())).thenReturn(courtRoomEnvelope);
         referenceDataCache.getRotaCourtRoomByCourtRoomId(COURT_ROOM_ID,requester);
-        verify(referenceDataService).getRotaCourtRoomByCourtRoomId(any(), any());
+        verify(referenceDataService).getRotaCourtRoomByCourtRoomId(COURT_ROOM_ID, requester);
     }
 
     private void setBusinessTypeCache() {

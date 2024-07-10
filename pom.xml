@@ -36,15 +36,7 @@
             **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
             **/uk/gov/moj/cpp/courtscheduler/exception/**/*,
             **/uk/gov/moj/cpp/courtscheduler/api/PayloadExtractor.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java,
-            **/uk/gov/moj/cpp/courtscheduler/converter/SessionsConverter.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/service/CourtScheduleService.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/converter/UpdateCourtScheduleConverter.java,
-            **/uk/gov/moj/cpp/courtscheduler/repository/AllocatedListingRepository.java,
-            **/uk/gov/moj/cpp/courtscheduler/repository/CourtScheduleRepository.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/CourtSchedulerApi.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/service/ReferenceDataCache.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/service/ReferenceDataService.java
+            **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java
         </sonar.coverage.exclusions>
         <sonar.cpd.exclusions>
             **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,

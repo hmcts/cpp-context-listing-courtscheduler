@@ -2,8 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 
-import java.time.LocalDate;
-
 import javax.json.JsonObject;
 
 public class UpdateCourtScheduleConverter implements Converter<JsonObject, UpdateCourtSchedule> {

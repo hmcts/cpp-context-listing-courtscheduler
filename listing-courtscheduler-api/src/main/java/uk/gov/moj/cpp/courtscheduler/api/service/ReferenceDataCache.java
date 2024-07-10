@@ -4,16 +4,11 @@ import static java.lang.Boolean.parseBoolean;
 import static java.util.Objects.isNull;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
-import static uk.gov.justice.services.core.annotation.Component.COMMAND_API;
-import static uk.gov.justice.services.core.annotation.Component.EVENT_PROCESSOR;
 
 import uk.gov.justice.services.common.configuration.Value;
 import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
-import uk.gov.justice.services.core.annotation.CustomServiceComponent;
-import uk.gov.justice.services.core.annotation.Handles;
-import uk.gov.justice.services.core.annotation.ServiceComponent;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
@@ -38,7 +33,8 @@ public class ReferenceDataCache {
     @Inject
     private CacheService cacheService;
 
-    final ReferenceDataService referenceDataService = new ReferenceDataService();
+    @Inject
+    private ReferenceDataService referenceDataService;
 
     @Inject
     private StringToJsonObjectConverter stringToJsonObjectConverter;
@@ -144,6 +140,4 @@ public class ReferenceDataCache {
         }
         return empty();
     }
-
-
 }

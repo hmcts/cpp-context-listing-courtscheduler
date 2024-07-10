@@ -4,9 +4,18 @@ import static java.util.Objects.nonNull;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
+
+import java.util.List;
+import java.util.Objects;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -14,8 +23,6 @@ import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
-import java.util.List;
-import java.util.Objects;
 
 @ApplicationScoped
 public class CourtScheduleService {
@@ -33,9 +40,7 @@ public class CourtScheduleService {
 
     public List<CourtSchedule> getCourtSchedules(CourtScheduleRequestParam courtScheduleRequestParam, Requester requester) {
         List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtScheduleRequestParam);
-        courtSchedules.forEach(courtSchedule -> {
-            courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester));
-        });
+        courtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester)));
         return courtSchedules;
     }
 

@@ -26,6 +26,7 @@ import java.util.List;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
+import io.github.benas.randombeans.api.EnhancedRandom;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

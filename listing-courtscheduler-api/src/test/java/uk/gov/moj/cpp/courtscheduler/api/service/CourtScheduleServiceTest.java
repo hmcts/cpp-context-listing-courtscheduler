@@ -5,6 +5,8 @@ import static io.smallrye.common.constraint.Assert.assertTrue;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -28,7 +30,6 @@ import java.util.Optional;
 
 import javax.json.JsonObject;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -41,13 +42,10 @@ class CourtScheduleServiceTest {
     private CourtScheduleRepository courtScheduleRepository;
     @Mock
     private AllocatedListingRepository allocatedListingRepository;
-
     @Mock
     private Requester requester;
-
     @Mock
     ReferenceDataCache referenceDataCache;
-
     @InjectMocks
     private CourtScheduleService courtScheduleService;
 
@@ -78,7 +76,6 @@ class CourtScheduleServiceTest {
     }
 
     @Test
-    @Disabled("will be fixed with DD-33608")
     void shouldUpdateCourtScheduleWhenNoBusinessTypeChange() {
         final String courtScheduleId = randomUUID().toString();
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
@@ -91,8 +88,47 @@ class CourtScheduleServiceTest {
 
         when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any())).thenReturn(Result.SUCCESS());
         Result result = courtScheduleService.update(updateCourtSchedule, requester);
         assertThat(result.isSuccess(), is(true));
+    }
+
+    @Test
+    void shouldReturnFailure_WhenCourtScheduleId_NotFound() {
+        final String courtScheduleId = randomUUID().toString();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionDate(random(LocalDate.class));
+        updateCourtSchedule.setSessionType(random(String.class));
+
+        when(courtScheduleRepository.findBy(anyString())).thenReturn(null);
+
+        Result result = courtScheduleService.update(updateCourtSchedule, requester);
+
+        assertEquals("Court Schedule not found", result.getMsg());
+    }
+
+    @Test
+    void shouldReturnFailure_WhenBusinessTypeChanges() {
+        final String courtScheduleId = randomUUID().toString();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVAL");
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionDate(random(LocalDate.class));
+        updateCourtSchedule.setSessionType(random(String.class));
+
+        when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(persistedCourtSchedule.getBusinessType()), eq(requester))).thenReturn(returnBusinessTypeObject("DVAL", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(updateCourtSchedule.getBusinessType()), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+
+        Result result = courtScheduleService.update(updateCourtSchedule, requester);
+
+        assertEquals("Business Type cannot be changed from Slot to Non-Slot and vice versa", result.getMsg());
     }
 
     private static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule getPersistedCourtSchedule(final String courtScheduleId, final String businessTypeCode) {
