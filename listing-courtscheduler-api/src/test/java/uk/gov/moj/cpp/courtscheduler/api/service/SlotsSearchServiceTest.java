@@ -45,34 +45,31 @@ class SlotsSearchServiceTest {
     }
 
     @Test
-    public void shouldSearchSlots() {
-        CourtSchedule courtSchedule = courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId);
-        final List<CourtSchedule> courtSchedulesExpected = List.of(courtSchedule);
+     void shouldSearchSlots() {
+        final List<CourtSchedule> courtSchedulesExpected = List.of(courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId));
         courtSchedulesExpected.stream().map(CourtSchedule::getJudiciaries);
         final Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(1, courtSchedulesExpected);
         final HearingSlotRequestParam hearingSlotRequestParam = createRequestParam("10");
         when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
 
         final JsonObject jsonObject = slotsSearchService.search(hearingSlotRequestParam);
-        assertThat(jsonObject, is(toJsonObject(courtSchedule.getCourtScheduleId(), rightWingerId, leftWingerId, chairId)));
+        assertThat(jsonObject, is(toJsonObject(rightWingerId, leftWingerId, chairId)));
     }
 
     @Test
-    public void shouldSearchSlotsWhenPageSizeSent0() {
-        CourtSchedule courtSchedule = courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId);
-        final List<CourtSchedule> courtSchedulesExpected = List.of(courtSchedule);
+     void shouldSearchSlotsWhenPageSizeSent0() {
+        final List<CourtSchedule> courtSchedulesExpected = List.of(courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId));
         final Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(1, courtSchedulesExpected);
         final HearingSlotRequestParam hearingSlotRequestParam = createRequestParam("0");
         when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
 
         final JsonObject jsonObject = slotsSearchService.search(hearingSlotRequestParam);
-        assertThat(jsonObject, is(toJsonObject(courtSchedule.getCourtScheduleId(), rightWingerId, leftWingerId, chairId)));
+        assertThat(jsonObject, is(toJsonObject(rightWingerId, leftWingerId, chairId)));
     }
 
     @Test
-    public void shouldHandleMultipleJudiciaries() {
-        CourtSchedule courtSchedule1 = courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId);
-        final List<CourtSchedule> courtSchedulesExpected = List.of(courtSchedule1);
+     void shouldHandleMultipleJudiciaries() {
+        final List<CourtSchedule> courtSchedulesExpected = List.of(courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId));
         final Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(100, courtSchedulesExpected);
         final HearingSlotRequestParam hearingSlotRequestParam = createRequestParam("10");
         when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
@@ -80,7 +77,7 @@ class SlotsSearchServiceTest {
         final Pair<Integer, List<CourtSchedule>> courtSchedulesActual = slotsSearchService.getCourtSchedules(hearingSlotRequestParam);
         assertThat(courtSchedulesActual.getValue().size(), is(1));
         final CourtSchedule courtSchedule = courtSchedulesActual.getValue().get(0);
-        assertThat(courtSchedule.getCourtScheduleId(), is(courtSchedule1.getCourtScheduleId()));
+        assertThat(courtSchedule.getCourtScheduleId().toString(), is("0000fbb0-8579-4f2b-948e-c4e48a48e3f8"));
         assertThat(courtSchedule.getListingProfileId(), is("0000fbb0-8579-4f2b-948e-c4e48a48e3f7"));
         assertThat(courtSchedule.getSessionDate(), is(LocalDate.of(2020, 12, 1)));
         assertThat(courtSchedule.getOuCode(), is("CABC90"));
@@ -125,6 +122,7 @@ class SlotsSearchServiceTest {
 
     private CourtSchedule courtSchedule(final List<CourtScheduleJudiciary> courtScheduleJudiciary) {
         return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId("0000fbb0-8579-4f2b-948e-c4e48a48e3f8")
                 .withListingProfileId("0000fbb0-8579-4f2b-948e-c4e48a48e3f7")
                 .withSessionDate(parse("2020-12-01"))
                 .withOuCode("CABC90")
@@ -152,10 +150,9 @@ class SlotsSearchServiceTest {
                 null, "BA124", pageSize, "1", null, null, null, null);
     }
 
-    private JsonObject toJsonObject(String courtScheduleId, UUID judiciaryId1, UUID judiciaryId2, UUID judiciaryId3) {
+    private JsonObject toJsonObject(UUID judiciaryId1, UUID judiciaryId2, UUID judiciaryId3) {
         StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         String source = fileToString("/test-data/courtscheduler.get.slots-search-response.json");
-        source = source.replace("COURT_SCHEDULE_ID", courtScheduleId);
         source = source.replace("JUDICIARY_ID_1", judiciaryId1.toString());
         source = source.replace("JUDICIARY_ID_2", judiciaryId2.toString());
         source = source.replace("JUDICIARY_ID_3", judiciaryId3.toString());

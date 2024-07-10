@@ -3,7 +3,7 @@
   "pageCount": 1,
   "hearingSlots": [
     {
-      "courtScheduleId": "COURT_SCHEDULE_ID",
+      "courtScheduleId": "0000fbb0-8579-4f2b-948e-c4e48a48e3f8",
       "listingProfileId": "0000fbb0-8579-4f2b-948e-c4e48a48e3f7",
       "ouCode": "CABC90",
       "courtRoomId": "001c067d-eaca-4ce5-ad90-a366ef3e4bb6",
