@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="004" author="sshetty" logicalFilePath="004-court-schedule.xml">
+        <createTable tableName="court_schedule">
+            <column name="id" type="VARCHAR(100)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="court_listing_profile_id" type="VARCHAR(100)"/>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="court_house_name" type="VARCHAR(255)"/>
+            <column name="court_room_name" type="VARCHAR(255)"/>
+            <column name="operational_unit" type="VARCHAR(255)"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="court_session" type="VARCHAR(10)"/>
+            <column name="session_start" type="DATE"/>
+            <column name="panel" type="VARCHAR(10)"/>
+            <column name="max_slot" type="NUMERIC"/>
+            <column name="max_duration_mins" type="NUMERIC"/>
+            <column name="available_slot" type="NUMERIC"/>
+            <column name="available_duration_mins" type="NUMERIC"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_on" type="DATETIME"/>
+            <column name="updated_on" type="DATETIME"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

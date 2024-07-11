@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="021" author="arcadius"
+               logicalFilePath="021-add-court-house-id-to-court-room-mapping.xml">
+        <addColumn tableName="court_room_mapping">
+            <column name="court_house_id" type="VARCHAR(100)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="court_room_mapping" columnName="court_house_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="007" author="sshetty" logicalFilePath="007-judiciary-mapping.xml">
+        <createTable tableName="judiciary_mapping">
+            <column name="judiciary_id" type="VARCHAR(100)"/>
+            <column name="title" type="VARCHAR(100)"/>
+            <column name="forenames" type="VARCHAR(100)"/>
+            <column name="surname" type="VARCHAR(100)"/>
+            <column name="email" type="VARCHAR(100)"/>
+            <column name="judiciary_type" type="VARCHAR(100)"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_judiciary_mapping"
+                     tableName="judiciary_mapping">
+            <column name="email"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

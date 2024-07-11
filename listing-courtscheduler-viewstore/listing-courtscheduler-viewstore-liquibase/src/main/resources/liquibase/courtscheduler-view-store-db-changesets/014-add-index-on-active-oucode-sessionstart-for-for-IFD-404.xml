@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="014" author="bnzewi"
+               logicalFilePath="014-add-index-on-oucode-active-session_start-for-IFD-404.xml">
+        <createIndex indexName="idx_court_schedule_active_oucode_session_start"
+                     tableName="court_schedule">
+            <column name="oucode"/>
+            <column name="active"/>
+            <column name="session_start"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

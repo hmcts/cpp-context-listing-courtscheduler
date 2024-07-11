@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="018" author="samialpak" logicalFilePath="018-business-type.xml">
+        <createTable tableName="business_type">
+            <column name="id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_business_type"/>
+            </column>
+            <column name="seq_num" type="NUMERIC"/>
+            <column name="type_code" type="VARCHAR(10)"/>
+            <column name="type_description" type="VARCHAR(100)"/>
+            <column name="slot" type="BOOLEAN"/>
+            <column name="duration" type="BOOLEAN"/>
+            <column name="active" type="BOOLEAN" defaultValue="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_business_type"/>
+            </column>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_business_type"
+                     tableName="business_type">
+            <column name="type_code"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>
