@@ -21,6 +21,11 @@ public class CourtScheduleJudiciaryKey implements Serializable {
         //For JPA
     }
 
+    public CourtScheduleJudiciaryKey(String courtScheduleId, String judiciaryId) {
+        this.courtScheduleId = courtScheduleId;
+        this.judiciaryId = judiciaryId;
+    }
+
     public String getCourtScheduleId() {
         return courtScheduleId;
     }

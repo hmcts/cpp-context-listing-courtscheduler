@@ -8,9 +8,13 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FileUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(FileUtil.class);
 
     private static final String FILE_NAME_TIMESTAMP_PATTERN = "yyyyMMdd'T'HHmmss'Z'";
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
@@ -24,8 +28,7 @@ public class FileUtil {
                 fileName.length() - XML_NAME_PART.length());
     }
 
-    public static OffsetDateTime getLJASnapshotFileTimeStampAsOffsetDateTime(final String fileName,
-                                                                             final Logger logger) {
+    public static OffsetDateTime getLJASnapshotFileTimeStampAsOffsetDateTime(final String fileName) {
         final String timeStampAsString = getLJASnapshotFileTimeStampAsString(fileName);
         final OffsetDateTime fileDateTime;
 
@@ -33,8 +36,7 @@ public class FileUtil {
             fileDateTime = LocalDateTime.parse(timeStampAsString, DateTimeFormatter.ofPattern(FILE_NAME_TIMESTAMP_PATTERN)).atOffset(ZoneOffset.UTC);
             return fileDateTime;
         } catch (DateTimeParseException e) {
-            logger.log(Level.WARNING, () -> format("Received file with invalid filename format, hence skipping file processing, for file : %s. Exception received is : %s",
-                    fileName, e));
+            logger.warn(format("Received file with invalid filename format, hence skipping file processing, for file : %s. Exception received is : %s", fileName, e));
         }
 
         return null;

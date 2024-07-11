@@ -387,6 +387,31 @@ public class CourtSchedule {
             return courtScheduleId;
         }
 
+        public CourtScheduleBuilder withCourtSchedule(final CourtSchedule courtSchedule) {
+            this.courtScheduleId = courtSchedule.courtScheduleId;
+            this.sessionDate = courtSchedule.sessionDate;
+            this.ouCode = courtSchedule.ouCode;
+            this.courtHouseName = courtSchedule.courtHouseName;
+            this.courtHouseId = courtSchedule.courtHouseId;
+            this.courtRoomId = courtSchedule.courtRoomId;
+            this.courtRoomNumber = courtSchedule.courtRoomNumber;
+            this.courtRoomName = courtSchedule.courtRoomName;
+            this.businessType = courtSchedule.businessType;
+            this.courtSession = courtSchedule.courtSession;
+            this.slotBased = courtSchedule.slotBased;
+            this.maxSlots = courtSchedule.maxSlots;
+            this.maxDuration = courtSchedule.maxDuration;
+            this.listingProfileId = courtSchedule.listingProfileId;
+            this.operationalUnit = courtSchedule.operationalUnit;
+            this.panel = courtSchedule.panel;
+            this.availableDuration = courtSchedule.availableDuration;
+            this.availableSlots = courtSchedule.availableSlots;
+            this.judiciaries = courtSchedule.judiciaries;
+            this.slotStartTimes = courtSchedule.slotStartTimes;
+            this.active = courtSchedule.active;
+
+            return this;
+        }
 
         public CourtScheduleBuilder withCourtScheduleId(final String courtScheduleId) {
             this.courtScheduleId = courtScheduleId;

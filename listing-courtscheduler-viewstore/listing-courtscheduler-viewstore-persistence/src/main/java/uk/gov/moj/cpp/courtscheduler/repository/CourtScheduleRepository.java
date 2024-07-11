@@ -6,9 +6,11 @@ import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
+import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -24,6 +26,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -41,6 +44,9 @@ import javax.persistence.criteria.CriteriaQuery;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
+import org.apache.deltaspike.data.api.Modifying;
+import org.apache.deltaspike.data.api.Query;
+import org.apache.deltaspike.data.api.QueryParam;
 import org.apache.deltaspike.data.api.Repository;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
@@ -61,6 +67,19 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Inject
     ProvisionalBookingRepository provisionalBookingRepository;
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRepository.class.getName());
+
+    private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY = "DELETE FROM COURT_SCHEDULE " +
+            "WHERE court_listing_profile_id is not null AND max_slot = available_slot AND max_duration_mins = available_duration_mins and " +
+            "session_start BETWEEN :startDate AND :endDate AND oucode IN :ouCodes AND active =true AND NOT EXISTS( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+
+    public static final String DELETE_UNALLOCATED_FORECAST_SLOT_QUERY = "DELETE FROM COURT_SCHEDULE " +
+            "WHERE court_listing_profile_id is null AND max_slot = available_slot AND max_duration_mins = available_duration_mins AND oucode IN :ouCodes " +
+            "AND active =true and not exists( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+
+    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM COURT_SCHEDULE WHERE id IN :courtScheduleIds AND " +
+            "not exists(" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+
+
 
     //update on Create when needed
     public CourtSchedule update(CourtSchedule courtSchedule) {
@@ -215,6 +234,39 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return errorDeleteCourtSchedules;
     }
 
+    public int deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final String ouCodes) {
+        return entityManager()
+                .createNativeQuery(DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY)
+                .setParameter("startDate", startDate)
+                .setParameter("endDate", endDate)
+                .setParameter("ouCodes", ouCodes)
+                .executeUpdate();
+    }
+
+    public int deleteUnAllocatedProvisionalEntries(final String ouCodes) {
+        return entityManager()
+                .createNativeQuery(DELETE_UNALLOCATED_FORECAST_SLOT_QUERY)
+                .setParameter("ouCodes", ouCodes)
+                .executeUpdate();
+    }
+
+    public int deleteSchedules(final String courtScheduleIds) {
+        return entityManager()
+                .createNativeQuery(DELETE_SLOTS_BY_IDS_QUERY)
+                .setParameter("courtScheduleIds", courtScheduleIds)
+                .executeUpdate();
+    }
+
+    @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.active = true AND cs.sessionDate BETWEEN :startDate AND :endDate")
+    public abstract List<CourtSchedule> getExtractedCourtSchedules(@QueryParam("ouCodes") final String ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
+
+    @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.sessionDate BETWEEN :startDate AND :endDate")
+    public abstract List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@QueryParam("ouCodes") final String ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
+
+    @Modifying
+    @Query(value = "UPDATE CourtSchedule cd SET cd.active = false, cd.updatedOn = :updatedOn WHERE cd.courtScheduleId IN :courtScheduleIds")
+    public abstract void deactivateSlots(@QueryParam("courtScheduleIds") final String courtScheduleIds, @QueryParam("updatedOn") final Date updatedOn);
+
     protected void releaseAllocatedSlotsOrDurationFromCourtSchedule(final List<AllocatedListing> allocatedListings) {
 
         allocatedListings.forEach(allocatedListing -> {
@@ -361,4 +413,15 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             courtSchedule.getSlotStartTimes().addAll(yes);
         }
     }
+
+    public void saveCourtSchedules(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> provisionalCourtSchedules, final Map<String, BusinessType> businessTypeMap) {
+
+    }
+
+    @Query(value = "SELECT entity.courtScheduleId from CourtSchedule entity where entity.courtRoomId = :courtRoomId " +
+            "and entity.sessionDate = :sessionDate and entity.businessType = :businessType and entity.courtSession = :courtSession")
+    public abstract String findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(@QueryParam("courtRoomId") String courtRoomId,
+                                                                                @QueryParam("sessionDate") LocalDate sessionDate,
+                                                                                @QueryParam("businessType") String businessType,
+                                                                                @QueryParam("courtSession") String courtSession);
 }
