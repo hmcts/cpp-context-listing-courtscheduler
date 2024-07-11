@@ -77,20 +77,14 @@ class CourtSchedulerIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
-        String changedCourtHouseId = UUID.randomUUID().toString();
-        String changedCourtRoomId = UUID.randomUUID().toString();
+        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
         String changedBusinessType = "DVLA";
         String changedSessionType = "AM";
-        String changedSessionDate = RANDOM.nextObject(LocalDate.class).toString();
         String changedPanel = "YOUTH";
-        Integer availableDuration = RANDOM.nextInt();
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
-        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_HOUSE_ID", changedCourtHouseId);
-        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_HOUSE_ID", changedCourtHouseId);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", changedSessionType);
-        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_DATE", changedSessionDate);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", changedPanel);
 
         final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, "application/vnd.courtscheduler.update+json", USER_ID, updateCourtSchedulePayload);

@@ -1,9 +1,7 @@
 {
   "courtScheduleId": "550e8400-e29b-41d4-a716-446655440000",
-  "courtHouseId": "550e8400-e29b-41d4-a716-446655440000",
   "courtRoomId": "550e8400-e29b-41d4-a716-446655440001",
   "sessionType": "AM",
   "businessType": "Business Type 1",
-  "sessionDate": "2024-02-01",
   "panel": "YOUTH"
 }

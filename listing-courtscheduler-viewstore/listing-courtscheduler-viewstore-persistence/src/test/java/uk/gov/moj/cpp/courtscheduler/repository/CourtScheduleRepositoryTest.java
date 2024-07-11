@@ -9,6 +9,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -64,21 +65,20 @@ public class CourtScheduleRepositoryTest {
         String panel = random(String.class);
         String businessType = random(String.class);
         LocalDate sessionDate = random(LocalDate.class);
+        CourtRoom courtRoom = random(CourtRoom.class);
 
         CourtSchedule courtScheduleEntity = random(CourtSchedule.class);
         courtScheduleRepository.save(courtScheduleEntity);
 
         uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updatedCourtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder()
                 .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
-                .withCourtHouseId(courtScheduleEntity.getCourtHouseId())
                 .withBusinessType(businessType)
                 .withSessionType(courtScheduleEntity.getCourtSession())
                 .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
-                .withSessionDate(sessionDate)
                 .withPanel(panel)
                 .build();
 
-        Result result = courtScheduleRepository.update(courtScheduleEntity, updatedCourtSchedule);
+        Result result = courtScheduleRepository.update(courtScheduleEntity, updatedCourtSchedule, Optional.of(courtRoom));
         assertThat(result.isSuccess(), is(true));
     }
 
