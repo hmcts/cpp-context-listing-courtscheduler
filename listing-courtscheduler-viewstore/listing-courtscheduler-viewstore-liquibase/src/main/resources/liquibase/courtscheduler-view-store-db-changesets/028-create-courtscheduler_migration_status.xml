@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="028" author="baris.ozturkmen"
+               logicalFilePath="028-create-courtscheduler_migration_status.xml">
+        <createTable tableName="courtscheduler_migration_status">
+            <column name="oucode" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="court_centre_id" type="VARCHAR(36)" />
+            <column name="migrated" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex tableName="courtscheduler_migration_status"
+                     indexName="courtscheduler_migration_status_oucode_idx">
+            <column name="oucode"/>
+        </createIndex>
+
+        <loadData tableName="courtscheduler_migration_status"
+                  file="liquibase/courtscheduler-view-store-db-changesets/csv/courtschedulerMigrationStatus.csv"/>
+
+        <rollback>
+            <dropIndex tableName="courtscheduler_migration_status"
+                       indexName="courtscheduler_migration_status_oucode_idx"/>
+            <dropTable tableName="courtscheduler_migration_status"/>
+
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
