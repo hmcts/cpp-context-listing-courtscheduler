@@ -29,8 +29,8 @@
             <column name="oucode"/>
         </createIndex>
 
-        <!--<loadData tableName="organisation_unit_hmi_status"
-                  file="liquibase/rotasl-viewstore-db-changesets/csv/organisationUnitHMIStatus.csv"/>-->
+        <loadData tableName="organisation_unit_hmi_status"
+                  file="liquibase/courtscheduler-view-store-db-changesets/csv/organisationUnitHMIStatus.csv"/>
 
         <rollback>
             <dropIndex tableName="organisation_unit_hmi_status"
