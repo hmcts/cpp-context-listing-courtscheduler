@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-import java.util.Objects;
 import java.util.List;
+import java.util.Objects;
 
 public class CreateSessionRequestParam {
 

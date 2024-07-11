@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.core.Is.is;
@@ -70,6 +71,20 @@ public class AllocatedListingRepositoryTest {
 
         List<uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing> courtScheduleJudiciaryList = allocatedListingRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
         assertThat(courtScheduleJudiciaryList.isEmpty(), is(false));
+    }
+    @Test
+    public void shouldReturnTotalListedDurationForCourtscheduleId() {
+        final String courtScheduleId = randomUUID().toString();
+        AllocatedListing allocatedListing1 = random(AllocatedListing.class);
+        allocatedListing1.setDuration(20);
+        allocatedListing1.setCourtScheduleId(courtScheduleId);
+        AllocatedListing allocatedListing2 = random(AllocatedListing.class);
+        allocatedListing2.setDuration(10);
+        allocatedListing2.setCourtScheduleId(courtScheduleId);
+        allocatedListingRepository.save(allocatedListing1);
+        allocatedListingRepository.save(allocatedListing2);
+        final Integer totalAllocatedDuration = allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId);
+        assertThat(totalAllocatedDuration, is(30));
     }
 
     @Test

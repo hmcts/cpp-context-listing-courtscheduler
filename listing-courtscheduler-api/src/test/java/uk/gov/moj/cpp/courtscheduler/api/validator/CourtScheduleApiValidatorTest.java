@@ -1,15 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
-import org.junit.jupiter.api.Test;
+import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
+
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
 import javax.json.JsonObject;
 
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
+import org.junit.jupiter.api.Test;
 
 class CourtScheduleApiValidatorTest {
 

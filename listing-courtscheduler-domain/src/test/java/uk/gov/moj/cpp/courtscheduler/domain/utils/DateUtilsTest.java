@@ -1,18 +1,18 @@
 package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toSqlDate;
 
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toSqlDate;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 
 public class DateUtilsTest {

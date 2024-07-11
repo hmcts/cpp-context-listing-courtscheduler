@@ -1,8 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import org.junit.jupiter.api.Test;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
+
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -10,18 +14,16 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 
-import javax.json.JsonObject;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
+import javax.json.JsonObject;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import org.junit.jupiter.api.Test;
 
 
 class MiExportIT extends AbstractIT {

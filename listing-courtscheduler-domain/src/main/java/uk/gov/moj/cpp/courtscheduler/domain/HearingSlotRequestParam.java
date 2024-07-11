@@ -2,10 +2,17 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 
 import java.util.Objects;
 
-public record HearingSlotRequestParam(String panel, String sessionStartDate, String sessionEndDate,
-                                      String oucodeL2Code, String ouCode, String pageSize,
-                                      String pageNumber, String courtRoomId, String courtRoomNumber,
-                                      String businessType, String courtSession) {
+public record HearingSlotRequestParam(String panel,
+                                      String sessionStartDate,
+                                      String sessionEndDate,
+                                      String oucodeL2Code,
+                                      String ouCode,
+                                      String pageSize,
+                                      String pageNumber,
+                                      String courtRoomId,
+                                      String courtRoomNumber,
+                                      String businessType,
+                                      String courtSession) {
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;

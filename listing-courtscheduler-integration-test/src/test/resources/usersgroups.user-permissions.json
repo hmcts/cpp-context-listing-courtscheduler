@@ -18,35 +18,27 @@
     },
     {
       "object": "HearingSlots",
-      "action": "Edit"
+      "action": "Create-hearing"
     },
     {
       "object": "HearingSlots",
-      "action": "View"
+      "action": "View-hearing"
     },
     {
       "object": "HearingSlots",
-      "action": "Delete"
+      "action": "Delete-hearing"
     },
     {
       "object": "CourtSchedule",
-      "action": "Export"
-    },
-    {
-      "object": "AllocatedListings",
-      "action": "Export"
-    },
-    {
-      "object": "CourtScheduleJudiciary",
-      "action": "Export"
+      "action": "Mi-extract"
     },
     {
       "object": "ProvisionalBooking",
-      "action": "Create"
+      "action": "Create-provisional"
     },
     {
       "object": "ProvisionalBooking",
-      "action": "View"
+      "action": "View-provisional"
     }
   ]
 }

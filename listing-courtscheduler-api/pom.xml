@@ -5,7 +5,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listing-courtscheduler-parent</artifactId>
-        <version>17.0.16-CSP1-SNAPSHOT</version>
+        <version>17.0.56-CSP1-SNAPSHOT</version>
     </parent>
 
     <artifactId>listing-courtscheduler-api</artifactId>
@@ -31,12 +31,17 @@
             <artifactId>listing-courtscheduler-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
-
         <dependency>
             <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-            <artifactId>listing-courtscheduler-service</artifactId>
+            <artifactId>listing-courtscheduler-cache</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+            <artifactId>listing-courtscheduler-viewstore-persistence</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>uk.gov.justice.metrics</groupId>
             <artifactId>metrics-servlet</artifactId>
@@ -80,6 +85,11 @@
             <groupId>uk.gov.moj.cpp.common</groupId>
             <artifactId>system-users-library</artifactId>
         </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+            <artifactId>listing-courtscheduler-healthchecks</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Test dependencies -->
         <dependency>
@@ -107,6 +117,25 @@
             <artifactId>test-utils-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.common.library.utils</groupId>
+            <artifactId>cpp-platform-test-utils</artifactId>
+            <version>${cpp-platform-test-utils.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.benas</groupId>
+            <artifactId>random-beans</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>objenesis</artifactId>
+                    <groupId>org.objenesis</groupId>
+                </exclusion>
+            </exclusions>
+            <version>${gihub.benas.random-beans.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -119,6 +148,18 @@
                         <groupId>uk.gov.moj.cpp.usersgroups</groupId>
                         <artifactId>usersgroups-query-api</artifactId>
                         <version>${usersgroups.version}</version>
+                        <classifier>raml</classifier>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>*</groupId>
+                                <artifactId>*</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                    <dependency>
+                        <groupId>uk.gov.moj.cpp.referencedata</groupId>
+                        <artifactId>referencedata-query-api</artifactId>
+                        <version>${referencedata.version}</version>
                         <classifier>raml</classifier>
                         <exclusions>
                             <exclusion>

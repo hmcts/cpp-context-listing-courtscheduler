@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
@@ -17,17 +18,21 @@ public class CourtSchedule {
     private String courtRoomName;
     private String operationalUnit;
     private String businessType;
+    private String businessDescription;
     private String panel;
     private String courtSession;
     private boolean slotBased;
     private boolean active;
     private LocalDate sessionDate;
     private Integer maxSlots;
-    private Integer maxDuration;
     private Integer availableSlots;
+    private Integer maxDuration;
     private Integer availableDuration;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
+
+    private Date createdOn;
+    private Date updatedOn;
 
     protected CourtSchedule(final CourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -40,6 +45,7 @@ public class CourtSchedule {
         this.courtRoomName = builder.courtRoomName;
         this.operationalUnit = builder.operationalUnit;
         this.businessType = builder.businessType;
+        this.businessDescription = builder.businessDescription;
         this.panel = builder.panel;
         this.courtSession = builder.courtSession;
         this.sessionDate = builder.sessionDate;
@@ -51,6 +57,8 @@ public class CourtSchedule {
         this.slotStartTimes = builder.slotStartTimes;
         this.slotBased = builder.slotBased;
         this.active = builder.active;
+        this.createdOn = builder.createdOn;
+        this.updatedOn = builder.updatedOn;
     }
 
     public CourtSchedule() {
@@ -224,7 +232,43 @@ public class CourtSchedule {
         this.slotStartTimes = slotStartTimes;
     }
 
+    public String getBusinessDescription() {
+        return businessDescription;
+    }
+
+    public void setBusinessDescription(String businessDescription) {
+        this.businessDescription = businessDescription;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public Date getCreatedOn() {
+        return createdOn;
+    }
+
+    public void setCreatedOn(Date createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    public Date getUpdatedOn() {
+        return updatedOn;
+    }
+
+    public void setUpdatedOn(Date updatedOn) {
+        this.updatedOn = updatedOn;
+    }
+
+    public boolean hasHearingsBooked() {
+        return (slotBased) ?
+                maxSlots.compareTo(availableSlots) != 0 :
+                maxDuration.compareTo(availableDuration) != 0;
+
+    }
+
     public static final class CourtScheduleBuilder {
+
         private String courtScheduleId;
         private String ouCode;
         private String listingProfileId;
@@ -235,6 +279,7 @@ public class CourtSchedule {
         private String courtRoomName;
         private String operationalUnit;
         private String businessType;
+        private String businessDescription;
         private String panel;
         private LocalDate sessionDate;
         private Integer maxSlots = 0;
@@ -247,8 +292,99 @@ public class CourtSchedule {
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
+        private Date createdOn;
+        private Date updatedOn;
+
         public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
             return new CourtSchedule.CourtScheduleBuilder();
+        }
+
+        public List<SlotStartTime> getSlotStartTimes() {
+            return slotStartTimes;
+        }
+
+        public List<CourtScheduleJudiciary> getJudiciaries() {
+            return judiciaries;
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+
+        public boolean isSlotBased() {
+            return slotBased;
+        }
+
+        public String getCourtSession() {
+            return courtSession;
+        }
+
+        public Integer getAvailableDuration() {
+            return availableDuration;
+        }
+
+        public Integer getAvailableSlots() {
+            return availableSlots;
+        }
+
+        public Integer getMaxDuration() {
+            return maxDuration;
+        }
+
+        public Integer getMaxSlots() {
+            return maxSlots;
+        }
+
+        public LocalDate getSessionDate() {
+            return sessionDate;
+        }
+
+        public String getPanel() {
+            return panel;
+        }
+
+        public String getBusinessType() {
+            return businessType;
+        }
+
+        public String getBusinessDescription() {
+            return businessDescription;
+        }
+
+        public String getOperationalUnit() {
+            return operationalUnit;
+        }
+
+        public String getCourtRoomName() {
+            return courtRoomName;
+        }
+
+        public String getCourtHouseId() {
+            return courtHouseId;
+        }
+
+        public String getCourtHouseName() {
+            return courtHouseName;
+        }
+
+        public Integer getCourtRoomNumber() {
+            return courtRoomNumber;
+        }
+
+        public String getCourtRoomId() {
+            return courtRoomId;
+        }
+
+        public String getListingProfileId() {
+            return listingProfileId;
+        }
+
+        public String getOuCode() {
+            return ouCode;
+        }
+
+        public String getCourtScheduleId() {
+            return courtScheduleId;
         }
 
 
@@ -304,6 +440,11 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withBusinessType(final String businessType) {
             this.businessType = businessType;
+            return this;
+        }
+
+        public CourtScheduleBuilder withBusinessDescription(final String businessDescription) {
+            this.businessDescription = businessDescription;
             return this;
         }
 
@@ -366,6 +507,17 @@ public class CourtSchedule {
             this.slotStartTimes.add(slotStartTime);
             return this;
         }
+
+        public CourtScheduleBuilder withCreatedOn(final Date createdOn) {
+            this.createdOn = createdOn;
+            return this;
+        }
+
+        public CourtScheduleBuilder withUpdatedOn(final Date updatedOn) {
+            this.updatedOn = updatedOn;
+            return this;
+        }
+
 
         public CourtSchedule build() {
             return new CourtSchedule(this);

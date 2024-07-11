@@ -1,8 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import javax.persistence.*;
 import java.io.Serializable;
 import java.util.Objects;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 
 @Embeddable
 @SuppressWarnings({"squid:S1948"})

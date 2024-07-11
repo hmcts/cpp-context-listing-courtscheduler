@@ -1,9 +1,9 @@
 {
-  "panel": "ADULT",
-  "sessionStartDate": "2024-05-21",
-  "sessionEndDate": "2024-05-21",
-  "oucodeL2Code": "BA124",
-  "ouCode": "BA124",
+  "panel": "PANEL",
+  "sessionStartDate": "SESSION_START_DATE",
+  "sessionEndDate": "SESSION_END_DATE",
+  "ouCode": "OU_CODE",
   "pageSize": "1",
-  "pageNumber": "1"
+  "pageNumber": "1",
+  "courtSession": "AM"
 }

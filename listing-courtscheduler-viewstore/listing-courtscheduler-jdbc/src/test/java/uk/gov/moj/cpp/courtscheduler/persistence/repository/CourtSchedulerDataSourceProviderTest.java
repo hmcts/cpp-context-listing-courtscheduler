@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import uk.gov.justice.services.jdbc.persistence.JdbcDataSourceProvider;
+import uk.gov.moj.cpp.systemidmapper.persistence.repository.CourtSchedulerDataSourceProvider;
 
 import javax.sql.DataSource;
 
@@ -14,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.moj.cpp.systemidmapper.persistence.repository.CourtSchedulerDataSourceProvider;
 
 
 @ExtendWith(MockitoExtension.class)

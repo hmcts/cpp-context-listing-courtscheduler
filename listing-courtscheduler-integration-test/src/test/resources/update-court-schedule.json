@@ -1,10 +1,8 @@
 {
-  "courtHouseId": "COURT_HOUSE_ID",
   "courtScheduleId": "COURT_SCHEDULE_ID",
   "courtRoomId": "COURT_ROOM_ID",
-  "sessionType": "SESSION_TYPE",
-  "sessionDate": "SESSION_DATE",
+  "courtSession": "SESSION_TYPE",
   "businessType": "BUSINESS_TYPE",
   "panel": "PANEL",
-  "availableDuration": 10
+  "maxDuration": 10
 }

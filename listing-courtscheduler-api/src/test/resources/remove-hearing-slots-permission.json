@@ -1,6 +1,6 @@
 {
 "object":"HearingSlots",
-"action":"Delete",
-"key":"HearingSlots_Delete",
-"keyWithOutSource":"HearingSlots_Delete"
+"action":"Delete-hearing",
+"key":"HearingSlots_Delete-hearing",
+"keyWithOutSource":"HearingSlots_Delete-hearing"
 }

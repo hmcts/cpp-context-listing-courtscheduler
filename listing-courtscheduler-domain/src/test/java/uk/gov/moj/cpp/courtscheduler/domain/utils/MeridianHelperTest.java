@@ -1,13 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-
-import java.time.ZonedDateTime;
-
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.MeridianHelper.getMeridian;
+
+import java.time.ZonedDateTime;
+
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 
 public class MeridianHelperTest {

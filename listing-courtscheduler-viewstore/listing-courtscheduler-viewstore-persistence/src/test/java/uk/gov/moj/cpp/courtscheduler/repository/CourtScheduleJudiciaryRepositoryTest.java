@@ -1,20 +1,22 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.After;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
-
-import javax.inject.Inject;
-import java.time.LocalDate;
-import java.util.List;
-
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
+
+import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import javax.inject.Inject;
+
+import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
+import org.junit.After;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 @RunWith(CdiTestRunner.class)
 public class CourtScheduleJudiciaryRepositoryTest {

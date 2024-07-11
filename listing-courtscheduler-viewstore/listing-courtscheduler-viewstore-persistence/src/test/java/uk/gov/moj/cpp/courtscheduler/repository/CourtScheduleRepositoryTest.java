@@ -1,25 +1,22 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static io.github.benas.randombeans.api.EnhancedRandom.random;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import com.google.common.collect.Lists;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
+import org.hibernate.exception.ConstraintViolationException;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.*;
 
+import javax.inject.Inject;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -27,15 +24,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import javax.inject.Inject;
-
-import com.google.common.collect.Lists;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.runner.RunWith;
+import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.*;
 
 @RunWith(CdiTestRunner.class)
 public class CourtScheduleRepositoryTest {
@@ -49,9 +41,11 @@ public class CourtScheduleRepositoryTest {
     ProvisionalBookingRepository provisionalBookingRepository;
     @Inject
     AllocatedListingRepository allocatedListingRepository;
+    @Mock
+    ConstraintViolationException constraintViolationException;
 
-    @AfterEach
-    public void tearDown() {
+    @Before
+    public void setUp() {
         List<AllocatedListing> allocatedListingRepositoryAll = allocatedListingRepository.findAll();
         allocatedListingRepositoryAll.forEach(allocatedListing -> allocatedListingRepository.remove(allocatedListing));
 
@@ -62,7 +56,7 @@ public class CourtScheduleRepositoryTest {
         provisionalBookingRepositoryAll.forEach(provisionalBooking -> provisionalBookingRepository.remove(provisionalBooking));
 
         List<CourtSchedule> courtScheduleRepositoryAll = courtScheduleRepository.findAll();
-        courtScheduleRepositoryAll.forEach(courtSchedule -> courtScheduleRepository.remove(courtSchedule));
+        courtScheduleRepositoryAll.forEach(courtSchedule -> courtScheduleRepository.removeAndFlush(courtSchedule));
     }
 
     @Test
@@ -71,21 +65,20 @@ public class CourtScheduleRepositoryTest {
         String panel = random(String.class);
         String businessType = random(String.class);
         LocalDate sessionDate = random(LocalDate.class);
+        CourtRoom courtRoom = random(CourtRoom.class);
 
         CourtSchedule courtScheduleEntity = random(CourtSchedule.class);
         courtScheduleRepository.save(courtScheduleEntity);
 
         uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updatedCourtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder()
                 .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
-                .withCourtHouseId(courtScheduleEntity.getCourtHouseId())
                 .withBusinessType(businessType)
                 .withSessionType(courtScheduleEntity.getCourtSession())
                 .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
-                .withSessionDate(sessionDate)
                 .withPanel(panel)
                 .build();
 
-        Result result = courtScheduleRepository.update(updatedCourtSchedule);
+        Result result = courtScheduleRepository.update(courtScheduleEntity, updatedCourtSchedule, Optional.of(courtRoom));
         assertThat(result.isSuccess(), is(true));
     }
 
@@ -105,9 +98,26 @@ public class CourtScheduleRepositoryTest {
     @Test
     public void shouldFindCourtSchedulesByCourtScheduleRequestParam() {
         // given
-        CourtSchedule courtSchedule = random(CourtSchedule.class);
-        courtScheduleRepository.save(courtSchedule);
-        String courtCentreId = courtSchedule.getCourtHouseId();
+        CourtSchedule matchingCourtSchedule = random(CourtSchedule.class);
+        courtScheduleRepository.save(matchingCourtSchedule);
+        // and
+        CourtSchedule unMatchingCourtSchedule = random(CourtSchedule.class);
+        unMatchingCourtSchedule.setCourtHouseId(matchingCourtSchedule.getCourtHouseId());
+        unMatchingCourtSchedule.setSessionDate(matchingCourtSchedule.getSessionDate());
+        courtScheduleRepository.save(unMatchingCourtSchedule);
+
+        String courtCentreId = matchingCourtSchedule.getCourtHouseId();
+        final CourtScheduleRequestParam courtScheduleRequestParam = getCourtScheduleRequestParam(matchingCourtSchedule, courtCentreId);
+
+        // when
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> results = courtScheduleRepository.findBy(courtScheduleRequestParam);
+
+        // then
+        assertThat(results.size(), is(1));
+        assertThat(results.get(0).getCourtRoomId(), is(matchingCourtSchedule.getCourtRoomId()));
+    }
+
+    private static CourtScheduleRequestParam getCourtScheduleRequestParam(final CourtSchedule courtSchedule, final String courtCentreId) {
         String courtRoomId = courtSchedule.getCourtRoomId();
         String businessType = courtSchedule.getBusinessType();
         String sessionStartDate = courtSchedule.getSessionDate().minusDays(1).toString();
@@ -115,12 +125,7 @@ public class CourtScheduleRepositoryTest {
         String pageSize = "10";
         String pageNumber = "1";
         CourtScheduleRequestParam courtScheduleRequestParam = new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
-
-        // when
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> results = courtScheduleRepository.findBy(courtScheduleRequestParam);
-
-        // then
-        assertThat(results.isEmpty(), is(false));
+        return courtScheduleRequestParam;
     }
 
     @Test
@@ -321,6 +326,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule.setSessionDate(LocalDate.now());
         courtSchedule.setOperationalUnit("BA124");
         courtSchedule.setOuCode("BA124");
+        courtSchedule.setCourtSession("AM");
         courtScheduleRepository.saveAndFlush(courtSchedule);
         final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
         final CourtScheduleJudiciaryKey courtScheduleJudiciaryKey = random(CourtScheduleJudiciaryKey.class);
@@ -332,7 +338,7 @@ public class CourtScheduleRepositoryTest {
         final AllocatedListing allocatedListing = random(AllocatedListing.class);
         allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         allocatedListingRepository.saveAndFlush(allocatedListing);
-        HearingSlotRequestParam hearingSlotRequestParam = createHearingSlotRequest("1");
+        HearingSlotRequestParam hearingSlotRequestParam = createHearingSlotRequest(courtSchedule);
 
         Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> response = courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam);
 
@@ -363,15 +369,160 @@ public class CourtScheduleRepositoryTest {
 
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
 
-        assertEquals(false, courtScheduleRepository.findBy(courtScheduleId1).isActive());
-        assertEquals(false, courtScheduleRepository.findBy(courtScheduleId2).isActive());
-        assertEquals(false, courtScheduleRepository.findBy(courtScheduleId1).isActive());
+        assertNull(courtScheduleRepository.findBy(courtScheduleId1));
+        assertNull(courtScheduleRepository.findBy(courtScheduleId2));
         assertEquals(true, courtSchedules.isEmpty());
     }
 
-    private HearingSlotRequestParam createHearingSlotRequest(String pageSize) {
-        return new HearingSlotRequestParam("ADULT", LocalDate.now().toString(), LocalDate.now().toString(),
-                "BA124", "BA124", pageSize, "1", "ID123",
-                "123", "buss", "session");
+    @Test
+    public void shouldUpdateMultipleSessions_OnMaxSlotsValue_GreaterThanZero() {
+        String courtHouseId = random(String.class);
+        String courtRoomId = random(String.class);
+        String businessType = random(String.class);
+        String panel = random(String.class);
+        String courtSession = random(String.class);
+        LocalDate date = LocalDate.now();
+
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setCourtHouseId(courtHouseId);
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setBusinessType(businessType);
+        courtSchedule.setPanel(panel);
+        courtSchedule.setCourtSession(courtSession);
+        courtSchedule.setSessionDate(date);
+        courtSchedule.setMaxSlots(2);
+        courtSchedule.setMaxDuration(0);
+        courtSchedule.setAvailableSlots(4);
+        courtSchedule.setAvailableDuration(5);
+
+        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setCourtHouseId(courtHouseId);
+        courtSchedule1.setCourtRoomId(courtRoomId);
+        courtSchedule1.setBusinessType(businessType);
+        courtSchedule1.setPanel(panel);
+        courtSchedule1.setCourtSession(courtSession);
+        courtSchedule1.setSessionDate(date);
+        courtSchedule1.setMaxSlots(6);
+        courtSchedule1.setMaxDuration(7);
+        courtSchedule1.setAvailableSlots(8);
+        courtSchedule1.setAvailableDuration(9);
+
+        courtScheduleRepository.save(courtSchedule);
+        CourtSchedule by = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
+        assertEquals(2, by.getMaxSlots().intValue());
+
+        courtScheduleRepository.update(courtSchedule1);
+        CourtSchedule by1 = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
+        assertEquals(6, by1.getMaxSlots().intValue());
+        assertEquals(7, by1.getMaxDuration().intValue());
+        assertEquals(8, by1.getAvailableSlots().intValue());
+        assertEquals(9, by1.getAvailableDuration().intValue());
+    }
+
+    @Test
+    public void shouldUpdateMultipleSessions_OnMaxDurationValue_GreaterThanZero() {
+        String courtHouseId = random(String.class);
+        String courtRoomId = random(String.class);
+        String businessType = random(String.class);
+        String panel = random(String.class);
+        String courtSession = random(String.class);
+        LocalDate date = LocalDate.now();
+
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setCourtHouseId(courtHouseId);
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setBusinessType(businessType);
+        courtSchedule.setPanel(panel);
+        courtSchedule.setCourtSession(courtSession);
+        courtSchedule.setSessionDate(date);
+        courtSchedule.setMaxSlots(0);
+        courtSchedule.setMaxDuration(3);
+        courtSchedule.setAvailableSlots(4);
+        courtSchedule.setAvailableDuration(5);
+
+        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setCourtHouseId(courtHouseId);
+        courtSchedule1.setCourtRoomId(courtRoomId);
+        courtSchedule1.setBusinessType(businessType);
+        courtSchedule1.setPanel(panel);
+        courtSchedule1.setCourtSession(courtSession);
+        courtSchedule1.setSessionDate(date);
+        courtSchedule1.setMaxSlots(6);
+        courtSchedule1.setMaxDuration(7);
+        courtSchedule1.setAvailableSlots(8);
+        courtSchedule1.setAvailableDuration(9);
+
+        courtScheduleRepository.save(courtSchedule);
+        CourtSchedule by = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
+        assertEquals(3, by.getMaxDuration().intValue());
+
+        courtScheduleRepository.update(courtSchedule1);
+        CourtSchedule by1 = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
+        assertEquals(6, by1.getMaxSlots().intValue());
+        assertEquals(7, by1.getMaxDuration().intValue());
+        assertEquals(8, by1.getAvailableSlots().intValue());
+        assertEquals(9, by1.getAvailableDuration().intValue());
+    }
+
+    @Test
+    public void shouldUpdateMultipleSessions_OnUpdateUI_GreaterThanPersisted() {
+        String courtHouseId = random(String.class);
+        String courtRoomId = random(String.class);
+        String businessType = random(String.class);
+        String panel = random(String.class);
+        String courtSession = random(String.class);
+        LocalDate date = LocalDate.now();
+
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setCourtHouseId(courtHouseId);
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setBusinessType(businessType);
+        courtSchedule.setPanel(panel);
+        courtSchedule.setCourtSession(courtSession);
+        courtSchedule.setSessionDate(date);
+        courtSchedule.setMaxSlots(0);
+        courtSchedule.setMaxDuration(0);
+        courtSchedule.setAvailableSlots(4);
+        courtSchedule.setAvailableDuration(5);
+
+        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setCourtHouseId(courtHouseId);
+        courtSchedule1.setCourtRoomId(courtRoomId);
+        courtSchedule1.setBusinessType(businessType);
+        courtSchedule1.setPanel(panel);
+        courtSchedule1.setCourtSession(courtSession);
+        courtSchedule1.setSessionDate(date);
+        courtSchedule1.setMaxSlots(6);
+        courtSchedule1.setMaxDuration(7);
+        courtSchedule1.setAvailableSlots(8);
+        courtSchedule1.setAvailableDuration(9);
+
+        courtScheduleRepository.save(courtSchedule);
+        CourtSchedule by = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
+        assertEquals(0, by.getMaxDuration().intValue());
+
+        courtScheduleRepository.update(courtSchedule1);
+        CourtSchedule by1 = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
+        assertEquals(6, by1.getMaxSlots().intValue());
+        assertEquals(7, by1.getMaxDuration().intValue());
+        assertEquals(8, by1.getAvailableSlots().intValue());
+        assertEquals(9, by1.getAvailableDuration().intValue());
+    }
+
+    private HearingSlotRequestParam createHearingSlotRequest(CourtSchedule courtSchedule) {
+        LocalDate startDate = courtSchedule.getSessionDate().minusDays(1);
+        LocalDate endDate = courtSchedule.getSessionDate().plusDays(1);
+        return new HearingSlotRequestParam(
+                courtSchedule.getPanel(),
+                startDate.toString(),
+                endDate.toString(),
+                courtSchedule.getOperationalUnit(),
+                courtSchedule.getOuCode(),
+                "1",
+                "1",
+                courtSchedule.getCourtRoomId(),
+                courtSchedule.getCourtRoomNumber().toString(),
+                courtSchedule.getBusinessType(),
+                courtSchedule.getCourtSession());
     }
 }

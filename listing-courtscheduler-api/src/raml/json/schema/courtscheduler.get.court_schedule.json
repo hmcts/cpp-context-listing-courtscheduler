@@ -33,6 +33,9 @@
                 "businessType": {
                   "type": "string"
                 },
+                "businessDescription": {
+                  "type": "string"
+                },
                 "courtHouseId": {
                   "type": "string"
                 },
@@ -44,10 +47,6 @@
                 },
                 "courtSession": {
                   "type": "string"
-                },
-                "createdOn": {
-                  "type": "string",
-                  "format": "date-time"
                 },
                 "listingProfileId": {
                   "type": "string"
@@ -76,10 +75,6 @@
                 },
                 "hasHearingsBooked": {
                   "type": "boolean"
-                },
-                "updatedOn": {
-                  "type": "string",
-                  "format": "date-time"
                 }
               },
               "required": [
