@@ -123,3 +123,12 @@ rule "API - Action - courtscheduler.oucode.migrate"
   then
     $outcome.setSuccess(true);
 end
+
+rule "API - Action - courtscheduler.rotasl.process_rota_files"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.rotasl.process_rota_files");
+        eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end

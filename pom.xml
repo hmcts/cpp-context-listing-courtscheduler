@@ -24,7 +24,7 @@
         <gihub.benas.random-beans.version>3.7.0</gihub.benas.random-beans.version>
         <build-helper-maven-plugin.version>3.1.0</build-helper-maven-plugin.version>
         <cglib.version>3.3.0</cglib.version>
-        <commons.lang3.version>3.9</commons.lang3.version>
+        <commons.lang3.version>3.14.0</commons.lang3.version>
         <org.mockito.mockito-core.version>2.24.0</org.mockito.mockito-core.version>
         <junit-dataprovider.version>1.13.1</junit-dataprovider.version>
         <activemq-ra.version>5.14.5</activemq-ra.version>
@@ -38,7 +38,6 @@
             **/uk/gov/moj/cpp/courtscheduler/api/PayloadExtractor.java,
             **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java
         </sonar.coverage.exclusions>
-
         <sonar.cpd.exclusions>
             **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,
             **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
@@ -47,6 +46,7 @@
         <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
         <referencedata.version>8.0.67</referencedata.version>
         <lettuce.core.version>5.2.1.RELEASE</lettuce.core.version>
+        <azure.storage.version>8.6.6</azure.storage.version>
     </properties>
 
     <modules>
@@ -56,6 +56,7 @@
         <module>listing-courtscheduler-viewstore</module>
         <module>listing-courtscheduler-healthchecks</module>
         <module>listing-courtscheduler-cache</module>
+        <module>listing-courtscheduler-common</module>
     </modules>
 
     <build>

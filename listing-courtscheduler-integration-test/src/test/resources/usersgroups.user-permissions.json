@@ -39,6 +39,10 @@
     {
       "object": "ProvisionalBooking",
       "action": "View-provisional"
+    },
+    {
+      "object": "RotaFileProcessor",
+      "action": "Process-rota-file"
     }
   ]
 }

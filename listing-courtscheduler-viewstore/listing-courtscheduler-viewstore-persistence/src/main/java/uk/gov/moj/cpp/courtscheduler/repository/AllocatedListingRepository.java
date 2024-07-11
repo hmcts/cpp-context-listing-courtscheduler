@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -9,6 +10,8 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.deltaspike.data.api.AbstractFullEntityRepository;
+import org.apache.deltaspike.data.api.Query;
+import org.apache.deltaspike.data.api.QueryParam;
 import org.apache.deltaspike.data.api.Repository;
 
 @Repository(forEntity = AllocatedListing.class)
@@ -37,4 +40,7 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
             return allocatedListing;
         }).toList();
     }
+
+    @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked(al.courtScheduleId, sum(duration) AS totalbooked) FROM AllocatedListing al WHERE al.courtScheduleId IN :courtScheduleIds group by al.courtScheduleId")
+    public abstract List<AllocatedListingTotalBooked> getAllocatedListingsByCourtScheduleId(@QueryParam("courtScheduleIds") final String courtScheduleIds);
 }

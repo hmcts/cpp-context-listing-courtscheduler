@@ -1,9 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.Boolean.parseBoolean;
+import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 
 import uk.gov.justice.services.common.configuration.Value;
 import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
@@ -14,6 +16,7 @@ import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,9 +27,11 @@ import javax.inject.Inject;
 import javax.json.JsonObject;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 @ApplicationScoped
 public class ReferenceDataCache {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataCache.class);
@@ -51,12 +56,13 @@ public class ReferenceDataCache {
 
     public static final String ROTA_BUSINESS_TYPE_CACHE_PREFIX = "RotaBusinessType_";
     public static final String ROTA_COURTROOM_CACHE_PREFIX = "RotaCourtRoom_";
+    public static final String ROTA_BUSINESS_TYPES_CACHE_KEY = "RotaBusinessTypes";
 
     public ReferenceDataCache() {
-        System.out.println("ReferenceDataCache constructor");
+        LOGGER.info("ReferenceDataCache constructor");
     }
 
-    public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode,Requester requester) {
+    public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode, final Requester requester) {
         if (parseBoolean(redisCommonCacheEnabled)) {
             LOGGER.info("redisCommonCacheEnabled is true");
             return getBusinessTypeByCodeFromTheCache(businessTypeCode,requester);
@@ -65,7 +71,16 @@ public class ReferenceDataCache {
             return referenceDataService.getRotaBusinessTypeByCode(businessTypeCode, requester);
         }
     }
-    public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId,Requester requester) {
+
+    public List<BusinessType> getRotaBusinessTypes(final Requester requester) {
+        if (parseBoolean(redisCommonCacheEnabled)) {
+            return getBusinessTypesFromTheCache(requester);
+        } else {
+            return referenceDataService.getRotaBusinessTypes(requester);
+        }
+    }
+
+    public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId, final Requester requester) {
         if (parseBoolean(redisCommonCacheEnabled)) {
             return getCourtRoomByIdFromTheCache(courtRoomId,requester);
         } else {
@@ -88,7 +103,24 @@ public class ReferenceDataCache {
         }
     }
 
-    private Optional<CourtRoom> getCourtRoomByIdFromTheCache(final String courtRoomId,Requester requester) {
+    private List<BusinessType> getBusinessTypesFromTheCache(Requester requester) {
+        final String cacheResult = cacheService.get(ROTA_BUSINESS_TYPES_CACHE_KEY);
+
+        if (isNull(cacheResult)) {
+            LOGGER.info("no cache result found for businessTypes in getBusinessTypesFromTheCache");
+            return processRotaBusinessTypes(requester);
+        } else {
+            try {
+                LOGGER.info("cacheResult has been found for BusinessTypes in getBusinessTypesFromTheCache");
+                return objectMapper.readValue(cacheResult, new TypeReference<List<BusinessType>>(){});
+            } catch (final JsonProcessingException jsonProcessingException) {
+                LOGGER.error("exception whilst reading cacheResult and converting to List<BusinessType> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+            }
+            return emptyList();
+        }
+    }
+
+    private Optional<CourtRoom> getCourtRoomByIdFromTheCache(final String courtRoomId, final Requester requester) {
         final String cacheResult = cacheService.get(ROTA_COURTROOM_CACHE_PREFIX + courtRoomId);
 
         if (isNull(cacheResult)) {
@@ -101,6 +133,20 @@ public class ReferenceDataCache {
             final CourtRoom courtRoom = jsonObjectToObjectConverter.convert(cacheResultJsonObject, CourtRoom.class);
             return of(courtRoom);
         }
+    }
+
+    private List<BusinessType> processRotaBusinessTypes(Requester requester) {
+        final List<BusinessType> rotaBusinessTypes = referenceDataService.getRotaBusinessTypes(requester);
+
+        try {
+            if (isNotEmpty(rotaBusinessTypes)) {
+                cacheService.add(ROTA_BUSINESS_TYPES_CACHE_KEY, objectMapper.writeValueAsString(rotaBusinessTypes));
+                return rotaBusinessTypes;
+            }
+        } catch (final JsonProcessingException jsonProcessingException) {
+            LOGGER.error("exception whilst adding into the cache for BusinessTypes with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+        }
+        return emptyList();
     }
 
     private Optional<BusinessType> processRotaBusinessTypeMap(final String businessTypeCode, final AtomicReference<BusinessType> businessTypeForCode,Requester requester) {
@@ -117,6 +163,7 @@ public class ReferenceDataCache {
                     LOGGER.error("exception whilst adding into the cache for BusinessTypeCode: {} with exception: {}", typeCode, jsonProcessingException.getMessage(), jsonProcessingException);
                 }
             });
+
             return of(businessTypeForCode.get());
         }
         return empty();

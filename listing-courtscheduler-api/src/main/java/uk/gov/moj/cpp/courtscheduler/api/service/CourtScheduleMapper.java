@@ -61,6 +61,7 @@ public class CourtScheduleMapper {
                 .withMaxDuration(entity.getMaxDuration())
                 .withAvailableSlots(entity.getAvailableSlots())
                 .withAvailableDuration(entity.getAvailableDuration())
+                .withActive(entity.isActive())
                 .build();
     }
 }

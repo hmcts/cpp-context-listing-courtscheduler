@@ -1,12 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.joining;
+import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
@@ -20,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
@@ -27,11 +31,15 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -39,11 +47,18 @@ import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
+import javax.transaction.Transactional;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.QueryInvocationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class SessionsService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SessionsService.class);
+
     private static final String BUSINESS_TYPE_NOT_FOUND = "Business Type not found";
     private static final String COURTROOM_NOT_FOUND = "Court Room not found";
     @Inject
@@ -54,6 +69,8 @@ public class SessionsService {
     private CourtMigrationRepository courtMigrationRepository;
     @Inject
     private ReferenceDataCache referenceDataCache;
+    @Inject
+    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
     public void create(CreateSessionRequestParam createSessionRequestParam, Requester requester) {
         final List<CourtSchedule> courtScheduleList = new ArrayList<>();
@@ -173,6 +190,195 @@ public class SessionsService {
 
         return Result.SUCCESS();
     }
+
+    public String findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(final String courtRoomId,
+                                                                                final LocalDate sessionDate,
+                                                                                final String businessType,
+                                                                                final String courtSession) {
+        return courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
+    }
+
+    public List<CourtSchedule> getExtractedCourtSchedules(final String ouCodes, final LocalDate startDate, final LocalDate endDate) {
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExtractedCourtSchedules(ouCodes, startDate, endDate);
+        return courtScheduleEntities.stream()
+                .map(CourtScheduleMapper::toDomain)
+                .toList();
+    }
+
+    public List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(final String ouCodes, final LocalDate startDate, final LocalDate endDate) {
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExtractedCourtSchedulesForGhostRota(ouCodes, startDate, endDate);
+        return courtScheduleEntities.stream()
+                .map(CourtScheduleMapper::toDomain)
+                .toList();
+
+    }
+
+    public void saveCourtSchedules(final List<CourtSchedule> provisionalCourtSchedules, final Map<String, BusinessType> businessTypeMap) {
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> provisionalCourtScheduleEntities = provisionalCourtSchedules
+                .stream()
+                .map(CourtScheduleMapper::toEntity)
+                .toList();
+
+        provisionalCourtScheduleEntities.forEach(provisionalCourtScheduleEntity -> {
+            provisionalCourtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
+            provisionalCourtScheduleEntity.setSlotBased(businessTypeMap.get(provisionalCourtScheduleEntity.getBusinessType()).isSlot());
+            courtScheduleRepository.save(provisionalCourtScheduleEntity);
+        });
+
+    }
+
+    @Transactional
+    public void update(final List<String> existingSlotIds,
+                       final Map<String, CourtSchedule> newRecords,
+                       final Collection<CourtScheduleJudiciary> newSchedules,
+                       final Collection<CourtSchedule> slotsToUpdate,
+                       final Map<String, Pair<String, String>> slotsToUpdateMap,
+                       final Collection<CourtScheduleJudiciary> updatedSchedules,
+                       final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules,
+                       final List<String> slotIdsToDelete,
+                       final Map<String, BusinessType> businessTypeMap,
+                       final boolean onlyCourtScheduleJudiciaryToBeProcessed) {
+        logger.info("DD-15703:CourtScheduleRepository: update process started");
+
+
+        logger.info("DD-15703:CourtScheduleRepository: before deactivateSlots");
+        deactivateSlots(existingSlotIds);
+        logger.info("DD-15703:CourtScheduleRepository: after deactivateSlots");
+
+        logger.info("DD-15703:CourtScheduleRepository: before deactivateSchedules");
+        deactivateSchedules(existingSlotIds);
+        logger.info("DD-15703:CourtScheduleRepository: after deactivateSchedules.update");
+
+        if (!onlyCourtScheduleJudiciaryToBeProcessed) {
+            logger.info("DD-15703:CourtScheduleRepository: before saveSlots");
+            saveSlots(newRecords.values(), businessTypeMap);
+            logger.info("DD-15703:CourtScheduleRepository: after saveSlots");
+        } else {
+            logger.info("saveSlots will not be processed as courtSchedule should not be persisted for this lja");
+        }
+
+        for (final CourtSchedule courtSchedule : slotsToUpdate) {
+            newRecords.putIfAbsent(courtSchedule.getListingProfileId(), courtSchedule);
+        }
+
+        logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule");
+        saveJudiciarySchedule(newRecords, newSchedules);
+        logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule");
+
+        logger.info("DD-15703:CourtScheduleRepository: before updateSlots");
+        updateSlots(slotsToUpdate, businessTypeMap);
+        logger.info("DD-15703:CourtScheduleRepository: after updateSlots");
+
+        logger.info("DD-15703:CourtScheduleRepository: before updateJudiciarySchedule");
+        updateJudiciarySchedule(slotsToUpdateMap, updatedSchedules, relatedJudiciarySchedules);
+        logger.info("DD-15703:CourtScheduleRepository: after updateJudiciarySchedule");
+
+        if (isNotEmpty(slotIdsToDelete)) {
+            logger.info("DD-15703:CourtScheduleRepository: before deleteSlots");
+            deleteSlots(slotIdsToDelete);
+            logger.info("DD-15703:CourtScheduleRepository: after deleteSlots");
+
+            logger.info("DD-15703:CourtScheduleRepository: before deleteSchedules");
+            int numberOfDeletedSchedules = deleteSchedules(slotIdsToDelete);
+            logger.info("DD-15703:CourtScheduleRepository: after deleteSchedules with numberOfDeletedSchedules : {}", numberOfDeletedSchedules);
+        }
+
+        logger.info("DD-15703:CourtScheduleRepository: update process completed");
+    }
+
+    private void deactivateSlots(final List<String> snapshotSlotIds) {
+        final String listingProfileIdsPlaceholders = snapshotSlotIds.stream().map(s -> "?").collect(joining(","));
+        courtScheduleRepository.deactivateSlots(listingProfileIdsPlaceholders, Calendar.getInstance().getTime());
+    }
+
+    private void deactivateSchedules(final List<String> snapshotSlotIds) {
+        final String listingProfileIdsPraceholders = snapshotSlotIds.stream().map(s -> "?").collect(joining(","));
+        courtScheduleJudiciaryRepository.deactivateSchedules(listingProfileIdsPraceholders, Calendar.getInstance().getTime());
+    }
+
+    private int saveSlots(final Collection<CourtSchedule> slots,
+                          final Map<String, BusinessType> businessTypeMap) {
+        final AtomicInteger numberOfSaved = new AtomicInteger();
+        slots.forEach(slot -> {
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity = CourtScheduleMapper.toEntity(slot);
+            courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
+            courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
+            courtScheduleRepository.save(courtScheduleEntity);
+
+            numberOfSaved.getAndIncrement();
+        });
+
+        return numberOfSaved.get();
+    }
+
+    private void updateSlots(final Collection<CourtSchedule> slotsToUpdate, final Map<String, BusinessType> businessTypeMap) {
+        slotsToUpdate.forEach(slotToUpdate -> {
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule slotToUpdateEntity = CourtScheduleMapper.toEntity(slotToUpdate);
+            slotToUpdateEntity.setUpdatedOn(Calendar.getInstance().getTime());
+            slotToUpdateEntity.setActive(true);
+            slotToUpdate.setSlotBased(businessTypeMap.get(slotToUpdate.getBusinessType()).isSlot());
+
+            courtScheduleRepository.update(slotToUpdateEntity);
+        });
+    }
+
+    private void updateJudiciarySchedule(final Map<String, Pair<String, String>> slotsToUpdate,
+                                         final Collection<CourtScheduleJudiciary> scheduleJudiciaries,
+                                         final Map<String, List<CourtScheduleJudiciary>> courtScheduleJudiciariesMap) {
+        if (!courtScheduleJudiciariesMap.isEmpty() && !slotsToUpdate.isEmpty()) {
+            for (final Map.Entry<String, List<CourtScheduleJudiciary>> slotsScheduleEntry : courtScheduleJudiciariesMap.entrySet()) {
+                final String profileId = slotsScheduleEntry.getKey();
+                final List<CourtScheduleJudiciary> slotsScheduleEntryValue = slotsScheduleEntry.getValue();
+
+                slotsScheduleEntryValue.forEach(courtScheduleJudiciary -> {
+                    final Pair<String, String> courtScheduleIdAndOuCodePair = slotsToUpdate.get(profileId);
+                    final String courtScheduleId = (String) courtScheduleIdAndOuCodePair.getLeft();
+                    final String ouCode = (String) courtScheduleIdAndOuCodePair.getRight();
+                    if (nonNull(courtScheduleId)) {
+                        scheduleJudiciaries.stream()
+                                .filter(scheduleJudiciary -> scheduleJudiciary.getCourtScheduleId().equals(courtScheduleJudiciary.getCourtScheduleId())
+                                        && scheduleJudiciary.getJudiciaryId().equals(courtScheduleJudiciary.getJudiciaryId()))
+                                .map(CourtScheduleJudiciary::getPosition)
+                                .findFirst()
+                                .ifPresent(updatedPosition -> {
+                                    courtScheduleJudiciaryRepository.updateCourtScheduleJudiciaryPosition(updatedPosition, Calendar.getInstance().getTime(), courtScheduleJudiciary.getCourtScheduleId(), courtScheduleJudiciary.getJudiciaryId());
+                                });
+                    }
+                });
+            }
+        }
+    }
+
+    private int deleteSchedules(final List<String> ids) {
+        final String courtScheduleIds = ids.stream().map(s -> "?").collect(joining(","));
+        return courtScheduleJudiciaryRepository.deleteSchedules(courtScheduleIds);
+    }
+
+    private int deleteSlots(final List<String> ids) {
+        final String courtScheduleIds = ids.stream().map(s -> "?").collect(joining(","));
+        return courtScheduleRepository.deleteSchedules(courtScheduleIds);
+    }
+
+    private int saveJudiciarySchedule(final Map<String, CourtSchedule> newRecords,
+                                      final Collection<CourtScheduleJudiciary> scheduleJudiciaries) {
+        final AtomicInteger numberOfSaved = new AtomicInteger();
+        scheduleJudiciaries.forEach(scheduleJudiciary -> {
+            final CourtSchedule courtSchedule = newRecords.get(scheduleJudiciary.getCourtListingProfileId());
+
+            if (nonNull(courtSchedule)) {
+                final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciaryEntity = CourtScheduleJudiciaryMapper.toEntity(scheduleJudiciary);
+                courtScheduleJudiciaryEntity.setUpdatedOn(Calendar.getInstance().getTime());
+                courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
+                courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
+
+                numberOfSaved.getAndIncrement();
+            }
+        });
+
+        return numberOfSaved.get();
+    }
+
+
 
     private String enrichBusinessDescription(final String businessType, final Requester requester) {
         return referenceDataCache.getRotaBusinessTypeByCode(businessType, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + businessType)).getTypeDescription();

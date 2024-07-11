@@ -28,6 +28,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>uk.gov.justice.framework-generators</groupId>
+            <artifactId>rest-adapter-core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>uk.gov.moj.cpp.common.library.utils</groupId>
             <artifactId>cpp-platform-test-utils</artifactId>
             <version>${cpp-platform-test-utils.version}</version>
