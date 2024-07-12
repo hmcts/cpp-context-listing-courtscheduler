@@ -17,6 +17,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
@@ -46,6 +47,8 @@ public class SessionsService {
     private CourtScheduleRepository courtScheduleRepository;
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
+    @Inject
+    private CourtMigrationRepository courtMigrationRepository;
     @Inject
     private ReferenceDataCache referenceDataCache;
 
@@ -86,7 +89,7 @@ public class SessionsService {
 
         final Optional<CourtRoom> courtRoom;
         if (courtRoomId != null && !courtRoomId.equalsIgnoreCase(persistedCourtSchedule.getCourtRoomId())) {
-            courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId,requester).orElseThrow(() -> new RuntimeException("Court Room not found" + courtRoomId)));
+            courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId,requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
         } else {
             courtRoom = Optional.empty();
         }
@@ -132,6 +135,14 @@ public class SessionsService {
         return Json.createObjectBuilder()
                 .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
                 .build();
+    }
+
+    public boolean isMigrated(final String ouCode) {
+        return courtMigrationRepository.findByOuCode(ouCode).isMigrated();
+    }
+
+    public boolean isMigratedByCourtCentreId(final String courtCentreId) {
+        return courtMigrationRepository.findByCourtCentreId(courtCentreId).isMigrated();
     }
 
     private String enrichBusinessDescription(final String businessType, final Requester requester) {

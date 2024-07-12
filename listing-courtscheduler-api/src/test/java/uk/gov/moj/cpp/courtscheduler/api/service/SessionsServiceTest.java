@@ -30,7 +30,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
@@ -70,6 +72,8 @@ class SessionsServiceTest {
     private Requester requester;
     @Mock
     private AllocatedListingRepository allocatedListingRepository;
+    @Mock
+    private CourtMigrationRepository courtMigrationRepository;
     @Mock
     private ReferenceDataCache referenceDataCache;
     @InjectMocks
@@ -412,6 +416,55 @@ class SessionsServiceTest {
         Result result = sessionsService.update(updateCourtSchedule, requester);
 
         assertEquals("Business Type cannot be changed from Slot to Non-Slot and vice versa", result.getMsg());
+    }
+
+    @Test
+    void shouldReturnMigratedCourt() {
+        final String oucode = "B01LY00" ;
+        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(oucode);
+        migrationStatus.setCourtCentreId(randomUUID().toString());
+        migrationStatus.setMigrated(true);
+
+        when(courtMigrationRepository.findByOuCode(oucode)).thenReturn(migrationStatus);
+        Assert.assertTrue(sessionsService.isMigrated(oucode));
+
+    }
+
+    @Test
+    void shouldReturnFalseForNonMigratedCourt() {
+        final String oucode = "B01LY00" ;
+        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(oucode);
+        migrationStatus.setCourtCentreId(randomUUID().toString());
+        migrationStatus.setMigrated(false);
+
+        when(courtMigrationRepository.findByOuCode(oucode)).thenReturn(migrationStatus);
+        Assert.assertFalse(sessionsService.isMigrated(oucode));
+
+    }
+    @Test
+    void shouldReturnMigratedCourtByCourtCentreId() {
+        final String oucode = "B01LY00" ;
+        final String courtCentreId = randomUUID().toString();
+        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(oucode);
+        migrationStatus.setCourtCentreId(courtCentreId);
+        migrationStatus.setMigrated(true);
+        when(courtMigrationRepository.findByCourtCentreId(courtCentreId)).thenReturn(migrationStatus);
+        Assert.assertTrue(sessionsService.isMigratedByCourtCentreId(courtCentreId));
+    }
+
+    @Test
+    void shouldReturnFalseForNonMigratedCourtByCourtCentreId() {
+        final String oucode = "B01LY00" ;
+        final String courtCentreId = randomUUID().toString();
+        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(oucode);
+        migrationStatus.setCourtCentreId(courtCentreId);
+        migrationStatus.setMigrated(false);
+        when(courtMigrationRepository.findByCourtCentreId(courtCentreId)).thenReturn(migrationStatus);
+        Assert.assertFalse(sessionsService.isMigratedByCourtCentreId(courtCentreId));
     }
 
     private static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule getPersistedCourtSchedule(final String courtScheduleId, final String businessTypeCode) {

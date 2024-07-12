@@ -1,8 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
+
+import java.util.List;
 
 import javax.inject.Inject;
 
@@ -10,8 +13,6 @@ import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import java.util.List;
 
 @RunWith(CdiTestRunner.class)
 public class CourtMigrationRepositoryTest {
