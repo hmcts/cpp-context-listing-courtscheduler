@@ -78,11 +78,6 @@ public class CourtScheduleService {
         }
     }
 
-
-    private static boolean maxSlotsOrDurationChanged(final UpdateCourtSchedule updateCourtSchedule, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
-        return (!updateCourtSchedule.getMaxDuration().equals(persistedCourtSchedule.getMaxDuration())) || (!updateCourtSchedule.getMaxSlots().equals(persistedCourtSchedule.getMaxSlots()));
-    }
-
     private  boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType) {
         return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule, requester, persistedBusinessType);
     }
