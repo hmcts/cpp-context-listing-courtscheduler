@@ -48,9 +48,7 @@ public class CourtScheduleService {
         if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType)) {
             return new Result("Business Type cannot be changed from Slot to Non-Slot and vice versa", false);
         }
-        if (maxSlotsOrDurationChanged(updateCourtSchedule, persistedCourtSchedule)) {
             updateAvailability(updateCourtSchedule, persistedCourtSchedule);
-        }
 
         String courtRoomId = updateCourtSchedule.getCourtRoomId();
 
