@@ -41,6 +41,7 @@ import org.apache.deltaspike.data.api.QueryInvocationException;
 @ApplicationScoped
 public class SessionsService {
     private static final String BUSINESS_TYPE_NOT_FOUND = "Business Type not found";
+    private static final String COURTROOM_NOT_FOUND = "Court Room not found";
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
     @Inject
@@ -191,8 +192,8 @@ public class SessionsService {
     }
 
     private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsorDuration,Requester requester) {
-        final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType(),requester).orElseThrow(() -> new RuntimeException("Business Type not found" + builder.getBusinessType()));
-        final CourtRoom courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId(),requester).orElseThrow(() -> new RuntimeException("Court Room not found" + builder.getCourtRoomId()));
+        final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType(),requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
+        final CourtRoom courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId(),requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
         if (businessType.isSlot()) {
             builder.withSlotBased(true);
             builder.withMaxSlots(maxSlotsorDuration);
