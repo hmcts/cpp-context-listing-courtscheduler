@@ -6,6 +6,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.util.List;
@@ -28,6 +29,9 @@ public class CourtScheduleService {
     private CourtScheduleRepository courtScheduleRepository;
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
+
+    @Inject
+    private CourtMigrationRepository courtMigrationRepository;
 
     @Inject
     private ReferenceDataCache referenceDataCache;
@@ -100,6 +104,14 @@ public class CourtScheduleService {
         return Json.createObjectBuilder()
                 .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
                 .build();
+    }
+
+    public boolean isMigrated(final String ouCode) {
+        return courtMigrationRepository.findByOuCode(ouCode).isMigrated();
+    }
+
+    public boolean isMigratedByCourtCentreId(final String courtCentreId) {
+        return courtMigrationRepository.findByCourtCentreId(courtCentreId).isMigrated();
     }
 
     private String enrichBusinessDescription(final String businessType, final Requester requester) {
