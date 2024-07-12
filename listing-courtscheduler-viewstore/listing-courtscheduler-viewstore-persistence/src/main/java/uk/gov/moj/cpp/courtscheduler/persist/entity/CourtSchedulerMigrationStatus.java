@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -66,5 +67,27 @@ public class CourtSchedulerMigrationStatus {
     public CourtSchedulerMigrationStatus setUpdatedOn(final String updatedOn) {
         this.updatedOn = updatedOn;
         return this;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (!(o instanceof final CourtSchedulerMigrationStatus that)) return false;
+        return isMigrated() == that.isMigrated() && Objects.equals(getOuCode(), that.getOuCode()) && Objects.equals(getCourtCentreId(), that.getCourtCentreId()) && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getOuCode(), getCourtCentreId(), isMigrated(), getUpdatedOn());
+    }
+
+    @Override
+    public String toString() {
+        return "CourtSchedulerMigrationStatus{" +
+                "ouCode='" + ouCode + '\'' +
+                ", courtCentreId='" + courtCentreId + '\'' +
+                ", migrated=" + migrated +
+                ", updatedOn='" + updatedOn + '\'' +
+                '}';
     }
 }
