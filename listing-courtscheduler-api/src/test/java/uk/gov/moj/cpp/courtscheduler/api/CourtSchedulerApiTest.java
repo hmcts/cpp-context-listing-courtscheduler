@@ -33,7 +33,6 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamC
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
@@ -88,8 +87,6 @@ class CourtSchedulerApiTest {
     private ProvisionalBookingApiValidator provisionalBookingApiValidator;
     @Mock
     private ProvisionalBookingService provisionalBookingService;
-    @Mock
-    private CourtScheduleService courtScheduleService;
     @Mock
     private MiService miService;
     @Mock
@@ -173,7 +170,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope deleteCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonObject);
 
         when(enveloper.withMetadataFrom(deleteCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
-        when(courtScheduleService.deleteCourtScheduleSessions(sessionsConverter.convert(jsonObject.toString()))).thenReturn(EMPTY_JSON_OBJECT);
+        when(sessionsService.deleteCourtScheduleSessions(sessionsConverter.convert(jsonObject.toString()))).thenReturn(EMPTY_JSON_OBJECT);
 
         courtSchedulerApi.deleteCourtSchedule(deleteCourtScheduleJsonEnvelope);
 
@@ -189,7 +186,7 @@ class CourtSchedulerApiTest {
 
         when(enveloper.withMetadataFrom(updateCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
         Result success = Result.SUCCESS();
-        when(courtScheduleService.update(any(), eq(requester))).thenReturn(success);
+        when(sessionsService.update(any(), eq(requester))).thenReturn(success);
         when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
                 .add(RESULTS, "ok")
                 .build());
@@ -207,7 +204,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope updateCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
         Result failure = new Result("Court Schedule not found", false);
-        when(courtScheduleService.update(any(), eq(requester))).thenReturn(failure);;
+        when(sessionsService.update(any(), eq(requester))).thenReturn(failure);;
 
         BadRequestException badRequestException = assertThrows(BadRequestException.class, () -> courtSchedulerApi.updateCourtSchedule(updateCourtScheduleJsonEnvelope));
 
@@ -222,13 +219,13 @@ class CourtSchedulerApiTest {
         when(enveloper.withMetadataFrom(exportCourtScheduleEnvelope, requestName)).thenReturn(function);
 
         List<CourtSchedule> courtSchedules = Lists.newArrayList();
-        when(courtScheduleService.getCourtSchedules(any(), any())).thenReturn(courtSchedules);
+        when(sessionsService.getCourtSchedules(any(), any())).thenReturn(courtSchedules);
         when(courtScheduleApiValidator.getCourtSchedulesValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
         when(courtScheduleRequestParamConverter.convert(any())).thenReturn(new CourtScheduleRequestParamConverter().convert(jsonObject));
 
         courtSchedulerApi.getCourtSchedule(exportCourtScheduleEnvelope);
 
-        verify(courtScheduleService, atLeastOnce()).getCourtSchedules(any(), any());
+        verify(sessionsService, atLeastOnce()).getCourtSchedules(any(), any());
         verify(enveloper, atLeastOnce()).withMetadataFrom(exportCourtScheduleEnvelope, requestName);
     }
 

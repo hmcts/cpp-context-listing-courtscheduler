@@ -20,7 +20,6 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamC
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
@@ -81,8 +80,6 @@ public class CourtSchedulerApi {
     @Inject
     private MiService miService;
     @Inject
-    private CourtScheduleService courtScheduleService;
-    @Inject
     private SessionsApiValidator sessionsApiValidator;
     @Inject
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
@@ -132,7 +129,7 @@ public class CourtSchedulerApi {
     public JsonEnvelope deleteCourtSchedule(final JsonEnvelope envelope) {
         SessionsParam sessions = sessionsConverter.convert(envelope.payloadAsJsonObject().toString());
 
-        JsonObject responseObject = courtScheduleService.deleteCourtScheduleSessions(sessions);
+        JsonObject responseObject = sessionsService.deleteCourtScheduleSessions(sessions);
 
         return envelopeFor(envelope, responseObject, SESSIONS);
     }
@@ -149,7 +146,7 @@ public class CourtSchedulerApi {
             return envelopeFor(envelope, validate, ERROR);
         }
 
-        List<CourtSchedule> courtSchedules = courtScheduleService.getCourtSchedules(courtScheduleRequestParam, requester);
+        List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(courtScheduleRequestParam, requester);
 
         List<CourtSessionsView> courtSessionsViewList = CourtScheduleToViewConverter.getCourtSessionsViews(courtSchedules);
 
@@ -159,7 +156,7 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.update")
     public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
         UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(envelope.payloadAsJsonObject());
-        Result result = courtScheduleService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule, requester);
         if (!result.isSuccess()) {
             throw new BadRequestException(result.getMsg());
         }

@@ -2,11 +2,16 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.UUID.randomUUID;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,17 +21,23 @@ import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
+import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,6 +50,7 @@ import java.util.UUID;
 
 import javax.json.JsonObject;
 
+import io.smallrye.common.constraint.Assert;
 import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,11 +64,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class SessionsServiceTest {
     private static final Set<DayOfWeek> WEEK_DAYS_FIRST_HALF = new HashSet<>(Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY));
     private static final Set<DayOfWeek> WEEK_DAYS_SECOND_HALF = new HashSet<>(Arrays.asList(DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY));
-
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
     @Mock
     private Requester requester;
+    @Mock
+    private AllocatedListingRepository allocatedListingRepository;
     @Mock
     private ReferenceDataCache referenceDataCache;
     @InjectMocks
@@ -142,81 +155,6 @@ class SessionsServiceTest {
             assertEquals("DVLA", courtSchedule.getBusinessType());
         });
     }
-
-    private Map<String, BusinessType> getBusinessTypeMap() {
-        final Map<String, BusinessType> businessTypeMap = new HashMap<>();
-        JsonObject businessTypeJson = getPayload("/test-data/referencedata.get.businesstypes.json");
-        businessTypeJson.getJsonArray("rotaBusinessTypes").forEach(businessType -> {
-            BusinessType businessTypeObj = BusinessType.BusinessTypeBuilder.aBusinessType()
-                    .withTypeCode(((JsonObject) businessType).getString("typeCode"))
-                    .withTypeDescription(((JsonObject) businessType).getString("typeDescription"))
-                    .build();
-            businessTypeMap.put(businessTypeObj.getTypeCode(), businessTypeObj);
-        });
-        return businessTypeMap;
-    }
-
-    private Map<UUID, CourtRoom> getCourtRoomMap() {
-        final Map<UUID, CourtRoom> courtRoomMap = new HashMap<>();
-        JsonObject courtRoomJson = getPayload("/test-data/referencedata.get.rota.courtrooms.json");
-        courtRoomJson.getJsonArray("cpRotaCourtRoomMappings").forEach(courtRoom -> {
-            try {
-                CourtRoom.CourtRoomBuilder courtRoomBuilder = CourtRoom.CourtRoomBuilder.aCourtRoom();
-                //Mandatory
-                courtRoomBuilder
-                        .withOucode(((JsonObject) courtRoom).getString("oucode"))
-                        .withCppCourtRoomId(((JsonObject) courtRoom).getInt("cppCourtRoomId"))
-                        .withOucode(((JsonObject) courtRoom).getString("oucode"));
-                //Optional
-                if (((JsonObject) courtRoom).containsKey("rotaLocationId")) {
-                    courtRoomBuilder.withRotaLocationId(((JsonObject) courtRoom).getInt("rotaLocationId"));
-                }
-                if (((JsonObject) courtRoom).containsKey("rotaVenueName")) {
-                    courtRoomBuilder.withRotaVenueName(((JsonObject) courtRoom).getString("rotaVenueName"));
-                }
-                if (((JsonObject) courtRoom).containsKey("rotaVenueId")) {
-                    courtRoomBuilder.withRotaVenueId(((JsonObject) courtRoom).getInt("rotaVenueId"));
-                }
-                if (((JsonObject) courtRoom).containsKey("oucodeL3Name")) {
-                    courtRoomBuilder.withOucodeL3Name(((JsonObject) courtRoom).getString("oucodeL3Name"));
-                }
-                if (((JsonObject) courtRoom).containsKey("oucodeL2Name")) {
-                    courtRoomBuilder.withOucodeL2Name(((JsonObject) courtRoom).getString("oucodeL2Name"));
-                }
-                if (((JsonObject) courtRoom).containsKey("oucodeL2Code")) {
-                    courtRoomBuilder.withOucodeL2Code(((JsonObject) courtRoom).getString("oucodeL2Code"));
-                }
-                if (((JsonObject) courtRoom).containsKey("oucodeUUID")) {
-                    courtRoomBuilder.withOucodeUUID(((JsonObject) courtRoom).getString("oucodeUUID"));
-                }
-                if (((JsonObject) courtRoom).containsKey("courtroomName")) {
-                    courtRoomBuilder.withCourtRoomName(((JsonObject) courtRoom).getString("courtroomName"));
-                }
-                if (((JsonObject) courtRoom).containsKey("id")) {
-                    courtRoomBuilder.withCourtRoomId(((JsonObject) courtRoom).getString("id"));
-                }
-                final CourtRoom courtRoomObj = courtRoomBuilder.build();
-
-                courtRoomMap.put(UUID.fromString(courtRoomObj.getCourtroomId()), courtRoomObj);
-            } catch (Exception e) {
-                System.out.println("courtRoom: " + ((JsonObject) courtRoom).getString("id"));
-                e.printStackTrace();
-            }
-        });
-        return courtRoomMap;
-    }
-
-    private Optional<BusinessType> returnBusinessTypeObject(final String businessTypeCode, boolean isSlotBased) {
-        return Optional.of(BusinessType.BusinessTypeBuilder.aBusinessType()
-                .withId(randomUUID().toString())
-                .withSeqNum(1)
-                .withTypeCode(businessTypeCode)
-                .withTypeDescription(businessTypeCode + "BusinessType")
-                .withSlot(isSlotBased)
-                .withDuration(!isSlotBased)
-                .build());
-    }
-
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingWithLaterDate() {
@@ -362,6 +300,151 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest,requester);
         verify(courtScheduleRepository, times(3)).save(any(CourtSchedule.class));
     }
+    @Test
+    void shouldGetCourtSchedulesBetweenLastUpdatedOn() {
+        // given
+        CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParam();
+        uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule();
+        given(courtScheduleRepository.findBy(courtScheduleRequestParam)).willReturn(List.of(courtSchedule));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(courtSchedule.getBusinessType()), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(courtScheduleRequestParam, requester);
+
+        assertThat(courtSchedules.contains(courtSchedule), is(true));
+    }
+
+    @Test
+    void shouldProcessProvisionalBookingRequestSuccessfully() {
+        SessionsParam sessionsParam = new SessionsParam();
+        sessionsParam.setSessions(List.of("1", "2"));
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = new ArrayList<>();
+
+        when(courtScheduleRepository.deleteCourtSchedule(anyList())).thenReturn(courtSchedules);
+
+        JsonObject response = sessionsService.deleteCourtScheduleSessions(sessionsParam);
+
+        Assert.assertTrue(response.get("sessions").asJsonArray().isEmpty());
+    }
+
+    @Test
+    void shouldUpdateCourtScheduleWhenNoBusinessTypeChange() {
+        final String courtScheduleId = randomUUID().toString();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(random(String.class));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(updateCourtSchedule.getCourtRoomId()), eq(requester))).thenReturn(Optional.of(random(CourtRoom.class)));
+        when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+        assertThat(result.isSuccess(), is(true));
+    }
+
+    @Test
+    void shouldUpdateCourtScheduleWhenNoCourtRoomChange() {
+        final String courtScheduleId = randomUUID().toString();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(random(String.class));
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+        assertThat(result.isSuccess(), is(true));
+    }
+
+
+    @Test
+    void shouldUpdateCourtScheduleWhenSlotBasedChange() {
+        final String courtScheduleId = randomUUID().toString();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setSlotBased(true);
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(random(String.class));
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+        assertThat(result.isSuccess(), is(true));
+    }
+
+    @Test
+    void shouldReturnFailure_WhenCourtScheduleId_NotFound() {
+        final String courtScheduleId = randomUUID().toString();
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(random(String.class));
+
+        when(courtScheduleRepository.findBy(anyString())).thenReturn(null);
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertEquals("Court Schedule not found", result.getMsg());
+    }
+
+    @Test
+    void shouldReturnFailure_WhenBusinessTypeChanges() {
+        final String courtScheduleId = randomUUID().toString();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVAL");
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(random(String.class));
+
+        when(courtScheduleRepository.findBy(anyString())).thenReturn(persistedCourtSchedule);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(persistedCourtSchedule.getBusinessType()), eq(requester))).thenReturn(returnBusinessTypeObject("DVAL", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(updateCourtSchedule.getBusinessType()), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertEquals("Business Type cannot be changed from Slot to Non-Slot and vice versa", result.getMsg());
+    }
+
+    private static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule getPersistedCourtSchedule(final String courtScheduleId, final String businessTypeCode) {
+        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = random(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setBusinessType(businessTypeCode);
+        courtSchedule.setSessionDate(random(LocalDate.class));
+        courtSchedule.setCourtSession(random(String.class));
+        return courtSchedule;
+    }
+
+    private CourtScheduleRequestParam courtScheduleRequestParam() {
+        String courtCentreId = "courtCentreId";
+        String courtRoomId = "courtRoomId";
+        String businessType = "businessType";
+        String sessionStartDate = "2024-12-01";
+        String sessionEndDate = "2024-12-03";
+        String pageSize = "10";
+        String pageNumber = "1";
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId,
+                businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+    }
+
+    private Optional<BusinessType> returnBusinessTypeObject(final String businessTypeCode, boolean isSlotBased) {
+        return Optional.of(BusinessType.BusinessTypeBuilder.aBusinessType()
+                .withId(randomUUID().toString())
+                .withSeqNum(1)
+                .withTypeCode(businessTypeCode)
+                .withTypeDescription(businessTypeCode + "BusinessType")
+                .withSlot(isSlotBased)
+                .withDuration(!isSlotBased)
+                .build());
+    }
 
     private Map<LocalDate, DayOfWeek> getDayOfWeekMap(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor, List<DayOfWeek> daysOfWeek) {
         final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
@@ -482,9 +565,71 @@ class SessionsServiceTest {
 
     }
 
-
     public JsonObject getPayload(String path) {
         StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         return stringToJsonObjectConverter.convert(fileToString(path));
+    }
+
+    private Map<String, BusinessType> getBusinessTypeMap() {
+        final Map<String, BusinessType> businessTypeMap = new HashMap<>();
+        JsonObject businessTypeJson = getPayload("/test-data/referencedata.get.businesstypes.json");
+        businessTypeJson.getJsonArray("rotaBusinessTypes").forEach(businessType -> {
+            BusinessType businessTypeObj = BusinessType.BusinessTypeBuilder.aBusinessType()
+                    .withTypeCode(((JsonObject) businessType).getString("typeCode"))
+                    .withTypeDescription(((JsonObject) businessType).getString("typeDescription"))
+                    .build();
+            businessTypeMap.put(businessTypeObj.getTypeCode(), businessTypeObj);
+        });
+        return businessTypeMap;
+    }
+
+    private Map<UUID, CourtRoom> getCourtRoomMap() {
+        final Map<UUID, CourtRoom> courtRoomMap = new HashMap<>();
+        JsonObject courtRoomJson = getPayload("/test-data/referencedata.get.rota.courtrooms.json");
+        courtRoomJson.getJsonArray("cpRotaCourtRoomMappings").forEach(courtRoom -> {
+            try {
+                CourtRoom.CourtRoomBuilder courtRoomBuilder = CourtRoom.CourtRoomBuilder.aCourtRoom();
+                //Mandatory
+                courtRoomBuilder
+                        .withOucode(((JsonObject) courtRoom).getString("oucode"))
+                        .withCppCourtRoomId(((JsonObject) courtRoom).getInt("cppCourtRoomId"))
+                        .withOucode(((JsonObject) courtRoom).getString("oucode"));
+                //Optional
+                if (((JsonObject) courtRoom).containsKey("rotaLocationId")) {
+                    courtRoomBuilder.withRotaLocationId(((JsonObject) courtRoom).getInt("rotaLocationId"));
+                }
+                if (((JsonObject) courtRoom).containsKey("rotaVenueName")) {
+                    courtRoomBuilder.withRotaVenueName(((JsonObject) courtRoom).getString("rotaVenueName"));
+                }
+                if (((JsonObject) courtRoom).containsKey("rotaVenueId")) {
+                    courtRoomBuilder.withRotaVenueId(((JsonObject) courtRoom).getInt("rotaVenueId"));
+                }
+                if (((JsonObject) courtRoom).containsKey("oucodeL3Name")) {
+                    courtRoomBuilder.withOucodeL3Name(((JsonObject) courtRoom).getString("oucodeL3Name"));
+                }
+                if (((JsonObject) courtRoom).containsKey("oucodeL2Name")) {
+                    courtRoomBuilder.withOucodeL2Name(((JsonObject) courtRoom).getString("oucodeL2Name"));
+                }
+                if (((JsonObject) courtRoom).containsKey("oucodeL2Code")) {
+                    courtRoomBuilder.withOucodeL2Code(((JsonObject) courtRoom).getString("oucodeL2Code"));
+                }
+                if (((JsonObject) courtRoom).containsKey("oucodeUUID")) {
+                    courtRoomBuilder.withOucodeUUID(((JsonObject) courtRoom).getString("oucodeUUID"));
+                }
+                if (((JsonObject) courtRoom).containsKey("courtroomName")) {
+                    courtRoomBuilder.withCourtRoomName(((JsonObject) courtRoom).getString("courtroomName"));
+                }
+                if (((JsonObject) courtRoom).containsKey("id")) {
+                    courtRoomBuilder.withCourtRoomId(((JsonObject) courtRoom).getString("id"));
+                }
+                final CourtRoom courtRoomObj = courtRoomBuilder.build();
+
+                courtRoomMap.put(UUID.fromString(courtRoomObj.getCourtroomId()), courtRoomObj);
+            } catch (Exception e) {
+                System.out.println("courtRoom: " + ((JsonObject) courtRoom).getString("id"));
+                e.printStackTrace();
+            }
+        });
+        return courtRoomMap;
     }
 }
