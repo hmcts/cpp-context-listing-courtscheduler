@@ -48,9 +48,7 @@ public class CourtScheduleService {
         if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType)) {
             return new Result("Business Type cannot be changed from Slot to Non-Slot and vice versa", false);
         }
-        if (maxSlotsOrDurationChanged(updateCourtSchedule, persistedCourtSchedule)) {
             updateAvailability(updateCourtSchedule, persistedCourtSchedule);
-        }
 
         String courtRoomId = updateCourtSchedule.getCourtRoomId();
 
@@ -78,11 +76,6 @@ public class CourtScheduleService {
             updateCourtSchedule.setAvailableSlots(0);
 
         }
-    }
-
-
-    private static boolean maxSlotsOrDurationChanged(final UpdateCourtSchedule updateCourtSchedule, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
-        return (!updateCourtSchedule.getMaxDuration().equals(persistedCourtSchedule.getMaxDuration())) || (!updateCourtSchedule.getMaxSlots().equals(persistedCourtSchedule.getMaxSlots()));
     }
 
     private  boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType) {
