@@ -271,7 +271,7 @@ public class CourtSchedulerApi {
         }
 
         JsonObject responseObject = provisionalBookingService.fetchProvisionalSlots(bookingIds);
-        return envelopeFor(envelope, responseObject, ApiConstants.BOOKING_REFERENCE);
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {
