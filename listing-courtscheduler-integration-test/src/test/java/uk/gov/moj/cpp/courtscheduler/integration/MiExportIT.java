@@ -6,6 +6,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
@@ -23,10 +24,16 @@ import javax.json.JsonObject;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 
 class MiExportIT extends AbstractIT {
+
+    @BeforeAll
+    static void setupSystemUser() {
+        setupUserAsSystemUser(USER_ID.toString());
+    }
 
     @Test
     void shouldExportCourtSchedules() throws SQLException, JsonProcessingException {
