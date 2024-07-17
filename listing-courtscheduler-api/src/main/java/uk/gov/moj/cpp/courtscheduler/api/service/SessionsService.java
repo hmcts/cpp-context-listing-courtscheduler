@@ -163,7 +163,7 @@ public class SessionsService {
         });
 
         if (isOuCodeNotPresent.get()) {
-            return new Result("OuCode not present for migrate", false);
+            return new Result("One of the OuCode not present for migrate", false);
         }
 
         courtSchedulerMigrationStatusList.forEach(courtSchedulerMigrationStatus -> {

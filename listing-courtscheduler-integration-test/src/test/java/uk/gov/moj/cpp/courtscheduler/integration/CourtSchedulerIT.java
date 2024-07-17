@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
@@ -153,6 +154,8 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldMigrateOuCodes() throws Exception {
+        setupUserAsSystemUser(USER_ID.toString());
+
         CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
         courtSchedulerMigrationStatus.setOuCode("B12345");
         courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
@@ -165,11 +168,10 @@ class CourtSchedulerIT extends AbstractIT {
         schedulerMigrationStatus.setMigrated(false);
         databaseSeeder.insertCourtScheduleMigrationStatus(schedulerMigrationStatus);
 
-        setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         String migrateOuCodePayload = getPayload("oucode-migrate-courtscheduler.json");
 
         final Response response = postCommand(OUCODE_MIGRATE_URL, "application/vnd.courtscheduler.oucode.migrate+json", USER_ID, migrateOuCodePayload);
 
-        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 }

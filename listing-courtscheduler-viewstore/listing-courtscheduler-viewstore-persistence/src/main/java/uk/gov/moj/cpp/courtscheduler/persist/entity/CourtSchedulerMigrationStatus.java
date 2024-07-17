@@ -1,14 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Objects;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import javax.persistence.PrePersist;
-import javax.persistence.PreUpdate;
 import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "courtscheduler_migration_status")
@@ -20,8 +22,10 @@ public class CourtSchedulerMigrationStatus {
     private String courtCentreId;
     @Column(name = "migrated", nullable = false)
     private boolean migrated;
+    @UpdateTimestamp
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private String updatedOn;
+    private java.util.Date updatedOn;
 
     public CourtSchedulerMigrationStatus() {
         //For JPA
@@ -54,19 +58,12 @@ public class CourtSchedulerMigrationStatus {
         return this;
     }
 
-    public String getUpdatedOn() {
+    public Date getUpdatedOn() {
         return updatedOn;
     }
 
-    @PrePersist
-    @PreUpdate
-    public void prePersistOrUpdate() {
-        this.updatedOn = LocalDateTime.now().toString();
-    }
-
-    public CourtSchedulerMigrationStatus setUpdatedOn(final String updatedOn) {
+    public void setUpdatedOn(final Date updatedOn) {
         this.updatedOn = updatedOn;
-        return this;
     }
 
     @Override

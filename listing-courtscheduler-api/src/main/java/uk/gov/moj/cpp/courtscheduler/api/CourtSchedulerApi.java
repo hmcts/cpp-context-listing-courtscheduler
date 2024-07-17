@@ -62,7 +62,6 @@ public class CourtSchedulerApi {
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtSchedulerApi.class.getName());
     private static final String ALLOCATED_LISTINGS = "allocatedListings";
     private static final String COURT_SCHEDULES = "courtSchedules";
-    private static final String SESSIONS = "sessions";
     protected static final String RESULTS = "results";
     private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
     @Inject
