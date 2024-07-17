@@ -5,7 +5,7 @@ import java.util.List;
 public class OuCodeMigrateRequest {
 
     private List<String> ouCodes;
-    private String migrated;
+    private boolean migrated;
 
     public List<String> getOuCodes() {
         return ouCodes;
@@ -15,11 +15,11 @@ public class OuCodeMigrateRequest {
         this.ouCodes = ouCodes;
     }
 
-    public String getMigrated() {
+    public boolean isMigrated() {
         return migrated;
     }
 
-    public void setMigrated(final String migrated) {
+    public void setMigrated(final boolean migrated) {
         this.migrated = migrated;
     }
 }

@@ -8,6 +8,7 @@ import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 
 import java.sql.Connection;
@@ -61,6 +62,8 @@ public class DatabaseSeeder {
                     " WHERE  COURT_SCHEDULE_JUDICIARY.court_schedule_id = ? AND COURT_SCHEDULE_JUDICIARY.judiciary_id = ? " +
                     ";";
 
+    private static final String COURT_SCHEDULE_MIGRATION_STATUS_INSERT_SQL = "INSERT INTO courtscheduler_migration_status (" +
+            "oucode, court_centre_id, migrated, updated_on) VALUES(?, ?, ?, ?)";
     public static final String INSERT_PROVISIONAL_SLOTS_QRY = "INSERT INTO provisional_booking (booking_id, court_schedule_id, hearing_start_time) VALUES (?, ?, ?)";
     private static final String COURT_SCHEDULE_DELETE_SQL = "DELETE FROM court_schedule";
     private static final String ALLOCATED_LISTING_DELETE_SQL = "DELETE FROM allocated_listings";
@@ -201,6 +204,18 @@ public class DatabaseSeeder {
             return stmt.executeBatch().length;
         } catch (SQLException ex) {
             throw new Exception(ex);
+        }
+    }
+
+    public void insertCourtScheduleMigrationStatus(CourtSchedulerMigrationStatus courtSchedulerMigrationStatus) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_MIGRATION_STATUS_INSERT_SQL)) {
+
+            preparedStatement.setObject(1, courtSchedulerMigrationStatus.getOuCode());
+            preparedStatement.setString(2, courtSchedulerMigrationStatus.getCourtCentreId());
+            preparedStatement.setBoolean(3, courtSchedulerMigrationStatus.isMigrated());
+            preparedStatement.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            preparedStatement.executeUpdate();
         }
     }
 

@@ -9,7 +9,7 @@
       }
     },
     "migrated": {
-      "type": "string"
+      "type": "boolean"
     }
   },
   "required": [

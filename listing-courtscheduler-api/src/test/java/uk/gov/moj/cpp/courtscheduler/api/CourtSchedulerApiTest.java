@@ -11,7 +11,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
@@ -370,7 +369,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
 
         when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
-        doNothing().when(sessionsService).migrateOuCodes(any());
+        when(sessionsService.migrateOuCodes(any())).thenReturn(Result.SUCCESS());
 
         courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
 

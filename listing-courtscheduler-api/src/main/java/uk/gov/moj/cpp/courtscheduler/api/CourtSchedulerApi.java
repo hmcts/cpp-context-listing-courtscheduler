@@ -132,7 +132,7 @@ public class CourtSchedulerApi {
 
         JsonObject responseObject = sessionsService.deleteCourtScheduleSessions(sessions);
 
-        return envelopeFor(envelope, responseObject, SESSIONS);
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 
     @Handles("courtscheduler.get.court_schedule")
@@ -277,7 +277,11 @@ public class CourtSchedulerApi {
 
         OuCodeMigrateRequest ouCodeMigrateRequest = ouCodeMigrateConverter.convert(envelope.payloadAsJsonObject().toString());
 
-        sessionsService.migrateOuCodes(ouCodeMigrateRequest);
+        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
+
+        if (!result.isSuccess()) {
+            throw new BadRequestException(result.getMsg());
+        }
 
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
     }

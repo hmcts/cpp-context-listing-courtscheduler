@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -147,17 +148,30 @@ public class SessionsService {
         return courtMigrationRepository.findByCourtCentreId(courtCentreId).isMigrated();
     }
 
-    public void migrateOuCodes(OuCodeMigrateRequest ouCodeMigrateRequest) {
+    public Result migrateOuCodes(OuCodeMigrateRequest ouCodeMigrateRequest) {
         List<String> ouCodes = ouCodeMigrateRequest.getOuCodes();
-        boolean migrated = Boolean.parseBoolean(ouCodeMigrateRequest.getMigrated());
+        boolean migrated = ouCodeMigrateRequest.isMigrated();
+        List<CourtSchedulerMigrationStatus> courtSchedulerMigrationStatusList = new ArrayList<>();
+        final AtomicBoolean isOuCodeNotPresent = new AtomicBoolean(false);
 
         ouCodes.forEach(ouCode -> {
             CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = courtMigrationRepository.findByOuCode(ouCode);
-            if(courtSchedulerMigrationStatus != null && courtSchedulerMigrationStatus.isMigrated() != migrated) {
+            if(courtSchedulerMigrationStatus == null) {
+                isOuCodeNotPresent.set(true);
+            }
+            courtSchedulerMigrationStatusList.add(courtSchedulerMigrationStatus);
+        });
+
+        if (isOuCodeNotPresent.get()) {
+            return new Result("OuCode not present for migrate", false);
+        }
+
+        courtSchedulerMigrationStatusList.forEach(courtSchedulerMigrationStatus -> {
                 courtSchedulerMigrationStatus.setMigrated(migrated);
                 courtMigrationRepository.save(courtSchedulerMigrationStatus);
-            }
         });
+
+        return Result.SUCCESS();
     }
 
     private String enrichBusinessDescription(final String businessType, final Requester requester) {
