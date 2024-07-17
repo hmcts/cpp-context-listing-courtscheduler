@@ -303,3 +303,19 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.export.allocated_listings+json:
             example: !include json/courtscheduler.export.allocated_listings.json
             schema: !include json/schema/courtscheduler.export.allocated_listings.json
+
+/oucode/migrate:
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.oucode.migrate+json
+          name: courtscheduler.oucode.migrate
+      ...
+    body:
+      application/vnd.courtscheduler.oucode.migrate+json:
+        schema: !include json/schema/courtscheduler.oucode.migrate.json
+        example: !include json/courtscheduler.oucode.migrate.json
+    responses:
+      202:
+        description: OK

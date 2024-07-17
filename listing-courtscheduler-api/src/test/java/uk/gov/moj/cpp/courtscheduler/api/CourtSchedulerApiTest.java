@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
@@ -30,6 +31,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConv
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
@@ -118,6 +120,8 @@ class CourtSchedulerApiTest {
     private UpdateCourtScheduleConverter updateCourtScheduleConverter;
     @Mock
     private CourtScheduleApiValidator courtScheduleApiValidator;
+    @Mock
+    private OuCodeMigrateConverter ouCodeMigrateConverter;
     @Mock
     private JsonEnvelope envelope;
 
@@ -355,6 +359,22 @@ class CourtSchedulerApiTest {
 
         verify(provisionalBookingService, atLeastOnce()).fetchProvisionalSlots(anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(getProvisionalBookingEnvelope, requestName);
+    }
+
+    @Test
+    void shouldMigrateOuCodes() throws IOException {
+        String payload = FileUtil.getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+
+        when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
+        doNothing().when(sessionsService).migrateOuCodes(any());
+
+        courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
+
+        verify(enveloper, atLeastOnce()).withMetadataFrom(migrateOuCodeEnvelope, requestName);
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {

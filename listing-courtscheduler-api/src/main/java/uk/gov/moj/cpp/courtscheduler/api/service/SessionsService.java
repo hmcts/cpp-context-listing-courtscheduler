@@ -9,6 +9,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -16,6 +17,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
@@ -143,6 +145,19 @@ public class SessionsService {
 
     public boolean isMigratedByCourtCentreId(final String courtCentreId) {
         return courtMigrationRepository.findByCourtCentreId(courtCentreId).isMigrated();
+    }
+
+    public void migrateOuCodes(OuCodeMigrateRequest ouCodeMigrateRequest) {
+        List<String> ouCodes = ouCodeMigrateRequest.getOuCodes();
+        boolean migrated = Boolean.parseBoolean(ouCodeMigrateRequest.getMigrated());
+
+        ouCodes.forEach(ouCode -> {
+            CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = courtMigrationRepository.findByOuCode(ouCode);
+            if(courtSchedulerMigrationStatus != null && courtSchedulerMigrationStatus.isMigrated() != migrated) {
+                courtSchedulerMigrationStatus.setMigrated(migrated);
+                courtMigrationRepository.save(courtSchedulerMigrationStatus);
+            }
+        });
     }
 
     private String enrichBusinessDescription(final String businessType, final Requester requester) {
