@@ -12,6 +12,8 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,6 +25,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
@@ -443,6 +446,7 @@ class SessionsServiceTest {
         Assert.assertFalse(sessionsService.isMigrated(oucode));
 
     }
+
     @Test
     void shouldReturnMigratedCourtByCourtCentreId() {
         final String oucode = "B01LY00" ;
@@ -465,6 +469,46 @@ class SessionsServiceTest {
         migrationStatus.setMigrated(false);
         when(courtMigrationRepository.findByCourtCentreId(courtCentreId)).thenReturn(migrationStatus);
         Assert.assertFalse(sessionsService.isMigratedByCourtCentreId(courtCentreId));
+    }
+
+    @Test
+    void shouldMigrate_GivenOuCodes_Successfully() {
+        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02") ;
+        ouCodeMigrateRequest.setOuCodes(ouCodes);
+        ouCodeMigrateRequest.setMigrated(true);
+
+        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(ouCodes.get(0));
+        migrationStatus.setCourtCentreId(randomUUID().toString());
+        migrationStatus.setMigrated(false);
+
+        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(migrationStatus);
+
+        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
+
+        verify(courtMigrationRepository, atLeastOnce()).save(any());
+        assertThat(result.isSuccess(), is(true));
+    }
+
+    @Test
+    void shouldNotMigrate_OuCode_IfAnyOneNotFound() {
+        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02") ;
+        ouCodeMigrateRequest.setOuCodes(ouCodes);
+        ouCodeMigrateRequest.setMigrated(true);
+
+        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(ouCodes.get(0));
+        migrationStatus.setCourtCentreId(randomUUID().toString());
+        migrationStatus.setMigrated(false);
+
+        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(null);
+
+        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
+
+        verify(courtMigrationRepository, never()).save(any());
+        assertThat(result.isSuccess(), is(false));
     }
 
     private static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule getPersistedCourtSchedule(final String courtScheduleId, final String businessTypeCode) {

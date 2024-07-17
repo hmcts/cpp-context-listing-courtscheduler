@@ -17,6 +17,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamCon
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
@@ -40,6 +41,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
@@ -60,7 +62,6 @@ public class CourtSchedulerApi {
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtSchedulerApi.class.getName());
     private static final String ALLOCATED_LISTINGS = "allocatedListings";
     private static final String COURT_SCHEDULES = "courtSchedules";
-    private static final String SESSIONS = "sessions";
     protected static final String RESULTS = "results";
     private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
     @Inject
@@ -83,10 +84,8 @@ public class CourtSchedulerApi {
     private SessionsApiValidator sessionsApiValidator;
     @Inject
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
-
     @Inject
     private  AllocatedSlotConverter converter;
-
     @Inject
     private  HearingSlotsApiValidator hearingSlotsApiValidator;
     @Inject
@@ -107,6 +106,8 @@ public class CourtSchedulerApi {
     private  UpdateCourtScheduleConverter updateCourtScheduleConverter;
     @Inject
     private  CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
+    @Inject
+    private OuCodeMigrateConverter ouCodeMigrateConverter;
 
 
     @Handles("courtscheduler.create")
@@ -121,7 +122,6 @@ public class CourtSchedulerApi {
 
         sessionsService.create(createSessionRequestParam, requester);
 
-
         return enveloper.withMetadataFrom(envelope, "courtscheduler.create").apply(createObjectBuilder().build());
     }
 
@@ -131,14 +131,13 @@ public class CourtSchedulerApi {
 
         JsonObject responseObject = sessionsService.deleteCourtScheduleSessions(sessions);
 
-        return envelopeFor(envelope, responseObject, SESSIONS);
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 
     @Handles("courtscheduler.get.court_schedule")
     public JsonEnvelope getCourtSchedule(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParamConverter.convert(requestFromApiJsonObject);
-
 
         JsonObject validate = courtScheduleApiValidator.getCourtSchedulesValidation(courtScheduleRequestParam);
 
@@ -221,7 +220,6 @@ public class CourtSchedulerApi {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
 
-
         List<CourtScheduleJudiciary> courtScheduleJudiciaries = miService.getCourtSchedulesJudiciary(miFilterCriteria);
         final ListToJsonArrayConverter<CourtScheduleJudiciary> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
 
@@ -235,7 +233,6 @@ public class CourtSchedulerApi {
     public JsonEnvelope exportAlloctedListings(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
-
 
         List<AllocatedListing> allocatedListings = miService.getAllocatedListings(miFilterCriteria);
         final ListToJsonArrayConverter<AllocatedListing> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
@@ -272,6 +269,20 @@ public class CourtSchedulerApi {
 
         JsonObject responseObject = provisionalBookingService.fetchProvisionalSlots(bookingIds);
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
+    }
+
+    @Handles("courtscheduler.oucode.migrate")
+    public JsonEnvelope migrateOuCode(final JsonEnvelope envelope) {
+
+        OuCodeMigrateRequest ouCodeMigrateRequest = ouCodeMigrateConverter.convert(envelope.payloadAsJsonObject().toString());
+
+        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
+
+        if (!result.isSuccess()) {
+            throw new BadRequestException(result.getMsg());
+        }
+
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {
