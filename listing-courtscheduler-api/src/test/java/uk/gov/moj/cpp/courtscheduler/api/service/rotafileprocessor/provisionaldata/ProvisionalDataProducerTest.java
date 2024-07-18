@@ -27,7 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ProvisionalDataProducerTest {
 
-    private static final String OUCODES = "175,177";
+    private static final List<String> OUCODES = List.of("175,177");
 
     @Mock
     private SessionsService sessionsService;
