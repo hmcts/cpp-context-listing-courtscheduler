@@ -172,12 +172,6 @@
             <artifactId>deltaspike-cdictrl-openejb</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>javax</groupId>
-            <artifactId>javaee-api</artifactId>
-            <version>${javaee-api.version}</version>
-            <scope>provided</scope>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.activemq</groupId>
