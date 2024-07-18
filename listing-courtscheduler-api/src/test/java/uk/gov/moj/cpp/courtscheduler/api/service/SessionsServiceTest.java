@@ -18,10 +18,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeastOnce;
-<<<<<<< HEAD
-=======
 import static org.mockito.Mockito.doNothing;
->>>>>>> 1b0d055... DD-33257 adding unit tests and replacing refdata mapping tables to endpoint call/caching
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -106,9 +103,6 @@ class SessionsServiceTest {
     private SessionsService sessionsService;
     @Captor
     private ArgumentCaptor<CourtSchedule> courtScheduleArgumentCaptor;
-
-    @Mock
-    private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciaryEntityMock;
 
     @Mock
     private CourtSchedule courtScheduleEntityMock;
@@ -505,45 +499,6 @@ class SessionsServiceTest {
     }
 
     @Test
-<<<<<<< HEAD
-    void shouldMigrate_GivenOuCodes_Successfully() {
-        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
-        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02") ;
-        ouCodeMigrateRequest.setOuCodes(ouCodes);
-        ouCodeMigrateRequest.setMigrated(true);
-
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(ouCodes.get(0));
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(false);
-
-        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(migrationStatus);
-
-        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
-
-        verify(courtMigrationRepository, atLeastOnce()).save(any());
-        assertThat(result.isSuccess(), is(true));
-    }
-
-    @Test
-    void shouldNotMigrate_OuCode_IfAnyOneNotFound() {
-        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
-        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02") ;
-        ouCodeMigrateRequest.setOuCodes(ouCodes);
-        ouCodeMigrateRequest.setMigrated(true);
-
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(ouCodes.get(0));
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(false);
-
-        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(null);
-
-        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
-
-        verify(courtMigrationRepository, never()).save(any());
-        assertThat(result.isSuccess(), is(false));
-=======
     void shouldGetExtractedCourtSchedules() throws JsonProcessingException {
         final String ouCode = "B01LY00" ;
         final LocalDate startDate = LocalDate.of(2024, 10, 1);
@@ -687,7 +642,46 @@ class SessionsServiceTest {
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
         verify(courtScheduleJudiciaryRepository, never()).deleteSchedules(anyString());
         verify(courtScheduleRepository, never()).deleteSlots(anyString());
->>>>>>> 1b0d055... DD-33257 adding unit tests and replacing refdata mapping tables to endpoint call/caching
+    }
+
+    @Test
+    void shouldMigrate_GivenOuCodes_Successfully() {
+        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02") ;
+        ouCodeMigrateRequest.setOuCodes(ouCodes);
+        ouCodeMigrateRequest.setMigrated(true);
+
+        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(ouCodes.get(0));
+        migrationStatus.setCourtCentreId(randomUUID().toString());
+        migrationStatus.setMigrated(false);
+
+        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(migrationStatus);
+
+        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
+
+        verify(courtMigrationRepository, atLeastOnce()).save(any());
+        assertThat(result.isSuccess(), is(true));
+    }
+
+    @Test
+    void shouldNotMigrate_OuCode_IfAnyOneNotFound() {
+        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02");
+        ouCodeMigrateRequest.setOuCodes(ouCodes);
+        ouCodeMigrateRequest.setMigrated(true);
+
+        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(ouCodes.get(0));
+        migrationStatus.setCourtCentreId(randomUUID().toString());
+        migrationStatus.setMigrated(false);
+
+        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(null);
+
+        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
+
+        verify(courtMigrationRepository, never()).save(any());
+        assertThat(result.isSuccess(), is(false));
     }
 
     private static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule getPersistedCourtSchedule(final String courtScheduleId, final String businessTypeCode) {
