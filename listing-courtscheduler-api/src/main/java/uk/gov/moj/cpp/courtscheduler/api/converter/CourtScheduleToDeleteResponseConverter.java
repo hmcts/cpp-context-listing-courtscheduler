@@ -1,20 +1,17 @@
-package uk.gov.moj.cpp.courtscheduler.api;
+package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleDeleteResponse;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-public class CourtScheduleToViewConverter {
+public class CourtScheduleToDeleteResponseConverter {
 
-    public static List<CourtSessionsView> getCourtSessionsViews(List<CourtSchedule> courtSchedules) {
-        Map<String, CourtSessionsView> courtSessionsViews = new HashMap<>();
+    public static List<CourtScheduleDeleteResponse> convertCourtScheduleToResponse(List<CourtSchedule> courtSchedules) {
+        List<CourtScheduleDeleteResponse> courtSessionsViews = new ArrayList<>();
         courtSchedules.forEach(courtSchedule -> {
-            String courtRoomId = courtSchedule.getCourtRoomId();
-            CourtScheduleView courtScheduleView = new CourtScheduleView.CourtScheduleViewBuilder()
+            CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
                     .withActive(courtSchedule.isActive())
                     .withHasHearingsBooked(courtSchedule.hasHearingsBooked())
@@ -37,16 +34,9 @@ public class CourtScheduleToViewConverter {
                     .withPanel(courtSchedule.getPanel())
                     .withSessionDate(courtSchedule.getSessionDate())
                     .build();
-            CourtSessionsView courtSessionsView;
-            if (courtSessionsViews.containsKey(courtRoomId)) {
-                courtSessionsView = courtSessionsViews.get(courtRoomId);
-            } else {
-                courtSessionsView = new CourtSessionsView(courtRoomId, courtSchedule.getCourtRoomName());
-            }
-            courtSessionsView.addSession(courtScheduleView);
-            courtSessionsViews.put(courtRoomId, courtSessionsView);
+            courtSessionsViews.add(courtScheduleView);
 
         });
-        return courtSessionsViews.values().stream().toList();
+        return courtSessionsViews;
     }
 }
