@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
@@ -81,4 +80,5 @@ class CourtScheduleJudiciaryServiceTest {
 
         return objectMapper.readValue(courtScheduleDomainsJsonString, new TypeReference<List<CourtScheduleJudiciary>>(){});
     }
+
 }

@@ -29,6 +29,7 @@ import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.api.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -588,10 +589,12 @@ class SessionsServiceTest {
         final List<String> slotIdsToDelete = asList(randomUUID().toString(), randomUUID().toString());
 
         final List<String> snapshotSlotIds = asList(randomUUID().toString(), randomUUID().toString());
-        final List<String> listingProfileIds = asList(generateListingProfileId(), generateListingProfileId());
+        final String listingProfileId1 = generateListingProfileId();
+        final String listingProfileId2 = generateListingProfileId();
+        final List<String> listingProfileIds = asList(listingProfileId1, listingProfileId2);
         final Map<String, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> newRecords = generateIncomingSchedules(snapshotSlotIds, listingProfileIds);
         final Collection<CourtScheduleJudiciary> newSchedules = prepareSchedules();
-        final Map<String, Pair<String, String>> slotsToUpdateMap = new HashMap<>();
+        final Map<String, Pair<String, String>> slotsToUpdateMap = Map.of(listingProfileId1, Pair.of("6bd1853d-8a88-35e8-b4c4-342e2649daa2", "B01LY00"));
         final Collection<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> slotsToUpdate = getCourtSchedules();
 
         doNothing().when(courtScheduleRepository).deactivateSlots(anyList(), any());
@@ -602,8 +605,10 @@ class SessionsServiceTest {
         when(courtScheduleJudiciaryRepository.deleteSchedules(anyString())).thenReturn(slotIdsToDelete.size());
         mockIsMigrated("B01LY00", false);
 
+        final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules = Map.of(listingProfileId1, getCourtScheduleJudiciaries("6bd1853d-8a88-35e8-b4c4-342e2649daa2", listingProfileId1));
+
         sessionsService.updateSlotsAndSchedules(existingSlotIds, newRecords, newSchedules, slotsToUpdate, slotsToUpdateMap,
-                emptyList(), emptyMap(), slotIdsToDelete, businessTypeMap);
+                emptyList(), relatedJudiciarySchedules, slotIdsToDelete, businessTypeMap);
 
         verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
@@ -999,5 +1004,15 @@ class SessionsServiceTest {
         migrationStatus.setCourtCentreId(randomUUID().toString());
         migrationStatus.setMigrated(isMigrated);
         when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(migrationStatus);
+    }
+
+    private List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> getCourtScheduleJudiciaries(final String courtScheduleId, final String courtListingProfileId) throws JsonProcessingException {
+        final String courtScheduleDomainsJsonString = FileUtil.fileToString("/test-data/court-schedule-judiciaries-entity-data.json")
+                .replaceAll("COURT_SCHEDULE_ID", courtScheduleId)
+                .replaceAll("COURT_LISTING_PROFILE_ID", courtListingProfileId);
+
+        return objectMapper.readValue(courtScheduleDomainsJsonString, new TypeReference<List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary>>(){})
+                .stream().map(CourtScheduleJudiciaryMapper::toDomain)
+                .toList();
     }
 }

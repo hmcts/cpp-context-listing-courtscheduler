@@ -271,8 +271,8 @@ public class ReferenceDataService {
     private CourtRoom toCourtRoom(JsonObject jsonObject) {
         return CourtRoom.CourtRoomBuilder.aCourtRoom()
                 .withCourtRoomId(jsonObject.getString("id"))
-                .withRotaLocationId(jsonObject.getInt("rotaLocationId"))
-                .withRotaVenueName(jsonObject.getString("rotaVenueName"))
+                .withRotaLocationId(jsonObject.getInt(LOCATION_ID))
+                .withRotaVenueName(jsonObject.getString(VENUE_NAME))
                 .withCppCourtRoomId(jsonObject.getInt("cppCourtRoomId"))
                 .withRotaVenueId(jsonObject.getInt("rotaVenueId"))
                 .withOucode(jsonObject.getString("oucode"))

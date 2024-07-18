@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 public class BusinessTypeMatchingLogger {
 
-    private static final Logger logger = LoggerFactory.getLogger(BusinessTypeMatchingLogger.class);
+    public static final Logger logger = LoggerFactory.getLogger(BusinessTypeMatchingLogger.class);
 
     public void logMissingBusinessType(final List<String> missingBusinessTypes) {
         logMissingBusinessTypeMessage(missingBusinessTypes);

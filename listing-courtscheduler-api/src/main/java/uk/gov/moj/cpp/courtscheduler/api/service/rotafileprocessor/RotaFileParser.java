@@ -68,7 +68,7 @@ public class RotaFileParser {
     private static final String TAG_ROTA_PERIOD = "rotaPeriod";
 
     private static final Set<String> attributeTags = new TreeSet<>(asList(TAG_MAGISTRATE, TAG_DISTRICT_JUDGE, TAG_VENUE, TAG_SCHEDULE));
-    private static final Map<String, String> requiredElements = PropertiesLoader.getXmlProperties();
+    private static final Map<String, String> requiredElements = PropertiesLoader.getXmlProperties("rotaXml.properties");
 
     public Map<RotaPayload, Map<String, Map<String, String>>> parse(final String file, final byte[] content) {
         final Map<String, String> locations = new HashMap<>();

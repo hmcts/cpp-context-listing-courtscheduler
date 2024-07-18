@@ -14,10 +14,10 @@ public class PropertiesLoader {
     private PropertiesLoader() {
     }
 
-    public static Map<String, String> getXmlProperties() {
+    public static Map<String, String> getXmlProperties(final String propertiesFile) {
         final Properties props = new Properties();
 
-        try (final InputStream input = PropertiesLoader.class.getClassLoader().getResourceAsStream("rotaXml.properties")) {
+        try (final InputStream input = PropertiesLoader.class.getClassLoader().getResourceAsStream(propertiesFile)) {
             props.load(input);
         } catch (final IOException e) {
             throw new RotaFileProcessorException(e);
