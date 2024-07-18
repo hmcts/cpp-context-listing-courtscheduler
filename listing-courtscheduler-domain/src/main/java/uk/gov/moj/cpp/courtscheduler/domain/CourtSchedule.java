@@ -30,9 +30,9 @@ public class CourtSchedule {
     private Integer availableDuration;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
-
     private Date createdOn;
     private Date updatedOn;
+    private boolean hasHearingsBooked;
 
     protected CourtSchedule(final CourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -260,11 +260,14 @@ public class CourtSchedule {
         this.updatedOn = updatedOn;
     }
 
+    public void setHasHearingsBooked(final boolean hasHearingsBooked) {
+        this.hasHearingsBooked = hasHearingsBooked;
+    }
+
     public boolean hasHearingsBooked() {
         return (slotBased) ?
                 maxSlots.compareTo(availableSlots) != 0 :
                 maxDuration.compareTo(availableDuration) != 0;
-
     }
 
     public static final class CourtScheduleBuilder {

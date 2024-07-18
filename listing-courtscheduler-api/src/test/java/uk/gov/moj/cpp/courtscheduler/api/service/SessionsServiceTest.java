@@ -328,7 +328,7 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.deleteCourtSchedule(anyList())).thenReturn(courtSchedules);
 
-        JsonObject response = sessionsService.deleteCourtScheduleSessions(sessionsParam);
+        JsonObject response = sessionsService.deleteCourtScheduleSessions(sessionsParam, requester);
 
         Assert.assertTrue(response.get("sessions").asJsonArray().isEmpty());
     }

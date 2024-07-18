@@ -129,7 +129,7 @@ public class CourtSchedulerApi {
     public JsonEnvelope deleteCourtSchedule(final JsonEnvelope envelope) {
         SessionsParam sessions = sessionsConverter.convert(envelope.payloadAsJsonObject().toString());
 
-        JsonObject responseObject = sessionsService.deleteCourtScheduleSessions(sessions);
+        JsonObject responseObject = sessionsService.deleteCourtScheduleSessions(sessions, requester);
 
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }

@@ -173,7 +173,6 @@ class CourtSchedulerApiTest {
         final JsonEnvelope deleteCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonObject);
 
         when(enveloper.withMetadataFrom(deleteCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
-        when(sessionsService.deleteCourtScheduleSessions(sessionsConverter.convert(jsonObject.toString()))).thenReturn(EMPTY_JSON_OBJECT);
 
         courtSchedulerApi.deleteCourtSchedule(deleteCourtScheduleJsonEnvelope);
 

@@ -130,9 +130,9 @@ public class SessionsService {
         return (isSlotBased && updateCourtSchedule.getMaxDuration().equals(0)) || (!isSlotBased && updateCourtSchedule.getMaxSlots().equals(0));
     }
 
-    public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam) {
+    public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam, Requester requester) {
         List<CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(sessionsParam.getSessions());
-
+        courtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester)));
         final ListToJsonArrayConverter<CourtSchedule> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
         JsonArray jsonArray = courtSchedules.isEmpty() ? JsonValue.EMPTY_JSON_ARRAY : listToJsonArrayConverter.convert(courtSchedules);
         return Json.createObjectBuilder()

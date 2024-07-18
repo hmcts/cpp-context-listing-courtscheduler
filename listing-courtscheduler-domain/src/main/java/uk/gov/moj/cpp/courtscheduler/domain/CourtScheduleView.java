@@ -16,16 +16,12 @@ public class CourtScheduleView {
     private String operationalUnit;
     private String businessType;
     private String businessDescription;
-
     private String courtRoomId;
     private String courtRoomName;
-
     private String panel;
     private String courtSession;
     private boolean slotBased;
-
     private boolean active;
-
     private boolean hasHearingsBooked;
     private LocalDate sessionDate;
     private Integer maxSlots;
