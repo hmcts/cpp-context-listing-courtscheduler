@@ -23,10 +23,10 @@ public class ReferenceDataMapperService {
     }
 
     public Optional<CourtRoomSessionAllocation> findByOuCodeAndRoomIdAndListingSessionAndBusinessType(final Requester requester,
-                                                                                                              final String ouCode,
-                                                                                                              final Integer roomId,
-                                                                                                              final String listingSession,
-                                                                                                              final String businessType) {
+                                                                                                      final String ouCode,
+                                                                                                      final Integer roomId,
+                                                                                                      final String listingSession,
+                                                                                                      final String businessType) {
         return referenceDataCache.getCourtRoomSessionAllocations(requester)
                 .stream()
                 .filter(courtRoomSessionAllocation -> ouCode.equals(courtRoomSessionAllocation.getOucode()) &&
