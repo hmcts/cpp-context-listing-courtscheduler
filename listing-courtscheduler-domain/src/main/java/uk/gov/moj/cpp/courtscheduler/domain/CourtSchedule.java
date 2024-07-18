@@ -260,7 +260,11 @@ public class CourtSchedule {
         this.updatedOn = updatedOn;
     }
 
-    public void setHasHearingsBooked(final boolean hasHearingsBooked) {
+    public boolean isHasHearingsBooked() {
+        return hasHearingsBooked;
+    }
+
+    public void setHasHearingsBooked(boolean hasHearingsBooked) {
         this.hasHearingsBooked = hasHearingsBooked;
     }
 
