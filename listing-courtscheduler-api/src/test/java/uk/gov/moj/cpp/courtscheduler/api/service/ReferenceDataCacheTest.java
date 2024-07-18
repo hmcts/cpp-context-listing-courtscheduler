@@ -5,22 +5,24 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
-import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME;
-import static uk.gov.moj.cpp.courtscheduler.api.helper.SessionsHelper.mockBusinessType;
+import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_BUSINESS_TYPES_CACHE_KEY;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_BUSINESS_TYPE_CACHE_PREFIX;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURTROOM_CACHE_PREFIX;
+import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY;
+import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_JUDICIARIES_CACHE_KEY;
 
 import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.justice.services.messaging.Envelope;
+import uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 
+import java.util.List;
 import java.util.Optional;
-
-import javax.json.JsonObject;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,15 +71,69 @@ class ReferenceDataCacheTest {
     @Test
     void shouldReturnBusinessTypeFromServiceWhenCacheDisabled() {
         setCommonCacheDisabled();
-        final JsonObject responsePayload = mockBusinessType(BUSINESS_TYPE_CODE);
 
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME)
-                .build(), responsePayload);
         when(referenceDataService.getRotaBusinessTypeByCode(eq(BUSINESS_TYPE_CODE), eq(requester))).thenReturn(Optional.of(new BusinessType()));
         referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE_CODE,requester);
         verify(referenceDataService).getRotaBusinessTypeByCode(BUSINESS_TYPE_CODE, requester);
+    }
+
+    @Test
+    void shouldReturnRotaBusinessTypesFromCacheWhenCacheEnabled() {
+        setCommonCacheEnabled();
+        setBusinessTypesCache();
+        referenceDataCache.getRotaBusinessTypes(requester);
+        verify(cacheService).get(ROTA_BUSINESS_TYPES_CACHE_KEY);
+    }
+
+    @Test
+    void shouldReturnBusinessTypesFromServiceWhenCacheDisabled() {
+        setCommonCacheDisabled();
+
+        when(referenceDataService.getRotaBusinessTypes(eq(requester))).thenReturn(List.of(new BusinessType()));
+        referenceDataCache.getRotaBusinessTypes(requester);
+        verify(referenceDataService).getRotaBusinessTypes(requester);
+    }
+
+    @Test
+    void shouldReturnJudiciariesFromCacheWhenCacheEnabled() {
+        setCommonCacheEnabled();
+        setJudiciariesCache();
+
+        referenceDataCache.getJudiciaries(requester);
+
+        verify(cacheService).get(ROTA_JUDICIARIES_CACHE_KEY);
+    }
+
+    @Test
+    void shouldReturnJudiciariesFromServiceWhenCacheDisabled() {
+        setCommonCacheDisabled();
+
+        when(referenceDataService.getJudiciariesMap(eq(requester))).thenReturn(List.of(new Judiciary()));
+
+        referenceDataCache.getJudiciaries(requester);
+
+        verify(referenceDataService).getJudiciariesMap(requester);
+    }
+
+    @Test
+    void shouldReturnCourtRoomSessionAllocationsFromCacheWhenCacheEnabled() {
+        setCommonCacheEnabled();
+        setCourtRoomSessionAllocationsCache();
+
+        referenceDataCache.getCourtRoomSessionAllocations(requester);
+
+        verify(cacheService).get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY);
+    }
+
+    @Test
+    void shouldReturnCourtRoomSessionAllocationsFromServiceWhenCacheDisabled() {
+        setCommonCacheDisabled();
+
+        when(referenceDataService.getCourtRoomSessionAllocationsMap(eq(requester))).thenReturn(List.of(CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation().build()));
+
+        referenceDataCache.getCourtRoomSessionAllocations(requester);
+
+        verify(referenceDataService).getCourtRoomSessionAllocationsMap(requester);
     }
 
     @Test
@@ -105,6 +161,21 @@ class ReferenceDataCacheTest {
                 "      \"slot\": true,\n" +
                 "      \"duration\": false\n" +
                 "    }");
+    }
+
+    private void setBusinessTypesCache() {
+        final String businessTypesJsonStr = FileUtil.getPayload("test-data/business-types.json");
+        when(cacheService.get(ROTA_BUSINESS_TYPES_CACHE_KEY)).thenReturn(businessTypesJsonStr);
+    }
+
+    private void setJudiciariesCache() {
+        final String judiciariesJsonStr = FileUtil.getPayload("test-data/referencedata-judiciaries.json");
+        when(cacheService.get(ROTA_JUDICIARIES_CACHE_KEY)).thenReturn(judiciariesJsonStr);
+    }
+
+    private void setCourtRoomSessionAllocationsCache() {
+        final String courtRoomSessionAllocationsJsonStr = FileUtil.getPayload("test-data/referencedata-court-room-session-allocations.json");
+        when(cacheService.get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY)).thenReturn(courtRoomSessionAllocationsJsonStr);
     }
 
     private void setCourtRoomCache() {

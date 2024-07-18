@@ -22,6 +22,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonString;
+import javax.json.JsonValue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,18 +54,12 @@ public class ReferenceDataService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataService.class);
     private static final String CP_ROTA_COURT_ROOM_MAPPINGS = "cpRotaCourtRoomMappings";
     private static final String COURTROOM_ID = "courtroomId";
-    private static final String VENUE_ID = "rotaVenueId";
     private static final String VENUE_NAME = "rotaVenueName";
     private static final String LOCATION_ID = "rotaLocationId";
 
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
-
-
-    public ReferenceDataService() {
-    }
-
 
     public List<LocalDate> getPublicHolidays(final String division, final LocalDate fromDate, final LocalDate toDate, final Requester requester) {
 
@@ -231,22 +227,34 @@ public class ReferenceDataService {
         final JsonEnvelope envelope = envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME).build(), createObjectBuilder().build());
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        return JsonObjects.getJsonArray(payload, "judiciaries")
-                .stream()
-                .map(JsonObject.class::cast)
-                .map(this::toJudiciary)
-                .toList();
+
+        final List<Judiciary> judiciaries = new ArrayList<>();
+        JsonObjects.getJsonArray(payload, "judiciaries").ifPresent(judiciariesJsonArray -> {
+            for(JsonValue jsonValue: judiciariesJsonArray) {
+                final JsonObject jsonObject = (JsonObject) jsonValue;
+                judiciaries.add(toJudiciary(jsonObject));
+            }
+        });
+
+
+        return judiciaries;
     }
 
     public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsMap(final Requester requester) {
         final JsonEnvelope envelope = envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME).build(), createObjectBuilder().build());
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        return JsonObjects.getJsonArray(payload, "courtRoomSessionAllocations")
-                .stream()
-                .map(JsonObject.class::cast)
-                .map(this::toCourtRoomSessionAllocation)
-                .toList();
+
+        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = new ArrayList<>();
+        JsonObjects.getJsonArray(payload, "courtRoomSessionAllocations").ifPresent(courtRoomSessionAllocationsJsonArray -> {
+            for(JsonValue jsonValue: courtRoomSessionAllocationsJsonArray) {
+                final JsonObject jsonObject = (JsonObject) jsonValue;
+                courtRoomSessionAllocations.add(toCourtRoomSessionAllocation(jsonObject));
+            }
+        });
+
+
+        return courtRoomSessionAllocations;
     }
 
     private BusinessType toBusinessType(JsonObject jsonObject) {
@@ -279,12 +287,11 @@ public class ReferenceDataService {
 
     private Judiciary toJudiciary(JsonObject jsonObject) {
         return Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(jsonObject.getString("id"))
-                .withCpUserId(jsonObject.getString("cpUserId"))
-                .withEmailAddress(jsonObject.getString("emailAddress"))
-                .withForenames(jsonObject.getString("forenames"))
-                .withJudiciaryType(jsonObject.getString("judiciaryType"))
-                .withPersonId(jsonObject.getString("personId"))
+                .withId(getStringOrElse(jsonObject, "id", null))
+                .withCpUserId(getStringOrElse(jsonObject, "cpUserId", null))
+                .withEmailAddress(getStringOrElse(jsonObject, "emailAddress", null))
+                .withJudiciaryType(getStringOrElse(jsonObject, "judiciaryType", null))
+                .withPersonId(getStringOrElse(jsonObject, "personId", null))
                 .withSurname(jsonObject.getString("surname"))
                 .withSeqId(jsonObject.getInt("seqId"))
                 .withTitleJudicialPrefix(jsonObject.getString("titleJudicialPrefix"))
@@ -303,13 +310,21 @@ public class ReferenceDataService {
                 .withId(jsonObject.getString("id"))
                 .withCourtRoomId(jsonObject.getInt("courtRoomId"))
                 .withOucode(jsonObject.getString("oucode"))
-                .withMaxSlot(jsonObject.getInt("maxSlot"))
-                .withMaxDurationMins(jsonObject.getInt("maxDurationMins"))
-                .withCourtSession(jsonObject.getString("courtSession"))
-                .withRotaBusinessTypeCode(jsonObject.getString("rotaBusinessTypeCode"))
-                .withValidFrom(jsonObject.getString("validFrom"))
-                .withValidTo(jsonObject.getString("validTo"))
+                .withMaxSlot(getIntOrElse(jsonObject, "maxSlot", 0))
+                .withMaxDurationMins(getIntOrElse(jsonObject, "maxDurationMins", 0))
+                .withCourtSession(getStringOrElse(jsonObject, "courtSession", null))
+                .withRotaBusinessTypeCode(getStringOrElse(jsonObject, "rotaBusinessTypeCode", null))
+                .withValidFrom(getStringOrElse(jsonObject, "validFrom", null))
+                .withValidTo(getStringOrElse(jsonObject, "validTo", null))
                 .build();
+    }
+
+    private String getStringOrElse(final JsonObject jsonObject, final String key, final String defaultValue) {
+        return jsonObject.containsKey(key) ? jsonObject.getString(key) : defaultValue;
+    }
+
+    private Integer getIntOrElse(final JsonObject jsonObject, final String key, final Integer defaultValue) {
+        return jsonObject.containsKey(key) ? jsonObject.getInt(key) : defaultValue;
     }
 
 }

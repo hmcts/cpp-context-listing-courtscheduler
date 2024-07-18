@@ -1,18 +1,30 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor;
 
 import static org.apache.commons.io.IOUtils.toByteArray;
+import static org.hamcrest.CoreMatchers.any;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
+import uk.gov.moj.cpp.courtscheduler.api.converter.ConverterException;
+import uk.gov.moj.cpp.courtscheduler.api.exception.RotaFileProcessorException;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
 import java.util.Map;
 
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -20,6 +32,9 @@ class RotaFileParserTest {
 
     @InjectMocks
     private RotaFileParser rotaFileParser;
+
+    @Spy
+    private XMLInputFactory xmlInputFactory;
 
     @Test
     void shouldParseValidRotaXML() throws IOException {
@@ -40,6 +55,16 @@ class RotaFileParserTest {
         assertSchedulesDetails(result);
 
         assertLocationsDetails(result);
+    }
+
+    @Test
+    void shouldReceiveRotaFileProcessorException() throws IOException, XMLStreamException {
+        final String file = "rotafileprocessor/rota_payload.xml";
+
+        final byte[] blobContent = givenBlobContent(file);
+
+        when(xmlInputFactory.createXMLEventReader(eq(new ByteArrayInputStream(blobContent)))).thenThrow(new XMLStreamException());
+        Assertions.assertThrows(RotaFileProcessorException.class, () -> rotaFileParser.parse(file, blobContent));
     }
 
     private void assertLocationsDetails(final Map<RotaPayload, Map<String, Map<String, String>>> result) {

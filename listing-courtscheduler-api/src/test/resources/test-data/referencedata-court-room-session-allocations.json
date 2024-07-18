@@ -1,0 +1,324 @@
+{
+  "courtRoomSessionAllocations": [
+    {
+      "id": "93231aab-a87e-3dbd-b334-402e07643f2f",
+      "oucode": "B01KR00",
+      "courtRoomId": 2035,
+      "maxSlot": 10,
+      "session": "FRIPM",
+      "rotaBusinessType": "GEN"
+    },
+    {
+      "id": "980735b3-5b1c-4fe5-9001-06ce1b1695bb",
+      "oucode": "B53DJ00",
+      "courtRoomId": 650,
+      "maxDurationMins": 5,
+      "session": "WEDPM",
+      "rotaBusinessType": "TRF"
+    },
+    {
+      "id": "44767d81-0caa-4b22-93b3-e61bba0d1a3a",
+      "oucode": "B53DJ00",
+      "courtRoomId": 648,
+      "maxDurationMins": 8,
+      "session": "MONAM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "6d9a1518-f989-4a2d-903d-df2843ad4af4",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 11,
+      "session": "MONAM",
+      "rotaBusinessType": "NCPG"
+    },
+    {
+      "id": "6a5194ff-9bea-4b13-9497-0ee72122436f",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 12,
+      "session": "THUAM",
+      "rotaBusinessType": "GAP"
+    },
+    {
+      "id": "96b019c6-939c-4b7d-b50c-996a744f3891",
+      "oucode": "B53DJ00",
+      "courtRoomId": 648,
+      "maxDurationMins": 21,
+      "session": "WEDPM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "88008326-5d7c-4a03-a335-23fe63e63392",
+      "oucode": "B53DJ00",
+      "courtRoomId": 648,
+      "maxDurationMins": 13,
+      "session": "TUEAM",
+      "rotaBusinessType": "DVT"
+    },
+    {
+      "id": "1337c37f-6426-42b2-a26c-8c17b0333fe3",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 13,
+      "session": "FRIPM",
+      "rotaBusinessType": "GEN"
+    },
+    {
+      "id": "1fb930ca-fd96-458d-a51b-f4daff285789",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 18,
+      "session": "TUEPM",
+      "rotaBusinessType": "DVB"
+    },
+    {
+      "id": "30a01e0e-ef7f-4af6-9e0c-a5733c035a7f",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 6,
+      "session": "FRIPM",
+      "rotaBusinessType": "GAP"
+    },
+    {
+      "id": "3104a006-60d7-4041-acf6-8e8d3e903c2a",
+      "oucode": "B53DJ00",
+      "courtRoomId": 648,
+      "maxDurationMins": 19,
+      "session": "THUAM",
+      "rotaBusinessType": "NGAP"
+    },
+    {
+      "id": "9426717e-f6d5-4a2d-b273-2c477e748087",
+      "oucode": "B53DJ00",
+      "courtRoomId": 650,
+      "maxDurationMins": 12,
+      "session": "WEDAM",
+      "rotaBusinessType": "TRF"
+    },
+    {
+      "id": "b3d96cfd-13c0-4c73-8272-f68b5d25149b",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 8,
+      "session": "MONPM",
+      "rotaBusinessType": "GAP"
+    },
+    {
+      "id": "767cb7b1-8eed-49fa-9f31-dd4535a0f09b",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 10,
+      "session": "THUPM",
+      "rotaBusinessType": "GAP"
+    },
+    {
+      "id": "0ab16891-63cc-425a-b092-3265066303f0",
+      "oucode": "B53DJ00",
+      "courtRoomId": 648,
+      "maxDurationMins": 10,
+      "session": "WEDAM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "151f0223-33ae-4d24-bdcb-0926d4679b3b",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 20,
+      "session": "MONAM",
+      "rotaBusinessType": "GAP"
+    },
+    {
+      "id": "7dec7f5b-1059-435b-9205-ac0f5fa9036f",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 14,
+      "session": "FRIAM",
+      "rotaBusinessType": "GEN"
+    },
+    {
+      "id": "e2ea2f3c-1357-4419-ab28-57d6a95343e0",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 3,
+      "session": "WEDPM",
+      "rotaBusinessType": "GAP"
+    },
+    {
+      "id": "6e33cde5-a32e-48c1-91ad-07846a380463",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 13,
+      "session": "TUEAM",
+      "rotaBusinessType": "DVB"
+    },
+    {
+      "id": "93342a84-a533-41e3-b151-bbaf0fbefa88",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 8,
+      "session": "FRIAM",
+      "rotaBusinessType": "GAP"
+    },
+    {
+      "id": "4161a560-490a-4065-abf9-07e592d91c6b",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 10,
+      "session": "FRIPM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "a6d2672c-1f93-43c0-8142-7b92120cbf0c",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 22,
+      "session": "THUAM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "a83a0d7d-1687-4d52-8a2a-d9bd0e5380b3",
+      "oucode": "B53DJ00",
+      "courtRoomId": 650,
+      "maxDurationMins": 18,
+      "session": "THUAM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "88f80985-a712-4df4-8c95-89cd7be4fdab",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 17,
+      "session": "SATPM",
+      "rotaBusinessType": "REM"
+    },
+    {
+      "id": "7034eac2-f912-4581-85bc-e5291c056a76",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 9,
+      "session": "TUEPM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "2263e449-9413-4712-bd1e-18a6ac6e1ba7",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 10,
+      "session": "WEDAM",
+      "rotaBusinessType": "GAP"
+    },
+    {
+      "id": "f6e64a37-5b21-4a41-884a-075d1ae0be33",
+      "oucode": "B53DJ00",
+      "courtRoomId": 650,
+      "maxDurationMins": 9,
+      "session": "TUEPM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "8228ac73-7263-4be6-b341-49df9f41eba5",
+      "oucode": "B53DJ00",
+      "courtRoomId": 648,
+      "maxDurationMins": 3,
+      "session": "MONPM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "1ef2902a-d36a-4ff3-bd5a-de2f1da1feb3",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 22,
+      "session": "WEDPM",
+      "rotaBusinessType": "VLT"
+    },
+    {
+      "id": "49853c7f-6095-4a6c-bc81-6d8ae83e8201",
+      "oucode": "B53DJ00",
+      "courtRoomId": 650,
+      "maxDurationMins": 17,
+      "session": "THUPM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "5ae6a52e-c4a0-4544-ae06-ac84440cf556",
+      "oucode": "B53DJ00",
+      "courtRoomId": 648,
+      "maxDurationMins": 14,
+      "session": "TUEPM",
+      "rotaBusinessType": "DVT"
+    },
+    {
+      "id": "65a2f894-1dd9-4bc8-ac36-50f62cb53a01",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 3,
+      "session": "WEDAM",
+      "rotaBusinessType": "VLT"
+    },
+    {
+      "id": "4c6727e4-0462-40c9-9bca-5bb983a8d6b1",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 19,
+      "session": "FRIAM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "af82866b-ab0f-4420-be3c-a474727ede69",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 16,
+      "session": "THUPM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "5354d5e1-5428-46cb-8c06-b9e182b02e60",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 17,
+      "session": "MONPM",
+      "rotaBusinessType": "NCPG"
+    },
+    {
+      "id": "17df803d-4c1d-41cb-9f17-05b256f6a00d",
+      "oucode": "B53DJ00",
+      "courtRoomId": 648,
+      "maxDurationMins": 10,
+      "session": "THUPM",
+      "rotaBusinessType": "NGAP"
+    },
+    {
+      "id": "21cc64b7-7e11-4301-8f88-2f1644c76a26",
+      "oucode": "B53DJ00",
+      "courtRoomId": 647,
+      "maxDurationMins": 19,
+      "session": "SATAM",
+      "rotaBusinessType": "REM"
+    },
+    {
+      "id": "7eb444a7-5d3d-4416-96c8-19a9c0e87a49",
+      "oucode": "B53DJ00",
+      "courtRoomId": 649,
+      "maxDurationMins": 3,
+      "session": "TUEAM",
+      "rotaBusinessType": "TRL"
+    },
+    {
+      "id": "5eb444a7-5d3d-4416-96c8-19a9c0e87a45",
+      "oucode": "B01KR00",
+      "courtRoomId": 2035,
+      "maxDurationMins": 14,
+      "session": "FRIAM",
+      "rotaBusinessType": "COU"
+    },
+    {
+      "id": "1eb444a7-5d3d-4416-96c8-19a9c0e87a45",
+      "oucode": "B01KR00",
+      "courtRoomId": 2035,
+      "maxDurationMins": 10,
+      "session": "FRIPM",
+      "rotaBusinessType": "COU"
+    }
+  ]
+}
