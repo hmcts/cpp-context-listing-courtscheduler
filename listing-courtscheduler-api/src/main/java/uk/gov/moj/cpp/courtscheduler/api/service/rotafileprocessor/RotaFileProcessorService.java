@@ -172,7 +172,7 @@ public class RotaFileProcessorService {
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDay(), rotaPeriodDateInfoProvider.getRotaPeriodEndDay(), masterRotaPeriodCutOffDate, rotaPeriodDateInfoProvider.getMonthsBetweenRotaPeriod());
 
         final Map<String, CourtSchedule> slots = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, requester);
-        final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records);
+        final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records, requester);
 
         logger.info("Enriched {} , saving it to DB..", slots.size());
 
@@ -185,8 +185,6 @@ public class RotaFileProcessorService {
         logger.info("DD-15703:RotaFileProcessor: Before getOuCodeFromCourtRoomMappingsByLocationId");
         final String ouCodes = getOuCodesFromCourtRoomMappingsByLocationId(locations, requester);
         logger.info("DD-15703:RotaFileProcessor: After getOuCodeFromCourtRoomMappingsByLocationId, ouCodes: {}", ouCodes);
-
-        final boolean onlyCourtScheduleJudiciaryToBeProcessed = sessionsService.isMigrated(ouCodes);
 
         final Map<String, BusinessType> businessTypesMap = getBusinessTypeMap(requester);
 
@@ -204,11 +202,11 @@ public class RotaFileProcessorService {
                     logger.warn("There is a newer snapshot rota file has been processed already. Therefore, skipping.");
                 } else {
                     logger.info("DD-15703:RotaFileProcessor: Before  processSnapshotRotaFile");
-                    processSnapshotRotaFile(slots, schedules, rotaPeriodStartDate, rotaPeriodEndDate, ouCodes, fileNamePrefix, fileDateTime, onlyCourtScheduleJudiciaryToBeProcessed, businessTypesMap);
+                    processSnapshotRotaFile(slots, schedules, rotaPeriodStartDate, rotaPeriodEndDate, ouCodes, fileNamePrefix, fileDateTime, businessTypesMap);
                 }
             }
         } else {
-            processFullRotaFile(slots, schedules, rotaPeriodStartDate, masterRotaPeriodCutOffDate, ouCodes, onlyCourtScheduleJudiciaryToBeProcessed, businessTypesMap);
+            processFullRotaFile(slots, schedules, rotaPeriodStartDate, masterRotaPeriodCutOffDate, ouCodes, businessTypesMap);
         }
     }
 
@@ -219,7 +217,6 @@ public class RotaFileProcessorService {
                                      final LocalDate startDate,
                                      final LocalDate masterRotaPeriodCutOffDate,
                                      final String ouCodes,
-                                     final boolean onlyCourtScheduleJudiciaryToBeProcessed,
                                      final Map<String, BusinessType> businessTypesMap) {
 
         logger.info("DD-15703:processFullRotaFile: started processing");
@@ -232,15 +229,11 @@ public class RotaFileProcessorService {
         courtScheduleRepository.deleteUnAllocatedProvisionalEntries(ouCodes);
         logger.info("DD-15703:processFullRotaFile: after delete UnAllocated ProvisionalEntries");
 
-        manageCourtSchedule(ouCodes, slots, schedules, startDate, masterRotaPeriodCutOffDate, onlyCourtScheduleJudiciaryToBeProcessed, businessTypesMap);
+        manageCourtSchedule(ouCodes, slots, schedules, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
 
-        if (!onlyCourtScheduleJudiciaryToBeProcessed) {
-            createProvisionalSchedule(ouCodes, masterRotaPeriodCutOffDate, businessTypesMap);
-            logger.info("DD-15703:processFullRotaFile: after createProvisionalSchedule");
-        } else {
-            logger.info("DD-32608 provisional schedule creation is not done due to lja is set as processing only court schedule judiciary data");
-        }
+
+        createProvisionalSchedule(ouCodes, masterRotaPeriodCutOffDate, businessTypesMap);
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
@@ -252,7 +245,6 @@ public class RotaFileProcessorService {
                                            final String ouCodes,
                                            final String fileNamePrefix,
                                            final OffsetDateTime fileDate,
-                                           final boolean onlyCourtScheduleJudiciaryToBeProcessed,
                                            final Map<String, BusinessType> businessTypesMap) {
         logger.info("DD-15703:processSnapshotRotaFile: began transaction");
         int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
@@ -261,7 +253,7 @@ public class RotaFileProcessorService {
         int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, ouCodes);
         logger.info("DD-15703:processSnapshotRotaFile: after deleteUnAllocatedCourtScheduleEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtSchedules: {}", numberOfDeletedUnAllocatedCourtSchedules);
 
-        manageCourtSchedule(ouCodes, slots, schedules, startDate, endDate, onlyCourtScheduleJudiciaryToBeProcessed, businessTypesMap);
+        manageCourtSchedule(ouCodes, slots, schedules, startDate, endDate, businessTypesMap);
         logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
 
         logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
@@ -275,7 +267,6 @@ public class RotaFileProcessorService {
                                      final Collection<CourtScheduleJudiciary> schedules,
                                      final LocalDate startDate,
                                      final LocalDate endDate,
-                                     final boolean onlyCourtScheduleJudiciaryToBeProcessed,
                                      final Map<String, BusinessType> businessTypesMap) {
         final Map<String, String> queryParams = new HashMap<>();
         queryParams.put(START_DATE.getLabel(), startDate.toString());
@@ -326,14 +317,14 @@ public class RotaFileProcessorService {
 
         Map<String, Pair<String, String>> slotsToUpdateMap = slotsToUpdate.stream()
                 .collect(toMap(CourtSchedule::getListingProfileId, slotToUpdate -> Pair.of(slotToUpdate.getCourtScheduleId(), slotToUpdate.getOuCode())));
-        if (onlyCourtScheduleJudiciaryToBeProcessed) {
-            slotsToUpdateMap = filterSlotsToUpdateMapByExistingSlots(slotsToUpdateMap, existingSlotScheduleIds);
-            newSlots = filterNewRecordsByExistingSlots(newSlots, existingSlotScheduleIds);
-        }
+
+        slotsToUpdateMap = filterSlotsToUpdateMapByExistingSlots(slotsToUpdateMap, existingSlotScheduleIds);
+        newSlots = filterNewRecordsByExistingSlots(newSlots, existingSlotScheduleIds);
+
 
         logger.info("DD-15703:RotaFileProcessor: before courtScheduleRepository.update");
 
-        sessionsService.update(existingSlotScheduleIds,
+        sessionsService.updateSlotsAndSchedules(existingSlotScheduleIds,
                 newSlots,
                 newCourtScheduleJudiciaries,
                 slotsToUpdate,
@@ -341,8 +332,7 @@ public class RotaFileProcessorService {
                 schedules,
                 relatedJudiciarySchedules,
                 confirmedSlotIdsToDelete,
-                businessTypesMap,
-                onlyCourtScheduleJudiciaryToBeProcessed);
+                businessTypesMap);
 
         logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
     }
@@ -377,7 +367,8 @@ public class RotaFileProcessorService {
             businessTypeMatchingLogger.logMissingBusinessType(getBusinessTypesNotConsistOnTheSystem(provisionalCourtSchedules, businessTypesMap));
         }
 
-        sessionsService.saveCourtSchedules(provisionalCourtSchedules, businessTypesMap);
+        final List<CourtSchedule> provisionalCourtSchedulesToBeProcessed = provisionalCourtSchedules.stream().filter(provisionalCourtSchedule -> !sessionsService.isMigrated(provisionalCourtSchedule.getOuCode())).toList();
+        sessionsService.saveCourtSchedules(provisionalCourtSchedulesToBeProcessed, businessTypesMap);
     }
 
     private Map<String, CourtSchedule> receiveSlots(final String name,
@@ -534,7 +525,8 @@ public class RotaFileProcessorService {
                 .forEach(listingProfileId -> {
                     final Pair<String, String> courtScheduleIdAndOuCodePair = slotsToUpdate.get(listingProfileId);
                     final String courtScheduleId = courtScheduleIdAndOuCodePair.getLeft();
-                    if (existingSlotIds.contains(courtScheduleId)) {
+                    final String ouCode = courtScheduleIdAndOuCodePair.getRight();
+                    if (existingSlotIds.contains(courtScheduleId) && !sessionsService.isMigrated(ouCode)) {
                         existingSlotsToUpdate.put(listingProfileId, courtScheduleIdAndOuCodePair);
                     }
                 });

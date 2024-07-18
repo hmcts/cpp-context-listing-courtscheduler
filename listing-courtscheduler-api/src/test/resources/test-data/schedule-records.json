@@ -1,0 +1,18 @@
+[
+  {
+    "justice": "MA15852",
+    "id": "CS2130000_CHAIR",
+    "courtListingProfile": "CS2130000",
+    "slot": "CHAIR",
+    "isDoubleBooked": "false",
+    "email" :"abc@zx.com"
+  },
+  {
+    "justice": "MA15756",
+    "id": "CS2130242_CHAIR",
+    "courtListingProfile": "CS2130242",
+    "slot": "CHAIR",
+    "isDoubleBooked": "false",
+    "email" :"xyz@zx.com"
+  }
+]

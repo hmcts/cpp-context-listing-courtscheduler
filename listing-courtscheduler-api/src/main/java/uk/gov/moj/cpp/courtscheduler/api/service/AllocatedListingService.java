@@ -25,7 +25,7 @@ public class AllocatedListingService {
                 .map(id -> "'" + id + "'")
                 .collect(Collectors.joining(","));
 
-        final List<AllocatedListingTotalBooked> allocatedListingTotalBookeds = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(courtScheduleIdsAsStr);
+        final List<AllocatedListingTotalBooked> allocatedListingTotalBookeds = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(courtScheduleIdList);
 
         return allocatedListingTotalBookeds.stream()
                 .collect(toMap(AllocatedListingTotalBooked::getCourtScheduleId, AllocatedListingTotalBooked::getTotalBooked));

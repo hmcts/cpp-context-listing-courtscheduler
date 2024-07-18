@@ -5,8 +5,10 @@ import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 
@@ -102,5 +104,48 @@ public class AllocatedListingRepositoryTest {
         List<AllocatedListing> allocatedListings = allocatedListingRepository.findByCourtScheduleId(courtScheduleId);
 
         assertThat(allocatedListings, hasItems(allocatedListing1, allocatedListing2));
+    }
+
+    @Test
+    public void shouldGetAllocatedListingsByCourtScheduleId() {
+        final String hearingId = random(String.class);
+        final String courtScheduleId1 = randomUUID().toString();
+        final String courtScheduleId2 = randomUUID().toString();
+
+        final AllocatedListing allocatedListing1 = random(AllocatedListing.class);
+        allocatedListing1.setHearingId(hearingId);
+        allocatedListing1.setCourtScheduleId(courtScheduleId1);
+        allocatedListing1.setDuration(1);
+
+        final AllocatedListing allocatedListing2 = random(AllocatedListing.class);
+        allocatedListing2.setHearingId(hearingId);
+        allocatedListing2.setCourtScheduleId(courtScheduleId1);
+        allocatedListing2.setDuration(1);
+
+        final AllocatedListing allocatedListing3 = random(AllocatedListing.class);
+        allocatedListing3.setHearingId(hearingId);
+        allocatedListing3.setCourtScheduleId(courtScheduleId2);
+        allocatedListing3.setDuration(30);
+
+        allocatedListingRepository.save(allocatedListing1);
+        allocatedListingRepository.save(allocatedListing2);
+        allocatedListingRepository.save(allocatedListing3);
+
+        final List<AllocatedListingTotalBooked> allocatedListingTotalBookeds = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(List.of(courtScheduleId1, courtScheduleId2));
+
+        assertEquals(allocatedListingTotalBookeds.size(), 2);
+        if (allocatedListingTotalBookeds.get(0).getCourtScheduleId().equals(courtScheduleId1)) {
+            assertEquals(allocatedListingTotalBookeds.get(0).getCourtScheduleId(), courtScheduleId1);
+            assertThat(allocatedListingTotalBookeds.get(0).getTotalBooked(), is(2));
+
+            assertEquals(allocatedListingTotalBookeds.get(1).getCourtScheduleId(), courtScheduleId2);
+            assertThat(allocatedListingTotalBookeds.get(1).getTotalBooked(), is(30));
+        } else {
+            assertEquals(allocatedListingTotalBookeds.get(0).getCourtScheduleId(), courtScheduleId2);
+            assertThat(allocatedListingTotalBookeds.get(0).getTotalBooked(), is(30));
+
+            assertEquals(allocatedListingTotalBookeds.get(1).getCourtScheduleId(), courtScheduleId1);
+            assertThat(allocatedListingTotalBookeds.get(1).getTotalBooked(), is(2));
+        }
     }
 }

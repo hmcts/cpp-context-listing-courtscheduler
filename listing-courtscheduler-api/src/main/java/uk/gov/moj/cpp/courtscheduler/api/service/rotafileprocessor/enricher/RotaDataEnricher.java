@@ -1,9 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher;
 
 import static java.lang.String.format;
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.SESSION_ALLOCATION_ERR_MSG;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.SESSION_ALLOCATION_NOT_FOUND;
@@ -16,12 +15,11 @@ import static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBu
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtRoomRepository;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtRoomSessionAllocationRepository;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -43,13 +41,10 @@ public class RotaDataEnricher {
     private static final String EXCEPTION_MSG = "Exception while processing CourtListingProfile : %s";
 
     @Inject
-    private CourtRoomRepository courtRoomRepository;
-
-    @Inject
     private SessionsService sessionsService;
 
     @Inject
-    private CourtRoomSessionAllocationRepository courtRoomSessionAllocationRepository;
+    private ReferenceDataMapperService referenceDataMapperService;
 
     @Inject
     private MissingReferenceDataMappingLogger missingReferenceDataMappingLogger;
@@ -99,17 +94,17 @@ public class RotaDataEnricher {
         final LocalDate sessionDate = LocalDate.parse(strSessionDate, formatter);
 
         CourtSchedule newCourtSchedule;
-        if (courtSchedule == null || !businessType.equals(courtSchedule.getBusinessType())) {
+        if (isNull(courtSchedule) || !businessType.equals(courtSchedule.getBusinessType())) {
             newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, requester);
             addCourtSchedule(courtSchedules, newCourtSchedule);
         } else {
-            newCourtSchedule = updateExistingCourtSchedule(courtSchedule, listingProfile.get(SESSION), missingReferenceDataMappingMap);
+            newCourtSchedule = updateExistingCourtSchedule(courtSchedule, listingProfile.get(SESSION), missingReferenceDataMappingMap, requester);
             courtSchedules.put(courtSchedule.getListingProfileId(), newCourtSchedule);
         }
     }
 
     private void addCourtSchedule(Map<String, CourtSchedule> courtSchedules, CourtSchedule newCourtSchedule) {
-        if (newCourtSchedule.getCourtScheduleId() != null) {
+        if (nonNull(newCourtSchedule.getCourtScheduleId())) {
             courtSchedules.put(newCourtSchedule.getListingProfileId(), newCourtSchedule);
         }
     }
@@ -117,11 +112,11 @@ public class RotaDataEnricher {
 
     private CourtSchedule updateExistingCourtSchedule(final CourtSchedule courtSchedule,
                                                       final String sessionStr,
-                                                      final Map<String, String> missingReferenceDataMappingMap) {
+                                                      final Map<String, String> missingReferenceDataMappingMap,
+                                                      final Requester requester) {
 
         final String listingSession = courtSession.getCourtSession(courtSchedule.getSessionDate(), sessionStr);
-        final CourtRoomSessionAllocation courtRoomSessionAllocation = courtRoomSessionAllocationRepository.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(courtSchedule.getOuCode(), courtSchedule.getCourtRoomNumber(), listingSession, courtSchedule.getBusinessType());
-        final Optional<CourtRoomSessionAllocation> sessionAllocation = nonNull(courtRoomSessionAllocation) ? of(courtRoomSessionAllocation) : empty();
+        final Optional<CourtRoomSessionAllocation> sessionAllocation  = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(requester, courtSchedule.getOuCode(), courtSchedule.getCourtRoomNumber(), listingSession, courtSchedule.getBusinessType());
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = courtSchedule().withCourtSchedule(courtSchedule);
         courtScheduleBuilder.withCourtSession(ALL_DAY);
         final String courtScheduleId = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtSchedule.getCourtRoomId(), courtSchedule.getSessionDate(), courtSchedule.getBusinessType(), ALL_DAY);
@@ -146,9 +141,5 @@ public class RotaDataEnricher {
             }
         }
         return courtScheduleBuilder.build();
-    }
-
-    public CourtRoomSessionAllocationRepository courtRoomSessionAllocationRepository(){
-       return courtRoomSessionAllocationRepository;
     }
 }

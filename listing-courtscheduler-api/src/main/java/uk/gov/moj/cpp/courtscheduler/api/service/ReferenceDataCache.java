@@ -15,6 +15,8 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 
 import java.util.List;
 import java.util.Map;
@@ -57,6 +59,8 @@ public class ReferenceDataCache {
     public static final String ROTA_BUSINESS_TYPE_CACHE_PREFIX = "RotaBusinessType_";
     public static final String ROTA_COURTROOM_CACHE_PREFIX = "RotaCourtRoom_";
     public static final String ROTA_BUSINESS_TYPES_CACHE_KEY = "RotaBusinessTypes";
+    public static final String ROTA_JUDICIARIES_CACHE_KEY = "RotaJudiciaries_";
+    public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSesionAllocations_";
 
     public ReferenceDataCache() {
         LOGGER.info("ReferenceDataCache constructor");
@@ -77,6 +81,22 @@ public class ReferenceDataCache {
             return getBusinessTypesFromTheCache(requester);
         } else {
             return referenceDataService.getRotaBusinessTypes(requester);
+        }
+    }
+
+    public List<Judiciary> getJudiciaries(final Requester requester) {
+        if (parseBoolean(redisCommonCacheEnabled)) {
+            return getJudiciariesFromTheCache(requester);
+        } else {
+            return referenceDataService.getJudiciariesMap(requester);
+        }
+    }
+
+    public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocations(final Requester requester) {
+        if (parseBoolean(redisCommonCacheEnabled)) {
+            return getCourtRoomSessionAllocationsFromTheCache(requester);
+        } else {
+            return referenceDataService.getCourtRoomSessionAllocationsMap(requester);
         }
     }
 
@@ -112,7 +132,44 @@ public class ReferenceDataCache {
         } else {
             try {
                 LOGGER.info("cacheResult has been found for BusinessTypes in getBusinessTypesFromTheCache");
-                return objectMapper.readValue(cacheResult, new TypeReference<List<BusinessType>>(){});
+                return objectMapper.readValue(cacheResult, new TypeReference<>() {
+                });
+            } catch (final JsonProcessingException jsonProcessingException) {
+                LOGGER.error("exception whilst reading cacheResult and converting to List<BusinessType> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+            }
+            return emptyList();
+        }
+    }
+
+    private List<Judiciary> getJudiciariesFromTheCache(final Requester requester) {
+        final String cacheResult = cacheService.get(ROTA_JUDICIARIES_CACHE_KEY);
+
+        if (isNull(cacheResult)) {
+            LOGGER.info("no cache result found for judiciaries in getJudiciariesFromTheCache");
+            return processJudiciaries(requester);
+        } else {
+            try {
+                LOGGER.info("cacheResult has been found for judiciaries in getJudiciariesFromTheCache");
+                return objectMapper.readValue(cacheResult, new TypeReference<>() {
+                });
+            } catch (final JsonProcessingException jsonProcessingException) {
+                LOGGER.error("exception whilst reading cacheResult and converting to List<BusinessType> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+            }
+            return emptyList();
+        }
+    }
+
+    private List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsFromTheCache(final Requester requester) {
+        final String cacheResult = cacheService.get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY);
+
+        if (isNull(cacheResult)) {
+            LOGGER.info("no cache result found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
+            return processCourtRoomSessionAllocations(requester);
+        } else {
+            try {
+                LOGGER.info("cacheResult has been found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
+                return objectMapper.readValue(cacheResult, new TypeReference<>() {
+                });
             } catch (final JsonProcessingException jsonProcessingException) {
                 LOGGER.error("exception whilst reading cacheResult and converting to List<BusinessType> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
             }
@@ -145,6 +202,34 @@ public class ReferenceDataCache {
             }
         } catch (final JsonProcessingException jsonProcessingException) {
             LOGGER.error("exception whilst adding into the cache for BusinessTypes with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+        }
+        return emptyList();
+    }
+
+    private List<Judiciary> processJudiciaries(final Requester requester) {
+        final List<Judiciary> judiciaries = referenceDataService.getJudiciariesMap(requester);
+
+        try {
+            if (isNotEmpty(judiciaries)) {
+                cacheService.add(ROTA_JUDICIARIES_CACHE_KEY, objectMapper.writeValueAsString(judiciaries));
+                return judiciaries;
+            }
+        } catch (final JsonProcessingException jsonProcessingException) {
+            LOGGER.error("exception whilst adding into the cache for Judiciaries with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+        }
+        return emptyList();
+    }
+
+    private List<CourtRoomSessionAllocation> processCourtRoomSessionAllocations(final Requester requester) {
+        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = referenceDataService.getCourtRoomSessionAllocationsMap(requester);
+
+        try {
+            if (isNotEmpty(courtRoomSessionAllocations)) {
+                cacheService.add(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY, objectMapper.writeValueAsString(courtRoomSessionAllocations));
+                return courtRoomSessionAllocations;
+            }
+        } catch (final JsonProcessingException jsonProcessingException) {
+            LOGGER.error("exception whilst adding into the cache for CourtRoomSessionAllocations with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
         }
         return emptyList();
     }

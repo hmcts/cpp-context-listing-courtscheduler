@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import static java.util.Objects.nonNull;
+
 public class AllocatedListingTotalBooked {
 
     private String courtScheduleId;
@@ -7,9 +9,9 @@ public class AllocatedListingTotalBooked {
 
     public AllocatedListingTotalBooked() {}
 
-    public AllocatedListingTotalBooked(String courtScheduleId, Integer totalBooked) {
+    public AllocatedListingTotalBooked(String courtScheduleId, Long totalBooked) {
         this.courtScheduleId = courtScheduleId;
-        this.totalBooked = totalBooked;
+        this.totalBooked = nonNull(totalBooked) ? totalBooked.intValue() : null;
     }
 
     public Integer getTotalBooked() {

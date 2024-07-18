@@ -1,12 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -25,9 +28,10 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import javax.inject.Inject;
 
@@ -55,6 +59,7 @@ public class CourtScheduleRepositoryTest {
     @Mock
     ConstraintViolationException constraintViolationException;
 
+    private String courtScheduleId = randomUUID().toString();
     @Before
     public void setUp() {
         List<AllocatedListing> allocatedListingRepositoryAll = allocatedListingRepository.findAll();
@@ -141,8 +146,8 @@ public class CourtScheduleRepositoryTest {
 
     @Test
     public void shouldSaveSlots() {
-        String hearingId = UUID.randomUUID().toString();
-        String bookingId = UUID.randomUUID().toString();
+        String hearingId = randomUUID().toString();
+        String bookingId = randomUUID().toString();
         CourtSchedule courtSchedule = random(CourtSchedule.class);
         courtScheduleRepository.save(courtSchedule);
 
@@ -518,6 +523,187 @@ public class CourtScheduleRepositoryTest {
         assertEquals(7, by1.getMaxDuration().intValue());
         assertEquals(8, by1.getAvailableSlots().intValue());
         assertEquals(9, by1.getAvailableDuration().intValue());
+    }
+
+    @Test
+    public void shouldGetExtractedCourtSchedules() {
+        final String courtHouseId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String businessType = "TRF";
+        final String panel = "ADULT";
+        final String courtSession = "PM";
+        final LocalDate sessionDate = LocalDate.of(2024, 4,15);
+        final String ouCode = "B01LY00";
+
+        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setCourtHouseId(courtHouseId);
+        courtSchedule1.setCourtRoomId(courtRoomId);
+        courtSchedule1.setBusinessType(businessType);
+        courtSchedule1.setPanel(panel);
+        courtSchedule1.setCourtSession(courtSession);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setMaxSlots(6);
+        courtSchedule1.setMaxDuration(7);
+        courtSchedule1.setAvailableSlots(8);
+        courtSchedule1.setAvailableDuration(9);
+        courtSchedule1.setActive(true);
+        courtSchedule1.setOuCode(ouCode);
+
+        courtScheduleRepository.save(courtSchedule1);
+
+        final LocalDate startDate = LocalDate.of(2024, 4, 1);
+        final LocalDate endDate = LocalDate.of(2024, 9, 16);
+        final List<CourtSchedule> extractedCourtSchedules = courtScheduleRepository.getExtractedCourtSchedules(ouCode, startDate, endDate);
+
+        assertEquals(1, extractedCourtSchedules.size());
+        final CourtSchedule actualCourtSchedule = extractedCourtSchedules.get(0);
+        assertEquals(courtHouseId, actualCourtSchedule.getCourtHouseId());
+        assertEquals(courtRoomId, actualCourtSchedule.getCourtRoomId());
+        assertEquals(businessType, actualCourtSchedule.getBusinessType());
+        assertEquals(panel, actualCourtSchedule.getPanel());
+        assertEquals(courtSession, actualCourtSchedule.getCourtSession());
+        assertEquals(sessionDate, actualCourtSchedule.getSessionDate());
+        assertEquals(ouCode, actualCourtSchedule.getOuCode());
+    }
+
+    @Test
+    public void shouldGetExtractedCourtSchedulesForGhostRota() {
+        final String courtHouseId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String businessType = "TRF";
+        final String panel = "ADULT";
+        final String courtSession = "PM";
+        final LocalDate sessionDate = LocalDate.of(2024, 9,30);
+        final String ouCode = "B01LY00";
+
+        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setCourtHouseId(courtHouseId);
+        courtSchedule1.setCourtRoomId(courtRoomId);
+        courtSchedule1.setBusinessType(businessType);
+        courtSchedule1.setPanel(panel);
+        courtSchedule1.setCourtSession(courtSession);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setMaxSlots(6);
+        courtSchedule1.setMaxDuration(7);
+        courtSchedule1.setAvailableSlots(8);
+        courtSchedule1.setAvailableDuration(9);
+        courtSchedule1.setOuCode(ouCode);
+
+        courtScheduleRepository.save(courtSchedule1);
+
+        final LocalDate startDate = LocalDate.of(2024, 9, 17);
+        final LocalDate endDate = LocalDate.of(2025, 9, 30);
+        final List<CourtSchedule> extractedCourtSchedulesForGhostRota = courtScheduleRepository.getExtractedCourtSchedulesForGhostRota(ouCode, startDate, endDate);
+
+        assertEquals(1, extractedCourtSchedulesForGhostRota.size());
+        final CourtSchedule actualCourtSchedule = extractedCourtSchedulesForGhostRota.get(0);
+        assertEquals(courtHouseId, actualCourtSchedule.getCourtHouseId());
+        assertEquals(courtRoomId, actualCourtSchedule.getCourtRoomId());
+        assertEquals(businessType, actualCourtSchedule.getBusinessType());
+        assertEquals(panel, actualCourtSchedule.getPanel());
+        assertEquals(courtSession, actualCourtSchedule.getCourtSession());
+        assertEquals(sessionDate, actualCourtSchedule.getSessionDate());
+        assertEquals(ouCode, actualCourtSchedule.getOuCode());
+    }
+
+    @Test
+    public void shouldDeactivateSlots() {
+        final String courtHouseId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String businessType = "TRF";
+        final String panel = "ADULT";
+        final String courtSession = "PM";
+        final LocalDate sessionDate = LocalDate.of(2024, 9,30);
+        final String ouCode = "B01LY00";
+
+        final CourtSchedule courtSchedule1 = new CourtSchedule();
+        courtSchedule1.setCourtScheduleId(courtScheduleId);
+        courtSchedule1.setCourtHouseName("Lavender Hill Magistrates' Court");
+        courtSchedule1.setCourtRoomName("Courtroom 1");
+        courtSchedule1.setListingProfileId("CS4436822");
+        courtSchedule1.setOperationalUnit("6");
+        courtSchedule1.setCourtRoomNumber(1234);
+        courtSchedule1.setCourtHouseId(courtHouseId);
+        courtSchedule1.setCourtRoomId(courtRoomId);
+        courtSchedule1.setBusinessType(businessType);
+        courtSchedule1.setPanel(panel);
+        courtSchedule1.setCourtSession(courtSession);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setMaxSlots(10);
+        courtSchedule1.setMaxDuration(0);
+        courtSchedule1.setAvailableSlots(8);
+        courtSchedule1.setAvailableDuration(0);
+        courtSchedule1.setActive(true);
+        courtSchedule1.setSlotBased(true);
+        courtSchedule1.setOuCode(ouCode);
+
+        courtScheduleRepository.save(courtSchedule1);
+
+        final CourtSchedule courtScheduleInserted = courtScheduleRepository.findBy(courtScheduleId);
+
+        assertEquals(courtHouseId, courtScheduleInserted.getCourtHouseId());
+        assertEquals(courtRoomId, courtScheduleInserted.getCourtRoomId());
+        assertEquals(businessType, courtScheduleInserted.getBusinessType());
+        assertEquals(panel, courtScheduleInserted.getPanel());
+        assertEquals(courtSession, courtScheduleInserted.getCourtSession());
+        assertEquals(sessionDate, courtScheduleInserted.getSessionDate());
+        assertEquals(ouCode, courtScheduleInserted.getOuCode());
+        assertTrue(courtScheduleInserted.isActive());
+
+        final Date updatedOn = Calendar.getInstance().getTime();
+        courtScheduleRepository.deactivateSlots(List.of(courtScheduleId), updatedOn);
+
+        final CourtSchedule courtScheduleAfterDeactivation = courtScheduleRepository.findBy(courtScheduleInserted.getCourtScheduleId());
+
+        courtScheduleRepository.refresh(courtScheduleAfterDeactivation);
+
+        assertEquals(courtHouseId, courtScheduleAfterDeactivation.getCourtHouseId());
+        assertEquals(courtRoomId, courtScheduleAfterDeactivation.getCourtRoomId());
+        assertEquals(businessType, courtScheduleAfterDeactivation.getBusinessType());
+        assertEquals(panel, courtScheduleAfterDeactivation.getPanel());
+        assertEquals(courtSession, courtScheduleAfterDeactivation.getCourtSession());
+        assertEquals(sessionDate, courtScheduleAfterDeactivation.getSessionDate());
+        assertEquals(ouCode, courtScheduleAfterDeactivation.getOuCode());
+        assertFalse(courtScheduleAfterDeactivation.isActive());
+        assertEquals(updatedOn, courtScheduleAfterDeactivation.getUpdatedOn());
+    }
+
+    @Test
+    public void shouldFindByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession() {
+        final String courtHouseId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String businessType = "TRF";
+        final String panel = "ADULT";
+        final String courtSession = "PM";
+        final LocalDate sessionDate = LocalDate.of(2024, 9,30);
+        final String ouCode = "B01LY00";
+
+        final CourtSchedule courtSchedule1 = new CourtSchedule();
+        courtSchedule1.setCourtScheduleId(courtScheduleId);
+        courtSchedule1.setCourtHouseName("Lavender Hill Magistrates' Court");
+        courtSchedule1.setCourtRoomName("Courtroom 1");
+        courtSchedule1.setListingProfileId("CS4436822");
+        courtSchedule1.setOperationalUnit("6");
+        courtSchedule1.setCourtRoomNumber(1234);
+        courtSchedule1.setCourtHouseId(courtHouseId);
+        courtSchedule1.setCourtRoomId(courtRoomId);
+        courtSchedule1.setBusinessType(businessType);
+        courtSchedule1.setPanel(panel);
+        courtSchedule1.setCourtSession(courtSession);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setMaxSlots(10);
+        courtSchedule1.setMaxDuration(0);
+        courtSchedule1.setAvailableSlots(8);
+        courtSchedule1.setAvailableDuration(0);
+        courtSchedule1.setActive(true);
+        courtSchedule1.setSlotBased(true);
+        courtSchedule1.setOuCode(ouCode);
+
+        courtScheduleRepository.save(courtSchedule1);
+
+        final String courtScheduleIdFound = courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
+
+        assertEquals(courtScheduleIdFound, courtSchedule1.getCourtScheduleId());
     }
 
     private HearingSlotRequestParam createHearingSlotRequest(CourtSchedule courtSchedule) {

@@ -46,9 +46,9 @@ public class CourtSchedule {
     @Column(name = "court_session", nullable = false)
     private String courtSession;
     @Column(name = "active", nullable = false)
-    private boolean active;
+    private Boolean active;
     @Column(name = "is_slot_based", nullable = false)
-    private boolean slotBased;
+    private Boolean slotBased;
     @Column(name = "session_start", nullable = false)
     private LocalDate sessionDate;
     @Column(name = "max_slot", nullable = false)
@@ -239,11 +239,11 @@ public class CourtSchedule {
         this.updatedOn = updatedOn;
     }
 
-    public boolean isActive() {
+    public Boolean isActive() {
         return active;
     }
 
-    public void setActive(final boolean active) {
+    public void setActive(final Boolean active) {
         this.active = active;
     }
 

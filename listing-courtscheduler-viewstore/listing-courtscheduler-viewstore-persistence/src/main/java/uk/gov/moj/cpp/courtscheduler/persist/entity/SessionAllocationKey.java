@@ -35,16 +35,32 @@ public class SessionAllocationKey implements Serializable {
         return ouCode;
     }
 
+    public void setOuCode(final String ouCode) {
+        this.ouCode = ouCode;
+    }
+
     public Integer getRoomId() {
         return roomId;
+    }
+
+    public void setRoomId(final Integer roomId) {
+        this.roomId = roomId;
     }
 
     public String getListingSession() {
         return listingSession;
     }
 
+    public void setListingSession(final String listingSession) {
+        this.listingSession = listingSession;
+    }
+
     public String getBusinessType() {
         return businessType;
+    }
+
+    public void setBusinessType(final String businessType) {
+        this.businessType = businessType;
     }
 
     @Override

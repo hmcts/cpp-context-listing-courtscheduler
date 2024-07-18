@@ -33,6 +33,6 @@ public class RotaFileProcessorApi {
         LOGGER.info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.create").apply(createObjectBuilder().build());
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.process_rota_files").apply(createObjectBuilder().build());
     }
 }
