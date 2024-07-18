@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.util.stream.Collectors.joining;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 
+import uk.gov.moj.cpp.courtscheduler.api.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 
@@ -23,9 +24,7 @@ public class CourtScheduleJudiciaryService {
     public Map<String, List<CourtScheduleJudiciary>> findRelatedJudiciarySchedules(final List<String> snapshotSlotIds) {
         final Map<String, List<CourtScheduleJudiciary>> result = new HashMap<>();
 
-        final String listingProfileIdsPlaceholders = snapshotSlotIds.stream().map(s -> "?").collect(joining(","));
-
-        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> courtScheduleJudiciaryEntities = courtScheduleJudiciaryRepository.findInCourtScheduleIds(listingProfileIdsPlaceholders);
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> courtScheduleJudiciaryEntities = courtScheduleJudiciaryRepository.findInCourtScheduleIds(snapshotSlotIds);
 
         if (isNotEmpty(courtScheduleJudiciaryEntities)) {
             courtScheduleJudiciaryEntities.forEach(
@@ -43,6 +42,6 @@ public class CourtScheduleJudiciaryService {
             );
 
         }
-        return null;
+        return result;
     }
 }

@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.api.service.mapper;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
