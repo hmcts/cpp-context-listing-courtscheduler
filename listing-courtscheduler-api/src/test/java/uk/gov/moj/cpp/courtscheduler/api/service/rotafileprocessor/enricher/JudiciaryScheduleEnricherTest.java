@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,10 +55,10 @@ class JudiciaryScheduleEnricherTest {
     private ReferenceDataMapperService referenceDataMapperService;
 
     @Mock
-    private MissingReferenceDataMappingLogger missingMessageLogger;
-
-    @Mock
     private Requester requester;
+
+    @Spy
+    private MissingReferenceDataMappingLogger missingMessageLogger = new MissingReferenceDataMappingLogger();
 
     @BeforeEach
     public void setUp() {

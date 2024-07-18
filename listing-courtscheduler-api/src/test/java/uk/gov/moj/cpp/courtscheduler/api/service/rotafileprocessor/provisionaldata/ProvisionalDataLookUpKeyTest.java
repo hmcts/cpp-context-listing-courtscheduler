@@ -35,11 +35,29 @@ class ProvisionalDataLookUpKeyTest {
     }
 
     @Test
+    void shouldBeEqualForTheSameObject() {
+        final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
+
+        boolean result = key1.equals(key1);
+
+        assertTrue(result);
+    }
+
+    @Test
     void shouldNotBeEqual() {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(18, LocalDate.of(2024, 10, 10));
         final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
 
         boolean result = key1.equals(key2);
+
+        assertFalse(result);
+    }
+
+    @Test
+    void shouldNotBeEqualForNullObject() {
+        final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(18, LocalDate.of(2024, 10, 10));
+
+        boolean result = key1.equals(null);
 
         assertFalse(result);
     }

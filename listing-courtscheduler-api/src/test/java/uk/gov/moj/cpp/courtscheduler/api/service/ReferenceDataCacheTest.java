@@ -2,6 +2,8 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.UUID.fromString;
 import static java.util.UUID.randomUUID;
+import static org.apache.commons.collections.CollectionUtils.isEmpty;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -102,6 +104,17 @@ class ReferenceDataCacheTest {
     }
 
     @Test
+    void shouldReturnEmptyListForRotaBusinessTypesIfTheReturnDataIsNotCorrect() {
+        setCommonCacheEnabled();
+        when(cacheService.get(ROTA_BUSINESS_TYPES_CACHE_KEY)).thenReturn("corrupted data");
+
+        final List<BusinessType> businessTypes = referenceDataCache.getRotaBusinessTypes(requester);
+
+        assertTrue(isEmpty(businessTypes));
+        verify(cacheService).get(ROTA_BUSINESS_TYPES_CACHE_KEY);
+    }
+
+    @Test
     void shouldReturnBusinessTypesFromServiceWhenCacheEnableHoweverNotInTheCache() {
         setCommonCacheEnabled();
 
@@ -119,6 +132,18 @@ class ReferenceDataCacheTest {
         when(referenceDataService.getRotaBusinessTypes(eq(requester))).thenReturn(List.of(new BusinessType()));
         referenceDataCache.getRotaBusinessTypes(requester);
         verify(referenceDataService).getRotaBusinessTypes(requester);
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenTheReturnTypeDifferent() {
+        setCommonCacheEnabled();
+
+        when(cacheService.get(ROTA_BUSINESS_TYPES_CACHE_KEY)).thenReturn("corrupted json data");
+
+        final List<BusinessType> businessTypes = referenceDataCache.getRotaBusinessTypes(requester);
+
+        assertTrue(isEmpty(businessTypes));
+        verify(cacheService).get(ROTA_BUSINESS_TYPES_CACHE_KEY);
     }
 
     @Test
@@ -151,6 +176,18 @@ class ReferenceDataCacheTest {
         referenceDataCache.getJudiciaries(requester);
 
         verify(referenceDataService).getJudiciariesMap(requester);
+    }
+
+    @Test
+    void shouldReturnEmptyListForJudiciariesWhenTheReturnTypeDifferent() {
+        setCommonCacheEnabled();
+
+        when(cacheService.get(ROTA_JUDICIARIES_CACHE_KEY)).thenReturn("corrupted json data");
+
+        final List<Judiciary> judiciaries = referenceDataCache.getJudiciaries(requester);
+
+        assertTrue(isEmpty(judiciaries));
+        verify(cacheService).get(ROTA_JUDICIARIES_CACHE_KEY);
     }
 
     @Test

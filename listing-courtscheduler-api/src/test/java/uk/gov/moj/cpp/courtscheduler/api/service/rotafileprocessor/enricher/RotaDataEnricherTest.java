@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher;
 
+import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.io.IOUtils.toByteArray;
@@ -37,6 +38,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -56,9 +58,6 @@ class RotaDataEnricherTest {
     private ReferenceDataMapperService referenceDataMapperService;
 
     @Mock
-    private MissingReferenceDataMappingLogger missingReferenceDataMappingLogger;
-
-    @Mock
     private CourtSession courtSession;
 
     @Mock
@@ -75,6 +74,11 @@ class RotaDataEnricherTest {
 
     private CourtRoomSessionAllocation sessionAllocation = new CourtRoomSessionAllocation("241546", 2332, "B01LY00", 8, 60, "TRF", AM_SESSION);
 
+    @BeforeEach
+    public void setup() {
+        setField(rotaDataEnricher, "missingReferenceDataMappingLogger", new MissingReferenceDataMappingLogger());
+    }
+
     @Test
     void shouldEnrichListingWithCppReferenceData() throws IOException {
         final String file = "rotafileprocessor/rota_payload.xml";
@@ -85,6 +89,44 @@ class RotaDataEnricherTest {
         final String courtScheduleId = randomUUID().toString();
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
+        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(courtScheduleId);
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), eq(requester))).thenReturn(getCourtSchedule());
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+
+        final byte[] blobContent = givenBlobContent(file);
+        final Map<RotaPayload, Map<String, Map<String, String>>> records = parser.parse(file, blobContent);
+
+        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, requester);
+
+        final Collection<CourtSchedule> schedules = courtSchedules.values();
+        final Integer totalListings = records.get(COURT_LISTING).values().size();
+        final long allDay = schedules.stream().filter(ch -> ch.getCourtSession().equals(ALL_DAY_SESSION)).count();
+        final long amSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(AM_SESSION)).count();
+        final long pmSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).count();
+        final CourtSchedule pmSession = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).findFirst().get();
+
+        assertThat(totalListings, is(472));
+        assertThat(allDay, is(0L));
+        assertThat(amSessions, is(0L));
+        assertThat(pmSessions, is(1L));
+        assertThat(pmSession.getMaxSlots(), is(0));
+        assertThat(pmSession.getAvailableSlots(), is(0));
+        assertThat(pmSession.getMaxDuration(), is(0));
+        assertThat(pmSession.getAvailableDuration(), is(0));
+        assertThat(missingReferenceDataMappingMap.size(),is(0));
+
+    }
+
+    @Test
+    void shouldEnrichListingWithCppReferenceDataWithLoggingMissingReferenceDataMapping() throws IOException {
+        final String file = "rotafileprocessor/rota_payload.xml";
+        final LocalDate rotaPeriodCutOffDate = LocalDate.of(2019, 12, 16);
+        final RotaFileParser parser = new RotaFileParser();
+        final Map<String,String> missingReferenceDataMappingMap = new HashMap();
+
+        final String courtScheduleId = randomUUID().toString();
+
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
         when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(courtScheduleId);
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), eq(requester))).thenReturn(getCourtSchedule());
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
