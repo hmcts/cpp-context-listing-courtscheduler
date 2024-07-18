@@ -199,16 +199,15 @@ public class SessionsService {
     }
 
     @Transactional
-    public void update(final List<String> existingSlotIds,
-                       final Map<String, CourtSchedule> newRecords,
-                       final Collection<CourtScheduleJudiciary> newSchedules,
-                       final Collection<CourtSchedule> slotsToUpdate,
-                       final Map<String, Pair<String, String>> slotsToUpdateMap,
-                       final Collection<CourtScheduleJudiciary> updatedSchedules,
-                       final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules,
-                       final List<String> slotIdsToDelete,
-                       final Map<String, BusinessType> businessTypeMap,
-                       final boolean onlyCourtScheduleJudiciaryToBeProcessed) {
+    public void updateSlotsAndSchedules(final List<String> existingSlotIds,
+                                        final Map<String, CourtSchedule> newRecords,
+                                        final Collection<CourtScheduleJudiciary> newSchedules,
+                                        final Collection<CourtSchedule> slotsToUpdate,
+                                        final Map<String, Pair<String, String>> slotsToUpdateMap,
+                                        final Collection<CourtScheduleJudiciary> updatedSchedules,
+                                        final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules,
+                                        final List<String> slotIdsToDelete,
+                                        final Map<String, BusinessType> businessTypeMap) {
         logger.info("DD-15703:CourtScheduleRepository: update process started");
 
 
@@ -220,13 +219,11 @@ public class SessionsService {
         deactivateSchedules(existingSlotIds);
         logger.info("DD-15703:CourtScheduleRepository: after deactivateSchedules.update");
 
-        if (!onlyCourtScheduleJudiciaryToBeProcessed) {
-            logger.info("DD-15703:CourtScheduleRepository: before saveSlots");
-            saveSlots(newRecords.values(), businessTypeMap);
-            logger.info("DD-15703:CourtScheduleRepository: after saveSlots");
-        } else {
-            logger.info("saveSlots will not be processed as courtSchedule should not be persisted for this lja");
-        }
+
+        logger.info("DD-15703:CourtScheduleRepository: before saveSlots");
+        saveSlots(newRecords.values(), businessTypeMap);
+        logger.info("DD-15703:CourtScheduleRepository: after saveSlots");
+
 
         for (final CourtSchedule courtSchedule : slotsToUpdate) {
             newRecords.putIfAbsent(courtSchedule.getListingProfileId(), courtSchedule);
@@ -246,11 +243,11 @@ public class SessionsService {
 
         if (isNotEmpty(slotIdsToDelete)) {
             logger.info("DD-15703:CourtScheduleRepository: before deleteSlots");
-            deleteSlots(slotIdsToDelete);
-            logger.info("DD-15703:CourtScheduleRepository: after deleteSlots");
+            final int numberOfDeletedSlots = deleteSlots(slotIdsToDelete);
+            logger.info("DD-15703:CourtScheduleRepository: after deleteSlots with numberOfDeletedSlots : {}", numberOfDeletedSlots);
 
             logger.info("DD-15703:CourtScheduleRepository: before deleteSchedules");
-            int numberOfDeletedSchedules = deleteSchedules(slotIdsToDelete);
+            final int numberOfDeletedSchedules = deleteSchedules(slotIdsToDelete);
             logger.info("DD-15703:CourtScheduleRepository: after deleteSchedules with numberOfDeletedSchedules : {}", numberOfDeletedSchedules);
         }
 
@@ -258,25 +255,25 @@ public class SessionsService {
     }
 
     private void deactivateSlots(final List<String> snapshotSlotIds) {
-        final String listingProfileIdsPlaceholders = snapshotSlotIds.stream().map(s -> "?").collect(joining(","));
-        courtScheduleRepository.deactivateSlots(listingProfileIdsPlaceholders, Calendar.getInstance().getTime());
+        courtScheduleRepository.deactivateSlots(snapshotSlotIds, Calendar.getInstance().getTime());
     }
 
     private void deactivateSchedules(final List<String> snapshotSlotIds) {
-        final String listingProfileIdsPraceholders = snapshotSlotIds.stream().map(s -> "?").collect(joining(","));
-        courtScheduleJudiciaryRepository.deactivateSchedules(listingProfileIdsPraceholders, Calendar.getInstance().getTime());
+        courtScheduleJudiciaryRepository.deactivateSchedules(snapshotSlotIds, Calendar.getInstance().getTime());
     }
 
     private int saveSlots(final Collection<CourtSchedule> slots,
                           final Map<String, BusinessType> businessTypeMap) {
         final AtomicInteger numberOfSaved = new AtomicInteger();
         slots.forEach(slot -> {
-            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity = CourtScheduleMapper.toEntity(slot);
-            courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
-            courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
-            courtScheduleRepository.save(courtScheduleEntity);
+            if (!isMigrated(slot.getOuCode())) {
+                final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity = CourtScheduleMapper.toEntity(slot);
+                courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
+                courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
+                courtScheduleRepository.save(courtScheduleEntity);
 
-            numberOfSaved.getAndIncrement();
+                numberOfSaved.getAndIncrement();
+            }
         });
 
         return numberOfSaved.get();
@@ -303,17 +300,16 @@ public class SessionsService {
 
                 slotsScheduleEntryValue.forEach(courtScheduleJudiciary -> {
                     final Pair<String, String> courtScheduleIdAndOuCodePair = slotsToUpdate.get(profileId);
-                    final String courtScheduleId = (String) courtScheduleIdAndOuCodePair.getLeft();
-                    final String ouCode = (String) courtScheduleIdAndOuCodePair.getRight();
+                    final String courtScheduleId = courtScheduleIdAndOuCodePair.getLeft();
                     if (nonNull(courtScheduleId)) {
                         scheduleJudiciaries.stream()
                                 .filter(scheduleJudiciary -> scheduleJudiciary.getCourtScheduleId().equals(courtScheduleJudiciary.getCourtScheduleId())
                                         && scheduleJudiciary.getJudiciaryId().equals(courtScheduleJudiciary.getJudiciaryId()))
                                 .map(CourtScheduleJudiciary::getPosition)
                                 .findFirst()
-                                .ifPresent(updatedPosition -> {
-                                    courtScheduleJudiciaryRepository.updateCourtScheduleJudiciaryPosition(updatedPosition, Calendar.getInstance().getTime(), courtScheduleJudiciary.getCourtScheduleId(), courtScheduleJudiciary.getJudiciaryId());
-                                });
+                                .ifPresent(updatedPosition ->
+                                    courtScheduleJudiciaryRepository.updateCourtScheduleJudiciaryPosition(updatedPosition, Calendar.getInstance().getTime(), courtScheduleJudiciary.getCourtScheduleId(), courtScheduleJudiciary.getJudiciaryId())
+                                );
                     }
                 });
             }
@@ -327,7 +323,7 @@ public class SessionsService {
 
     private int deleteSlots(final List<String> ids) {
         final String courtScheduleIds = ids.stream().map(s -> "?").collect(joining(","));
-        return courtScheduleRepository.deleteSchedules(courtScheduleIds);
+        return courtScheduleRepository.deleteSlots(courtScheduleIds);
     }
 
     private int saveJudiciarySchedule(final Map<String, CourtSchedule> newRecords,

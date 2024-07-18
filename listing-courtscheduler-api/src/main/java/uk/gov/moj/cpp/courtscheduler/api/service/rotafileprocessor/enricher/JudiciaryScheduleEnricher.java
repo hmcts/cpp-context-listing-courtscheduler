@@ -2,7 +2,8 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
-import static java.util.Optional.of;
+import static java.util.Objects.nonNull;
+import static java.util.Optional.empty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.JUDICIARY_ERR_MSG;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
@@ -22,12 +23,12 @@ import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enrich
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaFileFieldNames.SURNAME;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaFileFieldNames.TITLE;
 
+import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
-import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryRepository;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,8 +40,7 @@ import java.util.Optional;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 
 @ApplicationScoped
 @SuppressWarnings({"squid:S1134", "squid:CommentedOutCodeLine"})
@@ -50,13 +50,14 @@ public class JudiciaryScheduleEnricher {
     private JudiciaryBuilder judiciaryBuilder;
 
     @Inject
-    private JudiciaryRepository judiciaryRepository;
-
-    @Inject
     private MissingReferenceDataMappingLogger missingMessageLogger;
 
+    @Inject
+    private ReferenceDataMapperService referenceDataMapperService;
+
     public Collection<CourtScheduleJudiciary> enrichJudiciarySchedules(final Map<String, CourtSchedule> courtScheduleMap,
-                                                                       final Map<RotaPayload, Map<String, Map<String, String>>> records) {
+                                                                       final Map<RotaPayload, Map<String, Map<String, String>>> records,
+                                                                       final Requester requester) {
         final Map<String, String> errors = new HashMap<>();
         final List<CourtScheduleJudiciary> courtScheduleJudiciarySchedules = new ArrayList<>();
 
@@ -68,13 +69,13 @@ public class JudiciaryScheduleEnricher {
 
             judiciarySchedule.putAll(getJudiciaryInfoFromRota(judiciariesMap, rotaJusticeId));
 
-            enrichJudiciaryFromCppRefdata(judiciarySchedule, errors);
+            enrichJudiciaryFromCppRefdata(judiciarySchedule, errors, requester);
 
             final String courtListingProfileId = judiciarySchedule.get(COURT_LISTING_PROFILE_ID);
             final CourtSchedule courtSchedule = courtScheduleMap.get(courtListingProfileId);
-            if (courtSchedule!= null) {
+            if (nonNull(courtSchedule)) {
                 final CourtScheduleJudiciary courtScheduleJudiciary = judiciaryBuilder.build(judiciarySchedule, courtSchedule.getCourtScheduleId());
-                if (courtScheduleJudiciary.getJudiciaryId() != null) {
+                if (nonNull(courtScheduleJudiciary.getJudiciaryId())) {
                     courtScheduleJudiciarySchedules.add(courtScheduleJudiciary);
                 }
             }
@@ -95,13 +96,13 @@ public class JudiciaryScheduleEnricher {
         return judiciaryInfoMap;
     }
 
-    private void enrichJudiciaryFromCppRefdata(final Map<String, String> schedule, final Map<String, String> errors) {
+    private void enrichJudiciaryFromCppRefdata(final Map<String, String> schedule, final Map<String, String> errors, final Requester requester) {
         final String email = schedule.get(EMAIL_ADDRESS);
 
-        final Optional<Judiciary> judiciaryFromDb = email != null && !email.isEmpty() ? of(judiciaryRepository.findByEmail(email.toLowerCase())) : Optional.empty();
+        final Optional<uk.gov.moj.cpp.courtscheduler.domain.Judiciary> judiciaryFromMapper = StringUtils.isNotEmpty(email) ? referenceDataMapperService.findByEmail(requester, email.toLowerCase()) : empty();
 
-        if (judiciaryFromDb.isPresent()) {
-            final Judiciary judiciary = judiciaryFromDb.get();
+        if (judiciaryFromMapper.isPresent()) {
+            final Judiciary judiciary = judiciaryFromMapper.get();
 
             schedule.put(JUDICIARY_ID, judiciary.getId());
             schedule.put(TITLE, judiciary.getTitlePrefix());

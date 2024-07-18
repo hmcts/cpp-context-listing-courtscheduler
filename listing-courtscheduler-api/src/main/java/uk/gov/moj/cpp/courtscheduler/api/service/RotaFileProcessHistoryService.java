@@ -23,7 +23,7 @@ public class RotaFileProcessHistoryService {
     @Transactional
     public void update(final String fileNamePrefix, final OffsetDateTime fileDate) {
         final Timestamp fileDateAsTimestamp = Timestamp.from(fileDate.toInstant());
-        rotaFileProcessHistoryRepository.delete(fileNamePrefix, fileDateAsTimestamp);
+        rotaFileProcessHistoryRepository.deleteByFileNamePrefixAndFileDate(fileNamePrefix, fileDateAsTimestamp);
 
         final RotaFileProcessHistory rotaFileProcessHistory = new RotaFileProcessHistory();
         final RotaFileProcessHistoryKey id = new RotaFileProcessHistoryKey();

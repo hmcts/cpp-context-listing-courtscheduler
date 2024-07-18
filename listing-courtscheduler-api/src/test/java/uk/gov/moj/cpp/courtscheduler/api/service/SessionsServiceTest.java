@@ -1,7 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static java.time.LocalDate.parse;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static java.util.UUID.randomUUID;
+import static java.util.stream.Collectors.toList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,15 +17,21 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
+import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
@@ -33,14 +44,18 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
+import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -49,10 +64,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import javax.json.JsonObject;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.common.constraint.Assert;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,6 +89,8 @@ class SessionsServiceTest {
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
     @Mock
+    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+    @Mock
     private Requester requester;
     @Mock
     private AllocatedListingRepository allocatedListingRepository;
@@ -80,6 +102,16 @@ class SessionsServiceTest {
     private SessionsService sessionsService;
     @Captor
     private ArgumentCaptor<CourtSchedule> courtScheduleArgumentCaptor;
+
+    @Mock
+    private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciaryEntityMock;
+
+    @Mock
+    private CourtSchedule courtScheduleEntityMock;
+
+    private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    private static final int NEW_MAX_DURATION = 40;
+    private static final int NEW_MAX_SLOTS = 20;
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingToday() {
@@ -467,6 +499,152 @@ class SessionsServiceTest {
         Assert.assertFalse(sessionsService.isMigratedByCourtCentreId(courtCentreId));
     }
 
+    @Test
+    void shouldGetExtractedCourtSchedules() throws JsonProcessingException {
+        final String ouCode = "B01LY00" ;
+        final LocalDate startDate = LocalDate.of(2024, 10, 1);
+        final LocalDate endDate = LocalDate.of(2025, 3, 31);
+
+        final List<CourtSchedule> courtScheduleEntities = getCourtScheduleEntities();
+        when(courtScheduleRepository.getExtractedCourtSchedules(ouCode, startDate, endDate)).thenReturn(courtScheduleEntities);
+
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getExtractedCourtSchedules(ouCode, startDate, endDate);
+
+        verify(courtScheduleRepository, atLeastOnce()).getExtractedCourtSchedules(ouCode, startDate, endDate);
+
+        assertThat(courtSchedules.size(), is(courtScheduleEntities.size()));
+        courtScheduleEntities.forEach(courtScheduleEntity ->
+            courtSchedules.stream().filter(courtSchedule -> courtScheduleEntity.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
+                    .findAny()
+                    .ifPresent(courtSchedule -> {
+                        assertThat(courtSchedule.getCourtScheduleId(), is(courtScheduleEntity.getCourtScheduleId()));
+                        assertThat(courtSchedule.getOuCode(), is(courtScheduleEntity.getOuCode()));
+                        assertThat(courtSchedule.getListingProfileId(), is(courtScheduleEntity.getListingProfileId()));
+                        assertThat(courtSchedule.getCourtRoomNumber(), is(courtScheduleEntity.getCourtRoomNumber()));
+                        assertThat(courtSchedule.getCourtHouseId(), is(courtScheduleEntity.getCourtHouseId()));
+                    })
+        );
+    }
+
+    @Test
+    void shouldGetExtractedCourtSchedulesForGhostData() throws JsonProcessingException {
+        final String ouCode = "B01LY00" ;
+        final LocalDate startDate = LocalDate.of(2024, 10, 1);
+        final LocalDate endDate = LocalDate.of(2025, 3, 31);
+
+        final List<CourtSchedule> courtScheduleEntities = getCourtScheduleEntities();
+        when(courtScheduleRepository.getExtractedCourtSchedulesForGhostRota(ouCode, startDate, endDate)).thenReturn(courtScheduleEntities);
+
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getExtractedCourtSchedulesForGhostRota(ouCode, startDate, endDate);
+
+        verify(courtScheduleRepository, atLeastOnce()).getExtractedCourtSchedulesForGhostRota(ouCode, startDate, endDate);
+
+        assertThat(courtSchedules.size(), is(courtScheduleEntities.size()));
+        courtScheduleEntities.forEach(courtScheduleEntity ->
+                courtSchedules.stream().filter(courtSchedule -> courtScheduleEntity.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
+                        .findAny()
+                        .ifPresent(courtSchedule -> {
+                            assertThat(courtSchedule.getCourtScheduleId(), is(courtScheduleEntity.getCourtScheduleId()));
+                            assertThat(courtSchedule.getOuCode(), is(courtScheduleEntity.getOuCode()));
+                            assertThat(courtSchedule.getListingProfileId(), is(courtScheduleEntity.getListingProfileId()));
+                            assertThat(courtSchedule.getCourtRoomNumber(), is(courtScheduleEntity.getCourtRoomNumber()));
+                            assertThat(courtSchedule.getCourtHouseId(), is(courtScheduleEntity.getCourtHouseId()));
+                        })
+        );
+    }
+
+    @Test
+    void shouldFindByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession() {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 10, 2);
+        final String businessType = "TRF";
+        final String courtSession = "PM";
+
+        final String expectedCourtScheduleId = randomUUID().toString();
+
+        when(courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession)).thenReturn(expectedCourtScheduleId);
+
+        final String courtScheduleId = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
+
+        verify(courtScheduleRepository, atLeastOnce()).findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
+        assertThat(courtScheduleId, is(expectedCourtScheduleId));
+    }
+
+    @Test
+    void shouldSaveCourtSchedules() throws JsonProcessingException {
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> provisionalCourtSchedules = getCourtSchedules();
+        final Map<String, BusinessType> businessTypeMap = getBusinessTypeMap();
+
+        when(courtScheduleRepository.save(any())).thenReturn(CourtScheduleMapper.toEntity(provisionalCourtSchedules.get(0)));
+
+        sessionsService.saveCourtSchedules(provisionalCourtSchedules, businessTypeMap);
+        verify(courtScheduleRepository, times(provisionalCourtSchedules.size())).save(any());
+    }
+
+    @Test
+    void shouldUpdateTheSlotsAndSchedulesIfNotOnlyCourtScheduleJudiciaryToBeProcessed() throws IOException {
+        final List<String> existingSlotIds = getCourtScheduleIds();
+        final Map<String, BusinessType> businessTypeMap = getBusinessTypeMap();
+        final List<String> slotIdsToDelete = asList(randomUUID().toString(), randomUUID().toString());
+
+        final List<String> snapshotSlotIds = asList(randomUUID().toString(), randomUUID().toString());
+        final List<String> listingProfileIds = asList(generateListingProfileId(), generateListingProfileId());
+        final Map<String, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> newRecords = generateIncomingSchedules(snapshotSlotIds, listingProfileIds);
+        final Collection<CourtScheduleJudiciary> newSchedules = prepareSchedules();
+        final Map<String, Pair<String, String>> slotsToUpdateMap = new HashMap<>();
+        final Collection<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> slotsToUpdate = getCourtSchedules();
+
+        doNothing().when(courtScheduleRepository).deactivateSlots(anyList(), any());
+        doNothing().when(courtScheduleJudiciaryRepository).deactivateSchedules(anyList(), any());
+        when(courtScheduleRepository.save(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
+        when(courtScheduleRepository.update(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
+        when(courtScheduleRepository.deleteSlots(anyString())).thenReturn(slotIdsToDelete.size());
+        when(courtScheduleJudiciaryRepository.deleteSchedules(anyString())).thenReturn(slotIdsToDelete.size());
+        mockIsMigrated("B01LY00", false);
+
+        sessionsService.updateSlotsAndSchedules(existingSlotIds, newRecords, newSchedules, slotsToUpdate, slotsToUpdateMap,
+                emptyList(), emptyMap(), slotIdsToDelete, businessTypeMap);
+
+        verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
+        verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
+        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
+        verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class));
+        verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
+        verify(courtScheduleJudiciaryRepository, atLeastOnce()).deleteSchedules(anyString());
+        verify(courtScheduleRepository, atLeastOnce()).deleteSlots(anyString());
+    }
+
+    @Test
+    void shouldUpdateTheSchedulesIfOnlyCourtScheduleJudiciaryToBeProcessed() throws IOException {
+        final List<String> existingSlotIds = getCourtScheduleIds();
+        final Map<String, BusinessType> businessTypeMap = getBusinessTypeMap();
+
+        final List<String> snapshotSlotIds = asList(randomUUID().toString(), randomUUID().toString());
+        final List<String> listingProfileIds = asList(generateListingProfileId(), generateListingProfileId());
+        final Map<String, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> newRecords = generateIncomingSchedules(snapshotSlotIds, listingProfileIds);
+        final Collection<CourtScheduleJudiciary> newSchedules = prepareSchedules();
+        final Map<String, Pair<String, String>> slotsToUpdateMap = new HashMap<>();
+        final Collection<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> slotsToUpdate = getCourtSchedules();
+
+        doNothing().when(courtScheduleRepository).deactivateSlots(anyList(), any());
+        doNothing().when(courtScheduleJudiciaryRepository).deactivateSchedules(anyList(), any());
+        when(courtScheduleRepository.update(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
+        mockIsMigrated("B01LY00", true);
+
+        sessionsService.updateSlotsAndSchedules(existingSlotIds, newRecords, newSchedules, slotsToUpdate, slotsToUpdateMap,
+                emptyList(), emptyMap(), emptyList(), businessTypeMap);
+
+        verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
+        verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
+        verify(courtScheduleRepository, never()).save(any(CourtSchedule.class));
+        verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
+        verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class));
+        verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
+        verify(courtScheduleJudiciaryRepository, never()).deleteSchedules(anyString());
+        verify(courtScheduleRepository, never()).deleteSlots(anyString());
+    }
+
     private static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule getPersistedCourtSchedule(final String courtScheduleId, final String businessTypeCode) {
         uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = random(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
@@ -636,6 +814,27 @@ class SessionsServiceTest {
         return businessTypeMap;
     }
 
+    private List<CourtSchedule> getCourtScheduleEntities() throws JsonProcessingException {
+        final String courtScheduleEntitiesJsonString = FileUtil.fileToString("/test-data/court-schedules-entity-data.json");
+
+        return objectMapper.readValue(courtScheduleEntitiesJsonString, new TypeReference<List<CourtSchedule>>(){});
+    }
+
+    private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedules() throws JsonProcessingException {
+        final String courtScheduleDomainsJsonString = FileUtil.fileToString("/test-data/court-schedules-domain-data.json");
+
+        return objectMapper.readValue(courtScheduleDomainsJsonString, new TypeReference<List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>>(){});
+    }
+
+    private List<String> getCourtScheduleIds() throws JsonProcessingException {
+        final String courtScheduleEntitiesJsonString = FileUtil.fileToString("/test-data/court-schedules-entity-data.json");
+
+        return objectMapper.readValue(courtScheduleEntitiesJsonString, new TypeReference<List<CourtSchedule>>(){})
+                .stream()
+                .map(CourtSchedule::getCourtScheduleId)
+                .toList();
+    }
+
     private Map<UUID, CourtRoom> getCourtRoomMap() {
         final Map<UUID, CourtRoom> courtRoomMap = new HashMap<>();
         JsonObject courtRoomJson = getPayload("/test-data/referencedata.get.rota.courtrooms.json");
@@ -684,5 +883,81 @@ class SessionsServiceTest {
             }
         });
         return courtRoomMap;
+    }
+
+    private Map<String, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> generateIncomingSchedules(final List<String> snapshotSlotIds, final List<String> listingProfileIds) {
+
+        final Map<String, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> slots = new HashMap<>();
+
+        for (int i = 0; i < listingProfileIds.size(); i++) {
+            final String listingProfileId = listingProfileIds.get(i);
+            slots.put(listingProfileId, courtSchedule("2020-01-01", snapshotSlotIds.get(i), listingProfileId, NEW_MAX_DURATION, null, null, NEW_MAX_SLOTS));
+        }
+
+        return slots;
+
+    }
+
+    private uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule(final String sessionDate,
+                                                                             final String courtScheduleId,
+                                                                             final String listingProfileId,
+                                                                             final Integer maxDuration,
+                                                                             final Integer availableSlots,
+                                                                             final Integer availableDuration,
+                                                                             final Integer maxSlots) {
+
+        final String scheduleId = courtScheduleId != null ? courtScheduleId : randomUUID().toString();
+        final String profileId = listingProfileId;
+        final Integer mDuration = maxDuration != null ? maxDuration : 182;
+        final Integer avSlots = availableSlots != null ? availableSlots : 125;
+        final Integer avDuration = availableDuration != null ? availableDuration : 182;
+        final Integer mSlots = maxSlots != null ? maxSlots : 125;
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtScheduleExtracted = new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(scheduleId)
+                .withListingProfileId(profileId)
+                .withSessionDate(parse(sessionDate))
+                .withOuCode("CABC90")
+                .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
+                .withCourtRoomNumber(1234)
+                .withCourtHouseName("Liverpool Mags Court")
+                .withCourtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
+                .withCourtRoomName("Court name1")
+                .withOperationalUnit("ANC")
+                .withBusinessType("PSV")
+                .withPanel("PANEL")
+                .withCourtSession("AM")
+                .withMaxDuration(mDuration)
+                .withAvailableSlots(avSlots)
+                .withAvailableDuration(avDuration)
+                .withMaxSlots(mSlots)
+                .build();
+        return courtScheduleExtracted;
+    }
+
+    private String generateListingProfileId() {
+        return "ITCS" + ThreadLocalRandom.current().nextInt(1000000);
+    }
+
+    private Collection<CourtScheduleJudiciary> prepareSchedules() throws JsonProcessingException {
+        final String scheduleRecordsJsonString = FileUtil.fileToString("/test-data/schedule-records.json");
+        final Collection<Map<String, String>> collection = objectMapper.readValue(scheduleRecordsJsonString, Collection.class);
+
+        return collection.stream().map(this::buildJudiciary).collect(toList());
+    }
+
+    private CourtScheduleJudiciary buildJudiciary(final Map<String, String> props) {
+        return judiciary().withJudiciaryId(props.get("justice"))
+                .withCourtListingProfileId(props.get("courtListingProfile"))
+                .withEmailAddress(props.get("email"))
+                .build();
+    }
+
+    private void mockIsMigrated(final String ouCode, final boolean isMigrated) {
+        final CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(ouCode);
+        migrationStatus.setCourtCentreId(randomUUID().toString());
+        migrationStatus.setMigrated(isMigrated);
+        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(migrationStatus);
     }
 }

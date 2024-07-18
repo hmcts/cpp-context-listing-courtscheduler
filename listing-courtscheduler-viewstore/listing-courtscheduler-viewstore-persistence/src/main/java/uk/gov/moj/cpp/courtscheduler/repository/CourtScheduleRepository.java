@@ -10,7 +10,6 @@ import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.NOT_EXISTS_PROV
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -44,6 +43,7 @@ import javax.persistence.criteria.CriteriaQuery;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
+import org.apache.deltaspike.data.api.EntityRepository;
 import org.apache.deltaspike.data.api.Modifying;
 import org.apache.deltaspike.data.api.Query;
 import org.apache.deltaspike.data.api.QueryParam;
@@ -53,8 +53,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @SuppressWarnings({"squid:S1312", "squid:S2629", "squid:S6813"})
-@Repository(forEntity = CourtSchedule.class)
-public abstract class CourtScheduleRepository extends AbstractEntityRepository<CourtSchedule, String> {
+@Repository
+public abstract class CourtScheduleRepository extends AbstractEntityRepository<CourtSchedule, String> implements EntityRepository<CourtSchedule, String> {
 
     @Inject
     EntityManager entityManager;
@@ -250,7 +250,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .executeUpdate();
     }
 
-    public int deleteSchedules(final String courtScheduleIds) {
+    public int deleteSlots(final String courtScheduleIds) {
         return entityManager()
                 .createNativeQuery(DELETE_SLOTS_BY_IDS_QUERY)
                 .setParameter("courtScheduleIds", courtScheduleIds)
@@ -264,8 +264,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     public abstract List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@QueryParam("ouCodes") final String ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
 
     @Modifying
-    @Query(value = "UPDATE CourtSchedule cd SET cd.active = false, cd.updatedOn = :updatedOn WHERE cd.courtScheduleId IN :courtScheduleIds")
-    public abstract void deactivateSlots(@QueryParam("courtScheduleIds") final String courtScheduleIds, @QueryParam("updatedOn") final Date updatedOn);
+    @Query(value = "UPDATE CourtSchedule cs SET cs.active = false, cs.updatedOn = :updatedOn WHERE cs.courtScheduleId IN :courtScheduleIds")
+    public abstract void deactivateSlots(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds, @QueryParam("updatedOn") final Date updatedOn);
 
     protected void releaseAllocatedSlotsOrDurationFromCourtSchedule(final List<AllocatedListing> allocatedListings) {
 
@@ -412,10 +412,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         if (isNotEmpty(yes)) {
             courtSchedule.getSlotStartTimes().addAll(yes);
         }
-    }
-
-    public void saveCourtSchedules(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> provisionalCourtSchedules, final Map<String, BusinessType> businessTypeMap) {
-
     }
 
     @Query(value = "SELECT entity.courtScheduleId from CourtSchedule entity where entity.courtRoomId = :courtRoomId " +

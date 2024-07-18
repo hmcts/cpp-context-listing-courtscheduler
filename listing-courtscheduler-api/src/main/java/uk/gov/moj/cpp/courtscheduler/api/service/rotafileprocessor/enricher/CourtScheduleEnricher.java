@@ -1,9 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher;
 
 import static java.lang.String.format;
-import static java.util.Objects.nonNull;
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
 import static java.util.UUID.randomUUID;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_DETAIL_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_ROOM_ERR_MSG;
@@ -15,12 +12,12 @@ import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enrich
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaFileFieldNames.VENUE_NAME;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtRoomSessionAllocationRepository;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -40,10 +37,9 @@ public class CourtScheduleEnricher {
     private ReferenceDataService referenceDataService;
 
     @Inject
-    private CourtRoomSessionAllocationRepository courtRoomSessionAllocationRepository;
+    private ReferenceDataMapperService referenceDataMapperService;
 
     private Map<String, String> missingReferenceDataMappingMap = new ConcurrentHashMap<>();
-
 
     public CourtSchedule build(final Map<String, String> listingProfile, final LocalDate sessionDate, final Requester requester) {
         final CourtSchedule.CourtScheduleBuilder builder = new CourtSchedule.CourtScheduleBuilder();
@@ -57,7 +53,7 @@ public class CourtScheduleEnricher {
             final CourtRoom courtRoomDetail = courtRoom.get();
             populateCourtProperties(builder, courtRoomDetail);
             populateListingProperties(builder, listingProfile, sessionDate, courtSessionStr, businessType);
-            populateSessionAllocation(builder, businessType, sessionDate, courtSessionStr, courtRoomDetail);
+            populateSessionAllocation(builder, businessType, sessionDate, courtSessionStr, courtRoomDetail, requester);
         } else {
             final String msgKey = format(COURT_ROOM_ERR_MSG, locationId, venueName, venueId);
             missingReferenceDataMappingMap.putIfAbsent(msgKey, COURT_DETAIL_NOT_FOUND);
@@ -82,13 +78,13 @@ public class CourtScheduleEnricher {
                                            final String businessType,
                                            final LocalDate sessionDate,
                                            final String courtSessionStr,
-                                           final CourtRoom courtRoomDetail) {
+                                           final CourtRoom courtRoomDetail,
+                                           final Requester requester) {
         final String listingSession = courtSession.getCourtSession(sessionDate, courtSessionStr);
-        final CourtRoomSessionAllocation courtRoomSessionAllocation = courtRoomSessionAllocationRepository.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType);
-        final Optional<CourtRoomSessionAllocation> sessionAllocation = nonNull(courtRoomSessionAllocation) ? of(courtRoomSessionAllocation) : empty();
+        final Optional<CourtRoomSessionAllocation> sessionAllocation = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(requester, courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType);
 
         if (sessionAllocation.isPresent()) {
-            final CourtRoomSessionAllocation allocation = sessionAllocation.get();
+            final uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation allocation = sessionAllocation.get();
             populateSessionAllocationProperties(builder, allocation);
         } else {
             final String msgKey = format(SESSION_ALLOCATION_ERR_MSG,

@@ -20,8 +20,8 @@ import org.apache.deltaspike.data.api.Repository;
 @Repository(forEntity = CourtScheduleJudiciary.class)
 public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey> {
 
-    private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "DELETE FROM COURT_SCHEDULE_JUDICIARY WHERE court_schedule_id IN " +
-            " (SELECT id FROM court_Schedule WHERE court_listing_profile_id is not null AND max_slot = available_slot " +
+    private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "DELETE FROM court_schedule_judiciary WHERE court_schedule_id IN " +
+            " (SELECT id FROM court_schedule WHERE court_listing_profile_id is not null AND max_slot = available_slot " +
             "AND max_duration_mins = available_duration_mins AND session_start BETWEEN :startDate AND :endDate AND oucode IN :ouCodes " +
             "AND not exists (" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + "))  AND active = true";
 
@@ -51,9 +51,9 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
 
     }
 
-    public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(final LocalDate startDate,
-                                                                             final LocalDate endDate,
-                                                                             final String ouCodes) {
+    public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(@QueryParam("startDate") final LocalDate startDate,
+                                                                             @QueryParam("endDate") final LocalDate endDate,
+                                                                             @QueryParam("ouCodes") final String ouCodes) {
         return entityManager()
                 .createNativeQuery(DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY)
                 .setParameter("startDate", startDate)
@@ -62,7 +62,7 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 .executeUpdate();
     }
 
-    public int deleteSchedules(final String courtScheduleIds) {
+    public int deleteSchedules(@QueryParam("courtScheduleIds") final String courtScheduleIds) {
         return entityManager()
                 .createNativeQuery(DELETE_CSJ_BY_IDS_QUERY)
                 .setParameter("courtScheduleIds", courtScheduleIds)
@@ -71,7 +71,7 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
 
     @Modifying
     @Query(value = "UPDATE CourtScheduleJudiciary csj SET csj.active = false, csj.updatedOn = :updatedOn WHERE csj.id.courtScheduleId IN :courtScheduleIds")
-    public abstract void deactivateSchedules(@QueryParam("courtScheduleIds") final String courtScheduleIds, @QueryParam("updatedOn") final Date updatedOn);
+    public abstract void deactivateSchedules(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds, @QueryParam("updatedOn") final Date updatedOn);
 
     @Modifying
     @Query(value = "UPDATE CourtScheduleJudiciary csj SET csj.position = :position, csj.active = true, csj.updatedOn = :updatedOn WHERE csj.id.courtScheduleId =:courtScheduleId and csj.id.judiciaryId = :judiciaryId")
