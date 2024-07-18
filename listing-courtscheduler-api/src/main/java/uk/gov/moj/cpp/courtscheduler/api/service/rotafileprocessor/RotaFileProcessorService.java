@@ -5,7 +5,6 @@ import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.END_DATE;
@@ -193,7 +192,11 @@ public class RotaFileProcessorService {
                     logger.warn("There is a newer snapshot rota file has been processed already. Therefore, skipping.");
                 } else {
                     logger.info("DD-15703:RotaFileProcessor: Before  processSnapshotRotaFile");
-                    processSnapshotRotaFile(slots, schedules, rotaPeriodStartDate, rotaPeriodEndDate, ouCodes, fileNamePrefix, fileDateTime, businessTypesMap);
+
+                    final Map<String, LocalDate> startAndEndDate = new HashMap<>();
+                    startAndEndDate.put(START_DATE.getLabel(), rotaPeriodStartDate);
+                    startAndEndDate.put(END_DATE.getLabel(), rotaPeriodEndDate);
+                    processSnapshotRotaFile(slots, schedules, startAndEndDate, ouCodes, fileNamePrefix, fileDateTime, businessTypesMap);
                 }
             }
         } else {
@@ -232,12 +235,14 @@ public class RotaFileProcessorService {
     @Transactional
     protected void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                            final Collection<CourtScheduleJudiciary> schedules,
-                                           final LocalDate startDate,
-                                           final LocalDate endDate,
+                                           final Map<String, LocalDate> startAndEndDate,
                                            final String ouCodes,
                                            final String fileNamePrefix,
                                            final OffsetDateTime fileDate,
                                            final Map<String, BusinessType> businessTypesMap) {
+
+        final LocalDate startDate = startAndEndDate.get(START_DATE.getLabel());
+        final LocalDate endDate = startAndEndDate.get(END_DATE.getLabel());
         logger.info("DD-15703:processSnapshotRotaFile: began transaction");
         int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
         logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
@@ -290,11 +295,11 @@ public class RotaFileProcessorService {
         final Collection<CourtSchedule> slotsToUpdate = calculateAvailableValues(
                 slots.values().stream().filter(s -> existingSlotScheduleIds.contains(s.getCourtScheduleId()))
                         .filter(updateSlot -> filterMissingBusinessTypes(allBusinessTypeCodes, missingBusinessTypes, updateSlot))
-                        .collect(toList()),
+                        .toList(),
                 allocatedListings, businessTypesMap);
 
         final Collection<CourtScheduleJudiciary> newCourtScheduleJudiciaries = schedules.stream()
-                .filter(s -> newSlotProfileIds.contains(s.getCourtListingProfileId())).collect(toList());
+                .filter(s -> newSlotProfileIds.contains(s.getCourtListingProfileId())).toList();
         final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules = courtScheduleJudiciaryService.findRelatedJudiciarySchedules(existingSlotScheduleIds);
 
 
@@ -382,7 +387,7 @@ public class RotaFileProcessorService {
     private List<String> getLocationFromRecords(final Map<RotaPayload, Map<String, Map<String, String>>> records) {
         final Map<String, Map<String, String>> locations = records.get(RotaPayload.LOCATION);
 
-        return locations.entrySet().stream().flatMap(e -> e.getValue().keySet().stream()).collect(toList());
+        return locations.entrySet().stream().flatMap(e -> e.getValue().keySet().stream()).toList();
     }
 
     private String getOuCodesFromCourtRoomMappingsByLocationId(final List<String> locationIds, final Requester requester) {
@@ -413,7 +418,7 @@ public class RotaFileProcessorService {
                         existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxSlots().equals(existingSlot.getAvailableSlots())
                                 || !existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxDuration().equals(existingSlot.getAvailableDuration()))
                 .map(CourtSchedule::getCourtScheduleId)
-                .collect(toList());
+                .toList();
     }
 
     @SuppressWarnings({"squid:S1188"})

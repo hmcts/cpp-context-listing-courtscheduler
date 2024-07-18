@@ -229,6 +229,8 @@ public class SessionsService {
 
     }
 
+
+    @SuppressWarnings("squid:S107")
     @Transactional
     public void updateSlotsAndSchedules(final List<String> existingSlotIds,
                                         final Map<String, CourtSchedule> newRecords,

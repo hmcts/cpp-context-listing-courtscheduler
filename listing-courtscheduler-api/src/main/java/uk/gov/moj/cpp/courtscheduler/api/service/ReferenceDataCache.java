@@ -153,7 +153,7 @@ public class ReferenceDataCache {
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {
                 });
             } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst reading cacheResult and converting to List<BusinessType> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+                LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
             }
             return emptyList();
         }
@@ -171,7 +171,7 @@ public class ReferenceDataCache {
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {
                 });
             } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst reading cacheResult and converting to List<BusinessType> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+                LOGGER.error("exception whilst reading cacheResult and converting to List<CourtRoomSessionAllocation> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
             }
             return emptyList();
         }

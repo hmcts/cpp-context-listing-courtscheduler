@@ -133,7 +133,7 @@ public class AllocatedListingRepositoryTest {
 
         final List<AllocatedListingTotalBooked> allocatedListingTotalBookeds = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(List.of(courtScheduleId1, courtScheduleId2));
 
-        assertEquals(allocatedListingTotalBookeds.size(), 2);
+        assertEquals(2, allocatedListingTotalBookeds.size());
         if (allocatedListingTotalBookeds.get(0).getCourtScheduleId().equals(courtScheduleId1)) {
             assertEquals(allocatedListingTotalBookeds.get(0).getCourtScheduleId(), courtScheduleId1);
             assertThat(allocatedListingTotalBookeds.get(0).getTotalBooked(), is(2));
