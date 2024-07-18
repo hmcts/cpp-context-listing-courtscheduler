@@ -40,6 +40,7 @@ import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.transaction.Transactional;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
@@ -68,15 +69,15 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     ProvisionalBookingRepository provisionalBookingRepository;
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRepository.class.getName());
 
-    private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY = "DELETE FROM COURT_SCHEDULE " +
-            "WHERE court_listing_profile_id is not null AND max_slot = available_slot AND max_duration_mins = available_duration_mins and " +
-            "session_start BETWEEN :startDate AND :endDate AND oucode IN :ouCodes AND active =true AND NOT EXISTS( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+    private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY = "DELETE FROM court_schedule cs " +
+            "WHERE cs.court_listing_profile_id is not null AND cs.max_slot = cs.available_slot AND cs.max_duration_mins = cs.available_duration_mins and " +
+            "cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN :ouCodes AND cs.active =true AND NOT EXISTS( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
-    public static final String DELETE_UNALLOCATED_FORECAST_SLOT_QUERY = "DELETE FROM COURT_SCHEDULE " +
+    public static final String DELETE_UNALLOCATED_FORECAST_SLOT_QUERY = "DELETE FROM court_schedule " +
             "WHERE court_listing_profile_id is null AND max_slot = available_slot AND max_duration_mins = available_duration_mins AND oucode IN :ouCodes " +
             "AND active =true and not exists( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
-    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM COURT_SCHEDULE WHERE id IN :courtScheduleIds AND " +
+    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule WHERE id IN :courtScheduleIds AND " +
             "not exists(" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
 
@@ -234,7 +235,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return errorDeleteCourtSchedules;
     }
 
-    public int deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final String ouCodes) {
+    @Transactional
+    public int deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
         return entityManager()
                 .createNativeQuery(DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY)
                 .setParameter("startDate", startDate)
@@ -243,13 +245,15 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .executeUpdate();
     }
 
-    public int deleteUnAllocatedProvisionalEntries(final String ouCodes) {
+    @Transactional
+    public int deleteUnAllocatedProvisionalEntries(final List<String> ouCodes) {
         return entityManager()
                 .createNativeQuery(DELETE_UNALLOCATED_FORECAST_SLOT_QUERY)
                 .setParameter("ouCodes", ouCodes)
                 .executeUpdate();
     }
 
+    @Transactional
     public int deleteSlots(final String courtScheduleIds) {
         return entityManager()
                 .createNativeQuery(DELETE_SLOTS_BY_IDS_QUERY)
@@ -258,10 +262,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.active = true AND cs.sessionDate BETWEEN :startDate AND :endDate")
-    public abstract List<CourtSchedule> getExtractedCourtSchedules(@QueryParam("ouCodes") final String ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
+    public abstract List<CourtSchedule> getExtractedCourtSchedules(@QueryParam("ouCodes") final List<String> ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
 
     @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.sessionDate BETWEEN :startDate AND :endDate")
-    public abstract List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@QueryParam("ouCodes") final String ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
+    public abstract List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@QueryParam("ouCodes") final List<String> ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
 
     @Modifying
     @Query(value = "UPDATE CourtSchedule cs SET cs.active = false, cs.updatedOn = :updatedOn WHERE cs.courtScheduleId IN :courtScheduleIds")

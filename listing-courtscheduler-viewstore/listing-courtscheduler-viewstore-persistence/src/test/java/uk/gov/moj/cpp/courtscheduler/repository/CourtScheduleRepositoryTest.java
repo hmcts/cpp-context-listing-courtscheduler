@@ -38,11 +38,9 @@ import javax.inject.Inject;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.hibernate.exception.ConstraintViolationException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 @RunWith(CdiTestRunner.class)
 public class CourtScheduleRepositoryTest {
@@ -56,8 +54,6 @@ public class CourtScheduleRepositoryTest {
     ProvisionalBookingRepository provisionalBookingRepository;
     @Inject
     AllocatedListingRepository allocatedListingRepository;
-    @Mock
-    ConstraintViolationException constraintViolationException;
 
     private String courtScheduleId = randomUUID().toString();
     @Before
@@ -553,7 +549,7 @@ public class CourtScheduleRepositoryTest {
 
         final LocalDate startDate = LocalDate.of(2024, 4, 1);
         final LocalDate endDate = LocalDate.of(2024, 9, 16);
-        final List<CourtSchedule> extractedCourtSchedules = courtScheduleRepository.getExtractedCourtSchedules(ouCode, startDate, endDate);
+        final List<CourtSchedule> extractedCourtSchedules = courtScheduleRepository.getExtractedCourtSchedules(List.of(ouCode), startDate, endDate);
 
         assertEquals(1, extractedCourtSchedules.size());
         final CourtSchedule actualCourtSchedule = extractedCourtSchedules.get(0);
@@ -593,7 +589,7 @@ public class CourtScheduleRepositoryTest {
 
         final LocalDate startDate = LocalDate.of(2024, 9, 17);
         final LocalDate endDate = LocalDate.of(2025, 9, 30);
-        final List<CourtSchedule> extractedCourtSchedulesForGhostRota = courtScheduleRepository.getExtractedCourtSchedulesForGhostRota(ouCode, startDate, endDate);
+        final List<CourtSchedule> extractedCourtSchedulesForGhostRota = courtScheduleRepository.getExtractedCourtSchedulesForGhostRota(List.of(ouCode), startDate, endDate);
 
         assertEquals(1, extractedCourtSchedulesForGhostRota.size());
         final CourtSchedule actualCourtSchedule = extractedCourtSchedulesForGhostRota.get(0);

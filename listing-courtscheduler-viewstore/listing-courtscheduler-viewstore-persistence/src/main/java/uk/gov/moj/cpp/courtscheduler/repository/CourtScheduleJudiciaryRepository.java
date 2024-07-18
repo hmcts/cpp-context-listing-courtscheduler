@@ -11,6 +11,8 @@ import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 
+import javax.transaction.Transactional;
+
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
 import org.apache.deltaspike.data.api.Modifying;
 import org.apache.deltaspike.data.api.Query;
@@ -20,13 +22,13 @@ import org.apache.deltaspike.data.api.Repository;
 @Repository(forEntity = CourtScheduleJudiciary.class)
 public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey> {
 
-    private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "DELETE FROM court_schedule_judiciary WHERE court_schedule_id IN " +
-            " (SELECT id FROM court_schedule WHERE court_listing_profile_id is not null AND max_slot = available_slot " +
-            "AND max_duration_mins = available_duration_mins AND session_start BETWEEN :startDate AND :endDate AND oucode IN :ouCodes " +
-            "AND not exists (" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + "))  AND active = true";
+    private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN " +
+            " (SELECT cs.id FROM court_schedule cs WHERE cs.court_listing_profile_id is not null AND cs.max_slot = cs.available_slot " +
+            "AND cs.max_duration_mins = cs.available_duration_mins AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN :ouCodes " +
+            "AND not exists (" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
 
-    public static final String DELETE_CSJ_BY_IDS_QUERY = "DELETE FROM COURT_SCHEDULE_JUDICIARY WHERE court_schedule_id IN :courtScheduleIds " +
-            "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = court_schedule_id)";
+    public static final String DELETE_CSJ_BY_IDS_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN :courtScheduleIds " +
+            "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)";
 
     public abstract CourtScheduleJudiciary findByEmail(String email);
 
@@ -51,9 +53,10 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
 
     }
 
+    @Transactional
     public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(@QueryParam("startDate") final LocalDate startDate,
                                                                              @QueryParam("endDate") final LocalDate endDate,
-                                                                             @QueryParam("ouCodes") final String ouCodes) {
+                                                                             @QueryParam("ouCodes") final List<String> ouCodes) {
         return entityManager()
                 .createNativeQuery(DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY)
                 .setParameter("startDate", startDate)
@@ -62,7 +65,8 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 .executeUpdate();
     }
 
-    public int deleteSchedules(@QueryParam("courtScheduleIds") final String courtScheduleIds) {
+    @Transactional
+    public int deleteSchedules(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds) {
         return entityManager()
                 .createNativeQuery(DELETE_CSJ_BY_IDS_QUERY)
                 .setParameter("courtScheduleIds", courtScheduleIds)

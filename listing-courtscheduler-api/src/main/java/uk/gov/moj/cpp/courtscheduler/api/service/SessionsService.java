@@ -200,14 +200,14 @@ public class SessionsService {
         return courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
     }
 
-    public List<CourtSchedule> getExtractedCourtSchedules(final String ouCodes, final LocalDate startDate, final LocalDate endDate) {
+    public List<CourtSchedule> getExtractedCourtSchedules(final List<String> ouCodes, final LocalDate startDate, final LocalDate endDate) {
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExtractedCourtSchedules(ouCodes, startDate, endDate);
         return courtScheduleEntities.stream()
                 .map(CourtScheduleMapper::toDomain)
                 .toList();
     }
 
-    public List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(final String ouCodes, final LocalDate startDate, final LocalDate endDate) {
+    public List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(final List<String> ouCodes, final LocalDate startDate, final LocalDate endDate) {
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExtractedCourtSchedulesForGhostRota(ouCodes, startDate, endDate);
         return courtScheduleEntities.stream()
                 .map(CourtScheduleMapper::toDomain)
@@ -350,8 +350,7 @@ public class SessionsService {
     }
 
     private int deleteSchedules(final List<String> ids) {
-        final String courtScheduleIds = ids.stream().map(s -> "?").collect(joining(","));
-        return courtScheduleJudiciaryRepository.deleteSchedules(courtScheduleIds);
+        return courtScheduleJudiciaryRepository.deleteSchedules(ids);
     }
 
     private int deleteSlots(final List<String> ids) {

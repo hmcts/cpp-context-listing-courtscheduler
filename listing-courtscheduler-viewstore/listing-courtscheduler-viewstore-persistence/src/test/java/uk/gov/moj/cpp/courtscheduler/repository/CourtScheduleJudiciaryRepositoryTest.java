@@ -2,18 +2,24 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.UUID.randomUUID;
+import static java.util.stream.Collectors.joining;
+import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 
 import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
@@ -26,6 +32,9 @@ import org.junit.runner.RunWith;
 public class CourtScheduleJudiciaryRepositoryTest {
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+
+    @Inject
+    private CourtScheduleRepository courtScheduleRepository;
 
     @After
     public void tearDown() {
@@ -112,6 +121,105 @@ public class CourtScheduleJudiciaryRepositoryTest {
         assertEquals(courtScheduleJudiciaryUpdated.getPosition(), newPosition);
         assertEquals(courtScheduleJudiciaryUpdated.getUpdatedOn().getTime(), updatedOn.getTime());
         assertEquals(true, courtScheduleJudiciaryUpdated.getActive());
+    }
+
+    @Test
+    public void shouldFindInCourtSchedules() {
+        final String courtScheduleId1 = randomUUID().toString();
+        final CourtScheduleJudiciary courtScheduleJudiciary1 = random(CourtScheduleJudiciary.class);
+        courtScheduleJudiciary1.getId().setCourtScheduleId(courtScheduleId1);
+
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary1);
+
+        final String courtScheduleId2 = randomUUID().toString();
+        final CourtScheduleJudiciary courtScheduleJudiciary2 = random(CourtScheduleJudiciary.class);
+        courtScheduleJudiciary2.getId().setCourtScheduleId(courtScheduleId2);
+
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary2);
+
+        final List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findInCourtScheduleIds(List.of(courtScheduleId1, courtScheduleId2));
+
+        assertEquals(2, courtScheduleJudiciaries.size());
+    }
+
+    @Test
+    public void shouldDeleteSchedules() {
+        final String courtScheduleId1 = randomUUID().toString();
+        final CourtScheduleJudiciary courtScheduleJudiciary1 = random(CourtScheduleJudiciary.class);
+        courtScheduleJudiciary1.getId().setCourtScheduleId(courtScheduleId1);
+
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary1);
+
+        final String courtScheduleId2 = randomUUID().toString();
+        final CourtScheduleJudiciary courtScheduleJudiciary2 = random(CourtScheduleJudiciary.class);
+        courtScheduleJudiciary2.getId().setCourtScheduleId(courtScheduleId2);
+
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary2);
+
+        courtScheduleJudiciaryRepository.deleteSchedules(List.of(courtScheduleId1, courtScheduleId2));
+
+        final List<CourtScheduleJudiciary> expectedCourtScheduleJudiciary1 = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId1);
+
+        assertTrue(isEmpty(expectedCourtScheduleJudiciary1));
+
+        final List<CourtScheduleJudiciary> expectedCourtScheduleJudiciary2 = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId1);
+
+        assertTrue(isEmpty(expectedCourtScheduleJudiciary2));
+    }
+
+
+    @Test
+    public void shouldDeleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod() {
+        final String courtScheduleId1 = randomUUID().toString();
+        final String ouCode1 = "B53DT00";
+        final CourtScheduleJudiciary courtScheduleJudiciary1 = random(CourtScheduleJudiciary.class);
+        courtScheduleJudiciary1.getId().setCourtScheduleId(courtScheduleId1);
+        courtScheduleJudiciary1.setActive(true);
+
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary1);
+
+        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setCourtScheduleId(courtScheduleId1);
+        courtSchedule1.setMaxSlots(10);
+        courtSchedule1.setAvailableSlots(10);
+        courtSchedule1.setMaxDuration(0);
+        courtSchedule1.setAvailableDuration(0);
+        courtSchedule1.setSessionDate(LocalDate.of(2024, 10, 21));
+        courtSchedule1.setListingProfileId("CS2995299");
+        courtSchedule1.setOuCode(ouCode1);
+
+        courtScheduleRepository.save(courtSchedule1);
+
+        final String courtScheduleId2 = randomUUID().toString();
+        final String ouCode2 = "B52BB00";
+        final CourtScheduleJudiciary courtScheduleJudiciary2 = random(CourtScheduleJudiciary.class);
+        courtScheduleJudiciary2.getId().setCourtScheduleId(courtScheduleId2);
+        courtScheduleJudiciary2.setActive(true);
+
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary2);
+
+        final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
+        courtSchedule2.setCourtScheduleId(courtScheduleId2);
+        courtSchedule2.setMaxSlots(10);
+        courtSchedule2.setAvailableSlots(10);
+        courtSchedule2.setMaxDuration(0);
+        courtSchedule2.setAvailableDuration(0);
+        courtSchedule2.setSessionDate(LocalDate.of(2024, 10, 15));
+        courtSchedule2.setListingProfileId("CS2995299");
+        courtSchedule2.setOuCode(ouCode2);
+
+        courtScheduleRepository.save(courtSchedule2);
+
+        final LocalDate startDate = LocalDate.of(2024, 10, 3);
+        final LocalDate endDate = LocalDate.of(2024, 10, 31);
+
+        final List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findAll();
+        assertEquals(2, courtScheduleJudiciaries.size());
+        courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, List.of(ouCode1, ouCode2));
+
+        final List<CourtScheduleJudiciary> courtSchedules = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId1);
+
+        assertTrue(isEmpty(courtSchedules));
     }
 
 }

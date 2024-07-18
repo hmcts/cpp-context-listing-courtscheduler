@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
@@ -160,6 +161,24 @@ class RotaFileProcessorServiceTest {
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
 
         verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(requester));
+    }
+
+    @Test
+    void shouldNotProcessDummyFile() throws IOException {
+        final String file = "rotafileprocessor/rota_payload.xml";
+        final String blobName = "dummysupport.xml";
+        final byte[] blobContent = givenBlobContent(file);
+
+        final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
+        final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
+
+        final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
+        when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
+        doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
+
+        rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
+
+        verify(judiciaryScheduleEnricher, never()).enrichJudiciarySchedules(eq(slots), eq(records), eq(requester));
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {

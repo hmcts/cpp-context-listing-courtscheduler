@@ -507,11 +507,11 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2025, 3, 31);
 
         final List<CourtSchedule> courtScheduleEntities = getCourtScheduleEntities();
-        when(courtScheduleRepository.getExtractedCourtSchedules(ouCode, startDate, endDate)).thenReturn(courtScheduleEntities);
+        when(courtScheduleRepository.getExtractedCourtSchedules(List.of(ouCode), startDate, endDate)).thenReturn(courtScheduleEntities);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getExtractedCourtSchedules(ouCode, startDate, endDate);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getExtractedCourtSchedules(List.of(ouCode), startDate, endDate);
 
-        verify(courtScheduleRepository, atLeastOnce()).getExtractedCourtSchedules(ouCode, startDate, endDate);
+        verify(courtScheduleRepository, atLeastOnce()).getExtractedCourtSchedules(List.of(ouCode), startDate, endDate);
 
         assertThat(courtSchedules.size(), is(courtScheduleEntities.size()));
         courtScheduleEntities.forEach(courtScheduleEntity ->
@@ -534,11 +534,11 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2025, 3, 31);
 
         final List<CourtSchedule> courtScheduleEntities = getCourtScheduleEntities();
-        when(courtScheduleRepository.getExtractedCourtSchedulesForGhostRota(ouCode, startDate, endDate)).thenReturn(courtScheduleEntities);
+        when(courtScheduleRepository.getExtractedCourtSchedulesForGhostRota(List.of(ouCode), startDate, endDate)).thenReturn(courtScheduleEntities);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getExtractedCourtSchedulesForGhostRota(ouCode, startDate, endDate);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getExtractedCourtSchedulesForGhostRota(List.of(ouCode), startDate, endDate);
 
-        verify(courtScheduleRepository, atLeastOnce()).getExtractedCourtSchedulesForGhostRota(ouCode, startDate, endDate);
+        verify(courtScheduleRepository, atLeastOnce()).getExtractedCourtSchedulesForGhostRota(List.of(ouCode), startDate, endDate);
 
         assertThat(courtSchedules.size(), is(courtScheduleEntities.size()));
         courtScheduleEntities.forEach(courtScheduleEntity ->
@@ -602,7 +602,7 @@ class SessionsServiceTest {
         when(courtScheduleRepository.save(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
         when(courtScheduleRepository.update(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
         when(courtScheduleRepository.deleteSlots(anyString())).thenReturn(slotIdsToDelete.size());
-        when(courtScheduleJudiciaryRepository.deleteSchedules(anyString())).thenReturn(slotIdsToDelete.size());
+        when(courtScheduleJudiciaryRepository.deleteSchedules(anyList())).thenReturn(slotIdsToDelete.size());
         mockIsMigrated("B01LY00", false);
 
         final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules = Map.of(listingProfileId1, getCourtScheduleJudiciaries("6bd1853d-8a88-35e8-b4c4-342e2649daa2", listingProfileId1));
@@ -616,7 +616,7 @@ class SessionsServiceTest {
         verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
         verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class));
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
-        verify(courtScheduleJudiciaryRepository, atLeastOnce()).deleteSchedules(anyString());
+        verify(courtScheduleJudiciaryRepository, atLeastOnce()).deleteSchedules(anyList());
         verify(courtScheduleRepository, atLeastOnce()).deleteSlots(anyString());
     }
 
@@ -646,7 +646,7 @@ class SessionsServiceTest {
         verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
         verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class));
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
-        verify(courtScheduleJudiciaryRepository, never()).deleteSchedules(anyString());
+        verify(courtScheduleJudiciaryRepository, never()).deleteSchedules(anyList());
         verify(courtScheduleRepository, never()).deleteSlots(anyString());
     }
 

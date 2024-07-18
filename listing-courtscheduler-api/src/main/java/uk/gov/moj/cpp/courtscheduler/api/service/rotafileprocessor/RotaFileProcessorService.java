@@ -6,6 +6,7 @@ import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
+import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.SESSION_END_DATE;
@@ -173,12 +174,12 @@ public class RotaFileProcessorService {
         final List<String> locations = getLocationFromRecords(records);
 
         logger.info("DD-15703:RotaFileProcessor: Before getOuCodeFromCourtRoomMappingsByLocationId");
-        final String ouCodes = getOuCodesFromCourtRoomMappingsByLocationId(locations, requester);
+        final List<String> ouCodes = getOuCodesFromCourtRoomMappingsByLocationId(locations, requester);
         logger.info("DD-15703:RotaFileProcessor: After getOuCodeFromCourtRoomMappingsByLocationId, ouCodes: {}", ouCodes);
 
         final Map<String, BusinessType> businessTypesMap = getBusinessTypeMap(requester);
 
-        if (StringUtils.isBlank(ouCodes)) {
+        if (isEmpty(ouCodes)) {
             logger.warn("process Rota File execution cancelled ----- ouCodes are null or empty. Unable to find court mappings for locations: {}", locations);
             return;
         }
@@ -210,7 +211,7 @@ public class RotaFileProcessorService {
                                      final Collection<CourtScheduleJudiciary> schedules,
                                      final LocalDate startDate,
                                      final LocalDate masterRotaPeriodCutOffDate,
-                                     final String ouCodes,
+                                     final List<String> ouCodes,
                                      final Map<String, BusinessType> businessTypesMap,
                                      final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider) {
 
@@ -236,7 +237,7 @@ public class RotaFileProcessorService {
     protected void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                            final Collection<CourtScheduleJudiciary> schedules,
                                            final Map<String, LocalDate> startAndEndDate,
-                                           final String ouCodes,
+                                           final List<String> ouCodes,
                                            final String fileNamePrefix,
                                            final OffsetDateTime fileDate,
                                            final Map<String, BusinessType> businessTypesMap) {
@@ -259,7 +260,7 @@ public class RotaFileProcessorService {
     }
 
     @SuppressWarnings("squid:S00112")
-    private void manageCourtSchedule(final String ouCodes,
+    private void manageCourtSchedule(final List<String> ouCodes,
                                      final Map<String, CourtSchedule> slots,
                                      final Collection<CourtScheduleJudiciary> schedules,
                                      final LocalDate startDate,
@@ -334,7 +335,7 @@ public class RotaFileProcessorService {
         logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
     }
 
-    private void createProvisionalSchedule(final String ouCodes, final LocalDate masterRotaPeriodCutOffDate, final Map<String, BusinessType> businessTypesMap, final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider) {
+    private void createProvisionalSchedule(final List<String> ouCodes, final LocalDate masterRotaPeriodCutOffDate, final Map<String, BusinessType> businessTypesMap, final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider) {
         logger.info("rota.months.of.provisional.data.to.populate: {}", rotaMonthsOfProvisionalDataToPopulate);
         final int rotaFileCycleLength = getRotaFileCycleLength();
         final ProvisionalDataDateInfoProvider provisionalDataDateInfoProvider = new ProvisionalDataDateInfoProvider(rotaPeriodDateInfoProvider.getRotaPeriodEndDate(), masterRotaPeriodCutOffDate, getRotaMonthsOfProvisionalDataToPopulate(), rotaFileCycleLength);
@@ -390,7 +391,7 @@ public class RotaFileProcessorService {
         return locations.entrySet().stream().flatMap(e -> e.getValue().keySet().stream()).toList();
     }
 
-    private String getOuCodesFromCourtRoomMappingsByLocationId(final List<String> locationIds, final Requester requester) {
+    private List<String> getOuCodesFromCourtRoomMappingsByLocationId(final List<String> locationIds, final Requester requester) {
         final Map<String, String> locationIdOuCodeMap = new HashMap<>();
         referenceDataService.getCourtRoomsMap(requester).values()
                 .forEach(courtRoom -> {
@@ -407,7 +408,7 @@ public class RotaFileProcessorService {
                     }
                 });
 
-        return String.join(",", ouCodes);
+        return ouCodes;
     }
 
     @SuppressWarnings({"squid:S1067"})

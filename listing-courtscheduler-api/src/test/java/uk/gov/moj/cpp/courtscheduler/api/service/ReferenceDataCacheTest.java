@@ -106,6 +106,7 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
 
         when(cacheService.get(ROTA_BUSINESS_TYPES_CACHE_KEY)).thenReturn(null);
+        when(referenceDataService.getRotaBusinessTypes(requester)).thenReturn(List.of(new BusinessType(), new BusinessType()));
 
         referenceDataCache.getRotaBusinessTypes(requester);
         verify(referenceDataService).getRotaBusinessTypes(requester);

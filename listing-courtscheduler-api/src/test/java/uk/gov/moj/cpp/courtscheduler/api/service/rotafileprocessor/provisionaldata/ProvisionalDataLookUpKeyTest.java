@@ -1,6 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.provisionaldata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
@@ -33,6 +35,36 @@ class ProvisionalDataLookUpKeyTest {
     }
 
     @Test
+    void shouldNotBeEqual() {
+        final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(18, LocalDate.of(2024, 10, 10));
+        final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
+
+        boolean result = key1.equals(key2);
+
+        assertFalse(result);
+    }
+
+    @Test
+    void shouldNotBeEqualAsDatesAreDifferent() {
+        final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
+        final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 11, 10));
+
+        boolean result = key1.equals(key2);
+
+        assertFalse(result);
+    }
+
+    @Test
+    void shouldNotBeEqualAsOneOfTheDatesIsNull() {
+        final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
+        final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, null);
+
+        boolean result = key1.equals(key2);
+
+        assertFalse(result);
+    }
+
+    @Test
     void shouldGiveHashCode() {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
         final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
@@ -41,5 +73,15 @@ class ProvisionalDataLookUpKeyTest {
         int hashCodeOfKey2 = key2.hashCode();
 
         assertEquals(hashCodeOfKey1, hashCodeOfKey2);
+    }
+
+    @Test
+    void shouldGiveAsString() {
+        final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
+
+        final String key1ToString = key1.toString();
+
+        assertNotNull(key1ToString);
+        assertEquals("ProvisionalDataLookUpKey{populateCycle=10, extractDate=2024-10-10}", key1ToString);
     }
 }
