@@ -174,6 +174,7 @@ public class CourtScheduleRepositoryTest {
         allocatedSlot.setBookingId(allocatedListing.getBookingId());
         allocatedSlot.setCourtRoomId(allocatedListing.getCourtRoomId().toString());
         allocatedSlot.setHearingStartTime(SIMPLE_DATE_FORMAT.format(allocatedListing.getHearingStartTime()));
+        allocatedSlot.setSessionDate(LocalDate.of(2024, 7, 15).toString());
         return allocatedSlot;
     }
 

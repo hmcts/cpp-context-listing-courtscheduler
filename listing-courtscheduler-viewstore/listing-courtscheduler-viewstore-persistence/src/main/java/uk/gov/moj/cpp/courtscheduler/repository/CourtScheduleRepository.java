@@ -2,9 +2,11 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static java.lang.String.format;
 import static java.util.Objects.nonNull;
+import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
@@ -24,6 +26,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -39,6 +42,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
 import org.apache.deltaspike.data.api.Repository;
@@ -254,19 +258,48 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             if (isBlank(allocatedSlot.getCourtScheduleId())) {
                 allocatedSlot.setCourtScheduleId(null);
             }
+            final String sessionFromHearingStartTime = allocatedSlot.getHearingStartTime() == null ? allocatedSlot.getSession() : toMeridian(allocatedSlot.getHearingStartTime());
+            final Pair<Optional<String>, Boolean> pair = getCourtScheduleIdAndSlotBased(allocatedSlot.getOuCode(), LocalDate.parse(allocatedSlot.getSessionDate()), sessionFromHearingStartTime, allocatedSlot.getCourtRoomId(), allocatedSlot.getCourtScheduleId());
 
-
-            Optional<CourtSchedule> optionalBy = this.findOptionalBy(allocatedSlot.getCourtScheduleId());
-
-            if (optionalBy.isPresent()) {
-                allocatedSlot.setCourtScheduleId(optionalBy.get().getCourtScheduleId());
-                allocatedSlot.setSlotBased(optionalBy.get().isSlotBased());
+            if (pair != null) {
+                updateCourtScheduleAndSlotBased(allocatedSlot, pair);
                 matchedSlots.add(allocatedSlot);
-
+            } else {
+                LOGGER.error(format("Could not update slot as court schedule id not found for combination %s, %s, %s, %s", allocatedSlot.getOuCode(), allocatedSlot.getSessionDate(), allocatedSlot.getSession(), allocatedSlot.getCourtRoomId()));
             }
+
         }
 
         return matchedSlots;
+    }
+
+    private void updateCourtScheduleAndSlotBased(final AllocatedSlot allocatedSlot, final Pair<Optional<String>, Boolean> pair) {
+        final Optional<String> courtSchedule = pair.getKey();
+        if (courtSchedule.isPresent()) {
+            allocatedSlot.setCourtScheduleId(courtSchedule.get());
+            final boolean isSlotBased = pair.getValue();
+            allocatedSlot.setSlotBased(isSlotBased);
+        }
+    }
+
+    private Pair<Optional<String>, Boolean> getCourtScheduleIdAndSlotBased(final String ouCode,
+                                                                           final LocalDate sessionDate,
+                                                                           final String session,
+                                                                           final String courtRoomNumber,
+                                                                           final String courtScheduleId) {
+
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+        courtScheduleCriteria.createFetchCourtScheduleEitherByidOrFiltersCriteria(null, ouCode, sessionDate, session, courtRoomNumber, criteriaBuilder, criteriaQuery);
+        LOGGER.info(format("Trying to find a match with these params : ouCode: %s sessionDate: %s session: %s courtRoomNumber:%s courtScheduleId: %s  ", ouCode, sessionDate, session, courtRoomNumber, courtScheduleId));
+        List<CourtSchedule> courtScheduleList =
+                entityManager.createQuery(criteriaQuery).getResultList();
+        LOGGER.info(format("found %d matches", courtScheduleList.size()));
+
+        if (CollectionUtils.isNotEmpty(courtScheduleList)) {
+            return Pair.of(of(courtScheduleList.get(0).getCourtScheduleId()), courtScheduleList.get(0).isSlotBased());
+        }
+        return null;
     }
 
     protected void updateCourtSchedule(final List<AllocatedSlot> allocatedSlots) {
