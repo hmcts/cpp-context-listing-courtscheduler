@@ -27,6 +27,8 @@ pool:
 
 variables:
   sonarqubeProject: "uk.gov.moj.cpp.courtscheduler:courtscheduler-parent" # update eg: uk.gov.moj.cpp.listing:listing-parent
+  service_Name: 'listingcourtscheduler' # this should be service name. Image repository will be <serviceName>-service and should be in sysnc with aks-deploy repo.. eg : stagingbulkscan, hearing, systemidmapper
+  itTest_Folder: 'listingcourtscheduler-integration-test' # integration test folder name system-id-mapper-integration-test
 
 stages:
   - ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
@@ -40,3 +42,5 @@ stages:
         parameters:
           repo: "$(Build.Repository.Name)"
           sonarQubeType: 'sonarQubeAKS'
+          serviceName: ${{ variables['service_Name'] }}
+          itTestFolder: ${{ variables['itTest_Folder'] }}
