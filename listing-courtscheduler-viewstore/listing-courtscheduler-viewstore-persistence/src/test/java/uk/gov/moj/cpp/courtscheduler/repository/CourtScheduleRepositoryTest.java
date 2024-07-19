@@ -25,6 +25,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -167,12 +168,29 @@ public class CourtScheduleRepositoryTest {
         assertThat(courtSchedules.isEmpty(), is(false));
     }
 
+    @Test
+    public void shouldfindByUpdatedOnGreaterThanAndUpdatedOnLessThan(){
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        LocalDate fromDate = LocalDate.of(2024, 7, 15);
+        LocalDate toDate = LocalDate.of(2024, 7, 16);
+        MiFilterCriteria miFilterCriteria = new MiFilterCriteria(fromDate, toDate);
+
+        courtScheduleRepository.save(courtSchedule);
+
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtScheduleList = courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
+        assertThat(courtScheduleList.isEmpty(), is(true));
+    }
+
 
     @Test
     public void shouldSaveSlotsFoSPI() {
+        final Date sessionDate = DateUtils.getDate(LocalDate.of(2024, 7, 15));
         String hearingId = UUID.randomUUID().toString();
         String bookingId = UUID.randomUUID().toString();
         CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(LocalDate.of(2024, 7, 15));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setOuCode("B01LY00");
         courtScheduleRepository.save(courtSchedule);
 
 
@@ -181,6 +199,9 @@ public class CourtScheduleRepositoryTest {
         provisionalBookingRepository.save(provisionalBooking);
 
         AllocatedListing allocatedListing = random(AllocatedListing.class);
+        allocatedListing.setOucode("B01LY00");
+        allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
+        allocatedListing.setHearingStartTime(sessionDate);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setBookingId(bookingId);
         allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
@@ -188,7 +209,7 @@ public class CourtScheduleRepositoryTest {
 
         AllocatedSlot allocatedSlot1 = getAllocatedSlotForSPI(allocatedListing);
         List<AllocatedSlot> slots = Lists.newArrayList(allocatedSlot1);
-        boolean isProvisionalSlot = false;
+        boolean isProvisionalSlot = true;
 
         courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot);
 
@@ -211,6 +232,7 @@ public class CourtScheduleRepositoryTest {
         allocatedSlot.setHearingId(allocatedListing.getHearingId());
         allocatedSlot.setCourtScheduleId(null);
         allocatedSlot.setBookingId(allocatedListing.getBookingId());
+        allocatedSlot.setOuCode(allocatedListing.getOucode());
         allocatedSlot.setCourtRoomId(allocatedListing.getCourtRoomId().toString());
         allocatedSlot.setSessionDate(LocalDate.of(2024, 7, 15).toString());
         allocatedSlot.setHearingStartTime(SIMPLE_DATE_FORMAT.format(allocatedListing.getHearingStartTime()));
