@@ -21,6 +21,7 @@ import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
@@ -79,6 +80,8 @@ class SessionsServiceTest {
     private CourtMigrationRepository courtMigrationRepository;
     @Mock
     private ReferenceDataCache referenceDataCache;
+    @Mock
+    private CourtScheduleToDeleteResponseConverter courtScheduleToDeleteResponseConverter;
     @InjectMocks
     private SessionsService sessionsService;
     @Captor
@@ -327,8 +330,9 @@ class SessionsServiceTest {
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = new ArrayList<>();
 
         when(courtScheduleRepository.deleteCourtSchedule(anyList())).thenReturn(courtSchedules);
+        when(courtScheduleToDeleteResponseConverter.convert(anyList())).thenReturn(anyList());
 
-        JsonObject response = sessionsService.deleteCourtScheduleSessions(sessionsParam);
+        JsonObject response = sessionsService.deleteCourtScheduleSessions(sessionsParam, requester);
 
         Assert.assertTrue(response.get("sessions").asJsonArray().isEmpty());
     }
