@@ -222,8 +222,8 @@ public class RotaFileProcessorService {
         courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
         logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleEntriesForRotaPeriod");
 
-        courtScheduleRepository.deleteUnAllocatedProvisionalEntries(ouCodes);
-        logger.info("DD-15703:processFullRotaFile: after delete UnAllocated ProvisionalEntries");
+        int numberOfDeletedUnAllocatedProvisionalEntries = courtScheduleRepository.deleteUnAllocatedProvisionalEntries(ouCodes);
+        logger.info("DD-15703:processFullRotaFile: after delete UnAllocated ProvisionalEntries - numberOfDeletedUnAllocatedProvisionalEntries: {}", numberOfDeletedUnAllocatedProvisionalEntries);
 
         manageCourtSchedule(ouCodes, slots, schedules, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");

@@ -238,6 +238,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return errorDeleteCourtSchedules;
     }
 
+    @SuppressWarnings({"squid:S2077"})
     @Transactional
     public int deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
         return entityManager()
@@ -248,6 +249,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .executeUpdate();
     }
 
+    @SuppressWarnings({"squid:S2077"})
     @Transactional
     public int deleteUnAllocatedProvisionalEntries(final List<String> ouCodes) {
         return entityManager()
@@ -256,6 +258,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .executeUpdate();
     }
 
+    @SuppressWarnings({"squid:S2077"})
     @Transactional
     public int deleteSlots(final String courtScheduleIds) {
         return entityManager()
