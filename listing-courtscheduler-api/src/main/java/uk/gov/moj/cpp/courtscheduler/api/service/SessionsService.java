@@ -56,6 +56,8 @@ public class SessionsService {
     private CourtMigrationRepository courtMigrationRepository;
     @Inject
     private ReferenceDataCache referenceDataCache;
+    @Inject
+    private CourtScheduleToDeleteResponseConverter courtScheduleToDeleteResponseConverter;
 
     public void create(CreateSessionRequestParam createSessionRequestParam, Requester requester) {
         final List<CourtSchedule> courtScheduleList = new ArrayList<>();
@@ -135,7 +137,7 @@ public class SessionsService {
     public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam, Requester requester) {
         List<CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(sessionsParam.getSessions());
         courtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester)));
-        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = CourtScheduleToDeleteResponseConverter.convertCourtScheduleToResponse(courtSchedules);
+        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = courtScheduleToDeleteResponseConverter.convert(courtSchedules);
         final ListToJsonArrayConverter<CourtScheduleDeleteResponse> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
         JsonArray jsonArray = courtSchedules.isEmpty() ? JsonValue.EMPTY_JSON_ARRAY : listToJsonArrayConverter.convert(courtScheduleDeleteResponses);
         return Json.createObjectBuilder()

@@ -6,9 +6,10 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleDeleteResponse;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CourtScheduleToDeleteResponseConverter {
+public class CourtScheduleToDeleteResponseConverter implements Converter<List<CourtSchedule>, List<CourtScheduleDeleteResponse>> {
 
-    public static List<CourtScheduleDeleteResponse> convertCourtScheduleToResponse(List<CourtSchedule> courtSchedules) {
+    @Override
+    public List<CourtScheduleDeleteResponse> convert(List<CourtSchedule> courtSchedules) {
         List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = new ArrayList<>();
         courtSchedules.forEach(courtSchedule -> {
             CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
