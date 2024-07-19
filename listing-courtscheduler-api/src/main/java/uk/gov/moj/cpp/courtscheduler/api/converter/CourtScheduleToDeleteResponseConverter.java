@@ -9,7 +9,7 @@ import java.util.List;
 public class CourtScheduleToDeleteResponseConverter {
 
     public static List<CourtScheduleDeleteResponse> convertCourtScheduleToResponse(List<CourtSchedule> courtSchedules) {
-        List<CourtScheduleDeleteResponse> courtSessionsViews = new ArrayList<>();
+        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = new ArrayList<>();
         courtSchedules.forEach(courtSchedule -> {
             CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
@@ -34,9 +34,9 @@ public class CourtScheduleToDeleteResponseConverter {
                     .withPanel(courtSchedule.getPanel())
                     .withSessionDate(courtSchedule.getSessionDate())
                     .build();
-            courtSessionsViews.add(courtScheduleView);
+            courtScheduleDeleteResponses.add(courtScheduleView);
 
         });
-        return courtSessionsViews;
+        return courtScheduleDeleteResponses;
     }
 }
