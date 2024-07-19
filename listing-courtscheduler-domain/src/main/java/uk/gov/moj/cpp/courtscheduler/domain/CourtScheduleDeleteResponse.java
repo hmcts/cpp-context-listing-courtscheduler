@@ -2,10 +2,11 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
-public class CourtScheduleView {
+public class CourtScheduleDeleteResponse {
 
     private String courtScheduleId;
     private String listingProfileId;
@@ -30,8 +31,10 @@ public class CourtScheduleView {
     private Integer availableDuration;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
+    private Date createdOn;
+    private Date updatedOn;
 
-    protected CourtScheduleView(final CourtScheduleViewBuilder builder) {
+    protected CourtScheduleDeleteResponse(final CourtScheduleDeleteResponseBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
         this.listingProfileId = builder.listingProfileId;
         this.courtRoomId = builder.courtRoomId;
@@ -55,9 +58,11 @@ public class CourtScheduleView {
         this.slotBased = builder.slotBased;
         this.active = builder.active;
         this.hasHearingsBooked = builder.hasHearingsBooked;
+        this.createdOn = builder.createdOn;
+        this.updatedOn = builder.updatedOn;
     }
 
-    public CourtScheduleView() {
+    public CourtScheduleDeleteResponse() {
     }
 
     public String getOperationalUnit() {
@@ -138,6 +143,14 @@ public class CourtScheduleView {
 
     public boolean isHasHearingsBooked() {
         return hasHearingsBooked;
+    }
+
+    public Date getCreatedOn() {
+        return createdOn;
+    }
+
+    public Date getUpdatedOn() {
+        return updatedOn;
     }
 
     public void setCourtScheduleId(final String courtScheduleId) {
@@ -244,7 +257,15 @@ public class CourtScheduleView {
         this.hasHearingsBooked = hasHearingsBooked;
     }
 
-    public static final class CourtScheduleViewBuilder {
+    public void setCreatedOn(final Date createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    public void setUpdatedOn(final Date updatedOn) {
+        this.updatedOn = updatedOn;
+    }
+
+    public static final class CourtScheduleDeleteResponseBuilder {
 
         private String courtScheduleId;
         private String ouCode;
@@ -271,142 +292,153 @@ public class CourtScheduleView {
         private boolean hasHearingsBooked;
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
+        private Date createdOn;
+        private Date updatedOn;
 
-        public static CourtScheduleViewBuilder courtSchedule() {
-            return new CourtScheduleViewBuilder();
+        public static CourtScheduleDeleteResponseBuilder courtSchedule() {
+            return new CourtScheduleDeleteResponseBuilder();
         }
 
 
-        public CourtScheduleViewBuilder withCourtScheduleId(final String courtScheduleId) {
+        public CourtScheduleDeleteResponseBuilder withCourtScheduleId(final String courtScheduleId) {
             this.courtScheduleId = courtScheduleId;
             return this;
         }
 
-        public CourtScheduleViewBuilder withPanel(final String panel) {
+        public CourtScheduleDeleteResponseBuilder withPanel(final String panel) {
             this.panel = panel;
             return this;
         }
 
-        public CourtScheduleViewBuilder withListingProfileId(final String listingProfileId) {
+        public CourtScheduleDeleteResponseBuilder withListingProfileId(final String listingProfileId) {
             this.listingProfileId = listingProfileId;
             return this;
         }
 
-        public CourtScheduleViewBuilder withOuCode(final String ouCode) {
+        public CourtScheduleDeleteResponseBuilder withOuCode(final String ouCode) {
             this.ouCode = ouCode;
             return this;
         }
 
-        public CourtScheduleViewBuilder withCourtRoomId(final String courtRoomId) {
+        public CourtScheduleDeleteResponseBuilder withCourtRoomId(final String courtRoomId) {
             this.courtRoomId = courtRoomId;
             return this;
         }
 
-        public CourtScheduleViewBuilder withCourtRoomName(final String courtRoomName) {
+        public CourtScheduleDeleteResponseBuilder withCourtRoomName(final String courtRoomName) {
             this.courtRoomName = courtRoomName;
             return this;
         }
 
-        public CourtScheduleViewBuilder withCourtHouseName(final String courtHouseName) {
+        public CourtScheduleDeleteResponseBuilder withCourtHouseName(final String courtHouseName) {
             this.courtHouseName = courtHouseName;
             return this;
         }
 
-        public CourtScheduleViewBuilder withCourtHouseId(final String courtHouseId) {
+        public CourtScheduleDeleteResponseBuilder withCourtHouseId(final String courtHouseId) {
             this.courtHouseId = courtHouseId;
             return this;
         }
 
-        public CourtScheduleViewBuilder withCourtRoomNumber(final Integer courtRoomNumber) {
+        public CourtScheduleDeleteResponseBuilder withCourtRoomNumber(final Integer courtRoomNumber) {
             this.courtRoomNumber = courtRoomNumber;
             return this;
         }
 
-        public CourtScheduleViewBuilder withOperationalUnit(final String operationalUnit) {
+        public CourtScheduleDeleteResponseBuilder withOperationalUnit(final String operationalUnit) {
             this.operationalUnit = operationalUnit;
             return this;
         }
 
-        public CourtScheduleViewBuilder withBusinessType(final String businessType) {
+        public CourtScheduleDeleteResponseBuilder withBusinessType(final String businessType) {
             this.businessType = businessType;
             return this;
         }
 
-        public CourtScheduleViewBuilder withBusinessDescription(final String businessDescription) {
+        public CourtScheduleDeleteResponseBuilder withBusinessDescription(final String businessDescription) {
             this.businessDescription = businessDescription;
             return this;
         }
 
 
-        public CourtScheduleViewBuilder withCourtSession(final String courtSession) {
+        public CourtScheduleDeleteResponseBuilder withCourtSession(final String courtSession) {
             this.courtSession = courtSession;
             return this;
         }
 
-        public CourtScheduleViewBuilder withSlotBased(final boolean slotBased) {
+        public CourtScheduleDeleteResponseBuilder withSlotBased(final boolean slotBased) {
             this.slotBased = slotBased;
             return this;
         }
 
-        public CourtScheduleViewBuilder withActive(final boolean active) {
+        public CourtScheduleDeleteResponseBuilder withActive(final boolean active) {
             this.active = active;
             return this;
         }
 
-        public CourtScheduleViewBuilder withHasHearingsBooked(final boolean hasHearingsBooked) {
+        public CourtScheduleDeleteResponseBuilder withHasHearingsBooked(final boolean hasHearingsBooked) {
             this.hasHearingsBooked = hasHearingsBooked;
             return this;
         }
 
 
-        public CourtScheduleViewBuilder withSessionDate(final LocalDate sessionDate) {
+        public CourtScheduleDeleteResponseBuilder withSessionDate(final LocalDate sessionDate) {
             this.sessionDate = sessionDate;
             return this;
         }
 
-        public CourtScheduleViewBuilder withAvailableSlots(final Integer availableSlot) {
+        public CourtScheduleDeleteResponseBuilder withAvailableSlots(final Integer availableSlot) {
             this.availableSlots = availableSlot;
             return this;
         }
 
-        public CourtScheduleViewBuilder withAvailableDuration(final Integer availableDuration) {
+        public CourtScheduleDeleteResponseBuilder withAvailableDuration(final Integer availableDuration) {
             this.availableDuration = availableDuration;
             return this;
         }
 
-        public CourtScheduleViewBuilder withMaxSlots(final Integer maxSlot) {
+        public CourtScheduleDeleteResponseBuilder withMaxSlots(final Integer maxSlot) {
             this.maxSlots = maxSlot;
             return this;
         }
 
-        public CourtScheduleViewBuilder withMaxDuration(final Integer maxDuration) {
+        public CourtScheduleDeleteResponseBuilder withMaxDuration(final Integer maxDuration) {
             this.maxDuration = maxDuration;
             return this;
         }
 
-        public CourtScheduleViewBuilder withJudiciaries(final List<CourtScheduleJudiciary> judiciaries) {
+        public CourtScheduleDeleteResponseBuilder withJudiciaries(final List<CourtScheduleJudiciary> judiciaries) {
             this.judiciaries = judiciaries;
             return this;
         }
 
-        public CourtScheduleViewBuilder addJudiciary(final CourtScheduleJudiciary courtScheduleJudiciary) {
+        public CourtScheduleDeleteResponseBuilder addJudiciary(final CourtScheduleJudiciary courtScheduleJudiciary) {
             this.judiciaries.add(courtScheduleJudiciary);
             return this;
         }
 
-        public CourtScheduleViewBuilder withSlotStartTimes(final List<SlotStartTime> slotStartTimes) {
+        public CourtScheduleDeleteResponseBuilder withSlotStartTimes(final List<SlotStartTime> slotStartTimes) {
             this.slotStartTimes = slotStartTimes;
             return this;
         }
 
-        public CourtScheduleViewBuilder addSlotStartTime(final SlotStartTime slotStartTime) {
+        public CourtScheduleDeleteResponseBuilder addSlotStartTime(final SlotStartTime slotStartTime) {
             this.slotStartTimes.add(slotStartTime);
             return this;
         }
 
+        public CourtScheduleDeleteResponseBuilder withCreatedOn(final Date createdOn) {
+            this.createdOn = createdOn;
+            return this;
+        }
 
-        public CourtScheduleView build() {
-            return new CourtScheduleView(this);
+        public CourtScheduleDeleteResponseBuilder withUpdatedOn(final Date updatedOn) {
+            this.updatedOn = updatedOn;
+            return this;
+        }
+
+        public CourtScheduleDeleteResponse build() {
+            return new CourtScheduleDeleteResponse(this);
         }
     }
 }

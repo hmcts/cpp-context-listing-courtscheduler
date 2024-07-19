@@ -5,12 +5,14 @@ import static java.util.stream.Collectors.joining;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.api.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
@@ -71,6 +73,8 @@ public class SessionsService {
     private CourtMigrationRepository courtMigrationRepository;
     @Inject
     private ReferenceDataCache referenceDataCache;
+    @Inject
+    private CourtScheduleToDeleteResponseConverter courtScheduleToDeleteResponseConverter;
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
@@ -149,11 +153,12 @@ public class SessionsService {
         return (isSlotBased && updateCourtSchedule.getMaxDuration().equals(0)) || (!isSlotBased && updateCourtSchedule.getMaxSlots().equals(0));
     }
 
-    public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam) {
+    public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam, Requester requester) {
         List<CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(sessionsParam.getSessions());
-
-        final ListToJsonArrayConverter<CourtSchedule> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
-        JsonArray jsonArray = courtSchedules.isEmpty() ? JsonValue.EMPTY_JSON_ARRAY : listToJsonArrayConverter.convert(courtSchedules);
+        courtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester)));
+        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = courtScheduleToDeleteResponseConverter.convert(courtSchedules);
+        final ListToJsonArrayConverter<CourtScheduleDeleteResponse> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
+        JsonArray jsonArray = courtSchedules.isEmpty() ? JsonValue.EMPTY_JSON_ARRAY : listToJsonArrayConverter.convert(courtScheduleDeleteResponses);
         return Json.createObjectBuilder()
                 .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
                 .build();
