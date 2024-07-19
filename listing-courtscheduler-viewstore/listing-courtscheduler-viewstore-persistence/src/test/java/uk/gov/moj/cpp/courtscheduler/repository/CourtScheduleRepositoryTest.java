@@ -167,6 +167,34 @@ public class CourtScheduleRepositoryTest {
         assertThat(courtSchedules.isEmpty(), is(false));
     }
 
+
+    @Test
+    public void shouldSaveSlotsFoSPI() {
+        String hearingId = UUID.randomUUID().toString();
+        String bookingId = UUID.randomUUID().toString();
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtScheduleRepository.save(courtSchedule);
+
+
+        ProvisionalBooking provisionalBooking = random(ProvisionalBooking.class);
+        provisionalBooking.setProvisionalBookingKey(new ProvisionalBookingKey(courtSchedule, bookingId));
+        provisionalBookingRepository.save(provisionalBooking);
+
+        AllocatedListing allocatedListing = random(AllocatedListing.class);
+        allocatedListing.setHearingId(hearingId);
+        allocatedListing.setBookingId(bookingId);
+        allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing);
+
+        AllocatedSlot allocatedSlot1 = getAllocatedSlotForSPI(allocatedListing);
+        List<AllocatedSlot> slots = Lists.newArrayList(allocatedSlot1);
+        boolean isProvisionalSlot = false;
+
+        courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot);
+
+        List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtSchedule);
+        assertThat(courtSchedules.isEmpty(), is(false));
+    }
     private static AllocatedSlot getAllocatedSlot(AllocatedListing allocatedListing) {
         AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
         allocatedSlot.setHearingId(allocatedListing.getHearingId());
@@ -175,6 +203,17 @@ public class CourtScheduleRepositoryTest {
         allocatedSlot.setCourtRoomId(allocatedListing.getCourtRoomId().toString());
         allocatedSlot.setHearingStartTime(SIMPLE_DATE_FORMAT.format(allocatedListing.getHearingStartTime()));
         allocatedSlot.setSessionDate(LocalDate.of(2024, 7, 15).toString());
+        return allocatedSlot;
+    }
+
+    private static AllocatedSlot getAllocatedSlotForSPI(AllocatedListing allocatedListing) {
+        AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
+        allocatedSlot.setHearingId(allocatedListing.getHearingId());
+        allocatedSlot.setCourtScheduleId(null);
+        allocatedSlot.setBookingId(allocatedListing.getBookingId());
+        allocatedSlot.setCourtRoomId(allocatedListing.getCourtRoomId().toString());
+        allocatedSlot.setSessionDate(LocalDate.of(2024, 7, 15).toString());
+        allocatedSlot.setHearingStartTime(SIMPLE_DATE_FORMAT.format(allocatedListing.getHearingStartTime()));
         return allocatedSlot;
     }
 
