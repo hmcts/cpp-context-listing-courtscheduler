@@ -143,12 +143,20 @@ public class CourtScheduleCriteria {
                                                                     CriteriaBuilder criteriaBuilder,
                                                                     CriteriaQuery<CourtSchedule> criteriaQuery) {
         Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
+        //OR
         Predicate courtScheduleIdPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SCHEDULE_ID), courtScheduleId);
-        Predicate ouCodePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), ouCode);
-        Predicate sessionDatePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.SESSION_DATE), sessionDate);
-        Predicate courtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), courtSession);
-        Predicate courtRoomNumberPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_NUMBER), courtRoomNumber);
-        criteriaQuery.where(criteriaBuilder.or(courtScheduleIdPredicate, ouCodePredicate, sessionDatePredicate, courtSessionPredicate, courtRoomNumberPredicate));
+        //AND
+        List<Predicate> andPredicates = new ArrayList<>();
+
+        andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), ouCode));
+        andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.SESSION_DATE), sessionDate));
+        andPredicates.add(root.get(CourtSchedule_.COURT_SESSION).in("AD",courtSession));
+        andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_NUMBER), courtRoomNumber));
+
+        Predicate andCombination = criteriaBuilder.and(andPredicates.toArray(new Predicate[0]));
+        // Combining courtScheduleIdPredicate with the AND combination using OR
+        criteriaQuery.where(criteriaBuilder.or(courtScheduleIdPredicate, andCombination));
+
     }
 
     public void createMultipleSessionsCourtScheduleCriteria(CourtSchedule courtSchedule,
