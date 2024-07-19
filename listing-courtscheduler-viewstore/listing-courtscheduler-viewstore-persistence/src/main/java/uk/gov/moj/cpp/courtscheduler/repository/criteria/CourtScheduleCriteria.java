@@ -134,6 +134,31 @@ public class CourtScheduleCriteria {
                 root.get(AllocatedListing_.HEARING_START_TIME));
     }
 
+    //Fetch single  courtsession either by courtscheduleId or filters : OuCode+SessionDate+CourtSession+CourtRoomNumber
+    public void createFetchCourtScheduleEitherByidOrFiltersCriteria(String courtScheduleId,
+                                                                    String ouCode,
+                                                                    LocalDate sessionDate,
+                                                                    String courtSession,
+                                                                    String courtRoomNumber,
+                                                                    CriteriaBuilder criteriaBuilder,
+                                                                    CriteriaQuery<CourtSchedule> criteriaQuery) {
+        Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
+        //OR
+        Predicate courtScheduleIdPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SCHEDULE_ID), courtScheduleId);
+        //AND
+        List<Predicate> andPredicates = new ArrayList<>();
+
+        andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), ouCode));
+        andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.SESSION_DATE), sessionDate));
+        andPredicates.add(root.get(CourtSchedule_.COURT_SESSION).in("AD",courtSession));
+        andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_NUMBER), courtRoomNumber));
+
+        Predicate andCombination = criteriaBuilder.and(andPredicates.toArray(new Predicate[0]));
+        // Combining courtScheduleIdPredicate with the AND combination using OR
+        criteriaQuery.where(criteriaBuilder.or(courtScheduleIdPredicate, andCombination));
+
+    }
+
     public void createMultipleSessionsCourtScheduleCriteria(CourtSchedule courtSchedule,
                                                             CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtSchedule> criteriaQuery) {
         Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
@@ -162,4 +187,6 @@ public class CourtScheduleCriteria {
             criteriaQuery.where(criteriaBuilder.and(sessionDatePredicate));
         }
     }
+
+
 }
