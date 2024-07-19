@@ -8,12 +8,14 @@ import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -34,6 +36,7 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String BASE_RESOURCE_URL = "/courtschedule";
     private static final String UPDATE_URL = "/edit";
     private static final String DELETE_URL = "/delete";
+    private static final String OUCODE_MIGRATE_URL = "/oucode/migrate";
 
     @BeforeAll
     public static void setUp() {
@@ -147,5 +150,28 @@ class CourtSchedulerIT extends AbstractIT {
         final Response response = postCommand(BASE_RESOURCE_URL + DELETE_URL, "application/vnd.courtscheduler.delete+json", USER_ID, deleteHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
+    }
+
+    @Test
+    void shouldMigrateOuCodes() throws Exception {
+        setupUserAsSystemUser(USER_ID.toString());
+
+        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        courtSchedulerMigrationStatus.setOuCode("B12345");
+        courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
+        courtSchedulerMigrationStatus.setMigrated(false);
+        databaseSeeder.insertCourtScheduleMigrationStatus(courtSchedulerMigrationStatus);
+
+        CourtSchedulerMigrationStatus schedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        schedulerMigrationStatus.setOuCode("C12345");
+        schedulerMigrationStatus.setCourtCentreId("100f36bc-f33a-42ea-8a6c-8103636c5341");
+        schedulerMigrationStatus.setMigrated(false);
+        databaseSeeder.insertCourtScheduleMigrationStatus(schedulerMigrationStatus);
+
+        String migrateOuCodePayload = getPayload("oucode-migrate-courtscheduler.json");
+
+        final Response response = postCommand(OUCODE_MIGRATE_URL, "application/vnd.courtscheduler.oucode.migrate+json", USER_ID, migrateOuCodePayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 }

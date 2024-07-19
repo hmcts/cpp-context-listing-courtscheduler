@@ -142,3 +142,12 @@ rule "API - Action - courtscheduler.export.allocated_listings"
   then
     $outcome.setSuccess(true);
 end
+
+rule "API - Action - courtscheduler.oucode.migrate"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.oucode.migrate");
+        eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
