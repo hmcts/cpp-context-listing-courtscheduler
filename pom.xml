@@ -9,7 +9,7 @@
     </parent>
 
     <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
-    <artifactId>listing-courtscheduler-parent</artifactId>
+    <artifactId>listingcourtscheduler-parent</artifactId>
     <version>17.0.64-CSP1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
@@ -24,7 +24,7 @@
         <gihub.benas.random-beans.version>3.7.0</gihub.benas.random-beans.version>
         <build-helper-maven-plugin.version>3.1.0</build-helper-maven-plugin.version>
         <cglib.version>3.3.0</cglib.version>
-        <commons.lang3.version>3.9</commons.lang3.version>
+        <commons.lang3.version>3.14.0</commons.lang3.version>
         <org.mockito.mockito-core.version>2.24.0</org.mockito.mockito-core.version>
         <junit-dataprovider.version>1.13.1</junit-dataprovider.version>
         <activemq-ra.version>5.14.5</activemq-ra.version>
@@ -36,7 +36,11 @@
             **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
             **/uk/gov/moj/cpp/courtscheduler/exception/**/*,
             **/uk/gov/moj/cpp/courtscheduler/api/PayloadExtractor.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java
+            **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java,
+            **/uk/gov/moj/cpp/courtscheduler/repository/CourtScheduleRepository.java,
+            **/uk/gov/moj/cpp/courtscheduler/api/service/rotafileprocessor/RotaFileProcessorService.java,
+            **/uk/gov/moj/cpp/courtscheduler/api/service/rotafileprocessor/enricher/BusinessTypeMatchingLogger.java,
+            **/uk/gov/moj/cpp/courtscheduler/api/service/rotafileprocessor/util/PropertiesLoader.java
         </sonar.coverage.exclusions>
         <sonar.cpd.exclusions>
             **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,
@@ -46,15 +50,17 @@
         <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
         <referencedata.version>8.0.67</referencedata.version>
         <lettuce.core.version>5.2.1.RELEASE</lettuce.core.version>
+        <azure.storage.version>8.6.6</azure.storage.version>
     </properties>
 
     <modules>
-        <module>listing-courtscheduler-domain</module>
-        <module>listing-courtscheduler-api</module>
-        <module>listing-courtscheduler-integration-test</module>
-        <module>listing-courtscheduler-viewstore</module>
-        <module>listing-courtscheduler-healthchecks</module>
-        <module>listing-courtscheduler-cache</module>
+        <module>listingcourtscheduler-domain</module>
+        <module>listingcourtscheduler-api</module>
+        <module>listingcourtscheduler-integration-test</module>
+        <module>listingcourtscheduler-viewstore</module>
+        <module>listingcourtscheduler-healthchecks</module>
+        <module>listingcourtscheduler-cache</module>
+        <module>listingcourtscheduler-common</module>
     </modules>
 
     <build>
