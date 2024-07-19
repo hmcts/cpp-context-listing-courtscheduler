@@ -21,9 +21,9 @@ import java.util.Collection;
 
 public class DatabaseSeeder {
 
-    private static final String USERNAME = "courtscheduler";
-    private static final String PASSWORD = "courtscheduler";
-    private static final String DATABASE = "courtschedulerviewstore";
+    private static final String USERNAME = "scsl";
+    private static final String PASSWORD = "scsl";
+    private static final String DATABASE = "scsl";
 
     private static final String COURT_SCHEDULE_INSERT_SQL = "INSERT INTO court_schedule (" +
             "id, court_listing_profile_id, oucode, court_room_id, court_room_number, court_house_id, court_house_name," +

@@ -23,7 +23,7 @@ source $CPP_DOCKER_DIR/docker-utility-functions.sh
 source $CPP_DOCKER_DIR/build-scripts/integration-test-scipt-functions.sh
 
 function runLiquibase {
-  mvn -f ${CONTEXT_NAME}-viewstore/${CONTEXT_NAME}-viewstore-liquibase/pom.xml -Dliquibase.url=jdbc:postgresql://localhost:5432/courtschedulerviewstore -Dliquibase.username=courtscheduler -Dliquibase.password=courtscheduler -Dliquibase.logLevel=info resources:resources liquibase:${LIQUIBASE_COMMAND}
+  mvn -f ${CONTEXT_NAME}-viewstore/${CONTEXT_NAME}-viewstore-liquibase/pom.xml -Dliquibase.url=jdbc:postgresql://localhost:5432/scsl -Dliquibase.username=scsl -Dliquibase.password=scsl -Dliquibase.logLevel=info resources:resources liquibase:${LIQUIBASE_COMMAND}
   echo "Finished executing liquibase"
 }
 
