@@ -403,7 +403,7 @@ public class RotaFileProcessorService {
         final List<String> ouCodes = new ArrayList<>();
         locationIdOuCodeMap.keySet()
                 .forEach(locationId -> {
-                    if (locationIds.contains(locationId)) {
+                    if (!locationIds.contains(locationId)) {
                         ouCodes.add(locationIdOuCodeMap.get(locationId));
                     }
                 });

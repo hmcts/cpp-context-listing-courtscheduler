@@ -14,5 +14,13 @@
     "typeDescription": "Non CPS Trial",
     "slot": false,
     "duration": true
+  },
+  {
+    "id": "c1aa4879-ab50-3daa-a192-e52509331d3d",
+    "seqNum": 390,
+    "typeCode": "PSV",
+    "typeDescription": "Problem Solving",
+    "slot": true,
+    "duration": false
   }
 ]
