@@ -9,6 +9,7 @@ import static org.apache.commons.lang3.RandomStringUtils.random;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -17,6 +18,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
@@ -34,6 +36,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.Busi
 import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.JudiciaryScheduleEnricher;
 import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaDataEnricher;
 import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.provisionaldata.ProvisionalDataProducer;
+import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.provisionaldata.ProvisionalSessionDateProvider;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -184,6 +187,7 @@ class RotaFileProcessorServiceTest {
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
+        when(provisionalDataProducer.produceProvisionalData(any(LocalDate.class), any(LocalDate.class), anyInt(), anyList(), any(ProvisionalSessionDateProvider.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
 
@@ -204,11 +208,12 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
-        verify(businessTypeMatchingLogger).logMissingBusinessType(missingBusinessTypeCaptor.capture());
+        verify(businessTypeMatchingLogger, times(2)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
 
-        final List<String> missingBusinessTypes = missingBusinessTypeCaptor.getValue();
-        assertEquals(1, missingBusinessTypes.size());
-        assertEquals(MISSING_BUSINESS_TYPE, missingBusinessTypes.get(0));
+        final List<List<String>> missingBusinessTypes = missingBusinessTypeCaptor.getAllValues();
+        assertEquals(2, missingBusinessTypes.size());
+        assertEquals(1, missingBusinessTypes.get(0).size());
+        assertEquals(MISSING_BUSINESS_TYPE, missingBusinessTypes.get(0).get(0));
     }
 
     @Test
