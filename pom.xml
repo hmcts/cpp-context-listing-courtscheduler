@@ -38,8 +38,6 @@
             **/uk/gov/moj/cpp/courtscheduler/api/PayloadExtractor.java,
             **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java,
             **/uk/gov/moj/cpp/courtscheduler/repository/CourtScheduleRepository.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/service/rotafileprocessor/RotaFileProcessorService.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/service/rotafileprocessor/enricher/BusinessTypeMatchingLogger.java,
             **/uk/gov/moj/cpp/courtscheduler/api/service/rotafileprocessor/util/PropertiesLoader.java
         </sonar.coverage.exclusions>
         <sonar.cpd.exclusions>
