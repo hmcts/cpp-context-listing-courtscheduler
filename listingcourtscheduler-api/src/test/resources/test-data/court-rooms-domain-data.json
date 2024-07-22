@@ -24,5 +24,19 @@
     "oucodeL3Name": "Cheltenham County Court",
     "oucodeL2Name": "Gloucestershire",
     "courtroomName": "Courtroom 01"
+  },
+  {
+    "id": "02e22f64-f377-3e67-85f4-35a30a5faa76",
+    "rotaLocationId": 77,
+    "rotaVenueName": "Court 9",
+    "cppCourtRoomId": 2988,
+    "rotaVenueId": 0,
+    "oucode": "B43KQ00",
+    "oucodeL3Name": "Reading Magistrates' Court",
+    "oucodeL2Name": "Thames Valley",
+    "oucodeL2Code": "43",
+    "oucodeUUID": "49db2271-1941-3847-a7fb-dbd92b035e40",
+    "courtroomName": "Courtroom 09",
+    "courtroomId": "41a41156-0ca9-3352-999e-8d26274bb1aa"
   }
 ]
