@@ -202,7 +202,7 @@ class RotaFileProcessorServiceTest {
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", emptyMap(), "177", emptyMap()));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
 
@@ -264,7 +264,7 @@ class RotaFileProcessorServiceTest {
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", emptyMap(), "177", emptyMap()));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
 
@@ -303,6 +303,16 @@ class RotaFileProcessorServiceTest {
             slots.put(courtSchedule.getListingProfileId(), courtSchedule);
         });
 
+        final Map<String, String> rotaDetails = new HashMap<>();
+        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+
+        rotaPeriodMap = new HashMap<>();
+        rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
+
+        when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
+
         final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
@@ -315,16 +325,6 @@ class RotaFileProcessorServiceTest {
         when(provisionalDataProducer.produceProvisionalData(any(LocalDate.class), any(LocalDate.class), anyInt(), anyList(), any(ProvisionalSessionDateProvider.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
-
-        final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
-
-        rotaPeriodMap = new HashMap<>();
-        rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
-
-        when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", emptyMap(), "177", emptyMap()));
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
 
@@ -428,7 +428,7 @@ class RotaFileProcessorServiceTest {
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", emptyMap(), "177", emptyMap()));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
 
@@ -467,7 +467,7 @@ class RotaFileProcessorServiceTest {
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", emptyMap(), "177", emptyMap()));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
 
@@ -508,7 +508,7 @@ class RotaFileProcessorServiceTest {
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", emptyMap(), "177", emptyMap()));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
 
