@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.repository.criteria;
 
-import static java.util.stream.Collectors.joining;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
@@ -127,11 +126,19 @@ public class CourtScheduleCriteria {
 
     public void createAllocatedListingCriteria(Set<String> countBasedScheduleIds, CriteriaQuery<AllocatedListing> criteriaQuery) {
         Root<AllocatedListing> root = criteriaQuery.from(AllocatedListing.class);
-        final String courtScheduledIds = countBasedScheduleIds.stream().map(s -> "?").collect(joining(","));
-        Predicate courtScheduleIdPredicate = root.get(AllocatedListing_.COURT_SCHEDULE_ID).in(courtScheduledIds);
+        Predicate courtScheduleIdPredicate = root.get(AllocatedListing_.COURT_SCHEDULE_ID).in(countBasedScheduleIds);
         criteriaQuery.select(root).where(courtScheduleIdPredicate).groupBy(root.get(AllocatedListing_.ID),
                 root.get(AllocatedListing_.COURT_SCHEDULE_ID),
                 root.get(AllocatedListing_.HEARING_START_TIME));
+    }
+
+    public void createAllocatedListingCountCriteria(Set<String> countBasedScheduleIds, CriteriaQuery<Long> criteriaQuery, CriteriaBuilder criteriaBuilder) {
+        Root<AllocatedListing> root = criteriaQuery.from(AllocatedListing.class);
+        Predicate courtScheduleIdPredicate = root.get(AllocatedListing_.COURT_SCHEDULE_ID).in(countBasedScheduleIds);
+        criteriaQuery.select(criteriaBuilder.count(root))
+                .where(courtScheduleIdPredicate).groupBy(root.get(AllocatedListing_.ID),
+                        root.get(AllocatedListing_.COURT_SCHEDULE_ID),
+                        root.get(AllocatedListing_.HEARING_START_TIME));
     }
 
     //Fetch single  courtsession either by courtscheduleId or filters : OuCode+SessionDate+CourtSession+CourtRoomNumber
