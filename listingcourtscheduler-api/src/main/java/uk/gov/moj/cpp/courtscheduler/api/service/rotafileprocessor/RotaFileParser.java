@@ -30,7 +30,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.xml.namespace.QName;
@@ -75,11 +74,6 @@ public class RotaFileParser {
 
     @Inject
     private PropertiesLoader propertiesLoader;
-
-    @PostConstruct
-    public void initialize() {
-        requiredElements = propertiesLoader.getXmlProperties("rotaXml.properties");
-    }
 
     public Map<RotaPayload, Map<String, Map<String, String>>> parse(final String file, final byte[] content) {
         if (requiredElements.isEmpty()) {
