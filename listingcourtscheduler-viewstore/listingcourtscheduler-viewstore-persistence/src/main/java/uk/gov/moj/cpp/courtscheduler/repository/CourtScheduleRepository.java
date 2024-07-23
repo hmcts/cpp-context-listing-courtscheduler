@@ -428,13 +428,31 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         CriteriaQuery<AllocatedListing> criteriaQuery = criteriaBuilder.createQuery(AllocatedListing.class);
         courtScheduleCriteria.createAllocatedListingCriteria(courtScheduleIds, criteriaQuery);
         List<AllocatedListing> allocatedListing = entityManager.createQuery(criteriaQuery).getResultList();
-        final long count = allocatedListing.size();
-        allocatedListing.forEach(e -> {
-            final List<SlotStartTime> slotStartTimes = resultStringListMap.computeIfAbsent(e.getCourtScheduleId(), k -> new ArrayList<>());
-            slotStartTimes.add(new SlotStartTime(toIsoString((Timestamp) e.getHearingStartTime()), count));
+        List<Long> count = getCountBasedAllocatedListingCount(courtScheduleIds);
+        Map<AllocatedListing, Long> resultsMap = convertResultsToMap(allocatedListing, count);
+        resultsMap.forEach((listing, listingCount) -> {
+            final List<SlotStartTime> slotStartTimes = resultStringListMap.computeIfAbsent(listing.getCourtScheduleId(), k -> new ArrayList<>());
+            slotStartTimes.add(new SlotStartTime(toIsoString(new Timestamp(listing.getHearingStartTime().getTime())), listingCount));
         });
 
         return resultStringListMap;
+    }
+
+    private List<Long> getCountBasedAllocatedListingCount(final Set<String> courtScheduleIds) {
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
+        courtScheduleCriteria.createAllocatedListingCountCriteria(courtScheduleIds, criteriaQuery, criteriaBuilder);
+        return entityManager.createQuery(criteriaQuery).getResultList();
+    }
+
+    private Map<AllocatedListing, Long> convertResultsToMap(List<AllocatedListing> allocatedListing, List<Long> count) {
+        Map<AllocatedListing, Long> result = new HashMap<>();
+
+        for (int i = 0; i < allocatedListing.size(); i++) {
+            result.put(allocatedListing.get(i), count.get(i));
+        }
+
+        return result;
     }
 
     private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
