@@ -8,7 +8,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import uk.gov.justice.services.common.configuration.Value;
 import uk.gov.moj.cpp.courtscheduler.common.exception.AzureBlobClientException;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -84,7 +83,7 @@ public class AzureBlobClientService {
     public Map<String, byte[]> downloadFiles() {
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
-            LOGGER.info("Connecting to azure blob storage on {}", now());
+            LOGGER.info("Connecting to azure blob storage to download files from : {} on {}", rotaslInputContainerName, now());
             connect(rotaslInputContainerName);
 
             final Map<String, byte[]> downloadedBlobMap = new HashMap<>();
@@ -95,11 +94,11 @@ public class AzureBlobClientService {
                 blob.download(outputStream);
 
                 downloadedBlobMap.put(blobName, outputStream.toByteArray());
+
+                LOGGER.info("Downloading blob file with name : {} from azure blob storage on {}", blobName, now());
             }
-            LOGGER.info("Downloading SL_GROUP zip file from azure blob storage on {}", now());
-            LOGGER.info(
-                    "Total time taken for SL_GROUP zip file download is : {} : seconds",
-                    stopwatch.elapsed(SECONDS));
+
+            LOGGER.info("Total time taken for all the blobs to be downloaded from {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
 
             return downloadedBlobMap;
         } catch (StorageException ex) {
@@ -108,9 +107,31 @@ public class AzureBlobClientService {
         } catch (URISyntaxException ex) {
             throw new AzureBlobClientException(CONNECTION_URI_PARSE_ERROR, ex);
         }
-//        catch (IOException ex) {
-//            throw new AzureBlobClientException("Error while downloading SL_GROUP zip file to local temp location", ex);
-//        }
+    }
+
+    public void deleteFile(final String blobNameOfFileToBeDeleted) {
+        try {
+            final Stopwatch stopwatch = Stopwatch.createStarted();
+            LOGGER.info("Connecting to azure blob storage to delete files from the container {} on {}", rotaslInputContainerName, now());
+            connect(rotaslInputContainerName);
+
+            for(ListBlobItem blobItem : container.listBlobs(blobNameOfFileToBeDeleted)) {
+                final String blobName = getBlobName(blobItem.getUri().getPath());
+                if (blobNameOfFileToBeDeleted.contains(blobName)) {
+                    final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
+                    blob.delete();
+
+                    LOGGER.info("Deleted blob file successfully with name {} from azure blob storage container {} on {}", blobName, rotaslInputContainerName, now());
+                    LOGGER.info("Total time taken to delete files from azure blob storage container {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
+                    break;
+                }
+            }
+        } catch (StorageException ex) {
+            throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
+                    ex.getHttpStatusCode(), ex.getErrorCode()), ex);
+        } catch (URISyntaxException ex) {
+            throw new AzureBlobClientException(CONNECTION_URI_PARSE_ERROR, ex);
+        }
     }
 
     /**
@@ -126,14 +147,12 @@ public class AzureBlobClientService {
 
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
-            LOGGER.info("Connecting to azure blob storage on {}", now());
+            LOGGER.info("Connecting to azure blob storage to upload files into {} on {}", rotaslArchiveContainerName, now());
             connect(rotaslArchiveContainerName);
             final CloudBlockBlob fileBlob = container.getBlockBlobReference(destinationFileName);
             LOGGER.info("Uploading {} file to azure blob storage on {}", destinationFileName, now());
             fileBlob.upload(file, fileSize);
-            LOGGER.info(
-                    "Total time taken for file upload is : {} : seconds",
-                    stopwatch.elapsed(SECONDS));
+            LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", rotaslArchiveContainerName, stopwatch.elapsed(SECONDS));
 
         } catch (StorageException ex) {
             throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
