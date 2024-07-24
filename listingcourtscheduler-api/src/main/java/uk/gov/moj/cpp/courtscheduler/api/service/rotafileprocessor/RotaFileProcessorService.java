@@ -141,6 +141,7 @@ public class RotaFileProcessorService {
             final long fileLength = blobByteArray.length;
             // upload the files processed into archive container
             azureBlobClientService.uploadProcessedFiles(new ByteArrayInputStream(blobByteArray), fileLength, blobName);
+            azureBlobClientService.deleteFile(blobName);
         });
 
     }

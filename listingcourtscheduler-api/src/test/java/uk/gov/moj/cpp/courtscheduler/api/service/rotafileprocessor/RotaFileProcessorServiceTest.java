@@ -184,6 +184,7 @@ class RotaFileProcessorServiceTest {
         final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
+        doNothing().when(azureBlobClientService).deleteFile(anyString());
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), eq(requester))).thenReturn(slots);
@@ -246,6 +247,7 @@ class RotaFileProcessorServiceTest {
         final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
+        doNothing().when(azureBlobClientService).deleteFile(anyString());
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), eq(requester))).thenReturn(slots);
@@ -316,6 +318,7 @@ class RotaFileProcessorServiceTest {
         final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
+        doNothing().when(azureBlobClientService).deleteFile(anyString());
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), eq(requester))).thenReturn(slots);
@@ -360,6 +363,7 @@ class RotaFileProcessorServiceTest {
 
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
+        doNothing().when(azureBlobClientService).deleteFile(anyString());
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), eq(requester))).thenReturn(slotsMock);
@@ -394,6 +398,7 @@ class RotaFileProcessorServiceTest {
         final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
+        doNothing().when(azureBlobClientService).deleteFile(anyString());
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
 
@@ -412,6 +417,7 @@ class RotaFileProcessorServiceTest {
         final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
+        doNothing().when(azureBlobClientService).deleteFile(anyString());
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), eq(requester))).thenReturn(slotsMock);
@@ -451,6 +457,7 @@ class RotaFileProcessorServiceTest {
         final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
+        doNothing().when(azureBlobClientService).deleteFile(anyString());
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), eq(requester))).thenReturn(slotsMock);
@@ -494,6 +501,7 @@ class RotaFileProcessorServiceTest {
         final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
+        doNothing().when(azureBlobClientService).deleteFile(anyString());
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), eq(requester))).thenReturn(slotsMock);
