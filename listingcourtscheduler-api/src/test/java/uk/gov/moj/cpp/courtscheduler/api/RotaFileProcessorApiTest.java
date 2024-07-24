@@ -4,6 +4,7 @@ import static java.util.UUID.randomUUID;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.Logger;
 
 @ExtendWith(MockitoExtension.class)
 class RotaFileProcessorApiTest {
@@ -44,8 +46,11 @@ class RotaFileProcessorApiTest {
     @InjectMocks
     private RotaFileProcessorApi rotaFileProcessorApi;
 
+    @Mock
+    private Logger LOGGER;
+
     @Test
-    void shouldProcessRotaFiles() {
+    void shouldProcessRotaFiles() throws InterruptedException {
         final String requestName = "courtscheduler.rotasl.process_rota_files";
 
         final JsonEnvelope processRotaFilesJsonEnvelope = createEnvelope(requestName, JsonValue.EMPTY_JSON_OBJECT);
@@ -55,7 +60,8 @@ class RotaFileProcessorApiTest {
 
         rotaFileProcessorApi.processRotaFiles(processRotaFilesJsonEnvelope);
 
-        verify(rotaFileProcessorService, atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester));
+        verify(rotaFileProcessorService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester));
+        verify(LOGGER, atLeastOnce()).info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
         verify(enveloper, atLeastOnce()).withMetadataFrom(processRotaFilesJsonEnvelope, requestName);
     }
 

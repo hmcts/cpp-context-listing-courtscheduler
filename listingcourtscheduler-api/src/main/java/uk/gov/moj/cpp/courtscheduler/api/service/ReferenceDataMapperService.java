@@ -9,17 +9,27 @@ import java.util.Optional;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @ApplicationScoped
 public class ReferenceDataMapperService {
+
+    private static Logger logger = LoggerFactory.getLogger(ReferenceDataMapperService.class);
 
     @Inject
     private ReferenceDataCache referenceDataCache;
 
     public Optional<Judiciary> findByEmail(final Requester requester, final String email) {
-        return referenceDataCache.getJudiciaries(requester)
+        logger.info("judiciary findByEmail being called for email {}", email);
+        final Optional<Judiciary> judiciaryOptional = referenceDataCache.getJudiciaries(requester)
                 .stream()
                 .filter(judiciary -> judiciary.getEmailAddress().equals(email))
                 .findFirst();
+
+        logger.info("judiciary found for email {} with judiciary : {}", email, judiciaryOptional.orElse(null));
+
+        return judiciaryOptional;
     }
 
     public Optional<CourtRoomSessionAllocation> findByOuCodeAndRoomIdAndListingSessionAndBusinessType(final Requester requester,
