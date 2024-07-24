@@ -21,6 +21,7 @@ import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setFi
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileParser;
+import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.util.PropertiesLoader;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
@@ -71,7 +72,9 @@ class JudiciaryScheduleEnricherTest {
         final String file = "rotafileprocessor/judiciary_enrich_payload.xml";
         final Judiciary judiciary = getJudiciary();
         final byte[] blobContent = givenBlobContent(file);
-        final Map<RotaPayload, Map<String, Map<String, String>>> records = new RotaFileParser().parse(file, blobContent);
+        final RotaFileParser rotaFileParser = new RotaFileParser();
+        setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
+        final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
         when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.of(judiciary));
         when(courtScheduleMap.get(anyString())).thenReturn(new CourtSchedule());
@@ -110,7 +113,9 @@ class JudiciaryScheduleEnricherTest {
 
         final String file = "rotafileprocessor/judiciary_enrich_payload.xml";
         final byte[] blobContent = givenBlobContent(file);
-        final Map<RotaPayload, Map<String, Map<String, String>>> records = new RotaFileParser().parse(file, blobContent);
+        final RotaFileParser rotaFileParser = new RotaFileParser();
+        setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
+        final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
         when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.empty());
         final Map<String, CourtSchedule> courtScheduleMap = new HashMap<>();

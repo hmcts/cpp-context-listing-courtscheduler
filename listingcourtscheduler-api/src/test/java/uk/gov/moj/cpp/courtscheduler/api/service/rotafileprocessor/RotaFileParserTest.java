@@ -3,7 +3,9 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor;
 import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
 
+import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.util.PropertiesLoader;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.io.IOException;
@@ -12,9 +14,11 @@ import java.util.Map;
 
 import javax.xml.stream.XMLInputFactory;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -26,6 +30,12 @@ class RotaFileParserTest {
 
     @Spy
     private XMLInputFactory xmlInputFactory;
+
+
+    @BeforeEach
+    void setUp() {
+        setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
+    }
 
     @Test
     void shouldParseValidRotaXML() throws IOException {

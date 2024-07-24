@@ -5,8 +5,10 @@ import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
 
 import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileParser;
+import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.util.PropertiesLoader;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
@@ -35,6 +37,8 @@ class JudiciaryBuilderTest {
 
         final byte[] blobContent = givenBlobContent(file);
 
+        final RotaFileParser rotaFileParser = new RotaFileParser();
+        setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
         final Map<RotaPayload, Map<String, Map<String, String>>> result = rotaFileParser.parse(file, blobContent);
         final Map<String, Map<String, String>> propertyMap = result.get(RotaPayload.SCHEDULE);
 
