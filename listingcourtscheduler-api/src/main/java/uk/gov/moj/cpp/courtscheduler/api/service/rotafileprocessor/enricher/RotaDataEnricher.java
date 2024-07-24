@@ -61,6 +61,7 @@ public class RotaDataEnricher {
     public Map<String, CourtSchedule> enrichCourtListings(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                           final LocalDate masterRotaFileCutOffDate,
                                                           final Requester requester) {
+        logger.info("enrichCourtListing - masterRotaFileCutOffDate: {}", masterRotaFileCutOffDate);
         final Map<String, Map<String, String>> courtListings = records.get(COURT_LISTING);
         final Map<String, CourtSchedule> courtSchedules = new HashMap<>();
         final Map<String, String> missingReferenceDataMappingMap = new HashMap<>();
