@@ -44,6 +44,9 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings({"squid:S1312", "squid:S2629","squid:S6813","squid:S112"})
 @ApplicationScoped
 public class ReferenceDataService {
+
+    private static Logger logger = LoggerFactory.getLogger(ReferenceDataService.class);
+
     private static final String REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME = "referencedata.query.public-holidays";
     private static final String REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME = "referencedata.query.rota-business-types";
     private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME = "referencedata.query.cp-rota-courtroom-mappings";
@@ -189,10 +192,13 @@ public class ReferenceDataService {
     }
 
     public Optional<CourtRoom> getRotaCourtRoomByVenue(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
+        logger.info("getRotaCourtRoomByVenue called - venue: {}", venue);
         final JsonEnvelope envelope =
                 envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME).build(),
                         createObjectBuilder().build());
+        logger.info("getRotaCourtRoomByVenue called - envelope created for venue: {} and request now will be sent", venue);
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+        logger.info("getRotaCourtRoomByVenue called - envelope created for venue: {} and request has been sent and the response payload : {}", venue, payload);
         JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
         if (isNull(courtRoomMappings)) {
             throw new RuntimeException(format("No court room found with venue: %d-%d-%s", venue.getLocationId(), venue.getVenueId(), venue.getVenueName()));
