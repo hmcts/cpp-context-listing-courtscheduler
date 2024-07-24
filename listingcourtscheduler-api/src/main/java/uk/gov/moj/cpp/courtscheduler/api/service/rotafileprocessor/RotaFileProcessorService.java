@@ -136,7 +136,7 @@ public class RotaFileProcessorService {
         downloadedBlobsByteArrayMap.keySet().forEach(blobName -> {
             final byte[] blobByteArray = downloadedBlobsByteArrayMap.get(blobName);
 
-//            process(blobName, blobByteArray, requester);
+            process(blobName, blobByteArray, requester);
 
             final long fileLength = blobByteArray.length;
             // upload the files processed into archive container
