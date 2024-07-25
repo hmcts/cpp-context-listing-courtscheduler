@@ -334,6 +334,7 @@ public class ReferenceDataCache {
 
     private static void processFoundCourtRoomWithVenue(final Venue venue, final AtomicReference<CourtRoom> courtRoomsForVenue, final Map<String, String> exceptionMessages, final List<CourtRoom> courtRoomList) {
         final Optional<CourtRoom> courtRoomOptional = courtRoomList.stream().filter(courtRoom -> venue.getVenueId().equals(courtRoom.getRotaVenueId())).findAny();
+
         if (courtRoomOptional.isPresent()) {
             courtRoomsForVenue.set(courtRoomOptional.get());
         } else {
