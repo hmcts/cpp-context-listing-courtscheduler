@@ -14,8 +14,8 @@ import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enrich
 import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -39,7 +39,7 @@ class CourtScheduleEnricherTest {
     private CourtScheduleEnricher courtScheduleEnricher;
 
     @Mock
-    private ReferenceDataService referenceDataService;
+    private ReferenceDataCache referenceDataCache;
 
     @Mock
     private ReferenceDataMapperService referenceDataMapperService;
@@ -64,7 +64,7 @@ class CourtScheduleEnricherTest {
 
         final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation("241546", 1234, "BAUOS05", 8, 60, "TBL", "PM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
-        when(referenceDataService.getRotaCourtRoomByVenue(any(Venue.class), any(Map.class), eq(requester))).thenReturn(of(courtRoom));
+        when(referenceDataCache.getCourtRoomByVenue(any(Venue.class), any(Map.class), eq(requester))).thenReturn(of(courtRoom));
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(courtRoomSessionAllocation));
@@ -124,7 +124,7 @@ class CourtScheduleEnricherTest {
     void shouldBuildNewCourtScheduleWithSessionAllocationDetailsNotPresentLogMessages() {
         final String businessType = "DVB";
         final CourtRoom courtRoom = createCourtRoom();
-        when(referenceDataService.getRotaCourtRoomByVenue(any(Venue.class), any(HashMap.class), eq(requester))).thenReturn(of(courtRoom));
+        when(referenceDataCache.getCourtRoomByVenue(any(Venue.class), any(HashMap.class), eq(requester))).thenReturn(of(courtRoom));
 
         final Map<String, String> listingProfile = new HashMap();
         listingProfile.put("id", "CS2129874");

@@ -59,7 +59,6 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,10 +141,12 @@ public class RotaFileProcessorService {
             final long fileLength = blobByteArray.length;
             // upload the files processed into archive container
             azureBlobClientService.uploadProcessedFiles(new ByteArrayInputStream(blobByteArray), fileLength, blobName);
+            azureBlobClientService.deleteFile(blobName);
         });
 
     }
 
+    @Transactional
     private void process(final String fileName, final byte[] content, final Requester requester) {
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
 
@@ -163,6 +164,7 @@ public class RotaFileProcessorService {
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDay(), rotaPeriodDateInfoProvider.getRotaPeriodEndDay(), masterRotaPeriodCutOffDate, rotaPeriodDateInfoProvider.getMonthsBetweenRotaPeriod());
 
         final Map<String, CourtSchedule> slots = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, requester);
+        logger.info("received slots with slot size: {}", slots.size());
         final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records, requester);
 
         logger.info("Enriched {} , saving it to DB..", slots.size());

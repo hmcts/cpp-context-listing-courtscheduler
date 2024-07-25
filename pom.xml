@@ -10,7 +10,7 @@
 
     <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
     <artifactId>listingcourtscheduler-parent</artifactId>
-    <version>17.0.65-CSP1-SNAPSHOT</version>
+    <version>17.0.71-CSP1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>CourtScheduler Service - Parent Module</name>
@@ -36,11 +36,7 @@
             **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
             **/uk/gov/moj/cpp/courtscheduler/exception/**/*,
             **/uk/gov/moj/cpp/courtscheduler/api/PayloadExtractor.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java,
-            **/uk/gov/moj/cpp/courtscheduler/repository/CourtScheduleRepository.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/service/rotafileprocessor/RotaFileProcessorService.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/service/rotafileprocessor/enricher/BusinessTypeMatchingLogger.java,
-            **/uk/gov/moj/cpp/courtscheduler/api/service/rotafileprocessor/util/PropertiesLoader.java
+            **/uk/gov/moj/cpp/courtscheduler/api/ApiConstants.java
         </sonar.coverage.exclusions>
         <sonar.cpd.exclusions>
             **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,

@@ -12,8 +12,8 @@ import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enrich
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaFileFieldNames.VENUE_NAME;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -27,14 +27,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @ApplicationScoped
 public class CourtScheduleEnricher {
+
+    private static final Logger logger = LoggerFactory.getLogger(CourtScheduleEnricher.class);
 
     @Inject
     private CourtSession courtSession;
 
     @Inject
-    private ReferenceDataService referenceDataService;
+    private ReferenceDataCache referenceDataCache;
 
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
@@ -80,9 +85,13 @@ public class CourtScheduleEnricher {
                                            final String courtSessionStr,
                                            final CourtRoom courtRoomDetail,
                                            final Requester requester) {
+        logger.info("populateSessionAllocation called");
         final String listingSession = courtSession.getCourtSession(sessionDate, courtSessionStr);
+        logger.info("calling referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {}",
+                courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType);
         final Optional<CourtRoomSessionAllocation> sessionAllocation = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(requester, courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType);
-
+        logger.info("called referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {} - with result : {}",
+                courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType, sessionAllocation);
         if (sessionAllocation.isPresent()) {
             final uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation allocation = sessionAllocation.get();
             populateSessionAllocationProperties(builder, allocation);
@@ -114,6 +123,10 @@ public class CourtScheduleEnricher {
     }
 
     private Optional<CourtRoom> courtRoom(final Integer locationId, final Integer venueId, final String venueName, final Map<String, String> exceptionMessages, final Requester requester) {
-        return referenceDataService.getRotaCourtRoomByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
+        logger.info("calling referenceDataCache.getCourtRoomByVenue");
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
+        logger.info("called successfully - referenceDataCache.getCourtRoomByVenue");
+
+        return courtRoomOptional;
     }
 }

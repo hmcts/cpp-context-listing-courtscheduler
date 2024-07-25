@@ -21,6 +21,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileParser;
+import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.util.PropertiesLoader;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
@@ -83,7 +84,8 @@ class RotaDataEnricherTest {
     void shouldEnrichListingWithCppReferenceData() throws IOException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final LocalDate rotaPeriodCutOffDate = LocalDate.of(2019, 12, 16);
-        final RotaFileParser parser = new RotaFileParser();
+        final RotaFileParser rotaFileParser = new RotaFileParser();
+        setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
         final Map<String,String> missingReferenceDataMappingMap = new HashMap();
 
         final String courtScheduleId = randomUUID().toString();
@@ -94,7 +96,7 @@ class RotaDataEnricherTest {
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
         final byte[] blobContent = givenBlobContent(file);
-        final Map<RotaPayload, Map<String, Map<String, String>>> records = parser.parse(file, blobContent);
+        final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
         final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, requester);
 
@@ -121,7 +123,8 @@ class RotaDataEnricherTest {
     void shouldEnrichListingWithCppReferenceDataWithLoggingMissingReferenceDataMapping() throws IOException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final LocalDate rotaPeriodCutOffDate = LocalDate.of(2019, 12, 16);
-        final RotaFileParser parser = new RotaFileParser();
+        final RotaFileParser rotaFileParser = new RotaFileParser();
+        setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
         final Map<String,String> missingReferenceDataMappingMap = new HashMap();
 
         final String courtScheduleId = randomUUID().toString();
@@ -132,7 +135,8 @@ class RotaDataEnricherTest {
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
         final byte[] blobContent = givenBlobContent(file);
-        final Map<RotaPayload, Map<String, Map<String, String>>> records = parser.parse(file, blobContent);
+
+        final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
         final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, requester);
 
