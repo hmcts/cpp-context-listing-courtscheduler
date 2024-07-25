@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.Boolean.parseBoolean;
+import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Optional.empty;
@@ -17,12 +18,14 @@ import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -53,11 +56,15 @@ public class ReferenceDataCache {
     @Value(key = "redisCommonCacheEnabled", defaultValue = "false")
     private String redisCommonCacheEnabled;
 
+    private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
+    private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
+    private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
 
     private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
 
     public static final String ROTA_BUSINESS_TYPE_CACHE_PREFIX = "RotaBusinessType_";
     public static final String ROTA_COURTROOM_CACHE_PREFIX = "RotaCourtRoom_";
+    public static final String ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX = "RotaCourtRoomByVenue_%d_%s";
     public static final String ROTA_BUSINESS_TYPES_CACHE_KEY = "RotaBusinessTypes";
     public static final String ROTA_JUDICIARIES_CACHE_KEY = "RotaJudiciaries_";
     public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSesionAllocations_";
@@ -97,6 +104,14 @@ public class ReferenceDataCache {
             return getCourtRoomSessionAllocationsFromTheCache(requester);
         } else {
             return referenceDataService.getCourtRoomSessionAllocationsMap(requester);
+        }
+    }
+
+    public Optional<CourtRoom> getCourtRoomByVenue(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
+        if (parseBoolean(redisCommonCacheEnabled)) {
+            return getCourtRoomByVenueFromTheCache(venue, exceptionMessages, requester);
+        } else {
+            return referenceDataService.getRotaCourtRoomByVenue(venue, exceptionMessages, requester);
         }
     }
 
@@ -150,8 +165,7 @@ public class ReferenceDataCache {
         } else {
             try {
                 LOGGER.info("cacheResult has been found for judiciaries in getJudiciariesFromTheCache");
-                return objectMapper.readValue(cacheResult, new TypeReference<>() {
-                });
+                return objectMapper.readValue(cacheResult, new TypeReference<>() {});
             } catch (final JsonProcessingException jsonProcessingException) {
                 LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
             }
@@ -190,6 +204,27 @@ public class ReferenceDataCache {
             final CourtRoom courtRoom = jsonObjectToObjectConverter.convert(cacheResultJsonObject, CourtRoom.class);
             return of(courtRoom);
         }
+    }
+
+    private Optional<CourtRoom> getCourtRoomByVenueFromTheCache(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
+        final String cacheResult = cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, venue.getLocationId(), venue.getVenueName()));
+
+        if (isNull(cacheResult)) {
+            LOGGER.info("no cache result found for venue: {} in getCourtRoomByVenueFromTheCache", venue);
+            final AtomicReference<CourtRoom> courtRoomsForVenue = new AtomicReference<>();
+            return processCourtRoomMapByVenue(venue, courtRoomsForVenue, exceptionMessages, requester);
+        } else {
+            try {
+                LOGGER.info("cacheResult has been found for venue: {} in getBusinessTypeByCodeFromTheCache", venue);
+                final List<CourtRoom> courtRooms = objectMapper.readValue(cacheResult, new TypeReference<>() {});
+
+                final Optional<CourtRoom> courtRoomWithVenueIdOptional = courtRooms.stream().filter(courtRoom -> courtRoom.getRotaVenueId().equals(venue.getVenueId())).findAny();
+                return courtRoomWithVenueIdOptional.isPresent() ? courtRoomWithVenueIdOptional : of(courtRooms.get(0));
+            } catch (final JsonProcessingException jsonProcessingException) {
+                LOGGER.error("exception whilst reading cacheResult for getCourtRoomByVenueFromTheCache and converting to List<CourtRoom> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+            }
+        }
+        return Optional.empty();
     }
 
     private List<BusinessType> processRotaBusinessTypes(Requester requester) {
@@ -271,5 +306,44 @@ public class ReferenceDataCache {
             return of(courtRoomForId.get());
         }
         return empty();
+    }
+
+    private Optional<CourtRoom> processCourtRoomMapByVenue(final Venue venue, final AtomicReference<CourtRoom> courtRoomsForVenue, final Map<String, String> exceptionMessages, final Requester requester) {
+        final List<CourtRoom> courtRooms = referenceDataService.getRotaCourtRoomMappings(requester);
+        if (isNotEmpty(courtRooms)) {
+            final Map<Integer, Map<String, List<CourtRoom>>> courtRoomGroupByLocationIdAndVenueName = courtRooms.stream().collect(Collectors.groupingBy(CourtRoom::getRotaLocationId, Collectors.groupingBy(CourtRoom::getRotaVenueName)));
+            courtRoomGroupByLocationIdAndVenueName.forEach((locationId, mapByVenueName) ->
+                mapByVenueName.keySet().forEach(venueName -> {
+                    final List<CourtRoom> courtRoomList = mapByVenueName.get(venueName);
+                    try {
+                        cacheService.add(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, venue.getLocationId(), venue.getVenueName()), objectMapper.writeValueAsString(courtRoomList));
+
+                        if (locationId.equals(venue.getLocationId()) && venueName.equals(venue.getVenueName())) {
+                            processFoundCourtRoomWithVenue(venue, courtRoomsForVenue, exceptionMessages, courtRoomList);
+                        }
+                    } catch (final JsonProcessingException jsonProcessingException) {
+                        LOGGER.error("exception whilst adding into the cache for locationId: {} and venueName {} with exception: {}", locationId, venueName, jsonProcessingException.getMessage(), jsonProcessingException);
+                    }
+                })
+            );
+
+            return of(courtRoomsForVenue.get());
+        }
+        return empty();
+    }
+
+    private static void processFoundCourtRoomWithVenue(final Venue venue, final AtomicReference<CourtRoom> courtRoomsForVenue, final Map<String, String> exceptionMessages, final List<CourtRoom> courtRoomList) {
+        final Optional<CourtRoom> courtRoomOptional = courtRoomList.stream().filter(courtRoom -> venue.getVenueId().equals(courtRoom.getRotaVenueId())).findAny();
+
+        if (courtRoomOptional.isPresent()) {
+            courtRoomsForVenue.set(courtRoomOptional.get());
+        } else {
+            if (courtRoomList.size() > 1) {
+                exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
+            } else {
+                exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
+            }
+            courtRoomsForVenue.set(courtRoomList.get(0));
+        }
     }
 }
