@@ -4,8 +4,6 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey_;
@@ -15,7 +13,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule_;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.persistence.criteria.CriteriaBuilder;
@@ -122,23 +119,6 @@ public class CourtScheduleCriteria {
                 criteriaQuery.select(root).where(criteriaBuilder.and(activePredicate, courtScheduleIdPredicate, courtListIdPredicate));
             }
         });
-    }
-
-    public void createAllocatedListingCriteria(Set<String> countBasedScheduleIds, CriteriaQuery<AllocatedListing> criteriaQuery) {
-        Root<AllocatedListing> root = criteriaQuery.from(AllocatedListing.class);
-        Predicate courtScheduleIdPredicate = root.get(AllocatedListing_.COURT_SCHEDULE_ID).in(countBasedScheduleIds);
-        criteriaQuery.select(root).where(courtScheduleIdPredicate).groupBy(root.get(AllocatedListing_.ID),
-                root.get(AllocatedListing_.COURT_SCHEDULE_ID),
-                root.get(AllocatedListing_.HEARING_START_TIME));
-    }
-
-    public void createAllocatedListingCountCriteria(Set<String> countBasedScheduleIds, CriteriaQuery<Long> criteriaQuery, CriteriaBuilder criteriaBuilder) {
-        Root<AllocatedListing> root = criteriaQuery.from(AllocatedListing.class);
-        Predicate courtScheduleIdPredicate = root.get(AllocatedListing_.COURT_SCHEDULE_ID).in(countBasedScheduleIds);
-        criteriaQuery.select(criteriaBuilder.count(root))
-                .where(courtScheduleIdPredicate).groupBy(root.get(AllocatedListing_.ID),
-                        root.get(AllocatedListing_.COURT_SCHEDULE_ID),
-                        root.get(AllocatedListing_.HEARING_START_TIME));
     }
 
     //Fetch single  courtsession either by courtscheduleId or filters : OuCode+SessionDate+CourtSession+CourtRoomNumber
