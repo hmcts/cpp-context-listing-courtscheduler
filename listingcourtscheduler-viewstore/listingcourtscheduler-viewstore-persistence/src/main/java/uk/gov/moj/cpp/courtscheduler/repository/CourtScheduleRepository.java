@@ -26,6 +26,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
 
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -52,6 +53,7 @@ import org.apache.deltaspike.data.api.Modifying;
 import org.apache.deltaspike.data.api.Query;
 import org.apache.deltaspike.data.api.QueryParam;
 import org.apache.deltaspike.data.api.Repository;
+import org.apache.deltaspike.data.api.SingleResultType;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,18 +198,20 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         courtScheduleList.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
         int resultSize = totalCourtScheduleList.size();
 
-        final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
-        final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
+        if(resultSize > 0) {
+            final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
+            final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
 
-        ModelMapper modelMapper = new ModelMapper();
-        courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
-        courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
+            ModelMapper modelMapper = new ModelMapper();
+            courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
+            courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
 
-        courtSchedules.forEach(courtSchedule -> {
-                    addJudiciaries(courtScheduleJudiciaries, courtSchedule);
-                    addSlotStartTimes(slotStartTimeList, courtSchedule);
-                }
-        );
+            courtSchedules.forEach(courtSchedule -> {
+                        addJudiciaries(courtScheduleJudiciaries, courtSchedule);
+                        addSlotStartTimes(slotStartTimeList, courtSchedule);
+                    }
+            );
+        }
 
         return Pair.of(resultSize, courtSchedules);
     }
@@ -424,35 +428,19 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     private Map<String, List<SlotStartTime>> getCountBasedAllocatedListing(final Set<String> courtScheduleIds) {
         final Map<String, List<SlotStartTime>> resultStringListMap = new HashMap<>();
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<AllocatedListing> criteriaQuery = criteriaBuilder.createQuery(AllocatedListing.class);
-        courtScheduleCriteria.createAllocatedListingCriteria(courtScheduleIds, criteriaQuery);
-        List<AllocatedListing> allocatedListing = entityManager.createQuery(criteriaQuery).getResultList();
-        List<Long> count = getCountBasedAllocatedListingCount(courtScheduleIds);
-        Map<AllocatedListing, Long> resultsMap = convertResultsToMap(allocatedListing, count);
-        resultsMap.forEach((listing, listingCount) -> {
-            final List<SlotStartTime> slotStartTimes = resultStringListMap.computeIfAbsent(listing.getCourtScheduleId(), k -> new ArrayList<>());
-            slotStartTimes.add(new SlotStartTime(toIsoString(new Timestamp(listing.getHearingStartTime().getTime())), listingCount));
+
+        javax.persistence.Query query = entityManager
+                .createNativeQuery("select court_schedule_id , hearing_start_time, count(*) as count from allocated_listings where court_schedule_id IN :courtScheduleId group by court_schedule_id , hearing_start_time");
+        query.setParameter("courtScheduleId", courtScheduleIds);
+
+        List<Object[]> queryResultList = query.getResultList();
+
+        queryResultList.forEach(response -> {
+            final List<SlotStartTime> slotStartTimes = resultStringListMap.computeIfAbsent((String) response[0], k -> new ArrayList<>());
+            slotStartTimes.add(new SlotStartTime(toIsoString((Timestamp) response[1]), ((BigInteger)response[2]).longValue()));
         });
 
         return resultStringListMap;
-    }
-
-    private List<Long> getCountBasedAllocatedListingCount(final Set<String> courtScheduleIds) {
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
-        courtScheduleCriteria.createAllocatedListingCountCriteria(courtScheduleIds, criteriaQuery, criteriaBuilder);
-        return entityManager.createQuery(criteriaQuery).getResultList();
-    }
-
-    private Map<AllocatedListing, Long> convertResultsToMap(List<AllocatedListing> allocatedListing, List<Long> count) {
-        Map<AllocatedListing, Long> result = new HashMap<>();
-
-        for (int i = 0; i < allocatedListing.size(); i++) {
-            result.put(allocatedListing.get(i), count.get(i));
-        }
-
-        return result;
     }
 
     private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
@@ -472,7 +460,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     @Query(value = "SELECT entity.courtScheduleId from CourtSchedule entity where entity.courtRoomId = :courtRoomId " +
-            "and entity.sessionDate = :sessionDate and entity.businessType = :businessType and entity.courtSession = :courtSession")
+            "and entity.sessionDate = :sessionDate and entity.businessType = :businessType and entity.courtSession = :courtSession", singleResult = SingleResultType.OPTIONAL, max = 1)
     public abstract String findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(@QueryParam("courtRoomId") String courtRoomId,
                                                                                 @QueryParam("sessionDate") LocalDate sessionDate,
                                                                                 @QueryParam("businessType") String businessType,

@@ -12,8 +12,8 @@ import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enrich
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaFileFieldNames.VENUE_NAME;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -39,7 +39,7 @@ public class CourtScheduleEnricher {
     private CourtSession courtSession;
 
     @Inject
-    private ReferenceDataService referenceDataService;
+    private ReferenceDataCache referenceDataCache;
 
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
@@ -123,9 +123,9 @@ public class CourtScheduleEnricher {
     }
 
     private Optional<CourtRoom> courtRoom(final Integer locationId, final Integer venueId, final String venueName, final Map<String, String> exceptionMessages, final Requester requester) {
-        logger.info("calling referenceDataService.getRotaCourtRoomByVenue");
-        final Optional<CourtRoom> courtRoomOptional =  referenceDataService.getRotaCourtRoomByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
-        logger.info("called successfully - referenceDataService.getRotaCourtRoomByVenue");
+        logger.info("calling referenceDataCache.getCourtRoomByVenue");
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
+        logger.info("called successfully - referenceDataCache.getCourtRoomByVenue");
 
         return courtRoomOptional;
     }

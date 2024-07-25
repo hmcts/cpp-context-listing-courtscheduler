@@ -146,6 +146,7 @@ public class RotaFileProcessorService {
 
     }
 
+    @Transactional
     private void process(final String fileName, final byte[] content, final Requester requester) {
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
 

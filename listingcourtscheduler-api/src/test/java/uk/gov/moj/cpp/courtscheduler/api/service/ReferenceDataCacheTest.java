@@ -1,16 +1,22 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
+import static java.lang.String.format;
 import static java.util.UUID.fromString;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_BUSINESS_TYPES_CACHE_KEY;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_BUSINESS_TYPE_CACHE_PREFIX;
+import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURTROOM_CACHE_PREFIX;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_JUDICIARIES_CACHE_KEY;
@@ -25,7 +31,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -59,7 +67,9 @@ class ReferenceDataCacheTest {
 
     private static final String BUSINESS_TYPE_CODE = "DVLA";
     private static final String COURT_ROOM_ID = randomUUID().toString();
-
+    private static final Integer LOCATION_ID = 77;
+    private static final Integer VENUE_ID = 24252;
+    private static final String VENUE_NAME = "Court 8";
 
     @BeforeEach
     void setUp() {
@@ -249,6 +259,122 @@ class ReferenceDataCacheTest {
         verify(referenceDataService).getRotaCourtRoomByCourtRoomId(COURT_ROOM_ID, requester);
     }
 
+    @Test
+    void shouldReturnCourtRoomByVenueFromCacheWhenCacheEnabled() {
+        setCommonCacheEnabled();
+        setCourtRoomByVenueCache();
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
+        assertEquals(VENUE_ID, courtRoomOptional.get().getRotaVenueId());
+        assertEquals(VENUE_NAME, courtRoomOptional.get().getRotaVenueName());
+        verify(cacheService).get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME));
+    }
+
+    @Test
+    void shouldReturnOneOfCourtRoomsHavingSameLocationIdAndVenueNameByVenueFromCacheWhenCacheEnabledAnd() {
+        setCommonCacheEnabled();
+        setCourtRoomWithMultipleValuesHavingSameLocationIdAndVenueNameByVenueCache();
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
+        assertEquals(VENUE_ID, courtRoomOptional.get().getRotaVenueId());
+        assertEquals(VENUE_NAME, courtRoomOptional.get().getRotaVenueName());
+        verify(cacheService).get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME));
+    }
+
+    @Test
+    void shouldReturnCourtRoomByVenueFromCacheWhenCacheEnabledHoweverNotInTheCache() {
+        setCommonCacheEnabled();
+        when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
+        when(referenceDataService.getRotaCourtRoomMappings(requester)).thenReturn(List.of(CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withRotaLocationId(LOCATION_ID)
+                .withRotaVenueName(VENUE_NAME)
+                .withRotaVenueId(VENUE_ID)
+                .withCourtRoomId(COURT_ROOM_ID).build()));
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
+        assertEquals(VENUE_ID, courtRoomOptional.get().getRotaVenueId());
+        assertEquals(VENUE_NAME, courtRoomOptional.get().getRotaVenueName());
+        verify(cacheService).get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME));
+        verify(referenceDataService, atLeastOnce()).getRotaCourtRoomMappings(requester);
+    }
+
+    @Test
+    void shouldReturnOneOfCourtRoomsHavingSameLocationIdAndVenueNameByVenueFromCacheWhenCacheEnabledHoweverNotInTheCache() {
+        setCommonCacheEnabled();
+        when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
+        when(referenceDataService.getRotaCourtRoomMappings(requester)).thenReturn(List.of(
+                CourtRoom.CourtRoomBuilder.aCourtRoom()
+                        .withRotaLocationId(LOCATION_ID)
+                        .withRotaVenueName(VENUE_NAME)
+                        .withCppCourtRoomId(2345)
+                        .withCourtRoomId(COURT_ROOM_ID).build(),
+                CourtRoom.CourtRoomBuilder.aCourtRoom()
+                        .withRotaLocationId(LOCATION_ID)
+                        .withRotaVenueName(VENUE_NAME)
+                        .withCppCourtRoomId(2346)
+                        .withCourtRoomId(COURT_ROOM_ID).build()));
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
+        assertNull(courtRoomOptional.get().getRotaVenueId());
+        assertEquals(VENUE_NAME, courtRoomOptional.get().getRotaVenueName());
+        verify(cacheService).get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME));
+        verify(referenceDataService, atLeastOnce()).getRotaCourtRoomMappings(requester);
+    }
+
+    @Test
+    void shouldReturnCourtRoomEvenVenueIdNotMatchingButLoggedByVenueFromCacheWhenCacheEnabledHoweverNotInTheCache() {
+        setCommonCacheEnabled();
+        when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
+        when(referenceDataService.getRotaCourtRoomMappings(requester)).thenReturn(List.of(
+                CourtRoom.CourtRoomBuilder.aCourtRoom()
+                        .withRotaLocationId(LOCATION_ID)
+                        .withRotaVenueName(VENUE_NAME)
+                        .withCppCourtRoomId(2345)
+                        .withCourtRoomId(COURT_ROOM_ID).build()));
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
+        assertNull(courtRoomOptional.get().getRotaVenueId());
+        assertEquals(VENUE_NAME, courtRoomOptional.get().getRotaVenueName());
+        verify(cacheService).get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME));
+        verify(referenceDataService, atLeastOnce()).getRotaCourtRoomMappings(requester);
+    }
+
+    @Test
+    void shouldReturnCourtRoomByVenueFromServiceWhenCacheDisabled() {
+        setCommonCacheDisabled();
+        final Venue venue = new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME);
+        when(referenceDataService.getRotaCourtRoomByVenue(eq(venue), anyMap(), eq(requester)))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom()
+                        .withRotaLocationId(LOCATION_ID)
+                        .withRotaVenueName(VENUE_NAME)
+                        .withRotaVenueId(VENUE_ID)
+                        .withCourtRoomId(COURT_ROOM_ID).build()));
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
+        assertEquals(VENUE_ID, courtRoomOptional.get().getRotaVenueId());
+        assertEquals(VENUE_NAME, courtRoomOptional.get().getRotaVenueName());
+        verify(cacheService, never()).get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME));
+        verify(referenceDataService, atLeastOnce()).getRotaCourtRoomByVenue(eq(venue), anyMap(), eq(requester));
+    }
+
     private void setBusinessTypeCache() {
         when(cacheService.get(ROTA_BUSINESS_TYPE_CACHE_PREFIX + BUSINESS_TYPE_CODE)).thenReturn(" {\n" +
                 "      \"id\": \"0c90ad7e-7c8d-3bd6-a52d-c4b7ec107a78\",\n" +
@@ -290,6 +416,55 @@ class ReferenceDataCacheTest {
                 "      \"courtroomName\": \"Courtroom 01\",\n" +
                 "      \"courtroomId\": \"2bd129f3-780e-37dd-b9aa-48690f91b69c\"\n" +
                 "    }");
+
+    }
+
+    private void setCourtRoomByVenueCache() {
+        when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(" [{\n" +
+                "      \"id\": \"26de1ba8-fad7-3747-81e2-0dc6dce6ed7a\",\n" +
+                "      \"rotaLocationId\": 77,\n" +
+                "      \"rotaVenueName\": \"Court 8\",\n" +
+                "      \"cppCourtRoomId\": 2034,\n" +
+                "      \"rotaVenueId\": 24252,\n" +
+                "      \"oucode\": \"B43KQ00\",\n" +
+                "      \"oucodeL3Name\": \"Reading Magistrates' Court\",\n" +
+                "      \"oucodeL2Name\": \"Thames Valley\",\n" +
+                "      \"oucodeL2Code\": \"43\",\n" +
+                "      \"oucodeUUID\": \"49db2271-1941-3847-a7fb-dbd92b035e40\",\n" +
+                "      \"courtroomName\": \"Courtroom 08\",\n" +
+                "      \"courtroomId\": \"7b5c87f5-d964-3311-a700-c40f67213cd5\"\n" +
+                "    }]");
+
+    }
+
+    private void setCourtRoomWithMultipleValuesHavingSameLocationIdAndVenueNameByVenueCache() {
+        when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(" [{\n" +
+                "      \"id\": \"26de1ba8-fad7-3747-81e2-0dc6dce6ed7a\",\n" +
+                "      \"rotaLocationId\": 77,\n" +
+                "      \"rotaVenueName\": \"Court 8\",\n" +
+                "      \"cppCourtRoomId\": 2034,\n" +
+                "      \"rotaVenueId\": 24252,\n" +
+                "      \"oucode\": \"B43KQ00\",\n" +
+                "      \"oucodeL3Name\": \"Reading Magistrates' Court\",\n" +
+                "      \"oucodeL2Name\": \"Thames Valley\",\n" +
+                "      \"oucodeL2Code\": \"43\",\n" +
+                "      \"oucodeUUID\": \"49db2271-1941-3847-a7fb-dbd92b035e40\",\n" +
+                "      \"courtroomName\": \"Courtroom 08\",\n" +
+                "      \"courtroomId\": \"7b5c87f5-d964-3311-a700-c40f67213cd5\"\n" +
+                "    }, \n {\n" +
+                "      \"id\": \"26de1ba8-fad7-3747-81e2-0dc6dce6ed7a\",\n" +
+                "      \"rotaLocationId\": 77,\n" +
+                "      \"rotaVenueName\": \"Court 8\",\n" +
+                "      \"cppCourtRoomId\": 2035,\n" +
+                "      \"rotaVenueId\": 24253,\n" +
+                "      \"oucode\": \"B43KQ00\",\n" +
+                "      \"oucodeL3Name\": \"Reading Magistrates' Court\",\n" +
+                "      \"oucodeL2Name\": \"Thames Valley\",\n" +
+                "      \"oucodeL2Code\": \"43\",\n" +
+                "      \"oucodeUUID\": \"49db2271-1941-3847-a7fb-dbd92b035e40\",\n" +
+                "      \"courtroomName\": \"Courtroom 08\",\n" +
+                "      \"courtroomId\": \"7b5c87f5-d964-3311-a700-c40f67213cd5\"\n" +
+                "    }]");
 
     }
 
