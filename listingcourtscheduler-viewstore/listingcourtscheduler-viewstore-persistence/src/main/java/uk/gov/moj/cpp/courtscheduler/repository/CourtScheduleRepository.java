@@ -53,6 +53,7 @@ import org.apache.deltaspike.data.api.Modifying;
 import org.apache.deltaspike.data.api.Query;
 import org.apache.deltaspike.data.api.QueryParam;
 import org.apache.deltaspike.data.api.Repository;
+import org.apache.deltaspike.data.api.SingleResultType;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -457,7 +458,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     @Query(value = "SELECT entity.courtScheduleId from CourtSchedule entity where entity.courtRoomId = :courtRoomId " +
-            "and entity.sessionDate = :sessionDate and entity.businessType = :businessType and entity.courtSession = :courtSession")
+            "and entity.sessionDate = :sessionDate and entity.businessType = :businessType and entity.courtSession = :courtSession", singleResult = SingleResultType.OPTIONAL, max = 1)
     public abstract String findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(@QueryParam("courtRoomId") String courtRoomId,
                                                                                 @QueryParam("sessionDate") LocalDate sessionDate,
                                                                                 @QueryParam("businessType") String businessType,
