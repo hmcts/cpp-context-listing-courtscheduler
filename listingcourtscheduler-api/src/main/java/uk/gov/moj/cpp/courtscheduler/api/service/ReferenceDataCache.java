@@ -319,17 +319,7 @@ public class ReferenceDataCache {
                         cacheService.add(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, venue.getLocationId(), venue.getVenueName()), objectMapper.writeValueAsString(courtRoomList));
 
                         if (locationId.equals(venue.getLocationId()) && venueName.equals(venue.getVenueName())) {
-                            final Optional<CourtRoom> courtRoomOptional = courtRoomList.stream().filter(courtRoom -> venue.getVenueId().equals(courtRoom.getRotaVenueId())).findAny();
-                            if (courtRoomOptional.isPresent()) {
-                                courtRoomsForVenue.set(courtRoomOptional.get());
-                            } else {
-                                if (courtRoomList.size() > 1) {
-                                    exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
-                                } else {
-                                    exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
-                                }
-                                courtRoomsForVenue.set(courtRoomList.get(0));
-                            }
+                            processFoundCourtRoomWithVenue(venue, courtRoomsForVenue, exceptionMessages, courtRoomList);
                         }
                     } catch (final JsonProcessingException jsonProcessingException) {
                         LOGGER.error("exception whilst adding into the cache for locationId: {} and venueName {} with exception: {}", locationId, venueName, jsonProcessingException.getMessage(), jsonProcessingException);
@@ -340,5 +330,19 @@ public class ReferenceDataCache {
             return of(courtRoomsForVenue.get());
         }
         return empty();
+    }
+
+    private static void processFoundCourtRoomWithVenue(final Venue venue, final AtomicReference<CourtRoom> courtRoomsForVenue, final Map<String, String> exceptionMessages, final List<CourtRoom> courtRoomList) {
+        final Optional<CourtRoom> courtRoomOptional = courtRoomList.stream().filter(courtRoom -> venue.getVenueId().equals(courtRoom.getRotaVenueId())).findAny();
+        if (courtRoomOptional.isPresent()) {
+            courtRoomsForVenue.set(courtRoomOptional.get());
+        } else {
+            if (courtRoomList.size() > 1) {
+                exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
+            } else {
+                exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
+            }
+            courtRoomsForVenue.set(courtRoomList.get(0));
+        }
     }
 }
