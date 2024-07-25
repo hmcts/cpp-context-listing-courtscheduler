@@ -197,18 +197,20 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         courtScheduleList.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
         int resultSize = totalCourtScheduleList.size();
 
-        final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
-        final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
+        if(resultSize > 0) {
+            final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
+            final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
 
-        ModelMapper modelMapper = new ModelMapper();
-        courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
-        courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
+            ModelMapper modelMapper = new ModelMapper();
+            courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
+            courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
 
-        courtSchedules.forEach(courtSchedule -> {
-                    addJudiciaries(courtScheduleJudiciaries, courtSchedule);
-                    addSlotStartTimes(slotStartTimeList, courtSchedule);
-                }
-        );
+            courtSchedules.forEach(courtSchedule -> {
+                        addJudiciaries(courtScheduleJudiciaries, courtSchedule);
+                        addSlotStartTimes(slotStartTimeList, courtSchedule);
+                    }
+            );
+        }
 
         return Pair.of(resultSize, courtSchedules);
     }
