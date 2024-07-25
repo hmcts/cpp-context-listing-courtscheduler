@@ -26,6 +26,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
 
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -424,35 +425,19 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     private Map<String, List<SlotStartTime>> getCountBasedAllocatedListing(final Set<String> courtScheduleIds) {
         final Map<String, List<SlotStartTime>> resultStringListMap = new HashMap<>();
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<AllocatedListing> criteriaQuery = criteriaBuilder.createQuery(AllocatedListing.class);
-        courtScheduleCriteria.createAllocatedListingCriteria(courtScheduleIds, criteriaQuery);
-        List<AllocatedListing> allocatedListing = entityManager.createQuery(criteriaQuery).getResultList();
-        List<Long> count = getCountBasedAllocatedListingCount(courtScheduleIds);
-        Map<AllocatedListing, Long> resultsMap = convertResultsToMap(allocatedListing, count);
-        resultsMap.forEach((listing, listingCount) -> {
-            final List<SlotStartTime> slotStartTimes = resultStringListMap.computeIfAbsent(listing.getCourtScheduleId(), k -> new ArrayList<>());
-            slotStartTimes.add(new SlotStartTime(toIsoString(new Timestamp(listing.getHearingStartTime().getTime())), listingCount));
+
+        javax.persistence.Query query = entityManager
+                .createNativeQuery("select court_schedule_id , hearing_start_time, count(*) as count from allocated_listings where court_schedule_id IN :courtScheduleId group by court_schedule_id , hearing_start_time");
+        query.setParameter("courtScheduleId", courtScheduleIds);
+
+        List<Object[]> queryResultList = query.getResultList();
+
+        queryResultList.forEach(response -> {
+            final List<SlotStartTime> slotStartTimes = resultStringListMap.computeIfAbsent((String) response[0], k -> new ArrayList<>());
+            slotStartTimes.add(new SlotStartTime(toIsoString((Timestamp) response[1]), ((BigInteger)response[2]).longValue()));
         });
 
         return resultStringListMap;
-    }
-
-    private List<Long> getCountBasedAllocatedListingCount(final Set<String> courtScheduleIds) {
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
-        courtScheduleCriteria.createAllocatedListingCountCriteria(courtScheduleIds, criteriaQuery, criteriaBuilder);
-        return entityManager.createQuery(criteriaQuery).getResultList();
-    }
-
-    private Map<AllocatedListing, Long> convertResultsToMap(List<AllocatedListing> allocatedListing, List<Long> count) {
-        Map<AllocatedListing, Long> result = new HashMap<>();
-
-        for (int i = 0; i < allocatedListing.size(); i++) {
-            result.put(allocatedListing.get(i), count.get(i));
-        }
-
-        return result;
     }
 
     private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
