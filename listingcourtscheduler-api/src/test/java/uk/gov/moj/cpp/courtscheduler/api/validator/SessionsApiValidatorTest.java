@@ -71,7 +71,7 @@ public class SessionsApiValidatorTest {
     }
 
     @Test
-    @Disabled
+    @Disabled("will be handled separately")
     public void shouldReturnErrorWhenSessionTypeIsDuplicateWithRequest() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
         final List<Session> sessionList  = Arrays.asList(session().withSessionType("AM").build(), session().withSessionType("PM").build());
@@ -90,7 +90,7 @@ public class SessionsApiValidatorTest {
     }
 
     @Test
-    @Disabled
+    @Disabled("will be handled separately")
     public void shouldReturnErrorWhenSessionTypeIsDuplicateWithDatabase() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
 

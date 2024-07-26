@@ -21,7 +21,7 @@ public class CreateSessionsRequestParamConverterTest {
     private CreateSessionsRequestParamConverter converter = new CreateSessionsRequestParamConverter();
 
     @Test
-    @Disabled
+    @Disabled("will be handled separately")
     public void shouldConvertJsonObjectToCreateSessionRequestParam() {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("sessions", Json.createArrayBuilder()
