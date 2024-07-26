@@ -17,6 +17,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
@@ -196,18 +197,20 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         courtScheduleList.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
         int resultSize = totalCourtScheduleList.size();
 
-        final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
-        final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
+        if(resultSize > 0) {
+            final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
+            final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
 
-        ModelMapper modelMapper = new ModelMapper();
-        courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
-        courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
+            ModelMapper modelMapper = new ModelMapper();
+            courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
+            courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
 
-        courtSchedules.forEach(courtSchedule -> {
-                    addJudiciaries(courtScheduleJudiciaries, courtSchedule);
-                    addSlotStartTimes(slotStartTimeList, courtSchedule);
-                }
-        );
+            courtSchedules.forEach(courtSchedule -> {
+                        addJudiciaries(courtScheduleJudiciaries, courtSchedule);
+                        addSlotStartTimes(slotStartTimeList, courtSchedule);
+                    }
+            );
+        }
 
         return Pair.of(resultSize, courtSchedules);
     }
@@ -269,6 +272,9 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.sessionDate BETWEEN :startDate AND :endDate")
     public abstract List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@QueryParam("ouCodes") final List<String> ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
+
+    @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND courtRoomId = :courtRoomId AND active = true AND businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate")
+    public abstract List<CourtSchedule> getSimilarSessions(@QueryParam("courtCentreId") final String courtCentreId,@QueryParam("courtRoomId") final String courtRoomId,@QueryParam("businessType") final String businessType,  @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
 
     @Modifying
     @Query(value = "UPDATE CourtSchedule cs SET cs.active = false, cs.updatedOn = :updatedOn WHERE cs.courtScheduleId IN :courtScheduleIds")

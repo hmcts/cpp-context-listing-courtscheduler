@@ -334,3 +334,46 @@ protocols: [ HTTP, HTTPS ]
     responses:
       202:
         description: Request Accepted
+
+
+/validate:
+  description: |
+    validate your request before you call the actual endpoint
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.validate.create+json
+          name: courtscheduler.validate.create
+      (mapping):
+          requestType: application/vnd.courtscheduler.validate.update+json
+          name: courtscheduler.validate.update
+      (mapping):
+          requestType: application/vnd.courtscheduler.validate.delete+json
+          name: courtscheduler.validate.delete
+      ...
+    body:
+      application/vnd.courtscheduler.validate.create+json:
+        schema: !include json/schema/courtscheduler.validate.create.json
+        example: !include json/courtscheduler.validate.create.json
+      application/vnd.courtscheduler.validate.update+json:
+        schema: !include json/schema/courtscheduler.validate.update.json
+        example: !include json/courtscheduler.validate.update.json
+      application/vnd.courtscheduler.validate.delete+json:
+        schema: !include json/schema/courtscheduler.validate.delete.json
+        example: !include json/courtscheduler.validate.delete.json
+
+    responses:
+      200:
+        description: OK
+      400:
+        body:
+          application/vnd.courtscheduler.validate.create.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+          application/vnd.courtscheduler.validate.update.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+          application/vnd.courtscheduler.validate.delete.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
