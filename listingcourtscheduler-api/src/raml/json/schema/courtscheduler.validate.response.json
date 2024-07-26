@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "validationResult": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string", "enum": ["SUCCESS", "FAILURE"]},
+          "conflictingCourtScheduleId" : {"$ref": "#/definitions/uuid"},
+          "validationError": {"type": "string"}
+          },
+      "required": ["status"]
+        }
+
+    }
+}

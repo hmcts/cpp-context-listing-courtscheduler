@@ -86,27 +86,27 @@ public class CourtSchedulerApi {
     @Inject
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
     @Inject
-    private  AllocatedSlotConverter converter;
+    private AllocatedSlotConverter converter;
     @Inject
-    private  HearingSlotsApiValidator hearingSlotsApiValidator;
+    private HearingSlotsApiValidator hearingSlotsApiValidator;
     @Inject
-    private  CourtScheduleApiValidator courtScheduleApiValidator;
+    private CourtScheduleApiValidator courtScheduleApiValidator;
     @Inject
-    private  HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
+    private HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
     @Inject
-    private  CourtScheduleRequestParamConverter courtScheduleRequestParamConverter;
+    private CourtScheduleRequestParamConverter courtScheduleRequestParamConverter;
     @Inject
-    private  MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter;
+    private MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter;
     @Inject
-    private  ProvisionalSlotConverter provisionalSlotConverter;
+    private ProvisionalSlotConverter provisionalSlotConverter;
     @Inject
-    private  ProvisionalBookingApiValidator provisionalBookingApiValidator;
+    private ProvisionalBookingApiValidator provisionalBookingApiValidator;
     @Inject
-    private  SessionsConverter sessionsConverter;
+    private SessionsConverter sessionsConverter;
     @Inject
-    private  UpdateCourtScheduleConverter updateCourtScheduleConverter;
+    private UpdateCourtScheduleConverter updateCourtScheduleConverter;
     @Inject
-    private  CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
+    private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
     @Inject
     private OuCodeMigrateConverter ouCodeMigrateConverter;
 
@@ -124,6 +124,19 @@ public class CourtSchedulerApi {
         sessionsService.create(createSessionRequestParam, requester);
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.create").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.validate.create")
+    public JsonEnvelope validateCreateCourtSchedule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
+        JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.validate.create").apply(createObjectBuilder().build());
     }
 
     @Handles("courtscheduler.delete")

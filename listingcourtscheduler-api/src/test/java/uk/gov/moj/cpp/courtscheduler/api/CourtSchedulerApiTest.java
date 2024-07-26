@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
+import static io.lettuce.core.pubsub.PubSubOutput.Type.message;
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
@@ -46,6 +47,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
+import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationStatus;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
@@ -62,6 +64,7 @@ import javax.json.JsonObject;
 import javax.json.JsonValue;
 
 import com.google.common.collect.Lists;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -150,7 +153,7 @@ class CourtSchedulerApiTest {
                 .add("errorMessage", "Invalid parameters")
                 .build();
 
-        when(createSessionsRequestParamConverter.convert(any())).thenReturn(new CreateSessionRequestParam(Collections.emptyList(), null));
+        when(createSessionsRequestParamConverter.convert(any())).thenReturn(new CreateSessionRequestParam(Collections.emptyList(), null,null));
 
         when(sessionsApiValidator.getSessionsCreateValidation(any(CreateSessionRequestParam.class))).thenReturn(validationError);
 
@@ -159,7 +162,7 @@ class CourtSchedulerApiTest {
             courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
         } catch (ValidationException e) {
             // Assert
-            assertEquals("Validation failed", e.getMessage());
+            assertEquals("{\"errorMessage\":\"Invalid parameters\"}", e.getMessage());
             assertEquals(e.getErrors().getString("errorMessage"), validationError.getString("errorMessage"));
          }
     }
@@ -373,6 +376,24 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(migrateOuCodeEnvelope, requestName);
+    }
+
+    @Test
+    void shouldReturnFailureWhenValidationFails() throws IOException {
+        String payload = FileUtil.getPayload("courtscheduler.validate.create.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.validate.create";
+
+        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonObject);
+        final JsonObject validationResult = createObjectBuilder().add("validationResult",createObjectBuilder()
+                .add("status", ValidationStatus.FAILURE.getValidationStatus())
+                .add("validationError", "Validation failed")
+                .build()).build();
+
+        when(sessionsApiValidator.getSessionsCreateValidation(any())).thenReturn(validationResult);
+
+        //verify it returns bad request with error message
+      assertThrows(ValidationException.class, () -> courtSchedulerApi.validateCreateCourtSchedule(validationEnvelope));
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {

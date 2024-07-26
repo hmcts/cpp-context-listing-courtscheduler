@@ -20,10 +20,12 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
     public CreateSessionRequestParam convert(final JsonObject jsonObject) {
         final List<Session> sessions = convertSessions(jsonObject.getJsonArray(RequestParameterConstant.SESSIONS.getLabel()));
         final RepeatPattern  repeatPattern = convertRepeatPattern(jsonObject.getJsonObject(RequestParameterConstant.REPEAT_PATTERN.getLabel()));
+        final Session sessionToBeAdded = convertSession(jsonObject.getJsonObject(RequestParameterConstant.SESSION_TO_BE_ADDED.getLabel()));
 
         return CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam()
                 .withSessionList(sessions)
                 .withRepeatPattern(repeatPattern)
+                .withSessionToBeAdded(sessionToBeAdded)
                 .build();
     }
 
@@ -46,6 +48,18 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
 
         }
         return sessions;
+    }
+
+    private Session convertSession(JsonObject jsonObject) {
+        return Session.SessionBuilder.session()
+                .withCourtCentreId(jsonObject.getString(RequestParameterConstant.COURT_CENTRE_ID.getLabel()))
+                .withCourtRoomId(jsonObject.getString(RequestParameterConstant.COURT_ROOM.getLabel()))
+                .withSessionType(jsonObject.getString(RequestParameterConstant.SESSION_TYPE.getLabel()))
+                .withBusinessType(jsonObject.getString(RequestParameterConstant.BUSINESS_TYPE.getLabel()))
+                .withSlotsOrDuration(jsonObject.getInt(RequestParameterConstant.DURATION.getLabel(), 0))
+                .withPanelType(jsonObject.getString(RequestParameterConstant.PANEL.getLabel()))
+                .withRepeatDays(DayOfWeekConverter.convert(jsonObject.getJsonArray(RequestParameterConstant.REPEAT_DAYS.getLabel())))
+                .build();
     }
 
     private RepeatPattern convertRepeatPattern(JsonObject jsonObject) {
