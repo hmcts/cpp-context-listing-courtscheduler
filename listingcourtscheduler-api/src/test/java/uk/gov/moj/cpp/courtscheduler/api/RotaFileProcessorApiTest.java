@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.api;
 import static java.util.UUID.randomUUID;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,6 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileProce
 import java.util.UUID;
 import java.util.function.Function;
 
+import javax.ejb.AsyncResult;
 import javax.json.JsonValue;
 
 import org.junit.jupiter.api.Test;
@@ -50,13 +50,13 @@ class RotaFileProcessorApiTest {
     private Logger LOGGER;
 
     @Test
-    void shouldProcessRotaFiles() throws InterruptedException {
+    void shouldProcessRotaFiles() {
         final String requestName = "courtscheduler.rotasl.process_rota_files";
 
         final JsonEnvelope processRotaFilesJsonEnvelope = createEnvelope(requestName, JsonValue.EMPTY_JSON_OBJECT);
 
         when(enveloper.withMetadataFrom(processRotaFilesJsonEnvelope, requestName)).thenReturn(function);
-        doNothing().when(rotaFileProcessorService).captureRotaFilesAndProcessEach(eq(requester));
+        when(rotaFileProcessorService.captureRotaFilesAndProcessEach(eq(requester))).thenReturn(new AsyncResult<>("SUCCESS"));
 
         rotaFileProcessorApi.processRotaFiles(processRotaFilesJsonEnvelope);
 

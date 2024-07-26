@@ -298,14 +298,14 @@ public class ReferenceDataService {
                 .withPersonId(getStringOrElse(jsonObject, "personId", null))
                 .withSurname(jsonObject.getString("surname"))
                 .withSeqId(jsonObject.getInt("seqId"))
-                .withTitleJudicialPrefix(jsonObject.getString("titleJudicialPrefix"))
-                .withTitleJudicialPrefixWelsh(jsonObject.getString("titleJudicialPrefixWelsh"))
-                .withTitleSuffix(jsonObject.getString("titleSuffix"))
-                .withTitleSuffixWelsh(jsonObject.getString("titleSuffixWelsh"))
-                .withValidFrom(jsonObject.getString("validFrom"))
-                .withValidTo(jsonObject.getString("validTo"))
-                .withTitlePrefix(jsonObject.getString("titlePrefix"))
-                .withTitlePrefixWelsh(jsonObject.getString("titlePrefixWelsh"))
+                .withTitleJudicialPrefix(getStringOrElse(jsonObject, "titleJudicialPrefix", null))
+                .withTitleJudicialPrefixWelsh(getStringOrElse(jsonObject, "titleJudicialPrefixWelsh", null))
+                .withTitleSuffix(getStringOrElse(jsonObject, "titleSuffix", null))
+                .withTitleSuffixWelsh(getStringOrElse(jsonObject, "titleSuffixWelsh", null))
+                .withValidFrom(getStringOrElse(jsonObject, "validFrom", null))
+                .withValidTo(getStringOrElse(jsonObject, "validTo", null))
+                .withTitlePrefix(getStringOrElse(jsonObject, "titlePrefix", null))
+                .withTitlePrefixWelsh(getStringOrElse(jsonObject, "titlePrefixWelsh", null))
                 .build();
     }
 

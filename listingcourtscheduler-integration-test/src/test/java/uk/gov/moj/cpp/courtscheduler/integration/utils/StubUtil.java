@@ -34,6 +34,10 @@ public class StubUtil {
     private static final String ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.rota-business-types+json";
     private static final String QUERY_RELATIVE_URL_ROTA_COURTROOMS = "/referencedata-service/query/api/rest/referencedata/cp-rota-courtroom-mappings";
     private static final String ROTA_COURTROOMS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.cp-rota-courtroom-mappings+json";
+    private static final String QUERY_RELATIVE_URL_ROTA_COURTROOMSESSIONALLOCATIONS = "/referencedata-service/query/api/rest/referencedata/courtroom-session-allocations";
+    private static final String ROTA_COURTROOMSESSIONALLOCATIONS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.courtroom-session-allocations+json";
+    private static final String QUERY_RELATIVE_URL_ROTA_JUDICIARIES = "/referencedata-service/query/api/rest/referencedata/judiciaries";
+    private static final String ROTA_JUDICIARIES_QUERY_MEDIA_TYPE = "application/vnd.reference-data.judiciaries+json";
 
     public static void setupLoggedInUsersPermissionQueryStub(final String userId) {
         reset();
@@ -78,6 +82,28 @@ public class StubUtil {
                         .withBody(getPayload(responsePath))));
 
         waitForStubToBeReady(urlPath, ROTA_COURTROOMS_QUERY_MEDIA_TYPE);
+    }
+
+    public static void stubGetReferenceDataCourtRoomSessionAllocations(final String responsePath) {
+        final String urlPath = QUERY_RELATIVE_URL_ROTA_COURTROOMSESSIONALLOCATIONS;
+        stubFor(get(urlPathEqualTo(urlPath))
+                .willReturn(aResponse().withStatus(SC_OK)
+                        .withHeader("CPPID", randomUUID().toString())
+                        .withHeader("Content-Type", ROTA_COURTROOMSESSIONALLOCATIONS_QUERY_MEDIA_TYPE)
+                        .withBody(getPayload(responsePath))));
+
+        waitForStubToBeReady(urlPath, ROTA_COURTROOMSESSIONALLOCATIONS_QUERY_MEDIA_TYPE);
+    }
+
+    public static void stubGetReferenceDataJudiciaries(final String responsePath) {
+        final String urlPath = QUERY_RELATIVE_URL_ROTA_JUDICIARIES;
+        stubFor(get(urlPathEqualTo(urlPath))
+                .willReturn(aResponse().withStatus(SC_OK)
+                        .withHeader("CPPID", randomUUID().toString())
+                        .withHeader("Content-Type", ROTA_JUDICIARIES_QUERY_MEDIA_TYPE)
+                        .withBody(getPayload(responsePath))));
+
+        waitForStubToBeReady(urlPath, ROTA_JUDICIARIES_QUERY_MEDIA_TYPE);
     }
 
 
