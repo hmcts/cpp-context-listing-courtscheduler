@@ -16,4 +16,8 @@ public  class CommonUtils {
                 .add("validationError", message)
                 .build()).build();
     }
+
+    private CommonUtils() {
+        // Private constructor to prevent instantiation
+    }
 }
