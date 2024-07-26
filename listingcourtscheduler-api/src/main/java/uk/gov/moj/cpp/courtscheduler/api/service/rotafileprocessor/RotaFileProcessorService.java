@@ -52,10 +52,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javax.enterprise.context.ApplicationScoped;
+import javax.ejb.AsyncResult;
+import javax.ejb.Asynchronous;
+import javax.ejb.Stateless;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 
@@ -63,7 +66,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Stateless
 public class RotaFileProcessorService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessorService.class);
@@ -128,7 +131,8 @@ public class RotaFileProcessorService {
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
 
-    public void captureRotaFilesAndProcessEach(final Requester requester) {
+    @Asynchronous
+    public Future<String> captureRotaFilesAndProcessEach(final Requester requester) {
         logger.info("RotaFileProcessorService.captureRotaFilesAndProcessEach called");
         // download all the files in the input container
         final Map<String, byte[]> downloadedBlobsByteArrayMap = azureBlobClientService.downloadFiles();
@@ -144,6 +148,7 @@ public class RotaFileProcessorService {
             azureBlobClientService.deleteFile(blobName);
         });
 
+        return new AsyncResult<>("SUCCESS");
     }
 
     @Transactional

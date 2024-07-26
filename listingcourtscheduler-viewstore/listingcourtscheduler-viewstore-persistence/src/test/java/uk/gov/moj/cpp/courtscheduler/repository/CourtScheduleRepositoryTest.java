@@ -55,7 +55,8 @@ public class CourtScheduleRepositoryTest {
     @Inject
     AllocatedListingRepository allocatedListingRepository;
 
-    private String courtScheduleId = randomUUID().toString();
+    private final String courtScheduleId = randomUUID().toString();
+
     @Before
     public void setUp() {
         List<AllocatedListing> allocatedListingRepositoryAll = allocatedListingRepository.findAll();

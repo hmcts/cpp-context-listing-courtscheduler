@@ -9,8 +9,6 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileProcessorService;
 
-import java.util.concurrent.CompletableFuture;
-
 import javax.inject.Inject;
 
 import org.slf4j.Logger;
@@ -34,11 +32,10 @@ public class RotaFileProcessorApi {
     public JsonEnvelope processRotaFiles(final JsonEnvelope envelope) {
         LOGGER.info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
 
-        CompletableFuture.runAsync(() -> {
-            LOGGER.info("calling rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
-            rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
-            LOGGER.info("successfully called and completed - rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
-        });
+        LOGGER.info("calling rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
+        rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
+        LOGGER.info("successfully called and completed - rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
+
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.process_rota_files").apply(createObjectBuilder().build());
     }
 }

@@ -605,7 +605,7 @@ class SessionsServiceTest {
         doNothing().when(courtScheduleJudiciaryRepository).deactivateSchedules(anyList(), any());
         when(courtScheduleRepository.save(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
         when(courtScheduleRepository.update(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
-        when(courtScheduleRepository.deleteSlots(anyString())).thenReturn(slotIdsToDelete.size());
+        when(courtScheduleRepository.deleteSlots(anyList())).thenReturn(slotIdsToDelete.size());
         when(courtScheduleJudiciaryRepository.deleteSchedules(anyList())).thenReturn(slotIdsToDelete.size());
         mockIsMigrated("B01LY00", false);
 
@@ -621,7 +621,7 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class));
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deleteSchedules(anyList());
-        verify(courtScheduleRepository, atLeastOnce()).deleteSlots(anyString());
+        verify(courtScheduleRepository, atLeastOnce()).deleteSlots(anyList());
     }
 
     @Test
@@ -651,7 +651,7 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class));
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
         verify(courtScheduleJudiciaryRepository, never()).deleteSchedules(anyList());
-        verify(courtScheduleRepository, never()).deleteSlots(anyString());
+        verify(courtScheduleRepository, never()).deleteSlots(anyList());
     }
 
     @Test
