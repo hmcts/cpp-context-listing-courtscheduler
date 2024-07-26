@@ -278,7 +278,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.sessionDate BETWEEN :startDate AND :endDate")
     public abstract List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@QueryParam("ouCodes") final List<String> ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
 
-    @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.court_house_id = :courtCentreId AND court_room_id = :courtRoomId AND active = true AND rota_business_type = :businessType AND cs.session_start BETWEEN :startDate AND :endDate")
+    @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND courtRoomId = :courtRoomId AND active = true AND businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate")
     public abstract List<CourtSchedule> getSimilarSessions(@QueryParam("courtCentreId") final String courtCentreId,@QueryParam("courtRoomId") final String courtRoomId,@QueryParam("businessType") final String businessType,  @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
 
     @Modifying

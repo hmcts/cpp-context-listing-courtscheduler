@@ -136,9 +136,7 @@ public class CourtSchedulerApi {
             throw new ValidationException(validate);
         }
 
-        sessionsService.create(createSessionRequestParam, requester);
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.create").apply(createObjectBuilder().build());
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.validate.create").apply(createObjectBuilder().build());
     }
 
     @Handles("courtscheduler.delete")

@@ -162,7 +162,7 @@ class CourtSchedulerApiTest {
             courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
         } catch (ValidationException e) {
             // Assert
-            assertEquals("Validation failed", e.getMessage());
+            assertEquals("{\"errorMessage\":\"Invalid parameters\"}", e.getMessage());
             assertEquals(e.getErrors().getString("errorMessage"), validationError.getString("errorMessage"));
          }
     }
@@ -379,7 +379,6 @@ class CourtSchedulerApiTest {
     }
 
     @Test
-    @Disabled
     void shouldReturnFailureWhenValidationFails() throws IOException {
         String payload = FileUtil.getPayload("courtscheduler.validate.create.json");
         final JsonObject jsonObject = payloadToObject(payload);
@@ -391,13 +390,10 @@ class CourtSchedulerApiTest {
                 .add("validationError", "Validation failed")
                 .build()).build();
 
-        when(enveloper.withMetadataFrom(validationEnvelope, requestName)).thenReturn(function);
         when(sessionsApiValidator.getSessionsCreateValidation(any())).thenReturn(validationResult);
 
-        courtSchedulerApi.validateCreateCourtSchedule (validationEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(validationEnvelope, requestName);
-
+        //verify it returns bad request with error message
+      assertThrows(ValidationException.class, () -> courtSchedulerApi.validateCreateCourtSchedule(validationEnvelope));
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {

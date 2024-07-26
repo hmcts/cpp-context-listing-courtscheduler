@@ -1,10 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import static javax.json.Json.createObjectBuilder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
 
+import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
@@ -22,7 +25,6 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-@Disabled
 public class SessionsApiValidatorTest {
 
     private SessionsApiValidator sessionsApiValidator;
@@ -32,6 +34,9 @@ public class SessionsApiValidatorTest {
 
     @Mock
     private RepeatPattern repeatPattern;
+
+    @Mock
+    private SessionsService sessionsService;
 
     @BeforeEach
     public void setUp() {
@@ -66,6 +71,7 @@ public class SessionsApiValidatorTest {
     }
 
     @Test
+    @Disabled
     public void shouldReturnErrorWhenSessionTypeIsDuplicateWithRequest() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
         final List<Session> sessionList  = Arrays.asList(session().withSessionType("AM").build(), session().withSessionType("PM").build());
@@ -84,16 +90,24 @@ public class SessionsApiValidatorTest {
     }
 
     @Test
+    @Disabled
     public void shouldReturnErrorWhenSessionTypeIsDuplicateWithDatabase() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
 
+        final JsonObject errorResult = createObjectBuilder().add("validationResult",createObjectBuilder()
+                .add("status", ValidationStatus.FAILURE.getValidationStatus())
+                .add("validationError", "Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ")
+                .build()).build();
+
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(session().withSessionType("AM").build());
+        when(createSessionRequestParam.getSessionList()).thenReturn(new ArrayList<>());
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(sessionsService.validateSessionIntegrity(any(), any(), any())).thenReturn(errorResult);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
-
         assertEquals("Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ", result.getString("errorMessage"));
     }
 

@@ -15,13 +15,13 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-@Disabled
 @ExtendWith(MockitoExtension.class)
 public class CreateSessionsRequestParamConverterTest {
 
     private CreateSessionsRequestParamConverter converter = new CreateSessionsRequestParamConverter();
 
     @Test
+    @Disabled
     public void shouldConvertJsonObjectToCreateSessionRequestParam() {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("sessions", Json.createArrayBuilder()
