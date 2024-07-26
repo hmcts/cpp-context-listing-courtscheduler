@@ -39,6 +39,7 @@ public enum RequestParameterConstant {
     REPEAT_FOR("repeatFor"),
     START_DATE("startDate"),
     END_DATE("endDate"),
+    SESSION_TO_BE_ADDED("sessionToBeAdded"),
     ;
 
     private final String name;

@@ -8,6 +8,8 @@ public class CreateSessionRequestParam {
     private List<Session> sessionList;
     private RepeatPattern repeatPattern;
 
+    private Session sessionToBeAdded;
+
 
     public List<Session> getSessionList() {
         return sessionList;
@@ -17,9 +19,12 @@ public class CreateSessionRequestParam {
         return repeatPattern;
     }
 
-    public CreateSessionRequestParam(final List<Session> sessionList, final RepeatPattern repeatPattern) {
+    public Session getSessionToBeAdded() {return sessionToBeAdded;}
+
+    public CreateSessionRequestParam(final List<Session> sessionList, final RepeatPattern repeatPattern,final Session sessionToBeAdded) {
         this.sessionList = sessionList;
         this.repeatPattern = repeatPattern;
+        this.sessionToBeAdded = sessionToBeAdded;
     }
 
 
@@ -28,6 +33,8 @@ public class CreateSessionRequestParam {
     public static final class CreateSessionRequestParamBuilder {
         private List<Session> sessionList;
         private RepeatPattern repeatPattern;
+
+        private Session sessionToBeAdded;
 
         private CreateSessionRequestParamBuilder() {
         }
@@ -46,8 +53,13 @@ public class CreateSessionRequestParam {
             return this;
         }
 
+        public CreateSessionRequestParamBuilder withSessionToBeAdded(Session sessionToBeAdded) {
+            this.sessionToBeAdded = sessionToBeAdded;
+            return this;
+        }
+
         public CreateSessionRequestParam build() {
-            return new CreateSessionRequestParam(sessionList, repeatPattern);
+            return new CreateSessionRequestParam(sessionList, repeatPattern,sessionToBeAdded);
         }
     }
 
@@ -55,12 +67,12 @@ public class CreateSessionRequestParam {
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (!(o instanceof final CreateSessionRequestParam that)) return false;
-        return Objects.equals(sessionList, that.sessionList) && Objects.equals(repeatPattern, that.repeatPattern);
+        return Objects.equals(sessionList, that.sessionList) && Objects.equals(repeatPattern, that.repeatPattern) && Objects.equals(sessionToBeAdded, that.sessionToBeAdded);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getSessionList(), getRepeatPattern());
+        return Objects.hash(getSessionList(), getRepeatPattern(), getSessionToBeAdded());
     }
 
 

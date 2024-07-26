@@ -42,7 +42,6 @@ rule "API - Action - courtscheduler.validate.update"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.get.court_schedule"
 
 rule "API - Action - courtscheduler.delete"
   when
