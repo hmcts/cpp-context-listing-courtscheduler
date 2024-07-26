@@ -3,8 +3,10 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.joining;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.api.CommonUtils.getValidationResult;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.CommonUtils;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.mapper.CourtScheduleJudiciaryMapper;
@@ -45,6 +47,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.ejb.Local;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.json.Json;
@@ -466,7 +469,19 @@ public class SessionsService {
         }
     }
 
-    public JsonObject validateSessionIntegrity(final Session session) {
+    public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate) {
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessionsToCompare = courtScheduleRepository.getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate);
+        // session.repeatDays is a set, if it includes dayofweekvalue of sessionsToCompare
+        for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
+            //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
+            if (sameSessionViolatesAllDayRestriction(session, sessionToCompare)) {
+                    return getValidationResult("Session with same attributes can't be added for All Day session type");
+            }
+        }
         return JsonValue.EMPTY_JSON_OBJECT;
+    }
+
+    private static boolean sameSessionViolatesAllDayRestriction(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare) {
+        return (session.getRepeatDays().contains(DayOfWeek.of(sessionToCompare.getSessionDate().getDayOfWeek().getValue()))) && session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
     }
 }

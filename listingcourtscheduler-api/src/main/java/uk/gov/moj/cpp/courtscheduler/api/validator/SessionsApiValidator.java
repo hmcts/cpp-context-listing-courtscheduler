@@ -4,7 +4,9 @@ import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
+import static uk.gov.moj.cpp.courtscheduler.api.CommonUtils.getValidationResult;
 
+import uk.gov.moj.cpp.courtscheduler.api.CommonUtils;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
@@ -53,8 +55,7 @@ public class SessionsApiValidator {
             if(addSessionValidationResult != EMPTY_JSON_OBJECT){
                 return addSessionValidationResult;
             }
-
-            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded());
+            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate);
         }
         return EMPTY_JSON_OBJECT;
     }
@@ -77,13 +78,6 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject getValidationResult(final String message) {
-        final ValidationStatus validationStatus = Objects.nonNull(message) ? ValidationStatus.FAILURE : ValidationStatus.SUCCESS;
-       return  createObjectBuilder().add("validationResult",createObjectBuilder()
-                .add("status", validationStatus.getValidationStatus())
-                .add("validationError", message)
-                .build()).build();
-    }
 
 
     private JsonObject getMessageForInvalidDate(final String value) {
