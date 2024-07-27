@@ -397,7 +397,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     @Transactional
-    protected void deleteProvisionalBooking(final String bookingId) {
+    public void deleteProvisionalBooking(final String bookingId) {
         Optional<ProvisionalBooking> byBookingId = this.provisionalBookingRepository.findByBookingId(bookingId);
         if (byBookingId.isPresent()) {
             LOGGER.info("bookingid found to deactivate "+ bookingId);
