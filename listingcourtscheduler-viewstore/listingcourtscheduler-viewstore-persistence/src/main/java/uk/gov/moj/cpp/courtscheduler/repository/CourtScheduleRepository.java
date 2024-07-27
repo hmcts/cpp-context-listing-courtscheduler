@@ -381,6 +381,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         });
     }
 
+    @Transactional
     protected void saveAllocatedListing(final List<AllocatedSlot> allocatedSlots) {
         allocatedSlots.forEach(allocatedSlot -> {
             AllocatedListing allocatedListing = new AllocatedListing();
