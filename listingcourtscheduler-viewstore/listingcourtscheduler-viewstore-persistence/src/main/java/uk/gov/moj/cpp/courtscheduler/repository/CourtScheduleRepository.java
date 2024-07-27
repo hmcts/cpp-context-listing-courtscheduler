@@ -396,12 +396,18 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         });
     }
 
+    @Transactional
     protected void deleteProvisionalBooking(final String bookingId) {
         Optional<ProvisionalBooking> byBookingId = this.provisionalBookingRepository.findByBookingId(bookingId);
         if (byBookingId.isPresent()) {
+            LOGGER.error("bookingid found "+ bookingId);
             ProvisionalBooking provisionalBooking = byBookingId.get();
             provisionalBooking.setActive(false);
+            LOGGER.error("saving booking id with "+ provisionalBooking.toString());
             this.provisionalBookingRepository.save(provisionalBooking);
+            LOGGER.error("after save " + provisionalBooking.toString());
+        } else {
+            LOGGER.error("bookingid not found "+ bookingId);
         }
     }
 
