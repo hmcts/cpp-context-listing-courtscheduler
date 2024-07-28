@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.joining;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.api.CommonUtils.getValidationResult;
 
@@ -296,11 +295,15 @@ public class SessionsService {
     }
 
     private void deactivateSlots(final List<String> snapshotSlotIds) {
-        courtScheduleRepository.deactivateSlots(snapshotSlotIds, Calendar.getInstance().getTime());
+        if (isNotEmpty(snapshotSlotIds)) {
+            courtScheduleRepository.deactivateSlots(snapshotSlotIds, Calendar.getInstance().getTime());
+        }
     }
 
     private void deactivateSchedules(final List<String> snapshotSlotIds) {
-        courtScheduleJudiciaryRepository.deactivateSchedules(snapshotSlotIds, Calendar.getInstance().getTime());
+        if (isNotEmpty(snapshotSlotIds)) {
+            courtScheduleJudiciaryRepository.deactivateSchedules(snapshotSlotIds, Calendar.getInstance().getTime());
+        }
     }
 
     private int saveSlots(final Collection<CourtSchedule> slots,
@@ -361,8 +364,7 @@ public class SessionsService {
         return courtScheduleJudiciaryRepository.deleteSchedules(ids);
     }
 
-    private int deleteSlots(final List<String> ids) {
-        final String courtScheduleIds = ids.stream().map(s -> "?").collect(joining(","));
+    private int deleteSlots(final List<String> courtScheduleIds) {
         return courtScheduleRepository.deleteSlots(courtScheduleIds);
     }
 

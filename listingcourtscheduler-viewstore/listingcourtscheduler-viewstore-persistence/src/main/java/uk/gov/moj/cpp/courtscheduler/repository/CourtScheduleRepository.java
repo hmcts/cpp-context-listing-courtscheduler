@@ -44,7 +44,6 @@ import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
-import javax.transaction.Transactional;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -77,14 +76,13 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY = "DELETE FROM court_schedule cs " +
             "WHERE cs.court_listing_profile_id is not null AND cs.max_slot = cs.available_slot AND cs.max_duration_mins = cs.available_duration_mins and " +
-            "cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN :ouCodes AND cs.active =true AND NOT EXISTS( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+            "cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND cs.active =true AND NOT EXISTS( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
     public static final String DELETE_UNALLOCATED_FORECAST_SLOT_QUERY = "DELETE FROM court_schedule " +
-            "WHERE court_listing_profile_id is null AND max_slot = available_slot AND max_duration_mins = available_duration_mins AND oucode IN :ouCodes " +
+            "WHERE court_listing_profile_id is null AND max_slot = available_slot AND max_duration_mins = available_duration_mins AND oucode IN (:ouCodes) " +
             "AND active =true and not exists( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
-    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule WHERE id IN :courtScheduleIds AND " +
-            "not exists(" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule WHERE id IN (:courtScheduleIds) AND not exists(" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
 
 
@@ -244,7 +242,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     @SuppressWarnings({"squid:S2077"})
-    @Transactional
     public int deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
         return entityManager()
                 .createNativeQuery(DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY)
@@ -255,7 +252,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     @SuppressWarnings({"squid:S2077"})
-    @Transactional
     public int deleteUnAllocatedProvisionalEntries(final List<String> ouCodes) {
         return entityManager()
                 .createNativeQuery(DELETE_UNALLOCATED_FORECAST_SLOT_QUERY)
@@ -264,8 +260,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     @SuppressWarnings({"squid:S2077"})
-    @Transactional
-    public int deleteSlots(final String courtScheduleIds) {
+    public int deleteSlots(final List<String> courtScheduleIds) {
         return entityManager()
                 .createNativeQuery(DELETE_SLOTS_BY_IDS_QUERY)
                 .setParameter("courtScheduleIds", courtScheduleIds)
