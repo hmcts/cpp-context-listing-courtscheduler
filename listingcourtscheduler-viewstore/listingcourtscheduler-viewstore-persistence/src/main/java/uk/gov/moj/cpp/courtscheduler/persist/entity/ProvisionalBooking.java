@@ -83,4 +83,14 @@ public class ProvisionalBooking {
         this.hearingStartTime = hearingStartTime;
     }
 
+    @Override
+    public String toString() {
+        return "ProvisionalBooking{" +
+                "provisionalBookingKey=" + provisionalBookingKey +
+                ", active=" + active +
+                ", updatedOn=" + updatedOn +
+                ", createdOn=" + createdOn +
+                ", hearingStartTime=" + hearingStartTime +
+                '}';
+    }
 }

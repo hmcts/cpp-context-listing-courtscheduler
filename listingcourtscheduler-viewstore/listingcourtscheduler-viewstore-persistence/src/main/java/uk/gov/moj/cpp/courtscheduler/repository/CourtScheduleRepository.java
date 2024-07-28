@@ -44,6 +44,7 @@ import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.transaction.Transactional;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -376,6 +377,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         });
     }
 
+    @Transactional
     protected void saveAllocatedListing(final List<AllocatedSlot> allocatedSlots) {
         allocatedSlots.forEach(allocatedSlot -> {
             AllocatedListing allocatedListing = new AllocatedListing();
@@ -391,12 +393,17 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         });
     }
 
+    @Transactional
     protected void deleteProvisionalBooking(final String bookingId) {
         Optional<ProvisionalBooking> byBookingId = this.provisionalBookingRepository.findByBookingId(bookingId);
         if (byBookingId.isPresent()) {
+            LOGGER.info(format("bookingid found to deactivate %s ", bookingId));
             ProvisionalBooking provisionalBooking = byBookingId.get();
             provisionalBooking.setActive(false);
+            LOGGER.info(format("saving booking id with %s ", provisionalBooking));
             this.provisionalBookingRepository.save(provisionalBooking);
+        } else {
+            LOGGER.error(format("bookingid not found %s", bookingId));
         }
     }
 
