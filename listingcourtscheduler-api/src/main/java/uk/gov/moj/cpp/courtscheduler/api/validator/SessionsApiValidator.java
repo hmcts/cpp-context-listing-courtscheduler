@@ -61,15 +61,16 @@ public class SessionsApiValidator {
     }
 
     private JsonObject validateAddedSessionPayload(final CreateSessionRequestParam createSessionRequestParam) {
-        final Set<DayOfWeek> repeatDaysToBeAdded = new HashSet<>(createSessionRequestParam.getSessionToBeAdded().getRepeatDays());
+        final Session sessionToBeAdded = createSessionRequestParam.getSessionToBeAdded();
+        final Set<DayOfWeek> repeatDaysToBeAdded = new HashSet<>(sessionToBeAdded.getRepeatDays());
         for(Session session : createSessionRequestParam.getSessionList()) {
-            boolean match = session.getCourtCentreId().equals(createSessionRequestParam.getSessionToBeAdded().getCourtCentreId()) &&
-                    session.getCourtRoomId().equals(createSessionRequestParam.getSessionToBeAdded().getCourtRoomId()) &&
-                    session.getSessionType().equals(createSessionRequestParam.getSessionToBeAdded().getSessionType()) &&
-                    session.getBusinessType().equals(createSessionRequestParam.getSessionToBeAdded().getBusinessType());
+            boolean match = session.getCourtCentreId().equals(sessionToBeAdded.getCourtCentreId()) &&
+                    session.getCourtRoomId().equals(sessionToBeAdded.getCourtRoomId()) &&
+                    //session.getSessionType().equals(sessionToBeAdded.getSessionType()) &&
+                    session.getBusinessType().equals(sessionToBeAdded.getBusinessType());
             if(match){
                 Set<DayOfWeek> repeatDays = new HashSet<>(session.getRepeatDays());
-                if(repeatDaysToBeAdded.stream().anyMatch(repeatDays::contains)){
+                if(repeatDaysToBeAdded.stream().anyMatch(repeatDays::contains) && isSessionTypeDuplicateOrNotValidForAllDay(session,sessionToBeAdded)) {
                     return getValidationResult("SessionsToBe Added has a duplicate entry within SessionList: CourtCentreId,courtroomId,businessType,SessionType,RepeatDays");
                 }
             }
@@ -78,7 +79,10 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-
+    //thjis should be called after we have a day match. This is to check if the session type is duplicate or not valid for all day
+    private boolean isSessionTypeDuplicateOrNotValidForAllDay(final Session sessionInList, final Session sessionToBeAdded) {
+        return sessionInList.getSessionType().equals(sessionToBeAdded.getSessionType()) ||  sessionInList.getSessionType().equals("ALL_DAY") || sessionToBeAdded.getSessionType().equals("ALL_DAY");
+    }
 
     private JsonObject getMessageForInvalidDate(final String value) {
         return buildErrorResponse(START_DATE_IS_INVALID + value);
