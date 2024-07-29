@@ -520,7 +520,11 @@ public class RotaFileProcessorService {
         newRecords.keySet()
                 .forEach(newRecordListingProfileId -> {
                     final CourtSchedule newRecordCourtSchedule = newRecords.get(newRecordListingProfileId);
-                    if (existingSlotIds.contains(newRecordCourtSchedule.getCourtScheduleId())) {
+                    if (sessionsService.isMigrated(newRecordCourtSchedule.getOuCode())) {
+                        if (existingSlotIds.contains(newRecordCourtSchedule.getCourtScheduleId())) {
+                            existingSlotsNewRecords.put(newRecordListingProfileId, newRecordCourtSchedule);
+                        }
+                    } else {
                         existingSlotsNewRecords.put(newRecordListingProfileId, newRecordCourtSchedule);
                     }
                 });
