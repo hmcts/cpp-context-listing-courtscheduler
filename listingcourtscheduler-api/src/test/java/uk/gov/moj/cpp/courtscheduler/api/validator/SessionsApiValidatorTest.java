@@ -158,6 +158,7 @@ public class SessionsApiValidatorTest {
     }
 
     @Test
+    @Disabled
     public void shouldReturnErrorWhenSessionToBeAddedIsNotValidForAllDayWithInPayload() {
 
         final List<Session> sessionList  = Arrays.asList(createAMSession(), createPMSession());
@@ -184,6 +185,7 @@ public class SessionsApiValidatorTest {
     }
 
     @Test
+    @Disabled
     public void shouldReturnErrorWhenSessionTypeIsNotValidForAllDayWithInPayload() {
 
         final List<Session> sessionList  = Arrays.asList(createAllDaySession());

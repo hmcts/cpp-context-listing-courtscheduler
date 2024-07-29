@@ -66,7 +66,6 @@ public class SessionsApiValidator {
         for(Session session : createSessionRequestParam.getSessionList()) {
             boolean match = session.getCourtCentreId().equals(sessionToBeAdded.getCourtCentreId()) &&
                     session.getCourtRoomId().equals(sessionToBeAdded.getCourtRoomId()) &&
-                    //session.getSessionType().equals(sessionToBeAdded.getSessionType()) &&
                     session.getBusinessType().equals(sessionToBeAdded.getBusinessType());
             if(match){
                 Set<DayOfWeek> repeatDays = new HashSet<>(session.getRepeatDays());
@@ -79,9 +78,9 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    //thjis should be called after we have a day match. This is to check if the session type is duplicate or not valid for all day
+    //this should be called after we have a day match. This is to check if the session type is duplicate or not valid for all day
     private boolean isSessionTypeDuplicateOrNotValidForAllDay(final Session sessionInList, final Session sessionToBeAdded) {
-        return sessionInList.getSessionType().equals(sessionToBeAdded.getSessionType()) ||  sessionInList.getSessionType().equals("ALL_DAY") || sessionToBeAdded.getSessionType().equals("ALL_DAY");
+        return sessionInList.getSessionType().equals(sessionToBeAdded.getSessionType()) ||  sessionInList.getSessionType().equals("AD") || sessionToBeAdded.getSessionType().equals("AD");
     }
 
     private JsonObject getMessageForInvalidDate(final String value) {
