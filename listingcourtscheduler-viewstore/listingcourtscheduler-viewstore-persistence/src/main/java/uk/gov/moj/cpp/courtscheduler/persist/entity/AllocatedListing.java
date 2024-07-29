@@ -163,4 +163,21 @@ public class AllocatedListing {
     public int hashCode() {
         return Objects.hash(id);
     }
+
+    @Override
+    public String toString() {
+        return "AllocatedListing{" +
+                "id='" + id + '\'' +
+                ", courtScheduleId='" + courtScheduleId + '\'' +
+                ", bookingId='" + bookingId + '\'' +
+                ", hearingId='" + hearingId + '\'' +
+                ", oucode='" + oucode + '\'' +
+                ", courtRoomId=" + courtRoomId +
+                ", rotaBusinessType='" + rotaBusinessType + '\'' +
+                ", duration=" + duration +
+                ", hearingStartTime=" + hearingStartTime +
+                ", updatedOn=" + updatedOn +
+                ", createdOn=" + createdOn +
+                '}';
+    }
 }

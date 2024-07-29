@@ -159,6 +159,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     public void saveBookedSlots(final List<AllocatedSlot> slots, final boolean isProvisionalSlot) {
+        LOGGER.info("CHECK: saveBookedSlots, slots:{}, isProvisionalSlot:{}", slots, isProvisionalSlot);
         final Optional<String> hearingId = getHearingId(slots);
 
         hearingId.ifPresent(this::releaseOldAllocatedListings);
@@ -282,7 +283,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     public abstract void deactivateSlots(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds, @QueryParam("updatedOn") final Date updatedOn);
 
     protected void releaseAllocatedSlotsOrDurationFromCourtSchedule(final List<AllocatedListing> allocatedListings) {
-
+        LOGGER.info("CHECK : releaseAllocatedSlotsOrDurationFromCourtSchedule");
         allocatedListings.forEach(allocatedListing -> {
             CourtSchedule courtSchedule = this.findBy(allocatedListing.getCourtScheduleId());
             if (courtSchedule.isSlotBased()) {
@@ -290,29 +291,37 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             } else {
                 courtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration() + allocatedListing.getDuration());
             }
+            LOGGER.info("CHECK : Save courtSchedule: {}", courtSchedule);
             this.save(courtSchedule);
         });
     }
 
     protected void releaseCourtScheduleAllocatedSlotsForBookingId(final List<AllocatedListing> allocatedListings) {
 
+        LOGGER.info("CHECK: releaseCourtScheduleAllocatedSlotsForBookingId:{}", allocatedListings);
+
         allocatedListings.forEach(allocatedListing -> {
             Optional<ProvisionalBooking> byBookingId = provisionalBookingRepository.findByBookingId(allocatedListing.getBookingId());
             if (byBookingId.isPresent()) {
                 ProvisionalBooking provisionalBooking = byBookingId.get();
                 provisionalBooking.setActive(true);
+                LOGGER.info("CHECK: Saving provisionalBooking:{}", provisionalBooking);
                 provisionalBookingRepository.save(provisionalBooking);
             }
         });
     }
 
     protected void releaseOldListingsFromAllocatedListings(final String hearingId) {
+        LOGGER.info("CHECK : releaseOldListingsFromAllocatedListings, hearingId:{}", hearingId);
         List<AllocatedListing> allocatedListings = this.allocatedListingRepository.findByHearingId(hearingId);
-        allocatedListings.forEach(allocatedListing -> this.allocatedListingRepository.remove(allocatedListing));
+        allocatedListings.forEach(allocatedListing -> {
+            LOGGER.info("CHECK : Remove AllocatedListing:{}", allocatedListing);
+            this.allocatedListingRepository.remove(allocatedListing);});
     }
 
     private List<AllocatedSlot> getUpdatedAllocatedSlots(final List<AllocatedSlot> allocatedSlots) {
 
+        LOGGER.info("CHECK : getUpdatedAllocatedSlots");
         final List<AllocatedSlot> matchedSlots = new ArrayList<>();
 
         for (final AllocatedSlot allocatedSlot : allocatedSlots) {
@@ -365,6 +374,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     protected void updateCourtSchedule(final List<AllocatedSlot> allocatedSlots) {
+        LOGGER.info("CHECK : updateCourtSchedule:{}", allocatedSlots);
         allocatedSlots.forEach(allocatedSlot -> {
             CourtSchedule courtSchedule = this.findBy(allocatedSlot.getCourtScheduleId());
             if (courtSchedule.isSlotBased()) {
@@ -373,12 +383,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             } else {
                 courtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration() - allocatedSlot.getDuration());
             }
+            LOGGER.info("CHECK: Save courtSchedule:{}", courtSchedule);
             this.save(courtSchedule);
         });
     }
 
     @Transactional
     protected void saveAllocatedListing(final List<AllocatedSlot> allocatedSlots) {
+        LOGGER.info("CHECK: saveAllocatedListing");
         allocatedSlots.forEach(allocatedSlot -> {
             AllocatedListing allocatedListing = new AllocatedListing();
             allocatedListing.setId(UUID.randomUUID().toString());
@@ -389,21 +401,23 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             allocatedListing.setCourtRoomId(Integer.parseInt(allocatedSlot.getCourtRoomId()));
             allocatedListing.setDuration(allocatedSlot.getDuration());
             allocatedListing.setHearingStartTime(toRoundedTimestamp(allocatedSlot.getHearingStartTime()));
+            LOGGER.info("CHECK: Save allocatedListing:{}", allocatedListing);
             this.allocatedListingRepository.save(allocatedListing);
         });
     }
 
     @Transactional
     protected void deleteProvisionalBooking(final String bookingId) {
+        LOGGER.info("CHECK: deleteProvisionalBooking, bookingId:{}", bookingId);
         Optional<ProvisionalBooking> byBookingId = this.provisionalBookingRepository.findByBookingId(bookingId);
         if (byBookingId.isPresent()) {
-            LOGGER.info(format("bookingid found to deactivate %s ", bookingId));
+            LOGGER.info(format("CHECK: bookingid found to deactivate %s ", bookingId));
             ProvisionalBooking provisionalBooking = byBookingId.get();
             provisionalBooking.setActive(false);
-            LOGGER.info(format("saving booking id with %s ", provisionalBooking));
+            LOGGER.info(format("CHECK : Saving booking id with %s ", provisionalBooking));
             this.provisionalBookingRepository.save(provisionalBooking);
         } else {
-            LOGGER.error(format("bookingid not found %s", bookingId));
+            LOGGER.error(format("CHECK: bookingid not found %s", bookingId));
         }
     }
 
@@ -416,6 +430,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     public void releaseOldAllocatedListings(final String hearingId) {
+        LOGGER.info("CHECK : releaseOldAllocatedListings, hearingId:{}", hearingId);
+
         final List<AllocatedListing> allocatedListings = getExistingAllocatedListings(hearingId);
 
         if (isNotEmpty(allocatedListings)) {

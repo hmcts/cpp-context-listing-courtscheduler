@@ -42,6 +42,7 @@ public class SlotsUpdateService {
             LOGGER.info("CHECK: SlotsUpdateService");
         }
         if (isBookingBasedSlot(slots)) {
+            LOGGER.info("CHECK: isBookingBasedSlot");
             final AllocatedSlot singleBookingSlot = slots.get(0);
             final List<String> bookingSlots = List.of(singleBookingSlot.getBookingId());
             final Map<String, Date> provisionalBookingCourtScheduleInfo = provisionalBookingRepository.getCourtScheduleInfo(bookingSlots);
@@ -70,6 +71,7 @@ public class SlotsUpdateService {
 
             courtScheduleRepository.saveBookedSlots(slots, true);
         } else {
+            LOGGER.info("CHECK: isNotBookingBasedSlot");
             courtScheduleRepository.saveBookedSlots(slots, false);
         }
     }

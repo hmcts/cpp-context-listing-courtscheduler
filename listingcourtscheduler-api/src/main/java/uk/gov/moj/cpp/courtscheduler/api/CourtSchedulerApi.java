@@ -146,8 +146,9 @@ public class CourtSchedulerApi {
 
     @Handles("courtscheduler.update.hearing.slots")
     public JsonEnvelope updateHearingSlots(final JsonEnvelope envelope) {
-
-        List<AllocatedSlot> allocatedSlots = converter.convert(envelope.payloadAsJsonObject().toString()).getHearingSlots();
+        final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
+        LOGGER.info("CHECK: courtscheduler.update.hearing.slots:{}", payloadAsJsonString);
+        List<AllocatedSlot> allocatedSlots = converter.convert(payloadAsJsonString).getHearingSlots();
 
         slotsUpdateService.update(allocatedSlots);
 

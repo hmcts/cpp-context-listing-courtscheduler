@@ -124,4 +124,20 @@ public class AllocatedSlot {
     public int hashCode() {
         return Objects.hash(duration, sessionDate, hearingStartTime, session, courtRoomId, ouCode, hearingId, courtScheduleId, isSlotBased, bookingId);
     }
+
+    @Override
+    public String toString() {
+        return "AllocatedSlot{" +
+                "duration=" + duration +
+                ", sessionDate='" + sessionDate + '\'' +
+                ", hearingStartTime='" + hearingStartTime + '\'' +
+                ", session='" + session + '\'' +
+                ", courtRoomId='" + courtRoomId + '\'' +
+                ", ouCode='" + ouCode + '\'' +
+                ", hearingId='" + hearingId + '\'' +
+                ", courtScheduleId='" + courtScheduleId + '\'' +
+                ", isSlotBased=" + isSlotBased +
+                ", bookingId='" + bookingId + '\'' +
+                '}';
+    }
 }
