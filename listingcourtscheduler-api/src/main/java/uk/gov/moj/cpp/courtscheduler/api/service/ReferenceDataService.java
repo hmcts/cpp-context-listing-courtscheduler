@@ -105,8 +105,8 @@ public class ReferenceDataService {
                 .map(JsonObject.class::cast)
                 .map(jsonObject -> {
                     try {
-                        String courtRoomId = jsonObject.getString(COURTROOM_ID);
-                        if (!seenCourtRoomIds.add(courtRoomId)) {
+                        final String courtRoomId = getStringOrElse(jsonObject, COURTROOM_ID, null);
+                        if (nonNull(courtRoomId) && !seenCourtRoomIds.add(courtRoomId)) {
                             duplicateCourtRoomIds.add(courtRoomId);
                             return null;
                         }
