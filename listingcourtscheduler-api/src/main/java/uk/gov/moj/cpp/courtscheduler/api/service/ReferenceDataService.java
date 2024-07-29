@@ -278,14 +278,14 @@ public class ReferenceDataService {
                 .withRotaLocationId(jsonObject.getInt(LOCATION_ID))
                 .withRotaVenueName(jsonObject.getString(VENUE_NAME))
                 .withCppCourtRoomId(jsonObject.getInt("cppCourtRoomId"))
-                .withRotaVenueId(jsonObject.getInt("rotaVenueId"))
+                .withRotaVenueId(getIntOrElse(jsonObject,"rotaVenueId", null))
                 .withOucode(jsonObject.getString("oucode"))
-                .withOucodeL3Name(jsonObject.getString("oucodeL3Name"))
-                .withOucodeL2Name(jsonObject.getString("oucodeL2Name"))
-                .withOucodeL2Code(jsonObject.getString("oucodeL2Code"))
+                .withOucodeL3Name(getStringOrElse(jsonObject, "oucodeL3Name", null))
+                .withOucodeL2Name(getStringOrElse(jsonObject, "oucodeL2Name", null))
+                .withOucodeL2Code(getStringOrElse(jsonObject, "oucodeL2Code", null))
                 .withOucodeUUID(jsonObject.getString("oucodeUUID"))
-                .withCourtRoomName(jsonObject.getString("courtroomName"))
-                .withCourtRoomId(jsonObject.getString(COURTROOM_ID))
+                .withCourtRoomName(getStringOrElse(jsonObject, "courtroomName", null))
+                .withCourtRoomId(getStringOrElse(jsonObject, COURTROOM_ID, null))
                 .build();
     }
 

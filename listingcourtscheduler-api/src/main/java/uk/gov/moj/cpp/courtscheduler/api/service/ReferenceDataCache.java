@@ -6,6 +6,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static java.util.Optional.ofNullable;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 
 import uk.gov.justice.services.common.configuration.Value;
@@ -284,7 +285,7 @@ public class ReferenceDataCache {
                 }
             });
 
-            return of(businessTypeForCode.get());
+            return ofNullable(businessTypeForCode.get());
         }
         return empty();
     }
@@ -303,7 +304,7 @@ public class ReferenceDataCache {
                 }
             });
 
-            return of(courtRoomForId.get());
+            return ofNullable(courtRoomForId.get());
         }
         return empty();
     }
@@ -327,7 +328,7 @@ public class ReferenceDataCache {
                 })
             );
 
-            return of(courtRoomsForVenue.get());
+            return ofNullable(courtRoomsForVenue.get());
         }
         return empty();
     }
