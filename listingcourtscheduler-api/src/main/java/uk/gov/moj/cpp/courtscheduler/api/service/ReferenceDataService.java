@@ -166,7 +166,9 @@ public class ReferenceDataService {
     }
 
     public Map<UUID, CourtRoom> getCourtRoomsMap(final Requester requester) {
-        return getRotaCourtRoomMappings(requester).stream().collect(Collectors.toMap(courtRoom -> UUID.fromString(courtRoom.getCourtroomId()), c -> c));
+        return getRotaCourtRoomMappings(requester).stream()
+                .filter(courtRoom -> nonNull(courtRoom.getCourtroomId()))
+                .collect(Collectors.toMap(courtRoom -> UUID.fromString(courtRoom.getCourtroomId()), c -> c));
     }
 
     public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId, final Requester requester) {
@@ -274,7 +276,7 @@ public class ReferenceDataService {
 
     private CourtRoom toCourtRoom(JsonObject jsonObject) {
         return CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(jsonObject.getString("id"))
+                .withId(jsonObject.getString("id"))
                 .withRotaLocationId(jsonObject.getInt(LOCATION_ID))
                 .withRotaVenueName(jsonObject.getString(VENUE_NAME))
                 .withCppCourtRoomId(jsonObject.getInt("cppCourtRoomId"))
@@ -285,7 +287,7 @@ public class ReferenceDataService {
                 .withOucodeL2Code(getStringOrElse(jsonObject, "oucodeL2Code", null))
                 .withOucodeUUID(jsonObject.getString("oucodeUUID"))
                 .withCourtRoomName(getStringOrElse(jsonObject, "courtroomName", null))
-                .withCourtRoomId(getStringOrElse(jsonObject, COURTROOM_ID, null))
+                .withCourtRoomId(jsonObject.getString(COURTROOM_ID))
                 .build();
     }
 
