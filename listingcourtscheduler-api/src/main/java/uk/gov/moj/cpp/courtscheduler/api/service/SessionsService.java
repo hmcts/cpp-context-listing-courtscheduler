@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
+import static java.lang.String.format;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.api.CommonUtils.getValidationResult;
@@ -477,13 +478,22 @@ public class SessionsService {
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
             //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
             if (sameSessionViolatesAllDayRestriction(session, sessionToCompare)) {
-                    return getValidationResult("Session with same attributes can't be added for All Day session type");
+                return getValidationResult(format("Session Integrity failure. The session you're trying to add is not compatible with a record, courtscheduleId : %s  in terms of AM/PM/AD session for the same date", sessionToCompare.getCourtScheduleId()));
             }
         }
         return JsonValue.EMPTY_JSON_OBJECT;
     }
 
     private static boolean sameSessionViolatesAllDayRestriction(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare) {
-        return (session.getRepeatDays().contains(DayOfWeek.of(sessionToCompare.getSessionDate().getDayOfWeek().getValue()))) && session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
+        boolean violated = false;
+        if(session.getCourtCentreId().equals(sessionToCompare.getCourtHouseId()) &&
+           session.getCourtRoomId().equals(sessionToCompare.getCourtRoomId()) &&
+           session.getBusinessType().equals(sessionToCompare.getBusinessType()) &&
+           session.getRepeatDays().contains(DayOfWeek.of(sessionToCompare.getSessionDate().getDayOfWeek().getValue())))
+        {
+           violated = session.getSessionType().equals(sessionToCompare.getCourtSession()) || session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
+
+        }
+        return violated;
     }
 }
