@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher;
 import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.SESSION_ALLOCATION_ERR_MSG;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.SESSION_ALLOCATION_NOT_FOUND;
@@ -30,6 +31,7 @@ import java.util.Optional;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,7 +123,11 @@ public class RotaDataEnricher {
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = courtSchedule().withCourtSchedule(courtSchedule);
         courtScheduleBuilder.withCourtSession(ALL_DAY);
         final String courtScheduleId = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtSchedule.getCourtRoomId(), courtSchedule.getSessionDate(), courtSchedule.getBusinessType(), ALL_DAY);
-        courtScheduleBuilder.withCourtScheduleId(courtScheduleId);
+        if(StringUtils.isEmpty(courtScheduleId)) {
+            courtScheduleBuilder.withCourtScheduleId(randomUUID().toString());
+        } else {
+            courtScheduleBuilder.withCourtScheduleId(courtScheduleId);
+        }
 
         if (sessionAllocation.isPresent()) {
             final CourtRoomSessionAllocation allocation = sessionAllocation.get();
