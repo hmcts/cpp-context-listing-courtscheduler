@@ -63,7 +63,7 @@ public class CourtScheduleEnricher {
             final String msgKey = format(COURT_ROOM_ERR_MSG, locationId, venueName, venueId);
             missingReferenceDataMappingMap.putIfAbsent(msgKey, COURT_DETAIL_NOT_FOUND);
         }
-        return builder.withActive(true).build();
+        return builder.withActive(true).withCourtScheduleId(randomUUID().toString()).build();
     }
 
     private void populateListingProperties(final CourtSchedule.CourtScheduleBuilder builder,
