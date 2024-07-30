@@ -31,6 +31,7 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
     public abstract CourtScheduleJudiciary findByEmail(String email);
 
     abstract List<CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
+
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId = ?1")
     abstract List<CourtScheduleJudiciary> findByCourtScheduleId(String courtScheduleId);
 
@@ -45,8 +46,19 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 .withCourtScheduleId(courtScheduleJudiciaryEntity.getId().getCourtScheduleId())
                 .withJudiciaryId(courtScheduleJudiciaryEntity.getId().getJudiciaryId())
                 .withPosition(courtScheduleJudiciaryEntity.getPosition())
+                .withTitle(courtScheduleJudiciaryEntity.getTitle())
                 .withForenames(courtScheduleJudiciaryEntity.getForenames())
+                .withSurname(courtScheduleJudiciaryEntity.getSurname())
                 .withEmailAddress(courtScheduleJudiciaryEntity.getEmail())
+                .withJudiciaryType(courtScheduleJudiciaryEntity.getJudiciaryType())
+                .withIsBenchChairman(courtScheduleJudiciaryEntity.getBenchChairman())
+                .withIsDeputy(courtScheduleJudiciaryEntity.getDeputy())
+                .withPosition(courtScheduleJudiciaryEntity.getPosition())
+                .withCourtListingProfileId(courtScheduleJudiciaryEntity.getCourtListingProfileId())
+                .withRotaJudiciaryId(courtScheduleJudiciaryEntity.getRotaJudiciaryId())
+                .withActive(courtScheduleJudiciaryEntity.getActive())
+                .withCreatedOn(courtScheduleJudiciaryEntity.getCreatedOn())
+                .withUpdatedOn(courtScheduleJudiciaryEntity.getUpdatedOn())
                 .build()).toList();
 
     }

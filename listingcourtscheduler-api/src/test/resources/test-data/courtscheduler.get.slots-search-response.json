@@ -23,20 +23,23 @@
       "maxDuration": 182,
       "availableSlots": 125,
       "availableDuration": 182,
-      "createdOn": null,
-      "updatedOn": null,
+      "createdOn":null,
+      "updatedOn":null,
       "judiciaries": [
         {
           "judiciaryId": "JUDICIARY_ID_1",
-          "position": "RIGHT_WINGER"
+          "position": "RIGHT_WINGER",
+          "active": false
         },
         {
           "judiciaryId": "JUDICIARY_ID_2",
-          "position": "LEFT_WINGER"
+          "position": "LEFT_WINGER",
+          "active": false
         },
         {
           "judiciaryId": "JUDICIARY_ID_3",
-          "position": "CHAIR"
+          "position": "CHAIR",
+          "active": false
         }
       ],
       "slotStartTimes": []
