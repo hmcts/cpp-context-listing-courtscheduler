@@ -45,7 +45,7 @@ class SlotsSearchServiceTest {
     }
 
     @Test
-     void shouldSearchSlots() {
+    void shouldSearchSlots() {
         final List<CourtSchedule> courtSchedulesExpected = List.of(courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId));
         courtSchedulesExpected.stream().map(CourtSchedule::getJudiciaries);
         final Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(1, courtSchedulesExpected);
@@ -57,7 +57,7 @@ class SlotsSearchServiceTest {
     }
 
     @Test
-     void shouldSearchSlotsWhenPageSizeSent0() {
+    void shouldSearchSlotsWhenPageSizeSent0() {
         final List<CourtSchedule> courtSchedulesExpected = List.of(courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId));
         final Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(1, courtSchedulesExpected);
         final HearingSlotRequestParam hearingSlotRequestParam = createRequestParam("0");
@@ -68,7 +68,7 @@ class SlotsSearchServiceTest {
     }
 
     @Test
-     void shouldHandleMultipleJudiciaries() {
+    void shouldHandleMultipleJudiciaries() {
         final List<CourtSchedule> courtSchedulesExpected = List.of(courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId));
         final Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(100, courtSchedulesExpected);
         final HearingSlotRequestParam hearingSlotRequestParam = createRequestParam("10");

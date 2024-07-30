@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.util.Date;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -32,6 +33,11 @@ public class CourtScheduleJudiciary {
 
     private Boolean isDeputy;
 
+    private boolean active;
+    private Date createdOn;
+    private Date updatedOn;
+
+
     @SuppressWarnings("squid:S1186")
     public CourtScheduleJudiciary(){
 
@@ -50,6 +56,9 @@ public class CourtScheduleJudiciary {
         this.courtScheduleId = builder.courtScheduleId;
         this.courtListingProfileId = builder.courtListingProfileId;
         this.position = builder.position;
+        this.createdOn = builder.createdOn;
+        this.updatedOn = builder.updatedOn;
+        this.active = builder.active;
     }
 
     public String getJudiciaryId() {
@@ -94,6 +103,9 @@ public class CourtScheduleJudiciary {
 
     public Boolean getDeputy() {
         return isDeputy;
+    }
+    public boolean isActive() {
+        return active;
     }
 
     public void setJudiciaryId(final String judiciaryId) {
@@ -144,6 +156,21 @@ public class CourtScheduleJudiciary {
         isDeputy = deputy;
     }
 
+    public Date getCreatedOn() {
+        return createdOn;
+    }
+
+    public void setCreatedOn(Date createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    public Date getUpdatedOn() {
+        return updatedOn;
+    }
+
+    public void setUpdatedOn(Date updatedOn) {
+        this.updatedOn = updatedOn;
+    }
     public static Builder judiciary() {
         return new CourtScheduleJudiciary.Builder();
     }
@@ -214,6 +241,16 @@ public class CourtScheduleJudiciary {
 
         private Boolean isDeputy;
 
+        private Boolean active = false;
+
+        private Date createdOn;
+        private Date updatedOn;
+
+        public Builder withActive(final boolean active) {
+            this.active = active;
+            return this;
+        }
+
         public Builder withJudiciaryId(final String judiciaryId) {
             this.judiciaryId = judiciaryId;
             return this;
@@ -271,6 +308,17 @@ public class CourtScheduleJudiciary {
 
         public Builder withIsDeputy(final Boolean isDeputy) {
             this.isDeputy = isDeputy;
+            return this;
+        }
+
+
+        public Builder withCreatedOn(final Date createdOn) {
+            this.createdOn = createdOn;
+            return this;
+        }
+
+        public Builder withUpdatedOn(final Date updatedOn) {
+            this.updatedOn = updatedOn;
             return this;
         }
 
