@@ -124,7 +124,7 @@ public class CourtScheduleEnricher {
 
     private Optional<CourtRoom> courtRoom(final Integer locationId, final Integer venueId, final String venueName, final Map<String, String> exceptionMessages, final Requester requester) {
         logger.info("calling referenceDataCache.getCourtRoomByVenue");
-        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
         logger.info("called successfully - referenceDataCache.getCourtRoomByVenue");
 
         return courtRoomOptional;
