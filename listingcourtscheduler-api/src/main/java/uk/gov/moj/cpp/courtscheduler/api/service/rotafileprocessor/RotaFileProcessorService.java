@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor;
 
+import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.TRUE;
 import static java.lang.Integer.parseInt;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
@@ -52,6 +54,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -131,6 +134,8 @@ public class RotaFileProcessorService {
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
 
+    private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
+
     @Asynchronous
     public Future<String> captureRotaFilesAndProcessEach(final Requester requester) {
         logger.info("RotaFileProcessorService.captureRotaFilesAndProcessEach called");
@@ -153,6 +158,7 @@ public class RotaFileProcessorService {
 
     @Transactional
     private void process(final String fileName, final byte[] content, final Requester requester) {
+        migratedMap = sessionsService.migratedMapByOuCode();
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
 
         logger.info("File parsed successfully and parsed now enriching it..");
@@ -372,7 +378,7 @@ public class RotaFileProcessorService {
             businessTypeMatchingLogger.logMissingBusinessType(getBusinessTypesNotConsistOnTheSystem(provisionalCourtSchedules, businessTypesMap));
         }
 
-        final List<CourtSchedule> provisionalCourtSchedulesToBeProcessed = provisionalCourtSchedules.stream().filter(provisionalCourtSchedule -> !sessionsService.isMigrated(provisionalCourtSchedule.getOuCode())).toList();
+        final List<CourtSchedule> provisionalCourtSchedulesToBeProcessed = provisionalCourtSchedules.stream().filter(provisionalCourtSchedule -> !migratedMap.get(provisionalCourtSchedule.getOuCode())).toList();
         sessionsService.saveCourtSchedules(provisionalCourtSchedulesToBeProcessed, businessTypesMap);
     }
 
@@ -507,7 +513,7 @@ public class RotaFileProcessorService {
                     final Pair<String, String> courtScheduleIdAndOuCodePair = slotsToUpdate.get(listingProfileId);
                     final String courtScheduleId = courtScheduleIdAndOuCodePair.getLeft();
                     final String ouCode = courtScheduleIdAndOuCodePair.getRight();
-                    if (existingSlotIds.contains(courtScheduleId) && !sessionsService.isMigrated(ouCode)) {
+                    if (existingSlotIds.contains(courtScheduleId) && FALSE.equals(migratedMap.get(ouCode))) {
                         existingSlotsToUpdate.put(listingProfileId, courtScheduleIdAndOuCodePair);
                     }
                 });
@@ -520,7 +526,7 @@ public class RotaFileProcessorService {
         newRecords.keySet()
                 .forEach(newRecordListingProfileId -> {
                     final CourtSchedule newRecordCourtSchedule = newRecords.get(newRecordListingProfileId);
-                    if (sessionsService.isMigrated(newRecordCourtSchedule.getOuCode())) {
+                    if (TRUE.equals(migratedMap.get(newRecordCourtSchedule.getOuCode()))) {
                         if (existingSlotIds.contains(newRecordCourtSchedule.getCourtScheduleId())) {
                             existingSlotsNewRecords.put(newRecordListingProfileId, newRecordCourtSchedule);
                         }
