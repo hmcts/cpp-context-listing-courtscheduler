@@ -361,7 +361,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
-        courtScheduleCriteria.createFetchCourtScheduleEitherByidOrFiltersCriteria(null, ouCode, sessionDate, session, courtRoomNumber, criteriaBuilder, criteriaQuery);
+        courtScheduleCriteria.createFetchCourtScheduleEitherByidOrFiltersCriteria(courtScheduleId, ouCode, sessionDate, session, courtRoomNumber, criteriaBuilder, criteriaQuery);
         LOGGER.info(format("Trying to find a match with these params : ouCode: %s sessionDate: %s session: %s courtRoomNumber:%s courtScheduleId: %s  ", ouCode, sessionDate, session, courtRoomNumber, courtScheduleId));
         List<CourtSchedule> courtScheduleList =
                 entityManager.createQuery(criteriaQuery).getResultList();
