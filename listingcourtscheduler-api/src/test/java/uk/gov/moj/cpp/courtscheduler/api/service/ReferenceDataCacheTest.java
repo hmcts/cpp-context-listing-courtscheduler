@@ -446,7 +446,7 @@ class ReferenceDataCacheTest {
                 "      \"rotaLocationId\": 77,\n" +
                 "      \"rotaVenueName\": \"Court 8\",\n" +
                 "      \"cppCourtRoomId\": 2034,\n" +
-                "      \"rotaVenueId\": 24252,\n" +
+                "      \"rotaVenueId\": 23917,\n" +
                 "      \"oucode\": \"B43KQ00\",\n" +
                 "      \"oucodeL3Name\": \"Reading Magistrates' Court\",\n" +
                 "      \"oucodeL2Name\": \"Thames Valley\",\n" +
@@ -464,7 +464,7 @@ class ReferenceDataCacheTest {
                 "      \"rotaLocationId\": 77,\n" +
                 "      \"rotaVenueName\": \"Court 8\",\n" +
                 "      \"cppCourtRoomId\": 2034,\n" +
-                "      \"rotaVenueId\": 24252,\n" +
+                "      \"rotaVenueId\": 23917,\n" +
                 "      \"oucode\": \"B43KQ00\",\n" +
                 "      \"oucodeL3Name\": \"Reading Magistrates' Court\",\n" +
                 "      \"oucodeL2Name\": \"Thames Valley\",\n" +
