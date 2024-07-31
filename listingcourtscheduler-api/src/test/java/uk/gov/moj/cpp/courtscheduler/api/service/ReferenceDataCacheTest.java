@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_BUSINESS_TYPES_CACHE_KEY;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_BUSINESS_TYPE_CACHE_PREFIX;
+import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURTROOMS_CACHE_KEY;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURTROOM_CACHE_PREFIX;
 import static uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache.ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY;
@@ -159,6 +160,38 @@ class ReferenceDataCacheTest {
 
         assertTrue(isEmpty(businessTypes));
         verify(cacheService).get(ROTA_BUSINESS_TYPES_CACHE_KEY);
+    }
+
+    @Test
+    void shouldReturnCourtRoomsFromCacheWhenCacheEnabled() {
+        setCommonCacheEnabled();
+        setCourtRoomsCache();
+
+        referenceDataCache.getCourtRooms(requester);
+
+        verify(cacheService).get(ROTA_COURTROOMS_CACHE_KEY);
+    }
+
+    @Test
+    void shouldReturnCourtRoomsFromServiceWhenCacheEnabledHoweverNotInTheCache() {
+        setCommonCacheEnabled();
+        when(cacheService.get(ROTA_COURTROOMS_CACHE_KEY)).thenReturn(null);
+        when(referenceDataService.getRotaCourtRoomMappings(eq(requester))).thenReturn(List.of(new CourtRoom()));
+
+        referenceDataCache.getCourtRooms(requester);
+
+        verify(referenceDataService).getRotaCourtRoomMappings(requester);
+    }
+
+    @Test
+    void shouldReturnCourtRoomsFromServiceWhenCacheDisabled() {
+        setCommonCacheDisabled();
+
+        when(referenceDataService.getRotaCourtRoomMappings(eq(requester))).thenReturn(List.of(new CourtRoom()));
+
+        referenceDataCache.getCourtRooms(requester);
+
+        verify(referenceDataService).getRotaCourtRoomMappings(requester);
     }
 
     @Test
@@ -415,6 +448,11 @@ class ReferenceDataCacheTest {
     private void setJudiciariesCache() {
         final String judiciariesJsonStr = FileUtil.getPayload("test-data/referencedata-judiciaries.json");
         when(cacheService.get(ROTA_JUDICIARIES_CACHE_KEY)).thenReturn(judiciariesJsonStr);
+    }
+
+    private void setCourtRoomsCache() {
+        final String judiciariesJsonStr = FileUtil.getPayload("test-data/reference-data-court-rooms.json");
+        when(cacheService.get(ROTA_COURTROOMS_CACHE_KEY)).thenReturn(judiciariesJsonStr);
     }
 
     private void setCourtRoomSessionAllocationsCache() {

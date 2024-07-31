@@ -68,6 +68,7 @@ public class ReferenceDataCache {
     public static final String ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX = "RotaCourtRoomByVenue_%d_%s";
     public static final String ROTA_BUSINESS_TYPES_CACHE_KEY = "RotaBusinessTypes";
     public static final String ROTA_JUDICIARIES_CACHE_KEY = "RotaJudiciaries_";
+    public static final String ROTA_COURTROOMS_CACHE_KEY = "RotaCourtRooms_";
     public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSesionAllocations_";
 
     public ReferenceDataCache() {
@@ -97,6 +98,14 @@ public class ReferenceDataCache {
             return getJudiciariesFromTheCache(requester);
         } else {
             return referenceDataService.getJudiciariesMap(requester);
+        }
+    }
+
+    public List<CourtRoom> getCourtRooms(final Requester requester) {
+        if (parseBoolean(redisCommonCacheEnabled)) {
+            return getCourtRoomsFromTheCache(requester);
+        } else {
+            return referenceDataService.getRotaCourtRoomMappings(requester);
         }
     }
 
@@ -166,6 +175,23 @@ public class ReferenceDataCache {
         } else {
             try {
                 LOGGER.info("cacheResult has been found for judiciaries in getJudiciariesFromTheCache");
+                return objectMapper.readValue(cacheResult, new TypeReference<>() {});
+            } catch (final JsonProcessingException jsonProcessingException) {
+                LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+            }
+            return emptyList();
+        }
+    }
+
+    private List<CourtRoom> getCourtRoomsFromTheCache(final Requester requester) {
+        final String cacheResult = cacheService.get(ROTA_COURTROOMS_CACHE_KEY);
+
+        if (isNull(cacheResult)) {
+            LOGGER.info("no cache result found for courtRooms in getCourtRoomsFromTheCache");
+            return processCourtRooms(requester);
+        } else {
+            try {
+                LOGGER.info("cacheResult has been found for courtRooms in getCourtRoomsFromTheCache");
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {});
             } catch (final JsonProcessingException jsonProcessingException) {
                 LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
@@ -252,6 +278,20 @@ public class ReferenceDataCache {
             }
         } catch (final JsonProcessingException jsonProcessingException) {
             LOGGER.error("exception whilst adding into the cache for Judiciaries with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+        }
+        return emptyList();
+    }
+
+    private List<CourtRoom> processCourtRooms(final Requester requester) {
+        final List<CourtRoom> courtRooms = referenceDataService.getRotaCourtRoomMappings(requester);
+
+        try {
+            if (isNotEmpty(courtRooms)) {
+                cacheService.add(ROTA_COURTROOMS_CACHE_KEY, objectMapper.writeValueAsString(courtRooms));
+                return courtRooms;
+            }
+        } catch (final JsonProcessingException jsonProcessingException) {
+            LOGGER.error("exception whilst adding into the cache for CourtRooms with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
         }
         return emptyList();
     }

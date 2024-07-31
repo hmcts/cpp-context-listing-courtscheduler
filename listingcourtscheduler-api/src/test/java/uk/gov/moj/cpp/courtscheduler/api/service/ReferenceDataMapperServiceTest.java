@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
+import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -9,10 +10,13 @@ import static org.mockito.Mockito.when;
 
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +42,13 @@ class ReferenceDataMapperServiceTest {
     private Requester requester;
 
     private final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+
+    private static final Integer LOCATION_ID = 77;
+    private static final Integer VENUE_ID = 23917;
+    private static final Integer NOT_MATCHING_VENUE_ID = 29999;
+    private static final String VENUE_NAME = "Court 8";
+    private static final String MULTIPLE_MATCH_VENUE_NAME = "Court 5";
+    private static final Integer MULTIPLE_MATCH_LOCATION_ID = 277;
 
     @Test
     void shouldFindByEmail() throws JsonProcessingException {
@@ -77,6 +88,56 @@ class ReferenceDataMapperServiceTest {
         verify(referenceDataCache, atLeastOnce()).getCourtRoomSessionAllocations(eq(requester));
     }
 
+    @Test
+    void shouldFindByVenue() throws JsonProcessingException {
+
+        when(referenceDataCache.getCourtRooms(eq(requester))).thenReturn(getCourtRoomsFromRefData());
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals("26de1ba8-fad7-3747-81e2-0dc6dce6ed7a", courtRoomOptional.get().getId());
+
+        verify(referenceDataCache, atLeastOnce()).getCourtRooms(eq(requester));
+    }
+
+    @Test
+    void shouldFindByVenueEvenVenueIdIsNotMatching() throws JsonProcessingException {
+
+        when(referenceDataCache.getCourtRooms(eq(requester))).thenReturn(getCourtRoomsFromRefData());
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(LOCATION_ID, NOT_MATCHING_VENUE_ID, VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals("26de1ba8-fad7-3747-81e2-0dc6dce6ed7a", courtRoomOptional.get().getId());
+
+        verify(referenceDataCache, atLeastOnce()).getCourtRooms(eq(requester));
+    }
+
+    @Test
+    void shouldFindByVenueEvenVenueIdIsNotMatchingAndThereAre2Matching() throws JsonProcessingException {
+
+        when(referenceDataCache.getCourtRooms(eq(requester))).thenReturn(getCourtRoomsFromRefData());
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(MULTIPLE_MATCH_LOCATION_ID, NOT_MATCHING_VENUE_ID, MULTIPLE_MATCH_VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertTrue(List.of("aaaa26c8-0630-3fec-8336-d260a5a9c756", "c8c3ef69-e640-3ac5-bd7a-7765396cc38d").contains(courtRoomOptional.get().getId()));
+
+        verify(referenceDataCache, atLeastOnce()).getCourtRooms(eq(requester));
+    }
+
+    @Test
+    void shouldNotFindByVenueIfRefDataCacheMissing() {
+
+        when(referenceDataCache.getCourtRooms(eq(requester))).thenReturn(emptyList());
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(MULTIPLE_MATCH_LOCATION_ID, NOT_MATCHING_VENUE_ID, MULTIPLE_MATCH_VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isEmpty());
+        verify(referenceDataCache, atLeastOnce()).getCourtRooms(eq(requester));
+    }
+
     private List<CourtRoomSessionAllocation> getCourtRoomSessionAllocations() throws JsonProcessingException {
         final String courtRoomSessionAllocationsJsonStr = FileUtil.fileToString("/test-data/court-room-session-allocations-domain-data.json");
 
@@ -88,6 +149,12 @@ class ReferenceDataMapperServiceTest {
         final String judiciariesJsonStr = FileUtil.fileToString("/test-data/judiciaries-domain-data.json");
 
         return objectMapper.readValue(judiciariesJsonStr, new TypeReference<>() {});
+    }
+
+    private List<CourtRoom> getCourtRoomsFromRefData() throws JsonProcessingException {
+        final String courtRoomsJsonStr = FileUtil.fileToString("/test-data/reference-data-court-rooms.json");
+
+        return objectMapper.readValue(courtRoomsJsonStr, new TypeReference<>() {});
     }
 
 }

@@ -1,12 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
+import static java.lang.String.format;
 import static java.util.Objects.isNull;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+import static org.apache.commons.collections.CollectionUtils.isEmpty;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -26,6 +33,10 @@ public class ReferenceDataMapperService {
     private List<Judiciary> judiciaries;
 
     private List<CourtRoomSessionAllocation> courtRoomSessionAllocations;
+
+    private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
+    private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
+    private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
 
     public Optional<Judiciary> findByEmail(final Requester requester, final String email) {
         logger.info("judiciary findByEmail being called for email {}", email);
@@ -54,5 +65,28 @@ public class ReferenceDataMapperService {
                         listingSession.equals(courtRoomSessionAllocation.getCourtSession()) &&
                         businessType.equals(courtRoomSessionAllocation.getRotaBusinessTypeCode()))
                 .findAny();
+    }
+
+    public Optional<CourtRoom> findByVenue(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
+        final List<CourtRoom> courtRooms = referenceDataCache.getCourtRooms(requester);
+
+        final List<CourtRoom> courtRoomsByLocationAndVenueName = courtRooms
+                .stream()
+                .filter(courtRoom -> courtRoom.getRotaLocationId().equals(venue.getLocationId())
+                        && courtRoom.getRotaVenueName().equals(venue.getVenueName()))
+                .toList();
+
+        final Optional<CourtRoom> courtRoomOptional = courtRoomsByLocationAndVenueName.stream().filter(courtRoom -> courtRoom.getRotaVenueId().equals(venue.getVenueId())).findAny();
+        if (courtRoomOptional.isPresent()) {
+            return courtRoomOptional;
+        } else {
+            if (courtRoomsByLocationAndVenueName.size() > 1) {
+                exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
+            } else {
+                exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
+            }
+
+        }
+        return isEmpty(courtRoomsByLocationAndVenueName) ? empty() : of(courtRoomsByLocationAndVenueName.get(0));
     }
 }
