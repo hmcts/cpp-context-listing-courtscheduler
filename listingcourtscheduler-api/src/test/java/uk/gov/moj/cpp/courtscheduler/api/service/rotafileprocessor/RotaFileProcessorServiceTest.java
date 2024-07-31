@@ -45,6 +45,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
@@ -194,6 +195,7 @@ class RotaFileProcessorServiceTest {
         when(provisionalDataProducer.produceProvisionalData(any(LocalDate.class), any(LocalDate.class), anyInt(), anyList(), any(ProvisionalSessionDateProvider.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
+        mockMigratedMapByOuCode("CABC90", false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
         rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
@@ -257,6 +259,7 @@ class RotaFileProcessorServiceTest {
         when(provisionalDataProducer.produceProvisionalData(any(LocalDate.class), any(LocalDate.class), anyInt(), anyList(), any(ProvisionalSessionDateProvider.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypesAsHavingCJUandNCPTonly());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
+        mockMigratedMapByOuCode("CABC90", false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
         rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
@@ -328,6 +331,7 @@ class RotaFileProcessorServiceTest {
         when(provisionalDataProducer.produceProvisionalData(any(LocalDate.class), any(LocalDate.class), anyInt(), anyList(), any(ProvisionalSessionDateProvider.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
+        mockMigratedMapByOuCode("CABC90", false);
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
 
@@ -597,5 +601,13 @@ class RotaFileProcessorServiceTest {
     private List<BusinessType> getRotaBusinessTypesAsHavingCJUandNCPTonly() throws JsonProcessingException {
         final String businessTypesJsonStr = getPayload("test-data/business-types-cju-ncpt.json");
         return objectMapper.readValue(businessTypesJsonStr, new TypeReference<List<BusinessType>>(){});
+    }
+
+    private void mockMigratedMapByOuCode(final String ouCode, final boolean isMigrated) {
+        final CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
+        migrationStatus.setOuCode(ouCode);
+        migrationStatus.setCourtCentreId(randomUUID().toString());
+        migrationStatus.setMigrated(isMigrated);
+        when(sessionsService.migratedMapByOuCode()).thenReturn(Map.of(migrationStatus.getOuCode(), isMigrated));
     }
 }

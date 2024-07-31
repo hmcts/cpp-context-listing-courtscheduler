@@ -12,7 +12,6 @@ import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enrich
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaFileFieldNames.VENUE_NAME;
 
 import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
@@ -37,9 +36,6 @@ public class CourtScheduleEnricher {
 
     @Inject
     private CourtSession courtSession;
-
-    @Inject
-    private ReferenceDataCache referenceDataCache;
 
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
