@@ -1,7 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.domain.mi;
 
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+
 import java.util.Date;
 import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class AllocatedListing {
 
@@ -10,6 +14,7 @@ public class AllocatedListing {
     private String court_schedule_id;
 
     private String booking_id;
+
 
     private String hearing_id;
 
@@ -31,6 +36,7 @@ public class AllocatedListing {
         //For JPA
     }
 
+    @JsonProperty("id")
     public String getId() {
         return id;
     }
@@ -39,6 +45,7 @@ public class AllocatedListing {
         this.id = id;
     }
 
+    @JsonProperty("court_schedule_id")
     public String getCourtScheduleId() {
         return court_schedule_id;
     }
@@ -47,6 +54,7 @@ public class AllocatedListing {
         this.court_schedule_id = courtScheduleId;
     }
 
+    @JsonProperty("booking_id")
     public String getBookingId() {
         return booking_id;
     }
@@ -55,6 +63,7 @@ public class AllocatedListing {
         this.booking_id = bookingId;
     }
 
+    @JsonProperty("hearing_id")
     public String getHearingId() {
         return hearing_id;
     }
@@ -63,6 +72,7 @@ public class AllocatedListing {
         this.hearing_id = hearingId;
     }
 
+    @JsonProperty("oucode")
     public String getOucode() {
         return oucode;
     }
@@ -71,6 +81,7 @@ public class AllocatedListing {
         this.oucode = oucode;
     }
 
+    @JsonProperty("court_room_id")
     public Integer getCourtRoomId() {
         return court_room_id;
     }
@@ -79,6 +90,7 @@ public class AllocatedListing {
         this.court_room_id = courtRoomId;
     }
 
+    @JsonProperty("rota_business_type")
     public String getRotaBusinessType() {
         return rota_business_type;
     }
@@ -87,6 +99,7 @@ public class AllocatedListing {
         this.rota_business_type = rotaBusinessType;
     }
 
+    @JsonProperty("duration")
     public Integer getDuration() {
         return duration;
     }
@@ -95,24 +108,27 @@ public class AllocatedListing {
         this.duration = duration;
     }
 
-    public Date getCreatedOn() {
-        return created_on;
+    @JsonProperty("created_on")
+    public String getCreatedOn() {
+        return created_on == null ? null : DateUtils.toIsoString(created_on);
     }
 
     public void setCreatedOn(Date createdOn) {
         this.created_on = createdOn;
     }
 
-    public Date getUpdatedOn() {
-        return updated_on;
+    @JsonProperty("updated_on")
+    public String getUpdatedOn() {
+        return updated_on == null ? null : DateUtils.toIsoString(updated_on);
     }
 
     public void setUpdatedOn(Date updatedOn) {
         this.updated_on = updatedOn;
     }
 
-    public Date getHearingStartTime() {
-        return hearing_start_time;
+    @JsonProperty("hearing_start_time")
+    public String getHearingStartTime() {
+        return hearing_start_time == null ? null : DateUtils.toIsoString(hearing_start_time);
     }
 
     public void setHearingStartTime(Date hearingStartTime) {

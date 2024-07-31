@@ -1,7 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.domain.mi;
 
-import java.time.LocalDate;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+
 import java.util.Date;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 public class CourtSchedule {
@@ -21,7 +24,7 @@ public class CourtSchedule {
     private String court_session;
     private boolean is_slot_based;
     private boolean active;
-    private LocalDate session_start;
+    private Date session_start;
     private Integer max_slot;
     private Integer available_slot;
     private Integer max_duration_mins;
@@ -57,78 +60,97 @@ public class CourtSchedule {
     public CourtSchedule() {
     }
 
+    @JsonProperty("operational_unit")
     public String getOperationalUnit() {
         return operational_unit;
     }
 
+    @JsonProperty("panel")
     public String getPanel() {
         return panel;
     }
 
+    @JsonProperty("id")
     public String getCourtScheduleId() {
         return id;
     }
 
+    @JsonProperty("court_listing_profile_id")
     public String getListingProfileId() {
         return court_listing_profile_id;
     }
 
-    public LocalDate getSessionDate() {
-        return session_start;
+    @JsonProperty("session_start")
+    public String getSessionDate() {
+        return DateUtils.toIsoString(session_start);
     }
 
+    @JsonProperty("oucode")
     public String getOuCode() {
         return oucode;
     }
 
+    @JsonProperty("court_house_name")
     public String getCourtHouseName() {
         return court_house_name;
     }
 
+    @JsonProperty("court_house_id")
     public String getCourtHouseId() {
         return court_house_id;
     }
 
+    @JsonProperty("court_room_id")
     public String getCourtRoomId() {
         return court_room_id;
     }
 
+    @JsonProperty("court_room_number")
     public Integer getCourtRoomNumber() {
         return court_room_number;
     }
 
+    @JsonProperty("court_room_name")
     public String getCourtRoomName() {
         return court_room_name;
     }
 
+    @JsonProperty("rota_business_type")
     public String getBusinessType() {
         return rota_business_type;
     }
 
+    @JsonProperty("court_session")
     public String getCourtSession() {
         return court_session;
     }
 
+    @JsonProperty("available_slot")
     public Integer getAvailableSlots() {
         return available_slot;
     }
 
+    @JsonProperty("available_duration_mins")
     public Integer getAvailableDuration() {
         return available_duration_mins;
     }
 
+    @JsonProperty("max_slot")
     public Integer getMaxSlots() {
         return max_slot;
     }
 
+    @JsonProperty("max_duration_mins")
     public Integer getMaxDuration() {
         return max_duration_mins;
     }
 
+    @JsonProperty("is_slot_based")
     public boolean isSlotBased() {
         return is_slot_based;
     }
 
+    @JsonProperty("active")
     public boolean isActive() {
         return active;
     }
@@ -189,7 +211,7 @@ public class CourtSchedule {
         this.is_slot_based = slotBased;
     }
 
-    public void setSessionDate(final LocalDate sessionDate) {
+    public void setSessionDate(final Date sessionDate) {
         this.session_start = sessionDate;
     }
 
@@ -221,16 +243,18 @@ public class CourtSchedule {
         this.active = active;
     }
 
-    public Date getCreatedOn() {
-        return created_on;
+    @JsonProperty("created_on")
+    public String getCreatedOn() {
+        return created_on == null ? null : DateUtils.toIsoString(created_on);
     }
 
     public void setCreatedOn(Date createdOn) {
         this.created_on = createdOn;
     }
 
-    public Date getUpdatedOn() {
-        return updated_on;
+    @JsonProperty("updated_on")
+    public String getUpdatedOn() {
+        return updated_on == null ? null : DateUtils.toIsoString(updated_on);
     }
 
     public void setUpdatedOn(Date updatedOn) {
@@ -258,7 +282,7 @@ public class CourtSchedule {
         private String businessType;
         private String businessDescription;
         private String panel;
-        private LocalDate sessionDate;
+        private Date sessionDate;
         private Integer maxSlots = 0;
         private Integer maxDuration = 0;
         private Integer availableSlots = 0;
@@ -301,7 +325,7 @@ public class CourtSchedule {
             return maxSlots;
         }
 
-        public LocalDate getSessionDate() {
+        public Date getSessionDate() {
             return sessionDate;
         }
 
@@ -451,7 +475,7 @@ public class CourtSchedule {
             return this;
         }
 
-        public CourtScheduleBuilder withSessionDate(final LocalDate sessionDate) {
+        public CourtScheduleBuilder withSessionDate(final Date sessionDate) {
             this.sessionDate = sessionDate;
             return this;
         }
