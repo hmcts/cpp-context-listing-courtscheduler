@@ -46,6 +46,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import javax.ejb.Local;
 import javax.enterprise.context.ApplicationScoped;
@@ -173,6 +174,11 @@ public class SessionsService {
 
     public boolean isMigratedByCourtCentreId(final String courtCentreId) {
         return courtMigrationRepository.findByCourtCentreId(courtCentreId).isMigrated();
+    }
+
+    public Map<String, Boolean> migratedMapByOuCode() {
+        return courtMigrationRepository.findAll().stream()
+                .collect(Collectors.toMap(CourtSchedulerMigrationStatus::getOuCode, CourtSchedulerMigrationStatus::isMigrated));
     }
 
     public Result migrateOuCodes(OuCodeMigrateRequest ouCodeMigrateRequest) {
@@ -310,8 +316,9 @@ public class SessionsService {
     private int saveSlots(final Collection<CourtSchedule> slots,
                           final Map<String, BusinessType> businessTypeMap) {
         final AtomicInteger numberOfSaved = new AtomicInteger();
+        final Map<String, Boolean> migratedByOuCodeMap = migratedMapByOuCode();
         slots.forEach(slot -> {
-            if (!isMigrated(slot.getOuCode())) {
+            if (Boolean.FALSE.equals(migratedByOuCodeMap.get(slot.getOuCode()))) {
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity = CourtScheduleMapper.toEntity(slot);
                 courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
                 courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
