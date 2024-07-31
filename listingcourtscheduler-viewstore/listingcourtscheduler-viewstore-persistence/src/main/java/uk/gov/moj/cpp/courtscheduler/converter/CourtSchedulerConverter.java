@@ -1,6 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.Date;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public final class CourtSchedulerConverter {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CourtSchedulerConverter.class);
 
     private CourtSchedulerConverter() {
     }
@@ -48,12 +58,21 @@ public final class CourtSchedulerConverter {
                 .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
                 .withCourtRoomName(courtScheduleEntity.getCourtRoomName())
                 .withCourtSession(courtScheduleEntity.getCourtSession())
-                .withSessionDate(courtScheduleEntity.getSessionDate())
+                .withSessionDate(courtScheduleEntity.getSessionDate() == null ? null : getDate(courtScheduleEntity.getSessionDate()))
                 .withSlotBased(courtScheduleEntity.isSlotBased())
                 .withActive(courtScheduleEntity.isActive())
                 .withPanel(courtScheduleEntity.getPanel())
                 .withCreatedOn(courtScheduleEntity.getCreatedOn())
                 .withUpdatedOn(courtScheduleEntity.getUpdatedOn())
                 .build();
+    }
+
+    private static Date getDate(LocalDate localDate) {
+        try {
+            return new SimpleDateFormat("yyyy-MM-dd").parse(localDate.toString());
+        } catch (ParseException e) {
+            LOGGER.error("Unable to parse date from, {}", localDate);
+            return null;
+        }
     }
 }

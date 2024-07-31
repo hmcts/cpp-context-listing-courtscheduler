@@ -1,11 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.domain.mi;
 
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+
 import java.util.Date;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@SuppressWarnings({"pmd:BeanMembersShouldSerialize","squid:S00121","squid:S00122","squid:S1067"})
+@SuppressWarnings({"pmd:BeanMembersShouldSerialize", "squid:S00121", "squid:S00122", "squid:S1067"})
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class CourtScheduleJudiciary {
 
@@ -39,7 +42,7 @@ public class CourtScheduleJudiciary {
 
 
     @SuppressWarnings("squid:S1186")
-    public CourtScheduleJudiciary(){
+    public CourtScheduleJudiciary() {
 
     }
 
@@ -61,49 +64,67 @@ public class CourtScheduleJudiciary {
         this.active = builder.active;
     }
 
+    @JsonProperty("judiciary_id")
     public String getJudiciaryId() {
         return judiciary_id;
     }
 
+    @JsonProperty("rota_judiciary_id")
     public String getRotaJudiciaryId() {
         return rota_judiciary_id;
     }
 
+    @JsonProperty("title")
     public String getTitle() {
         return title;
     }
 
+    @JsonProperty("forenames")
     public String getForenames() {
         return forenames;
     }
 
+    @JsonProperty("surname")
     public String getSurname() {
         return surname;
     }
 
+    @JsonProperty("email")
     public String getEmailAddress() {
         return email;
     }
 
-    public String getCourtScheduleId() { return court_schedule_id; }
+    @JsonProperty("court_schedule_id")
+    public String getCourtScheduleId() {
+        return court_schedule_id;
+    }
 
-    public String getCourtListingProfileId() { return court_listing_profile_id; }
+    @JsonProperty("court_listing_profile_id")
+    public String getCourtListingProfileId() {
+        return court_listing_profile_id;
+    }
 
+    @JsonProperty("judiciary_type")
     public String getJudiciaryType() {
         return judiciary_type;
     }
 
+    @JsonProperty("position")
     public String getPosition() {
         return position;
     }
 
+    @JsonProperty("is_bench_chairman")
     public Boolean getBenchChairman() {
         return is_bench_chairman;
     }
 
+    @JsonProperty("is_deputy")
     public Boolean getDeputy() {
         return is_deputy;
     }
+
+    @JsonProperty("active")
     public boolean isActive() {
         return active;
     }
@@ -156,21 +177,24 @@ public class CourtScheduleJudiciary {
         is_deputy = deputy;
     }
 
-    public Date getCreatedOn() {
-        return created_on;
+    @JsonProperty("created_on")
+    public String getCreatedOn() {
+        return created_on == null ? null : DateUtils.toIsoString(created_on);
     }
 
     public void setCreatedOn(Date createdOn) {
         this.created_on = createdOn;
     }
 
-    public Date getUpdatedOn() {
-        return updated_on;
+    @JsonProperty("updated_on")
+    public String getUpdatedOn() {
+        return updated_on == null ? null : DateUtils.toIsoString(updated_on);
     }
 
     public void setUpdatedOn(Date updatedOn) {
         this.updated_on = updatedOn;
     }
+
     public static Builder judiciary() {
         return new Builder();
     }

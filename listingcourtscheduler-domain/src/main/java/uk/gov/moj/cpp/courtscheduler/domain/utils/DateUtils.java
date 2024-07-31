@@ -70,6 +70,14 @@ public class DateUtils {
         return timestamp.toLocalDateTime().atOffset(ZoneOffset.UTC).format(ISO_8601_FORMATTER);
     }
 
+    public static final String toIsoString(final java.util.Date date) {
+        if (date == null) {
+            return null;
+        }
+
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(date);
+    }
+
     public static final Date toSqlDate(String dateString) {
         if (dateString == null) {
             return null;

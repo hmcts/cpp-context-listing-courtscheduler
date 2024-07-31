@@ -62,7 +62,7 @@ class MiExportIT extends AbstractIT {
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
 
         assertThat(jsonObject.getJsonArray("courtSchedules").get(0)
-                .asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
+                .asJsonObject().getString("id"), is(courtScheduleId));
     }
 
     @Test
@@ -96,7 +96,7 @@ class MiExportIT extends AbstractIT {
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
 
         assertThat(jsonObject.getJsonArray("courtScheduleJudiciaries").get(0)
-                .asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
+                .asJsonObject().getString("court_schedule_id"), is(courtScheduleId));
     }
 
     @Test
@@ -129,7 +129,7 @@ class MiExportIT extends AbstractIT {
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
 
         assertThat(jsonObject.getJsonArray("allocatedListings").get(0)
-                .asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
+                .asJsonObject().getString("court_schedule_id"), is(courtScheduleId));
     }
 
 
