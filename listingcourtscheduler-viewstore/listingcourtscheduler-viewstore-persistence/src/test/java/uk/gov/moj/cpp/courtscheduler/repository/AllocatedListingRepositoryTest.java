@@ -71,7 +71,7 @@ public class AllocatedListingRepositoryTest {
 
         allocatedListingRepository.save(allocatedListing);
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing> courtScheduleJudiciaryList = allocatedListingRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
+        List<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> courtScheduleJudiciaryList = allocatedListingRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
         assertThat(courtScheduleJudiciaryList.isEmpty(), is(false));
     }
     @Test

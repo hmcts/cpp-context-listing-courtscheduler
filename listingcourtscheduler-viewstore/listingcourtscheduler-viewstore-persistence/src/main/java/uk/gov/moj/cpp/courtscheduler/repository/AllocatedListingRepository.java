@@ -26,12 +26,12 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
 
     abstract List<AllocatedListing> findByCourtScheduleId(final String courtScheduleId);
 
-    public List<uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
+    public List<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
         List<AllocatedListing> allocatedListings = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
                 DateUtils.getDate(miFilterCriteria.getFromLocalDate()),
                 DateUtils.getDate(miFilterCriteria.getToLocalDate()));
         return allocatedListings.stream().map(allocatedListingEntity -> {
-            uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing allocatedListing = new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing();
+            uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing allocatedListing = new uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing();
             allocatedListing.setId(allocatedListingEntity.getId());
             allocatedListing.setOucode(allocatedListingEntity.getOucode());
             allocatedListing.setCourtRoomId(allocatedListingEntity.getCourtRoomId());
@@ -42,6 +42,8 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
             allocatedListing.setCourtScheduleId(allocatedListingEntity.getCourtScheduleId());
             allocatedListing.setUpdatedOn(allocatedListingEntity.getUpdatedOn());
             allocatedListing.setDuration(allocatedListingEntity.getDuration());
+            allocatedListing.setHearingStartTime(allocatedListingEntity.getHearingStartTime());
+            allocatedListing.setRotaBusinessType(allocatedListingEntity.getRotaBusinessType());
             return allocatedListing;
         }).toList();
     }
