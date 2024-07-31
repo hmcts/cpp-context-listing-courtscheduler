@@ -13,6 +13,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule_;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.persistence.criteria.CriteriaBuilder;
@@ -135,15 +136,16 @@ public class CourtScheduleCriteria {
         //AND
         List<Predicate> andPredicates = new ArrayList<>();
 
-        andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), ouCode));
-        andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.SESSION_DATE), sessionDate));
-        andPredicates.add(root.get(CourtSchedule_.COURT_SESSION).in("AD",courtSession));
-        andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_NUMBER), courtRoomNumber));
-
-        Predicate andCombination = criteriaBuilder.and(andPredicates.toArray(new Predicate[0]));
-        // Combining courtScheduleIdPredicate with the AND combination using OR
-        criteriaQuery.where(criteriaBuilder.or(courtScheduleIdPredicate, andCombination));
-
+        if (Objects.nonNull(courtScheduleId)) {
+            criteriaQuery.where(courtScheduleIdPredicate);
+        } else {
+            andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), ouCode));
+            andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.SESSION_DATE), sessionDate));
+            andPredicates.add(root.get(CourtSchedule_.COURT_SESSION).in("AD", courtSession));
+            andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_NUMBER), courtRoomNumber));
+            Predicate andCombination = criteriaBuilder.and(andPredicates.toArray(new Predicate[0]));
+            criteriaQuery.where(andCombination);
+        }
     }
 
     public void createMultipleSessionsCourtScheduleCriteria(CourtSchedule courtSchedule,
