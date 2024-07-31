@@ -317,9 +317,6 @@ public class ReferenceDataCache {
                 mapByVenueName.keySet().forEach(venueName -> {
                     final List<CourtRoom> courtRoomList = mapByVenueName.get(venueName).stream().filter(courtRoomByLocationId -> courtRoomByLocationId.getRotaLocationId().equals(locationId)).toList();
                     try {
-                        if (courtRoomList.size() > 1) {
-                            LOGGER.info("please let me know");
-                        }
                         cacheService.add(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, locationId, venueName), objectMapper.writeValueAsString(courtRoomList));
 
                         if (locationId.equals(venue.getLocationId()) && venueName.equals(venue.getVenueName())) {

@@ -313,7 +313,7 @@ class ReferenceDataCacheTest {
     }
 
     @Test
-    void shouldReturnCourtRoomByVenueFromCacheWhenCacheEnabledHoweverNotInTheCache2() throws JsonProcessingException {
+    void shouldReturnCourtRoomByVenueFromCacheWhenCacheEnabledHoweverNotInTheCacheAndDealWithMultipleMatching() throws JsonProcessingException {
         setCommonCacheEnabled();
         when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
         when(referenceDataService.getRotaCourtRoomMappings(requester)).thenReturn(courtRoomsFromReferenceData());
