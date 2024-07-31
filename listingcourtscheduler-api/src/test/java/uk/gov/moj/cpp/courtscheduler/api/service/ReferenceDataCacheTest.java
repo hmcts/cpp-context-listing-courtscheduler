@@ -38,6 +38,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,12 +71,14 @@ class ReferenceDataCacheTest {
     private static final String BUSINESS_TYPE_CODE = "DVLA";
     private static final String COURT_ROOM_ID = randomUUID().toString();
     private static final Integer LOCATION_ID = 77;
-    private static final Integer VENUE_ID = 24252;
+    private static final Integer VENUE_ID = 23917;
     private static final String VENUE_NAME = "Court 8";
+
+    private ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
 
     @BeforeEach
     void setUp() {
-        setField(this.jsonObjectToObjectConverter, "objectMapper", new ObjectMapperProducer().objectMapper());
+        setField(this.jsonObjectToObjectConverter, "objectMapper", objectMapper);
     }
 
     @Test
@@ -308,6 +313,22 @@ class ReferenceDataCacheTest {
     }
 
     @Test
+    void shouldReturnCourtRoomByVenueFromCacheWhenCacheEnabledHoweverNotInTheCacheAndDealWithMultipleMatching() throws JsonProcessingException {
+        setCommonCacheEnabled();
+        when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
+        when(referenceDataService.getRotaCourtRoomMappings(requester)).thenReturn(courtRoomsFromReferenceData());
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
+        assertEquals(VENUE_ID, courtRoomOptional.get().getRotaVenueId());
+        assertEquals(VENUE_NAME, courtRoomOptional.get().getRotaVenueName());
+        verify(cacheService).get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME));
+        verify(referenceDataService, atLeastOnce()).getRotaCourtRoomMappings(requester);
+    }
+
+    @Test
     void shouldReturnOneOfCourtRoomsHavingSameLocationIdAndVenueNameByVenueFromCacheWhenCacheEnabledHoweverNotInTheCache() {
         setCommonCacheEnabled();
         when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
@@ -425,7 +446,7 @@ class ReferenceDataCacheTest {
                 "      \"rotaLocationId\": 77,\n" +
                 "      \"rotaVenueName\": \"Court 8\",\n" +
                 "      \"cppCourtRoomId\": 2034,\n" +
-                "      \"rotaVenueId\": 24252,\n" +
+                "      \"rotaVenueId\": 23917,\n" +
                 "      \"oucode\": \"B43KQ00\",\n" +
                 "      \"oucodeL3Name\": \"Reading Magistrates' Court\",\n" +
                 "      \"oucodeL2Name\": \"Thames Valley\",\n" +
@@ -443,7 +464,7 @@ class ReferenceDataCacheTest {
                 "      \"rotaLocationId\": 77,\n" +
                 "      \"rotaVenueName\": \"Court 8\",\n" +
                 "      \"cppCourtRoomId\": 2034,\n" +
-                "      \"rotaVenueId\": 24252,\n" +
+                "      \"rotaVenueId\": 23917,\n" +
                 "      \"oucode\": \"B43KQ00\",\n" +
                 "      \"oucodeL3Name\": \"Reading Magistrates' Court\",\n" +
                 "      \"oucodeL2Name\": \"Thames Valley\",\n" +
@@ -473,6 +494,12 @@ class ReferenceDataCacheTest {
     }
     private void setCommonCacheDisabled() {
         setField(referenceDataCache, "redisCommonCacheEnabled", "false");
+    }
+
+    private List<CourtRoom> courtRoomsFromReferenceData() throws JsonProcessingException {
+        final String courtRoomsFromRefDataJsonStr = uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString("/test-data/reference-data-court-rooms.json");
+
+        return objectMapper.readValue(courtRoomsFromRefDataJsonStr, new TypeReference<List<CourtRoom>>(){});
     }
 
 }
