@@ -151,11 +151,11 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return resultList.stream().map(CourtSchedulerConverter::convert).toList();
     }
 
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
+    public List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
         List<CourtSchedule> courtScheduleList = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
                 DateUtils.getDate(miFilterCriteria.getFromLocalDate()),
                 DateUtils.getDate(miFilterCriteria.getToLocalDate()));
-        return courtScheduleList.stream().map(CourtSchedulerConverter::convert).toList();
+        return courtScheduleList.stream().map(CourtSchedulerConverter::convertToMi).toList();
     }
 
     public void saveBookedSlots(final List<AllocatedSlot> slots, final boolean isProvisionalSlot) {

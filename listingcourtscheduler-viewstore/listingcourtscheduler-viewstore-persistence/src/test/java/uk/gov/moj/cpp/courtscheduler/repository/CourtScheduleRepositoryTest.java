@@ -104,7 +104,7 @@ public class CourtScheduleRepositoryTest {
 
         courtScheduleRepository.save(courtSchedule);
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtScheduleList = courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
+        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> courtScheduleList = courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
         assertThat(courtScheduleList.isEmpty(), is(false));
     }
 
@@ -178,7 +178,7 @@ public class CourtScheduleRepositoryTest {
 
         courtScheduleRepository.save(courtSchedule);
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtScheduleList = courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
+        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> courtScheduleList = courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
         assertThat(courtScheduleList.isEmpty(), is(true));
     }
 

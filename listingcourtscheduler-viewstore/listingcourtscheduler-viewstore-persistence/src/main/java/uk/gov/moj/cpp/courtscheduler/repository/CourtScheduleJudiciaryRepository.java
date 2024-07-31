@@ -38,11 +38,11 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId IN (:courtScheduleIds)")
     public abstract List<CourtScheduleJudiciary> findInCourtScheduleIds(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);
 
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
+    public List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
         List<CourtScheduleJudiciary> courtScheduleJudiciaries = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
                 DateUtils.getDate(miFilterCriteria.getFromLocalDate()),
                 DateUtils.getDate(miFilterCriteria.getToLocalDate()));
-        return courtScheduleJudiciaries.stream().map(courtScheduleJudiciaryEntity -> new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.Builder()
+        return courtScheduleJudiciaries.stream().map(courtScheduleJudiciaryEntity -> new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary.Builder()
                 .withCourtScheduleId(courtScheduleJudiciaryEntity.getId().getCourtScheduleId())
                 .withJudiciaryId(courtScheduleJudiciaryEntity.getId().getJudiciaryId())
                 .withPosition(courtScheduleJudiciaryEntity.getPosition())

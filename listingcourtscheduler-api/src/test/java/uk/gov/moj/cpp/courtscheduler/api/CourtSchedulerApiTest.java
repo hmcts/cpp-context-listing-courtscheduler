@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import static io.lettuce.core.pubsub.PubSubOutput.Type.message;
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
@@ -49,7 +48,6 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationStatus;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
@@ -64,7 +62,6 @@ import javax.json.JsonObject;
 import javax.json.JsonValue;
 
 import com.google.common.collect.Lists;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -290,7 +287,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope exportCourtScheduleEnvelope = createEnvelope(requestName, jsonObject);
 
         when(enveloper.withMetadataFrom(exportCourtScheduleEnvelope, requestName)).thenReturn(function);
-        List<CourtSchedule> courtSchedules = Lists.newArrayList();
+        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> courtSchedules = Lists.newArrayList();
         when(miService.getCourtSchedules(miFilterCriteriaRequestParamConverter.convert(jsonObject))).thenReturn(courtSchedules);
 
         courtSchedulerApi.exportCourtSchedule(exportCourtScheduleEnvelope);
@@ -306,7 +303,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope exportAllocatedListingsEnvelope = createEnvelope(requestName, jsonObject);
 
         when(enveloper.withMetadataFrom(exportAllocatedListingsEnvelope, requestName)).thenReturn(function);
-        List<CourtScheduleJudiciary> courtScheduleJudiciaries = Lists.newArrayList();
+        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> courtScheduleJudiciaries = Lists.newArrayList();
         when(miService.getCourtSchedulesJudiciary(miFilterCriteriaRequestParamConverter.convert(jsonObject))).thenReturn(courtScheduleJudiciaries);
 
         courtSchedulerApi.exportCourtScheduleJudiciary(exportAllocatedListingsEnvelope);
