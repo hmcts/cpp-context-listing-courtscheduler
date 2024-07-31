@@ -1,8 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListing;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;

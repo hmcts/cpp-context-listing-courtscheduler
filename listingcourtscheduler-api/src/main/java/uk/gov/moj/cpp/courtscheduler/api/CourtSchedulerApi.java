@@ -185,8 +185,8 @@ public class CourtSchedulerApi {
         MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
 
 
-        List<CourtSchedule> courtSchedules = miService.getCourtSchedules(miFilterCriteria);
-        final ListToJsonArrayConverter<CourtSchedule> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
+        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> courtSchedules = miService.getCourtSchedules(miFilterCriteria);
+        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
 
         return envelopeFor(envelope, listToJsonArrayConverter.convert(courtSchedules), COURT_SCHEDULES);
     }
@@ -197,8 +197,8 @@ public class CourtSchedulerApi {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
 
-        List<CourtScheduleJudiciary> courtScheduleJudiciaries = miService.getCourtSchedulesJudiciary(miFilterCriteria);
-        final ListToJsonArrayConverter<CourtScheduleJudiciary> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
+        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> courtScheduleJudiciaries = miService.getCourtSchedulesJudiciary(miFilterCriteria);
+        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
 
         return envelopeFor(envelope, listToJsonArrayConverter.convert(courtScheduleJudiciaries), COURT_SCHEDULE_JUDICIARIES);
     }
@@ -208,8 +208,8 @@ public class CourtSchedulerApi {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
 
-        List<AllocatedListing> allocatedListings = miService.getAllocatedListings(miFilterCriteria);
-        final ListToJsonArrayConverter<AllocatedListing> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
+        List<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> allocatedListings = miService.getAllocatedListings(miFilterCriteria);
+        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
 
         return envelopeFor(envelope, listToJsonArrayConverter.convert(allocatedListings), ALLOCATED_LISTINGS);
     }
