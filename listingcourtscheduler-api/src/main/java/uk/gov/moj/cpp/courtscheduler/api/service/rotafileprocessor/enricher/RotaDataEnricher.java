@@ -73,7 +73,7 @@ public class RotaDataEnricher {
                 final String strSessionDate = listingProfile.get(SESSION_DATE);
                 final LocalDate sessionDate = LocalDate.parse(strSessionDate, formatter);
 
-                if (sessionDate.isBefore(masterRotaFileCutOffDate)) {
+                if (sessionDate.isBefore(masterRotaFileCutOffDate) || sessionDate.isEqual(masterRotaFileCutOffDate)) {
                     final CourtSchedule courtSchedule = courtSchedules.get(linkedSessionId);
                     buildCourtSchedule(listingProfile, courtSchedule, courtSchedules, missingReferenceDataMappingMap, requester);
                 }
