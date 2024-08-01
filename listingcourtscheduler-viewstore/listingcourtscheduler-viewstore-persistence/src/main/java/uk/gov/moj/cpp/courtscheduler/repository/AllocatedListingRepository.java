@@ -35,7 +35,6 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
             allocatedListing.setId(allocatedListingEntity.getId());
             allocatedListing.setOucode(allocatedListingEntity.getOucode());
             allocatedListing.setCourtRoomId(allocatedListingEntity.getCourtRoomId());
-            allocatedListing.setRotaBusinessType(allocatedListingEntity.getRotaBusinessType());
             allocatedListing.setCreatedOn(allocatedListingEntity.getCreatedOn());
             allocatedListing.setBookingId(allocatedListingEntity.getBookingId());
             allocatedListing.setHearingId(allocatedListingEntity.getHearingId());
