@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.domain.mi;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
 import java.util.Date;
-import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -142,7 +141,7 @@ public class CourtScheduleJudiciary {
     }
 
     @JsonProperty("active")
-    public boolean isActive() {
+    public Boolean isActive() {
         return active;
     }
 
@@ -216,46 +215,6 @@ public class CourtScheduleJudiciary {
         return new Builder();
     }
 
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof CourtScheduleJudiciary)) return false;
-        final CourtScheduleJudiciary courtScheduleJudiciary = (CourtScheduleJudiciary) o;
-        return Objects.equals(judiciary_id, courtScheduleJudiciary.judiciary_id) &&
-                Objects.equals(rota_judiciary_id, courtScheduleJudiciary.rota_judiciary_id) &&
-                Objects.equals(title, courtScheduleJudiciary.title) &&
-                Objects.equals(forenames, courtScheduleJudiciary.forenames) &&
-                Objects.equals(surname, courtScheduleJudiciary.surname) &&
-                Objects.equals(email, courtScheduleJudiciary.email) &&
-                Objects.equals(court_listing_profile_id, courtScheduleJudiciary.court_listing_profile_id) &&
-                Objects.equals(judiciary_type, courtScheduleJudiciary.judiciary_type) &&
-                Objects.equals(position, courtScheduleJudiciary.position) &&
-                Objects.equals(is_bench_chairman, courtScheduleJudiciary.is_bench_chairman) &&
-                Objects.equals(is_deputy, courtScheduleJudiciary.is_deputy);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(judiciary_id, rota_judiciary_id, title, forenames, surname, email, court_listing_profile_id, judiciary_type, position, is_bench_chairman, is_deputy);
-    }
-
-    @Override
-    public String toString() {
-        return "CourtScheduleJudiciary{" +
-                "judiciaryId=" + judiciary_id +
-                ", rotaJudiciaryId='" + rota_judiciary_id + '\'' +
-                ", title='" + title + '\'' +
-                ", forenames='" + forenames + '\'' +
-                ", surname='" + surname + '\'' +
-                ", emailAddress='" + email + '\'' +
-                ", courtListingProfileId='" + court_listing_profile_id + '\'' +
-                ", judiciaryType='" + judiciary_type + '\'' +
-                ", position='" + position + '\'' +
-                ", isBenchChairman=" + is_bench_chairman +
-                ", isDeputy=" + is_deputy +
-                '}';
-    }
-
     public static class Builder {
 
         private String judiciaryId;
@@ -287,7 +246,7 @@ public class CourtScheduleJudiciary {
         private Date createdOn;
         private Date updatedOn;
 
-        public Builder withActive(final boolean active) {
+        public Builder withActive(final Boolean active) {
             this.active = active;
             return this;
         }
