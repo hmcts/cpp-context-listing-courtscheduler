@@ -170,12 +170,12 @@ public class CourtSchedule {
     }
 
     @JsonProperty("is_slot_based")
-    public boolean isSlotBased() {
+    public Boolean isSlotBased() {
         return is_slot_based;
     }
 
     @JsonProperty("active")
-    public boolean isActive() {
+    public Boolean isActive() {
         return active;
     }
 
@@ -223,15 +223,11 @@ public class CourtSchedule {
         this.panel = panel;
     }
 
-    public void setActive(final Boolean active) {
-        this.active = active;
-    }
-
     public void setCourtSession(final String courtSession) {
         this.court_session = courtSession;
     }
 
-    public void setSlotBased(final boolean slotBased) {
+    public void setSlotBased(final Boolean slotBased) {
         this.is_slot_based = slotBased;
     }
 
@@ -255,7 +251,7 @@ public class CourtSchedule {
         this.available_duration_mins = availableDuration;
     }
 
-    public void setActive(boolean active) {
+    public void setActive(Boolean active) {
         this.active = active;
     }
 
@@ -277,7 +273,7 @@ public class CourtSchedule {
         this.updated_on = updatedOn;
     }
 
-    public boolean hasHearingsBooked() {
+    public Boolean hasHearingsBooked() {
         return (is_slot_based) ?
                 max_slot.compareTo(available_slot) != 0 :
                 max_duration_mins.compareTo(available_duration_mins) != 0;
@@ -304,8 +300,8 @@ public class CourtSchedule {
         private Integer availableSlots = 0;
         private Integer availableDuration = 0;
         private String courtSession;
-        private boolean slotBased;
-        private boolean active;
+        private Boolean slotBased;
+        private Boolean active;
         private Date createdOn;
         private Date updatedOn;
 
@@ -313,11 +309,11 @@ public class CourtSchedule {
             return new CourtScheduleBuilder();
         }
 
-        public boolean isActive() {
+        public Boolean isActive() {
             return active;
         }
 
-        public boolean isSlotBased() {
+        public Boolean isSlotBased() {
             return slotBased;
         }
 
@@ -481,12 +477,12 @@ public class CourtSchedule {
             return this;
         }
 
-        public CourtScheduleBuilder withSlotBased(final boolean slotBased) {
+        public CourtScheduleBuilder withSlotBased(final Boolean slotBased) {
             this.slotBased = slotBased;
             return this;
         }
 
-        public CourtScheduleBuilder withActive(final boolean active) {
+        public CourtScheduleBuilder withActive(final Boolean active) {
             this.active = active;
             return this;
         }

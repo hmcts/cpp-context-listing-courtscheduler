@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.domain.mi;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
 import java.util.Date;
-import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -150,22 +149,5 @@ public class AllocatedListing {
 
     public void setHearingStartTime(Date hearingStartTime) {
         this.hearing_start_time = hearingStartTime;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        final AllocatedListing that = (AllocatedListing) o;
-        return Objects.equals(id, that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
     }
 }
