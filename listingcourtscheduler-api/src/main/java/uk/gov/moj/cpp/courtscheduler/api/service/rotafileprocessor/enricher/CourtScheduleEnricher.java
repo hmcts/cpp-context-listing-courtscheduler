@@ -40,7 +40,7 @@ public class CourtScheduleEnricher {
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
-    private Map<String, String> missingReferenceDataMappingMap = new ConcurrentHashMap<>();
+    private final Map<String, String> missingReferenceDataMappingMap = new ConcurrentHashMap<>();
 
     public CourtSchedule build(final Map<String, String> listingProfile, final LocalDate sessionDate, final Requester requester) {
         final CourtSchedule.CourtScheduleBuilder builder = new CourtSchedule.CourtScheduleBuilder();

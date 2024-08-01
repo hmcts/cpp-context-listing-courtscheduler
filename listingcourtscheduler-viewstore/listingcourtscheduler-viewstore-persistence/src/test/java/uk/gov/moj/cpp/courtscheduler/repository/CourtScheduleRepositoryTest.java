@@ -2,13 +2,10 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.UUID.randomUUID;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
@@ -55,7 +52,7 @@ public class CourtScheduleRepositoryTest {
     @Inject
     AllocatedListingRepository allocatedListingRepository;
 
-    private final String courtScheduleId = randomUUID().toString();
+    private static final String COURT_SCHEDULE_ID = randomUUID().toString();
 
     @Before
     public void setUp() {
@@ -77,7 +74,6 @@ public class CourtScheduleRepositoryTest {
         // given
         String panel = random(String.class);
         String businessType = random(String.class);
-        LocalDate sessionDate = random(LocalDate.class);
         CourtRoom courtRoom = random(CourtRoom.class);
 
         CourtSchedule courtScheduleEntity = random(CourtSchedule.class);
@@ -92,7 +88,7 @@ public class CourtScheduleRepositoryTest {
                 .build();
 
         Result result = courtScheduleRepository.update(courtScheduleEntity, updatedCourtSchedule, Optional.of(courtRoom));
-        assertThat(result.isSuccess(), is(true));
+        assertTrue(result.isSuccess());
     }
 
     @Test
@@ -105,7 +101,7 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.save(courtSchedule);
 
         List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> courtScheduleList = courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
-        assertThat(courtScheduleList.isEmpty(), is(false));
+        assertFalse(courtScheduleList.isEmpty());
     }
 
     @Test
@@ -126,8 +122,8 @@ public class CourtScheduleRepositoryTest {
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> results = courtScheduleRepository.findBy(courtScheduleRequestParam);
 
         // then
-        assertThat(results.size(), is(1));
-        assertThat(results.get(0).getCourtRoomId(), is(matchingCourtSchedule.getCourtRoomId()));
+        assertEquals(1, results.size());
+        assertEquals(results.get(0).getCourtRoomId(), matchingCourtSchedule.getCourtRoomId());
     }
 
     private static CourtScheduleRequestParam getCourtScheduleRequestParam(final CourtSchedule courtSchedule, final String courtCentreId) {
@@ -166,7 +162,7 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot);
 
         List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtSchedule);
-        assertThat(courtSchedules.isEmpty(), is(false));
+        assertFalse(courtSchedules.isEmpty());
     }
 
     @Test
@@ -179,7 +175,7 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.save(courtSchedule);
 
         List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> courtScheduleList = courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
-        assertThat(courtScheduleList.isEmpty(), is(true));
+        assertTrue(courtScheduleList.isEmpty());
     }
 
 
@@ -215,7 +211,7 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot);
 
         List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtSchedule);
-        assertThat(courtSchedules.isEmpty(), is(false));
+        assertFalse(courtSchedules.isEmpty());
     }
     private static AllocatedSlot getAllocatedSlot(AllocatedListing allocatedListing) {
         AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
@@ -247,7 +243,7 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.save(courtSchedule);
         CourtSchedule by = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
 
-        assertThat(by, notNullValue());
+        assertNotNull(by);
 
     }
 
@@ -270,7 +266,7 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);
 
         CourtSchedule courtSchedule1 = courtScheduleRepository.findBy(courtScheduleId);
-        assertThat(courtSchedule1.getAvailableSlots(), is(currentAvailableSlots + 1));
+        assertEquals((Integer)(currentAvailableSlots + 1), courtSchedule1.getAvailableSlots());
     }
 
     @Test
@@ -292,7 +288,7 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);
 
         CourtSchedule courtSchedule1 = courtScheduleRepository.findBy(courtScheduleId);
-        assertThat(courtSchedule1.getAvailableDuration(), is(availableDuration + allocatedListing.getDuration()));
+        assertEquals((Integer)(availableDuration + allocatedListing.getDuration()), courtSchedule1.getAvailableDuration());
     }
 
     @Test
@@ -318,8 +314,8 @@ public class CourtScheduleRepositoryTest {
 
         Optional<ProvisionalBooking> byBookingId = provisionalBookingRepository.findByBookingId(bookingId1);
 
-        assertThat(byBookingId.isPresent(), is(true));
-        assertThat(byBookingId.get().getActive(), is(true));
+        assertTrue(byBookingId.isPresent());
+        assertTrue(byBookingId.get().getActive());
     }
 
     @Test
@@ -337,7 +333,7 @@ public class CourtScheduleRepositoryTest {
 
         List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
 
-        assertThat(allocatedListings.isEmpty(), is(true));
+        assertTrue(allocatedListings.isEmpty());
     }
 
     @Test
@@ -350,7 +346,7 @@ public class CourtScheduleRepositoryTest {
         allocatedSlot.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         courtScheduleRepository.updateCourtSchedule(Lists.newArrayList(allocatedSlot));
 
-        assertThat(courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId()).getAvailableSlots(), is(availableSlots - 1));
+        assertEquals((Integer)(availableSlots - 1), courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId()).getAvailableSlots());
     }
 
     @Test
@@ -363,8 +359,8 @@ public class CourtScheduleRepositoryTest {
         allocatedSlot.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         courtScheduleRepository.updateCourtSchedule(Lists.newArrayList(allocatedSlot));
 
-
-        assertThat(courtSchedule.getAvailableDuration(), is(availableDuration - allocatedSlot.getDuration()));
+        final Integer expectedDuration = availableDuration - allocatedSlot.getDuration();
+        assertEquals(expectedDuration, courtSchedule.getAvailableDuration());
     }
 
     @Test
@@ -376,7 +372,7 @@ public class CourtScheduleRepositoryTest {
 
         List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(allocatedSlot.getHearingId());
 
-        assertThat(allocatedListings.isEmpty(), is(false));
+        assertFalse(allocatedListings.isEmpty());
     }
 
     @Test
@@ -389,8 +385,8 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.deleteProvisionalBooking(provisionalBooking.getProvisionalBookingKey().getBookingId());
 
         Optional<ProvisionalBooking> byBookingId = provisionalBookingRepository.findByBookingId(provisionalBooking.getProvisionalBookingKey().getBookingId());
-        assertThat(byBookingId.isPresent(), is(true));
-        assertThat(byBookingId.get().getActive(), is(false));
+        assertTrue(byBookingId.isPresent());
+        assertFalse(byBookingId.get().getActive());
     }
 
     @Test
@@ -675,7 +671,7 @@ public class CourtScheduleRepositoryTest {
         final String ouCode = "B01LY00";
 
         final CourtSchedule courtSchedule1 = new CourtSchedule();
-        courtSchedule1.setCourtScheduleId(courtScheduleId);
+        courtSchedule1.setCourtScheduleId(COURT_SCHEDULE_ID);
         courtSchedule1.setCourtHouseName("Lavender Hill Magistrates' Court");
         courtSchedule1.setCourtRoomName("Courtroom 1");
         courtSchedule1.setListingProfileId("CS4436822");
@@ -697,7 +693,7 @@ public class CourtScheduleRepositoryTest {
 
         courtScheduleRepository.save(courtSchedule1);
 
-        final CourtSchedule courtScheduleInserted = courtScheduleRepository.findBy(courtScheduleId);
+        final CourtSchedule courtScheduleInserted = courtScheduleRepository.findBy(COURT_SCHEDULE_ID);
 
         assertEquals(courtHouseId, courtScheduleInserted.getCourtHouseId());
         assertEquals(courtRoomId, courtScheduleInserted.getCourtRoomId());
@@ -709,7 +705,7 @@ public class CourtScheduleRepositoryTest {
         assertTrue(courtScheduleInserted.isActive());
 
         final Date updatedOn = Calendar.getInstance().getTime();
-        courtScheduleRepository.deactivateSlots(List.of(courtScheduleId), updatedOn);
+        courtScheduleRepository.deactivateSlots(List.of(COURT_SCHEDULE_ID), updatedOn);
 
         final CourtSchedule courtScheduleAfterDeactivation = courtScheduleRepository.findBy(courtScheduleInserted.getCourtScheduleId());
 
@@ -737,7 +733,7 @@ public class CourtScheduleRepositoryTest {
         final String ouCode = "B01LY00";
 
         final CourtSchedule courtSchedule1 = new CourtSchedule();
-        courtSchedule1.setCourtScheduleId(courtScheduleId);
+        courtSchedule1.setCourtScheduleId(COURT_SCHEDULE_ID);
         courtSchedule1.setCourtHouseName("Lavender Hill Magistrates' Court");
         courtSchedule1.setCourtRoomName("Courtroom 1");
         courtSchedule1.setListingProfileId("CS4436822");
