@@ -17,7 +17,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
@@ -88,11 +87,15 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
 
     //update on Create when needed
-    public CourtSchedule update(CourtSchedule courtSchedule) {
+    public CourtSchedule update(final CourtSchedule courtSchedule) {
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
         courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
-        CourtSchedule persistedCourtSchedule = entityManager.createQuery(criteriaQuery).getSingleResult();
+        final List<CourtSchedule> persistedCourtSchedules = entityManager.createQuery(criteriaQuery).getResultList();
+        if (persistedCourtSchedules.size() > 1) {
+            LOGGER.info("having more than one persisted court schedule: {}", courtSchedule);
+        }
+        final CourtSchedule persistedCourtSchedule = persistedCourtSchedules.get(0);
 
         if ((persistedCourtSchedule.getMaxSlots() > 0
                 && persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue())

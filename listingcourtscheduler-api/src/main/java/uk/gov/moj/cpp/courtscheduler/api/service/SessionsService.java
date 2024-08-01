@@ -6,7 +6,6 @@ import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.api.CommonUtils.getValidationResult;
 
 import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.moj.cpp.courtscheduler.api.CommonUtils;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.mapper.CourtScheduleJudiciaryMapper;
@@ -48,7 +47,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import javax.ejb.Local;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.json.Json;

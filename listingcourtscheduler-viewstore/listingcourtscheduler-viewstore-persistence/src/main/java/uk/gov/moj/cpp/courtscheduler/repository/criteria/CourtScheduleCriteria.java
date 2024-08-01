@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository.criteria;
 
+import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
@@ -136,7 +137,7 @@ public class CourtScheduleCriteria {
         //AND
         List<Predicate> andPredicates = new ArrayList<>();
 
-        if (Objects.nonNull(courtScheduleId)) {
+        if (nonNull(courtScheduleId)) {
             criteriaQuery.where(courtScheduleIdPredicate);
         } else {
             andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), ouCode));
@@ -159,19 +160,19 @@ public class CourtScheduleCriteria {
             Predicate courtRoomIdPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_ID), courtSchedule.getCourtRoomId());
             criteriaQuery.where(criteriaBuilder.and(courtRoomIdPredicate));
         }
-        if (isNotBlank(courtSchedule.getCourtRoomId())) {
+        if (isNotBlank(courtSchedule.getBusinessType())) {
             Predicate businessTypePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.BUSINESS_TYPE), courtSchedule.getBusinessType());
             criteriaQuery.where(criteriaBuilder.and(businessTypePredicate));
         }
-        if (isNotBlank(courtSchedule.getCourtRoomId())) {
+        if (isNotBlank(courtSchedule.getPanel())) {
             Predicate panelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), courtSchedule.getPanel());
             criteriaQuery.where(criteriaBuilder.and(panelPredicate));
         }
-        if (isNotBlank(courtSchedule.getCourtRoomId())) {
+        if (isNotBlank(courtSchedule.getCourtSession())) {
             Predicate courtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), courtSchedule.getCourtSession());
             criteriaQuery.where(criteriaBuilder.and(courtSessionPredicate));
         }
-        if (isNotBlank(courtSchedule.getCourtRoomId())) {
+        if (nonNull(courtSchedule.getSessionDate())) {
             Predicate sessionDatePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.SESSION_DATE), courtSchedule.getSessionDate());
             criteriaQuery.where(criteriaBuilder.and(sessionDatePredicate));
         }

@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.mapper;
 
+import static java.util.Objects.isNull;
+
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 public class CourtScheduleMapper {
@@ -10,11 +12,11 @@ public class CourtScheduleMapper {
     }
 
     public static CourtSchedule toEntity(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule domain) {
-        if (domain == null) {
+        if (isNull(domain)) {
             return null;
         }
 
-        CourtSchedule entity = new CourtSchedule();
+        final CourtSchedule entity = new CourtSchedule();
         entity.setCourtScheduleId(domain.getCourtScheduleId());
         entity.setListingProfileId(domain.getListingProfileId());
         entity.setOuCode(domain.getOuCode());
@@ -38,7 +40,7 @@ public class CourtScheduleMapper {
     }
 
     public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule toDomain(CourtSchedule entity) {
-        if (entity == null) {
+        if (isNull(entity)) {
             return null;
         }
 

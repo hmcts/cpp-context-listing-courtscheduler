@@ -169,7 +169,7 @@ public class RotaFileProcessorService {
 
         final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider = new RotaPeriodDateInfoProvider(records);
         final LocalDate rotaPeriodStartDate = rotaPeriodDateInfoProvider.getRotaPeriodStartDate();
-        final LocalDate masterRotaPeriodCutOffDate = rotaPeriodStartDate.plusDays(getRotaMasterDataDaysLength());
+        final LocalDate masterRotaPeriodCutOffDate = rotaPeriodDateInfoProvider.getRotaPeriodEndDate();
         final LocalDate rotaPeriodEndDate = rotaPeriodDateInfoProvider.getRotaPeriodEndDate();
         logger.info("rotaPeriodStartDate: {}, rotaPeriodEndDate: {}, rotaPeriodStartDay: {}, rotaPeriodEndDay: {}, masterRotaPeriodCutOffDate: {}, monthsBetweenRotaPeriod: {}", rotaPeriodStartDate, rotaPeriodEndDate,
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDay(), rotaPeriodDateInfoProvider.getRotaPeriodEndDay(), masterRotaPeriodCutOffDate, rotaPeriodDateInfoProvider.getMonthsBetweenRotaPeriod());
@@ -214,7 +214,7 @@ public class RotaFileProcessorService {
                 }
             }
         } else {
-            processFullRotaFile(slots, schedules, rotaPeriodStartDate, masterRotaPeriodCutOffDate, ouCodes, businessTypesMap, rotaPeriodDateInfoProvider);
+            processFullRotaFile(slots, schedules, rotaPeriodStartDate, masterRotaPeriodCutOffDate, ouCodes, businessTypesMap);
         }
     }
 
@@ -225,8 +225,7 @@ public class RotaFileProcessorService {
                                      final LocalDate startDate,
                                      final LocalDate masterRotaPeriodCutOffDate,
                                      final List<String> ouCodes,
-                                     final Map<String, BusinessType> businessTypesMap,
-                                     final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider) {
+                                     final Map<String, BusinessType> businessTypesMap) {
 
         logger.info("DD-15703:processFullRotaFile: started processing");
         courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
@@ -240,9 +239,6 @@ public class RotaFileProcessorService {
 
         manageCourtSchedule(ouCodes, slots, schedules, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
-
-
-        createProvisionalSchedule(ouCodes, masterRotaPeriodCutOffDate, businessTypesMap, rotaPeriodDateInfoProvider);
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
@@ -348,6 +344,14 @@ public class RotaFileProcessorService {
         logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
     }
 
+    /**
+     *
+     * @param ouCodes
+     * @param masterRotaPeriodCutOffDate
+     * @param businessTypesMap
+     * @param rotaPeriodDateInfoProvider
+     *
+     */
     private void createProvisionalSchedule(final List<String> ouCodes, final LocalDate masterRotaPeriodCutOffDate, final Map<String, BusinessType> businessTypesMap, final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider) {
         logger.info("rota.months.of.provisional.data.to.populate: {}", rotaMonthsOfProvisionalDataToPopulate);
         final int rotaFileCycleLength = getRotaFileCycleLength();

@@ -192,7 +192,6 @@ class RotaFileProcessorServiceTest {
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
-        when(provisionalDataProducer.produceProvisionalData(any(LocalDate.class), any(LocalDate.class), anyInt(), anyList(), any(ProvisionalSessionDateProvider.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
@@ -214,10 +213,10 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
-        verify(businessTypeMatchingLogger, times(2)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
+        verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
 
         final List<List<String>> missingBusinessTypes = missingBusinessTypeCaptor.getAllValues();
-        assertEquals(2, missingBusinessTypes.size());
+        assertEquals(1, missingBusinessTypes.size());
         assertEquals(1, missingBusinessTypes.get(0).size());
         assertEquals(CJU_AS_MISSING_BUSINESS_TYPE, missingBusinessTypes.get(0).get(0));
     }
@@ -256,7 +255,6 @@ class RotaFileProcessorServiceTest {
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
-        when(provisionalDataProducer.produceProvisionalData(any(LocalDate.class), any(LocalDate.class), anyInt(), anyList(), any(ProvisionalSessionDateProvider.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypesAsHavingCJUandNCPTonly());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
@@ -328,7 +326,6 @@ class RotaFileProcessorServiceTest {
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
-        when(provisionalDataProducer.produceProvisionalData(any(LocalDate.class), any(LocalDate.class), anyInt(), anyList(), any(ProvisionalSessionDateProvider.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
@@ -340,10 +337,10 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
-        verify(businessTypeMatchingLogger, times(2)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
+        verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
 
         final List<List<String>> missingBusinessTypes = missingBusinessTypeCaptor.getAllValues();
-        assertEquals(2, missingBusinessTypes.size());
+        assertEquals(1, missingBusinessTypes.size());
         assertEquals(1, missingBusinessTypes.get(0).size());
         assertEquals(CJU_AS_MISSING_BUSINESS_TYPE, missingBusinessTypes.get(0).get(0));
     }
