@@ -7,9 +7,26 @@ import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @SuppressWarnings({"pmd:BeanMembersShouldSerialize", "squid:S00121", "squid:S00122", "squid:S1067"})
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonInclude
+@JsonPropertyOrder({
+        "court_schedule_id",
+        "court_listing_profile_id",
+        "judiciary_id",
+        "rota_judiciary_id",
+        "title",
+        "forenames",
+        "surname",
+        "email",
+        "judiciary_type",
+        "is_bench_chairman",
+        "is_deputy",
+        "position",
+        "active",
+        "created_on",
+        "updated_on"})
 public class CourtScheduleJudiciary {
 
     private String judiciary_id;
@@ -36,7 +53,7 @@ public class CourtScheduleJudiciary {
 
     private Boolean is_deputy;
 
-    private boolean active;
+    private Boolean active;
     private Date created_on;
     private Date updated_on;
 

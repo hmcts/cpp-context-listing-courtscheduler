@@ -5,7 +5,24 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import java.util.Date;
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
+@JsonInclude
+@JsonPropertyOrder({
+        "id",
+        "court_schedule_id",
+        "booking_id",
+        "hearing_id",
+        "oucode",
+        "court_room_id",
+        "rota_business_type",
+        "duration",
+        "created_on",
+        "updated_on",
+        "hearing_start_time"
+})
 
 public class AllocatedListing {
 

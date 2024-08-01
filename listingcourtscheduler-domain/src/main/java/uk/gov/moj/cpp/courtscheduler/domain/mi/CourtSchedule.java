@@ -4,9 +4,35 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
 import java.util.Date;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@JsonInclude
+@JsonPropertyOrder({
+        "id",
+        "court_listing_profile_id",
+        "oucode",
+        "court_room_number",
+        "court_house_name",
+        "court_room_name",
+        "operational_unit",
+        "rota_business_type",
+        "court_session",
+        "session_start",
+        "panel",
+        "max_slot",
+        "max_duration_mins",
+        "available_slot",
+        "available_duration_mins",
+        "active",
+        "created_on",
+        "updated_on",
+        "court_room_id",
+        "is_slot_based",
+        "court_house_id"
+})
 public class CourtSchedule {
 
     private String id;
@@ -19,11 +45,10 @@ public class CourtSchedule {
     private String court_room_name;
     private String operational_unit;
     private String rota_business_type;
-    private String businessDescription;
     private String panel;
     private String court_session;
-    private boolean is_slot_based;
-    private boolean active;
+    private Boolean is_slot_based;
+    private Boolean active;
     private Date session_start;
     private Integer max_slot;
     private Integer available_slot;
@@ -43,7 +68,6 @@ public class CourtSchedule {
         this.court_room_name = builder.courtRoomName;
         this.operational_unit = builder.operationalUnit;
         this.rota_business_type = builder.businessType;
-        this.businessDescription = builder.businessDescription;
         this.panel = builder.panel;
         this.court_session = builder.courtSession;
         this.session_start = builder.sessionDate;
@@ -229,14 +253,6 @@ public class CourtSchedule {
 
     public void setAvailableDuration(final Integer availableDuration) {
         this.available_duration_mins = availableDuration;
-    }
-
-    public String getBusinessDescription() {
-        return businessDescription;
-    }
-
-    public void setBusinessDescription(String businessDescription) {
-        this.businessDescription = businessDescription;
     }
 
     public void setActive(boolean active) {
