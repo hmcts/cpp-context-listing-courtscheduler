@@ -75,7 +75,7 @@ public class JudiciaryScheduleEnricher {
             final CourtSchedule courtSchedule = courtScheduleMap.get(courtListingProfileId);
             if (nonNull(courtSchedule)) {
                 final CourtScheduleJudiciary courtScheduleJudiciary = judiciaryBuilder.build(judiciarySchedule, courtSchedule.getCourtScheduleId());
-                if (nonNull(courtScheduleJudiciary.getJudiciaryId())) {
+                if (StringUtils.isNotEmpty(courtScheduleJudiciary.getJudiciaryId())) {
                     courtScheduleJudiciarySchedules.add(courtScheduleJudiciary);
                 }
             }

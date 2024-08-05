@@ -244,46 +244,44 @@ public class SessionsService {
 
     @SuppressWarnings("squid:S107")
     @Transactional
-    public void updateSlotsAndSchedules(final List<String> existingSlotIds,
+    public void updateSlotsAndSchedules(final List<String> existingNonMigratedSlotIds,
                                         final Map<String, CourtSchedule> newRecords,
                                         final Collection<CourtScheduleJudiciary> newSchedules,
                                         final Collection<CourtSchedule> slotsToUpdate,
-                                        final Map<String, Pair<String, String>> slotsToUpdateMap,
+                                        final Map<String, Pair<String, String>> schedulesToUpdateMap,
                                         final Collection<CourtScheduleJudiciary> updatedSchedules,
                                         final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules,
                                         final List<String> slotIdsToDelete,
                                         final Map<String, BusinessType> businessTypeMap) {
         logger.info("DD-15703:CourtScheduleRepository: update process started");
 
-
         logger.info("DD-15703:CourtScheduleRepository: before deactivateSlots");
-        deactivateSlots(existingSlotIds);
+        deactivateSlots(existingNonMigratedSlotIds);
         logger.info("DD-15703:CourtScheduleRepository: after deactivateSlots");
 
         logger.info("DD-15703:CourtScheduleRepository: before deactivateSchedules");
-        deactivateSchedules(existingSlotIds);
+        deactivateSchedules(existingNonMigratedSlotIds);
         logger.info("DD-15703:CourtScheduleRepository: after deactivateSchedules.update");
 
 
         logger.info("DD-15703:CourtScheduleRepository: before saveSlots");
-        saveSlots(newRecords.values(), businessTypeMap);
-        logger.info("DD-15703:CourtScheduleRepository: after saveSlots");
-
+        final int numberOfSavedSlots = saveSlots(newRecords.values(), businessTypeMap);
+        logger.info("DD-15703:CourtScheduleRepository: after saveSlots with numberOfSavedSlots: {}", numberOfSavedSlots);
 
         for (final CourtSchedule courtSchedule : slotsToUpdate) {
             newRecords.putIfAbsent(courtSchedule.getListingProfileId(), courtSchedule);
         }
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule");
-        saveJudiciarySchedule(newRecords, newSchedules);
-        logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule");
+        int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(newRecords, newSchedules);
+        logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedules: {}", numberOfSavedJudiciarySchedules);
 
         logger.info("DD-15703:CourtScheduleRepository: before updateSlots");
         updateSlots(slotsToUpdate, businessTypeMap);
         logger.info("DD-15703:CourtScheduleRepository: after updateSlots");
 
         logger.info("DD-15703:CourtScheduleRepository: before updateJudiciarySchedule");
-        updateJudiciarySchedule(slotsToUpdateMap, updatedSchedules, relatedJudiciarySchedules);
+        updateJudiciarySchedule(schedulesToUpdateMap, updatedSchedules, relatedJudiciarySchedules);
         logger.info("DD-15703:CourtScheduleRepository: after updateJudiciarySchedule");
 
         if (isNotEmpty(slotIdsToDelete)) {
@@ -314,10 +312,9 @@ public class SessionsService {
     private int saveSlots(final Collection<CourtSchedule> slots,
                           final Map<String, BusinessType> businessTypeMap) {
         final AtomicInteger numberOfSaved = new AtomicInteger();
-        final Map<String, Boolean> migratedByOuCodeMap = migratedMapByOuCode();
         slots.forEach(slot -> {
-            if (Boolean.FALSE.equals(migratedByOuCodeMap.get(slot.getOuCode()))) {
-                final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity = CourtScheduleMapper.toEntity(slot);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity = CourtScheduleMapper.toEntity(slot);
+            if (nonNull(courtScheduleEntity)) {
                 courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
                 courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
                 courtScheduleRepository.save(courtScheduleEntity);
@@ -340,16 +337,16 @@ public class SessionsService {
         });
     }
 
-    private void updateJudiciarySchedule(final Map<String, Pair<String, String>> slotsToUpdate,
+    private void updateJudiciarySchedule(final Map<String, Pair<String, String>> schedulesToUpdateMap,
                                          final Collection<CourtScheduleJudiciary> scheduleJudiciaries,
                                          final Map<String, List<CourtScheduleJudiciary>> courtScheduleJudiciariesMap) {
-        if (!courtScheduleJudiciariesMap.isEmpty() && !slotsToUpdate.isEmpty()) {
+        if (!courtScheduleJudiciariesMap.isEmpty() && !schedulesToUpdateMap.isEmpty()) {
             for (final Map.Entry<String, List<CourtScheduleJudiciary>> slotsScheduleEntry : courtScheduleJudiciariesMap.entrySet()) {
                 final String profileId = slotsScheduleEntry.getKey();
                 final List<CourtScheduleJudiciary> slotsScheduleEntryValue = slotsScheduleEntry.getValue();
 
                 slotsScheduleEntryValue.forEach(courtScheduleJudiciary -> {
-                    final Pair<String, String> courtScheduleIdAndOuCodePair = slotsToUpdate.get(profileId);
+                    final Pair<String, String> courtScheduleIdAndOuCodePair = schedulesToUpdateMap.get(profileId);
                     final String courtScheduleId = courtScheduleIdAndOuCodePair.getLeft();
                     if (nonNull(courtScheduleId)) {
                         scheduleJudiciaries.stream()
