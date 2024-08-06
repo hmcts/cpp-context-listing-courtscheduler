@@ -247,6 +247,7 @@ public class SessionsService {
     public void updateSlotsAndSchedules(final List<String> existingNonMigratedSlotIds,
                                         final Map<String, CourtSchedule> newRecords,
                                         final Collection<CourtScheduleJudiciary> newSchedules,
+                                        final Collection<CourtScheduleJudiciary> schedulesForMigratedExistingSlots,
                                         final Collection<CourtSchedule> slotsToUpdate,
                                         final Map<String, Pair<String, String>> schedulesToUpdateMap,
                                         final Collection<CourtScheduleJudiciary> updatedSchedules,
@@ -275,6 +276,10 @@ public class SessionsService {
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule");
         int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(newRecords, newSchedules);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedules: {}", numberOfSavedJudiciarySchedules);
+
+        logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule for existing migrated slots");
+        int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(newRecords, schedulesForMigratedExistingSlots);
+        logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedulesForMigratedExistingSlots: {}", numberOfSavedJudiciarySchedulesForMigratedExistingSlots);
 
         logger.info("DD-15703:CourtScheduleRepository: before updateSlots");
         updateSlots(slotsToUpdate, businessTypeMap);

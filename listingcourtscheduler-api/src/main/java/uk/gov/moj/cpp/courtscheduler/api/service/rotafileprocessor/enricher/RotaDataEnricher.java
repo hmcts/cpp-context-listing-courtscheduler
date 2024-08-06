@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher;
 
-import static java.lang.Boolean.FALSE;
 import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -64,6 +63,7 @@ public class RotaDataEnricher {
     public Map<String, CourtSchedule> enrichCourtListings(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                           final LocalDate masterRotaFileCutOffDate,
                                                           final Map<String, Boolean> migratedMap,
+                                                          final Boolean migrated,
                                                           final Requester requester) {
         logger.info("enrichCourtListing - masterRotaFileCutOffDate: {}", masterRotaFileCutOffDate);
         final Map<String, Map<String, String>> courtListings = records.get(COURT_LISTING);
@@ -77,7 +77,7 @@ public class RotaDataEnricher {
 
                 if (sessionDate.isBefore(masterRotaFileCutOffDate) || sessionDate.isEqual(masterRotaFileCutOffDate)) {
                     final CourtSchedule courtSchedule = courtSchedules.get(linkedSessionId);
-                    buildCourtSchedule(listingProfile, courtSchedule, courtSchedules, migratedMap, missingReferenceDataMappingMap, requester);
+                    buildCourtSchedule(listingProfile, courtSchedule, courtSchedules, migratedMap, migrated, missingReferenceDataMappingMap, requester);
                 }
             } catch (final Exception ex) {
                 logger.error(format(EXCEPTION_MSG, listingProfile.get("id")), ex);
@@ -93,6 +93,7 @@ public class RotaDataEnricher {
                                     final CourtSchedule courtSchedule,
                                     final Map<String, CourtSchedule> courtSchedules,
                                     final Map<String, Boolean> migratedMap,
+                                    final Boolean migrated,
                                     final Map<String, String> missingReferenceDataMappingMap,
                                     final Requester requester) {
         final String businessType = listingProfile.get(BUSINESS_TYPE);
@@ -102,7 +103,7 @@ public class RotaDataEnricher {
         CourtSchedule newCourtSchedule;
         if (isNull(courtSchedule) || !businessType.equals(courtSchedule.getBusinessType())) {
             newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, requester);
-            if (FALSE.equals(migratedMap.get(newCourtSchedule.getOuCode()))) {
+            if (migrated.equals(migratedMap.get(newCourtSchedule.getOuCode()))) {
                 addCourtSchedule(courtSchedules, newCourtSchedule);
             }
         } else {
