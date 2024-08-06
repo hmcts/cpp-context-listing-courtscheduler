@@ -5,6 +5,8 @@
          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
 
     <changeSet author="baris.ozturkmen" id="030-add-uniqueindexes-to-courtscheduler-for-allday" logicalFilePath="030-add-uniqueindexes-to-courtscheduler-for-allday.xml">
+        <sql>DROP INDEX IF EXISTS unique_index_am_ad</sql>
+        <sql>DROP INDEX IF EXISTS unique_index_pm_ad</sql>
         <sql>CREATE UNIQUE INDEX unique_index_am_ad ON court_schedule (oucode, court_room_number, rota_business_type, session_start,active) WHERE court_session IN ('AM', 'AD')</sql>
         <sql>CREATE UNIQUE INDEX unique_index_pm_ad ON court_schedule (oucode, court_room_number, rota_business_type, session_start,active) WHERE court_session IN ('PM', 'AD')</sql>
     </changeSet>
