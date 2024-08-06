@@ -44,7 +44,7 @@ public class ReferenceDataMapperService {
 
         final Optional<Judiciary> judiciaryOptional = judiciaries
                 .stream()
-                .filter(judiciary -> judiciary.getEmailAddress().equals(email))
+                .filter(judiciary -> email.equals(judiciary.getEmailAddress()))
                 .findFirst();
 
         logger.info("judiciary found for email {} with judiciary : {}", email, judiciaryOptional.orElse(null));
