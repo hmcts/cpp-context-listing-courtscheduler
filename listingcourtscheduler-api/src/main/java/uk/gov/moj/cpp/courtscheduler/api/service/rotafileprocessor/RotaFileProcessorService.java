@@ -1,8 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.lang.Integer.parseInt;
+import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
@@ -59,6 +61,7 @@ import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
 import javax.ejb.AsyncResult;
 import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
@@ -131,10 +134,24 @@ public class RotaFileProcessorService {
     @Value(key = "rota.cycle.to.populate.length", defaultValue = "28")
     private String rotaCycleToPopulateLength;
 
+    @Inject
+    @Value(key = "courtscheduler.rotaslArchiveContainerName", defaultValue = "schedulelistingoutput")
+    private String rotaslArchiveContainerName;
+
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
+
+    private static final String ERROR_MSG = "AKS %s is not specified. Please add configuration for `%s`";
+
+    @PostConstruct
+    void init() {
+        checkNotNull(rotaMasterDataDaysLength, format(ERROR_MSG, "rotaMasterDataDaysLength", "rota.master.data.days.length"));
+        checkNotNull(rotaMonthsOfProvisionalDataToPopulate, format(ERROR_MSG, "rotaMonthsOfProvisionalDataToPopulate", "rota.months.of.provisional.data.to.populate"));
+        checkNotNull(rotaCycleToPopulateLength, format(ERROR_MSG, "rotaCycleToPopulateLength", "rota.cycle.to.populate.length"));
+        checkNotNull(rotaslArchiveContainerName, format(ERROR_MSG, "container name", "courtscheduler.rotaslArchiveContainerName"));
+    }
 
     @Asynchronous
     public Future<String> captureRotaFilesAndProcessEach(final Requester requester) {
@@ -149,7 +166,7 @@ public class RotaFileProcessorService {
 
             final long fileLength = blobByteArray.length;
             // upload the files processed into archive container
-            azureBlobClientService.uploadProcessedFiles(new ByteArrayInputStream(blobByteArray), fileLength, blobName);
+            azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, rotaslArchiveContainerName);
             azureBlobClientService.deleteFile(blobName);
         });
 
@@ -228,13 +245,13 @@ public class RotaFileProcessorService {
                                      final Map<String, BusinessType> businessTypesMap) {
 
         logger.info("DD-15703:processFullRotaFile: started processing");
-        courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
-        logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod");
+        final int numberOfDeletedUnAllocatedCourtScheduleJudiciariesEntries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
+        logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciariesEntries);
 
-        courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
-        logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleEntriesForRotaPeriod");
+        final int numberOfDeletedUnAllocatedCourtScheduleEntries = courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
+        logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleEntriesForRotaPeriod: {}", numberOfDeletedUnAllocatedCourtScheduleEntries);
 
-        int numberOfDeletedUnAllocatedProvisionalEntries = courtScheduleRepository.deleteUnAllocatedProvisionalEntries(ouCodes);
+        final int numberOfDeletedUnAllocatedProvisionalEntries = courtScheduleRepository.deleteUnAllocatedProvisionalEntries(ouCodes);
         logger.info("DD-15703:processFullRotaFile: after delete UnAllocated ProvisionalEntries - numberOfDeletedUnAllocatedProvisionalEntries: {}", numberOfDeletedUnAllocatedProvisionalEntries);
 
         manageCourtSchedule(ouCodes, slots, schedules, startDate, masterRotaPeriodCutOffDate, businessTypesMap);

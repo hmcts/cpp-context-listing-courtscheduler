@@ -255,7 +255,6 @@ public class SessionsService {
                                         final Map<String, BusinessType> businessTypeMap) {
         logger.info("DD-15703:CourtScheduleRepository: update process started");
 
-
         logger.info("DD-15703:CourtScheduleRepository: before deactivateSlots");
         deactivateSlots(existingSlotIds);
         logger.info("DD-15703:CourtScheduleRepository: after deactivateSlots");

@@ -143,16 +143,16 @@ public class AzureBlobClientService {
      * @return void
      * @throws AzureBlobClientException
      */
-    public void uploadProcessedFiles(final InputStream file, final Long fileSize, final String destinationFileName) {
+    public void uploadProcessedFile(final InputStream file, final Long fileSize, final String destinationFileName, final String containerName) {
 
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
-            LOGGER.info("Connecting to azure blob storage to upload files into {} on {}", rotaslArchiveContainerName, now());
-            connect(rotaslArchiveContainerName);
+            LOGGER.info("Connecting to azure blob storage to upload files into {} on {}", containerName, now());
+            connect(containerName);
             final CloudBlockBlob fileBlob = container.getBlockBlobReference(destinationFileName);
             LOGGER.info("Uploading {} file to azure blob storage on {}", destinationFileName, now());
             fileBlob.upload(file, fileSize);
-            LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", rotaslArchiveContainerName, stopwatch.elapsed(SECONDS));
+            LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
 
         } catch (StorageException ex) {
             throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
