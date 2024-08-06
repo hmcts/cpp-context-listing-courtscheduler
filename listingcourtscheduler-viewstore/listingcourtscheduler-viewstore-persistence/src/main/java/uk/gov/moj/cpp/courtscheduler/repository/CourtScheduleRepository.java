@@ -82,7 +82,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             "WHERE court_listing_profile_id is null AND max_slot = available_slot AND max_duration_mins = available_duration_mins AND oucode IN (:ouCodes) " +
             "AND active =true and not exists( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
-    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule WHERE id IN (:courtScheduleIds) AND not exists(" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule WHERE id IN (:courtScheduleIds) AND court_listing_profile_id is not null AND not exists(" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
 
 
@@ -282,7 +282,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     public abstract List<CourtSchedule> getSimilarSessions(@QueryParam("courtCentreId") final String courtCentreId,@QueryParam("courtRoomId") final String courtRoomId,@QueryParam("businessType") final String businessType,  @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
 
     @Modifying
-    @Query(value = "UPDATE CourtSchedule cs SET cs.active = false, cs.updatedOn = :updatedOn WHERE cs.courtScheduleId IN :courtScheduleIds")
+    @Query(value = "UPDATE CourtSchedule cs SET cs.active = false, cs.updatedOn = :updatedOn WHERE cs.courtScheduleId IN :courtScheduleIds AND cs.listingProfileId is not null")
     public abstract void deactivateSlots(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds, @QueryParam("updatedOn") final Date updatedOn);
 
     protected void releaseAllocatedSlotsOrDurationFromCourtSchedule(final List<AllocatedListing> allocatedListings) {

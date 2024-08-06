@@ -6,7 +6,7 @@ public enum ValidationStatus {
 
     private final String status;
 
-    private ValidationStatus(String validationStatus) {
+    ValidationStatus(String validationStatus) {
         this.status = validationStatus;
     }
 

@@ -19,6 +19,22 @@
       "lastModifiedTs": "2024-06-24T15:27:40.491"
     },
     {
+      "id": "30de9ece-7cf3-390c-8c39-ccff1a044209",
+      "seqId": 7940,
+      "titlePrefix": "Mrs",
+      "titlePrefixWelsh": "Mrs",
+      "titleSuffix": "JP",
+      "titleSuffixWelsh": "YH",
+      "surname": "Anderson",
+      "forenames": "Pauline Carole",
+      "judiciaryType": "Magistrate",
+      "personId": "1957",
+      "emailAddress": "duanets.lunats.435@rotaemail.com",
+      "compulsoryRetireDate": "2034-07-29",
+      "currentJobStartDate": "1999-07-08",
+      "personalCode": "16225"
+    },
+    {
       "id": "a9578c01-989d-340c-a684-f3a2bdb7da35",
       "seqId": 143370,
       "titleJudicialPrefix": "His Honour Judge",

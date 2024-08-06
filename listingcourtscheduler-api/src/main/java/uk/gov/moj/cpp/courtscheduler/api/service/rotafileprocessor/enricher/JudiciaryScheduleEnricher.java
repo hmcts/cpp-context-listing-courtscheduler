@@ -5,6 +5,7 @@ import static java.util.Collections.emptyMap;
 import static java.util.Objects.nonNull;
 import static java.util.Optional.empty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.JUDICIARY_ERR_MSG;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.RotaFileFieldNames.EMAIL_ADDRESS;
@@ -40,8 +41,6 @@ import java.util.Optional;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
-
 @ApplicationScoped
 @SuppressWarnings({"squid:S1134", "squid:CommentedOutCodeLine"})
 public class JudiciaryScheduleEnricher {
@@ -75,7 +74,7 @@ public class JudiciaryScheduleEnricher {
             final CourtSchedule courtSchedule = courtScheduleMap.get(courtListingProfileId);
             if (nonNull(courtSchedule)) {
                 final CourtScheduleJudiciary courtScheduleJudiciary = judiciaryBuilder.build(judiciarySchedule, courtSchedule.getCourtScheduleId());
-                if (nonNull(courtScheduleJudiciary.getJudiciaryId())) {
+                if (isNotEmpty(courtScheduleJudiciary.getJudiciaryId())) {
                     courtScheduleJudiciarySchedules.add(courtScheduleJudiciary);
                 }
             }
@@ -99,7 +98,7 @@ public class JudiciaryScheduleEnricher {
     private void enrichJudiciaryFromCppRefdata(final Map<String, String> schedule, final Map<String, String> errors, final Requester requester) {
         final String email = schedule.get(EMAIL_ADDRESS);
 
-        final Optional<uk.gov.moj.cpp.courtscheduler.domain.Judiciary> judiciaryFromMapper = StringUtils.isNotEmpty(email) ? referenceDataMapperService.findByEmail(requester, email.toLowerCase()) : empty();
+        final Optional<uk.gov.moj.cpp.courtscheduler.domain.Judiciary> judiciaryFromMapper = isNotEmpty(email) ? referenceDataMapperService.findByEmail(requester, email.toLowerCase()) : empty();
 
         if (judiciaryFromMapper.isPresent()) {
             final Judiciary judiciary = judiciaryFromMapper.get();
