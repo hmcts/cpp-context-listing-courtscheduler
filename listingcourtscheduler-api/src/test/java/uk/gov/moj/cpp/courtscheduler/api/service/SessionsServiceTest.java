@@ -635,7 +635,7 @@ class SessionsServiceTest {
 
         final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules = Map.of(listingProfileId1, getCourtScheduleJudiciaries("6bd1853d-8a88-35e8-b4c4-342e2649daa2", listingProfileId1));
 
-        sessionsService.updateSlotsAndSchedules(existingSlotIds, newRecords, newSchedules, emptyList(), slotsToUpdate, slotsToUpdateMap,
+        sessionsService.updateSlotsAndSchedules(existingSlotIds, newRecords, emptyMap(), newSchedules, emptyList(), slotsToUpdate, slotsToUpdateMap,
                 emptyList(), relatedJudiciarySchedules, slotIdsToDelete, businessTypeMap);
 
         verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
@@ -665,7 +665,7 @@ class SessionsServiceTest {
         when(courtScheduleRepository.update(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
         when(courtScheduleRepository.save(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
 
-        sessionsService.updateSlotsAndSchedules(existingSlotIds, newRecords, newSchedules, emptyList(), slotsToUpdate, slotsToUpdateMap,
+        sessionsService.updateSlotsAndSchedules(existingSlotIds, newRecords, emptyMap(), newSchedules, emptyList(), slotsToUpdate, slotsToUpdateMap,
                 emptyList(), emptyMap(), emptyList(), businessTypeMap);
 
         verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());

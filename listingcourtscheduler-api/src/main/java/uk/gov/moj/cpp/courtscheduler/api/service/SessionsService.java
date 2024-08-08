@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.String.format;
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.api.CommonUtils.getValidationResult;
@@ -116,7 +117,7 @@ public class SessionsService {
         String courtRoomId = updateCourtSchedule.getCourtRoomId();
 
         final Optional<CourtRoom> courtRoom;
-        if (courtRoomId != null && !courtRoomId.equalsIgnoreCase(persistedCourtSchedule.getCourtRoomId())) {
+        if (nonNull(courtRoomId) && !courtRoomId.equalsIgnoreCase(persistedCourtSchedule.getCourtRoomId())) {
             courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
         } else {
             courtRoom = Optional.empty();
@@ -187,7 +188,7 @@ public class SessionsService {
 
         ouCodes.forEach(ouCode -> {
             CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = courtMigrationRepository.findByOuCode(ouCode);
-            if (courtSchedulerMigrationStatus == null) {
+            if (isNull(courtSchedulerMigrationStatus)) {
                 isOuCodeNotPresent.set(true);
             }
             courtSchedulerMigrationStatusList.add(courtSchedulerMigrationStatus);
@@ -246,6 +247,7 @@ public class SessionsService {
     @Transactional
     public void updateSlotsAndSchedules(final List<String> existingNonMigratedSlotIds,
                                         final Map<String, CourtSchedule> newRecords,
+                                        final Map<String, CourtSchedule> slotsForMigrated,
                                         final Collection<CourtScheduleJudiciary> newSchedules,
                                         final Collection<CourtScheduleJudiciary> schedulesForMigratedExistingSlots,
                                         final Collection<CourtSchedule> slotsToUpdate,
@@ -274,11 +276,11 @@ public class SessionsService {
         }
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule");
-        int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(newRecords, newSchedules);
+        int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(newRecords, newSchedules, false);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedules: {}", numberOfSavedJudiciarySchedules);
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule for existing migrated slots");
-        int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(newRecords, schedulesForMigratedExistingSlots);
+        int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(slotsForMigrated, schedulesForMigratedExistingSlots, true);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedulesForMigratedExistingSlots: {}", numberOfSavedJudiciarySchedulesForMigratedExistingSlots);
 
         logger.info("DD-15703:CourtScheduleRepository: before updateSlots");
@@ -377,7 +379,8 @@ public class SessionsService {
     }
 
     private int saveJudiciarySchedule(final Map<String, CourtSchedule> newRecords,
-                                      final Collection<CourtScheduleJudiciary> scheduleJudiciaries) {
+                                      final Collection<CourtScheduleJudiciary> scheduleJudiciaries,
+                                      final boolean forMigrated) {
         final AtomicInteger numberOfSaved = new AtomicInteger();
         scheduleJudiciaries.forEach(scheduleJudiciary -> {
             final CourtSchedule courtSchedule = newRecords.get(scheduleJudiciary.getCourtListingProfileId());
@@ -385,7 +388,9 @@ public class SessionsService {
             if (nonNull(courtSchedule)) {
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciaryEntity = CourtScheduleJudiciaryMapper.toEntity(scheduleJudiciary);
                 courtScheduleJudiciaryEntity.setUpdatedOn(Calendar.getInstance().getTime());
-                courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
+                if (!forMigrated) {
+                    courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
+                }
                 courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
 
                 numberOfSaved.getAndIncrement();
@@ -470,7 +475,7 @@ public class SessionsService {
             builder.withAvailableSlots(0);
         }
 
-        if (courtRoom != null) {
+        if (nonNull(courtRoom)) {
             builder.withOuCode(courtRoom.getOucode());
             builder.withCourtRoomName(courtRoom.getCourtroomName());
             builder.withCourtRoomNumber(courtRoom.getCppCourtRoomId());
@@ -494,11 +499,11 @@ public class SessionsService {
     private static boolean sameSessionViolatesAllDayRestriction(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare) {
         boolean violated = false;
         if(session.getCourtCentreId().equals(sessionToCompare.getCourtHouseId()) &&
-           session.getCourtRoomId().equals(sessionToCompare.getCourtRoomId()) &&
-           session.getBusinessType().equals(sessionToCompare.getBusinessType()) &&
-           session.getRepeatDays().contains(DayOfWeek.of(sessionToCompare.getSessionDate().getDayOfWeek().getValue())))
+                session.getCourtRoomId().equals(sessionToCompare.getCourtRoomId()) &&
+                session.getBusinessType().equals(sessionToCompare.getBusinessType()) &&
+                session.getRepeatDays().contains(DayOfWeek.of(sessionToCompare.getSessionDate().getDayOfWeek().getValue())))
         {
-           violated = session.getSessionType().equals(sessionToCompare.getCourtSession()) || session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
+            violated = session.getSessionType().equals(sessionToCompare.getCourtSession()) || session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
 
         }
         return violated;

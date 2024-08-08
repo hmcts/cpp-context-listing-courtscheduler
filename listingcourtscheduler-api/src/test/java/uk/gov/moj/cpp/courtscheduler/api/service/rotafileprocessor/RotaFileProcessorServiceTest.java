@@ -194,7 +194,7 @@ class RotaFileProcessorServiceTest {
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
-        doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
+        doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
@@ -213,7 +213,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester));
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
-        verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
+        verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(anyList(), anyMap(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
         verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
 
         final List<List<String>> missingBusinessTypes = missingBusinessTypeCaptor.getAllValues();
@@ -257,7 +257,7 @@ class RotaFileProcessorServiceTest {
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypesAsHavingCJUandNCPTonly());
-        doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
+        doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
@@ -276,7 +276,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester));
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
-        verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
+        verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(anyList(), anyMap(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
         verify(businessTypeMatchingLogger, never()).logMissingBusinessType(missingBusinessTypeCaptor.capture());
 
         final List<List<String>> missingBusinessTypes = missingBusinessTypeCaptor.getAllValues();
@@ -328,7 +328,7 @@ class RotaFileProcessorServiceTest {
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
-        doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
+        doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
@@ -337,7 +337,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester));
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
-        verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(anyList(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
+        verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(anyList(), anyMap(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap());
         verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
 
         final List<List<String>> missingBusinessTypes = missingBusinessTypeCaptor.getAllValues();

@@ -232,17 +232,18 @@ public class RotaFileProcessorService {
                     final Map<String, LocalDate> startAndEndDate = new HashMap<>();
                     startAndEndDate.put(START_DATE.getLabel(), rotaPeriodStartDate);
                     startAndEndDate.put(END_DATE.getLabel(), rotaPeriodEndDate);
-                    processSnapshotRotaFile(slots, schedules, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, fileNamePrefix, fileDateTime, businessTypesMap);
+                    processSnapshotRotaFile(slots, slotsForMigrated, schedules, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, fileNamePrefix, fileDateTime, businessTypesMap);
                 }
             }
         } else {
-            processFullRotaFile(slots, schedules, schedulesForMigrated, rotaPeriodStartDate, masterRotaPeriodCutOffDate, ouCodes, nonMigratedOuCodes, businessTypesMap);
+            processFullRotaFile(slots, slotsForMigrated, schedules, schedulesForMigrated, rotaPeriodStartDate, masterRotaPeriodCutOffDate, ouCodes, nonMigratedOuCodes, businessTypesMap);
         }
     }
 
     @SuppressWarnings("squid:S1141")
     @Transactional
     private void processFullRotaFile(final Map<String, CourtSchedule> slots,
+                                     final Map<String, CourtSchedule> slotsForMigrated,
                                      final Collection<CourtScheduleJudiciary> schedules,
                                      final Collection<CourtScheduleJudiciary> schedulesForMigrated,
                                      final LocalDate startDate,
@@ -262,13 +263,14 @@ public class RotaFileProcessorService {
             logger.info("processFullRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        manageCourtSchedule(ouCodes, slots, schedules, schedulesForMigrated, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
+        manageCourtSchedule(ouCodes, slots, slotsForMigrated, schedules, schedulesForMigrated, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
     @Transactional
     protected void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
+                                           final Map<String, CourtSchedule> slotsForMigrated,
                                            final Collection<CourtScheduleJudiciary> schedules,
                                            final Collection<CourtScheduleJudiciary> schedulesForMigrated,
                                            final Map<String, LocalDate> startAndEndDate,
@@ -291,7 +293,7 @@ public class RotaFileProcessorService {
             logger.info("processSnapshotRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        manageCourtSchedule(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
+        manageCourtSchedule(ouCodes, slots, slotsForMigrated, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
         logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
 
         logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
@@ -302,6 +304,7 @@ public class RotaFileProcessorService {
     @SuppressWarnings("squid:S00112")
     private void manageCourtSchedule(final List<String> ouCodes,
                                      final Map<String, CourtSchedule> slots,
+                                     final Map<String, CourtSchedule> slotsForMigrated,
                                      final Collection<CourtScheduleJudiciary> schedules,
                                      final Collection<CourtScheduleJudiciary> schedulesForMigrated,
                                      final LocalDate startDate,
@@ -312,6 +315,7 @@ public class RotaFileProcessorService {
 
         final List<String> incomingSlotProfileIds = slots.values().stream().map(CourtSchedule::getListingProfileId).toList();
         final List<String> existingSlotProfileIds = existingSlotList.stream().map(CourtSchedule::getListingProfileId).toList();
+        final Map<String, CourtSchedule> existingSlotMap = existingSlotList.stream().collect(Collectors.toMap(CourtSchedule::getListingProfileId, courtSchedule -> courtSchedule));
 
         final List<String> existingSlotScheduleIds = existingSlotList.stream().map(CourtSchedule::getCourtScheduleId).toList();
         final List<String> existingNonMigratedSlotScheduleIds = existingSlotList.stream()
@@ -349,10 +353,14 @@ public class RotaFileProcessorService {
 
         final Collection<CourtScheduleJudiciary> newCourtScheduleJudiciaries = schedules.stream()
                 .filter(schedule -> newSlotProfileIds.contains(schedule.getCourtListingProfileId())).toList();
-        final Collection<CourtScheduleJudiciary> courtScheduleJudiciariesForMigratedExistingSlots = schedulesForMigrated
+        final Collection<CourtScheduleJudiciary> courtScheduleJudiciariesForMigratedExistingSlots = new ArrayList<>();
+        schedulesForMigrated
                 .stream()
                 .filter(courtScheduleForMigrated -> existingSlotProfileIds.contains(courtScheduleForMigrated.getCourtListingProfileId()))
-                .toList();
+                .forEach(courtScheduleJudiciary -> {
+                    courtScheduleJudiciary.setCourtScheduleId(existingSlotMap.get(courtScheduleJudiciary.getCourtListingProfileId()).getCourtScheduleId());
+                    courtScheduleJudiciariesForMigratedExistingSlots.add(courtScheduleJudiciary);
+                });
         final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules = courtScheduleJudiciaryService.findRelatedJudiciarySchedules(existingSlotScheduleIds);
 
         Map<String, CourtSchedule> newSlots = slots.entrySet().stream()
@@ -375,6 +383,7 @@ public class RotaFileProcessorService {
 
         sessionsService.updateSlotsAndSchedules(existingNonMigratedSlotScheduleIds,
                 newSlots,
+                slotsForMigrated,
                 newCourtScheduleJudiciaries,
                 courtScheduleJudiciariesForMigratedExistingSlots,
                 slotsToUpdate,
