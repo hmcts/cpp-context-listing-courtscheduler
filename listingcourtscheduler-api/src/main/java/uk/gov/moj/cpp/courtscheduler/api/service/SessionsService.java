@@ -255,7 +255,10 @@ public class SessionsService {
                                         final Collection<CourtScheduleJudiciary> updatedSchedules,
                                         final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules,
                                         final List<String> slotIdsToDelete,
-                                        final Map<String, BusinessType> businessTypeMap) {
+                                        final Map<String, BusinessType> businessTypeMap,
+                                        final LocalDate startDate,
+                                        final LocalDate endDate,
+                                        final List<String> ouCodes) {
         logger.info("DD-15703:CourtScheduleRepository: update process started");
 
         logger.info("DD-15703:CourtScheduleRepository: before deactivateSlots");
@@ -276,11 +279,11 @@ public class SessionsService {
         }
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule");
-        int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(newRecords, newSchedules, false);
+        int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(newRecords, newSchedules, false, startDate, endDate, ouCodes);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedules: {}", numberOfSavedJudiciarySchedules);
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule for existing migrated slots");
-        int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(slotsForMigrated, schedulesForMigratedExistingSlots, true);
+        int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(slotsForMigrated, schedulesForMigratedExistingSlots, true, startDate, endDate, ouCodes);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedulesForMigratedExistingSlots: {}", numberOfSavedJudiciarySchedulesForMigratedExistingSlots);
 
         logger.info("DD-15703:CourtScheduleRepository: before updateSlots");
@@ -380,7 +383,17 @@ public class SessionsService {
 
     private int saveJudiciarySchedule(final Map<String, CourtSchedule> newRecords,
                                       final Collection<CourtScheduleJudiciary> scheduleJudiciaries,
-                                      final boolean forMigrated) {
+                                      final boolean forMigrated,
+                                      final LocalDate startDate,
+                                      final LocalDate endDate,
+                                      final List<String> ouCodes) {
+        if (!forMigrated) {
+            final List<String> judiciaryIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getJudiciaryId).toList();
+            final List<String> listingProfileIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getCourtListingProfileId).toList();
+            int numberOfDeletedScheduleJudiciariesNotInCourtSchedules = courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileIds, judiciaryIds);
+            logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} for ouCodes: {} with startDate: {} and endDate: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules, ouCodes, startDate, endDate);
+        }
+
         final AtomicInteger numberOfSaved = new AtomicInteger();
         scheduleJudiciaries.forEach(scheduleJudiciary -> {
             final CourtSchedule courtSchedule = newRecords.get(scheduleJudiciary.getCourtListingProfileId());

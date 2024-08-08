@@ -372,7 +372,10 @@ public class RotaFileProcessorService {
                 schedules,
                 relatedJudiciarySchedules,
                 confirmedSlotIdsToDelete,
-                businessTypesMap);
+                businessTypesMap,
+                startDate,
+                endDate,
+                ouCodes);
 
         logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
     }
