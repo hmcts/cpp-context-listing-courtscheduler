@@ -390,7 +390,8 @@ public class SessionsService {
         if (!forMigrated) {
             final List<String> judiciaryIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getJudiciaryId).toList();
             final List<String> listingProfileIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getCourtListingProfileId).toList();
-            int numberOfDeletedScheduleJudiciariesNotInCourtSchedules = courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileIds, judiciaryIds);
+            logger.info("judiciaryIds: {} - listingProfileIds: {}", judiciaryIds, listingProfileIds);
+            final int numberOfDeletedScheduleJudiciariesNotInCourtSchedules = courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileIds, judiciaryIds);
             logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} for ouCodes: {} with startDate: {} and endDate: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules, ouCodes, startDate, endDate);
         }
 

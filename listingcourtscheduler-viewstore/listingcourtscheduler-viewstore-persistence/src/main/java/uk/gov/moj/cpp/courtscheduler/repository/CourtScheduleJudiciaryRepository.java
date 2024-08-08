@@ -26,8 +26,8 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
             "AND not exists (" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
 
     private static final String DELETE_COURT_SCHEDULE_JUDICIARY_NOT_IN_COURT_SCHEDULES_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id NOT IN " +
-            "(SELECT cs.id FROM court_schedule cs WHERE cs.court_listing_profile_id is not null AND cs.session_start BETWEEN :startDate AND :endDate " +
-            "AND cs.oucode IN (:ouCodes)) AND court_listing_profile_id IN (:listingProfileIds) AND judiciary_id IN(:judiciaryIds) AND active = true";
+            "(SELECT cs.id FROM court_schedule cs WHERE cs.court_listing_profile_id is not null AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes)) " +
+            "AND csj.court_listing_profile_id IN (:listingProfileIds) AND csj.judiciary_id IN (:judiciaryIds) AND csj.active = true";
 
     public static final String DELETE_CSJ_BY_IDS_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) " +
             "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)";
