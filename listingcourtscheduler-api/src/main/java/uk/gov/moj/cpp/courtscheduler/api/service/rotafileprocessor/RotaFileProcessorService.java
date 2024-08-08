@@ -8,6 +8,7 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
+import static java.util.Optional.empty;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
@@ -55,6 +56,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -167,7 +169,7 @@ public class RotaFileProcessorService {
             final long fileLength = blobByteArray.length;
             // upload the files processed into archive container
             azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, rotaslArchiveContainerName);
-            azureBlobClientService.deleteFile(blobName);
+            azureBlobClientService.deleteFile(blobName, empty());
         });
 
         return new AsyncResult<>("SUCCESS");

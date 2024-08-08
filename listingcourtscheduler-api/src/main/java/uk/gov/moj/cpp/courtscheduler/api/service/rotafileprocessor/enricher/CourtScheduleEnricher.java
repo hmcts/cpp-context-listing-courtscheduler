@@ -119,9 +119,9 @@ public class CourtScheduleEnricher {
     }
 
     private Optional<CourtRoom> courtRoom(final Integer locationId, final Integer venueId, final String venueName, final Map<String, String> exceptionMessages, final Requester requester) {
-        logger.info("calling referenceDataCache.getCourtRoomByVenue");
+        logger.info("calling referenceDataMapperService.findByVenue with locationId: {} venueId:{} venueName:{}", locationId, venueId, venueName);
         final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
-        logger.info("called successfully - referenceDataCache.getCourtRoomByVenue");
+        logger.info("called successfully - referenceDataMapperService.findByVenue and courtRoom present result: {}", courtRoomOptional.isPresent());
 
         return courtRoomOptional;
     }

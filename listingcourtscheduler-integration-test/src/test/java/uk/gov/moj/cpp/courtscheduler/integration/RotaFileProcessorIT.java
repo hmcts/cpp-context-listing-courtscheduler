@@ -2,9 +2,14 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static java.lang.String.format;
 import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+import static java.util.Optional.of;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
@@ -15,28 +20,39 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetRe
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
+import java.util.List;
 
 import javax.ws.rs.core.Response;
 
+import com.google.common.base.Stopwatch;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class RotaFileProcessorIT extends AbstractIT {
+
+    private static Logger logger = LoggerFactory.getLogger(RotaFileProcessorIT.class);
 
     private static final String ROTASL_FILE_PROCESSOR_URL = "/rotasl/process-rota-files";
 
     private AzureBlobClientService azureBlobClientService = new AzureBlobClientService();
 
     private final String azureBlobInputContainerName = "schedulelistinginput";
+    private final String azureBlobOutputContainerName = "schedulelistingoutput";
     private static final String rotaslStorageConnectionString = "DefaultEndpointsProtocol=https;AccountName=sadevcommonscsl;AccountKey=HMx/mhSuq/1Gbf7R/d+WmuP8X9w3eqvYS3Sg9rhvch0KLO5Qr+rcS70emQKRLLJptS5GzcBiOdQe+AStaKyOig==;EndpointSuffix=core.windows.net;";
+
+    public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 240;
 
     @BeforeAll
     static void setupSystemUser() {
@@ -49,13 +65,16 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     @Test
-    void shouldProcessRotaFiles() throws IOException, SQLException {
+    void shouldProcessFullRotaFile() throws IOException, SQLException {
+        final Stopwatch stopwatch = Stopwatch.createStarted();
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
         stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
         stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
         stubGetReferenceDataJudiciaries("referencedata.judiciaries.json");
 
         final String fileBlobName = "lja_bedfordshire_rota_20240402T180039Z.xml";
+
+        azureBlobClientService.deleteFile(fileBlobName, of(azureBlobOutputContainerName));
         final InputStream rotaFileInputStream = FileUtil.class.getClassLoader().getResourceAsStream(format("rotafileprocessor/%s", fileBlobName));
 
         if (isNull(rotaFileInputStream)) {
@@ -71,9 +90,19 @@ class RotaFileProcessorIT extends AbstractIT {
         final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, null);
 
         // await until this file uploaded into archive container
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
+            final byte[] downloadedBlobFromOutputContainer = azureBlobClientService.downloadFile(fileBlobName, azureBlobOutputContainerName);
+            return nonNull(downloadedBlobFromOutputContainer) && downloadedBlobFromOutputContainer.length > 0;
+        });
+
+        logger.info("rota file processing took time as seconds : {}", stopwatch.elapsed(SECONDS));
 
         // then after do validation against database to see if we have expected data for this rota file
+        final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
+        final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = databaseReader.courtScheduleJudiciaries();
 
+        assertEquals(182, courtScheduleEntities.size());
+        assertEquals(5, courtScheduleJudiciaryEntities.size());
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
