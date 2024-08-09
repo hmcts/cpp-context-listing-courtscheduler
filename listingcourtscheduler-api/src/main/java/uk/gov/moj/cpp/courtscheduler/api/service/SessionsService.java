@@ -387,13 +387,8 @@ public class SessionsService {
                                       final LocalDate startDate,
                                       final LocalDate endDate,
                                       final List<String> ouCodes) {
-        if (!forMigrated) {
-            final List<String> judiciaryIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getJudiciaryId).toList();
-            final List<String> listingProfileIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getCourtListingProfileId).toList();
-            logger.info("judiciaryIds size: {} - listingProfileIds size: {}", judiciaryIds.size(), listingProfileIds.size());
-            final int numberOfDeletedScheduleJudiciariesNotInCourtSchedules = courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileIds, judiciaryIds);
-            logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} for ouCodes: {} with startDate: {} and endDate: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules, ouCodes, startDate, endDate);
-        }
+        final List<String> judiciaryIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getJudiciaryId).toList();
+        final List<String> listingProfileIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getCourtListingProfileId).toList();
 
         final AtomicInteger numberOfSaved = new AtomicInteger();
         scheduleJudiciaries.forEach(scheduleJudiciary -> {
@@ -404,6 +399,12 @@ public class SessionsService {
                 courtScheduleJudiciaryEntity.setUpdatedOn(Calendar.getInstance().getTime());
                 if (!forMigrated) {
                     courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
+                    final String judiciaryId = courtScheduleJudiciaryEntity.getId().getJudiciaryId();
+                    final String listingProfileId = courtScheduleJudiciaryEntity.getCourtListingProfileId();
+                    if (judiciaryIds.contains(judiciaryId) && listingProfileIds.contains(listingProfileId)) {
+                        final int numberOfDeletedScheduleJudiciariesNotInCourtSchedules = courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileId, judiciaryId);
+                        logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} for judiciaryId: {} - listingProfileId: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules, judiciaryId, listingProfileId);
+                    }
                 }
                 courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
 
