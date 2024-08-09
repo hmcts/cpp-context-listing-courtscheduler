@@ -210,7 +210,7 @@ class CourtSchedulerApiTest {
 
         BadRequestException badRequestException = assertThrows(BadRequestException.class, () -> courtSchedulerApi.updateCourtSchedule(updateCourtScheduleJsonEnvelope));
 
-        assertTrue("Court Schedule not found".contains(badRequestException.getMessage()));
+        assertTrue("{\"errorMessage\":\"Court Schedule not found\"}".contains(badRequestException.getMessage()));
     }
 
     @Test
