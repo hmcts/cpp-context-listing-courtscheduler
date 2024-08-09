@@ -114,6 +114,7 @@ public class RotaFileProcessorService {
     @Inject
     private ReferenceDataService referenceDataService;
 
+    @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
     @Inject
