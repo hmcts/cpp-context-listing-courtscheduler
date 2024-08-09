@@ -123,8 +123,16 @@ public class SessionsService {
             courtRoom = Optional.empty();
         }
 
+        Result result;
 
-        return courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule, courtRoom);
+        try {
+            result = courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule, courtRoom);
+        } catch (Exception exception) {
+            logger.info("update court schedule failing courScheduleId : {}", persistedCourtSchedule.getCourtScheduleId());
+            result = new Result("Duplicate entry in DB", false);
+        }
+
+        return result;
     }
 
     private void updateAvailability(final UpdateCourtSchedule updateCourtSchedule, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
