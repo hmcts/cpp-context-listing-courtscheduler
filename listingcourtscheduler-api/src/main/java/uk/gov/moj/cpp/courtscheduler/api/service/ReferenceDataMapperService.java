@@ -40,7 +40,7 @@ public class ReferenceDataMapperService {
 
     public Optional<Judiciary> findByEmail(final Requester requester, final String email) {
         logger.info("judiciary findByEmail being called for email {}", email);
-        this.judiciaries = isNull(judiciaries) ? referenceDataCache.getJudiciaries(requester) : judiciaries;
+        this.judiciaries = isEmpty(judiciaries) ? referenceDataCache.getJudiciaries(requester) : judiciaries;
 
         final Optional<Judiciary> judiciaryOptional = judiciaries
                 .stream()
@@ -88,5 +88,9 @@ public class ReferenceDataMapperService {
 
         }
         return isEmpty(courtRoomsByLocationAndVenueName) ? empty() : of(courtRoomsByLocationAndVenueName.get(0));
+    }
+
+    public void loadJudiciaries(final Requester requester) {
+        judiciaries = referenceDataCache.getJudiciaries(requester);
     }
 }
