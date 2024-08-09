@@ -31,6 +31,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache;
+import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
@@ -124,6 +125,9 @@ class RotaFileProcessorServiceTest {
     private ReferenceDataService referenceDataService;
 
     @Mock
+    private ReferenceDataMapperService referenceDataMapperService;
+
+    @Mock
     private ProvisionalDataProducer provisionalDataProducer;
 
     @Mock
@@ -193,6 +197,7 @@ class RotaFileProcessorServiceTest {
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap(), any(LocalDate.class), any(LocalDate.class), anyList());
+        doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
         mockMigratedMapByOuCode("CABC90", false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
@@ -256,6 +261,7 @@ class RotaFileProcessorServiceTest {
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypesAsHavingCJUandNCPTonly());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap(), any(LocalDate.class), any(LocalDate.class), anyList());
+        doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
         mockMigratedMapByOuCode("CABC90", false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
@@ -327,6 +333,7 @@ class RotaFileProcessorServiceTest {
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
         doNothing().when(sessionsService).updateSlotsAndSchedules(anyList(), anyMap(), anyMap(), anyCollection(), anyCollection(), anyCollection(), anyMap(), anyCollection(), anyMap(), anyList(), anyMap(), any(LocalDate.class), any(LocalDate.class), anyList());
+        doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
         mockMigratedMapByOuCode("CABC90", false);
 
         rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
@@ -364,6 +371,7 @@ class RotaFileProcessorServiceTest {
         when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(azureBlobClientService).uploadProcessedFiles(any(InputStream.class), anyLong(), eq(blobName));
         doNothing().when(azureBlobClientService).deleteFile(anyString());
+        doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester))).thenReturn(slotsMock);
@@ -424,6 +432,7 @@ class RotaFileProcessorServiceTest {
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         doNothing().when(rotaFileProcessHistoryService).update(anyString(), any());
+        doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class))).thenReturn(emptyList());
 
         final Map<String, String> rotaDetails = new HashMap<>();

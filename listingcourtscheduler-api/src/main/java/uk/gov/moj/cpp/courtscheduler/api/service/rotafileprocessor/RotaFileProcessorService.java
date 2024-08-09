@@ -22,6 +22,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache;
+import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
@@ -113,6 +114,8 @@ public class RotaFileProcessorService {
     @Inject
     private ReferenceDataService referenceDataService;
 
+    private ReferenceDataMapperService referenceDataMapperService;
+
     @Inject
     private ProvisionalDataProducer provisionalDataProducer;
 
@@ -177,6 +180,7 @@ public class RotaFileProcessorService {
         final Map<String, CourtSchedule> slots = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, migratedMap, FALSE, requester);
         final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, migratedMap, TRUE, requester);
         logger.info("received slots with slot size: {}", slots.size());
+        referenceDataMapperService.loadJudiciaries(requester);
         final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records, requester);
         final Collection<CourtScheduleJudiciary> schedulesForMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForMigrated, records, requester);
 
