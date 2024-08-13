@@ -95,6 +95,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         if (persistedCourtSchedules.size() > 1) {
             LOGGER.info("having more than one persisted court schedule: {}", courtSchedule);
         }
+
         final CourtSchedule persistedCourtSchedule = persistedCourtSchedules.get(0);
 
         if ((persistedCourtSchedule.getMaxSlots() > 0
@@ -111,6 +112,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
             this.save(persistedCourtSchedule);
         }
+
         return courtSchedule;
     }
 
