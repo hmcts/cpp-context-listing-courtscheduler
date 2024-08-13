@@ -160,7 +160,6 @@ public class RotaFileProcessorService {
         return new AsyncResult<>("SUCCESS");
     }
 
-    @Transactional
     private void process(final String fileName, final byte[] content, final Requester requester) {
         this.migratedMap = sessionsService.migratedMapByOuCode();
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
