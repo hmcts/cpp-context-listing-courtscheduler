@@ -13,6 +13,7 @@ import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.transaction.Transactional;
 
 @ApplicationScoped
 public class CourtScheduleJudiciaryService {
@@ -20,6 +21,7 @@ public class CourtScheduleJudiciaryService {
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
     public Map<String, List<CourtScheduleJudiciary>> findRelatedJudiciarySchedules(final List<String> snapshotSlotIds) {
         final Map<String, List<CourtScheduleJudiciary>> result = new HashMap<>();
 

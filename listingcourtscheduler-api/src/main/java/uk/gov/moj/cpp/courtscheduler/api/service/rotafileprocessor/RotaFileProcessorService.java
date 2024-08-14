@@ -138,6 +138,9 @@ public class RotaFileProcessorService {
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
 
+    private static final String SNAPSHOT_ROTA_FILE_ACTION = "processSnapshotRotaFile";
+    private static final String FULL_ROTA_FILE_ACTION = "processFullRotaFile";
+
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Asynchronous
@@ -228,7 +231,6 @@ public class RotaFileProcessorService {
     }
 
     @SuppressWarnings("squid:S1141")
-    @Transactional
     private void processFullRotaFile(final Map<String, CourtSchedule> slots,
                                      final Map<String, CourtSchedule> slotsForMigrated,
                                      final Collection<CourtScheduleJudiciary> schedules,
@@ -239,6 +241,7 @@ public class RotaFileProcessorService {
                                      final List<String> nonMigratedOuCodes,
                                      final Map<String, BusinessType> businessTypesMap) {
 
+        SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
         logger.info("DD-15703:processFullRotaFile: started processing");
         courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
         logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod");
@@ -250,12 +253,11 @@ public class RotaFileProcessorService {
             logger.info("processFullRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        manageCourtSchedule(ouCodes, slots, slotsForMigrated, schedules, schedulesForMigrated, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, masterRotaPeriodCutOffDate, businessTypesMap, FULL_ROTA_FILE_ACTION, null, null, slotAndScheduleInfo);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
-    @Transactional
     protected void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                            final Map<String, CourtSchedule> slotsForMigrated,
                                            final Collection<CourtScheduleJudiciary> schedules,
@@ -269,9 +271,8 @@ public class RotaFileProcessorService {
 
         final LocalDate startDate = startAndEndDate.get(START_DATE.getLabel());
         final LocalDate endDate = startAndEndDate.get(END_DATE.getLabel());
-        logger.info("DD-15703:processSnapshotRotaFile: began transaction");
-        int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
-        logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
+
+        SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
 
         if (isNotEmpty(nonMigratedOuCodes)) {
             int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
@@ -280,23 +281,58 @@ public class RotaFileProcessorService {
             logger.info("processSnapshotRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        manageCourtSchedule(ouCodes, slots, slotsForMigrated, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, endDate, businessTypesMap, SNAPSHOT_ROTA_FILE_ACTION, fileNamePrefix, fileDate, slotAndScheduleInfo);
         logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
-
-        logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
-        rotaFileProcessHistoryService.update(fileNamePrefix, fileDate);
-        logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
     }
 
     @SuppressWarnings("squid:S00112")
+    @Transactional
     private void manageCourtSchedule(final List<String> ouCodes,
-                                     final Map<String, CourtSchedule> slots,
+                                     final List<String> nonMigratedOuCodes,
                                      final Map<String, CourtSchedule> slotsForMigrated,
                                      final Collection<CourtScheduleJudiciary> schedules,
-                                     final Collection<CourtScheduleJudiciary> schedulesForMigrated,
                                      final LocalDate startDate,
                                      final LocalDate endDate,
-                                     final Map<String, BusinessType> businessTypesMap) {
+                                     final Map<String, BusinessType> businessTypesMap,
+                                     final String fileType,
+                                     final String fileNamePrefix,
+                                     final OffsetDateTime fileDate,
+                                     final SlotAndScheduleInfo result) {
+        final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
+        logger.info("DD-15703:{}: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", fileType, numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
+
+        if (isNotEmpty(nonMigratedOuCodes)) {
+            final int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
+            logger.info("DD-15703:{}: after delete UnAllocated CourtScheduleEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtSchedules: {}", fileType, numberOfDeletedUnAllocatedCourtSchedules);
+        } else {
+            logger.info("{}: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", fileType, ouCodes);
+        }
+
+        sessionsService.updateSlotsAndSchedules(result.existingNonMigratedSlotScheduleIds(),
+                result.newSlots(),
+                slotsForMigrated,
+                result.newCourtScheduleJudiciaries(),
+                result.courtScheduleJudiciariesForMigratedExistingSlots(),
+                result.slotsToUpdate(),
+                result.schedulesToUpdateMap(),
+                schedules,
+                result.relatedJudiciarySchedules(),
+                result.confirmedSlotIdsToDelete(),
+                businessTypesMap,
+                startDate,
+                endDate,
+                ouCodes);
+
+        if ("processSnapshotRotaFile".equals(fileType)) {
+            logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
+            rotaFileProcessHistoryService.update(fileNamePrefix, fileDate);
+            logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
+        }
+
+        logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
+    }
+
+    private SlotAndScheduleInfo getExtractAndReceiveSlotAndScheduleInfo(final List<String> ouCodes, final Map<String, CourtSchedule> slots, final Collection<CourtScheduleJudiciary> schedules, final Collection<CourtScheduleJudiciary> schedulesForMigrated, final LocalDate startDate, final LocalDate endDate, final Map<String, BusinessType> businessTypesMap) {
         // all existing slots including migrated and non-migrated
         final List<CourtSchedule> existingSlotList = sessionsService.getExtractedCourtSchedules(ouCodes, startDate, endDate);
 
@@ -365,25 +401,10 @@ public class RotaFileProcessorService {
 
         schedulesToUpdateMap = filterSlotsToUpdateMapByExistingSlots(schedulesToUpdateMap, existingSlotScheduleIds);
         newSlots = filterNewRecordsByExistingSlots(newSlots, existingNonMigratedSlotScheduleIds);
+        return new SlotAndScheduleInfo(existingNonMigratedSlotScheduleIds, confirmedSlotIdsToDelete, slotsToUpdate, newCourtScheduleJudiciaries, courtScheduleJudiciariesForMigratedExistingSlots, relatedJudiciarySchedules, newSlots, schedulesToUpdateMap);
+    }
 
-        logger.info("DD-15703:RotaFileProcessor: before courtScheduleRepository.update");
-
-        sessionsService.updateSlotsAndSchedules(existingNonMigratedSlotScheduleIds,
-                newSlots,
-                slotsForMigrated,
-                newCourtScheduleJudiciaries,
-                courtScheduleJudiciariesForMigratedExistingSlots,
-                slotsToUpdate,
-                schedulesToUpdateMap,
-                schedules,
-                relatedJudiciarySchedules,
-                confirmedSlotIdsToDelete,
-                businessTypesMap,
-                startDate,
-                endDate,
-                ouCodes);
-
-        logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
+    private record SlotAndScheduleInfo(List<String> existingNonMigratedSlotScheduleIds, List<String> confirmedSlotIdsToDelete, Collection<CourtSchedule> slotsToUpdate, Collection<CourtScheduleJudiciary> newCourtScheduleJudiciaries, Collection<CourtScheduleJudiciary> courtScheduleJudiciariesForMigratedExistingSlots, Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules, Map<String, CourtSchedule> newSlots, Map<String, Pair<String, String>> schedulesToUpdateMap) {
     }
 
     /**
