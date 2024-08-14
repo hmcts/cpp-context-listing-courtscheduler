@@ -18,7 +18,7 @@ public class AllocatedListingService {
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
 
-    @Transactional
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
     public Map<String, Integer> getAllocatedListingsByCourtScheduleId(final List<String> courtScheduleIdList) {
         final List<AllocatedListingTotalBooked> allocatedListingTotalBookeds = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(courtScheduleIdList);
 
