@@ -399,6 +399,7 @@ public class SessionsService {
         final List<String> listingProfileIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getCourtListingProfileId).toList();
 
         final AtomicInteger numberOfSaved = new AtomicInteger();
+        final AtomicInteger numberOfDeletedScheduleJudiciariesNotInCourtSchedules = new AtomicInteger(0);
         scheduleJudiciaries.forEach(scheduleJudiciary -> {
             final CourtSchedule courtSchedule = newRecords.get(scheduleJudiciary.getCourtListingProfileId());
 
@@ -409,18 +410,16 @@ public class SessionsService {
                     courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
                     final String judiciaryId = courtScheduleJudiciaryEntity.getId().getJudiciaryId();
                     final String listingProfileId = courtScheduleJudiciaryEntity.getCourtListingProfileId();
-                    int numberOfDeletedScheduleJudiciariesNotInCourtSchedules = 0;
                     if (judiciaryIds.contains(judiciaryId) && listingProfileIds.contains(listingProfileId)) {
-                        numberOfDeletedScheduleJudiciariesNotInCourtSchedules += courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileId, judiciaryId);
+                        numberOfDeletedScheduleJudiciariesNotInCourtSchedules.set(numberOfDeletedScheduleJudiciariesNotInCourtSchedules.get() + courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileId, judiciaryId));
                     }
-                    logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} for ouCodes: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules, ouCodes);
                 }
                 courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
 
                 numberOfSaved.getAndIncrement();
             }
         });
-
+        logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} for ouCodes: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules.get(), ouCodes);
         return numberOfSaved.get();
     }
 
