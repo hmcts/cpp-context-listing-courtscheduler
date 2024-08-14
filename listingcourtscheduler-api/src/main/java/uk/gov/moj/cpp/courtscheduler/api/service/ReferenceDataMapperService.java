@@ -40,7 +40,6 @@ public class ReferenceDataMapperService {
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
 
     public Optional<Judiciary> findByEmail(final Requester requester, final String email) {
-        logger.info("judiciary findByEmail being called for email {}", email);
         this.judiciaries = isEmpty(judiciaries) ? referenceDataCache.getJudiciaries(requester) : judiciaries;
 
         final Optional<Judiciary> judiciaryOptional = judiciaries
