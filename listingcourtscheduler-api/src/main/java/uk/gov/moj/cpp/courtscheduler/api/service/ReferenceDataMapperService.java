@@ -48,7 +48,6 @@ public class ReferenceDataMapperService {
                 .findFirst();
 
         logger.info("judiciary found for email {} with judiciary : {}", email, judiciaryOptional.orElse(null));
-
         return judiciaryOptional;
     }
 
