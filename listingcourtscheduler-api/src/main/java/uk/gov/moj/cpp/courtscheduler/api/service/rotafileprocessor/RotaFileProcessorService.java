@@ -138,6 +138,9 @@ public class RotaFileProcessorService {
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
 
+    private static final String SNAPSHOT_ROTA_FILE_ACTION = "processSnapshotRotaFile";
+    private static final String FULL_ROTA_FILE_ACTION = "processFullRotaFile";
+
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Asynchronous
@@ -250,7 +253,7 @@ public class RotaFileProcessorService {
             logger.info("processFullRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, masterRotaPeriodCutOffDate, businessTypesMap, "processFullRotaFile", null, null, slotAndScheduleInfo);
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, masterRotaPeriodCutOffDate, businessTypesMap, FULL_ROTA_FILE_ACTION, null, null, slotAndScheduleInfo);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
     }
 
@@ -278,7 +281,7 @@ public class RotaFileProcessorService {
             logger.info("processSnapshotRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, endDate, businessTypesMap, "processSnapshotRotaFile", fileNamePrefix, fileDate, slotAndScheduleInfo);
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, endDate, businessTypesMap, SNAPSHOT_ROTA_FILE_ACTION, fileNamePrefix, fileDate, slotAndScheduleInfo);
         logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
     }
 
