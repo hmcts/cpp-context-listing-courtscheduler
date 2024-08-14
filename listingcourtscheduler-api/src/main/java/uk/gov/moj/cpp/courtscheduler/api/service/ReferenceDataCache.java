@@ -174,7 +174,7 @@ public class ReferenceDataCache {
             return processJudiciaries(requester);
         } else {
             try {
-                LOGGER.info("cacheResult has been found for judiciaries in getJudiciariesFromTheCache");
+                LOGGER.info("cacheResult has been found for judiciaries in getJudiciariesFromTheCache for key: {}", ROTA_JUDICIARIES_CACHE_KEY);
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {});
             } catch (final JsonProcessingException jsonProcessingException) {
                 LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
@@ -191,7 +191,7 @@ public class ReferenceDataCache {
             return processCourtRooms(requester);
         } else {
             try {
-                LOGGER.info("cacheResult has been found for courtRooms in getCourtRoomsFromTheCache");
+                LOGGER.info("cacheResult has been found for courtRooms in getCourtRoomsFromTheCache for key : {}", ROTA_COURTROOMS_CACHE_KEY);
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {});
             } catch (final JsonProcessingException jsonProcessingException) {
                 LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);

@@ -161,6 +161,7 @@ public class RotaFileProcessorService {
     }
 
     private void process(final String fileName, final byte[] content, final Requester requester) {
+        loadReferenceData(requester);
         this.migratedMap = sessionsService.migratedMapByOuCode();
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
 
@@ -179,10 +180,11 @@ public class RotaFileProcessorService {
 
         final Map<String, CourtSchedule> slots = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, migratedMap, FALSE, requester);
         final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, migratedMap, TRUE, requester);
-        logger.info("received slots with slot size: {}", slots.size());
-        referenceDataMapperService.loadJudiciaries(requester);
+        logger.info("received slots with slot size: {} and slotsForMigrated: {}", slots.size(), slotsForMigrated.size());
+
         final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records, requester);
         final Collection<CourtScheduleJudiciary> schedulesForMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForMigrated, records, requester);
+        logger.info("received schedules with schedules size: {} and schedulesForMigrated: {}", schedules.size(), schedulesForMigrated.size());
 
         logger.info("Enriched {} , saving it to DB..", slots.size());
 
@@ -643,5 +645,11 @@ public class RotaFileProcessorService {
             logger.error("numberFormatException whilst converting rotaCycleToPopulateLength to integer. default value {} will be used", DEFAULT_VALUE, numberFormatException);
             return DEFAULT_VALUE;
         }
+    }
+
+    private void loadReferenceData(final Requester requester) {
+        referenceDataMapperService.loadCourtRooms(requester);
+        referenceDataMapperService.loadJudiciaries(requester);
+        referenceDataMapperService.loadCourtRoomSessionAllocations(requester);
     }
 }
