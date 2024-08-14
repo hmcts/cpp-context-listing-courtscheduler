@@ -323,7 +323,7 @@ public class RotaFileProcessorService {
                 endDate,
                 ouCodes);
 
-        if ("processSnapshotRotaFile".equals(fileType)) {
+        if (SNAPSHOT_ROTA_FILE_ACTION.equals(fileType)) {
             logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
             rotaFileProcessHistoryService.update(fileNamePrefix, fileDate);
             logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
