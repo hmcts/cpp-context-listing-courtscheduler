@@ -81,10 +81,7 @@ public class CourtScheduleEnricher {
                                            final String courtSessionStr,
                                            final CourtRoom courtRoomDetail,
                                            final Requester requester) {
-        logger.info("populateSessionAllocation called");
         final String listingSession = courtSession.getCourtSession(sessionDate, courtSessionStr);
-        logger.info("calling referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {}",
-                courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType);
         final Optional<CourtRoomSessionAllocation> sessionAllocation = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(requester, courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType);
         logger.info("called referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {} - with result : {}",
                 courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType, sessionAllocation);
@@ -119,10 +116,6 @@ public class CourtScheduleEnricher {
     }
 
     private Optional<CourtRoom> courtRoom(final Integer locationId, final Integer venueId, final String venueName, final Map<String, String> exceptionMessages, final Requester requester) {
-        logger.info("calling referenceDataCache.getCourtRoomByVenue");
-        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
-        logger.info("called successfully - referenceDataCache.getCourtRoomByVenue");
-
-        return courtRoomOptional;
+        return referenceDataMapperService.findByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
     }
 }

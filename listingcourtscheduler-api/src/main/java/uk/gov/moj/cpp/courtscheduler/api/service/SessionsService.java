@@ -409,10 +409,11 @@ public class SessionsService {
                     courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
                     final String judiciaryId = courtScheduleJudiciaryEntity.getId().getJudiciaryId();
                     final String listingProfileId = courtScheduleJudiciaryEntity.getCourtListingProfileId();
+                    int numberOfDeletedScheduleJudiciariesNotInCourtSchedules = 0;
                     if (judiciaryIds.contains(judiciaryId) && listingProfileIds.contains(listingProfileId)) {
-                        final int numberOfDeletedScheduleJudiciariesNotInCourtSchedules = courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileId, judiciaryId);
-                        logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} for judiciaryId: {} - listingProfileId: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules, judiciaryId, listingProfileId);
+                        numberOfDeletedScheduleJudiciariesNotInCourtSchedules += courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileId, judiciaryId);
                     }
+                    logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} for ouCodes: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules, ouCodes);
                 }
                 courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
 
