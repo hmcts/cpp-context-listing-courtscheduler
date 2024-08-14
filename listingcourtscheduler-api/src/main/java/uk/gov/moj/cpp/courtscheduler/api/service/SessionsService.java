@@ -221,6 +221,7 @@ public class SessionsService {
         return courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
     }
 
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
     public List<CourtSchedule> getExtractedCourtSchedules(final List<String> ouCodes, final LocalDate startDate, final LocalDate endDate) {
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExtractedCourtSchedules(ouCodes, startDate, endDate);
         return courtScheduleEntities.stream()
