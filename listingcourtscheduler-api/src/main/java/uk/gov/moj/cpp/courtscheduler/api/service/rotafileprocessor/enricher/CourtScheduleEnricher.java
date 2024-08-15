@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher;
 
 import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_DETAIL_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_ROOM_ERR_MSG;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.SESSION_ALLOCATION_ERR_MSG;
@@ -13,6 +14,7 @@ import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enrich
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -40,6 +42,9 @@ public class CourtScheduleEnricher {
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
+    @Inject
+    private SessionsService sessionsService;
+
     private final Map<String, String> missingReferenceDataMappingMap = new ConcurrentHashMap<>();
 
     public CourtSchedule build(final Map<String, String> listingProfile, final LocalDate sessionDate, final Requester requester) {
@@ -55,11 +60,16 @@ public class CourtScheduleEnricher {
             populateCourtProperties(builder, courtRoomDetail);
             populateListingProperties(builder, listingProfile, sessionDate, courtSessionStr, businessType);
             populateSessionAllocation(builder, businessType, sessionDate, courtSessionStr, courtRoomDetail, requester);
+
+            final String courtScheduleId = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(builder.getCourtRoomId(), builder.getSessionDate(), builder.getBusinessType(), builder.getCourtSession());
+            if (isNotEmpty(courtScheduleId)) {
+                builder.withCourtScheduleId(courtScheduleId);
+            }
         } else {
             final String msgKey = format(COURT_ROOM_ERR_MSG, locationId, venueName, venueId);
             missingReferenceDataMappingMap.putIfAbsent(msgKey, COURT_DETAIL_NOT_FOUND);
         }
-        return builder.withActive(true).withCourtScheduleId(randomUUID().toString()).build();
+        return builder.withActive(true).build();
     }
 
     private void populateListingProperties(final CourtSchedule.CourtScheduleBuilder builder,
