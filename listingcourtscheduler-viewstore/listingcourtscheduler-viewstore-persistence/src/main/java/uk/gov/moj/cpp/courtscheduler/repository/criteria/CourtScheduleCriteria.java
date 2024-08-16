@@ -165,7 +165,15 @@ public class CourtScheduleCriteria {
             predicateList.add(businessTypePredicate);
         }
         if (isNotBlank(courtSchedule.getPanel())) {
-            Predicate panelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), courtSchedule.getPanel());
+            Predicate panelPredicate;
+            Predicate inputPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), courtSchedule.getPanel());
+            if("ADULT".equalsIgnoreCase(courtSchedule.getPanel())) {
+                Predicate youthPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), "YOUTH");
+                panelPredicate = criteriaBuilder.or(inputPanelPredicate, youthPanelPredicate);
+            } else {
+                Predicate adultPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), "ADULT");
+                panelPredicate = criteriaBuilder.or(inputPanelPredicate, adultPanelPredicate);
+            }
             predicateList.add(panelPredicate);
         }
         if (isNotBlank(courtSchedule.getCourtSession())) {
