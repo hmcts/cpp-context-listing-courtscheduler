@@ -15,6 +15,7 @@ import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setFi
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -41,6 +42,9 @@ class CourtScheduleEnricherTest {
     private ReferenceDataMapperService referenceDataMapperService;
 
     @Mock
+    private SessionsService sessionsService;
+
+    @Mock
     private CourtSession courtSession;
 
     @Mock
@@ -61,7 +65,7 @@ class CourtScheduleEnricherTest {
         final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation("241546", 1234, "BAUOS05", 8, 60, "TBL", "PM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
         when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class), eq(requester))).thenReturn(of(courtRoom));
-
+        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), anyString())).thenReturn(null);
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(courtRoomSessionAllocation));
 
@@ -77,6 +81,50 @@ class CourtScheduleEnricherTest {
         listingProfile.put("welshSpeaking", "false");
 
         final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), requester);
+        assertThat(courtSchedule.getListingProfileId(), is("CS2129874"));
+        assertThat(courtSchedule.getSessionDate(), is(LocalDate.of(2019, 10, 01)));
+        assertThat(courtSchedule.getPanel(), is("ADULT"));
+        assertThat(courtSchedule.getBusinessType(), is("DVB"));
+        assertThat(courtSchedule.getCourtSession(), is("AM"));
+        assertThat(courtSchedule.getOuCode(), is(courtRoom.getOucode()));
+        assertThat(courtSchedule.getCourtHouseId(), is(courtRoom.getOucodeUUID()));
+        assertThat(courtSchedule.getOperationalUnit(), is(courtRoom.getOucodeL2Code()));
+        assertThat(courtSchedule.getCourtHouseName(), is(courtRoom.getOucodeL3Name()));
+        assertThat(courtSchedule.getCourtRoomId(), is(courtRoom.getCourtroomId()));
+        assertThat(courtSchedule.getCourtRoomNumber(), is(courtRoom.getCppCourtRoomId()));
+        assertThat(courtSchedule.getCourtRoomName(), is(courtRoom.getCourtroomName()));
+        assertThat(courtSchedule.getMaxSlots(), is(courtRoomSessionAllocation.getMaxSlot()));
+        assertThat(courtSchedule.getAvailableSlots(), is(courtRoomSessionAllocation.getMaxSlot()));
+        assertThat(courtSchedule.getMaxDuration(), is(courtRoomSessionAllocation.getMaxDurationMins()));
+        assertThat(courtSchedule.getAvailableDuration(), is(courtRoomSessionAllocation.getMaxDurationMins()));
+        assertThat(missingReferenceDataMappingMap.size(), is(0));
+    }
+
+    @Test
+    void shouldBuildCourtScheduleForExistingCourtSchedule() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtRoom courtRoom = createCourtRoom();
+
+        final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation("241546", 1234, "BAUOS05", 8, 60, "TBL", "PM");
+        when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
+        when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class), eq(requester))).thenReturn(of(courtRoom));
+        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), anyString())).thenReturn(courtScheduleId);
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
+                .thenReturn(of(courtRoomSessionAllocation));
+
+        final Map<String, String> listingProfile = new HashMap();
+        listingProfile.put("id", "CS2129874");
+        listingProfile.put("sessionDate", "2019-10-01");
+        listingProfile.put("session", "AM");
+        listingProfile.put("panel", "ADULT");
+        listingProfile.put("business", "DVB");
+        listingProfile.put("venueName", "Court 1 Cheltenham");
+        listingProfile.put("venueId", "17729");
+        listingProfile.put("locationId", "175");
+        listingProfile.put("welshSpeaking", "false");
+
+        final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), requester);
+        assertThat(courtSchedule.getCourtScheduleId(), is(courtScheduleId));
         assertThat(courtSchedule.getListingProfileId(), is("CS2129874"));
         assertThat(courtSchedule.getSessionDate(), is(LocalDate.of(2019, 10, 01)));
         assertThat(courtSchedule.getPanel(), is("ADULT"));

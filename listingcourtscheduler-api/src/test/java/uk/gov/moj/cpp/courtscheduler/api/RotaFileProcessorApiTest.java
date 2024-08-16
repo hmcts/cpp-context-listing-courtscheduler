@@ -13,7 +13,7 @@ import uk.gov.justice.services.messaging.Envelope;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
-import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileProcessorService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileCaptureAndProcessTriggerService;
 
 import java.util.UUID;
 import java.util.function.Function;
@@ -41,7 +41,7 @@ class RotaFileProcessorApiTest {
     private Function<Object, JsonEnvelope> function;
 
     @Mock
-    private RotaFileProcessorService rotaFileProcessorService;
+    private RotaFileCaptureAndProcessTriggerService rotaFileCaptureAndProcessTriggerService;
 
     @InjectMocks
     private RotaFileProcessorApi rotaFileProcessorApi;
@@ -56,11 +56,11 @@ class RotaFileProcessorApiTest {
         final JsonEnvelope processRotaFilesJsonEnvelope = createEnvelope(requestName, JsonValue.EMPTY_JSON_OBJECT);
 
         when(enveloper.withMetadataFrom(processRotaFilesJsonEnvelope, requestName)).thenReturn(function);
-        when(rotaFileProcessorService.captureRotaFilesAndProcessEach(eq(requester))).thenReturn(new AsyncResult<>("SUCCESS"));
+        when(rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(eq(requester))).thenReturn(new AsyncResult<>("SUCCESS"));
 
         rotaFileProcessorApi.processRotaFiles(processRotaFilesJsonEnvelope);
 
-        verify(rotaFileProcessorService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester));
+        verify(rotaFileCaptureAndProcessTriggerService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester));
         verify(LOGGER, atLeastOnce()).info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
         verify(enveloper, atLeastOnce()).withMetadataFrom(processRotaFilesJsonEnvelope, requestName);
     }

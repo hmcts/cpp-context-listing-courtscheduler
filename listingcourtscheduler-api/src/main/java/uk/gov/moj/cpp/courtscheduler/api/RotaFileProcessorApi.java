@@ -7,7 +7,7 @@ import uk.gov.justice.services.core.annotation.Handles;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileProcessorService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileCaptureAndProcessTriggerService;
 
 import javax.inject.Inject;
 
@@ -26,14 +26,14 @@ public class RotaFileProcessorApi {
     private Requester requester;
 
     @Inject
-    private RotaFileProcessorService rotaFileProcessorService;
+    private RotaFileCaptureAndProcessTriggerService rotaFileCaptureAndProcessTriggerService;
 
     @Handles("courtscheduler.rotasl.process_rota_files")
     public JsonEnvelope processRotaFiles(final JsonEnvelope envelope) {
         LOGGER.info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
 
         LOGGER.info("calling rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
-        rotaFileProcessorService.captureRotaFilesAndProcessEach(requester);
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester);
         LOGGER.info("successfully called and completed - rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.process_rota_files").apply(createObjectBuilder().build());
