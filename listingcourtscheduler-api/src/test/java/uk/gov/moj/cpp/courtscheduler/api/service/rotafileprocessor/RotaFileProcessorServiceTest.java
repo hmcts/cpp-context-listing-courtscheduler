@@ -31,7 +31,6 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache;
-import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
@@ -123,9 +122,6 @@ class RotaFileProcessorServiceTest {
 
     @Mock
     private ReferenceDataService referenceDataService;
-
-    @Mock
-    private ReferenceDataMapperService referenceDataMapperService;
 
     @Mock
     private ProvisionalDataProducer provisionalDataProducer;

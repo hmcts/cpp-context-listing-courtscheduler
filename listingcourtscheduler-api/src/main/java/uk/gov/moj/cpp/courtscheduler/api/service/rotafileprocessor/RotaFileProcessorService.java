@@ -465,8 +465,8 @@ public class RotaFileProcessorService {
                 .stream()
                 .filter(existingSlot -> FALSE.equals(migratedMap.get(existingSlot.getOuCode())))
                 .filter(existingSlot ->
-                        existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxSlots().equals(existingSlot.getAvailableSlots())
-                                || !existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxDuration().equals(existingSlot.getAvailableDuration()))
+                        (existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxSlots().equals(existingSlot.getAvailableSlots()))
+                                || (!existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxDuration().equals(existingSlot.getAvailableDuration())))
                 .map(CourtSchedule::getCourtScheduleId)
                 .toList();
     }
@@ -493,24 +493,11 @@ public class RotaFileProcessorService {
             }
 
             final CourtSchedule updatedCourtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                    .withCourtScheduleId(courtSchedule.getCourtScheduleId())
-                    .withListingProfileId(courtSchedule.getListingProfileId())
-                    .withSessionDate(courtSchedule.getSessionDate())
-                    .withOuCode(courtSchedule.getOuCode())
-                    .withCourtRoomNumber(courtSchedule.getCourtRoomNumber())
-                    .withCourtRoomId(courtSchedule.getCourtRoomId())
-                    .withCourtHouseId(courtSchedule.getCourtHouseId())
-                    .withCourtHouseName(courtSchedule.getCourtHouseName())
-                    .withCourtRoomName(courtSchedule.getCourtRoomName())
-                    .withOperationalUnit(courtSchedule.getOperationalUnit())
-                    .withBusinessType(courtSchedule.getBusinessType())
-                    .withPanel(courtSchedule.getPanel())
-                    .withCourtSession(courtSchedule.getCourtSession())
+                    .withCourtSchedule(courtSchedule)
                     .withMaxDuration(currentMaxDuration)
                     .withAvailableSlots(newAvailableSlots)
                     .withAvailableDuration(newAvailableDuration)
                     .withMaxSlots(currentMaxSlots)
-
                     .build();
             updatedSlots.add(updatedCourtSchedule);
         });
@@ -632,11 +619,5 @@ public class RotaFileProcessorService {
             logger.error("numberFormatException whilst converting rotaCycleToPopulateLength to integer. default value {} will be used", DEFAULT_VALUE, numberFormatException);
             return DEFAULT_VALUE;
         }
-    }
-
-    private void loadReferenceData(final Requester requester) {
-        referenceDataMapperService.loadCourtRooms(requester);
-        referenceDataMapperService.loadJudiciaries(requester);
-        referenceDataMapperService.loadCourtRoomSessionAllocations(requester);
     }
 }
