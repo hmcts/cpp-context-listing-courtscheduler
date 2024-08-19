@@ -103,7 +103,7 @@ public class CourtScheduleCriteria {
         criteriaQuery.where(finalPredicate);
 
         criteriaQuery.orderBy(
-                criteriaBuilder.asc(root.get(CourtSchedule_.COURT_ROOM_ID)),
+                criteriaBuilder.asc(root.get(CourtSchedule_.COURT_ROOM_NAME)),
                 criteriaBuilder.asc(root.get(CourtSchedule_.SESSION_DATE)));
 
     }

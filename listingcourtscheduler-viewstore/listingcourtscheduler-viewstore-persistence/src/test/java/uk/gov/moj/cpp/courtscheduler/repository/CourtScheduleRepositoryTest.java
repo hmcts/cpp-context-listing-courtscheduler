@@ -107,34 +107,53 @@ public class CourtScheduleRepositoryTest {
     @Test
     public void shouldFindCourtSchedulesByCourtScheduleRequestParam() {
         // given
-        CourtSchedule matchingCourtSchedule = random(CourtSchedule.class);
-        courtScheduleRepository.save(matchingCourtSchedule);
+        CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
+        CourtSchedule matchingCourtSchedule2 = random(CourtSchedule.class);
+
+        matchingCourtSchedule2.setCourtHouseId(matchingCourtSchedule1.getCourtHouseId());
+        matchingCourtSchedule2.setSessionDate(matchingCourtSchedule1.getSessionDate());
+        matchingCourtSchedule2.setBusinessType(matchingCourtSchedule1.getBusinessType());
+
+        CourtSchedule matchingCourtSchedule3 = random(CourtSchedule.class);
+        matchingCourtSchedule3.setCourtHouseId(matchingCourtSchedule1.getCourtHouseId());
+        matchingCourtSchedule3.setSessionDate(matchingCourtSchedule1.getSessionDate());
+        matchingCourtSchedule3.setBusinessType(matchingCourtSchedule1.getBusinessType());
+
+        // and
+        matchingCourtSchedule1.setCourtRoomName("Courtroom 01");
+        matchingCourtSchedule2.setCourtRoomName("Courtroom 02");
+        matchingCourtSchedule3.setCourtRoomName("Courtroom 03");
+
+        courtScheduleRepository.save(matchingCourtSchedule1);
+        courtScheduleRepository.save(matchingCourtSchedule2);
+        courtScheduleRepository.save(matchingCourtSchedule3);
         // and
         CourtSchedule unMatchingCourtSchedule = random(CourtSchedule.class);
-        unMatchingCourtSchedule.setCourtHouseId(matchingCourtSchedule.getCourtHouseId());
-        unMatchingCourtSchedule.setSessionDate(matchingCourtSchedule.getSessionDate());
+        unMatchingCourtSchedule.setCourtHouseId(matchingCourtSchedule1.getCourtHouseId());
+        unMatchingCourtSchedule.setSessionDate(matchingCourtSchedule1.getSessionDate());
         courtScheduleRepository.save(unMatchingCourtSchedule);
 
-        String courtCentreId = matchingCourtSchedule.getCourtHouseId();
-        final CourtScheduleRequestParam courtScheduleRequestParam = getCourtScheduleRequestParam(matchingCourtSchedule, courtCentreId);
+        String courtCentreId = matchingCourtSchedule1.getCourtHouseId();
+        final CourtScheduleRequestParam courtScheduleRequestParam = getCourtScheduleRequestParam(matchingCourtSchedule1, courtCentreId);
 
         // when
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> results = courtScheduleRepository.findBy(courtScheduleRequestParam);
 
         // then
-        assertEquals(1, results.size());
-        assertEquals(results.get(0).getCourtRoomId(), matchingCourtSchedule.getCourtRoomId());
+        assertEquals(3, results.size());
+        assertEquals(results.get(0).getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
+        assertEquals(results.get(1).getCourtScheduleId(), matchingCourtSchedule2.getCourtScheduleId());
+        assertEquals(results.get(2).getCourtScheduleId(), matchingCourtSchedule3.getCourtScheduleId());
     }
 
     private static CourtScheduleRequestParam getCourtScheduleRequestParam(final CourtSchedule courtSchedule, final String courtCentreId) {
-        String courtRoomId = courtSchedule.getCourtRoomId();
+        String courtRoomId = null;
         String businessType = courtSchedule.getBusinessType();
         String sessionStartDate = courtSchedule.getSessionDate().minusDays(1).toString();
         String sessionEndDate = courtSchedule.getSessionDate().plusDays(2).toString();
         String pageSize = "10";
         String pageNumber = "1";
-        CourtScheduleRequestParam courtScheduleRequestParam = new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
-        return courtScheduleRequestParam;
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
     }
 
     @Test
