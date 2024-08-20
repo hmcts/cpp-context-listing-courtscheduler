@@ -57,6 +57,10 @@ public class ReferenceDataCache {
     @Value(key = "redisCommonCacheEnabled", defaultValue = "false")
     private String redisCommonCacheEnabled;
 
+    @Inject
+    @Value(key = "redisCommonCacheKey5MinsTTL", defaultValue = "300")
+    private String redisCommonCacheKey5MinsTTL;
+
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
@@ -301,7 +305,7 @@ public class ReferenceDataCache {
 
         try {
             if (isNotEmpty(courtRoomSessionAllocations)) {
-                cacheService.add(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY, objectMapper.writeValueAsString(courtRoomSessionAllocations));
+                cacheService.add(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY, objectMapper.writeValueAsString(courtRoomSessionAllocations), redisCommonCacheKey5MinsTTL());
                 return courtRoomSessionAllocations;
             }
         } catch (final JsonProcessingException jsonProcessingException) {
@@ -386,5 +390,9 @@ public class ReferenceDataCache {
             }
             courtRoomsForVenue.set(courtRoomList.get(0));
         }
+    }
+
+    private Integer redisCommonCacheKey5MinsTTL() {
+        return Integer.parseInt(redisCommonCacheKey5MinsTTL);
     }
 }

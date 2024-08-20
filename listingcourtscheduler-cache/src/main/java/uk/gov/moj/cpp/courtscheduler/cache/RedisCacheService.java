@@ -55,7 +55,16 @@ public class RedisCacheService implements CacheService{
             return null;
         }
         initializeRedisClientIfNot("add");
-        return executeAddCommand(key, value);
+        return executeAddCommand(key, value, Integer.parseInt(ttlSeconds));
+    }
+
+    @Override
+    public String add(final String key, final String value, final Integer timeToLive) {
+        if (LOCALHOST.equals(host)) {
+            return null;
+        }
+        initializeRedisClientIfNot("add");
+        return executeAddCommand(key, value, timeToLive);
     }
 
     @Override
@@ -92,10 +101,10 @@ public class RedisCacheService implements CacheService{
         }
     }
 
-    private String executeAddCommand(final String key, final String value) {
+    private String executeAddCommand(final String key, final String value, final Integer timeToLive) {
         try (final StatefulRedisConnection<String, String> connection = this.redisClient.connect()) {
             final RedisCommands<String, String> command = connection.sync();
-            final SetArgs args = new SetArgs().ex(Integer.parseInt(ttlSeconds));
+            final SetArgs args = new SetArgs().ex(timeToLive);
             return command.set(key, value, args);
         } catch (final RedisConnectionException redisConnectionException) {
             LOGGER.warn("Exception in RedisCache executeAddCommand() - {}", redisConnectionException.getMessage(), redisConnectionException);
