@@ -103,7 +103,7 @@ public class CourtScheduleCriteria {
         criteriaQuery.where(finalPredicate);
 
         criteriaQuery.orderBy(
-                criteriaBuilder.asc(root.get(CourtSchedule_.COURT_ROOM_ID)),
+                criteriaBuilder.asc(root.get(CourtSchedule_.COURT_ROOM_NAME)),
                 criteriaBuilder.asc(root.get(CourtSchedule_.SESSION_DATE)));
 
     }
@@ -165,11 +165,30 @@ public class CourtScheduleCriteria {
             predicateList.add(businessTypePredicate);
         }
         if (isNotBlank(courtSchedule.getPanel())) {
-            Predicate panelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), courtSchedule.getPanel());
+            Predicate panelPredicate;
+            Predicate inputPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), courtSchedule.getPanel());
+            if("YOUTH".equalsIgnoreCase(courtSchedule.getPanel())) {
+                Predicate youthPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), "YOUTH");
+                panelPredicate = criteriaBuilder.or(inputPanelPredicate, youthPanelPredicate);
+            } else {
+                Predicate adultPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), "ADULT");
+                panelPredicate = criteriaBuilder.or(inputPanelPredicate, adultPanelPredicate);
+            }
             predicateList.add(panelPredicate);
         }
         if (isNotBlank(courtSchedule.getCourtSession())) {
-            Predicate courtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), courtSchedule.getCourtSession());
+            Predicate courtSessionPredicate;
+            if("AD".equalsIgnoreCase(courtSchedule.getCourtSession())) {
+                Predicate amCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "AM");
+                Predicate pmCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "PM");
+                Predicate allDayCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "AD");
+                courtSessionPredicate = criteriaBuilder.or(amCourtSessionPredicate, pmCourtSessionPredicate, allDayCourtSessionPredicate);
+            } else {
+                Predicate inputCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), courtSchedule.getCourtSession());
+                Predicate amCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "AM");
+                Predicate pmCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "PM");
+                courtSessionPredicate = criteriaBuilder.or(amCourtSessionPredicate, pmCourtSessionPredicate, inputCourtSessionPredicate);
+            }
             predicateList.add(courtSessionPredicate);
         }
         if (nonNull(courtSchedule.getSessionDate())) {

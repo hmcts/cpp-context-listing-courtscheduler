@@ -138,6 +138,15 @@ class ReferenceDataMapperServiceTest {
         verify(referenceDataCache, atLeastOnce()).getCourtRooms(eq(requester));
     }
 
+    @Test
+    void shouldLoadJudiciaries() throws JsonProcessingException {
+        when(referenceDataCache.getJudiciaries(eq(requester))).thenReturn(getJudiciaries());
+
+        referenceDataMapperService.loadJudiciaries(requester);
+
+        verify(referenceDataCache).getJudiciaries(eq(requester));
+    }
+
     private List<CourtRoomSessionAllocation> getCourtRoomSessionAllocations() throws JsonProcessingException {
         final String courtRoomSessionAllocationsJsonStr = FileUtil.fileToString("/test-data/court-room-session-allocations-domain-data.json");
 

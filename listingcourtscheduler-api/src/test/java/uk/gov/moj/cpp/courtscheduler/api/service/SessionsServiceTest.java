@@ -32,6 +32,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.api.service.mapper.CourtScheduleMapper;
+import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
@@ -635,8 +636,11 @@ class SessionsServiceTest {
 
         final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules = Map.of(listingProfileId1, getCourtScheduleJudiciaries("6bd1853d-8a88-35e8-b4c4-342e2649daa2", listingProfileId1));
 
-        sessionsService.updateSlotsAndSchedules(existingSlotIds, newRecords, emptyMap(), newSchedules, emptyList(), slotsToUpdate, slotsToUpdateMap,
-                emptyList(), relatedJudiciarySchedules, slotIdsToDelete, businessTypeMap);
+        final LocalDate startDate = LocalDate.of(2024, 4, 1);
+        final LocalDate endDate = LocalDate.of(2020, 10, 31);
+        final List<String> ouCodes = List.of("B01LY00");
+        final SlotAndScheduleInfo slotAndScheduleInfo = new SlotAndScheduleInfo(existingSlotIds, slotIdsToDelete, slotsToUpdate, newSchedules, emptyList(), relatedJudiciarySchedules, newRecords, slotsToUpdateMap);
+        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, emptyMap(), emptyList(), businessTypeMap, startDate, endDate, ouCodes);
 
         verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
@@ -665,8 +669,11 @@ class SessionsServiceTest {
         when(courtScheduleRepository.update(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
         when(courtScheduleRepository.save(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
 
-        sessionsService.updateSlotsAndSchedules(existingSlotIds, newRecords, emptyMap(), newSchedules, emptyList(), slotsToUpdate, slotsToUpdateMap,
-                emptyList(), emptyMap(), emptyList(), businessTypeMap);
+        final LocalDate startDate = LocalDate.of(2024, 4, 1);
+        final LocalDate endDate = LocalDate.of(2020, 10, 31);
+        final List<String> ouCodes = List.of("B01LY00");
+        final SlotAndScheduleInfo slotAndScheduleInfo = new SlotAndScheduleInfo(existingSlotIds, emptyList(), slotsToUpdate, newSchedules, emptyList(), emptyMap(), newRecords, slotsToUpdateMap);
+        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, emptyMap(), emptyList(), businessTypeMap, startDate, endDate, ouCodes);
 
         verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());

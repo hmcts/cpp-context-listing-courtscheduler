@@ -1,14 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.lang.Integer.parseInt;
-import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
-import static java.util.Optional.empty;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
@@ -25,6 +22,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataCache;
+import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
@@ -56,15 +54,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
-import javax.ejb.AsyncResult;
 import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
@@ -119,6 +113,9 @@ public class RotaFileProcessorService {
     private ReferenceDataService referenceDataService;
 
     @Inject
+    private ReferenceDataMapperService referenceDataMapperService;
+
+    @Inject
     private ProvisionalDataProducer provisionalDataProducer;
 
     @Inject
@@ -136,46 +133,27 @@ public class RotaFileProcessorService {
     @Value(key = "rota.cycle.to.populate.length", defaultValue = "28")
     private String rotaCycleToPopulateLength;
 
-    @Inject
-    @Value(key = "courtscheduler.rotaslArchiveContainerName", defaultValue = "schedulelistingoutput")
-    private String rotaslArchiveContainerName;
-
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
 
+    private static final String SNAPSHOT_ROTA_FILE_ACTION = "processSnapshotRotaFile";
+    private static final String FULL_ROTA_FILE_ACTION = "processFullRotaFile";
+
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
-    private static final String ERROR_MSG = "AKS %s is not specified. Please add configuration for `%s`";
-
-    @PostConstruct
-    void init() {
-        checkNotNull(rotaMasterDataDaysLength, format(ERROR_MSG, "rotaMasterDataDaysLength", "rota.master.data.days.length"));
-        checkNotNull(rotaMonthsOfProvisionalDataToPopulate, format(ERROR_MSG, "rotaMonthsOfProvisionalDataToPopulate", "rota.months.of.provisional.data.to.populate"));
-        checkNotNull(rotaCycleToPopulateLength, format(ERROR_MSG, "rotaCycleToPopulateLength", "rota.cycle.to.populate.length"));
-        checkNotNull(rotaslArchiveContainerName, format(ERROR_MSG, "container name", "courtscheduler.rotaslArchiveContainerName"));
-    }
-
     @Asynchronous
-    public Future<String> captureRotaFilesAndProcessEach(final Requester requester) {
-        logger.info("RotaFileProcessorService.captureRotaFilesAndProcessEach called");
-        // download all the files in the input container
-        final Map<String, byte[]> downloadedBlobsByteArrayMap = azureBlobClientService.downloadFiles();
-        // for each of the files process rotasl
-        downloadedBlobsByteArrayMap.keySet().forEach(blobName -> {
-            final byte[] blobByteArray = downloadedBlobsByteArrayMap.get(blobName);
-
-            process(blobName, blobByteArray, requester);
-
-            final long fileLength = blobByteArray.length;
-            // upload the files processed into archive container
-            azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, rotaslArchiveContainerName);
-            azureBlobClientService.deleteFile(blobName, empty());
-        });
-
-        return new AsyncResult<>("SUCCESS");
+    public void downloadAndProcessForEachFile(final Requester requester, final byte[] blobContent, final String blobName) {
+        logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
+        process(blobName, blobContent, requester);
+        logger.info("rota file process completed for blob with name: {}", blobName);
+        final long fileLength = blobContent.length;
+        // upload the files processed into archive container
+        azureBlobClientService.uploadProcessedFiles(new ByteArrayInputStream(blobContent), fileLength, blobName);
+        logger.info("rota file upload to output container completed for blob with name: {}", blobName);
+        azureBlobClientService.deleteFile(blobName);
+        logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
     }
 
-    @Transactional
     private void process(final String fileName, final byte[] content, final Requester requester) {
         this.migratedMap = sessionsService.migratedMapByOuCode();
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
@@ -195,9 +173,11 @@ public class RotaFileProcessorService {
 
         final Map<String, CourtSchedule> slots = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, migratedMap, FALSE, requester);
         final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, migratedMap, TRUE, requester);
-        logger.info("received slots with slot size: {}", slots.size());
+        logger.info("received slots with slot size: {} and slotsForMigrated: {}", slots.size(), slotsForMigrated.size());
+
         final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records, requester);
         final Collection<CourtScheduleJudiciary> schedulesForMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForMigrated, records, requester);
+        logger.info("received schedules with schedules size: {} and schedulesForMigrated: {}", schedules.size(), schedulesForMigrated.size());
 
         logger.info("Enriched {} , saving it to DB..", slots.size());
 
@@ -251,24 +231,23 @@ public class RotaFileProcessorService {
                                      final List<String> ouCodes,
                                      final List<String> nonMigratedOuCodes,
                                      final Map<String, BusinessType> businessTypesMap) {
-
         logger.info("DD-15703:processFullRotaFile: started processing");
-        final int numberOfDeletedUnAllocatedCourtScheduleJudiciariesEntries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
-        logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciariesEntries);
+        final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
+        logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
 
         if (isNotEmpty(nonMigratedOuCodes)) {
             final int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, nonMigratedOuCodes);
-            logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtSchedules: {}", numberOfDeletedUnAllocatedCourtSchedules);
+            logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtSchedules: {} for ouCodes: {}", numberOfDeletedUnAllocatedCourtSchedules, nonMigratedOuCodes);
         } else {
             logger.info("processFullRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        manageCourtSchedule(ouCodes, slots, slotsForMigrated, schedules, schedulesForMigrated, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
+        final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, masterRotaPeriodCutOffDate, businessTypesMap, FULL_ROTA_FILE_ACTION, null, null, slotAndScheduleInfo);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
-    @Transactional
     protected void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                            final Map<String, CourtSchedule> slotsForMigrated,
                                            final Collection<CourtScheduleJudiciary> schedules,
@@ -282,10 +261,9 @@ public class RotaFileProcessorService {
 
         final LocalDate startDate = startAndEndDate.get(START_DATE.getLabel());
         final LocalDate endDate = startAndEndDate.get(END_DATE.getLabel());
-        logger.info("DD-15703:processSnapshotRotaFile: began transaction");
-        int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
-        logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
 
+        final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
+        logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
         if (isNotEmpty(nonMigratedOuCodes)) {
             int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
             logger.info("DD-15703:processSnapshotRotaFile: after deleteUnAllocatedCourtScheduleEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtSchedules: {}", numberOfDeletedUnAllocatedCourtSchedules);
@@ -293,23 +271,37 @@ public class RotaFileProcessorService {
             logger.info("processSnapshotRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        manageCourtSchedule(ouCodes, slots, slotsForMigrated, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
-        logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
+        final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
 
-        logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
-        rotaFileProcessHistoryService.update(fileNamePrefix, fileDate);
-        logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, endDate, businessTypesMap, SNAPSHOT_ROTA_FILE_ACTION, fileNamePrefix, fileDate, slotAndScheduleInfo);
+        logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
     }
 
     @SuppressWarnings("squid:S00112")
+    @Transactional
     private void manageCourtSchedule(final List<String> ouCodes,
-                                     final Map<String, CourtSchedule> slots,
+                                     final List<String> nonMigratedOuCodes,
                                      final Map<String, CourtSchedule> slotsForMigrated,
                                      final Collection<CourtScheduleJudiciary> schedules,
-                                     final Collection<CourtScheduleJudiciary> schedulesForMigrated,
                                      final LocalDate startDate,
                                      final LocalDate endDate,
-                                     final Map<String, BusinessType> businessTypesMap) {
+                                     final Map<String, BusinessType> businessTypesMap,
+                                     final String fileType,
+                                     final String fileNamePrefix,
+                                     final OffsetDateTime fileDate,
+                                     final SlotAndScheduleInfo slotAndScheduleInfo) {
+        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, slotsForMigrated, schedules, businessTypesMap, startDate, endDate, ouCodes);
+
+        if (SNAPSHOT_ROTA_FILE_ACTION.equals(fileType)) {
+            logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
+            rotaFileProcessHistoryService.update(fileNamePrefix, fileDate);
+            logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
+        }
+
+        logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
+    }
+
+    private SlotAndScheduleInfo getExtractAndReceiveSlotAndScheduleInfo(final List<String> ouCodes, final Map<String, CourtSchedule> slots, final Collection<CourtScheduleJudiciary> schedules, final Collection<CourtScheduleJudiciary> schedulesForMigrated, final LocalDate startDate, final LocalDate endDate, final Map<String, BusinessType> businessTypesMap) {
         // all existing slots including migrated and non-migrated
         final List<CourtSchedule> existingSlotList = sessionsService.getExtractedCourtSchedules(ouCodes, startDate, endDate);
 
@@ -378,22 +370,7 @@ public class RotaFileProcessorService {
 
         schedulesToUpdateMap = filterSlotsToUpdateMapByExistingSlots(schedulesToUpdateMap, existingSlotScheduleIds);
         newSlots = filterNewRecordsByExistingSlots(newSlots, existingNonMigratedSlotScheduleIds);
-
-        logger.info("DD-15703:RotaFileProcessor: before courtScheduleRepository.update");
-
-        sessionsService.updateSlotsAndSchedules(existingNonMigratedSlotScheduleIds,
-                newSlots,
-                slotsForMigrated,
-                newCourtScheduleJudiciaries,
-                courtScheduleJudiciariesForMigratedExistingSlots,
-                slotsToUpdate,
-                schedulesToUpdateMap,
-                schedules,
-                relatedJudiciarySchedules,
-                confirmedSlotIdsToDelete,
-                businessTypesMap);
-
-        logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
+        return new SlotAndScheduleInfo(existingNonMigratedSlotScheduleIds, confirmedSlotIdsToDelete, slotsToUpdate, newCourtScheduleJudiciaries, courtScheduleJudiciariesForMigratedExistingSlots, relatedJudiciarySchedules, newSlots, schedulesToUpdateMap);
     }
 
     /**
@@ -488,8 +465,8 @@ public class RotaFileProcessorService {
                 .stream()
                 .filter(existingSlot -> FALSE.equals(migratedMap.get(existingSlot.getOuCode())))
                 .filter(existingSlot ->
-                        existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxSlots().equals(existingSlot.getAvailableSlots())
-                                || !existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxDuration().equals(existingSlot.getAvailableDuration()))
+                        (existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxSlots().equals(existingSlot.getAvailableSlots()))
+                                || (!existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxDuration().equals(existingSlot.getAvailableDuration())))
                 .map(CourtSchedule::getCourtScheduleId)
                 .toList();
     }
@@ -516,24 +493,11 @@ public class RotaFileProcessorService {
             }
 
             final CourtSchedule updatedCourtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                    .withCourtScheduleId(courtSchedule.getCourtScheduleId())
-                    .withListingProfileId(courtSchedule.getListingProfileId())
-                    .withSessionDate(courtSchedule.getSessionDate())
-                    .withOuCode(courtSchedule.getOuCode())
-                    .withCourtRoomNumber(courtSchedule.getCourtRoomNumber())
-                    .withCourtRoomId(courtSchedule.getCourtRoomId())
-                    .withCourtHouseId(courtSchedule.getCourtHouseId())
-                    .withCourtHouseName(courtSchedule.getCourtHouseName())
-                    .withCourtRoomName(courtSchedule.getCourtRoomName())
-                    .withOperationalUnit(courtSchedule.getOperationalUnit())
-                    .withBusinessType(courtSchedule.getBusinessType())
-                    .withPanel(courtSchedule.getPanel())
-                    .withCourtSession(courtSchedule.getCourtSession())
+                    .withCourtSchedule(courtSchedule)
                     .withMaxDuration(currentMaxDuration)
                     .withAvailableSlots(newAvailableSlots)
                     .withAvailableDuration(newAvailableDuration)
                     .withMaxSlots(currentMaxSlots)
-
                     .build();
             updatedSlots.add(updatedCourtSchedule);
         });

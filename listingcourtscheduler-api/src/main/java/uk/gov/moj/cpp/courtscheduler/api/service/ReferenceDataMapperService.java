@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.String.format;
-import static java.util.Objects.isNull;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
@@ -34,13 +33,14 @@ public class ReferenceDataMapperService {
 
     private List<CourtRoomSessionAllocation> courtRoomSessionAllocations;
 
+    private List<CourtRoom> courtRooms;
+
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
 
     public Optional<Judiciary> findByEmail(final Requester requester, final String email) {
-        logger.info("judiciary findByEmail being called for email {}", email);
-        this.judiciaries = isNull(judiciaries) ? referenceDataCache.getJudiciaries(requester) : judiciaries;
+        this.judiciaries = isEmpty(judiciaries) ? referenceDataCache.getJudiciaries(requester) : judiciaries;
 
         final Optional<Judiciary> judiciaryOptional = judiciaries
                 .stream()
@@ -48,7 +48,6 @@ public class ReferenceDataMapperService {
                 .findFirst();
 
         logger.info("judiciary found for email {} with judiciary : {}", email, judiciaryOptional.orElse(null));
-
         return judiciaryOptional;
     }
 
@@ -57,7 +56,7 @@ public class ReferenceDataMapperService {
                                                                                                       final Integer roomId,
                                                                                                       final String listingSession,
                                                                                                       final String businessType) {
-        courtRoomSessionAllocations = isNull(courtRoomSessionAllocations) ? referenceDataCache.getCourtRoomSessionAllocations(requester) : courtRoomSessionAllocations;
+        courtRoomSessionAllocations = isEmpty(courtRoomSessionAllocations) ? referenceDataCache.getCourtRoomSessionAllocations(requester) : courtRoomSessionAllocations;
         return courtRoomSessionAllocations
                 .stream()
                 .filter(courtRoomSessionAllocation -> ouCode.equals(courtRoomSessionAllocation.getOucode()) &&
@@ -68,7 +67,7 @@ public class ReferenceDataMapperService {
     }
 
     public Optional<CourtRoom> findByVenue(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
-        final List<CourtRoom> courtRooms = referenceDataCache.getCourtRooms(requester);
+        courtRooms = isEmpty(courtRooms) ? referenceDataCache.getCourtRooms(requester) : courtRooms;
 
         final List<CourtRoom> courtRoomsByLocationAndVenueName = courtRooms
                 .stream()
@@ -88,5 +87,17 @@ public class ReferenceDataMapperService {
 
         }
         return isEmpty(courtRoomsByLocationAndVenueName) ? empty() : of(courtRoomsByLocationAndVenueName.get(0));
+    }
+
+    public void loadJudiciaries(final Requester requester) {
+        judiciaries = referenceDataCache.getJudiciaries(requester);
+    }
+
+    public void loadCourtRoomSessionAllocations(final Requester requester) {
+        courtRoomSessionAllocations = referenceDataCache.getCourtRoomSessionAllocations(requester);
+    }
+
+    public void loadCourtRooms(final Requester requester) {
+        courtRooms = referenceDataCache.getCourtRooms(requester);
     }
 }

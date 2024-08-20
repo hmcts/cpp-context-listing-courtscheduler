@@ -95,23 +95,26 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         if (persistedCourtSchedules.size() > 1) {
             LOGGER.info("having more than one persisted court schedule: {}", courtSchedule);
         }
-        final CourtSchedule persistedCourtSchedule = persistedCourtSchedules.get(0);
+        if (isNotEmpty(persistedCourtSchedules)) {
+            final CourtSchedule persistedCourtSchedule = persistedCourtSchedules.get(0);
 
-        if ((persistedCourtSchedule.getMaxSlots() > 0
-                && persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue())
-                || (persistedCourtSchedule.getMaxDuration() > 0
-                && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue())
-                || (courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0)) {
-            persistedCourtSchedule.setMaxSlots(courtSchedule.getMaxSlots());
-            persistedCourtSchedule.setMaxDuration(courtSchedule.getMaxDuration());
-            persistedCourtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots());
-            persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
-            persistedCourtSchedule.setCreatedOn(persistedCourtSchedule.getCreatedOn());
-            persistedCourtSchedule.setUpdatedOn(new Date());
+            if ((persistedCourtSchedule.getMaxSlots() > 0
+                    && persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue())
+                    || (persistedCourtSchedule.getMaxDuration() > 0
+                    && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue())
+                    || (courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0)) {
+                persistedCourtSchedule.setMaxSlots(courtSchedule.getMaxSlots());
+                persistedCourtSchedule.setMaxDuration(courtSchedule.getMaxDuration());
+                persistedCourtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots());
+                persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
+                persistedCourtSchedule.setCreatedOn(persistedCourtSchedule.getCreatedOn());
+                persistedCourtSchedule.setUpdatedOn(new Date());
 
-            this.save(persistedCourtSchedule);
+                this.save(persistedCourtSchedule);
+            }
+            return courtSchedule;
         }
-        return courtSchedule;
+        return null;
     }
 
     public Result update(CourtSchedule persistedCourtSchedule,
