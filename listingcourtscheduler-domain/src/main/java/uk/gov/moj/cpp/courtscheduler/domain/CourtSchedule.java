@@ -409,6 +409,8 @@ public class CourtSchedule {
             this.judiciaries = courtSchedule.judiciaries;
             this.slotStartTimes = courtSchedule.slotStartTimes;
             this.active = courtSchedule.active;
+            this.createdOn = courtSchedule.createdOn;
+            this.updatedOn = courtSchedule.updatedOn;
             return this;
         }
 

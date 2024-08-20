@@ -167,7 +167,7 @@ public class CourtScheduleCriteria {
         if (isNotBlank(courtSchedule.getPanel())) {
             Predicate panelPredicate;
             Predicate inputPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), courtSchedule.getPanel());
-            if("ADULT".equalsIgnoreCase(courtSchedule.getPanel())) {
+            if("YOUTH".equalsIgnoreCase(courtSchedule.getPanel())) {
                 Predicate youthPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), "YOUTH");
                 panelPredicate = criteriaBuilder.or(inputPanelPredicate, youthPanelPredicate);
             } else {
@@ -181,11 +181,13 @@ public class CourtScheduleCriteria {
             if("AD".equalsIgnoreCase(courtSchedule.getCourtSession())) {
                 Predicate amCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "AM");
                 Predicate pmCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "PM");
-                courtSessionPredicate = criteriaBuilder.or(amCourtSessionPredicate, pmCourtSessionPredicate);
+                Predicate allDayCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "AD");
+                courtSessionPredicate = criteriaBuilder.or(amCourtSessionPredicate, pmCourtSessionPredicate, allDayCourtSessionPredicate);
             } else {
                 Predicate inputCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), courtSchedule.getCourtSession());
-                Predicate allDayCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "AD");
-                courtSessionPredicate = criteriaBuilder.or(inputCourtSessionPredicate, allDayCourtSessionPredicate);
+                Predicate amCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "AM");
+                Predicate pmCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "PM");
+                courtSessionPredicate = criteriaBuilder.or(amCourtSessionPredicate, pmCourtSessionPredicate, inputCourtSessionPredicate);
             }
             predicateList.add(courtSessionPredicate);
         }
