@@ -80,6 +80,7 @@ class ReferenceDataCacheTest {
     @BeforeEach
     void setUp() {
         setField(this.jsonObjectToObjectConverter, "objectMapper", objectMapper);
+        setField(this.referenceDataCache, "redisCommonCacheKey5MinsTTL", "300");
     }
 
     @Test
@@ -254,6 +255,7 @@ class ReferenceDataCacheTest {
 
         when(cacheService.get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY)).thenReturn(null);
         when(referenceDataService.getCourtRoomSessionAllocationsMap(eq(requester))).thenReturn(List.of(CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation().build()));
+
         referenceDataCache.getCourtRoomSessionAllocations(requester);
 
         verify(referenceDataService).getCourtRoomSessionAllocationsMap(requester);
