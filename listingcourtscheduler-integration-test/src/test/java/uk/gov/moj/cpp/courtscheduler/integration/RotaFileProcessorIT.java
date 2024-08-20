@@ -67,7 +67,7 @@ class RotaFileProcessorIT extends AbstractIT {
     @Test
     void shouldProcessFullRotaFile() throws IOException, SQLException {
         final Stopwatch stopwatch = Stopwatch.createStarted();
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types.json");
         stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
         stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
         stubGetReferenceDataJudiciaries("referencedata.judiciaries.json");
@@ -101,9 +101,38 @@ class RotaFileProcessorIT extends AbstractIT {
         final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
         final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = databaseReader.courtScheduleJudiciaries();
 
-        assertEquals(182, courtScheduleEntities.size());
-        assertEquals(5, courtScheduleJudiciaryEntities.size());
+        assertEquals(623, courtScheduleEntities.size());
+        assertEquals(34, courtScheduleJudiciaryEntities.size());
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    @Test
+    void shouldProcessSnapshotRotaFile() throws SQLException, IOException {
+        shouldProcessFullRotaFile();
+
+        final Stopwatch stopwatch = Stopwatch.createStarted();
+        final String snapshotFileName = "lja_bedfodshire_snapshot_20240403T180039Z.xml";
+        azureBlobClientService.deleteFile(snapshotFileName, of(azureBlobOutputContainerName));
+        final InputStream rotaFileInputStream = FileUtil.class.getClassLoader().getResourceAsStream(format("rotafileprocessor/%s", snapshotFileName));
+
+        if (isNull(rotaFileInputStream)) {
+            fail("rotaFileInputStream is null");
+            return;
+        }
+        final byte[] rotaFileAsBytes = IOUtils.toByteArray(rotaFileInputStream);
+        // upload the rota file first
+        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, snapshotFileName, azureBlobInputContainerName);
+
+        // then call rota file processor api
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, null);
+
+        // await until this file uploaded into archive container
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
+            final byte[] downloadedBlobFromOutputContainer = azureBlobClientService.downloadFile(snapshotFileName, azureBlobOutputContainerName);
+            return nonNull(downloadedBlobFromOutputContainer) && downloadedBlobFromOutputContainer.length > 0;
+        });
+
+        logger.info("rota file processing took time as seconds : {}", stopwatch.elapsed(SECONDS));
     }
 
     private void insertCourtSchedulerMigrationStatus() throws SQLException {

@@ -11,7 +11,7 @@
       "forenames": "Hazel",
       "judiciaryType": "Magistrate",
       "personId": "151159",
-      "emailAddress": "dawnats.harroldts.131@rotaemail.com",
+      "emailAddress": "richmondts.elvirats.690@rotaemail.com",
       "compulsoryRetireDate": "2047-03-09",
       "currentJobStartDate": "2022-07-28",
       "personalCode": "49936566",
@@ -33,6 +33,22 @@
       "compulsoryRetireDate": "2034-07-29",
       "currentJobStartDate": "1999-07-08",
       "personalCode": "16225"
+    },
+    {
+      "id": "30dd2217-4d06-30cd-ae50-c352a8a8a49e",
+      "seqId": 9150,
+      "titlePrefix": "Mr",
+      "titlePrefixWelsh": "Mr",
+      "titleSuffix": "JP",
+      "titleSuffixWelsh": "YH",
+      "surname": "Ashcroft",
+      "forenames": "Simon Paul",
+      "judiciaryType": "Magistrate",
+      "personId": "34660",
+      "emailAddress": "corissats.redts.105@rotaemail.com",
+      "compulsoryRetireDate": "2038-01-24",
+      "currentJobStartDate": "2005-08-03",
+      "personalCode": "A490"
     },
     {
       "id": "a9578c01-989d-340c-a684-f3a2bdb7da35",

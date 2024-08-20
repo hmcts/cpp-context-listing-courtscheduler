@@ -11,13 +11,13 @@
             <title>Mrs</title>
             <surname>LeopoldTS</surname>
             <forenames>KristeTS</forenames>
-            <emailAddress>duanets.lunats.435@rotaemail.com</emailAddress>
+            <emailAddress>kristets.leopoldts.325@rotaemail.com</emailAddress>
         </magistrate>
         <magistrate id="MA4324">
             <title>Mr</title>
             <surname>LeeannTS</surname>
             <forenames>ChristTS</forenames>
-            <emailAddress>corissats.redts.105@rotaemail.com</emailAddress>
+            <emailAddress>christts.leeannts.874@rotaemail.com</emailAddress>
         </magistrate>
         <magistrate id="MA4296">
             <title>Mr</title>
@@ -5693,7 +5693,7 @@
             <welshSpeaking>false</welshSpeaking>
             <updatedDate>2024-03-01T09:32:16.804Z</updatedDate>
         </courtListingProfile>
-
+        
         <courtListingProfile id="CS4304698" linkedSessionId="CS4304698">
             <sessionDate>2024-04-03</sessionDate>
             <session>AM</session>
@@ -13606,6 +13606,16 @@
             <justice idref="MA4229"/>
             <slot>RIGHT_WINGER</slot>
         </schedule>
+        <schedule id="CS4305710_SINGLE_JUSTICE">
+            <courtListingProfile idref="CS4305710"/>
+            <justice idref="MA4300"/>
+            <slot>SINGLE_JUSTICE</slot>
+        </schedule>
+        <schedule id="CS4305711_SINGLE_JUSTICE">
+            <courtListingProfile idref="CS4305711"/>
+            <justice idref="MA4300"/>
+            <slot>SINGLE_JUSTICE</slot>
+        </schedule>
         <schedule id="CS4305576_CHAIR">
             <courtListingProfile idref="CS4305576"/>
             <justice idref="MA4338"/>
@@ -14001,6 +14011,11 @@
             <justice idref="MA24320"/>
             <slot>RIGHT_WINGER</slot>
         </schedule>
+        <schedule id="CS4305714_SINGLE_JUSTICE">
+            <courtListingProfile idref="CS4305714"/>
+            <justice idref="MA4326"/>
+            <slot>SINGLE_JUSTICE</slot>
+        </schedule>
         <schedule id="CS4304734_RIGHT_WINGER">
             <courtListingProfile idref="CS4304734"/>
             <justice idref="MA4352"/>
@@ -14010,6 +14025,11 @@
             <courtListingProfile idref="CS4304735"/>
             <justice idref="MA4352"/>
             <slot>RIGHT_WINGER</slot>
+        </schedule>
+        <schedule id="CS4305715_SINGLE_JUSTICE">
+            <courtListingProfile idref="CS4305715"/>
+            <justice idref="MA4326"/>
+            <slot>SINGLE_JUSTICE</slot>
         </schedule>
         <schedule id="CS4304916_CHAIR">
             <courtListingProfile idref="CS4304916"/>
@@ -14385,6 +14405,16 @@
             <courtListingProfile idref="CS4305605"/>
             <justice idref="MA4342"/>
             <slot>RIGHT_WINGER</slot>
+        </schedule>
+        <schedule id="CS4305718_SINGLE_JUSTICE">
+            <courtListingProfile idref="CS4305718"/>
+            <justice idref="MA18219"/>
+            <slot>SINGLE_JUSTICE</slot>
+        </schedule>
+        <schedule id="CS4305719_SINGLE_JUSTICE">
+            <courtListingProfile idref="CS4305719"/>
+            <justice idref="MA18219"/>
+            <slot>SINGLE_JUSTICE</slot>
         </schedule>
         <schedule id="CS4305186_CHAIR">
             <courtListingProfile idref="CS4305186"/>
@@ -14975,6 +15005,11 @@
             <courtListingProfile idref="CS4304979"/>
             <justice idref="MA4293"/>
             <slot>RIGHT_WINGER</slot>
+        </schedule>
+        <schedule id="CS4305728_SINGLE_JUSTICE">
+            <courtListingProfile idref="CS4305728"/>
+            <justice idref="MA23114"/>
+            <slot>SINGLE_JUSTICE</slot>
         </schedule>
         <schedule id="CS4305000_CHAIR">
             <courtListingProfile idref="CS4305000"/>
@@ -16640,6 +16675,126 @@
             <courtListingProfile idref="CS4305125"/>
             <justice idref="MA4352"/>
             <slot>RIGHT_WINGER</slot>
+        </schedule>
+        <schedule id="CS4309450_CROWN_1">
+            <courtListingProfile idref="CS4309450"/>
+            <justice idref="MA4218"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4309450_CROWN_2">
+            <courtListingProfile idref="CS4309450"/>
+            <justice idref="MA4203"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4309452_CROWN_1">
+            <courtListingProfile idref="CS4309452"/>
+            <justice idref="MA4338"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4309452_CROWN_2">
+            <courtListingProfile idref="CS4309452"/>
+            <justice idref="MA4348"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4309457_CROWN_1">
+            <courtListingProfile idref="CS4309457"/>
+            <justice idref="MA4332"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4309457_CROWN_2">
+            <courtListingProfile idref="CS4309457"/>
+            <justice idref="MA19276"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4309458_CROWN_1">
+            <courtListingProfile idref="CS4309458"/>
+            <justice idref="MA4332"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4309458_CROWN_2">
+            <courtListingProfile idref="CS4309458"/>
+            <justice idref="MA19276"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4309460_CROWN_2">
+            <courtListingProfile idref="CS4309460"/>
+            <justice idref="MA7301"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4309459_CROWN_2">
+            <courtListingProfile idref="CS4309459"/>
+            <justice idref="MA7301"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4309454_CROWN_1">
+            <courtListingProfile idref="CS4309454"/>
+            <justice idref="MA4304"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4309454_CROWN_2">
+            <courtListingProfile idref="CS4309454"/>
+            <justice idref="MA4350"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4361962_CROWN_1">
+            <courtListingProfile idref="CS4361962"/>
+            <justice idref="MA4297"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4361962_CROWN_2">
+            <courtListingProfile idref="CS4361962"/>
+            <justice idref="MA4324"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4361963_CROWN_1">
+            <courtListingProfile idref="CS4361963"/>
+            <justice idref="MA4297"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4361963_CROWN_2">
+            <courtListingProfile idref="CS4361963"/>
+            <justice idref="MA4324"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4361966_CROWN_1">
+            <courtListingProfile idref="CS4361966"/>
+            <justice idref="MA20554"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4361966_CROWN_2">
+            <courtListingProfile idref="CS4361966"/>
+            <justice idref="MA4233"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4361967_CROWN_1">
+            <courtListingProfile idref="CS4361967"/>
+            <justice idref="MA20554"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4361967_CROWN_2">
+            <courtListingProfile idref="CS4361967"/>
+            <justice idref="MA4233"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4361964_CROWN_1">
+            <courtListingProfile idref="CS4361964"/>
+            <justice idref="MA4289"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4361964_CROWN_2">
+            <courtListingProfile idref="CS4361964"/>
+            <justice idref="MA21861"/>
+            <slot>CROWN_2</slot>
+        </schedule>
+        <schedule id="CS4361965_CROWN_1">
+            <courtListingProfile idref="CS4361965"/>
+            <justice idref="MA4289"/>
+            <slot>CROWN_1</slot>
+        </schedule>
+        <schedule id="CS4361965_CROWN_2">
+            <courtListingProfile idref="CS4361965"/>
+            <justice idref="MA21861"/>
+            <slot>CROWN_2</slot>
         </schedule>
         <schedule id="CS4304698_CHAIR">
             <courtListingProfile idref="CS4304698"/>
