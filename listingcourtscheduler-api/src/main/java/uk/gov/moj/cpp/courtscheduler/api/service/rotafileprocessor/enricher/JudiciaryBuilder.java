@@ -15,6 +15,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judici
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 
+import java.time.LocalDate;
+import java.util.Calendar;
 import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -39,6 +41,8 @@ public class JudiciaryBuilder {
                 .withPosition(schedule.get(POSITION))
                 .withIsBenchChairman(isBenchChairman)
                 .withIsDeputy(!isBenchChairman)
+                .withCreatedOn(Calendar.getInstance().getTime())
+                .withUpdatedOn(Calendar.getInstance().getTime())
                 .build();
     }
 
