@@ -4,6 +4,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,8 +14,9 @@ public class CourtScheduleToViewConverter {
     public static List<CourtSessionsView> getCourtSessionsViews(List<CourtSchedule> courtSchedules) {
         Map<String, CourtSessionsView> courtSessionsViews = new HashMap<>();
         courtSchedules.forEach(courtSchedule -> {
-            String courtRoomId = courtSchedule.getCourtRoomId();
-            CourtScheduleView courtScheduleView = new CourtScheduleView.CourtScheduleViewBuilder()
+            final String courtRoomName = courtSchedule.getCourtRoomName();
+            final String courtRoomId = courtSchedule.getCourtRoomId();
+            final CourtScheduleView courtScheduleView = new CourtScheduleView.CourtScheduleViewBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
                     .withActive(courtSchedule.isActive())
                     .withHasHearingsBooked(courtSchedule.hasHearingsBooked())
@@ -38,15 +40,18 @@ public class CourtScheduleToViewConverter {
                     .withSessionDate(courtSchedule.getSessionDate())
                     .build();
             CourtSessionsView courtSessionsView;
-            if (courtSessionsViews.containsKey(courtRoomId)) {
-                courtSessionsView = courtSessionsViews.get(courtRoomId);
+            if (courtSessionsViews.containsKey(courtRoomName)) {
+                courtSessionsView = courtSessionsViews.get(courtRoomName);
             } else {
                 courtSessionsView = new CourtSessionsView(courtRoomId, courtSchedule.getCourtRoomName());
             }
             courtSessionsView.addSession(courtScheduleView);
-            courtSessionsViews.put(courtRoomId, courtSessionsView);
+            courtSessionsViews.put(courtRoomName, courtSessionsView);
 
         });
-        return courtSessionsViews.values().stream().toList();
+        return courtSessionsViews.keySet().stream().sorted().map(key -> {
+            courtSessionsViews.get(key).getSessions().sort(Comparator.comparing(CourtScheduleView::getSessionDate));
+            return courtSessionsViews.get(key);
+        }).toList();
     }
 }
