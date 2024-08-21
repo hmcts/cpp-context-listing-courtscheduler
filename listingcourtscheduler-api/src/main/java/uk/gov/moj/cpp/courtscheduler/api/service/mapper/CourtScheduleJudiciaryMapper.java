@@ -30,6 +30,8 @@ public class CourtScheduleJudiciaryMapper {
         entity.setRotaJudiciaryId(domain.getRotaJudiciaryId());
         entity.setTitle(domain.getTitle());
         entity.setPosition(domain.getPosition());
+        entity.setCreatedOn(domain.getCreatedOn());
+        entity.setUpdatedOn(domain.getUpdatedOn());
         return entity;
     }
 
@@ -51,6 +53,8 @@ public class CourtScheduleJudiciaryMapper {
         courtScheduleJudiciary.setTitle(entity.getTitle());
         courtScheduleJudiciary.setDeputy(entity.getDeputy());
         courtScheduleJudiciary.setEmailAddress(entity.getEmail());
+        courtScheduleJudiciary.setCreatedOn(entity.getCreatedOn());
+        courtScheduleJudiciary.setUpdatedOn(entity.getUpdatedOn());
         return courtScheduleJudiciary;
     }
 }

@@ -500,7 +500,7 @@ public class CourtScheduleRepositoryTest {
         CourtSchedule by = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
         assertEquals(2, by.getMaxSlots().intValue());
 
-        courtScheduleRepository.update(courtSchedule1);
+        courtScheduleRepository.update(courtSchedule1, false);
         CourtSchedule by1 = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
         assertEquals(6, by1.getMaxSlots().intValue());
         assertEquals(7, by1.getMaxDuration().intValue());
@@ -545,7 +545,7 @@ public class CourtScheduleRepositoryTest {
         CourtSchedule by = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
         assertEquals(3, by.getMaxDuration().intValue());
 
-        courtScheduleRepository.update(courtSchedule1);
+        courtScheduleRepository.update(courtSchedule1, false);
         CourtSchedule by1 = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
         assertEquals(6, by1.getMaxSlots().intValue());
         assertEquals(7, by1.getMaxDuration().intValue());
@@ -590,7 +590,7 @@ public class CourtScheduleRepositoryTest {
         CourtSchedule by = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
         assertEquals(0, by.getMaxDuration().intValue());
 
-        courtScheduleRepository.update(courtSchedule1);
+        courtScheduleRepository.update(courtSchedule1, false);
         CourtSchedule by1 = courtScheduleRepository.findBy(courtSchedule.getCourtScheduleId());
         assertEquals(6, by1.getMaxSlots().intValue());
         assertEquals(7, by1.getMaxDuration().intValue());

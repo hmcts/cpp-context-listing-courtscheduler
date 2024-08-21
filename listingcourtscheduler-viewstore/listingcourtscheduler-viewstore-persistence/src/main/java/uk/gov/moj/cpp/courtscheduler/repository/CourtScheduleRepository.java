@@ -87,7 +87,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
 
     //update on Create when needed
-    public CourtSchedule update(final CourtSchedule courtSchedule) {
+    public CourtSchedule update(final CourtSchedule courtSchedule, final boolean isForRotaFile) {
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
         courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
@@ -98,7 +98,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         if (isNotEmpty(persistedCourtSchedules)) {
             final CourtSchedule persistedCourtSchedule = persistedCourtSchedules.get(0);
 
-            if ((persistedCourtSchedule.getMaxSlots() > 0
+            if (isForRotaFile || (persistedCourtSchedule.getMaxSlots() > 0
                     && persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue())
                     || (persistedCourtSchedule.getMaxDuration() > 0
                     && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue())
