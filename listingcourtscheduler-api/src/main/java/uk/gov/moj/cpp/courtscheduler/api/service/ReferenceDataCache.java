@@ -73,7 +73,7 @@ public class ReferenceDataCache {
     public static final String ROTA_BUSINESS_TYPES_CACHE_KEY = "RotaBusinessTypes";
     public static final String ROTA_JUDICIARIES_CACHE_KEY = "RotaJudiciaries_";
     public static final String ROTA_COURTROOMS_CACHE_KEY = "RotaCourtRooms_";
-    public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSesionAllocations_";
+    public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSessionAllocations_";
 
     public ReferenceDataCache() {
         LOGGER.info("ReferenceDataCache constructor");

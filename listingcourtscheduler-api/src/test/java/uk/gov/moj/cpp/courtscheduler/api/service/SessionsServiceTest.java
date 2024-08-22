@@ -181,7 +181,7 @@ class SessionsServiceTest {
         ArgumentCaptor<CourtSchedule> courtScheduleCaptor1 = ArgumentCaptor.forClass(CourtSchedule.class);
         when(courtScheduleRepository.save(any())).thenThrow(QueryInvocationException.class);
         sessionsService.create(createSessionRequest1,requester);
-        verify(courtScheduleRepository, times(1)).update(courtScheduleCaptor1.capture());
+        verify(courtScheduleRepository, times(1)).update(courtScheduleCaptor1.capture(), eq(false));
 
         List<CourtSchedule> capturedCourtSchedules = courtScheduleCaptor1.getAllValues();
         Map<LocalDate, DayOfWeek> getDayOfWeekMapExpected =
@@ -630,7 +630,7 @@ class SessionsServiceTest {
         doNothing().when(courtScheduleRepository).deactivateSlots(anyList(), any());
         doNothing().when(courtScheduleJudiciaryRepository).deactivateSchedules(anyList(), any());
         when(courtScheduleRepository.save(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
-        when(courtScheduleRepository.update(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
+        when(courtScheduleRepository.update(any(CourtSchedule.class), eq(true))).thenReturn(courtScheduleEntityMock);
         when(courtScheduleRepository.deleteSlots(anyList())).thenReturn(slotIdsToDelete.size());
         when(courtScheduleJudiciaryRepository.deleteSchedules(anyList())).thenReturn(slotIdsToDelete.size());
 
@@ -646,7 +646,7 @@ class SessionsServiceTest {
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
         verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
         verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
-        verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class));
+        verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class), eq(true));
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deleteSchedules(anyList());
         verify(courtScheduleRepository, atLeastOnce()).deleteSlots(anyList());
@@ -666,7 +666,7 @@ class SessionsServiceTest {
 
         doNothing().when(courtScheduleRepository).deactivateSlots(anyList(), any());
         doNothing().when(courtScheduleJudiciaryRepository).deactivateSchedules(anyList(), any());
-        when(courtScheduleRepository.update(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
+        when(courtScheduleRepository.update(any(CourtSchedule.class), eq(true))).thenReturn(courtScheduleEntityMock);
         when(courtScheduleRepository.save(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
 
         final LocalDate startDate = LocalDate.of(2024, 4, 1);
@@ -679,7 +679,7 @@ class SessionsServiceTest {
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
         verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
         verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
-        verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class));
+        verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class), eq(true));
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
         verify(courtScheduleJudiciaryRepository, never()).deleteSchedules(anyList());
         verify(courtScheduleRepository, never()).deleteSlots(anyList());

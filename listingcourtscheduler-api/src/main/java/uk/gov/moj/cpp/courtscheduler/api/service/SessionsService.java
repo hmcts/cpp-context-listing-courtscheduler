@@ -346,7 +346,7 @@ public class SessionsService {
             slotToUpdateEntity.setActive(true);
             slotToUpdate.setSlotBased(businessTypeMap.get(slotToUpdate.getBusinessType()).isSlot());
 
-            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = courtScheduleRepository.update(slotToUpdateEntity);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = courtScheduleRepository.update(slotToUpdateEntity, true);
             if (nonNull(courtSchedule)) {
                 numberOfUpdatedSlots.incrementAndGet();
             }
@@ -476,7 +476,7 @@ public class SessionsService {
             try {
                 courtScheduleRepository.save(courtSchedule);
             } catch (QueryInvocationException queryInvocationException) {
-                courtScheduleRepository.update(courtSchedule);
+                courtScheduleRepository.update(courtSchedule, false);
             }
         });
     }
