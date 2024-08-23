@@ -20,6 +20,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.time.LocalDate;
@@ -128,11 +129,12 @@ public class RotaDataEnricher {
         final Optional<CourtRoomSessionAllocation> sessionAllocation  = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(requester, courtSchedule.getOuCode(), courtSchedule.getCourtRoomNumber(), listingSession, courtSchedule.getBusinessType());
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = courtSchedule().withCourtSchedule(courtSchedule);
         courtScheduleBuilder.withCourtSession(ALL_DAY);
-        final String courtScheduleId = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtSchedule.getCourtRoomId(), courtSchedule.getSessionDate(), courtSchedule.getBusinessType(), ALL_DAY);
-        if(StringUtils.isEmpty(courtScheduleId)) {
-            courtScheduleBuilder.withCourtScheduleId(randomUUID().toString());
+        final CourtScheduleMatcherInfo courtScheduleMatcherInfo = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtSchedule.getCourtRoomId(), courtSchedule.getSessionDate(), courtSchedule.getBusinessType(), ALL_DAY);
+        if(nonNull(courtScheduleMatcherInfo) && StringUtils.isNotEmpty(courtScheduleMatcherInfo.getCourtScheduleId())) {
+            courtScheduleBuilder.withCourtScheduleId(courtScheduleMatcherInfo.getCourtScheduleId());
+            courtScheduleBuilder.withCreatedOn(courtScheduleMatcherInfo.getCreatedOn());
         } else {
-            courtScheduleBuilder.withCourtScheduleId(courtScheduleId);
+            courtScheduleBuilder.withCourtScheduleId(randomUUID().toString());
         }
 
         if (sessionAllocation.isPresent()) {

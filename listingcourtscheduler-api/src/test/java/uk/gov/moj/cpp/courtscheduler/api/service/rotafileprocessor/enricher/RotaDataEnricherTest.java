@@ -25,12 +25,14 @@ import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.RotaFileParse
 import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.util.PropertiesLoader;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -91,7 +93,7 @@ class RotaDataEnricherTest {
         final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
-        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(courtScheduleId);
+        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(new CourtScheduleMatcherInfo(courtScheduleId, Calendar.getInstance().getTime()));
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), eq(requester))).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
@@ -132,7 +134,7 @@ class RotaDataEnricherTest {
         final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
-        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(courtScheduleId);
+        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(new CourtScheduleMatcherInfo(courtScheduleId, Calendar.getInstance().getTime()));
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), eq(requester))).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 

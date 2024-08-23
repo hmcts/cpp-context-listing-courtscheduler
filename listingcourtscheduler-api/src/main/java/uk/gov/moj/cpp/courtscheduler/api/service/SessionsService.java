@@ -17,6 +17,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
@@ -215,10 +216,10 @@ public class SessionsService {
         return Result.SUCCESS();
     }
 
-    public String findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(final String courtRoomId,
-                                                                                final LocalDate sessionDate,
-                                                                                final String businessType,
-                                                                                final String courtSession) {
+    public CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(final String courtRoomId,
+                                                                                                  final LocalDate sessionDate,
+                                                                                                  final String businessType,
+                                                                                                  final String courtSession) {
         return courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
     }
 
@@ -326,13 +327,14 @@ public class SessionsService {
         final AtomicInteger numberOfSaved = new AtomicInteger();
         slots.forEach(slot -> {
             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity = CourtScheduleMapper.toEntity(slot);
-            if (nonNull(courtScheduleEntity)) {
-                courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
-                courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
-                courtScheduleRepository.save(courtScheduleEntity);
-
-                numberOfSaved.getAndIncrement();
+            if (isNull(courtScheduleEntity.getCreatedOn())) {
+                courtScheduleEntity.setCreatedOn(Calendar.getInstance().getTime());
             }
+            courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
+            courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
+            courtScheduleRepository.save(courtScheduleEntity);
+
+            numberOfSaved.getAndIncrement();
         });
 
         return numberOfSaved.get();

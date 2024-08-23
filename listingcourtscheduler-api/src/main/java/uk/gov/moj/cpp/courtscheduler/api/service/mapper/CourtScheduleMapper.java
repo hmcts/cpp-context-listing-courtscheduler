@@ -36,6 +36,7 @@ public class CourtScheduleMapper {
         entity.setMaxDuration(domain.getMaxDuration());
         entity.setAvailableSlots(domain.getAvailableSlots());
         entity.setAvailableDuration(domain.getAvailableDuration());
+        entity.setCreatedOn(domain.getCreatedOn());
         return entity;
     }
 
@@ -64,6 +65,7 @@ public class CourtScheduleMapper {
                 .withAvailableSlots(entity.getAvailableSlots())
                 .withAvailableDuration(entity.getAvailableDuration())
                 .withActive(entity.isActive())
+                .withCreatedOn(entity.getCreatedOn())
                 .build();
     }
 }

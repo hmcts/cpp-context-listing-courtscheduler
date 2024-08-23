@@ -248,6 +248,7 @@ public class RotaFileProcessorService {
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
+    @Transactional
     protected void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                            final Map<String, CourtSchedule> slotsForMigrated,
                                            final Collection<CourtScheduleJudiciary> schedules,
@@ -306,8 +307,7 @@ public class RotaFileProcessorService {
         final List<CourtSchedule> existingSlotList = sessionsService.getExtractedCourtSchedules(ouCodes, startDate, endDate);
 
         final List<String> incomingSlotProfileIds = slots.values().stream().map(CourtSchedule::getListingProfileId).toList();
-        final List<String> existingSlotProfileIds = existingSlotList.stream().map(CourtSchedule::getListingProfileId).toList();
-        final Map<String, CourtSchedule> existingSlotMap = existingSlotList.stream().collect(Collectors.toMap(CourtSchedule::getListingProfileId, courtSchedule -> courtSchedule));
+        final Map<String, CourtSchedule> existingSlotMap = existingSlotList.stream().collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, courtSchedule -> courtSchedule));
 
         final List<String> existingSlotScheduleIds = existingSlotList.stream().map(CourtSchedule::getCourtScheduleId).toList();
         final List<String> existingNonMigratedSlotScheduleIds = existingSlotList.stream()
@@ -348,9 +348,12 @@ public class RotaFileProcessorService {
         final Collection<CourtScheduleJudiciary> courtScheduleJudiciariesForMigratedExistingSlots = new ArrayList<>();
         schedulesForMigrated
                 .stream()
-                .filter(courtScheduleForMigrated -> existingSlotProfileIds.contains(courtScheduleForMigrated.getCourtListingProfileId()))
+                .filter(courtScheduleForMigrated -> existingSlotScheduleIds.contains(courtScheduleForMigrated.getCourtScheduleId()))
                 .forEach(courtScheduleJudiciary -> {
-                    courtScheduleJudiciary.setCourtScheduleId(existingSlotMap.get(courtScheduleJudiciary.getCourtListingProfileId()).getCourtScheduleId());
+                    final CourtSchedule existingSlotCourtSchedule = existingSlotMap.get(courtScheduleJudiciary.getCourtScheduleId());
+                    if (nonNull(existingSlotCourtSchedule) && nonNull(existingSlotCourtSchedule.getCourtScheduleId())) {
+                        courtScheduleJudiciary.setCourtScheduleId(existingSlotCourtSchedule.getCourtScheduleId());
+                    }
                     courtScheduleJudiciariesForMigratedExistingSlots.add(courtScheduleJudiciary);
                 });
         final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules = courtScheduleJudiciaryService.findRelatedJudiciarySchedules(existingSlotScheduleIds);
