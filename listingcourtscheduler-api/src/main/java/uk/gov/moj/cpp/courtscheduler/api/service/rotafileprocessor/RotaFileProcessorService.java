@@ -248,6 +248,7 @@ public class RotaFileProcessorService {
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
+    @Transactional
     protected void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                            final Map<String, CourtSchedule> slotsForMigrated,
                                            final Collection<CourtScheduleJudiciary> schedules,
@@ -351,7 +352,7 @@ public class RotaFileProcessorService {
                 .forEach(courtScheduleJudiciary -> {
                     final CourtSchedule existingSlotCourtSchedule = existingSlotMap.get(courtScheduleJudiciary.getCourtScheduleId());
                     if (nonNull(existingSlotCourtSchedule) && nonNull(existingSlotCourtSchedule.getCourtScheduleId())) {
-                        courtScheduleJudiciary.setCourtScheduleId(existingSlotMap.get(courtScheduleJudiciary.getCourtScheduleId()).getCourtScheduleId());
+                        courtScheduleJudiciary.setCourtScheduleId(existingSlotCourtSchedule.getCourtScheduleId());
                     }
                     courtScheduleJudiciariesForMigratedExistingSlots.add(courtScheduleJudiciary);
                 });

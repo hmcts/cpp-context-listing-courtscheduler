@@ -11,6 +11,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -36,6 +37,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.SlotAndSchedu
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
@@ -60,6 +62,7 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -77,6 +80,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.common.constraint.Assert;
+import liquibase.pro.packaged.C;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.junit.jupiter.api.Test;
@@ -593,12 +597,14 @@ class SessionsServiceTest {
 
         final String expectedCourtScheduleId = randomUUID().toString();
 
-        when(courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession)).thenReturn(expectedCourtScheduleId);
+        final CourtScheduleMatcherInfo courtScheduleMatcherInfo = new CourtScheduleMatcherInfo(expectedCourtScheduleId, Calendar.getInstance().getTime());
+        when(courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession)).thenReturn(courtScheduleMatcherInfo);
 
-        final String courtScheduleId = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
+        final CourtScheduleMatcherInfo courtScheduleMatcherFound = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
 
         verify(courtScheduleRepository, atLeastOnce()).findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
-        assertThat(courtScheduleId, is(expectedCourtScheduleId));
+        assertNotNull(courtScheduleMatcherFound);
+        assertThat(courtScheduleMatcherFound.getCourtScheduleId(), is(expectedCourtScheduleId));
     }
 
     @Test

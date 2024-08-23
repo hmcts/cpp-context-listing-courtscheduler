@@ -13,6 +13,7 @@ import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.NOT_EXISTS_PROV
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
@@ -487,10 +488,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         }
     }
 
-    @Query(value = "SELECT entity.courtScheduleId from CourtSchedule entity where entity.courtRoomId = :courtRoomId " +
+    @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo(entity.courtScheduleId, entity.createdOn) from CourtSchedule entity where entity.courtRoomId = :courtRoomId " +
             "and entity.sessionDate = :sessionDate and entity.businessType = :businessType and entity.courtSession = :courtSession", singleResult = SingleResultType.OPTIONAL, max = 1)
-    public abstract String findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(@QueryParam("courtRoomId") String courtRoomId,
-                                                                                @QueryParam("sessionDate") LocalDate sessionDate,
-                                                                                @QueryParam("businessType") String businessType,
-                                                                                @QueryParam("courtSession") String courtSession);
+    public abstract CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(@QueryParam("courtRoomId") String courtRoomId,
+                                                                                                           @QueryParam("sessionDate") LocalDate sessionDate,
+                                                                                                           @QueryParam("businessType") String businessType,
+                                                                                                           @QueryParam("courtSession") String courtSession);
 }
