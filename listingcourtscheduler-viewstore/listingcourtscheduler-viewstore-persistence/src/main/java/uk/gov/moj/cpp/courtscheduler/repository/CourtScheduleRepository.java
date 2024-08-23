@@ -85,6 +85,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule WHERE id IN (:courtScheduleIds) AND court_listing_profile_id is not null AND not exists(" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
+    private static final int SLOT_DEFAULT = 1;
 
 
     //update on Create when needed
@@ -206,7 +207,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         courtScheduleList.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
         int resultSize = totalCourtScheduleList.size();
 
-        if(resultSize > 0) {
+        if (resultSize > 0) {
             final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
             final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
 
@@ -283,7 +284,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     public abstract List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@QueryParam("ouCodes") final List<String> ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
 
     @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND courtRoomId = :courtRoomId AND active = true AND businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate")
-    public abstract List<CourtSchedule> getSimilarSessions(@QueryParam("courtCentreId") final String courtCentreId,@QueryParam("courtRoomId") final String courtRoomId,@QueryParam("businessType") final String businessType,  @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
+    public abstract List<CourtSchedule> getSimilarSessions(@QueryParam("courtCentreId") final String courtCentreId, @QueryParam("courtRoomId") final String courtRoomId, @QueryParam("businessType") final String businessType, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
 
     @Modifying
     @Query(value = "UPDATE CourtSchedule cs SET cs.active = false, cs.updatedOn = :updatedOn WHERE cs.courtScheduleId IN :courtScheduleIds AND cs.listingProfileId is not null")
@@ -323,7 +324,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         List<AllocatedListing> allocatedListings = this.allocatedListingRepository.findByHearingId(hearingId);
         allocatedListings.forEach(allocatedListing -> {
             LOGGER.info("CHECK : Remove AllocatedListing:{}", allocatedListing);
-            this.allocatedListingRepository.remove(allocatedListing);});
+            this.allocatedListingRepository.remove(allocatedListing);
+        });
     }
 
     private List<AllocatedSlot> getUpdatedAllocatedSlots(final List<AllocatedSlot> allocatedSlots) {
@@ -406,7 +408,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             allocatedListing.setHearingId(allocatedSlot.getHearingId());
             allocatedListing.setOucode(allocatedSlot.getOuCode());
             allocatedListing.setCourtRoomId(Integer.parseInt(allocatedSlot.getCourtRoomId()));
-            allocatedListing.setDuration(allocatedSlot.getDuration());
+            allocatedListing.setDuration(allocatedSlot.isSlotBased() ? SLOT_DEFAULT : allocatedSlot.getDuration());
             allocatedListing.setHearingStartTime(toRoundedTimestamp(allocatedSlot.getHearingStartTime()));
             LOGGER.info("CHECK: Save allocatedListing:{}", allocatedListing);
             this.allocatedListingRepository.save(allocatedListing);
@@ -466,7 +468,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         queryResultList.forEach(response -> {
             final List<SlotStartTime> slotStartTimes = resultStringListMap.computeIfAbsent((String) response[0], k -> new ArrayList<>());
-            slotStartTimes.add(new SlotStartTime(toIsoString((Timestamp) response[1]), ((BigInteger)response[2]).longValue()));
+            slotStartTimes.add(new SlotStartTime(toIsoString((Timestamp) response[1]), ((BigInteger) response[2]).longValue()));
         });
 
         return resultStringListMap;
