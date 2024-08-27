@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher;
 
 import static java.lang.String.format;
+import static java.util.Objects.nonNull;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.api.service.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_DETAIL_NOT_FOUND;
@@ -18,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
 import java.time.LocalDate;
@@ -61,9 +63,10 @@ public class CourtScheduleEnricher {
             populateListingProperties(builder, listingProfile, sessionDate, courtSessionStr, businessType);
             populateSessionAllocation(builder, businessType, sessionDate, courtSessionStr, courtRoomDetail, requester);
 
-            final String courtScheduleId = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(builder.getCourtRoomId(), builder.getSessionDate(), builder.getBusinessType(), builder.getCourtSession());
-            if (isNotEmpty(courtScheduleId)) {
-                builder.withCourtScheduleId(courtScheduleId);
+            final CourtScheduleMatcherInfo courtScheduleMatcherInfo = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(builder.getCourtRoomId(), builder.getSessionDate(), builder.getBusinessType(), builder.getCourtSession());
+            if (nonNull(courtScheduleMatcherInfo) && isNotEmpty(courtScheduleMatcherInfo.getCourtScheduleId())) {
+                builder.withCourtScheduleId(courtScheduleMatcherInfo.getCourtScheduleId());
+                builder.withCreatedOn(courtScheduleMatcherInfo.getCreatedOn());
             }
         } else {
             final String msgKey = format(COURT_ROOM_ERR_MSG, locationId, venueName, venueId);

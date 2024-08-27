@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
@@ -774,9 +775,10 @@ public class CourtScheduleRepositoryTest {
 
         courtScheduleRepository.save(courtSchedule1);
 
-        final String courtScheduleIdFound = courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
+        final CourtScheduleMatcherInfo courtScheduleMatcherInfo = courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
 
-        assertEquals(courtScheduleIdFound, courtSchedule1.getCourtScheduleId());
+        assertNotNull(courtScheduleMatcherInfo);
+        assertEquals(courtScheduleMatcherInfo.getCourtScheduleId(), courtSchedule1.getCourtScheduleId());
     }
 
     private HearingSlotRequestParam createHearingSlotRequest(CourtSchedule courtSchedule) {
