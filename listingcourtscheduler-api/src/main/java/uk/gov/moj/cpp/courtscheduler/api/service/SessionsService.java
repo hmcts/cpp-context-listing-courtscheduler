@@ -361,6 +361,44 @@ public class SessionsService {
     }
 
     private static boolean decideIfToBePersisted(final List<CourtSchedule> existingCourtSchedules, final CourtSchedule slot) {
+        return decideIfToBePersistedForCourtSession(existingCourtSchedules, slot) && decideIfToBePersistedForPanel(existingCourtSchedules, slot);
+    }
+
+    private static boolean decideIfToBePersistedForPanel(final List<CourtSchedule> existingCourtSchedules, final CourtSchedule slot) {
+        boolean toBePersisted;
+        if (ADULT.name().equals(slot.getPanel())) {
+            toBePersisted = existingCourtSchedules.stream()
+                    .noneMatch(existingCourtSchedule -> existingCourtSchedule.getOuCode().equals(slot.getOuCode())
+                            && existingCourtSchedule.getBusinessType().equals(slot.getBusinessType())
+                            && existingCourtSchedule.getSessionDate().equals(slot.getSessionDate())
+                            && existingCourtSchedule.getCourtRoomNumber().equals(slot.getCourtRoomNumber())
+                            && YOUTH.name().equals(existingCourtSchedule.getPanel())
+                    );
+
+            if (!toBePersisted) {
+                logger.error("the slot will not be persisted as having YOUTH panel slot existing and session will not be saved for panel: {}, ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
+                        slot.getPanel(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
+                return false;
+            }
+        } else if (YOUTH.name().equals(slot.getPanel())) {
+            toBePersisted = existingCourtSchedules.stream()
+                    .noneMatch(existingCourtSchedule -> existingCourtSchedule.getOuCode().equals(slot.getOuCode())
+                            && existingCourtSchedule.getBusinessType().equals(slot.getBusinessType())
+                            && existingCourtSchedule.getSessionDate().equals(slot.getSessionDate())
+                            && existingCourtSchedule.getCourtRoomNumber().equals(slot.getCourtRoomNumber())
+                            && ADULT.name().equals(existingCourtSchedule.getPanel())
+                    );
+
+            if (!toBePersisted) {
+                logger.error("the slot will not be persisted as having ADULT panel slot existing and session will not be saved for panel: {}, ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
+                        slot.getPanel(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean decideIfToBePersistedForCourtSession(final List<CourtSchedule> existingCourtSchedules, final CourtSchedule slot) {
         boolean toBePersisted;
         if (ALL_DAY.equals(slot.getCourtSession())) {
             toBePersisted = existingCourtSchedules.stream()
@@ -402,35 +440,6 @@ public class SessionsService {
             if (!toBePersisted) {
                 logger.error("the slot will not be persisted as having AD session slot existing and {} session will not be saved for ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
                         slot.getCourtSession(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
-                return false;
-            }
-        }
-        if (ADULT.name().equals(slot.getPanel())) {
-            toBePersisted = existingCourtSchedules.stream()
-                    .noneMatch(existingCourtSchedule -> existingCourtSchedule.getOuCode().equals(slot.getOuCode())
-                            && existingCourtSchedule.getBusinessType().equals(slot.getBusinessType())
-                            && existingCourtSchedule.getSessionDate().equals(slot.getSessionDate())
-                            && existingCourtSchedule.getCourtRoomNumber().equals(slot.getCourtRoomNumber())
-                            && YOUTH.name().equals(existingCourtSchedule.getPanel())
-                    );
-
-            if (!toBePersisted) {
-                logger.error("the slot will not be persisted as having YOUTH panel slot existing and session will not be saved for panel: {}, ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
-                        slot.getPanel(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
-                return false;
-            }
-        } else if (YOUTH.name().equals(slot.getPanel())) {
-            toBePersisted = existingCourtSchedules.stream()
-                    .noneMatch(existingCourtSchedule -> existingCourtSchedule.getOuCode().equals(slot.getOuCode())
-                            && existingCourtSchedule.getBusinessType().equals(slot.getBusinessType())
-                            && existingCourtSchedule.getSessionDate().equals(slot.getSessionDate())
-                            && existingCourtSchedule.getCourtRoomNumber().equals(slot.getCourtRoomNumber())
-                            && ADULT.name().equals(existingCourtSchedule.getPanel())
-                    );
-
-            if (!toBePersisted) {
-                logger.error("the slot will not be persisted as having ADULT panel slot existing and session will not be saved for panel: {}, ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
-                        slot.getPanel(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
                 return false;
             }
         }
