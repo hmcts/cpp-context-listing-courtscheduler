@@ -523,7 +523,7 @@ public class SessionsService {
                     }
                 }
                 courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
-
+                logger.info("number: {} ", numberOfSaved.get() );
                 numberOfSaved.getAndIncrement();
             }
         });
