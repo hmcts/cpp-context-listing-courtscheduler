@@ -17,6 +17,8 @@ public class RotaFileFieldNames {
     public static final String VENUE_NAME = "venueName";
     public static final String VENUE_ID = "venueId";
     public static final String ALL_DAY = "AD";
+    public static final String AM_SESSION = "AM";
+    public static final String PM_SESSION = "PM";
     public static final String COURT_LISTING_PROFILE_ID = "courtListingProfile";
     public static final String JUDICIARY_ID = "judiciaryId";
     public static final String ROTA_JUDICIARY_ID = "justice";

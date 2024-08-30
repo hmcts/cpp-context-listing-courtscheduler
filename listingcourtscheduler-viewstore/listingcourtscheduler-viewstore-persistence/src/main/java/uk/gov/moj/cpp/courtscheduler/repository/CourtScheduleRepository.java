@@ -76,7 +76,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRepository.class.getName());
 
     private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY = "DELETE FROM court_schedule cs " +
-            "WHERE cs.court_listing_profile_id is not null AND cs.max_slot = cs.available_slot AND cs.max_duration_mins = cs.available_duration_mins and " +
+            "WHERE cs.max_slot = cs.available_slot AND cs.max_duration_mins = cs.available_duration_mins and " +
             "cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND cs.active =true AND NOT EXISTS( " + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
     public static final String DELETE_UNALLOCATED_FORECAST_SLOT_QUERY = "DELETE FROM court_schedule " +
@@ -279,6 +279,9 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.active = true AND cs.sessionDate BETWEEN :startDate AND :endDate")
     public abstract List<CourtSchedule> getExtractedCourtSchedules(@QueryParam("ouCodes") final List<String> ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);
+
+    @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.active = true")
+    public abstract List<CourtSchedule> getExistingActiveCourtSchedulesByOuCodes(@QueryParam("ouCodes") final List<String> ouCodes);
 
     @Query(value = "SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.sessionDate BETWEEN :startDate AND :endDate")
     public abstract List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@QueryParam("ouCodes") final List<String> ouCodes, @QueryParam("startDate") LocalDate startDate, @QueryParam("endDate") LocalDate endDate);

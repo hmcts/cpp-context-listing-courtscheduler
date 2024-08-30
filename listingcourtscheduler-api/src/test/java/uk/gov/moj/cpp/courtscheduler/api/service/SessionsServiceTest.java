@@ -561,6 +561,33 @@ class SessionsServiceTest {
     }
 
     @Test
+    void shouldGetExistingCourtSchedulesByOuCodes() throws JsonProcessingException {
+        final String ouCode = "B01LY00" ;
+        final LocalDate startDate = LocalDate.of(2024, 10, 1);
+        final LocalDate endDate = LocalDate.of(2025, 3, 31);
+
+        final List<CourtSchedule> courtScheduleEntities = getCourtScheduleEntities();
+        when(courtScheduleRepository.getExistingActiveCourtSchedulesByOuCodes(List.of(ouCode))).thenReturn(courtScheduleEntities);
+
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getExistingCourtSchedulesByOuCodes(List.of(ouCode));
+
+        verify(courtScheduleRepository, atLeastOnce()).getExistingActiveCourtSchedulesByOuCodes(List.of(ouCode));
+
+        assertThat(courtSchedules.size(), is(courtScheduleEntities.size()));
+        courtScheduleEntities.forEach(courtScheduleEntity ->
+                courtSchedules.stream().filter(courtSchedule -> courtScheduleEntity.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
+                        .findAny()
+                        .ifPresent(courtSchedule -> {
+                            assertThat(courtSchedule.getCourtScheduleId(), is(courtScheduleEntity.getCourtScheduleId()));
+                            assertThat(courtSchedule.getOuCode(), is(courtScheduleEntity.getOuCode()));
+                            assertThat(courtSchedule.getListingProfileId(), is(courtScheduleEntity.getListingProfileId()));
+                            assertThat(courtSchedule.getCourtRoomNumber(), is(courtScheduleEntity.getCourtRoomNumber()));
+                            assertThat(courtSchedule.getCourtHouseId(), is(courtScheduleEntity.getCourtHouseId()));
+                        })
+        );
+    }
+
+    @Test
     void shouldGetExtractedCourtSchedulesForGhostData() throws JsonProcessingException {
         final String ouCode = "B01LY00" ;
         final LocalDate startDate = LocalDate.of(2024, 10, 1);
@@ -645,7 +672,7 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2020, 10, 31);
         final List<String> ouCodes = List.of("B01LY00");
         final SlotAndScheduleInfo slotAndScheduleInfo = new SlotAndScheduleInfo(existingSlotIds, slotIdsToDelete, slotsToUpdate, newSchedules, emptyList(), relatedJudiciarySchedules, newRecords, slotsToUpdateMap);
-        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, emptyMap(), emptyList(), businessTypeMap, startDate, endDate, ouCodes);
+        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, emptyMap(), emptyList(), businessTypeMap, startDate, endDate, ouCodes, emptyList());
 
         verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
@@ -678,7 +705,7 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2020, 10, 31);
         final List<String> ouCodes = List.of("B01LY00");
         final SlotAndScheduleInfo slotAndScheduleInfo = new SlotAndScheduleInfo(existingSlotIds, emptyList(), slotsToUpdate, newSchedules, emptyList(), emptyMap(), newRecords, slotsToUpdateMap);
-        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, emptyMap(), emptyList(), businessTypeMap, startDate, endDate, ouCodes);
+        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, emptyMap(), emptyList(), businessTypeMap, startDate, endDate, ouCodes, emptyList());
 
         verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
