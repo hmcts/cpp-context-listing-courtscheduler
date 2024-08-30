@@ -291,7 +291,8 @@ public class RotaFileProcessorService {
                                      final String fileNamePrefix,
                                      final OffsetDateTime fileDate,
                                      final SlotAndScheduleInfo slotAndScheduleInfo) {
-        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, slotsForMigrated, schedules, businessTypesMap, startDate, endDate, ouCodes);
+        final List<CourtSchedule> existingCourtSchedules = sessionsService.getExistingCourtSchedulesByOuCodes(nonMigratedOuCodes);
+        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, slotsForMigrated, schedules, businessTypesMap, startDate, endDate, ouCodes, existingCourtSchedules);
 
         if (SNAPSHOT_ROTA_FILE_ACTION.equals(fileType)) {
             logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
