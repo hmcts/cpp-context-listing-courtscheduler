@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -96,6 +97,31 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldNotAllowUpdateCourtScheduleForDifferentBusinessType() throws SQLException {
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
+        UUID courtScheduleId = UUID.randomUUID();
+        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setBusinessType("DVLA");
+        databaseSeeder.insertCourtSchedule(expected);
+
+        String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
+        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedBusinessType = "NCPT";
+        String changedSessionType = "AM";
+        String changedPanel = "YOUTH";
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", changedSessionType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", changedPanel);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, "application/vnd.courtscheduler.update+json", USER_ID, updateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
     void shouldGetCourtSchedules() throws SQLException, JsonProcessingException {
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
 
@@ -134,6 +160,11 @@ class CourtSchedulerIT extends AbstractIT {
 
         JsonObject courtScheduleJsonObject = jsonObject.getJsonArray("courtSchedules").getJsonObject(0).getJsonArray("sessions").getJsonObject(0);
         assertThat(courtScheduleJsonObject.getString("courtScheduleId"), is(expected.getCourtScheduleId()));
+        assertThat(courtScheduleJsonObject.getString("panel"), is(expected.getPanel()));
+        assertThat(courtScheduleJsonObject.getBoolean("slotBased"), is(false));
+        assertThat(courtScheduleJsonObject.getBoolean("active"), is(true));
+        assertThat(courtScheduleJsonObject.getString("courtRoomId"), is(expected.getCourtRoomId()));
+        assertThat(courtScheduleJsonObject.getString("courtRoomName"), is(expected.getCourtRoomName()));
     }
 
     @Test
