@@ -76,6 +76,7 @@ public class ReferenceDataCache {
     public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSessionAllocations_";
 
     public ReferenceDataCache() {
+        //Default Constructor
     }
 
     public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode, final Requester requester) {
