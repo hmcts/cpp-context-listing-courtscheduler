@@ -113,6 +113,7 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.create")
     public JsonEnvelope createCourtSchedule(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.create requested : {}", requestFromApiJsonObject);
         CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
         JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -128,6 +129,7 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.validate.create")
     public JsonEnvelope validateCreateCourtSchedule(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.validate.create requested : {}", requestFromApiJsonObject);
         CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
         JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -140,6 +142,8 @@ public class CourtSchedulerApi {
 
     @Handles("courtscheduler.delete")
     public JsonEnvelope deleteCourtSchedule(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.delete requested : {}", payload);
         SessionsParam sessions = sessionsConverter.convert(envelope.payloadAsJsonObject().toString());
 
         JsonObject responseObject = sessionsService.deleteCourtScheduleSessions(sessions, requester);
@@ -150,6 +154,8 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.get.court_schedule")
     public JsonEnvelope getCourtSchedule(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.get.court_schedule requested : {}", requestFromApiJsonObject);
+
         CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParamConverter.convert(requestFromApiJsonObject);
 
         JsonObject validate = courtScheduleApiValidator.getCourtSchedulesValidation(courtScheduleRequestParam);
@@ -167,6 +173,8 @@ public class CourtSchedulerApi {
 
     @Handles("courtscheduler.update")
     public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.update requested : {}", payload);
         UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(envelope.payloadAsJsonObject());
         Result result = sessionsService.update(updateCourtSchedule, requester);
         if (!result.isSuccess()) {
@@ -181,7 +189,7 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.update.hearing.slots")
     public JsonEnvelope updateHearingSlots(final JsonEnvelope envelope) {
         final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
-        LOGGER.info("CHECK: courtscheduler.update.hearing.slots:{}", payloadAsJsonString);
+        LOGGER.info("courtscheduler.update.hearing.slots:{}", payloadAsJsonString);
         List<AllocatedSlot> allocatedSlots = converter.convert(payloadAsJsonString).getHearingSlots();
 
         slotsUpdateService.update(allocatedSlots);
@@ -192,6 +200,7 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.get.hearing.slots")
     public JsonEnvelope getHearingSlots(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.get.hearing.slots requested : {}", requestFromApiJsonObject);
         HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(requestFromApiJsonObject);
         JsonObject validate = hearingSlotsApiValidator.getHearingSlotsValidation(hearingSlotRequestParam);
 
@@ -206,6 +215,8 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.remove.hearing.slots")
     public JsonEnvelope removeHearingSlots(final JsonEnvelope envelope) {
         final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.remove.hearing.slots requested  : {}", payload);
+
         final String hearingId = payload.getString(HEARING_ID);
 
         slotsRemoveService.remove(hearingId);
@@ -216,6 +227,8 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.export.court_schedule")
     public JsonEnvelope exportCourtSchedule(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.export.court_schedule requested : {}", requestFromApiJsonObject);
+
         MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
 
 
@@ -229,6 +242,8 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.export.court_schedule_judiciary")
     public JsonEnvelope exportCourtScheduleJudiciary(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.export.court_schedule_judiciary requested : {}", requestFromApiJsonObject);
+
         MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
 
         List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> courtScheduleJudiciaries = miService.getCourtSchedulesJudiciary(miFilterCriteria);
@@ -240,6 +255,8 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.export.allocated_listings")
     public JsonEnvelope exportAlloctedListings(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.export.allocated_listings requested : {}", requestFromApiJsonObject);
+
         MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
 
         List<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> allocatedListings = miService.getAllocatedListings(miFilterCriteria);
@@ -251,7 +268,7 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.create.provisional.booking")
     public JsonEnvelope createProvisionalBooking(final JsonEnvelope envelope) {
         ProvisionalBookingSlots provisionalBookingSlots = provisionalSlotConverter.convert(envelope.payloadAsJsonObject().toString());
-        LOGGER.info("Converted JsonEnvelope with ProvisionalBookingSlots : {}", provisionalBookingSlots);
+        LOGGER.info("courtscheduler.create.provisional.booking : {}", provisionalBookingSlots);
         JsonObject validate = provisionalBookingApiValidator.createProvisionalBookingValidation(provisionalBookingSlots);
 
         if (!validate.isEmpty()) {
@@ -264,8 +281,9 @@ public class CourtSchedulerApi {
 
     @Handles("courtscheduler.get.provisional.booking")
     public JsonEnvelope getProvisionalBooking(final JsonEnvelope envelope) {
-        final String bookingIds = envelope.payloadAsJsonObject().getString(RequestParameterConstant.BOOKING_IDS.getLabel());
-        LOGGER.info("BookingIds to retrieve Provisional Booking : {}", bookingIds);
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        final String bookingIds = payload.getString(RequestParameterConstant.BOOKING_IDS.getLabel());
+        LOGGER.info("courtscheduler.get.provisional.booking requested : {}", payload);
         JsonObject validate = provisionalBookingApiValidator.getProvisionalBookingValidation(bookingIds);
 
         if (!validate.isEmpty()) {
@@ -279,7 +297,10 @@ public class CourtSchedulerApi {
     @Handles("courtscheduler.oucode.migrate")
     public JsonEnvelope migrateOuCode(final JsonEnvelope envelope) {
 
-        OuCodeMigrateRequest ouCodeMigrateRequest = ouCodeMigrateConverter.convert(envelope.payloadAsJsonObject().toString());
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.oucode.migrate requested : {}", payload);
+
+        OuCodeMigrateRequest ouCodeMigrateRequest = ouCodeMigrateConverter.convert(payload.toString());
 
         Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
 

@@ -47,7 +47,7 @@ public class ReferenceDataMapperService {
                 .filter(judiciary -> email.equals(judiciary.getEmailAddress()))
                 .findFirst();
 
-        logger.info("judiciary found for email {} with judiciary : {}", email, judiciaryOptional.orElse(null));
+        logger.debug("judiciary found for email {} with judiciary : {}", email, judiciaryOptional.orElse(null));
         return judiciaryOptional;
     }
 
