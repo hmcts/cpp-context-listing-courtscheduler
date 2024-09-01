@@ -75,5 +75,12 @@ public class CreateSessionRequestParam {
         return Objects.hash(getSessionList(), getRepeatPattern(), getSessionToBeAdded());
     }
 
-
+    @Override
+    public String toString() {
+        return "CreateSessionRequestParam{" +
+                "sessionList=" + sessionList +
+                ", repeatPattern=" + repeatPattern +
+                ", sessionToBeAdded=" + sessionToBeAdded +
+                '}';
+    }
 }
