@@ -15,6 +15,8 @@ import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.StreamSupport;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
@@ -88,7 +90,7 @@ public class AzureBlobClientService {
 
             final Map<String, byte[]> downloadedBlobMap = new HashMap<>();
             for(ListBlobItem blobItem : container.listBlobs()) {
-                final String blobName = getBlobName(blobItem.getUri().getPath());
+                final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
                 final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
                 final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
                 blob.download(outputStream);
@@ -109,20 +111,49 @@ public class AzureBlobClientService {
         }
     }
 
-    public void deleteFile(final String blobNameOfFileToBeDeleted) {
+    public byte[] downloadFile(final String blobName, final String containerName) {
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
-            LOGGER.info("Connecting to azure blob storage to delete files from the container {} on {}", rotaslInputContainerName, now());
-            connect(rotaslInputContainerName);
+            LOGGER.info("Connecting to azure blob storage to downloading file with name {} from : {} on {}", blobName, containerName, now());
+            connect(containerName);
+
+            final Optional<ListBlobItem> optionalBlobItem = StreamSupport.stream(container.listBlobs().spliterator(), false)
+                    .filter(blobItem -> blobName.equals(getBlobName(blobItem.getUri().getPath(), containerName)))
+                    .findAny();
+
+            if (optionalBlobItem.isPresent()) {
+                final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
+                final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                blob.download(outputStream);
+
+                LOGGER.info("Total time taken for the blob with name {} to be downloaded from {} is : {} : seconds", blobName, containerName, stopwatch.elapsed(SECONDS));
+                return outputStream.toByteArray();
+            }
+        } catch (StorageException ex) {
+            throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
+                    ex.getHttpStatusCode(), ex.getErrorCode()), ex);
+        } catch (URISyntaxException ex) {
+            throw new AzureBlobClientException(CONNECTION_URI_PARSE_ERROR, ex);
+        }
+
+        return null;
+    }
+
+    public void deleteFile(final String blobNameOfFileToBeDeleted, final Optional<String> containerNameOptional) {
+        try {
+            final String containerName = containerNameOptional.orElseGet(() -> rotaslInputContainerName);
+            final Stopwatch stopwatch = Stopwatch.createStarted();
+            LOGGER.info("Connecting to azure blob storage to delete files from the container {} on {}", containerName, now());
+            connect(containerName);
 
             for(ListBlobItem blobItem : container.listBlobs(blobNameOfFileToBeDeleted)) {
-                final String blobName = getBlobName(blobItem.getUri().getPath());
+                final String blobName = getBlobName(blobItem.getUri().getPath(), containerName);
                 if (blobNameOfFileToBeDeleted.contains(blobName)) {
                     final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
                     blob.delete();
 
-                    LOGGER.info("Deleted blob file successfully with name {} from azure blob storage container {} on {}", blobName, rotaslInputContainerName, now());
-                    LOGGER.info("Total time taken to delete files from azure blob storage container {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
+                    LOGGER.info("Deleted blob file successfully with name {} from azure blob storage container {} on {}", blobName, containerName, now());
+                    LOGGER.info("Total time taken to delete files from azure blob storage container {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
                     break;
                 }
             }
@@ -143,16 +174,17 @@ public class AzureBlobClientService {
      * @return void
      * @throws AzureBlobClientException
      */
-    public void uploadProcessedFiles(final InputStream file, final Long fileSize, final String destinationFileName) {
+    public void uploadProcessedFile(final InputStream file, final Long fileSize, final String destinationFileName, final Optional<String> containerNameOptional) {
 
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
-            LOGGER.info("Connecting to azure blob storage to upload files into {} on {}", rotaslArchiveContainerName, now());
-            connect(rotaslArchiveContainerName);
+            final String containerName = containerNameOptional.orElseGet(() -> rotaslArchiveContainerName);
+            LOGGER.info("Connecting to azure blob storage to upload files into {} on {}", containerName, now());
+            connect(containerName);
             final CloudBlockBlob fileBlob = container.getBlockBlobReference(destinationFileName);
             LOGGER.info("Uploading {} file to azure blob storage on {}", destinationFileName, now());
             fileBlob.upload(file, fileSize);
-            LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", rotaslArchiveContainerName, stopwatch.elapsed(SECONDS));
+            LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
 
         } catch (StorageException ex) {
             throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
@@ -164,13 +196,13 @@ public class AzureBlobClientService {
         }
     }
 
-    private String getBlobName(final String blobFilePath) {
-        final int index = blobFilePath.lastIndexOf(rotaslInputContainerName);
+    private String getBlobName(final String blobFilePath, final String containerName) {
+        final int index = blobFilePath.lastIndexOf(containerName);
         if (index == -1) {
             throw new AzureBlobClientException(
                     format("Azure S&L blob storage file path and container name doesn't match, filePath: %s, containerName: %s",
-                            blobFilePath, rotaslInputContainerName));
+                            blobFilePath, containerName));
         }
-        return blobFilePath.substring(index + rotaslInputContainerName.length() + 1);
+        return blobFilePath.substring(index + containerName.length() + 1);
     }
 }

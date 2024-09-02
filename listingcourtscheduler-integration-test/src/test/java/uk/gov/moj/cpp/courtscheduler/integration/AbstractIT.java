@@ -12,6 +12,7 @@ import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder;
 import uk.gov.justice.services.test.utils.core.rest.RestClient;
 import uk.gov.justice.services.test.utils.core.rest.ResteasyClientBuilderFactory;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseReader;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
 
 import java.net.URLEncoder;
@@ -37,6 +38,7 @@ public abstract class AbstractIT extends RestClient {
             .maxStringLength(5)
             .build();
     protected final DatabaseSeeder databaseSeeder = new DatabaseSeeder();
+    protected final DatabaseReader databaseReader = new DatabaseReader();
 
     @BeforeAll
     public static void setUp() {
