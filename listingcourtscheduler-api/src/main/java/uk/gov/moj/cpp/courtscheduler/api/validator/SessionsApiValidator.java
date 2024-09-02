@@ -6,8 +6,7 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
 import static uk.gov.moj.cpp.courtscheduler.api.CommonUtils.getValidationResult;
 
-import uk.gov.moj.cpp.courtscheduler.api.CommonUtils;
-import uk.gov.moj.cpp.courtscheduler.api.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
@@ -19,8 +18,6 @@ import java.time.chrono.ChronoLocalDate;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import javax.inject.Inject;
 import javax.json.JsonObject;

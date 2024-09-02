@@ -46,6 +46,11 @@
             <artifactId>listingcourtscheduler-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
+            <artifactId>listingcourtscheduler-rota-file-processor</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>uk.gov.justice.metrics</groupId>

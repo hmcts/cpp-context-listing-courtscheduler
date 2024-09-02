@@ -61,6 +61,7 @@
         <module>listingcourtscheduler-healthchecks</module>
         <module>listingcourtscheduler-cache</module>
         <module>listingcourtscheduler-common</module>
+        <module>listingcourtscheduler-rota-file-processor</module>
     </modules>
 
     <build>

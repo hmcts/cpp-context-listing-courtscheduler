@@ -83,7 +83,7 @@ class RotaFileProcessorIT extends AbstractIT {
         }
         final byte[] rotaFileAsBytes = IOUtils.toByteArray(rotaFileInputStream);
         // upload the rota file first
-        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, fileBlobName, azureBlobInputContainerName);
+        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, fileBlobName, of(azureBlobInputContainerName));
         insertCourtSchedulerMigrationStatus();
 
         // then call rota file processor api
@@ -121,7 +121,7 @@ class RotaFileProcessorIT extends AbstractIT {
         }
         final byte[] rotaFileAsBytes = IOUtils.toByteArray(rotaFileInputStream);
         // upload the rota file first
-        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, snapshotFileName, azureBlobInputContainerName);
+        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, snapshotFileName, of(azureBlobInputContainerName));
 
         // then call rota file processor api
         final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, null);

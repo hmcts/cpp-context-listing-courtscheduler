@@ -16,7 +16,6 @@ import java.security.InvalidKeyException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.stream.StreamSupport;
 
 import javax.annotation.PostConstruct;
@@ -175,10 +174,11 @@ public class AzureBlobClientService {
      * @return void
      * @throws AzureBlobClientException
      */
-    public void uploadProcessedFile(final InputStream file, final Long fileSize, final String destinationFileName, final String containerName) {
+    public void uploadProcessedFile(final InputStream file, final Long fileSize, final String destinationFileName, final Optional<String> containerNameOptional) {
 
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
+            final String containerName = containerNameOptional.orElseGet(() -> rotaslArchiveContainerName);
             LOGGER.info("Connecting to azure blob storage to upload files into {} on {}", containerName, now());
             connect(containerName);
             final CloudBlockBlob fileBlob = container.getBlockBlobReference(destinationFileName);
