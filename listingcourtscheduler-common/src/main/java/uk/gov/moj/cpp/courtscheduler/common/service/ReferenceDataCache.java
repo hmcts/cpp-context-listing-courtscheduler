@@ -76,15 +76,13 @@ public class ReferenceDataCache {
     public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSessionAllocations_";
 
     public ReferenceDataCache() {
-        LOGGER.info("ReferenceDataCache constructor");
+        //Default Constructor
     }
 
     public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode, final Requester requester) {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            LOGGER.info("redisCommonCacheEnabled is true");
             return getBusinessTypeByCodeFromTheCache(businessTypeCode,requester);
         } else {
-            LOGGER.info("redisCommonCacheEnabled is false");
             return referenceDataService.getRotaBusinessTypeByCode(businessTypeCode, requester);
         }
     }
@@ -141,11 +139,11 @@ public class ReferenceDataCache {
         final String cacheResult = cacheService.get(ROTA_BUSINESS_TYPE_CACHE_PREFIX + businessTypeCode);
 
         if (isNull(cacheResult)) {
-            LOGGER.info("no cache result found for BusinessTypeCode: {} in getBusinessTypeByCodeFromTheCache", businessTypeCode);
+            LOGGER.debug("no cache result found for BusinessTypeCode: {} in getBusinessTypeByCodeFromTheCache", businessTypeCode);
             final AtomicReference<BusinessType> businessTypeAtomicReference = new AtomicReference<>();
             return processRotaBusinessTypeMap(businessTypeCode, businessTypeAtomicReference,requester);
         } else {
-            LOGGER.info("cacheResult has been found for BusinessTypeCode: {} in getBusinessTypeByCodeFromTheCache", businessTypeCode);
+            LOGGER.debug("cacheResult has been found for BusinessTypeCode: {} in getBusinessTypeByCodeFromTheCache", businessTypeCode);
             final JsonObject cacheResultJsonObject = stringToJsonObjectConverter.convert(cacheResult);
             final BusinessType rotaBusinessType = jsonObjectToObjectConverter.convert(cacheResultJsonObject, BusinessType.class);
             return of(rotaBusinessType);
@@ -156,11 +154,11 @@ public class ReferenceDataCache {
         final String cacheResult = cacheService.get(ROTA_BUSINESS_TYPES_CACHE_KEY);
 
         if (isNull(cacheResult)) {
-            LOGGER.info("no cache result found for businessTypes in getBusinessTypesFromTheCache");
+            LOGGER.debug("no cache result found for businessTypes in getBusinessTypesFromTheCache");
             return processRotaBusinessTypes(requester);
         } else {
             try {
-                LOGGER.info("cacheResult has been found for BusinessTypes in getBusinessTypesFromTheCache");
+                LOGGER.debug("cacheResult has been found for BusinessTypes in getBusinessTypesFromTheCache");
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {
                 });
             } catch (final JsonProcessingException jsonProcessingException) {
@@ -174,11 +172,11 @@ public class ReferenceDataCache {
         final String cacheResult = cacheService.get(ROTA_JUDICIARIES_CACHE_KEY);
 
         if (isNull(cacheResult)) {
-            LOGGER.info("no cache result found for judiciaries in getJudiciariesFromTheCache");
+            LOGGER.debug("no cache result found for judiciaries in getJudiciariesFromTheCache");
             return processJudiciaries(requester);
         } else {
             try {
-                LOGGER.info("cacheResult has been found for judiciaries in getJudiciariesFromTheCache for key: {}", ROTA_JUDICIARIES_CACHE_KEY);
+                LOGGER.debug("cacheResult has been found for judiciaries in getJudiciariesFromTheCache for key: {}", ROTA_JUDICIARIES_CACHE_KEY);
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {});
             } catch (final JsonProcessingException jsonProcessingException) {
                 LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
@@ -191,11 +189,11 @@ public class ReferenceDataCache {
         final String cacheResult = cacheService.get(ROTA_COURTROOMS_CACHE_KEY);
 
         if (isNull(cacheResult)) {
-            LOGGER.info("no cache result found for courtRooms in getCourtRoomsFromTheCache");
+            LOGGER.debug("no cache result found for courtRooms in getCourtRoomsFromTheCache");
             return processCourtRooms(requester);
         } else {
             try {
-                LOGGER.info("cacheResult has been found for courtRooms in getCourtRoomsFromTheCache for key : {}", ROTA_COURTROOMS_CACHE_KEY);
+                LOGGER.debug("cacheResult has been found for courtRooms in getCourtRoomsFromTheCache for key : {}", ROTA_COURTROOMS_CACHE_KEY);
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {});
             } catch (final JsonProcessingException jsonProcessingException) {
                 LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
@@ -208,11 +206,11 @@ public class ReferenceDataCache {
         final String cacheResult = cacheService.get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY);
 
         if (isNull(cacheResult)) {
-            LOGGER.info("no cache result found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
+            LOGGER.debug("no cache result found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
             return processCourtRoomSessionAllocations(requester);
         } else {
             try {
-                LOGGER.info("cacheResult has been found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
+                LOGGER.debug("cacheResult has been found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {
                 });
             } catch (final JsonProcessingException jsonProcessingException) {
@@ -226,11 +224,11 @@ public class ReferenceDataCache {
         final String cacheResult = cacheService.get(ROTA_COURTROOM_CACHE_PREFIX + courtRoomId);
 
         if (isNull(cacheResult)) {
-            LOGGER.info("no cache result found for courtroomId: {} in getCourtRoomByIdFromTheCache", courtRoomId);
+            LOGGER.debug("no cache result found for courtroomId: {} in getCourtRoomByIdFromTheCache", courtRoomId);
             final AtomicReference<CourtRoom> courtRoomAtomicReference = new AtomicReference<>();
             return processCourtRoomMap(courtRoomId, courtRoomAtomicReference,requester);
         } else {
-            LOGGER.info("cacheResult has been found for courtroomId: {} in getBusinessTypeByCodeFromTheCache", courtRoomId);
+            LOGGER.debug("cacheResult has been found for courtroomId: {} in getBusinessTypeByCodeFromTheCache", courtRoomId);
             final JsonObject cacheResultJsonObject = stringToJsonObjectConverter.convert(cacheResult);
             final CourtRoom courtRoom = jsonObjectToObjectConverter.convert(cacheResultJsonObject, CourtRoom.class);
             return of(courtRoom);
@@ -241,12 +239,12 @@ public class ReferenceDataCache {
         final String cacheResult = cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, venue.getLocationId(), venue.getVenueName()));
 
         if (isNull(cacheResult)) {
-            LOGGER.info("no cache result found for venue: {} in getCourtRoomByVenueFromTheCache", venue);
+            LOGGER.debug("no cache result found for venue: {} in getCourtRoomByVenueFromTheCache", venue);
             final AtomicReference<CourtRoom> courtRoomsForVenue = new AtomicReference<>();
             return processCourtRoomMapByVenue(venue, courtRoomsForVenue, exceptionMessages, requester);
         } else {
             try {
-                LOGGER.info("cacheResult has been found for venue: {} in getBusinessTypeByCodeFromTheCache", venue);
+                LOGGER.debug("cacheResult has been found for venue: {} in getBusinessTypeByCodeFromTheCache", venue);
                 final List<CourtRoom> courtRooms = objectMapper.readValue(cacheResult, new TypeReference<>() {});
 
                 final Optional<CourtRoom> courtRoomWithVenueIdOptional = courtRooms.stream().filter(courtRoom -> courtRoom.getRotaVenueId().equals(venue.getVenueId())).findAny();

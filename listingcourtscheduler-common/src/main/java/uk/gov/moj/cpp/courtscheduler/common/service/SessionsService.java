@@ -135,7 +135,7 @@ public class SessionsService {
         try {
             result = courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule, courtRoom);
         } catch (Exception exception) {
-            logger.info("update court schedule failing courScheduleId : {}", persistedCourtSchedule.getCourtScheduleId());
+            logger.error("update court schedule failing courScheduleId : {}", persistedCourtSchedule.getCourtScheduleId());
             result = new Result("Duplicate entry in DB", false);
         }
 
@@ -523,7 +523,7 @@ public class SessionsService {
                     }
                 }
                 courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
-
+                logger.info("number: {} ", numberOfSaved.get() );
                 numberOfSaved.getAndIncrement();
             }
         });

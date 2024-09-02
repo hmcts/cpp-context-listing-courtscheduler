@@ -95,7 +95,7 @@ public class ReferenceDataService {
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
         final int resultsCount = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS).orElseThrow(() -> new RuntimeException("No courtrooms  found: ")).size();
-        LOGGER.error("Total courtrooms found: {}", resultsCount);
+        LOGGER.debug("Total courtrooms found: {}", resultsCount);
         Set<String> seenCourtRoomIds = new HashSet<>();
         Set<String> duplicateCourtRoomIds = new HashSet<>();
 
@@ -192,13 +192,13 @@ public class ReferenceDataService {
     }
 
     public Optional<CourtRoom> getRotaCourtRoomByVenue(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
-        LOGGER.info("getRotaCourtRoomByVenue called - venue: {}", venue);
+        LOGGER.debug("getRotaCourtRoomByVenue called - venue: {}", venue);
         final JsonEnvelope envelope =
                 envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME).build(),
                         createObjectBuilder().build());
-        LOGGER.info("getRotaCourtRoomByVenue called - envelope created for venue: {} and request now will be sent", venue);
+        LOGGER.debug("getRotaCourtRoomByVenue called - envelope created for venue: {} and request now will be sent", venue);
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        LOGGER.info("getRotaCourtRoomByVenue called - envelope created for venue: {} and request has been sent and the response payload : {}", venue, payload);
+        LOGGER.debug("getRotaCourtRoomByVenue called - envelope created for venue: {} and request has been sent and the response payload : {}", venue, payload);
         JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
         if (isNull(courtRoomMappings)) {
             throw new RuntimeException(format("No court room found with venue: %d-%d-%s", venue.getLocationId(), venue.getVenueId(), venue.getVenueName()));
