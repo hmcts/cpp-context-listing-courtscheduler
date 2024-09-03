@@ -7,7 +7,7 @@
     <changeSet id="004" author="sshetty" logicalFilePath="004-court-schedule.xml">
         <createTable tableName="court_schedule">
             <column name="id" type="VARCHAR(100)">
-                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_court_schedule"/>
+                <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="court_listing_profile_id" type="VARCHAR(100)"/>
             <column name="oucode" type="VARCHAR(10)"/>
