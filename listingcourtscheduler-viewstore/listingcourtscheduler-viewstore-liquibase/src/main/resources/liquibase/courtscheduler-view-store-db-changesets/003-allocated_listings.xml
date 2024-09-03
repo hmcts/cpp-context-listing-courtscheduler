@@ -7,7 +7,7 @@
     <changeSet id="003" author="sshetty" logicalFilePath="003-allocated-listings.xml">
         <createTable tableName="allocated_listings">
             <column name="id" type="VARCHAR(100)">
-                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_allocated_listings"/>
+                <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="court_schedule_id" type="VARCHAR(100)">
                 <constraints nullable="false"/>
