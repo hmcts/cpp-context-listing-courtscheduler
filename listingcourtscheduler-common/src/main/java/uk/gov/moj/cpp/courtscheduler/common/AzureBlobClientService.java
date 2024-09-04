@@ -82,14 +82,14 @@ public class AzureBlobClientService {
 
     }
 
-    public Map<String, byte[]> downloadFiles() {
+    public Map<String, byte[]> downloadFiles(final String blobFilePrefix) {
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
             LOGGER.info("Connecting to azure blob storage to download files from : {} on {}", rotaslInputContainerName, now());
             connect(rotaslInputContainerName);
 
             final Map<String, byte[]> downloadedBlobMap = new HashMap<>();
-            for(ListBlobItem blobItem : container.listBlobs()) {
+            for(ListBlobItem blobItem : container.listBlobs(blobFilePrefix)) {
                 final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
                 final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
                 final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

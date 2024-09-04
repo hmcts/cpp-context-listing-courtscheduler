@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.UUID.randomUUID;
+import static javax.json.Json.createObjectBuilder;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.timeout;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import java.util.function.Function;
 
 import javax.ejb.AsyncResult;
+import javax.json.JsonObject;
 import javax.json.JsonValue;
 
 import org.junit.jupiter.api.Test;
@@ -53,14 +55,14 @@ class RotaFileProcessorApiTest {
     void shouldProcessRotaFiles() {
         final String requestName = "courtscheduler.rotasl.process_rota_files";
 
-        final JsonEnvelope processRotaFilesJsonEnvelope = createEnvelope(requestName, JsonValue.EMPTY_JSON_OBJECT);
-
+        final JsonObject payloadAsJsonObject = createObjectBuilder().add("isForItTest", false).build();
+        final JsonEnvelope processRotaFilesJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
         when(enveloper.withMetadataFrom(processRotaFilesJsonEnvelope, requestName)).thenReturn(function);
-        when(rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(eq(requester))).thenReturn(new AsyncResult<>("SUCCESS"));
+        when(rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(eq(requester), eq(false))).thenReturn(new AsyncResult<>("SUCCESS"));
 
         rotaFileProcessorApi.processRotaFiles(processRotaFilesJsonEnvelope);
 
-        verify(rotaFileCaptureAndProcessTriggerService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester));
+        verify(rotaFileCaptureAndProcessTriggerService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester), eq(false));
         verify(LOGGER, atLeastOnce()).info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
         verify(enveloper, atLeastOnce()).withMetadataFrom(processRotaFilesJsonEnvelope, requestName);
     }

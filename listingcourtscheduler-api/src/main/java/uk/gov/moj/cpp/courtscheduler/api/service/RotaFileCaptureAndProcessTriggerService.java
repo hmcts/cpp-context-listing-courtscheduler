@@ -30,11 +30,15 @@ public class RotaFileCaptureAndProcessTriggerService {
     @Inject
     private AzureBlobClientService azureBlobClientService;
 
+    private static final String IT_TEST_BLOB_PREFIX = "IT_Test_";
+    private static final String ORIGINAL_BLOB_PREFIX = "lja_";
+
     @Asynchronous
-    public Future<String> captureRotaFilesAndProcessEach(final Requester requester) {
+    public Future<String> captureRotaFilesAndProcessEach(final Requester requester, boolean isForItTest) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
+        final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
         // download all the files in the input container
-        final Map<String, byte[]> downloadedBlobsByteArrayMap = azureBlobClientService.downloadFiles();
+        final Map<String, byte[]> downloadedBlobsByteArrayMap = azureBlobClientService.downloadFiles(blobPrefix);
         if (!downloadedBlobsByteArrayMap.isEmpty()) {
             loadReferenceData(requester);
         }

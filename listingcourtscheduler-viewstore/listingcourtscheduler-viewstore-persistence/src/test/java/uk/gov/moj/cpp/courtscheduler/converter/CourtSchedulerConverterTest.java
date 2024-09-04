@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class CourtSchedulerConverterTest {
 
     @Test
-    public void shouldConvert() {
+    void shouldConvert() {
         CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
 
         final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule converted = CourtSchedulerConverter.convert(courtScheduleEnt);
@@ -36,7 +36,7 @@ class CourtSchedulerConverterTest {
     }
 
     @Test
-    public void shouldConvertToMi() {
+    void shouldConvertToMi() {
         CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
 
         final uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule converted = CourtSchedulerConverter.convertToMi(courtScheduleEnt);

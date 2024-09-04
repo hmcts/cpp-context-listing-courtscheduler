@@ -10,6 +10,7 @@ import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileCaptureAndProcessTriggerService;
 
 import javax.inject.Inject;
+import javax.json.JsonObject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,9 +32,12 @@ public class RotaFileProcessorApi {
     @Handles("courtscheduler.rotasl.process_rota_files")
     public JsonEnvelope processRotaFiles(final JsonEnvelope envelope) {
         LOGGER.info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.rotasl.process_rota_files request payload: {}", payload);
 
         LOGGER.info("calling rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester);
+        final boolean isForItTest = payload.getBoolean("forItTest", false);
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, isForItTest);
         LOGGER.info("successfully called and completed - rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.process_rota_files").apply(createObjectBuilder().build());

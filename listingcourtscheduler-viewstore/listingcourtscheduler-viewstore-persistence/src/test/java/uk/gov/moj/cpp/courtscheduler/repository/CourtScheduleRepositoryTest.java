@@ -186,7 +186,7 @@ public class CourtScheduleRepositoryTest {
     }
 
     @Test
-    public void shouldfindByUpdatedOnGreaterThanAndUpdatedOnLessThan(){
+    public void shouldFindByUpdatedOnGreaterThanAndUpdatedOnLessThan(){
         CourtSchedule courtSchedule = random(CourtSchedule.class);
         LocalDate fromDate = LocalDate.of(2024, 7, 15);
         LocalDate toDate = LocalDate.of(2024, 7, 16);

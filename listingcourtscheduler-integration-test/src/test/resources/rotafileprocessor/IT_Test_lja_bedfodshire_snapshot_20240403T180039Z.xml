@@ -3,7 +3,7 @@
     <rotaPeriod>
         <justiceAreaType>LJA</justiceAreaType>
         <justiceAreaName>Bedfordshire</justiceAreaName>
-        <startDate>2024-04-03</startDate>
+        <startDate>2024-08-01</startDate>
         <endDate>2024-09-30</endDate>
     </rotaPeriod>
     <magistrates>
@@ -11,13 +11,13 @@
             <title>Mrs</title>
             <surname>LeopoldTS</surname>
             <forenames>KristeTS</forenames>
-            <emailAddress>kristets.leopoldts.325@rotaemail.com</emailAddress>
+            <emailAddress>duanets.lunats.435@rotaemail.com</emailAddress>
         </magistrate>
         <magistrate id="MA4324">
             <title>Mr</title>
             <surname>LeeannTS</surname>
             <forenames>ChristTS</forenames>
-            <emailAddress>christts.leeannts.874@rotaemail.com</emailAddress>
+            <emailAddress>corissats.redts.105@rotaemail.com</emailAddress>
         </magistrate>
         <magistrate id="MA4296">
             <title>Mr</title>

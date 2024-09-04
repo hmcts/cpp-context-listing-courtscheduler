@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
@@ -16,7 +17,6 @@ import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteRespo
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
-import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -33,6 +33,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
@@ -236,10 +237,13 @@ public class SessionsService {
     }
 
     public List<CourtSchedule> getExistingCourtSchedulesByOuCodes(final List<String> ouCodes) {
-        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExistingActiveCourtSchedulesByOuCodes(ouCodes);
-        return courtScheduleEntities.stream()
-                .map(CourtScheduleMapper::toDomain)
-                .toList();
+        if (isNotEmpty(ouCodes)) {
+            final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExistingActiveCourtSchedulesByOuCodes(ouCodes);
+            return courtScheduleEntities.stream()
+                    .map(CourtScheduleMapper::toDomain)
+                    .toList();
+        }
+        return emptyList();
     }
 
     public List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(final List<String> ouCodes, final LocalDate startDate, final LocalDate endDate) {

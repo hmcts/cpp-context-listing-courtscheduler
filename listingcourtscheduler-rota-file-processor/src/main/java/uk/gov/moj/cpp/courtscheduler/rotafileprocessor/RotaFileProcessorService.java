@@ -24,7 +24,6 @@ import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
-import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
@@ -113,9 +112,6 @@ public class RotaFileProcessorService {
 
     @Inject
     private ReferenceDataService referenceDataService;
-
-    @Inject
-    private ReferenceDataMapperService referenceDataMapperService;
 
     @Inject
     private ProvisionalDataProducer provisionalDataProducer;
