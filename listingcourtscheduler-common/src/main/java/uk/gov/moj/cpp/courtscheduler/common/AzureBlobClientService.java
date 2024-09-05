@@ -41,7 +41,7 @@ public class AzureBlobClientService {
     private static final String ERROR_MSG = "Azure %s is not specified. Please add configuration for `%s`";
 
     @Inject
-    @Value(key = "courtscheduler.rotaslStorageConnectionString", defaultValue = "DefaultEndpointsProtocol=https;AccountName=sadevcommonscsl;AccountKey=HMx/mhSuq/1Gbf7R/d+WmuP8X9w3eqvYS3Sg9rhvch0KLO5Qr+rcS70emQKRLLJptS5GzcBiOdQe+AStaKyOig==;EndpointSuffix=core.windows.net;")
+    @Value(key = "courtscheduler.rotaslStorageConnectionString", defaultValue = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=+p3GXQguT4npJqxd6gAPfDgLu0YuJ3n1+hpTQYg1BQn0UL5Ut+bDDE7l2qrRNTt/yW5jNyf5mRUmM11F8dnkpA==;EndpointSuffix=core.windows.net;")
     private String rotaslStorageConnectionString;
 
     @Inject
