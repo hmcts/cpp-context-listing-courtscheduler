@@ -117,7 +117,7 @@ public class AzureBlobClientService {
             LOGGER.info("Connecting to azure blob storage to downloading file with name {} from : {} on {}", blobName, containerName, now());
             connect(containerName);
 
-            final Optional<ListBlobItem> optionalBlobItem = StreamSupport.stream(container.listBlobs().spliterator(), false)
+            final Optional<ListBlobItem> optionalBlobItem = StreamSupport.stream(container.listBlobs(blobName).spliterator(), false)
                     .filter(blobItem -> blobName.equals(getBlobName(blobItem.getUri().getPath(), containerName)))
                     .findAny();
 
