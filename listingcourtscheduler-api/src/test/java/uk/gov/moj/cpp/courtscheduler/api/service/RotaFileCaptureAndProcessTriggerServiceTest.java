@@ -47,13 +47,13 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         final byte[] blobContent = givenBlobContent(file);
 
         final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
-        when(azureBlobClientService.downloadFiles()).thenReturn(downloadedBlobsByteArrayMap);
+        when(azureBlobClientService.downloadFiles("lja_")).thenReturn(downloadedBlobsByteArrayMap);
         doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName));
         doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations(eq(requester));
 
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester);
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, false);
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
