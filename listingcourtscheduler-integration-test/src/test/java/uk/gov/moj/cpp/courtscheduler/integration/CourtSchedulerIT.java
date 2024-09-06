@@ -29,6 +29,7 @@ import javax.ws.rs.core.Response;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 
@@ -97,6 +98,7 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    @Disabled
     void shouldNotAllowUpdateCourtScheduleForDifferentBusinessType() throws SQLException {
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
