@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="016" author="samialpak"
+               logicalFilePath="016-add-hearing-start-time-to-provisional-booking.xml">
+        <addColumn tableName="provisional_booking">
+            <column name="hearing_start_time" type="timestamp with timezone"
+            />
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="allocated_listings" columnName="hearing_start_time"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,48 @@
+{
+  "results": 1,
+  "pageCount": 1,
+  "hearingSlots": [
+    {
+      "courtScheduleId": "0000fbb0-8579-4f2b-948e-c4e48a48e3f8",
+      "listingProfileId": "0000fbb0-8579-4f2b-948e-c4e48a48e3f7",
+      "ouCode": "CABC90",
+      "courtRoomId": "001c067d-eaca-4ce5-ad90-a366ef3e4bb6",
+      "courtRoomNumber": 1234,
+      "courtHouseId": "0b9417b8-91b4-385d-9e01-069855777c4f",
+      "courtHouseName": "Liverpool Mags Court",
+      "courtRoomName": "Court name1",
+      "operationalUnit": "UNN",
+      "businessType": "BYS",
+      "businessDescription": null,
+      "panel": "PANEL",
+      "courtSession": "AM",
+      "slotBased": false,
+      "active": true,
+      "sessionDate": "2020-12-01",
+      "maxSlots": 125,
+      "maxDuration": 182,
+      "availableSlots": 125,
+      "availableDuration": 182,
+      "createdOn":null,
+      "updatedOn":null,
+      "judiciaries": [
+        {
+          "judiciaryId": "JUDICIARY_ID_1",
+          "position": "RIGHT_WINGER",
+          "active": false
+        },
+        {
+          "judiciaryId": "JUDICIARY_ID_2",
+          "position": "LEFT_WINGER",
+          "active": false
+        },
+        {
+          "judiciaryId": "JUDICIARY_ID_3",
+          "position": "CHAIR",
+          "active": false
+        }
+      ],
+      "slotStartTimes": []
+    }
+  ]
+}

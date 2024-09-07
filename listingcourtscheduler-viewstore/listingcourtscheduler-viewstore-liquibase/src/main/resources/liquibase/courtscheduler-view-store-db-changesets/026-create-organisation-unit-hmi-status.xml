@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="026" author="erol.kureli"
+               logicalFilePath="026-create-organisation-unit-hmi-status.xml">
+        <createTable tableName="organisation_unit_hmi_status">
+            <column name="oucode" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_hmi_listing_enabled" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_hmi_scheduling_enabled" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_hmi_pubhub_enabled" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_on" type="DATETIME"/>
+            <column name="court_centre_id" type="VARCHAR(36)" />
+            <column name="court_id" type="VARCHAR(10)"/>
+        </createTable>
+
+        <createIndex tableName="organisation_unit_hmi_status"
+                     indexName="organisation_unit_hmi_status_oucode_idx">
+            <column name="oucode"/>
+        </createIndex>
+
+        <loadData tableName="organisation_unit_hmi_status"
+                  file="liquibase/courtscheduler-view-store-db-changesets/csv/organisationUnitHMIStatus.csv"/>
+
+        <rollback>
+            <dropIndex tableName="organisation_unit_hmi_status"
+                       indexName="organisation_unit_hmi_status_oucode_idx"/>
+            <dropTable tableName="organisation_unit_hmi_status"/>
+
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
