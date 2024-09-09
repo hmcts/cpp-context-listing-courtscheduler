@@ -98,7 +98,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             LOGGER.info("having more than one persisted court schedule: {}", courtSchedule);
         }
         if (isNotEmpty(persistedCourtSchedules)) {
-            final CourtSchedule persistedCourtSchedule = persistedCourtSchedules.get(0);
+            final CourtSchedule persistedCourtSchedule = getCourtScheduleToBeUpdated(courtSchedule, isForRotaFile, persistedCourtSchedules);
 
             if (isForRotaFile || (persistedCourtSchedule.getMaxSlots() > 0
                     && persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue())
@@ -111,12 +111,27 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
                 persistedCourtSchedule.setCreatedOn(persistedCourtSchedule.getCreatedOn());
                 persistedCourtSchedule.setUpdatedOn(new Date());
+                if (isForRotaFile) {
+                    persistedCourtSchedule.setActive(true);
+                }
 
                 this.save(persistedCourtSchedule);
             }
             return courtSchedule;
         }
         return null;
+    }
+
+    private static CourtSchedule getCourtScheduleToBeUpdated(final CourtSchedule courtSchedule, final boolean isForRotaFile, final List<CourtSchedule> persistedCourtSchedules) {
+        CourtSchedule persistedCourtSchedule = persistedCourtSchedules.get(0);
+        if (persistedCourtSchedules.size() > 1 && isForRotaFile) {
+            persistedCourtSchedule = persistedCourtSchedules.stream()
+                    .filter(courtScheduleFound -> courtScheduleFound.getCourtSession().equals(courtSchedule.getCourtSession())
+                            && courtScheduleFound.getPanel().equals(courtSchedule.getPanel()))
+                    .findAny().orElse(persistedCourtSchedule);
+            LOGGER.info("found persisted court schedule to update for rota file with courtScheduleId: {}", persistedCourtSchedule.getCourtScheduleId());
+        }
+        return persistedCourtSchedule;
     }
 
     public Result update(CourtSchedule persistedCourtSchedule,
@@ -318,9 +333,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     protected void releaseOldListingsFromAllocatedListings(final String hearingId) {
         List<AllocatedListing> allocatedListings = this.allocatedListingRepository.findByHearingId(hearingId);
-        allocatedListings.forEach(allocatedListing -> {
-            this.allocatedListingRepository.remove(allocatedListing);
-        });
+        allocatedListings.forEach(allocatedListing -> this.allocatedListingRepository.remove(allocatedListing));
     }
 
     private List<AllocatedSlot> getUpdatedAllocatedSlots(final List<AllocatedSlot> allocatedSlots) {
