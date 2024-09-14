@@ -4,8 +4,17 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
 
+
+
     <changeSet id="028" author="baris.ozturkmen"
                logicalFilePath="028-create-courtscheduler_migration_status.xml">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="courtscheduler_migration_status"/>
+            </not>
+        </preConditions>
+
         <createTable tableName="courtscheduler_migration_status">
             <column name="oucode" type="VARCHAR(10)">
                 <constraints nullable="false"/>
