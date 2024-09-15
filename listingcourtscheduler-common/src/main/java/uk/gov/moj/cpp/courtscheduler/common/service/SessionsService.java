@@ -477,16 +477,18 @@ public class SessionsService {
 
                 slotsScheduleEntryValue.forEach(courtScheduleJudiciary -> {
                     final Pair<String, String> courtScheduleIdAndOuCodePair = schedulesToUpdateMap.get(profileId);
-                    final String courtScheduleId = courtScheduleIdAndOuCodePair.getLeft();
-                    if (nonNull(courtScheduleId)) {
-                        scheduleJudiciaries.stream()
-                                .filter(scheduleJudiciary -> scheduleJudiciary.getCourtScheduleId().equals(courtScheduleJudiciary.getCourtScheduleId())
-                                        && scheduleJudiciary.getJudiciaryId().equals(courtScheduleJudiciary.getJudiciaryId()))
-                                .map(CourtScheduleJudiciary::getPosition)
-                                .findFirst()
-                                .ifPresent(updatedPosition ->
-                                        courtScheduleJudiciaryRepository.updateCourtScheduleJudiciaryPosition(updatedPosition, Calendar.getInstance().getTime(), courtScheduleJudiciary.getCourtScheduleId(), courtScheduleJudiciary.getJudiciaryId())
-                                );
+                    if (nonNull(courtScheduleIdAndOuCodePair)) {
+                        final String courtScheduleId = courtScheduleIdAndOuCodePair.getLeft();
+                        if (nonNull(courtScheduleId)) {
+                            scheduleJudiciaries.stream()
+                                    .filter(scheduleJudiciary -> scheduleJudiciary.getCourtScheduleId().equals(courtScheduleJudiciary.getCourtScheduleId())
+                                            && scheduleJudiciary.getJudiciaryId().equals(courtScheduleJudiciary.getJudiciaryId()))
+                                    .map(CourtScheduleJudiciary::getPosition)
+                                    .findFirst()
+                                    .ifPresent(updatedPosition ->
+                                            courtScheduleJudiciaryRepository.updateCourtScheduleJudiciaryPosition(updatedPosition, Calendar.getInstance().getTime(), courtScheduleJudiciary.getCourtScheduleId(), courtScheduleJudiciary.getJudiciaryId())
+                                    );
+                        }
                     }
                 });
             }

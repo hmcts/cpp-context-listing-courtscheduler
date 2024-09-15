@@ -4,6 +4,7 @@ import static java.lang.String.format;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
+import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -44,7 +45,7 @@ public class ReferenceDataMapperService {
 
         final Optional<Judiciary> judiciaryOptional = judiciaries
                 .stream()
-                .filter(judiciary -> email.equals(judiciary.getEmailAddress()))
+                .filter(judiciary -> equalsIgnoreCase(email, judiciary.getEmailAddress()))
                 .findFirst();
 
         logger.debug("judiciary found for email {} with judiciary : {}", email, judiciaryOptional.orElse(null));
