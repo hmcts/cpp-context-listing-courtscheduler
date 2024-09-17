@@ -4,8 +4,8 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
 
-    <changeSet id="030" author="baris.ozturkmen"
-               logicalFilePath="030-rename-primary-keys.xml">
+    <changeSet id="029" author="baris.ozturkmen"
+               logicalFilePath="029-rename-primary-keys.xml">
         <dropPrimaryKey tableName="court_schedule"></dropPrimaryKey>
         <addPrimaryKey columnNames="id" tableName="court_schedule" constraintName="pk_court_schedule"/>
         <dropPrimaryKey tableName="allocated_listings"></dropPrimaryKey>
