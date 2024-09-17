@@ -25,9 +25,9 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
             "AND cs.max_duration_mins = cs.available_duration_mins AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) " +
             "AND not exists (" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
 
-    private static final String DELETE_COURT_SCHEDULE_JUDICIARY_NOT_IN_COURT_SCHEDULES_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id NOT IN " +
+    private static final String DELETE_COURT_SCHEDULE_JUDICIARY_NOT_IN_COURT_SCHEDULES_QUERY_FOR_SUBLIST = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id NOT IN " +
             "(SELECT cs.id FROM court_schedule cs WHERE cs.court_listing_profile_id is not null AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes)) " +
-            "AND csj.court_listing_profile_id = :listingProfileId AND csj.judiciary_id =:judiciaryId AND csj.active = true";
+            "AND csj.court_listing_profile_id IN (:listingProfileIds) AND csj.judiciary_id IN (:judiciaryIds) AND csj.active = true";
 
     public static final String DELETE_CSJ_BY_IDS_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) " +
             "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)";
@@ -81,15 +81,15 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
     public int deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(@QueryParam("startDate") final LocalDate startDate,
                                                                         @QueryParam("endDate") final LocalDate endDate,
                                                                         @QueryParam("ouCodes") final List<String> ouCodes,
-                                                                        @QueryParam("listingProfileId") final String listingProfileId,
-                                                                        @QueryParam("judiciaryId") final String judiciaryId) {
+                                                                        @QueryParam("listingProfileId") final List<String> listingProfileIds,
+                                                                        @QueryParam("judiciaryId") final List<String> judiciaryIds) {
         return entityManager()
-                .createNativeQuery(DELETE_COURT_SCHEDULE_JUDICIARY_NOT_IN_COURT_SCHEDULES_QUERY)
+                .createNativeQuery(DELETE_COURT_SCHEDULE_JUDICIARY_NOT_IN_COURT_SCHEDULES_QUERY_FOR_SUBLIST)
                 .setParameter("startDate", startDate)
                 .setParameter("endDate", endDate)
                 .setParameter("ouCodes", ouCodes)
-                .setParameter("listingProfileId", listingProfileId)
-                .setParameter("judiciaryId", judiciaryId)
+                .setParameter("listingProfileIds", listingProfileIds)
+                .setParameter("judiciaryIds", judiciaryIds)
                 .executeUpdate();
     }
 

@@ -514,6 +514,8 @@ public class SessionsService {
 
         final AtomicInteger numberOfSaved = new AtomicInteger();
         final AtomicInteger numberOfDeletedScheduleJudiciariesNotInCourtSchedules = new AtomicInteger(0);
+        final List<Pair<String, String>> judiciaryIdAndListingProfileIdPairList = new ArrayList<>();
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> courtScheduleJudiciariesToBePersisted = new ArrayList<>();
         scheduleJudiciaries.forEach(scheduleJudiciary -> {
             final CourtSchedule courtSchedule = newRecords.get(scheduleJudiciary.getCourtListingProfileId());
 
@@ -525,18 +527,32 @@ public class SessionsService {
                     final String judiciaryId = courtScheduleJudiciaryEntity.getId().getJudiciaryId();
                     final String listingProfileId = courtScheduleJudiciaryEntity.getCourtListingProfileId();
                     if (judiciaryIds.contains(judiciaryId) && listingProfileIds.contains(listingProfileId)) {
-                        numberOfDeletedScheduleJudiciariesNotInCourtSchedules.set(numberOfDeletedScheduleJudiciariesNotInCourtSchedules.get() + courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, listingProfileId, judiciaryId));
+                        judiciaryIdAndListingProfileIdPairList.add(Pair.of(judiciaryId, listingProfileId));
                     }
                 }
-                courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
-                logger.info("number: {} ", numberOfSaved.get() );
-                numberOfSaved.getAndIncrement();
+                courtScheduleJudiciariesToBePersisted.add(courtScheduleJudiciaryEntity);
             }
         });
-        logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} for ouCodes: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules.get(), ouCodes);
+        final int judiciaryIdAndListingProfileIdPairListSize = judiciaryIdAndListingProfileIdPairList.size();
+        final int partSize = 30;
+        for (int i = 0; i < judiciaryIdAndListingProfileIdPairListSize; i++) {
+            List<Pair<String, String>> judiciaryIdAndListingProfileIdPairSubList = judiciaryIdAndListingProfileIdPairList.subList(i, Math.min(judiciaryIdAndListingProfileIdPairListSize, i + partSize));
+            final List<String> subListJudiciaryIds = judiciaryIdAndListingProfileIdPairSubList.stream().map(Pair::getLeft).toList();
+            final List<String> subListListingProfileIds = judiciaryIdAndListingProfileIdPairSubList.stream().map(Pair::getRight).toList();
+
+            numberOfDeletedScheduleJudiciariesNotInCourtSchedules.set(numberOfDeletedScheduleJudiciariesNotInCourtSchedules.get() + courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(startDate, endDate, ouCodes, subListListingProfileIds, subListJudiciaryIds));
+
+            i = i + partSize;
+            logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules : {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules);
+        }
+        courtScheduleJudiciariesToBePersisted.forEach(courtScheduleJudiciary -> {
+            courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
+            numberOfSaved.incrementAndGet();
+        });
+
+        logger.info("numberOfDeletedScheduleJudiciariesNotInCourtSchedules: {} and numberOfSaved: {} for ouCodes: {}", numberOfDeletedScheduleJudiciariesNotInCourtSchedules.get(), numberOfSaved.get(), ouCodes);
         return numberOfSaved.get();
     }
-
 
     private String enrichBusinessDescription(final String businessType, final Requester requester) {
         return referenceDataCache.getRotaBusinessTypeByCode(businessType, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + businessType)).getTypeDescription();
