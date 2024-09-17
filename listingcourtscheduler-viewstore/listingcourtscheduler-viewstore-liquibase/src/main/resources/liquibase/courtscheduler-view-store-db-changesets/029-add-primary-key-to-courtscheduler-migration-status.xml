@@ -6,6 +6,11 @@
 
     <changeSet id="029" author="ragubalan.durairaj"
                logicalFilePath="029-add-primary-key-to-courtscheduler-migration-status.xml">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <primaryKeyExists tableName="courtscheduler_migration_status" primaryKeyName="courtscheduler_migration_status_pkey"/>
+            </not>
+        </preConditions>
 
         <addPrimaryKey columnNames="oucode"
                        tableName="courtscheduler_migration_status"/>
