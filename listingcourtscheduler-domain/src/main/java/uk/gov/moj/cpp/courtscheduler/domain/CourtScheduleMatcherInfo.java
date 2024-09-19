@@ -5,10 +5,12 @@ import java.util.Date;
 public class CourtScheduleMatcherInfo {
 
     private String courtScheduleId;
+    private String ouCode;
     private Date createdOn;
 
-    public CourtScheduleMatcherInfo(final String courtScheduleId, final Date createdOn) {
+    public CourtScheduleMatcherInfo(final String courtScheduleId, final String ouCode, final Date createdOn) {
         this.createdOn = createdOn;
+        this.ouCode = ouCode;
         this.courtScheduleId = courtScheduleId;
     }
 
@@ -18,6 +20,14 @@ public class CourtScheduleMatcherInfo {
 
     public void setCourtScheduleId(final String courtScheduleId) {
         this.courtScheduleId = courtScheduleId;
+    }
+
+    public String getOuCode() {
+        return ouCode;
+    }
+
+    public void setOuCode(final String ouCode) {
+        this.ouCode = ouCode;
     }
 
     public Date getCreatedOn() {

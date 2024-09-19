@@ -69,6 +69,7 @@ class RotaFileProcessorIT extends AbstractIT {
     private LocalDateTime maxUpdatedOnForCourtSchedule;
 
     private static final List<String> filesToBeDeletedFromOutputContainer = new ArrayList<>();
+    private static final String BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE = "B40IM00";
 
     @BeforeAll
     static void setupRotaFileProcessorIT() {
@@ -99,6 +100,15 @@ class RotaFileProcessorIT extends AbstractIT {
         processFullRotaFile(false);
         databaseSeeder.cleanCourtScheduleJudiciaryTable();
         databaseSeeder.cleanMigrationStatusTable();
+        processFullRotaFile(true);
+    }
+
+    @Test
+    void shouldProcessFullRotaFileAndOnlyCourtScheduleJudiciaryProcessedEvenListingProfileIdNullForMigrated() throws IOException, SQLException {
+        processFullRotaFile(false);
+        databaseSeeder.cleanCourtScheduleJudiciaryTable();
+        databaseSeeder.cleanMigrationStatusTable();
+        databaseSeeder.updateCourtScheduleSetListingProfileIdAsNull(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE);
         processFullRotaFile(true);
     }
 
@@ -204,7 +214,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private void insertCourtSchedulerMigrationStatus(final boolean migrated) throws SQLException {
         final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
-        courtSchedulerMigrationStatus.setOuCode("B40IM00");
+        courtSchedulerMigrationStatus.setOuCode(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE);
         courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
         courtSchedulerMigrationStatus.setMigrated(migrated);
         databaseSeeder.insertCourtScheduleMigrationStatus(courtSchedulerMigrationStatus);

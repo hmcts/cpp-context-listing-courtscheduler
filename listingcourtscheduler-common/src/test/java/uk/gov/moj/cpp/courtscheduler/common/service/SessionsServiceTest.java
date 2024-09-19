@@ -620,10 +620,11 @@ class SessionsServiceTest {
         final LocalDate sessionDate = LocalDate.of(2024, 10, 2);
         final String businessType = "TRF";
         final String courtSession = "PM";
+        final String ouCode = "B43KQ00";
 
         final String expectedCourtScheduleId = randomUUID().toString();
 
-        final CourtScheduleMatcherInfo courtScheduleMatcherInfo = new CourtScheduleMatcherInfo(expectedCourtScheduleId, Calendar.getInstance().getTime());
+        final CourtScheduleMatcherInfo courtScheduleMatcherInfo = new CourtScheduleMatcherInfo(expectedCourtScheduleId, ouCode, Calendar.getInstance().getTime());
         when(courtScheduleRepository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession)).thenReturn(courtScheduleMatcherInfo);
 
         final CourtScheduleMatcherInfo courtScheduleMatcherFound = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
@@ -631,6 +632,7 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, atLeastOnce()).findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(courtRoomId, sessionDate, businessType, courtSession);
         assertNotNull(courtScheduleMatcherFound);
         assertThat(courtScheduleMatcherFound.getCourtScheduleId(), is(expectedCourtScheduleId));
+        assertThat(courtScheduleMatcherFound.getOuCode(), is(ouCode));
     }
 
     @Test

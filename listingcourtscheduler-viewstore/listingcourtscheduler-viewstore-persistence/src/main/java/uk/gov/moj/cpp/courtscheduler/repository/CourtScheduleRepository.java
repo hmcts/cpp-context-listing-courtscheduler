@@ -489,8 +489,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         }
     }
 
-    @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo(entity.courtScheduleId, entity.createdOn) from CourtSchedule entity where entity.courtRoomId = :courtRoomId " +
-            "and entity.sessionDate = :sessionDate and entity.businessType = :businessType and entity.courtSession = :courtSession", singleResult = SingleResultType.OPTIONAL, max = 1)
+    @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo(entity.courtScheduleId, entity.ouCode, entity.createdOn) " +
+            "from CourtSchedule entity where entity.courtRoomId = :courtRoomId " +
+            "and entity.sessionDate = :sessionDate and entity.businessType = :businessType " +
+            "and entity.courtSession = :courtSession", singleResult = SingleResultType.OPTIONAL, max = 1)
     public abstract CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(@QueryParam("courtRoomId") String courtRoomId,
                                                                                                            @QueryParam("sessionDate") LocalDate sessionDate,
                                                                                                            @QueryParam("businessType") String businessType,

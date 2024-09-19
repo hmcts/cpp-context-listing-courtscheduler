@@ -173,8 +173,8 @@ public class RotaFileProcessorService {
         final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, migratedMap, TRUE, requester);
         logger.info("received slots with slot size: {} and slotsForMigrated: {}", slots.size(), slotsForMigrated.size());
 
-        final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records, requester);
-        final Collection<CourtScheduleJudiciary> schedulesForMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForMigrated, records, requester);
+        final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records, FALSE, requester);
+        final Collection<CourtScheduleJudiciary> schedulesForMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForMigrated, records, TRUE, requester);
         logger.info("received schedules with schedules size: {} and schedulesForMigrated: {}", schedules.size(), schedulesForMigrated.size());
 
         logger.info("Enriched {} , saving it to DB..", slots.size());
@@ -301,7 +301,13 @@ public class RotaFileProcessorService {
         logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
     }
 
-    private SlotAndScheduleInfo getExtractAndReceiveSlotAndScheduleInfo(final List<String> ouCodes, final Map<String, CourtSchedule> slots, final Collection<CourtScheduleJudiciary> schedules, final Collection<CourtScheduleJudiciary> schedulesForMigrated, final LocalDate startDate, final LocalDate endDate, final Map<String, BusinessType> businessTypesMap) {
+    private SlotAndScheduleInfo getExtractAndReceiveSlotAndScheduleInfo(final List<String> ouCodes,
+                                                                        final Map<String, CourtSchedule> slots,
+                                                                        final Collection<CourtScheduleJudiciary> schedules,
+                                                                        final Collection<CourtScheduleJudiciary> schedulesForMigrated,
+                                                                        final LocalDate startDate,
+                                                                        final LocalDate endDate,
+                                                                        final Map<String, BusinessType> businessTypesMap) {
         // all existing slots including migrated and non-migrated
         final List<CourtSchedule> existingSlotList = sessionsService.getExtractedCourtSchedules(ouCodes, startDate, endDate);
 
