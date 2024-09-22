@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.Integer.parseInt;
 
+import uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -18,9 +19,13 @@ import javax.json.Json;
 import javax.json.JsonObject;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class SlotsSearchService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SlotsSearchService.class.getName());
+
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
 
@@ -43,7 +48,12 @@ public class SlotsSearchService {
     }
 
     public Pair<Integer, List<CourtSchedule>> getCourtSchedules(HearingSlotRequestParam hearingSlotRequestParam) {
+        final   long startcourtschedulequery = System.nanoTime();
         final Pair<Integer, List<CourtSchedule>> courtSchedules = courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam);
+        final long endcourtschedulequery = System.nanoTime();
+        LOGGER.info("BRS: Time taken for validation : {}", (endcourtschedulequery - startcourtschedulequery) / 1000000);
+
+        final long startfiltering = System.nanoTime();
         final List<CourtSchedule> filteredCourtSchedules = new ArrayList<>();
         for (final CourtSchedule courtSchedule : courtSchedules.getValue()) {
             final Optional<CourtSchedule> foundCourtSchedule = filteredCourtSchedules
@@ -57,6 +67,8 @@ public class SlotsSearchService {
                 filteredCourtSchedules.add(courtSchedule);
             }
         }
+        final long endfiltering = System.nanoTime();
+        LOGGER.info("BRS: Time taken for filtering : {}", (endfiltering - startfiltering) / 1000000);
         return Pair.of(courtSchedules.getKey(), filteredCourtSchedules);
     }
 

@@ -218,7 +218,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         List<CourtSchedule> courtScheduleList =
                 entityManager.createQuery(criteriaQuery).setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize).getResultList();
         List<CourtSchedule> totalCourtScheduleList = entityManager.createQuery(criteriaQuery).getResultList();
+        final long criteriaQuerystartTime = System.nanoTime();
         courtScheduleList.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
+        final long criteriaQueryendTime = System.nanoTime();
+        LOGGER.info("BRS: Time taken for criteriaQuery : {} resultsize {}", (criteriaQueryendTime - criteriaQuerystartTime) / 1000000,totalCourtScheduleList.size());
         int resultSize = totalCourtScheduleList.size();
 
         if (resultSize > 0) {
@@ -226,6 +229,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
 
             ModelMapper modelMapper = new ModelMapper();
+            final long mappingStartTime = System.nanoTime();
             courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
             courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
 
@@ -234,16 +238,23 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                         addSlotStartTimes(slotStartTimeList, courtSchedule);
                     }
             );
+            final long mappingEndTime = System.nanoTime();
+            LOGGER.info("BRS: Time taken for mapping : {}", (mappingEndTime - mappingStartTime) / 1000000);
         }
 
         return Pair.of(resultSize, courtSchedules);
     }
 
     public List<CourtScheduleJudiciary> getCourtScheduleJudiciaries(List<CourtSchedule> courtScheduleList) {
+         List<CourtScheduleJudiciary> courtScheduleJudiciaryList = new ArrayList<>();
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<CourtScheduleJudiciary> criteriaQuery = criteriaBuilder.createQuery(CourtScheduleJudiciary.class);
         courtScheduleCriteria.createCourtScheduleJudiciaryCriteria(courtScheduleList, criteriaBuilder, criteriaQuery);
-        return entityManager.createQuery(criteriaQuery).getResultList();
+        final long startjudiciaryquery = System.nanoTime();
+        courtScheduleJudiciaryList = entityManager.createQuery(criteriaQuery).getResultList();
+        final long endjudiciaryquery = System.nanoTime();
+        LOGGER.info("BRS: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1000000);
+        return courtScheduleJudiciaryList;
     }
 
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> deleteCourtSchedule(List<String> courtScheduleIdList) {
@@ -458,12 +469,17 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     private Map<String, List<SlotStartTime>> getCountBasedAllocatedListing(final Set<String> courtScheduleIds) {
         final Map<String, List<SlotStartTime>> resultStringListMap = new HashMap<>();
+        LOGGER.info("number of courtScheduleIds : {}", courtScheduleIds.size());
 
         javax.persistence.Query query = entityManager
                 .createNativeQuery("select court_schedule_id , hearing_start_time, count(*) as count from allocated_listings where court_schedule_id IN :courtScheduleId group by court_schedule_id , hearing_start_time");
         query.setParameter("courtScheduleId", courtScheduleIds);
 
+        final long allocatedListingsStartTime = System.nanoTime();
         List<Object[]> queryResultList = query.getResultList();
+        final long allocatedListingsEndTime = System.nanoTime();
+        LOGGER.info("BRS: Time taken for allocatedListings : {} ", (allocatedListingsEndTime - allocatedListingsStartTime) / 1000000);
+
 
         queryResultList.forEach(response -> {
             final List<SlotStartTime> slotStartTimes = resultStringListMap.computeIfAbsent((String) response[0], k -> new ArrayList<>());
