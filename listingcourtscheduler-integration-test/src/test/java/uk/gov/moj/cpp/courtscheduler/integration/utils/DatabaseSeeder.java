@@ -70,6 +70,7 @@ public class DatabaseSeeder {
     private static final String PROVISIONAL_BOOKING_DELETE_SQL = "DELETE FROM provisional_booking";
 
     private static final String COURT_SCHEDULE_JUDICIARY_DELETE_SQL = "DELETE FROM court_schedule_judiciary";
+    private static final String COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL = "DELETE FROM court_schedule_judiciary where court_listing_profile_id = ?";
     private static final String MIGRATION_STATUS_DELETE_SQL = "DELETE FROM courtscheduler_migration_status";
 
     private static final String COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL = "UPDATE court_schedule SET court_listing_profile_id = null WHERE oucode = ?";
@@ -100,6 +101,14 @@ public class DatabaseSeeder {
     public void cleanCourtScheduleJudiciaryTable() throws SQLException {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
              final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_SQL)) {
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    public void deleteJudiciaryByProfileId(final String listingProfileId) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL)) {
+            preparedStatement.setString(1, listingProfileId);
             preparedStatement.executeUpdate();
         }
     }
