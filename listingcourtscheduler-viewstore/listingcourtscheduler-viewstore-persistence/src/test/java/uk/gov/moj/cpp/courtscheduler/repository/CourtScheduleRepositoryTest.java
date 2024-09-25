@@ -125,6 +125,10 @@ public class CourtScheduleRepositoryTest {
         matchingCourtSchedule2.setCourtRoomName("Courtroom 02");
         matchingCourtSchedule3.setCourtRoomName("Courtroom 03");
 
+        matchingCourtSchedule1.setActive(true);
+        matchingCourtSchedule2.setActive(true);
+        matchingCourtSchedule3.setActive(true);
+
         courtScheduleRepository.save(matchingCourtSchedule1);
         courtScheduleRepository.save(matchingCourtSchedule2);
         courtScheduleRepository.save(matchingCourtSchedule3);

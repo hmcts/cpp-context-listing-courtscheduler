@@ -84,6 +84,7 @@ public class CourtScheduleCriteria {
         Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
 
         Predicate finalPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_HOUSE_ID), courtScheduleRequestParam.courtCentreId());
+        finalPredicate = criteriaBuilder.and(finalPredicate, criteriaBuilder.equal(root.get(CourtSchedule_.ACTIVE), true));
 
         if (isNotBlank(courtScheduleRequestParam.courtRoomId())) {
             Predicate courtRoomPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_ID), courtScheduleRequestParam.courtRoomId());
