@@ -85,6 +85,7 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 .executeUpdate();
     }
 
+    @SuppressWarnings("squid:S2077")
     public List getAllocatedScheduleJudiciaryInfo(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
         return entityManager()
                 .createNativeQuery(SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY)
