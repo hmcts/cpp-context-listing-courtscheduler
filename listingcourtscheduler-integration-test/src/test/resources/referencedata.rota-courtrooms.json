@@ -24,7 +24,9 @@
       "oucodeL3Name": "Northallerton Magistrates' Court",
       "oucodeL2Name": "North Yorkshire",
       "oucodeL2Code": "12",
-      "oucodeUUID": "22c69328-70af-3e27-80c5-1a79e24903d2"
+      "oucodeUUID": "22c69328-70af-3e27-80c5-1a79e24903d2",
+      "courtroomName": "Courtroom 01",
+      "courtroomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c"
     },
     {
       "id": "0b60424c-8099-3f5c-87ff-683e0d9d19db",
