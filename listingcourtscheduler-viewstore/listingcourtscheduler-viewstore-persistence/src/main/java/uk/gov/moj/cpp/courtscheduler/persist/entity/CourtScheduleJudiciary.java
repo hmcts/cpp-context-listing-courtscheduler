@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import java.util.Date;
 import java.util.Objects;
 
 import javax.persistence.Column;
@@ -200,6 +201,119 @@ public class CourtScheduleJudiciary {
                 ", createdOn=" + createdOn +
                 ", updatedOn=" + updatedOn +
                 '}';
+    }
+
+    public static final class CourtScheduleJudiciaryBuilder {
+        private CourtScheduleJudiciaryKey id;
+        private String courtListingProfileId;
+        private String rotaJudiciaryId;
+        private String title;
+        private String forenames;
+        private String surname;
+        private String email;
+        private String judiciaryType;
+        private Boolean isBenchChairman;
+        private Boolean isDeputy;
+        private String position;
+        private Boolean active;
+        private Date createdOn;
+        private Date updatedOn;
+
+        private CourtScheduleJudiciaryBuilder() {
+        }
+
+        public static CourtScheduleJudiciaryBuilder courtScheduleJudiciary() {
+            return new CourtScheduleJudiciaryBuilder();
+        }
+
+        public CourtScheduleJudiciaryBuilder withId(CourtScheduleJudiciaryKey id) {
+            this.id = id;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withCourtListingProfileId(String courtListingProfileId) {
+            this.courtListingProfileId = courtListingProfileId;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withRotaJudiciaryId(String rotaJudiciaryId) {
+            this.rotaJudiciaryId = rotaJudiciaryId;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withTitle(String title) {
+            this.title = title;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withForenames(String forenames) {
+            this.forenames = forenames;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withSurname(String surname) {
+            this.surname = surname;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withEmail(String email) {
+            this.email = email;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withJudiciaryType(String judiciaryType) {
+            this.judiciaryType = judiciaryType;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withIsBenchChairman(Boolean isBenchChairman) {
+            this.isBenchChairman = isBenchChairman;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withIsDeputy(Boolean isDeputy) {
+            this.isDeputy = isDeputy;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withPosition(String position) {
+            this.position = position;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withActive(Boolean active) {
+            this.active = active;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withCreatedOn(Date createdOn) {
+            this.createdOn = createdOn;
+            return this;
+        }
+
+        public CourtScheduleJudiciaryBuilder withUpdatedOn(Date updatedOn) {
+            this.updatedOn = updatedOn;
+            return this;
+        }
+
+        public CourtScheduleJudiciary build() {
+            CourtScheduleJudiciary courtScheduleJudiciary = new CourtScheduleJudiciary();
+            courtScheduleJudiciary.setId(id);
+            courtScheduleJudiciary.setCourtListingProfileId(courtListingProfileId);
+            courtScheduleJudiciary.setRotaJudiciaryId(rotaJudiciaryId);
+            courtScheduleJudiciary.setTitle(title);
+            courtScheduleJudiciary.setForenames(forenames);
+            courtScheduleJudiciary.setSurname(surname);
+            courtScheduleJudiciary.setEmail(email);
+            courtScheduleJudiciary.setJudiciaryType(judiciaryType);
+            courtScheduleJudiciary.setPosition(position);
+            courtScheduleJudiciary.setActive(active);
+            courtScheduleJudiciary.setCreatedOn(createdOn);
+            courtScheduleJudiciary.setUpdatedOn(updatedOn);
+            courtScheduleJudiciary.isDeputy = this.isDeputy;
+            courtScheduleJudiciary.isBenchChairman = this.isBenchChairman;
+            return courtScheduleJudiciary;
+        }
     }
 }
 
