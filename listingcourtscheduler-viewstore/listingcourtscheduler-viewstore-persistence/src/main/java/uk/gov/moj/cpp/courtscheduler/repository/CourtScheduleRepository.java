@@ -215,24 +215,25 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
         courtScheduleCriteria.createHearingSlotsCourtScheduleCriteria(hearingSlotRequestParam, criteriaBuilder, criteriaQuery);
-        List<CourtSchedule> courtScheduleList =
-                entityManager.createQuery(criteriaQuery).setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize).getResultList();
+        List<CourtSchedule> courtScheduleList = entityManager.createQuery(criteriaQuery).setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize).getResultList();
         List<CourtSchedule> totalCourtScheduleList = entityManager.createQuery(criteriaQuery).getResultList();
         final long criteriaQuerystartTime = System.nanoTime();
         courtScheduleList.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
         final long criteriaQueryendTime = System.nanoTime();
-        LOGGER.info("BRS: Time taken for criteriaQuery : {} resultsize {}", (criteriaQueryendTime - criteriaQuerystartTime) / 1000000,totalCourtScheduleList.size());
+        LOGGER.info("BRS: Time taken for criteriaQuery : {} resultsize {}", (criteriaQueryendTime - criteriaQuerystartTime) / 1000000, totalCourtScheduleList.size());
         int resultSize = totalCourtScheduleList.size();
 
         if (resultSize > 0) {
-            final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtScheduleList);
             final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds);
-
             ModelMapper modelMapper = new ModelMapper();
             final long mappingStartTime = System.nanoTime();
             courtScheduleList.forEach(courtSchedule -> courtSchedules.add(modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class)));
-            courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
-
+            //judiciary details are not required for provisional bookings without listing profile(ghost rota)
+            final List<CourtSchedule> courtSchedulesWithProfileId = courtScheduleList.stream().filter(courtSchedule -> courtSchedule.getListingProfileId() != null).toList();
+            if (isNotEmpty(courtSchedulesWithProfileId)) {
+                final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = getCourtScheduleJudiciaries(courtSchedulesWithProfileId);
+                courtScheduleJudiciaryList.forEach(courtScheduleJudiciary -> courtScheduleJudiciaries.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
+            }
             courtSchedules.forEach(courtSchedule -> {
                         addJudiciaries(courtScheduleJudiciaries, courtSchedule);
                         addSlotStartTimes(slotStartTimeList, courtSchedule);
@@ -241,17 +242,15 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             final long mappingEndTime = System.nanoTime();
             LOGGER.info("BRS: Time taken for mapping : {}", (mappingEndTime - mappingStartTime) / 1000000);
         }
-
         return Pair.of(resultSize, courtSchedules);
     }
 
     public List<CourtScheduleJudiciary> getCourtScheduleJudiciaries(List<CourtSchedule> courtScheduleList) {
-         List<CourtScheduleJudiciary> courtScheduleJudiciaryList = new ArrayList<>();
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<CourtScheduleJudiciary> criteriaQuery = criteriaBuilder.createQuery(CourtScheduleJudiciary.class);
-        courtScheduleCriteria.createCourtScheduleJudiciaryCriteria(courtScheduleList, criteriaBuilder, criteriaQuery);
         final long startjudiciaryquery = System.nanoTime();
-        courtScheduleJudiciaryList = entityManager.createQuery(criteriaQuery).getResultList();
+        final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = entityManager.createNativeQuery("select * from court_schedule_judiciary s where s.active = true and s.court_schedule_id in (:courtScheduleIdList) and court_listing_profile_id in (:courtListingProfileIdList)", CourtScheduleJudiciary.class)
+                .setParameter("courtScheduleIdList", courtScheduleList.stream().map(CourtSchedule::getCourtScheduleId).toList())
+                .setParameter("courtListingProfileIdList", courtScheduleList.stream().map(CourtSchedule::getListingProfileId).toList())
+                .getResultList();
         final long endjudiciaryquery = System.nanoTime();
         LOGGER.info("BRS: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1000000);
         return courtScheduleJudiciaryList;

@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.UUID.randomUUID;
+import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PROVISIONAL_SLOTS;
 
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
@@ -24,6 +25,7 @@ import javax.inject.Inject;
 import javax.json.Json;
 import javax.json.JsonObject;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.modelmapper.ModelMapper;
 
 @ApplicationScoped
@@ -47,7 +49,7 @@ public class ProvisionalBookingService {
         });
 
         return Json.createObjectBuilder()
-                .add(BOOKING_ID,bookingId)
+                .add(BOOKING_ID, bookingId)
                 .build();
     }
 
@@ -62,17 +64,23 @@ public class ProvisionalBookingService {
         List<ProvisionalBooking> provisionalBookings = provisionalBookingRepository.findByBookingIdIn(bookingIdList);
         List<CourtSchedule> courtScheduleList =
                 provisionalBookings.stream().map(provisionalBooking -> provisionalBooking.getProvisionalBookingKey().getCourtSchedule()).toList();
-        List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciaries(courtScheduleList);
+        final List<CourtSchedule> courtSchedulesWithListingProfile = courtScheduleList.stream()
+                .filter(courtSchedule -> courtSchedule.getListingProfileId() != null)
+                .toList();
+        //judiciary details are not required for provisional bookings without listing profile(ghost rota)
+        if (isNotEmpty(courtSchedulesWithListingProfile)) {
+            List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciaries(courtScheduleList);
+            courtScheduleJudiciaries.forEach(courtScheduleJudiciary ->
+                    courtScheduleJudiciariesArrayList.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
+        }
 
         provisionalBookings.forEach(provisionalBooking -> provisionalBookingInfoArrayList.add(buildProvisionalInfo(provisionalBooking)));
-        courtScheduleJudiciaries.forEach(courtScheduleJudiciary ->
-            courtScheduleJudiciariesArrayList.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
 
         provisionalBookingInfoArrayList.forEach(provisionalBooking ->
                 Optional.of(courtScheduleJudiciariesArrayList.stream()
-                                .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtListingProfileId().equals(provisionalBooking.getListingProfileId()))
-                                .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtScheduleId().equals(provisionalBooking.getCourtScheduleId()))
-                                .toList()).ifPresent(provisionalBooking.getJudiciaries()::addAll));
+                        .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtListingProfileId().equals(provisionalBooking.getListingProfileId()))
+                        .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtScheduleId().equals(provisionalBooking.getCourtScheduleId()))
+                        .toList()).ifPresent(provisionalBooking.getJudiciaries()::addAll));
 
         return Json.createObjectBuilder()
                 .add(PROVISIONAL_SLOTS.getLabel(), listToJsonArrayConverter.convert(provisionalBookingInfoArrayList))
