@@ -13,6 +13,7 @@ import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
+import com.microsoft.azure.storage.blob.ListBlobItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,13 +39,13 @@ public class RotaFileCaptureAndProcessTriggerService {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
         // download all the files in the input container
-        final Map<String, byte[]> downloadedBlobsByteArrayMap = azureBlobClientService.downloadFiles(blobPrefix);
+        final Map<String, ListBlobItem> downloadedBlobsByteArrayMap = azureBlobClientService.collectListBlobItems(blobPrefix);
         if (!downloadedBlobsByteArrayMap.isEmpty()) {
             loadReferenceData(requester);
         }
         // for each of the files process rotasl
         downloadedBlobsByteArrayMap.keySet().forEach(blobName -> {
-            final byte[] blobContent = downloadedBlobsByteArrayMap.get(blobName);
+            final byte[] blobContent = azureBlobClientService.downloadFiles(downloadedBlobsByteArrayMap.get(blobName)); ;
             rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
         });
 
