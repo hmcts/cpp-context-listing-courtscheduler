@@ -74,6 +74,7 @@ public class DatabaseSeeder {
     private static final String MIGRATION_STATUS_DELETE_SQL = "DELETE FROM courtscheduler_migration_status";
 
     private static final String COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL = "UPDATE court_schedule SET court_listing_profile_id = null WHERE oucode = ?";
+    private static final String UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE = "UPDATE court_schedule SET available_slot = available_slot - 1 WHERE court_listing_profile_id = ?";
 
     private final ConnectionProvider connectionProvider = new ConnectionProvider();
 
@@ -231,6 +232,15 @@ public class DatabaseSeeder {
              final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL)) {
 
             preparedStatement.setString(1, ouCode);
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    public void setUpdateAvailableSlotForCourtSchedule(final String listingProfileId) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE)) {
+
+            preparedStatement.setString(1, listingProfileId);
             preparedStatement.executeUpdate();
         }
     }

@@ -1,8 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
+import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -17,7 +16,6 @@ import org.apache.deltaspike.data.api.Modifying;
 import org.apache.deltaspike.data.api.Query;
 import org.apache.deltaspike.data.api.QueryParam;
 import org.apache.deltaspike.data.api.Repository;
-import org.apache.deltaspike.data.api.SingleResultType;
 
 @Repository(forEntity = CourtScheduleJudiciary.class)
 public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey> {
@@ -25,10 +23,16 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
     private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN " +
             " (SELECT cs.id FROM court_schedule cs WHERE cs.max_slot = cs.available_slot " +
             "AND cs.max_duration_mins = cs.available_duration_mins AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) " +
-            "AND not exists (" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
+            "AND not exists (" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
 
     public static final String DELETE_CSJ_BY_IDS_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) " +
             "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)";
+
+    private static final String SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "SELECT csj.court_schedule_id courtScheduleId, csj.judiciary_id judiciaryId " +
+            "FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN " +
+            " (SELECT cs.id FROM court_schedule cs WHERE (cs.max_slot != cs.available_slot OR cs.max_duration_mins != cs.available_duration_mins) " +
+            "AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) " +
+            "OR exists (" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
 
     public abstract CourtScheduleJudiciary findByEmail(String email);
 
@@ -79,6 +83,15 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 .createNativeQuery(DELETE_CSJ_BY_IDS_QUERY)
                 .setParameter("courtScheduleIds", courtScheduleIds)
                 .executeUpdate();
+    }
+
+    public List getAllocatedScheduleJudiciaryInfo(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
+        return entityManager()
+                .createNativeQuery(SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY)
+                .setParameter("startDate", startDate)
+                .setParameter("endDate", endDate)
+                .setParameter("ouCodes", ouCodes)
+                .getResultList();
     }
 
     @Modifying

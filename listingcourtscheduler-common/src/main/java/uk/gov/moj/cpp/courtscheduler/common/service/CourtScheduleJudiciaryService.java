@@ -54,4 +54,8 @@ public class CourtScheduleJudiciaryService {
     public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
         return courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
     }
+
+    public List<Object[]> getAllocatedScheduleJudiciaryInfo(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
+        return courtScheduleJudiciaryRepository.getAllocatedScheduleJudiciaryInfo(startDate, endDate, ouCodes);
+    }
 }
