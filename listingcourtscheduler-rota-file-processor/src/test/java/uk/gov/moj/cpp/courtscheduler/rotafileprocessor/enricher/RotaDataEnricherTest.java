@@ -93,7 +93,7 @@ class RotaDataEnricherTest {
         final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
-        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(new CourtScheduleMatcherInfo(courtScheduleId, Calendar.getInstance().getTime()));
+        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(new CourtScheduleMatcherInfo(courtScheduleId, courtSchedule.getOuCode(), Calendar.getInstance().getTime()));
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), eq(requester))).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
@@ -134,7 +134,7 @@ class RotaDataEnricherTest {
         final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
-        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(new CourtScheduleMatcherInfo(courtScheduleId, Calendar.getInstance().getTime()));
+        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(new CourtScheduleMatcherInfo(courtScheduleId, courtSchedule.getOuCode(), Calendar.getInstance().getTime()));
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), eq(requester))).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
