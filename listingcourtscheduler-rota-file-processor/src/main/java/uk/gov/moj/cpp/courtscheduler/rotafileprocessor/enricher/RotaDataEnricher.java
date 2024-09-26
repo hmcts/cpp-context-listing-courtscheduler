@@ -67,6 +67,7 @@ public class RotaDataEnricher {
                                                           final Boolean migrated,
                                                           final Requester requester) {
         logger.info("enrichCourtListing - masterRotaFileCutOffDate: {}", masterRotaFileCutOffDate);
+        long enrichCourtListingStartTime = System.currentTimeMillis();
         final Map<String, Map<String, String>> courtListings = records.get(COURT_LISTING);
         final Map<String, CourtSchedule> courtSchedules = new HashMap<>();
         final Map<String, String> missingReferenceDataMappingMap = new HashMap<>();
@@ -84,6 +85,8 @@ public class RotaDataEnricher {
                 logger.error(format(EXCEPTION_MSG, listingProfile.get("id")), ex);
             }
         }
+        final long enrichCourtListingEndTime = System.currentTimeMillis();
+        logger.info("Time taken to enrich court listings: {} ms", enrichCourtListingEndTime - enrichCourtListingStartTime);
         if (!missingReferenceDataMappingMap.isEmpty()) {
             missingReferenceDataMappingLogger.logMissingMessage(missingReferenceDataMappingMap);
         }

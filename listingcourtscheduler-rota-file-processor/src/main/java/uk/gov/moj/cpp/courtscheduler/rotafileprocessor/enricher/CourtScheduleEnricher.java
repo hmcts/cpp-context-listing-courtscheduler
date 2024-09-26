@@ -99,7 +99,7 @@ public class CourtScheduleEnricher {
                                            final Requester requester) {
         final String listingSession = courtSession.getCourtSession(sessionDate, courtSessionStr);
         final Optional<CourtRoomSessionAllocation> sessionAllocation = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(requester, courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType);
-        logger.info("called referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {} - with result : {}",
+        logger.debug("called referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {} - with result : {}",
                 courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessType, sessionAllocation);
         if (sessionAllocation.isPresent()) {
             final uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation allocation = sessionAllocation.get();
