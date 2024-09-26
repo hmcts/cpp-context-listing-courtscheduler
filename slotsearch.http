@@ -1,0 +1,15 @@
+GET http://localhost:8080/listingcourtscheduler-api/rest/courtscheduler/hearingslots?sessionStartDate=2025-05-01&panel=ADULT&ouCode=B01LY00&pageNumber=1&sessionEndDate=2025-05-30&pageSize=1
+Accept: application/vnd.courtscheduler.get.hearing.slots+json
+CJSCPPUID: abce7b02-7872-4c0d-8ffc-a475fafd2819
+
+
+<> 2024-07-07T233042.500.html
+<> 2024-07-07T233005.500.html
+<> 2024-07-07T150756.400.octet-stream
+<> 2024-07-07T150727.400.octet-stream
+<> 2024-07-07T150524.500.html
+<> 2024-07-07T145752.403.octet-stream
+<> 2024-07-07T145730.403.octet-stream
+<> 2024-07-05T235918.400.octet-stream
+
+###
