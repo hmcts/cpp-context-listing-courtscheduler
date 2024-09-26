@@ -67,9 +67,7 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
 
     }
 
-    public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(@QueryParam("startDate") final LocalDate startDate,
-                                                                             @QueryParam("endDate") final LocalDate endDate,
-                                                                             @QueryParam("ouCodes") final List<String> ouCodes) {
+    public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
         return entityManager()
                 .createNativeQuery(DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY)
                 .setParameter("startDate", startDate)
