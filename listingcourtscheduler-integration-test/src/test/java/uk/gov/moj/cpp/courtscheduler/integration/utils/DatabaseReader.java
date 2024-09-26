@@ -25,11 +25,13 @@ public class DatabaseReader {
     private static final String PASSWORD = "scsl";
     private static final String DATABASE = "scsl";
 
-    private static final String COURT_SCHEDULE_GET_SQL = "SELECT * FROM court_schedule WHERE active is true AND court_listing_profile_id is not null ORDER BY session_start";
+    private static final String COURT_SCHEDULE_GET_SQL = "SELECT * FROM court_schedule WHERE active is true ORDER BY session_start";
     private static final String COURT_SCHEDULE_JUDICIARY_GET_SQL = "SELECT * FROM court_schedule_judiciary WHERE active is true";
-    private static final String COURT_SCHEDULE_MAX_UPDATED_ON_CREATED_ON_SQL = "SELECT max(created_on) maxCreatedOn, max(updated_on) maxUpdatedOn FROM court_schedule WHERE active is true AND court_listing_profile_id is not null";
-    private static final String COURT_SCHEDULE_CREATED_AFTER_SQL = "SELECT * FROM court_schedule WHERE active is true AND court_listing_profile_id is not null AND created_on > ? ORDER BY session_start";
-    private static final String COURT_SCHEDULE_UPDATED_AFTER_SQL = "SELECT * FROM court_schedule WHERE active is true AND court_listing_profile_id is not null AND updated_on > ? ORDER BY session_start";
+    private static final String COURT_SCHEDULE_MAX_UPDATED_ON_CREATED_ON_SQL = "SELECT max(created_on) maxCreatedOn, max(updated_on) maxUpdatedOn FROM court_schedule WHERE active is true";
+    private static final String COURT_SCHEDULE_JUDICIARY_MAX_UPDATED_ON_CREATED_ON_SQL = "SELECT max(created_on) maxCreatedOn, max(updated_on) maxUpdatedOn FROM court_schedule_judiciary WHERE active is true";
+    private static final String COURT_SCHEDULE_CREATED_AFTER_SQL = "SELECT * FROM court_schedule WHERE active is true AND created_on > ? ORDER BY session_start";
+    private static final String COURT_SCHEDULE_UPDATED_AFTER_SQL = "SELECT * FROM court_schedule WHERE active is true AND updated_on > ? ORDER BY session_start";
+    private static final String COURT_SCHEDULE_JUDICIARY_CREATED_AFTER_SQL = "SELECT * FROM court_schedule_judiciary WHERE active is true AND created_on > ?";
 
     private final ConnectionProvider connectionProvider = new ConnectionProvider();
 
@@ -49,12 +51,32 @@ public class DatabaseReader {
         return executeCourtScheduleUpdatedAfterQuery(updatedOn);
     }
 
-    public Pair<LocalDateTime, LocalDateTime> getMaxCreatedOnFromCourtSchedule() {
+    public List<CourtScheduleJudiciary> courtScheduleJudiciariesCreatedAfter(final LocalDateTime createdOn) {
+        return executeCourtScheduleJudiciariesCreatedAfterQuery(createdOn);
+    }
+
+    public Pair<LocalDateTime, LocalDateTime> getMaxCreatedOnForCourtSchedule() {
         LocalDateTime maxCreatedOn = null;
         LocalDateTime maxUpdatedOn = null;
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
              final Statement statement = connection.createStatement()) {
             final ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_MAX_UPDATED_ON_CREATED_ON_SQL);
+            while (resultSet.next()) {
+                maxCreatedOn = resultSet.getTimestamp("maxCreatedOn").toLocalDateTime();
+                maxUpdatedOn = resultSet.getTimestamp("maxUpdatedOn").toLocalDateTime();
+            }
+            return Pair.of(maxCreatedOn, maxUpdatedOn);
+        } catch (final SQLException exp) {
+            throw new RuntimeException("Exception while querying the DB", exp);
+        }
+    }
+
+    public Pair<LocalDateTime, LocalDateTime> getMaxUpdatedAndCreatedOnForCourtScheduleJudiciary() {
+        LocalDateTime maxCreatedOn = null;
+        LocalDateTime maxUpdatedOn = null;
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final Statement statement = connection.createStatement()) {
+            final ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_JUDICIARY_MAX_UPDATED_ON_CREATED_ON_SQL);
             while (resultSet.next()) {
                 maxCreatedOn = resultSet.getTimestamp("maxCreatedOn").toLocalDateTime();
                 maxUpdatedOn = resultSet.getTimestamp("maxUpdatedOn").toLocalDateTime();
@@ -73,6 +95,21 @@ public class DatabaseReader {
             final List<CourtSchedule> rows = new ArrayList<>();
             while (resultSet.next()) {
                 rows.add(resultSetToCourtSchedule(resultSet));
+            }
+            return unmodifiableList(rows);
+        } catch (final SQLException exp) {
+            throw new RuntimeException("Exception while querying the DB", exp);
+        }
+    }
+
+    private List<CourtScheduleJudiciary> executeCourtScheduleJudiciariesCreatedAfterQuery(final LocalDateTime createdOn) {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_CREATED_AFTER_SQL)) {
+            statement.setTimestamp(1, Timestamp.valueOf(createdOn));
+            final ResultSet resultSet = statement.executeQuery();
+            final List<CourtScheduleJudiciary> rows = new ArrayList<>();
+            while (resultSet.next()) {
+                rows.add(resultSetToCourtScheduleJudiciary(resultSet));
             }
             return unmodifiableList(rows);
         } catch (final SQLException exp) {

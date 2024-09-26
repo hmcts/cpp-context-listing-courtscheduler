@@ -5,6 +5,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -17,8 +18,10 @@ import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setFi
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
@@ -26,10 +29,13 @@ import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.util.PropertiesLoader;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDate;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +56,9 @@ class JudiciaryScheduleEnricherTest {
 
     @Mock
     private ReferenceDataMapperService referenceDataMapperService;
+
+    @Mock
+    private SessionsService sessionsService;
 
     @Mock
     private Requester requester;
@@ -75,10 +84,10 @@ class JudiciaryScheduleEnricherTest {
         when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.of(judiciary));
         when(courtScheduleMap.get(anyString())).thenReturn(new CourtSchedule());
 
-        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, requester);
+        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, requester);
 
-        verify(referenceDataMapperService, times(32)).findByEmail(eq(requester), anyString());
-        assertThat(courtScheduleJudiciaries.size(), is(32));
+        verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
+        assertThat(courtScheduleJudiciaries.size(), is(3));
 
         final Optional<CourtScheduleJudiciary> courtScheduleJudiciary = courtScheduleJudiciaries.stream().findFirst();
 
@@ -98,8 +107,7 @@ class JudiciaryScheduleEnricherTest {
             assertNotNull(csj.getPosition());
         }
 
-        verify(referenceDataMapperService, times(32)).findByEmail(eq(requester), anyString());
-        verify(missingMessageLogger, atLeastOnce()).logJudiciaryMissingMessage(anyCollection());
+        verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
 
         verifyNoMoreInteractions(referenceDataMapperService, missingMessageLogger);
     }
@@ -115,10 +123,14 @@ class JudiciaryScheduleEnricherTest {
 
         when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.empty());
         final Map<String, CourtSchedule> courtScheduleMap = new HashMap<>();
+        final CourtSchedule courtSchedule = courtSchedule();
+        courtScheduleMap.put(courtSchedule.getListingProfileId(), courtSchedule);
+        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(), anyString(), anyString()))
+                .thenReturn(new CourtScheduleMatcherInfo(courtSchedule.getCourtScheduleId(), "B01LY00", Calendar.getInstance().getTime()));
 
-        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, requester);
+        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, requester);
 
-        verify(referenceDataMapperService, times(32)).findByEmail(eq(requester), anyString());
+        verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
         assertThat(courtScheduleJudiciaries.size(), is(0));
 
         final Optional<CourtScheduleJudiciary> courtScheduleJudiciary = courtScheduleJudiciaries.stream().findFirst();
@@ -128,7 +140,7 @@ class JudiciaryScheduleEnricherTest {
             assertThat(csj.getJudiciaryId(), is(nullValue()));
         }
 
-        verify(referenceDataMapperService, times(32)).findByEmail(eq(requester), anyString());
+        verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
         verify(missingMessageLogger, atLeastOnce()).logJudiciaryMissingMessage(anyCollection());
 
         verifyNoMoreInteractions(referenceDataMapperService, missingMessageLogger);
@@ -143,5 +155,27 @@ class JudiciaryScheduleEnricherTest {
 
     private Judiciary getJudiciary() {
         return new Judiciary("9ff490e1-c5b8-47b8-ae78-b71d88fdb798", "Mrs", "TienaTS", "SvenTS", "LuciusTSFloraTS@moj.gov.uk", "Magistrates");
+    }
+
+    private CourtSchedule courtSchedule() {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(UUID.randomUUID().toString())
+                .withListingProfileId("LH2294283")
+                .withSessionDate(LocalDate.of(2024, 11, 24))
+                .withOuCode("CABC90")
+                .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
+                .withCourtRoomNumber(1234)
+                .withCourtHouseName("Liverpool Mags Court")
+                .withCourtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
+                .withCourtRoomName("Court name1")
+                .withOperationalUnit("ANC")
+                .withBusinessType("BYS")
+                .withPanel("PANEL")
+                .withCourtSession("AM")
+                .withMaxDuration(182)
+                .withAvailableSlots(125)
+                .withAvailableDuration(182)
+                .withMaxSlots(125)
+                .build();
     }
 }
