@@ -6,6 +6,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciar
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,5 +48,10 @@ public class CourtScheduleJudiciaryService {
         }
 
         return result;
+    }
+
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
+        return courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
     }
 }

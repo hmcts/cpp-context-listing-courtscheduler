@@ -33,7 +33,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
@@ -97,9 +96,6 @@ public class RotaFileProcessorService {
 
     @Inject
     private SessionsService sessionsService;
-
-    @Inject
-    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
     @Inject
     private CourtScheduleJudiciaryService courtScheduleJudiciaryService;
@@ -230,7 +226,7 @@ public class RotaFileProcessorService {
                                      final List<String> nonMigratedOuCodes,
                                      final Map<String, BusinessType> businessTypesMap) {
         logger.info("DD-15703:processFullRotaFile: started processing");
-        final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
+        final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
         logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
 
         if (isNotEmpty(nonMigratedOuCodes)) {
@@ -241,7 +237,7 @@ public class RotaFileProcessorService {
         }
 
         final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
-        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, masterRotaPeriodCutOffDate, businessTypesMap, FULL_ROTA_FILE_ACTION, null, null, slotAndScheduleInfo);
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, FULL_ROTA_FILE_ACTION, null, null, slotAndScheduleInfo);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
     }
 
@@ -262,7 +258,7 @@ public class RotaFileProcessorService {
         final LocalDate endDate = startAndEndDate.get(END_DATE.getLabel());
 
         final long deleteunAllocatedCourtScheduleJudiciariesStartTime = System.currentTimeMillis();
-        final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
+        final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
 
         logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
         if (isNotEmpty(nonMigratedOuCodes)) {
@@ -277,7 +273,7 @@ public class RotaFileProcessorService {
         final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
         final long extractandreceiveSlotAndScheduleInfoEndTime = System.currentTimeMillis();
         logger.info("DD-15703:processSnapshotRotaFile: after getExtractAndReceiveSlotAndScheduleInfo in {} ms", extractandreceiveSlotAndScheduleInfoEndTime - extractandreceiveSlotAndScheduleInfoStartTime);
-        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, startDate, endDate, businessTypesMap, SNAPSHOT_ROTA_FILE_ACTION, fileNamePrefix, fileDate, slotAndScheduleInfo);
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, SNAPSHOT_ROTA_FILE_ACTION, fileNamePrefix, fileDate, slotAndScheduleInfo);
         logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
     }
 
@@ -287,8 +283,6 @@ public class RotaFileProcessorService {
                                      final List<String> nonMigratedOuCodes,
                                      final Map<String, CourtSchedule> slotsForMigrated,
                                      final Collection<CourtScheduleJudiciary> schedules,
-                                     final LocalDate startDate,
-                                     final LocalDate endDate,
                                      final Map<String, BusinessType> businessTypesMap,
                                      final String fileType,
                                      final String fileNamePrefix,
@@ -296,7 +290,7 @@ public class RotaFileProcessorService {
                                      final SlotAndScheduleInfo slotAndScheduleInfo) {
         final long getandudateSlotAndScheduleInfoStartTime = System.currentTimeMillis();
         final List<CourtSchedule> existingCourtSchedules = sessionsService.getExistingCourtSchedulesByOuCodes(nonMigratedOuCodes);
-        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, slotsForMigrated, schedules, businessTypesMap, startDate, endDate, ouCodes, existingCourtSchedules);
+        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, slotsForMigrated, schedules, businessTypesMap, ouCodes, existingCourtSchedules);
         final long getandudateSlotAndScheduleInfoEndTime = System.currentTimeMillis();
         logger.info("DD-15703:manageCourtSchedule: after updateSlotsAndSchedules in {} ms", getandudateSlotAndScheduleInfoEndTime - getandudateSlotAndScheduleInfoStartTime);
         if (SNAPSHOT_ROTA_FILE_ACTION.equals(fileType)) {
