@@ -31,6 +31,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.rota.DateRange;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
@@ -49,6 +50,7 @@ import java.io.ByteArrayInputStream;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -203,15 +205,24 @@ public class RotaFileProcessorService {
                     logger.warn("There is a newer snapshot rota file has been processed already. Therefore, skipping.");
                 } else {
                     logger.info("DD-15703:RotaFileProcessor: Before  processSnapshotRotaFile");
-
-                    final Map<String, LocalDate> startAndEndDate = new HashMap<>();
-                    startAndEndDate.put(START_DATE.getLabel(), rotaPeriodStartDate);
-                    startAndEndDate.put(END_DATE.getLabel(), rotaPeriodEndDate);
-                    processSnapshotRotaFile(slots, slotsForMigrated, schedules, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, fileNamePrefix, fileDateTime, businessTypesMap);
+                    List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
+                    for(DateRange dateRange: dateRanges) {
+                        final Map<String, LocalDate> startAndEndDate = new HashMap<>();
+                        startAndEndDate.put(START_DATE.getLabel(), dateRange.getStart());
+                        startAndEndDate.put(END_DATE.getLabel(), dateRange.getEnd());
+                        Map<String, CourtSchedule> filteredSlots = filterSlots(slots, dateRange);
+                        logger.info("Filtered Slots for Snapshot : {}", filteredSlots.keySet());
+                        processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedules, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, fileNamePrefix, fileDateTime, businessTypesMap);
+                    }
                 }
             }
         } else {
-            processFullRotaFile(slots, slotsForMigrated, schedules, schedulesForMigrated, rotaPeriodStartDate, masterRotaPeriodCutOffDate, ouCodes, nonMigratedOuCodes, businessTypesMap);
+            List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
+            for(DateRange dateRange: dateRanges) {
+                Map<String, CourtSchedule> filteredSlots = filterSlots(slots, dateRange);
+                logger.info("Filtered Slots for Full Rota file : {}", filteredSlots.keySet());
+                processFullRotaFile(filteredSlots, slotsForMigrated, schedules, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap);
+            }
         }
     }
 
@@ -627,5 +638,34 @@ public class RotaFileProcessorService {
             logger.error("numberFormatException whilst converting rotaCycleToPopulateLength to integer. default value {} will be used", DEFAULT_VALUE, numberFormatException);
             return DEFAULT_VALUE;
         }
+    }
+
+    public List<DateRange> weeksCovering(LocalDate start, LocalDate end) {
+        List<DateRange> result = new ArrayList<>();
+
+        while (!start.isAfter(end)) {
+            if(ChronoUnit.DAYS.between(start, end) > 6) {
+                LocalDate weekStart = start;
+                start = start.plusDays(6);
+                LocalDate weekEnd = start;
+                start = start.plusDays(1);
+                result.add(new DateRange(weekStart, weekEnd));
+                logger.info("StartDate: {}, EndDate: {}", weekStart, weekEnd);
+            } else {
+                result.add(new DateRange(start, end));
+                start = start.plusDays(6);
+                logger.info("StartDate: {}, EndDate: {}", start, end);
+            }
+        }
+        return result;
+    }
+
+    public Map<String, CourtSchedule> filterSlots(Map<String, CourtSchedule> slots, DateRange dateRange) {
+        return slots.entrySet().stream()
+                .filter(slot -> (slot.getValue().getSessionDate().isEqual(dateRange.getStart()) ||
+                        slot.getValue().getSessionDate().isEqual(dateRange.getEnd()) ||
+                        (slot.getValue().getSessionDate().isAfter(dateRange.getStart()) &&
+                        slot.getValue().getSessionDate().isBefore(dateRange.getEnd()))))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }
