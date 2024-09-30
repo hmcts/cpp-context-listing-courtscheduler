@@ -38,6 +38,7 @@ public final class CourtSchedulerConverter {
                 .withPanel(courtScheduleEntity.getPanel())
                 .withCreatedOn(courtScheduleEntity.getCreatedOn())
                 .withUpdatedOn(courtScheduleEntity.getUpdatedOn())
+                .withHasHearingsBooked(courtScheduleEntity.getHasHearingsBooked())
                 .build();
     }
 

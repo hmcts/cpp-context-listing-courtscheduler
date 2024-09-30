@@ -150,8 +150,10 @@ public class RotaFileProcessorService {
 
     private void process(final String fileName, final byte[] content, final Requester requester) {
         this.migratedMap = sessionsService.migratedMapByOuCode();
+        final Long parsingStartTime = System.nanoTime();
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
-
+        final Long parsingEndTime = System.nanoTime();
+        logger.info("Time taken to parse the file: {} ms", (parsingEndTime - parsingStartTime) / 1000000);
         logger.info("File parsed successfully and parsed now enriching it.. for file: {}", fileName);
         if (fileName.contains(DUMMY_NAME_PART)) {
             logger.warn("Received dummy support file, hence skipping file processing, for file: {}", fileName);

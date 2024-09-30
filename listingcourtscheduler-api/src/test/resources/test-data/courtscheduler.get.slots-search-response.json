@@ -1,7 +1,8 @@
 {
   "results": 1,
   "pageCount": 1,
-  "hearingSlots": [
+  "hearingSlots":
+  [
     {
       "courtScheduleId": "0000fbb0-8579-4f2b-948e-c4e48a48e3f8",
       "listingProfileId": "0000fbb0-8579-4f2b-948e-c4e48a48e3f7",
@@ -20,12 +21,11 @@
       "active": true,
       "sessionDate": "2020-12-01",
       "maxSlots": 125,
-      "maxDuration": 182,
       "availableSlots": 125,
+      "maxDuration": 182,
       "availableDuration": 182,
-      "createdOn":null,
-      "updatedOn":null,
-      "judiciaries": [
+      "judiciaries":
+      [
         {
           "judiciaryId": "JUDICIARY_ID_1",
           "position": "RIGHT_WINGER",
@@ -42,7 +42,11 @@
           "active": false
         }
       ],
-      "slotStartTimes": []
+      "slotStartTimes":
+      [],
+      "createdOn": null,
+      "updatedOn": null,
+      "hasHearingsBooked": false
     }
   ]
 }

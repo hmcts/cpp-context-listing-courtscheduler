@@ -174,6 +174,49 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return resultList.stream().map(CourtSchedulerConverter::convert).toList();
     }
 
+    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
+        StringBuilder queryString = new StringBuilder("SELECT s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true ");
+        Map<String, Object> params = new HashMap<>();
+        if (courtScheduleRequestParam.courtCentreId() != null) {
+            {
+                queryString.append("AND s.court_house_id = :courtHouseId ");
+                params.put("courtHouseId", courtScheduleRequestParam.courtCentreId());
+            }
+            if (courtScheduleRequestParam.courtRoomId() != null) {
+                queryString.append("AND s.court_room_id = :courtRoomId ");
+                params.put("courtRoomId", courtScheduleRequestParam.courtRoomId());
+            }
+            if (courtScheduleRequestParam.businessType() != null) {
+                queryString.append("AND s.rota_business_type = :businessType ");
+                params.put("businessType", courtScheduleRequestParam.businessType());
+            }
+            if (courtScheduleRequestParam.sessionStartDate() != null) {
+                queryString.append("AND s.session_start >= :sessionStartDate ");
+                params.put("sessionStartDate", courtScheduleRequestParam.sessionStartDate());
+            }
+            if (courtScheduleRequestParam.sessionEndDate() != null) {
+                queryString.append("AND s.session_start <= :sessionEndDate ");
+                params.put("sessionEndDate", courtScheduleRequestParam.sessionEndDate());
+            }
+            if (courtScheduleRequestParam.pageSize() != null) {
+                queryString.append("LIMIT :pageSize ");
+                params.put("pageSize", courtScheduleRequestParam.pageSize());
+            }
+            if (courtScheduleRequestParam.pageNumber() != null) {
+                queryString.append("OFFSET :pageNumber ");
+                params.put("pageNumber", Integer.parseInt(courtScheduleRequestParam.pageNumber())-1);
+            }
+        }
+        final javax.persistence.Query query = entityManager.createNativeQuery(queryString.toString(), "CourtScheduleEntityMapping");
+        params.forEach((key, value) -> {
+            if (value != null) {
+                query.setParameter(key, value);
+            }
+        });
+        final List<CourtSchedule> resultList = query.getResultList();
+        return resultList.stream().map(CourtSchedulerConverter::convert).toList();
+    }
+
     public List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
         List<CourtSchedule> courtScheduleList = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
                 DateUtils.getDate(miFilterCriteria.getFromLocalDate()),

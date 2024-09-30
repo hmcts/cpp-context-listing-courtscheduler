@@ -1,15 +1,20 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.Objects;
 
 import javax.persistence.Column;
+import javax.persistence.ColumnResult;
+import javax.persistence.ConstructorResult;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.SqlResultSetMapping;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
+import javax.persistence.Transient;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -17,6 +22,36 @@ import org.hibernate.annotations.UpdateTimestamp;
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 @Entity
 @Table(name = "court_schedule")
+@SqlResultSetMapping(
+        name = "CourtScheduleEntityMapping",
+        classes = @ConstructorResult(
+                targetClass = CourtSchedule.class,
+                columns = {
+                        @ColumnResult(name = "id", type = String.class), // Replace with actual column types
+                        @ColumnResult(name = "court_listing_profile_id", type = String.class),
+                        @ColumnResult(name = "oucode", type = String.class),
+                        @ColumnResult(name = "court_room_id", type = String.class),
+                        @ColumnResult(name = "court_room_number", type = Integer.class),
+                        @ColumnResult(name = "court_house_id", type = String.class),
+                        @ColumnResult(name = "court_house_name", type = String.class),
+                        @ColumnResult(name = "court_room_name", type = String.class),
+                        @ColumnResult(name = "operational_unit", type = String.class),
+                        @ColumnResult(name = "rota_business_type", type = String.class),
+                        @ColumnResult(name = "panel", type = String.class),
+                        @ColumnResult(name = "court_session", type = String.class),
+                        @ColumnResult(name = "active", type = Boolean.class),
+                        @ColumnResult(name = "is_slot_based", type = Boolean.class),
+                        @ColumnResult(name = "session_start", type = LocalDate.class),
+                        @ColumnResult(name = "max_slot", type = Integer.class),
+                        @ColumnResult(name = "max_duration_mins", type = Integer.class),
+                        @ColumnResult(name = "available_slot", type = Integer.class),
+                        @ColumnResult(name = "available_duration_mins", type = Integer.class),
+                        @ColumnResult(name = "hasHearingsBooked", type = Boolean.class),
+                        @ColumnResult(name = "created_on", type = Timestamp.class),
+                        @ColumnResult(name = "updated_on", type = Timestamp.class)
+                }
+        )
+)
 public class CourtSchedule {
 
     @Id
@@ -59,6 +94,9 @@ public class CourtSchedule {
     private Integer availableSlots;
     @Column(name = "available_duration_mins", nullable = false)
     private Integer availableDuration;
+    @Transient
+    @Column(name = "hasHearingsBooked", nullable = false)
+    private Boolean hasHearingsBooked;
 
 
     @CreationTimestamp
@@ -75,9 +113,54 @@ public class CourtSchedule {
         //For JPA
     }
 
-    public CourtSchedule(String courtScheduleId) {
+    //this constructor is used in the SqlResultSetMapping. columnn order is significant!
+    public CourtSchedule(final String courtScheduleId,
+                         final String listingProfileId,
+                         final String ouCode,
+                         final String courtRoomId,
+                         final Integer courtRoomNumber,
+                         final String courtHouseId,
+                         final String courtHouseName,
+                         final String courtRoomName,
+                         final String operationalUnit,
+                         final String businessType,
+                         final String panel,
+                         final String courtSession,
+                         final Boolean active,
+                         final Boolean slotBased,
+                         final LocalDate sessionDate,
+                         final Integer maxSlots,
+                         final Integer maxDuration,
+                         final Integer availableSlots,
+                         final Integer availableDuration,
+                         final Boolean hasHearingsBooked,
+                         final Date createdOn,
+                         final Date updatedOn) {
+        this.courtRoomNumber = courtRoomNumber;
         this.courtScheduleId = courtScheduleId;
+        this.listingProfileId = listingProfileId;
+        this.ouCode = ouCode;
+        this.courtRoomId = courtRoomId;
+        this.courtHouseId = courtHouseId;
+        this.courtHouseName = courtHouseName;
+        this.courtRoomName = courtRoomName;
+        this.operationalUnit = operationalUnit;
+        this.businessType = businessType;
+        this.panel = panel;
+        this.courtSession = courtSession;
+        this.active = active;
+        this.slotBased = slotBased;
+        this.sessionDate = sessionDate;
+        this.maxSlots = maxSlots;
+        this.maxDuration = maxDuration;
+        this.availableSlots = availableSlots;
+        this.availableDuration = availableDuration;
+        this.hasHearingsBooked = hasHearingsBooked;
+        this.createdOn = createdOn;
+        this.updatedOn = updatedOn;
     }
+
+
 
     public String getCourtScheduleId() {
         return courtScheduleId;
@@ -245,6 +328,15 @@ public class CourtSchedule {
 
     public void setActive(final Boolean active) {
         this.active = active;
+    }
+
+    public Boolean getHasHearingsBooked() {
+        return hasHearingsBooked;
+    }
+
+    public CourtSchedule setHasHearingsBooked(final Boolean hasHearingsBooked) {
+        this.hasHearingsBooked = hasHearingsBooked;
+        return this;
     }
 
     @Override
