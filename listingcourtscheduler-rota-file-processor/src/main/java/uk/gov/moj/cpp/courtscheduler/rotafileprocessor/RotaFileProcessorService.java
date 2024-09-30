@@ -153,7 +153,7 @@ public class RotaFileProcessorService {
         this.migratedMap = sessionsService.migratedMapByOuCode();
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
 
-        logger.info("File parsed successfully and parsed now enriching it..");
+        logger.info("File parsed successfully and parsed now enriching it.. for file: {}", fileName);
         if (fileName.contains(DUMMY_NAME_PART)) {
             logger.warn("Received dummy support file, hence skipping file processing, for file: {}", fileName);
             return;
@@ -258,7 +258,9 @@ public class RotaFileProcessorService {
         final LocalDate startDate = startAndEndDate.get(START_DATE.getLabel());
         final LocalDate endDate = startAndEndDate.get(END_DATE.getLabel());
 
+        final long deleteunAllocatedCourtScheduleJudiciariesStartTime = System.currentTimeMillis();
         final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
+
         logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
         if (isNotEmpty(nonMigratedOuCodes)) {
             int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
@@ -266,9 +268,12 @@ public class RotaFileProcessorService {
         } else {
             logger.info("processSnapshotRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
-
+        final long deleteunAllocatedCourtScheduleJudiciariesEndTime = System.currentTimeMillis();
+        logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {} in {} ms", numberOfDeletedUnAllocatedCourtScheduleJudiciaries, deleteunAllocatedCourtScheduleJudiciariesEndTime - deleteunAllocatedCourtScheduleJudiciariesStartTime);
+        final long extractandreceiveSlotAndScheduleInfoStartTime = System.currentTimeMillis();
         final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
-
+        final long extractandreceiveSlotAndScheduleInfoEndTime = System.currentTimeMillis();
+        logger.info("DD-15703:processSnapshotRotaFile: after getExtractAndReceiveSlotAndScheduleInfo in {} ms", extractandreceiveSlotAndScheduleInfoEndTime - extractandreceiveSlotAndScheduleInfoStartTime);
         manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, SNAPSHOT_ROTA_FILE_ACTION, fileNamePrefix, fileDate, slotAndScheduleInfo);
         logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
     }
@@ -284,9 +289,11 @@ public class RotaFileProcessorService {
                                      final String fileNamePrefix,
                                      final OffsetDateTime fileDate,
                                      final SlotAndScheduleInfo slotAndScheduleInfo) {
+        final long getandudateSlotAndScheduleInfoStartTime = System.currentTimeMillis();
         final List<CourtSchedule> existingCourtSchedules = sessionsService.getExistingCourtSchedulesByOuCodes(nonMigratedOuCodes);
         sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, slotsForMigrated, schedules, businessTypesMap, ouCodes, existingCourtSchedules);
-
+        final long getandudateSlotAndScheduleInfoEndTime = System.currentTimeMillis();
+        logger.info("DD-15703:manageCourtSchedule: after updateSlotsAndSchedules in {} ms", getandudateSlotAndScheduleInfoEndTime - getandudateSlotAndScheduleInfoStartTime);
         if (SNAPSHOT_ROTA_FILE_ACTION.equals(fileType)) {
             logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
             rotaFileProcessHistoryService.update(fileNamePrefix, fileDate);

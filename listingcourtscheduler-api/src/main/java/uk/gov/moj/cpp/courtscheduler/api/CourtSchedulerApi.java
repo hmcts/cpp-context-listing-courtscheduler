@@ -202,7 +202,11 @@ public class CourtSchedulerApi {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.get.hearing.slots requested : {}", requestFromApiJsonObject);
         HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(requestFromApiJsonObject);
+        final long validatestart = System.nanoTime();
         JsonObject validate = hearingSlotsApiValidator.getHearingSlotsValidation(hearingSlotRequestParam);
+        final long validateEnd = System.nanoTime();
+
+        LOGGER.info("BRS: Time taken for validation : {}", (validateEnd - validatestart) / 1000000);
 
         if (!validate.isEmpty()) {
             return envelopeFor(envelope, validate, ERROR);
