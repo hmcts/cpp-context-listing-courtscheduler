@@ -33,6 +33,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
+import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
@@ -46,7 +47,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryScheduleEnricher;
@@ -106,7 +106,7 @@ class RotaFileProcessorServiceTest {
     private RotaFileProcessHistoryService rotaFileProcessHistoryService;
 
     @Mock
-    private CourtScheduleRepository courtScheduleRepository;
+    private CourtScheduleService courtScheduleService;
 
     @Mock
     private SessionsService sessionsService;
@@ -377,8 +377,7 @@ class RotaFileProcessorServiceTest {
 
         verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester));
         verify(courtScheduleJudiciaryService, never()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedProvisionalEntries(anyList());
+        verify(courtScheduleService, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
         verify(businessTypeMatchingLogger, never()).logMissingBusinessType(missingBusinessTypeCaptor.capture());
     }
 
@@ -472,8 +471,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
         verify(rotaFileProcessHistoryService, never()).update(anyString(), any());
         verify(courtScheduleJudiciaryService, never()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedProvisionalEntries(anyList());
+        verify(courtScheduleService, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
     }
 
     @Test
@@ -512,8 +510,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileProcessHistoryRepository, never()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
         verify(rotaFileProcessHistoryService, never()).update(anyString(), any());
         verify(courtScheduleJudiciaryService, never()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedProvisionalEntries(anyList());
+        verify(courtScheduleService, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
     }
 
     @Test

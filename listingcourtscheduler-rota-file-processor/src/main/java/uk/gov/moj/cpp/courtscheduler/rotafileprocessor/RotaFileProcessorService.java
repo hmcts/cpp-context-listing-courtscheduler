@@ -24,6 +24,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
+import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
@@ -95,13 +96,13 @@ public class RotaFileProcessorService {
     private RotaFileProcessHistoryService rotaFileProcessHistoryService;
 
     @Inject
-    private CourtScheduleRepository courtScheduleRepository;
-
-    @Inject
     private SessionsService sessionsService;
 
     @Inject
     private CourtScheduleJudiciaryService courtScheduleJudiciaryService;
+
+    @Inject
+    private CourtScheduleService courtScheduleService;
 
     @Inject
     private AllocatedListingService allocatedListingService;
@@ -133,9 +134,6 @@ public class RotaFileProcessorService {
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
 
-    private static final String SNAPSHOT_ROTA_FILE_ACTION = "processSnapshotRotaFile";
-    private static final String FULL_ROTA_FILE_ACTION = "processFullRotaFile";
-
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Asynchronous
@@ -163,13 +161,12 @@ public class RotaFileProcessorService {
 
         final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider = new RotaPeriodDateInfoProvider(records);
         final LocalDate rotaPeriodStartDate = rotaPeriodDateInfoProvider.getRotaPeriodStartDate();
-        final LocalDate masterRotaPeriodCutOffDate = rotaPeriodDateInfoProvider.getRotaPeriodEndDate();
         final LocalDate rotaPeriodEndDate = rotaPeriodDateInfoProvider.getRotaPeriodEndDate();
         logger.info("rotaPeriodStartDate: {}, rotaPeriodEndDate: {}, rotaPeriodStartDay: {}, rotaPeriodEndDay: {}, masterRotaPeriodCutOffDate: {}, monthsBetweenRotaPeriod: {}", rotaPeriodStartDate, rotaPeriodEndDate,
-                rotaPeriodDateInfoProvider.getRotaPeriodStartDay(), rotaPeriodDateInfoProvider.getRotaPeriodEndDay(), masterRotaPeriodCutOffDate, rotaPeriodDateInfoProvider.getMonthsBetweenRotaPeriod());
+                rotaPeriodDateInfoProvider.getRotaPeriodStartDay(), rotaPeriodDateInfoProvider.getRotaPeriodEndDay(), rotaPeriodEndDate, rotaPeriodDateInfoProvider.getMonthsBetweenRotaPeriod());
 
-        final Map<String, CourtSchedule> slots = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, migratedMap, FALSE, requester);
-        final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(fileName, records, rotaPeriodEndDate, masterRotaPeriodCutOffDate, migratedMap, TRUE, requester);
+        final Map<String, CourtSchedule> slots = receiveSlots(fileName, records, rotaPeriodEndDate, migratedMap, FALSE, requester);
+        final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(fileName, records, rotaPeriodEndDate, migratedMap, TRUE, requester);
         logger.info("received slots with slot size: {} and slotsForMigrated: {}", slots.size(), slotsForMigrated.size());
 
         final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records, FALSE, requester);
@@ -205,15 +202,19 @@ public class RotaFileProcessorService {
                     logger.warn("There is a newer snapshot rota file has been processed already. Therefore, skipping.");
                 } else {
                     logger.info("DD-15703:RotaFileProcessor: Before  processSnapshotRotaFile");
-                    List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
-                    for(DateRange dateRange: dateRanges) {
+                    final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
+                    for(final DateRange dateRange: dateRanges) {
                         final Map<String, LocalDate> startAndEndDate = new HashMap<>();
                         startAndEndDate.put(START_DATE.getLabel(), dateRange.getStart());
                         startAndEndDate.put(END_DATE.getLabel(), dateRange.getEnd());
                         Map<String, CourtSchedule> filteredSlots = filterSlots(slots, dateRange);
                         logger.info("Filtered Slots for Snapshot : {}", filteredSlots.keySet());
-                        processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedules, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, fileNamePrefix, fileDateTime, businessTypesMap);
+                        processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedules, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap);
                     }
+                    logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
+                    rotaFileProcessHistoryService.update(fileNamePrefix, fileDateTime);
+                    logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
+                    logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
                 }
             }
         } else {
@@ -227,34 +228,34 @@ public class RotaFileProcessorService {
     }
 
     @SuppressWarnings("squid:S1141")
-    @Transactional
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
     private void processFullRotaFile(final Map<String, CourtSchedule> slots,
                                      final Map<String, CourtSchedule> slotsForMigrated,
                                      final Collection<CourtScheduleJudiciary> schedules,
                                      final Collection<CourtScheduleJudiciary> schedulesForMigrated,
                                      final LocalDate startDate,
-                                     final LocalDate masterRotaPeriodCutOffDate,
+                                     final LocalDate endDate,
                                      final List<String> ouCodes,
                                      final List<String> nonMigratedOuCodes,
                                      final Map<String, BusinessType> businessTypesMap) {
         logger.info("DD-15703:processFullRotaFile: started processing");
-        final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, ouCodes);
+        final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
         logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
 
         if (isNotEmpty(nonMigratedOuCodes)) {
-            final int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, masterRotaPeriodCutOffDate, nonMigratedOuCodes);
+            final int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
             logger.info("DD-15703:processFullRotaFile: after delete UnAllocated CourtScheduleEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtSchedules: {} for ouCodes: {}", numberOfDeletedUnAllocatedCourtSchedules, nonMigratedOuCodes);
         } else {
             logger.info("processFullRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, masterRotaPeriodCutOffDate, businessTypesMap);
-        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, FULL_ROTA_FILE_ACTION, null, null, slotAndScheduleInfo);
+        final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, slotAndScheduleInfo, startDate, endDate);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
-    @Transactional
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
     protected void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                            final Map<String, CourtSchedule> slotsForMigrated,
                                            final Collection<CourtScheduleJudiciary> schedules,
@@ -262,8 +263,6 @@ public class RotaFileProcessorService {
                                            final Map<String, LocalDate> startAndEndDate,
                                            final List<String> ouCodes,
                                            final List<String> nonMigratedOuCodes,
-                                           final String fileNamePrefix,
-                                           final OffsetDateTime fileDate,
                                            final Map<String, BusinessType> businessTypesMap) {
 
         final LocalDate startDate = startAndEndDate.get(START_DATE.getLabel());
@@ -274,7 +273,7 @@ public class RotaFileProcessorService {
 
         logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
         if (isNotEmpty(nonMigratedOuCodes)) {
-            int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleRepository.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
+            int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
             logger.info("DD-15703:processSnapshotRotaFile: after deleteUnAllocatedCourtScheduleEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtSchedules: {}", numberOfDeletedUnAllocatedCourtSchedules);
         } else {
             logger.info("processSnapshotRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
@@ -285,7 +284,7 @@ public class RotaFileProcessorService {
         final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
         final long extractandreceiveSlotAndScheduleInfoEndTime = System.currentTimeMillis();
         logger.info("DD-15703:processSnapshotRotaFile: after getExtractAndReceiveSlotAndScheduleInfo in {} ms", extractandreceiveSlotAndScheduleInfoEndTime - extractandreceiveSlotAndScheduleInfoStartTime);
-        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, SNAPSHOT_ROTA_FILE_ACTION, fileNamePrefix, fileDate, slotAndScheduleInfo);
+        manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, slotAndScheduleInfo, startDate, endDate);
         logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
     }
 
@@ -296,22 +295,14 @@ public class RotaFileProcessorService {
                                      final Map<String, CourtSchedule> slotsForMigrated,
                                      final Collection<CourtScheduleJudiciary> schedules,
                                      final Map<String, BusinessType> businessTypesMap,
-                                     final String fileType,
-                                     final String fileNamePrefix,
-                                     final OffsetDateTime fileDate,
-                                     final SlotAndScheduleInfo slotAndScheduleInfo) {
+                                     final SlotAndScheduleInfo slotAndScheduleInfo,
+                                     final LocalDate startDate,
+                                     final LocalDate endDate) {
         final long getandudateSlotAndScheduleInfoStartTime = System.currentTimeMillis();
-        final List<CourtSchedule> existingCourtSchedules = sessionsService.getExistingCourtSchedulesByOuCodes(nonMigratedOuCodes);
+        final List<CourtSchedule> existingCourtSchedules = sessionsService.getExtractedCourtSchedules(nonMigratedOuCodes, startDate, endDate);
         sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, slotsForMigrated, schedules, businessTypesMap, ouCodes, existingCourtSchedules);
         final long getandudateSlotAndScheduleInfoEndTime = System.currentTimeMillis();
         logger.info("DD-15703:manageCourtSchedule: after updateSlotsAndSchedules in {} ms", getandudateSlotAndScheduleInfoEndTime - getandudateSlotAndScheduleInfoStartTime);
-        if (SNAPSHOT_ROTA_FILE_ACTION.equals(fileType)) {
-            logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
-            rotaFileProcessHistoryService.update(fileNamePrefix, fileDate);
-            logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
-        }
-
-        logger.info("DD-15703:RotaFileProcessor: after courtScheduleRepository.update");
     }
 
     private SlotAndScheduleInfo getExtractAndReceiveSlotAndScheduleInfo(final List<String> ouCodes,
@@ -444,15 +435,10 @@ public class RotaFileProcessorService {
     private Map<String, CourtSchedule> receiveSlots(final String name,
                                                     final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                     final LocalDate rotaPeriodEndDate,
-                                                    final LocalDate masterRotaPeriodCutOffDate,
                                                     final Map<String, Boolean> migratedMap,
                                                     final Boolean migrated,
                                                     final Requester requester) {
-        if (name.contains(SNAPSHOT_NAME_PART)) {
-            return rotaDataEnricher.enrichCourtListings(records, rotaPeriodEndDate, migratedMap, migrated, requester);
-        } else {
-            return rotaDataEnricher.enrichCourtListings(records, masterRotaPeriodCutOffDate, migratedMap, migrated, requester);
-        }
+        return rotaDataEnricher.enrichCourtListings(records, rotaPeriodEndDate, migratedMap, migrated, requester);
     }
 
     private int getRotaMasterDataDaysLength() {
@@ -648,21 +634,23 @@ public class RotaFileProcessorService {
     }
 
     public List<DateRange> weeksCovering(LocalDate start, LocalDate end) {
-        List<DateRange> result = new ArrayList<>();
+        final List<DateRange> result = new ArrayList<>();
 
+        int weekIndex = 1;
         while (!start.isAfter(end)) {
             if(ChronoUnit.DAYS.between(start, end) > 6) {
-                LocalDate weekStart = start;
+                final LocalDate weekStart = start;
                 start = start.plusDays(6);
-                LocalDate weekEnd = start;
+                final LocalDate weekEnd = start;
                 start = start.plusDays(1);
                 result.add(new DateRange(weekStart, weekEnd));
-                logger.info("StartDate: {}, EndDate: {}", weekStart, weekEnd);
+                logger.info("Week range of Week #{} - StartDate: {}, EndDate: {}", weekIndex, weekStart, weekEnd);
             } else {
                 result.add(new DateRange(start, end));
+                logger.info("Week range of Week #{} - StartDate: {}, EndDate: {}", weekIndex, start, end);
                 start = start.plusDays(6);
-                logger.info("StartDate: {}, EndDate: {}", start, end);
             }
+            weekIndex++;
         }
         return result;
     }

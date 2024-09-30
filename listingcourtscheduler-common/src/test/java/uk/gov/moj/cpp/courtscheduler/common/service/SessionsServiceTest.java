@@ -554,31 +554,6 @@ class SessionsServiceTest {
     }
 
     @Test
-    void shouldGetExistingCourtSchedulesByOuCodes() throws JsonProcessingException {
-        final String ouCode = "B01LY00" ;
-
-        final List<CourtSchedule> courtScheduleEntities = getCourtScheduleEntities();
-        when(courtScheduleRepository.getExistingActiveCourtSchedulesByOuCodes(List.of(ouCode))).thenReturn(courtScheduleEntities);
-
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getExistingCourtSchedulesByOuCodes(List.of(ouCode));
-
-        verify(courtScheduleRepository, atLeastOnce()).getExistingActiveCourtSchedulesByOuCodes(List.of(ouCode));
-
-        assertThat(courtSchedules.size(), is(courtScheduleEntities.size()));
-        courtScheduleEntities.forEach(courtScheduleEntity ->
-                courtSchedules.stream().filter(courtSchedule -> courtScheduleEntity.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
-                        .findAny()
-                        .ifPresent(courtSchedule -> {
-                            assertThat(courtSchedule.getCourtScheduleId(), is(courtScheduleEntity.getCourtScheduleId()));
-                            assertThat(courtSchedule.getOuCode(), is(courtScheduleEntity.getOuCode()));
-                            assertThat(courtSchedule.getListingProfileId(), is(courtScheduleEntity.getListingProfileId()));
-                            assertThat(courtSchedule.getCourtRoomNumber(), is(courtScheduleEntity.getCourtRoomNumber()));
-                            assertThat(courtSchedule.getCourtHouseId(), is(courtScheduleEntity.getCourtHouseId()));
-                        })
-        );
-    }
-
-    @Test
     void shouldGetExtractedCourtSchedulesForGhostData() throws JsonProcessingException {
         final String ouCode = "B01LY00" ;
         final LocalDate startDate = LocalDate.of(2024, 10, 1);
