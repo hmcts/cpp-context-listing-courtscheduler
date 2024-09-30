@@ -1,8 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.time.LocalDate.parse;
+import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
@@ -12,6 +16,7 @@ import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.LocalDate;
@@ -21,7 +26,10 @@ import java.util.UUID;
 
 import javax.json.JsonObject;
 
+import jakarta.persistence.EntityManager;
+import liquibase.pro.packaged.T;
 import org.apache.commons.lang3.tuple.Pair;
+import javax.persistence.criteria.CriteriaQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,11 +41,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class SlotsSearchServiceTest {
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
+    @Mock
+    private EntityManager entityManager;
     @InjectMocks
     private SlotsSearchService slotsSearchService;
-    private UUID rightWingerId = UUID.randomUUID();
-    private UUID leftWingerId = UUID.randomUUID();
-    private UUID chairId = UUID.randomUUID();
+    private UUID rightWingerId = randomUUID();
+    private UUID leftWingerId = randomUUID();
+    private UUID chairId = randomUUID();
 
     @BeforeEach
     public void setUp() {
@@ -101,6 +111,54 @@ class SlotsSearchServiceTest {
         assertThat(courtScheduleJudiciaryDetails.get(1).getPosition(), is("LEFT_WINGER"));
         assertThat(courtScheduleJudiciaryDetails.get(2).getPosition(), is("CHAIR"));
     }
+
+    @Test
+    void shouldNotCallGetCourtScheduleJudiciariesWhenNoListingProfileId() {
+        List<CourtSchedule> courtScheduleList = List.of(
+                createCourtScheduleWithoutListingProfileId(),
+                createCourtScheduleWithoutListingProfileId()
+        );
+        HearingSlotRequestParam hearingSlotRequestParam = createRequestParam("10");
+        Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(2, courtScheduleList);
+
+        when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
+
+        slotsSearchService.getCourtSchedules(hearingSlotRequestParam);
+
+        verify(courtScheduleRepository, times(0)).getCourtScheduleJudiciaries(any());
+    }
+
+    private CourtSchedule createCourtScheduleWithListingProfileId(String listingProfileId) {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withListingProfileId(listingProfileId)
+                .build();
+    }
+
+
+
+    private CourtSchedule createCourtScheduleWithListingProfileId() {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withListingProfileId(randomUUID().toString())
+                .build();
+    }
+
+
+
+    private CourtSchedule createCourtScheduleWithoutListingProfileId() {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withListingProfileId(null)
+                .build();
+    }
+
+    private List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> createCourtScheduleJudiciaries() {
+        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary judiciary1 = uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.CourtScheduleJudiciaryBuilder.courtScheduleJudiciary().withId(new CourtScheduleJudiciaryKey()).withPosition("LEFT_WINGER").build();
+        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary judiciary2 = uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.CourtScheduleJudiciaryBuilder.courtScheduleJudiciary().withId(new CourtScheduleJudiciaryKey()).withPosition("RIGHT_WINGER").build();
+        return List.of(judiciary1, judiciary2);
+    }
+
 
     private CourtSchedule courtScheduleWithMultipleJudiciaries(UUID rightWingerId, UUID leftWingerId, UUID chairId) {
         final List<CourtScheduleJudiciary> courtScheduleJudiciaries = new ArrayList<>();

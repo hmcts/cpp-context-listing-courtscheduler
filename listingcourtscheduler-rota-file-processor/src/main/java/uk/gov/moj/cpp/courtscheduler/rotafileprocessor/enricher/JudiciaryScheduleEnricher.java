@@ -44,6 +44,9 @@ import java.util.Optional;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @ApplicationScoped
 @SuppressWarnings({"squid:S1134", "squid:CommentedOutCodeLine"})
 public class JudiciaryScheduleEnricher {
@@ -60,6 +63,9 @@ public class JudiciaryScheduleEnricher {
     @Inject
     private SessionsService sessionsService;
 
+    private static final Logger logger = LoggerFactory.getLogger(JudiciaryScheduleEnricher.class);
+
+
     public Collection<CourtScheduleJudiciary> enrichJudiciarySchedules(final Map<String, CourtSchedule> courtScheduleMap,
                                                                        final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                                        final boolean forMigrated,
@@ -67,6 +73,7 @@ public class JudiciaryScheduleEnricher {
         final Map<String, String> errors = new HashMap<>();
         final List<CourtScheduleJudiciary> courtScheduleJudiciarySchedules = new ArrayList<>();
 
+        final long enrichmentStart = System.nanoTime();
         final Collection<Map<String, String>> schedules = records.get(RotaPayload.SCHEDULE).values();
         final Map<String, Map<String, String>> judiciariesMap = getJudiciaryInfoMap(records);
 
@@ -89,6 +96,8 @@ public class JudiciaryScheduleEnricher {
                 }
             }
         }
+        final long enrichmentEnd = System.nanoTime();
+        logger.info("BRS: Time taken for judiciary enrichment : {}", (enrichmentEnd - enrichmentStart) / 1000000);
 
         if (!errors.isEmpty()) {
             missingMessageLogger.logJudiciaryMissingMessage(errors.values());
