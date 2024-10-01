@@ -36,7 +36,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.rota.DateRange;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryScheduleEnricher;
@@ -165,8 +164,8 @@ public class RotaFileProcessorService {
         logger.info("rotaPeriodStartDate: {}, rotaPeriodEndDate: {}, rotaPeriodStartDay: {}, rotaPeriodEndDay: {}, masterRotaPeriodCutOffDate: {}, monthsBetweenRotaPeriod: {}", rotaPeriodStartDate, rotaPeriodEndDate,
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDay(), rotaPeriodDateInfoProvider.getRotaPeriodEndDay(), rotaPeriodEndDate, rotaPeriodDateInfoProvider.getMonthsBetweenRotaPeriod());
 
-        final Map<String, CourtSchedule> slots = receiveSlots(fileName, records, rotaPeriodEndDate, migratedMap, FALSE, requester);
-        final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(fileName, records, rotaPeriodEndDate, migratedMap, TRUE, requester);
+        final Map<String, CourtSchedule> slots = receiveSlots(records, rotaPeriodEndDate, migratedMap, FALSE, requester);
+        final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(records, rotaPeriodEndDate, migratedMap, TRUE, requester);
         logger.info("received slots with slot size: {} and slotsForMigrated: {}", slots.size(), slotsForMigrated.size());
 
         final Collection<CourtScheduleJudiciary> schedules = judiciaryScheduleEnricher.enrichJudiciarySchedules(slots, records, FALSE, requester);
@@ -207,7 +206,7 @@ public class RotaFileProcessorService {
                         final Map<String, LocalDate> startAndEndDate = new HashMap<>();
                         startAndEndDate.put(START_DATE.getLabel(), dateRange.getStart());
                         startAndEndDate.put(END_DATE.getLabel(), dateRange.getEnd());
-                        Map<String, CourtSchedule> filteredSlots = filterSlots(slots, dateRange);
+                        final Map<String, CourtSchedule> filteredSlots = filterSlots(slots, dateRange);
                         logger.info("Filtered Slots for Snapshot : {}", filteredSlots.keySet());
                         processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedules, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap);
                     }
@@ -218,9 +217,9 @@ public class RotaFileProcessorService {
                 }
             }
         } else {
-            List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
-            for(DateRange dateRange: dateRanges) {
-                Map<String, CourtSchedule> filteredSlots = filterSlots(slots, dateRange);
+            final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
+            for(final DateRange dateRange: dateRanges) {
+                final Map<String, CourtSchedule> filteredSlots = filterSlots(slots, dateRange);
                 logger.info("Filtered Slots for Full Rota file : {}", filteredSlots.keySet());
                 processFullRotaFile(filteredSlots, slotsForMigrated, schedules, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap);
             }
@@ -315,8 +314,8 @@ public class RotaFileProcessorService {
         // all existing slots including migrated and non-migrated
         final List<CourtSchedule> existingSlotList = sessionsService.getExtractedCourtSchedules(ouCodes, startDate, endDate);
         final List<Object[]> allocatedScheduleJudiciaries = courtScheduleJudiciaryService.getAllocatedScheduleJudiciaryInfo(startDate, endDate, ouCodes);
-        final List<String> allocatedScheduleJudiciaryScheduleIds = isNotEmpty(allocatedScheduleJudiciaries) ? allocatedScheduleJudiciaries.stream().map(object -> (String) ((Object[])object)[0]).toList() : emptyList();
-        final List<String> allocatedScheduleJudiciaryIds = isNotEmpty(allocatedScheduleJudiciaries) ? allocatedScheduleJudiciaries.stream().map(object -> (String) ((Object[])object)[1]).toList() : emptyList();
+        final List<String> allocatedScheduleJudiciaryScheduleIds = isNotEmpty(allocatedScheduleJudiciaries) ? allocatedScheduleJudiciaries.stream().map(object -> (String) (object)[0]).toList() : emptyList();
+        final List<String> allocatedScheduleJudiciaryIds = isNotEmpty(allocatedScheduleJudiciaries) ? allocatedScheduleJudiciaries.stream().map(object -> (String) (object)[1]).toList() : emptyList();
 
         final List<String> incomingSlotProfileIds = slots.values().stream().map(CourtSchedule::getListingProfileId).toList();
         final Map<String, CourtSchedule> existingSlotMap = existingSlotList.stream().collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, courtSchedule -> courtSchedule));
@@ -432,8 +431,7 @@ public class RotaFileProcessorService {
         sessionsService.saveCourtSchedules(provisionalCourtSchedulesToBeProcessed, businessTypesMap);
     }
 
-    private Map<String, CourtSchedule> receiveSlots(final String name,
-                                                    final Map<RotaPayload, Map<String, Map<String, String>>> records,
+    private Map<String, CourtSchedule> receiveSlots(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                     final LocalDate rotaPeriodEndDate,
                                                     final Map<String, Boolean> migratedMap,
                                                     final Boolean migrated,
