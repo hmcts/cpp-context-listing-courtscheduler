@@ -230,15 +230,8 @@ public class SessionsService {
     }
 
     public List<CourtSchedule> getExtractedCourtSchedules(final List<String> ouCodes, final LocalDate startDate, final LocalDate endDate) {
-        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExtractedCourtSchedules(ouCodes, startDate, endDate);
-        return courtScheduleEntities.stream()
-                .map(CourtScheduleMapper::toDomain)
-                .toList();
-    }
-
-    public List<CourtSchedule> getExistingCourtSchedulesByOuCodes(final List<String> ouCodes) {
         if (isNotEmpty(ouCodes)) {
-            final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExistingActiveCourtSchedulesByOuCodes(ouCodes);
+            final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleRepository.getExtractedCourtSchedules(ouCodes, startDate, endDate);
             return courtScheduleEntities.stream()
                     .map(CourtScheduleMapper::toDomain)
                     .toList();
@@ -340,7 +333,7 @@ public class SessionsService {
     private int saveSlots(final Collection<CourtSchedule> slots,
                           final Map<String, BusinessType> businessTypeMap,
                           final List<CourtSchedule> existingCourtSchedules) {
-        final AtomicInteger numberOfSaved = new AtomicInteger();
+        final AtomicInteger numberOfSavedSlots = new AtomicInteger();
         slots.forEach(slot -> {
 
             boolean toBePersisted = decideIfToBePersisted(existingCourtSchedules, slot);
@@ -355,11 +348,11 @@ public class SessionsService {
                 courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
                 courtScheduleRepository.save(courtScheduleEntity);
 
-                numberOfSaved.getAndIncrement();
+                numberOfSavedSlots.getAndIncrement();
             }
         });
 
-        return numberOfSaved.get();
+        return numberOfSavedSlots.get();
     }
 
     private static boolean decideIfToBePersisted(final List<CourtSchedule> existingCourtSchedules, final CourtSchedule slot) {

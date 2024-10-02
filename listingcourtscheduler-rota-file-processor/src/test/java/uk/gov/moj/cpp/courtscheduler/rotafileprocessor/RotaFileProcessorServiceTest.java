@@ -9,6 +9,7 @@ import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.apache.commons.lang3.RandomStringUtils.random;
 import static org.apache.deltaspike.core.util.CollectionUtils.isEmpty;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -32,6 +33,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
+import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
@@ -40,11 +42,11 @@ import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.rota.DateRange;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryScheduleEnricher;
@@ -104,7 +106,7 @@ class RotaFileProcessorServiceTest {
     private RotaFileProcessHistoryService rotaFileProcessHistoryService;
 
     @Mock
-    private CourtScheduleRepository courtScheduleRepository;
+    private CourtScheduleService courtScheduleService;
 
     @Mock
     private SessionsService sessionsService;
@@ -165,7 +167,7 @@ class RotaFileProcessorServiceTest {
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
-
+        final List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
         final LocalDate extractStartDate = LocalDate.of(2019, 10, 1);
         final List<CourtSchedule> extractedSchedules = new ArrayList<>();
         final List<String> businessTypes = List.of(PSV_AS_EXISTING_BUSINESS_TYPE, CJU_AS_MISSING_BUSINESS_TYPE);
@@ -285,7 +287,7 @@ class RotaFileProcessorServiceTest {
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
-
+        List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
         final LocalDate extractStartDate = LocalDate.of(2019, 10, 1);
         final List<CourtSchedule> extractedSchedules = new ArrayList<>();
         final List<String> businessTypes = List.of(PSV_AS_EXISTING_BUSINESS_TYPE, CJU_AS_MISSING_BUSINESS_TYPE);
@@ -375,8 +377,7 @@ class RotaFileProcessorServiceTest {
 
         verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester));
         verify(courtScheduleJudiciaryService, never()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedProvisionalEntries(anyList());
+        verify(courtScheduleService, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
         verify(businessTypeMatchingLogger, never()).logMissingBusinessType(missingBusinessTypeCaptor.capture());
     }
 
@@ -470,8 +471,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
         verify(rotaFileProcessHistoryService, never()).update(anyString(), any());
         verify(courtScheduleJudiciaryService, never()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedProvisionalEntries(anyList());
+        verify(courtScheduleService, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
     }
 
     @Test
@@ -510,8 +510,17 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileProcessHistoryRepository, never()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
         verify(rotaFileProcessHistoryService, never()).update(anyString(), any());
         verify(courtScheduleJudiciaryService, never()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleRepository, never()).deleteUnAllocatedProvisionalEntries(anyList());
+        verify(courtScheduleService, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
+    }
+
+    @Test
+    void shouldSplitDateRangeIntoWeeks() {
+        LocalDate startDate = LocalDate.of(2024, 4, 21);
+        LocalDate endDate = LocalDate.of(2024, 8, 9);
+
+        List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
+
+        assertNotNull(dateRanges);
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {

@@ -180,7 +180,7 @@ class RotaFileProcessorIT extends AbstractIT {
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
             final List<CourtSchedule> courtSchedulesFromSnapshotFile = databaseReader.courtSchedulesCreatedAfter(maxCreatedOnForCourtSchedule);
-            return isNotEmpty(courtSchedulesFromSnapshotFile);
+            return isNotEmpty(courtSchedulesFromSnapshotFile) && courtSchedulesFromSnapshotFile.size() == 211;
         });
 
         logger.info("snapshot rota file processing took time as seconds : {}", stopwatch.elapsed(SECONDS));
@@ -228,10 +228,11 @@ class RotaFileProcessorIT extends AbstractIT {
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
             if (isNull(maxCreatedOnForCourtScheduleJudiciary)) {
                 final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = databaseReader.courtScheduleJudiciaries();
-                return courtScheduleJudiciaryEntities.size() == expectedNumberOfJudiciaries;
+                final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
+                return courtScheduleJudiciaryEntities.size() == expectedNumberOfJudiciaries && courtScheduleEntities.size() == expectedNumberOfSlots;
             } else {
                 final List<CourtScheduleJudiciary> courtScheduleJudiciariesCreatedAfter = databaseReader.courtScheduleJudiciariesCreatedAfter(maxCreatedOnForCourtScheduleJudiciary);
-                return isNotEmpty(courtScheduleJudiciariesCreatedAfter);
+                return isNotEmpty(courtScheduleJudiciariesCreatedAfter) && courtScheduleJudiciariesCreatedAfter.size() == expectedNumberOfJudiciariesCreatedAfterMigration;
             }
         });
 
