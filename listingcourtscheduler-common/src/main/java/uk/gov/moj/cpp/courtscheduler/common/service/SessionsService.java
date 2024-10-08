@@ -505,8 +505,12 @@ public class SessionsService {
                                       final Collection<CourtScheduleJudiciary> scheduleJudiciaries,
                                       final boolean forMigrated,
                                       final List<String> ouCodes) {
+        final List<String> judiciaryIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getJudiciaryId).toList();
+        final List<String> listingProfileIds = scheduleJudiciaries.stream().map(CourtScheduleJudiciary::getCourtListingProfileId).toList();
 
         final AtomicInteger numberOfSavedJudiciaries = new AtomicInteger();
+        final List<Pair<String, String>> judiciaryIdAndListingProfileIdPairList = new ArrayList<>();
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> courtScheduleJudiciariesToBePersisted = new ArrayList<>();
         scheduleJudiciaries.forEach(scheduleJudiciary -> {
             final CourtSchedule courtSchedule = newRecords.get(scheduleJudiciary.getCourtListingProfileId());
 
@@ -515,10 +519,18 @@ public class SessionsService {
                 courtScheduleJudiciaryEntity.setUpdatedOn(Calendar.getInstance().getTime());
                 if (!forMigrated) {
                     courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
+                    final String judiciaryId = courtScheduleJudiciaryEntity.getId().getJudiciaryId();
+                    final String listingProfileId = courtScheduleJudiciaryEntity.getCourtListingProfileId();
+                    if (judiciaryIds.contains(judiciaryId) && listingProfileIds.contains(listingProfileId)) {
+                        judiciaryIdAndListingProfileIdPairList.add(Pair.of(judiciaryId, listingProfileId));
+                    }
                 }
-                courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
-                numberOfSavedJudiciaries.incrementAndGet();
+                courtScheduleJudiciariesToBePersisted.add(courtScheduleJudiciaryEntity);
             }
+        });
+        courtScheduleJudiciariesToBePersisted.forEach(courtScheduleJudiciary -> {
+            courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
+            numberOfSavedJudiciaries.incrementAndGet();
         });
 
         logger.info("numberOfSavedJudiciaries: {} for ouCodes: {}", numberOfSavedJudiciaries.get(), ouCodes);
