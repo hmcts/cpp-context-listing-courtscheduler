@@ -345,7 +345,7 @@ public class SessionsService {
 
             boolean toBePersisted = decideIfToBePersisted(existingCourtSchedules, slot);
             if (toBePersisted) {
-                logger.info("slot decided to be persisted with ouCode: {}, courtRoomNumber: {}, businessType: {}, courtSession: {}, panel: {}, sessionDate: {}",
+                logger.debug("slot decided to be persisted with ouCode: {}, courtRoomNumber: {}, businessType: {}, courtSession: {}, panel: {}, sessionDate: {}",
                         slot.getOuCode(), slot.getCourtRoomNumber(), slot.getBusinessType(), slot.getCourtSession(), slot.getPanel(), slot.getSessionDate());
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity = CourtScheduleMapper.toEntity(slot);
                 if (isNull(courtScheduleEntity.getCreatedOn())) {

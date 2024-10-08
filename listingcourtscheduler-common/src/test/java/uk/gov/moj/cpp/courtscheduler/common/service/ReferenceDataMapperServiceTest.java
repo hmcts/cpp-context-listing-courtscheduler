@@ -47,6 +47,7 @@ class ReferenceDataMapperServiceTest {
     private static final Integer VENUE_ID = 23917;
     private static final Integer NOT_MATCHING_VENUE_ID = 29999;
     private static final String VENUE_NAME = "Court 8";
+    private static final String NOT_MATCHING_VENUE_NAME = "Court 5-Not Matching";
     private static final String MULTIPLE_MATCH_VENUE_NAME = "Court 5";
     private static final Integer MULTIPLE_MATCH_LOCATION_ID = 277;
 
@@ -102,6 +103,22 @@ class ReferenceDataMapperServiceTest {
     }
 
     @Test
+    void shouldFindByMatchingVenueIdAndNotMatchingVenueName() throws JsonProcessingException {
+
+        when(referenceDataCache.getCourtRooms(eq(requester))).thenReturn(getCourtRoomsFromRefData());
+
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(LOCATION_ID, VENUE_ID, NOT_MATCHING_VENUE_NAME), new HashMap<>(), requester);
+
+        assertTrue(courtRoomOptional.isPresent());
+        assertEquals("26de1ba8-fad7-3747-81e2-0dc6dce6ed7a", courtRoomOptional.get().getId());
+        assertEquals(VENUE_ID, courtRoomOptional.get().getRotaVenueId());
+        assertEquals(VENUE_NAME, courtRoomOptional.get().getRotaVenueName());
+        assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
+
+        verify(referenceDataCache, atLeastOnce()).getCourtRooms(eq(requester));
+    }
+
+    @Test
     void shouldFindByVenueEvenVenueIdIsNotMatching() throws JsonProcessingException {
 
         when(referenceDataCache.getCourtRooms(eq(requester))).thenReturn(getCourtRoomsFromRefData());
@@ -110,6 +127,9 @@ class ReferenceDataMapperServiceTest {
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals("26de1ba8-fad7-3747-81e2-0dc6dce6ed7a", courtRoomOptional.get().getId());
+        assertEquals(VENUE_ID, courtRoomOptional.get().getRotaVenueId());
+        assertEquals(VENUE_NAME, courtRoomOptional.get().getRotaVenueName());
+        assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
 
         verify(referenceDataCache, atLeastOnce()).getCourtRooms(eq(requester));
     }

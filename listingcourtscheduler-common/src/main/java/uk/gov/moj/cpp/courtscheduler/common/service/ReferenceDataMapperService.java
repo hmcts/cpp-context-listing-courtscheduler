@@ -70,24 +70,23 @@ public class ReferenceDataMapperService {
     public Optional<CourtRoom> findByVenue(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
         courtRooms = isEmpty(courtRooms) ? referenceDataCache.getCourtRooms(requester) : courtRooms;
 
-        final List<CourtRoom> courtRoomsByLocationAndVenueName = courtRooms
+        final List<CourtRoom> courtRoomsByLocationAndVenueNameOrVenueId = courtRooms
                 .stream()
                 .filter(courtRoom -> courtRoom.getRotaLocationId().equals(venue.getLocationId())
-                        && courtRoom.getRotaVenueName().equals(venue.getVenueName()))
+                        && (equalsIgnoreCase(courtRoom.getRotaVenueName(), venue.getVenueName()) || courtRoom.getRotaVenueId().equals(venue.getVenueId())))
                 .toList();
 
-        final Optional<CourtRoom> courtRoomOptional = courtRoomsByLocationAndVenueName.stream().filter(courtRoom -> courtRoom.getRotaVenueId().equals(venue.getVenueId())).findAny();
+        final Optional<CourtRoom> courtRoomOptional = courtRoomsByLocationAndVenueNameOrVenueId.stream().filter(courtRoom -> courtRoom.getRotaVenueId().equals(venue.getVenueId())).findAny();
         if (courtRoomOptional.isPresent()) {
             return courtRoomOptional;
         } else {
-            if (courtRoomsByLocationAndVenueName.size() > 1) {
+            if (courtRoomsByLocationAndVenueNameOrVenueId.size() > 1) {
                 exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
-            } else {
+            } else if (courtRoomsByLocationAndVenueNameOrVenueId.size() == 1) {
                 exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             }
-
         }
-        return isEmpty(courtRoomsByLocationAndVenueName) ? empty() : of(courtRoomsByLocationAndVenueName.get(0));
+        return isEmpty(courtRoomsByLocationAndVenueNameOrVenueId) ? empty() : of(courtRoomsByLocationAndVenueNameOrVenueId.get(0));
     }
 
     public void loadJudiciaries(final Requester requester) {
