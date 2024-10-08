@@ -7,6 +7,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import uk.gov.justice.services.common.configuration.Value;
 import uk.gov.moj.cpp.courtscheduler.common.exception.AzureBlobClientException;
+import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -97,19 +98,25 @@ public class AzureBlobClientService {
         return downloadedBlobMap;
     }
 
-    public byte[] downloadFiles(final ListBlobItem blobItem) {
+    public BlobContent downloadFiles(final ListBlobItem blobItem) {
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
+            BlobContent blobContent = new BlobContent();
             LOGGER.info("Connecting to azure blob storage to download files from : {} on {}", rotaslInputContainerName, now());
             connect(rotaslInputContainerName);
             final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
             final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
             final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            String leaseId = blob.acquireLease(50, null);
             blob.download(outputStream);
 
             LOGGER.info("Total time taken for all the blobs to be downloaded from {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
 
-            return outputStream.toByteArray();
+            byte[] blobByteArray = outputStream.toByteArray();
+            blobContent.setLeaseId(leaseId);
+            blobContent.setBlob(blob);
+            blobContent.setBlobByteArray(blobByteArray);
+            return blobContent;
         } catch (StorageException ex) {
             throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
                     ex.getHttpStatusCode(), ex.getErrorCode()), ex);

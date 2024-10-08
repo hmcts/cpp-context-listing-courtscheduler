@@ -9,12 +9,14 @@ import static org.mockito.Mockito.when;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileProcessorService;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
+import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.CloudBlob;
 import com.microsoft.azure.storage.blob.ListBlobItem;
 import org.junit.jupiter.api.Disabled;
@@ -46,10 +48,13 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
 
     @Test
     @Disabled
-    void shouldCaptureRotaFilesAndProcessEach() throws IOException {
+    void shouldCaptureRotaFilesAndProcessEach() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
-        final byte[] blobContent = givenBlobContent(file);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
         final Map<String, ListBlobItem> listBlobItemMap = Map.of();
 
         when(azureBlobClientService.collectListBlobItems(eq("lja_"))).thenReturn(listBlobItemMap);

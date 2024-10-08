@@ -29,6 +29,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
@@ -67,6 +68,9 @@ import javax.ejb.Stateless;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 
+import com.microsoft.azure.storage.AccessCondition;
+import com.microsoft.azure.storage.StorageException;
+import com.microsoft.azure.storage.blob.CloudBlob;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,13 +140,18 @@ public class RotaFileProcessorService {
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Asynchronous
-    public void downloadAndProcessForEachFile(final Requester requester, final byte[] blobContent, final String blobName) {
+    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) throws StorageException {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
-        process(blobName, blobContent, requester);
+        CloudBlob blob = blobContent.getBlob();
+        byte[] blobByteArray = blobContent.getBlobByteArray();
+        process(blobName, blobByteArray, requester);
+        AccessCondition accessCondition = new AccessCondition();
+        accessCondition.setLeaseID(blobContent.getLeaseId());
+        blob.releaseLease(accessCondition);
         logger.info("rota file process completed for blob with name: {}", blobName);
-        final long fileLength = blobContent.length;
+        final long fileLength = blobByteArray.length;
         // upload the files processed into archive container
-        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobContent), fileLength, blobName, empty());
+        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
         logger.info("rota file upload to output container completed for blob with name: {}", blobName);
         azureBlobClientService.deleteFile(blobName, empty());
         logger.info("rota file deletion from input container completed for blob with name: {}", blobName);

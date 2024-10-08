@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileProcessorService;
 
 import java.util.Map;
@@ -13,6 +14,7 @@ import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
+import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.ListBlobItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,8 +47,12 @@ public class RotaFileCaptureAndProcessTriggerService {
         }
         // for each of the files process rotasl
         downloadedBlobsByteArrayMap.keySet().forEach(blobName -> {
-            final byte[] blobContent = azureBlobClientService.downloadFiles(downloadedBlobsByteArrayMap.get(blobName)); ;
-            rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+            final BlobContent blobContent = azureBlobClientService.downloadFiles(downloadedBlobsByteArrayMap.get(blobName));
+            try {
+                rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+            } catch (StorageException exception) {
+                throw new RuntimeException(exception);
+            }
         });
 
         return new AsyncResult<>("SUCCESS");
