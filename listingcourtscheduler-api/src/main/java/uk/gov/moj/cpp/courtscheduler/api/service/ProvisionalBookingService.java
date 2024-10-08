@@ -69,7 +69,7 @@ public class ProvisionalBookingService {
                 .toList();
         //judiciary details are not required for provisional bookings without listing profile(ghost rota)
         if (isNotEmpty(courtSchedulesWithListingProfile)) {
-            List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciaries(courtScheduleList);
+            List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciaries(courtSchedulesWithListingProfile);
             courtScheduleJudiciaries.forEach(courtScheduleJudiciary ->
                     courtScheduleJudiciariesArrayList.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
         }
