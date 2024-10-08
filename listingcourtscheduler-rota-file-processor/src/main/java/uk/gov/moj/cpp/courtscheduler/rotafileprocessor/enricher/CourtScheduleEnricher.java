@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 
 import static java.lang.String.format;
-import static java.util.Objects.nonNull;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.BUSINESS_TYPE;
@@ -18,14 +17,13 @@ import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDa
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,12 +45,12 @@ public class CourtScheduleEnricher {
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
-    @Inject
-    private SessionsService sessionsService;
-
     private final Map<String, String> missingReferenceDataMappingMap = new ConcurrentHashMap<>();
 
-    public CourtSchedule build(final Map<String, String> listingProfile, final LocalDate sessionDate, final Requester requester) {
+    public CourtSchedule build(final Map<String, String> listingProfile,
+                               final LocalDate sessionDate,
+                               final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
+                               final Requester requester) {
         final CourtSchedule.CourtScheduleBuilder builder = new CourtSchedule.CourtScheduleBuilder();
         final String businessType = listingProfile.get(BUSINESS_TYPE);
         final String courtSessionStr = listingProfile.get(SESSION);
@@ -66,10 +64,15 @@ public class CourtScheduleEnricher {
             populateListingProperties(builder, listingProfile, sessionDate, courtSessionStr, businessType);
             populateSessionAllocation(builder, businessType, sessionDate, courtSessionStr, courtRoomDetail, requester);
 
-            final CourtScheduleMatcherInfo courtScheduleMatcherInfo = sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(builder.getCourtRoomId(), builder.getSessionDate(), builder.getBusinessType(), builder.getCourtSession());
-            if (nonNull(courtScheduleMatcherInfo) && isNotEmpty(courtScheduleMatcherInfo.getCourtScheduleId())) {
-                builder.withCourtScheduleId(courtScheduleMatcherInfo.getCourtScheduleId());
-                builder.withCreatedOn(courtScheduleMatcherInfo.getCreatedOn());
+            final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinDateRange.stream()
+                    .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(builder.getCourtRoomId())
+                    && activeCourtSchedule.getSessionDate().equals(builder.getSessionDate())
+                    && activeCourtSchedule.getBusinessType().equals(builder.getBusinessType())
+                    && activeCourtSchedule.getCourtSession().equals(builder.getCourtSession()))
+                    .findAny();
+            if (courtScheduleOptional.isPresent() && isNotEmpty(courtScheduleOptional.get().getCourtScheduleId())) {
+                builder.withCourtScheduleId(courtScheduleOptional.get().getCourtScheduleId());
+                builder.withCreatedOn(courtScheduleOptional.get().getCreatedOn());
             }
         } else {
             final String msgKey = format(COURT_ROOM_ERR_MSG, locationId, venueName, venueId);

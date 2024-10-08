@@ -7,10 +7,7 @@ import static java.util.Optional.empty;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.apache.commons.lang3.RandomStringUtils.random;
-import static org.apache.deltaspike.core.util.CollectionUtils.isEmpty;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -22,7 +19,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.utils.FileUtil.getPayload;
@@ -31,9 +27,6 @@ import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setFi
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
-import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
-import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
-import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
@@ -44,14 +37,11 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.DateRange;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
-import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
-import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryScheduleEnricher;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.RotaDataEnricher;
-import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.ProvisionalDataProducer;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
 import java.io.IOException;
@@ -73,8 +63,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -106,16 +94,7 @@ class RotaFileProcessorServiceTest {
     private RotaFileProcessHistoryService rotaFileProcessHistoryService;
 
     @Mock
-    private CourtScheduleService courtScheduleService;
-
-    @Mock
     private SessionsService sessionsService;
-
-    @Mock
-    private CourtScheduleJudiciaryService courtScheduleJudiciaryService;
-
-    @Mock
-    private AllocatedListingService allocatedListingService;
 
     @Mock
     private ReferenceDataCache referenceDataCache;
@@ -124,10 +103,7 @@ class RotaFileProcessorServiceTest {
     private ReferenceDataService referenceDataService;
 
     @Mock
-    private ProvisionalDataProducer provisionalDataProducer;
-
-    @Mock
-    private BusinessTypeMatchingLogger businessTypeMatchingLogger;
+    private RotaFilePartialProcessor rotaFilePartialProcessor;
 
     @Mock
     private Requester requester;
@@ -140,9 +116,6 @@ class RotaFileProcessorServiceTest {
 
     @Mock
     private Collection<CourtScheduleJudiciary> schedules;
-
-    @Captor
-    private ArgumentCaptor<List<String>> missingBusinessTypeCaptor;
 
     private Map<String, Map<String, String>> rotaPeriodMap;
 
@@ -159,6 +132,7 @@ class RotaFileProcessorServiceTest {
         setField(rotaFileProcessorService, "rotaCycleToPopulateLength", "28");
     }
 
+
     @Test
     void shouldCaptureMasterRotaFileAndProcess() throws IOException {
         final String file = "rotafileprocessor/rota_payload.xml";
@@ -167,7 +141,6 @@ class RotaFileProcessorServiceTest {
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
-        final List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
         final LocalDate extractStartDate = LocalDate.of(2019, 10, 1);
         final List<CourtSchedule> extractedSchedules = new ArrayList<>();
         final List<String> businessTypes = List.of(PSV_AS_EXISTING_BUSINESS_TYPE, CJU_AS_MISSING_BUSINESS_TYPE);
@@ -185,12 +158,12 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
-        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester))).thenReturn(slots);
-        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(false), eq(requester))).thenReturn(schedules);
+        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester))).thenReturn(slots);
+        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(false), anyList(), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
-        doNothing().when(sessionsService).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
+        doNothing().when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
@@ -205,17 +178,10 @@ class RotaFileProcessorServiceTest {
 
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
 
-        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(false), eq(requester));
-        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester));
+        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(false), anyList(), eq(requester));
+        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
-        verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
-        verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
-
-        final List<List<String>> missingBusinessTypes = missingBusinessTypeCaptor.getAllValues();
-        assertEquals(1, missingBusinessTypes.size());
-        assertEquals(1, missingBusinessTypes.get(0).size());
-        assertEquals(CJU_AS_MISSING_BUSINESS_TYPE, missingBusinessTypes.get(0).get(0));
     }
 
     @Test
@@ -246,12 +212,12 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
-        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester))).thenReturn(slots);
-        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(false), eq(requester))).thenReturn(schedules);
+        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester))).thenReturn(slots);
+        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(false), anyList(), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypesAsHavingCJUandNCPTonly());
-        doNothing().when(sessionsService).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
+        doNothing().when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
@@ -266,16 +232,12 @@ class RotaFileProcessorServiceTest {
 
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
 
-        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(false), eq(requester));
-        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester));
+        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(false), anyList(), eq(requester));
+        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
-        verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
-        verify(businessTypeMatchingLogger, never()).logMissingBusinessType(missingBusinessTypeCaptor.capture());
-
-        final List<List<String>> missingBusinessTypes = missingBusinessTypeCaptor.getAllValues();
-        assertTrue(isEmpty(missingBusinessTypes));
     }
+
 
     @Test
     void shouldCaptureMasterRotaFileAndProcessIfAlsoThereIsNoExistingSchedules() throws IOException {
@@ -315,27 +277,21 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
-        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester))).thenReturn(slots);
-        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(false), eq(requester))).thenReturn(schedules);
+        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester))).thenReturn(slots);
+        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slots), eq(records), eq(false), anyList(), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
-        doNothing().when(sessionsService).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
+        doNothing().when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
 
-        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(false), eq(requester));
-        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester));
+        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(false), anyList(), eq(requester));
+        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
-        verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
-        verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
-
-        final List<List<String>> missingBusinessTypes = missingBusinessTypeCaptor.getAllValues();
-        assertEquals(1, missingBusinessTypes.size());
-        assertEquals(1, missingBusinessTypes.get(0).size());
-        assertEquals(CJU_AS_MISSING_BUSINESS_TYPE, missingBusinessTypes.get(0).get(0));
+        verify(rotaFilePartialProcessor, atLeastOnce()).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap());
     }
 
     @Test
@@ -359,8 +315,8 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
-        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester))).thenReturn(slotsMock);
-        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester))).thenReturn(schedules);
+        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester))).thenReturn(slotsMock);
+        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(emptyMap());
 
         final Map<String, String> rotaDetails = new HashMap();
@@ -375,10 +331,7 @@ class RotaFileProcessorServiceTest {
 
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
 
-        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester));
-        verify(courtScheduleJudiciaryService, never()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleService, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(businessTypeMatchingLogger, never()).logMissingBusinessType(missingBusinessTypeCaptor.capture());
+        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
     }
 
     @Test
@@ -392,7 +345,7 @@ class RotaFileProcessorServiceTest {
 
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
 
-        verify(judiciaryScheduleEnricher, never()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester));
+        verify(judiciaryScheduleEnricher, never()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
     }
 
     @Test
@@ -408,11 +361,12 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
-        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester))).thenReturn(slotsMock);
-        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester))).thenReturn(schedules);
+        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester))).thenReturn(slotsMock);
+        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester))).thenReturn(schedules);
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         doNothing().when(rotaFileProcessHistoryService).update(anyString(), any());
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class))).thenReturn(emptyList());
+        doNothing().when(rotaFilePartialProcessor).processSnapshotRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyList(), anyList(), anyMap(), anyMap());
 
         final Map<String, String> rotaDetails = new HashMap<>();
         rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
@@ -426,8 +380,8 @@ class RotaFileProcessorServiceTest {
 
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
 
-        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester));
-        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester));
+        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
+        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
@@ -445,10 +399,6 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
-        when(rotaFileParser.parse(any(), any())).thenReturn(records);
-        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester))).thenReturn(slotsMock);
-        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester))).thenReturn(schedules);
-        when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class)))
                 .thenReturn(List.of(new RotaFileProcessHistory()));
 
@@ -459,19 +409,14 @@ class RotaFileProcessorServiceTest {
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
-        when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
-
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
 
-        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester));
-        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester));
-        verify(rotaFileParser, atLeastOnce()).parse(any(), any());
-        verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
+        verify(judiciaryScheduleEnricher, never()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
+        verify(rotaDataEnricher, never()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
+        verify(rotaFileParser, never()).parse(any(), any());
+        verify(referenceDataService, never()).getCourtRoomsMap(eq(requester));
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
         verify(rotaFileProcessHistoryService, never()).update(anyString(), any());
-        verify(courtScheduleJudiciaryService, never()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleService, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
     }
 
     @Test
@@ -486,11 +431,6 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
-        when(rotaFileParser.parse(any(), any())).thenReturn(records);
-        when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester))).thenReturn(slotsMock);
-        when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester))).thenReturn(schedules);
-        when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
-
         final Map<String, String> rotaDetails = new HashMap<>();
         rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
         rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
@@ -498,19 +438,15 @@ class RotaFileProcessorServiceTest {
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
-        when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
 
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
 
-        verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), eq(requester));
-        verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), eq(requester));
-        verify(rotaFileParser, atLeastOnce()).parse(any(), any());
-        verify(referenceDataService, atLeastOnce()).getCourtRoomsMap(eq(requester));
+        verify(judiciaryScheduleEnricher, never()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
+        verify(rotaDataEnricher, never()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
+        verify(rotaFileParser, never()).parse(any(), any());
+        verify(referenceDataService, never()).getCourtRoomsMap(eq(requester));
         verify(rotaFileProcessHistoryRepository, never()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
         verify(rotaFileProcessHistoryService, never()).update(anyString(), any());
-        verify(courtScheduleJudiciaryService, never()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
-        verify(courtScheduleService, never()).deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList());
     }
 
     @Test

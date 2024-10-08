@@ -36,7 +36,6 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
-import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
@@ -47,6 +46,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidato
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationStatus;
+import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
@@ -206,7 +206,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope updateCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
         Result failure = new Result("Court Schedule not found", false);
-        when(sessionsService.update(any(), eq(requester))).thenReturn(failure);;
+        when(sessionsService.update(any(), eq(requester))).thenReturn(failure);
 
         BadRequestException badRequestException = assertThrows(BadRequestException.class, () -> courtSchedulerApi.updateCourtSchedule(updateCourtScheduleJsonEnvelope));
 
