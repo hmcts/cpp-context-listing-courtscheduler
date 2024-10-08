@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.exception.RotaFileProcessorException;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
@@ -51,7 +52,7 @@ public class RotaFileCaptureAndProcessTriggerService {
             try {
                 rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
             } catch (StorageException exception) {
-                throw new RuntimeException(exception);
+                throw new RotaFileProcessorException(exception);
             }
         });
 

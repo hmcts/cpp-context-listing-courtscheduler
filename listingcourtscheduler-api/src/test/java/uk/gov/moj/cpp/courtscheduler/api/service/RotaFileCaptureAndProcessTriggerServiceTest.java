@@ -47,7 +47,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
     private Requester requester;
 
     @Test
-    @Disabled
+    @Disabled("Need to revisit on mocking blob")
     void shouldCaptureRotaFilesAndProcessEach() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
