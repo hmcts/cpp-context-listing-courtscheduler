@@ -88,6 +88,8 @@ public class SessionsService {
     private CourtScheduleToDeleteResponseConverter courtScheduleToDeleteResponseConverter;
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+    @Inject
+    private CourtScheduleService courtScheduleService;
 
     public void create(CreateSessionRequestParam createSessionRequestParam, Requester requester) {
         final List<CourtSchedule> courtScheduleList = new ArrayList<>();
@@ -346,7 +348,7 @@ public class SessionsService {
                 }
                 courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
                 courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
-                courtScheduleRepository.save(courtScheduleEntity);
+                courtScheduleService.saveSlot(courtScheduleEntity);
 
                 numberOfSavedSlots.getAndIncrement();
             }

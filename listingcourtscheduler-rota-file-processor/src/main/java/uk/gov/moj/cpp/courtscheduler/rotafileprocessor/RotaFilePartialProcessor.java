@@ -6,6 +6,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toMap;
+import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.START_DATE;
@@ -63,7 +64,7 @@ public class RotaFilePartialProcessor {
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Asynchronous
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(REQUIRES_NEW)
     public void processFullRotaFile(final Map<String, CourtSchedule> slots,
                                     final Map<String, CourtSchedule> slotsForMigrated,
                                     final Collection<CourtScheduleJudiciary> schedules,
@@ -93,7 +94,7 @@ public class RotaFilePartialProcessor {
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
     @Asynchronous
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(REQUIRES_NEW)
     public void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                         final Map<String, CourtSchedule> slotsForMigrated,
                                         final Collection<CourtScheduleJudiciary> schedules,

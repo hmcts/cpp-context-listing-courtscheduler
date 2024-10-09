@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
+import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
@@ -22,7 +23,7 @@ public class CourtScheduleJudiciaryService {
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(REQUIRES_NEW)
     public Map<String, List<CourtScheduleJudiciary>> findRelatedJudiciarySchedules(final List<String> snapshotSlotIds) {
         final Map<String, List<CourtScheduleJudiciary>> result = new HashMap<>();
 
@@ -50,7 +51,7 @@ public class CourtScheduleJudiciaryService {
         return result;
     }
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(REQUIRES_NEW)
     public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
         return courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
     }
