@@ -18,7 +18,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshot
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshotFileTimeStampAsOffsetDateTime;
 
 import uk.gov.justice.services.common.configuration.Value;
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
@@ -64,8 +63,6 @@ import javax.inject.Inject;
 import com.microsoft.azure.storage.AccessCondition;
 import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.CloudBlob;
-import org.apache.commons.lang3.tuple.Pair;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,15 +124,13 @@ public class RotaFileProcessorService {
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
-    private ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
-
     @Asynchronous
     public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) throws StorageException {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
-        CloudBlob blob = blobContent.getBlob();
-        byte[] blobByteArray = blobContent.getBlobByteArray();
+        final CloudBlob blob = blobContent.getBlob();
+        final byte[] blobByteArray = blobContent.getBlobByteArray();
         process(blobName, blobByteArray, requester);
-        AccessCondition accessCondition = new AccessCondition();
+        final AccessCondition accessCondition = new AccessCondition();
         accessCondition.setLeaseID(blobContent.getLeaseId());
         blob.releaseLease(accessCondition);
         logger.info("rota file process completed for blob with name: {}", blobName);
@@ -219,7 +214,7 @@ public class RotaFileProcessorService {
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
                 logger.info("Filtered Slots for Snapshot : {}", filteredSlots.keySet());
                 rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap);
-                logger.info("snapshot rota file processing part number: {}", partIndex);
+                logger.info("snapshot rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
             logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
@@ -232,7 +227,7 @@ public class RotaFileProcessorService {
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
                 logger.info("Filtered Slots for Full Rota file : {}", filteredSlots.keySet());
                 rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap);
-                logger.info("master rota file processing part number: {}", partIndex);
+                logger.info("master rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
         }
