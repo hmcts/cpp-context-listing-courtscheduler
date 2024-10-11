@@ -96,6 +96,8 @@ class SessionsServiceTest {
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
     @Mock
+    private CourtScheduleService courtScheduleService;
+    @Mock
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
     @Mock
     private Requester requester;
@@ -629,7 +631,7 @@ class SessionsServiceTest {
 
         doNothing().when(courtScheduleRepository).deactivateSlots(anyList(), any());
         doNothing().when(courtScheduleJudiciaryRepository).deactivateSchedules(anyList(), any());
-        when(courtScheduleRepository.save(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
+        when(courtScheduleService.saveSlot(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
         when(courtScheduleRepository.update(any(CourtSchedule.class), eq(true))).thenReturn(courtScheduleEntityMock);
         when(courtScheduleRepository.deleteSlots(anyList())).thenReturn(slotIdsToDelete.size());
         when(courtScheduleJudiciaryRepository.deleteSchedules(anyList())).thenReturn(slotIdsToDelete.size());
@@ -642,7 +644,7 @@ class SessionsServiceTest {
 
         verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleService, atLeastOnce()).saveSlot(any(CourtSchedule.class));
         verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
         verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class), eq(true));
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
@@ -665,7 +667,7 @@ class SessionsServiceTest {
         doNothing().when(courtScheduleRepository).deactivateSlots(anyList(), any());
         doNothing().when(courtScheduleJudiciaryRepository).deactivateSchedules(anyList(), any());
         when(courtScheduleRepository.update(any(CourtSchedule.class), eq(true))).thenReturn(courtScheduleEntityMock);
-        when(courtScheduleRepository.save(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
+        when(courtScheduleService.saveSlot(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
 
         final List<String> ouCodes = List.of("B01LY00");
         final SlotAndScheduleInfo slotAndScheduleInfo = new SlotAndScheduleInfo(existingSlotIds, emptyList(), slotsToUpdate, newSchedules, emptyList(), emptyMap(), newRecords, slotsToUpdateMap);
@@ -673,7 +675,7 @@ class SessionsServiceTest {
 
         verify(courtScheduleRepository, atLeastOnce()).deactivateSlots(anyList(), any());
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).deactivateSchedules(anyList(), any());
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleService, atLeastOnce()).saveSlot(any(CourtSchedule.class));
         verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
         verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class), eq(true));
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());

@@ -54,7 +54,7 @@ public class RotaFileCaptureAndProcessTriggerService {
                 rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
             } catch (StorageException exception) {
                 throw new RotaFileProcessorException(exception);
-            } catch (AzureBlobClientException ignored) {
+            } catch (AzureBlobClientException ignoredException) {
                 logger.info("File already leased and skipping to the next file");
             }
         });

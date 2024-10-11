@@ -88,6 +88,8 @@ public class SessionsService {
     private CourtScheduleToDeleteResponseConverter courtScheduleToDeleteResponseConverter;
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+    @Inject
+    private CourtScheduleService courtScheduleService;
 
     public void create(CreateSessionRequestParam createSessionRequestParam, Requester requester) {
         final List<CourtSchedule> courtScheduleList = new ArrayList<>();
@@ -346,7 +348,7 @@ public class SessionsService {
                 }
                 courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
                 courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
-                courtScheduleRepository.save(courtScheduleEntity);
+                courtScheduleService.saveSlot(courtScheduleEntity);
 
                 numberOfSavedSlots.getAndIncrement();
             }
@@ -500,7 +502,6 @@ public class SessionsService {
                                       final List<String> ouCodes) {
 
         final AtomicInteger numberOfSavedJudiciaries = new AtomicInteger();
-        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> courtScheduleJudiciariesToBePersisted = new ArrayList<>();
         scheduleJudiciaries.forEach(scheduleJudiciary -> {
             final CourtSchedule courtSchedule = newRecords.get(scheduleJudiciary.getCourtListingProfileId());
 
@@ -510,12 +511,9 @@ public class SessionsService {
                 if (!forMigrated) {
                     courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
                 }
-                courtScheduleJudiciariesToBePersisted.add(courtScheduleJudiciaryEntity);
+                courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);
+                numberOfSavedJudiciaries.incrementAndGet();
             }
-        });
-        courtScheduleJudiciariesToBePersisted.forEach(courtScheduleJudiciary -> {
-            courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
-            numberOfSavedJudiciaries.incrementAndGet();
         });
 
         logger.info("numberOfSavedJudiciaries: {} for ouCodes: {}", numberOfSavedJudiciaries.get(), ouCodes);
