@@ -11,12 +11,15 @@ import static org.mockito.Mockito.when;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileProcessorService;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
+import com.microsoft.azure.storage.StorageException;
+import com.microsoft.azure.storage.blob.CloudBlob;
 import com.microsoft.azure.storage.blob.ListBlobItem;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,14 +51,18 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
     private ListBlobItem listBlobItem;
 
     @Test
-    void shouldCaptureRotaFilesAndProcessEach() throws IOException {
+    void shouldCaptureRotaFilesAndProcessEach() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
-        final byte[] blobContent = givenBlobContent(file);
-        final Map<String, ListBlobItem> listBlobItemMap = Map.of(blobName, listBlobItem);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
+        final Map<String, ListBlobItem> listBlobItemMap = Map.of();
 
         when(azureBlobClientService.collectListBlobItems(eq("lja_"))).thenReturn(listBlobItemMap);
-        doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(eq(requester), any(), eq(blobName));
+        when(azureBlobClientService.downloadFiles(any(CloudBlob.class))).thenReturn(any());
+        doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName));
         doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations(eq(requester));
@@ -66,7 +73,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         verify(referenceDataMapperService, atLeastOnce()).loadCourtRooms(eq(requester));
         verify(referenceDataMapperService, atLeastOnce()).loadCourtRoomSessionAllocations(eq(requester));
         verify(azureBlobClientService, atLeastOnce()).collectListBlobItems(eq("lja_"));
-        verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(eq(requester), any(), eq(blobName));
+        verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName));
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {

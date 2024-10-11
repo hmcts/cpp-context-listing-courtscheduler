@@ -31,6 +31,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -60,6 +61,9 @@ import java.util.stream.IntStream;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.microsoft.azure.storage.AccessCondition;
+import com.microsoft.azure.storage.StorageException;
+import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -113,6 +117,8 @@ class RotaFileProcessorServiceTest {
 
     @Mock
     private Map<String, CourtSchedule> slotsMock;
+    @Mock
+    private CloudBlockBlob blob;
 
     @Mock
     private Collection<CourtScheduleJudiciary> schedules;
@@ -132,12 +138,15 @@ class RotaFileProcessorServiceTest {
         setField(rotaFileProcessorService, "rotaCycleToPopulateLength", "28");
     }
 
-
     @Test
-    void shouldCaptureMasterRotaFileAndProcess() throws IOException {
+    void shouldCaptureMasterRotaFileAndProcess() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
-        final byte[] blobContent = givenBlobContent(file);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
+        blobContent.setBlob(blob);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -163,6 +172,7 @@ class RotaFileProcessorServiceTest {
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
+        doNothing().when(blob).releaseLease(any(AccessCondition.class));
         doNothing().when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
@@ -185,12 +195,16 @@ class RotaFileProcessorServiceTest {
     }
 
     @Test
-    void shouldCaptureMasterRotaFileAndProcessForDurationBasedSlots() throws IOException {
+    void shouldCaptureMasterRotaFileAndProcessForDurationBasedSlots() throws IOException, StorageException {
         setField(rotaFileProcessorService, "rotaCycleToPopulateLength", "corrupted value-normally should be a number");
 
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
-        final byte[] blobContent = givenBlobContent(file);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
+        blobContent.setBlob(blob);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -217,6 +231,7 @@ class RotaFileProcessorServiceTest {
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypesAsHavingCJUandNCPTonly());
+        doNothing().when(blob).releaseLease(any(AccessCondition.class));
         doNothing().when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
@@ -240,12 +255,16 @@ class RotaFileProcessorServiceTest {
 
 
     @Test
-    void shouldCaptureMasterRotaFileAndProcessIfAlsoThereIsNoExistingSchedules() throws IOException {
+    void shouldCaptureMasterRotaFileAndProcessIfAlsoThereIsNoExistingSchedules() throws IOException, StorageException {
         setField(rotaFileProcessorService, "rotaCycleToPopulateLength", null);
 
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
-        final byte[] blobContent = givenBlobContent(file);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
+        blobContent.setBlob(blob);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -282,6 +301,7 @@ class RotaFileProcessorServiceTest {
         when(referenceDataService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
         when(referenceDataCache.getRotaBusinessTypes(eq(requester))).thenReturn(getRotaBusinessTypes());
+        doNothing().when(blob).releaseLease(any(AccessCondition.class));
         doNothing().when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
@@ -295,15 +315,19 @@ class RotaFileProcessorServiceTest {
     }
 
     @Test
-    void shouldBreakRotaFileProcessIfCourtRoomsMapIsEmpty() throws IOException {
+    void shouldBreakRotaFileProcessIfCourtRoomsMapIsEmpty() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
-        final byte[] blobContent = givenBlobContent(file);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
+        blobContent.setBlob(blob);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
 
-        final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobContent);
+        final Map<String, byte[]> downloadedBlobsByteArrayMap = Map.of(blobName, blobByteArray);
 
         final LocalDate extractStartDate = LocalDate.of(2019, 10, 1);
         final List<CourtSchedule> extractedSchedules = new ArrayList();
@@ -313,6 +337,7 @@ class RotaFileProcessorServiceTest {
 
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
+        doNothing().when(blob).releaseLease(any(AccessCondition.class));
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester))).thenReturn(slotsMock);
@@ -335,13 +360,18 @@ class RotaFileProcessorServiceTest {
     }
 
     @Test
-    void shouldNotProcessDummyFile() throws IOException {
+    void shouldNotProcessDummyFile() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "dummysupport.xml";
-        final byte[] blobContent = givenBlobContent(file);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
+        blobContent.setBlob(blob);
 
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
+        doNothing().when(blob).releaseLease(any(AccessCondition.class));
 
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
 
@@ -349,16 +379,21 @@ class RotaFileProcessorServiceTest {
     }
 
     @Test
-    void shouldCaptureSnapshotFileAndProcess() throws IOException {
+    void shouldCaptureSnapshotFileAndProcess() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_bedfordshire_snapshot_20240402T180039Z.xml";
-        final byte[] blobContent = givenBlobContent(file);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
+        blobContent.setBlob(blob);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
 
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
+        doNothing().when(blob).releaseLease(any(AccessCondition.class));
 
         when(rotaFileParser.parse(any(), any())).thenReturn(records);
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester))).thenReturn(slotsMock);
@@ -388,16 +423,21 @@ class RotaFileProcessorServiceTest {
     }
 
     @Test
-    void shouldNotProcessSnapshotFileIfThereIsOneAlreadyProcessedHavingANewerFileDate() throws IOException {
+    void shouldNotProcessSnapshotFileIfThereIsOneAlreadyProcessedHavingANewerFileDate() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_bedfordshire_snapshot_20240402T180039Z.xml";
-        final byte[] blobContent = givenBlobContent(file);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
+        blobContent.setBlob(blob);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
 
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
+        doNothing().when(blob).releaseLease(any(AccessCondition.class));
 
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class)))
                 .thenReturn(List.of(new RotaFileProcessHistory()));
@@ -420,16 +460,21 @@ class RotaFileProcessorServiceTest {
     }
 
     @Test
-    void shouldNotProcessSnapshotFileIfTheFileNameMissingFileDateTimePart() throws IOException {
+    void shouldNotProcessSnapshotFileIfTheFileNameMissingFileDateTimePart() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_bedfordshire_snapshot_.xml";
-        final byte[] blobContent = givenBlobContent(file);
+        final byte[] blobByteArray = givenBlobContent(file);
+        final BlobContent blobContent = new BlobContent();
+        blobContent.setLeaseId(blobName);
+        blobContent.setBlobByteArray(blobByteArray);
+        blobContent.setBlob(blob);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
 
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
+        doNothing().when(blob).releaseLease(any(AccessCondition.class));
 
         final Map<String, String> rotaDetails = new HashMap<>();
         rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
