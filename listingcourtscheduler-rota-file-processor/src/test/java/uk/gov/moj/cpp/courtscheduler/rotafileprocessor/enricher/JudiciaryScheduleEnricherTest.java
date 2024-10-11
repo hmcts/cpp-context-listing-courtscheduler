@@ -120,8 +120,6 @@ class JudiciaryScheduleEnricherTest {
         final Map<String, CourtSchedule> courtScheduleMap = new HashMap<>();
         final CourtSchedule courtSchedule = courtSchedule();
         courtScheduleMap.put(courtSchedule.getListingProfileId(), courtSchedule);
-//        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(), anyString(), anyString()))
-//                .thenReturn(new CourtScheduleMatcherInfo(courtSchedule.getCourtScheduleId(), "B01LY00", Calendar.getInstance().getTime()));
 
         final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, List.of(courtSchedule), requester);
 

@@ -65,7 +65,6 @@ class CourtScheduleEnricherTest {
         final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation("241546", 1234, "BAUOS05", 8, 60, "TBL", "PM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
         when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class), eq(requester))).thenReturn(of(courtRoom));
-//        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), anyString())).thenReturn(null);
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(courtRoomSessionAllocation));
 
@@ -108,7 +107,6 @@ class CourtScheduleEnricherTest {
         final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation("241546", 1234, courtRoom.getOucode(), 8, 60, "TBL", "PM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
         when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class), eq(requester))).thenReturn(of(courtRoom));
-//        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), anyString())).thenReturn(new CourtScheduleMatcherInfo(courtScheduleId, courtRoom.getOucode(), Calendar.getInstance().getTime()));
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(courtRoomSessionAllocation));
 

@@ -49,7 +49,7 @@ public class CourtScheduleEnricher {
 
     public CourtSchedule build(final Map<String, String> listingProfile,
                                final LocalDate sessionDate,
-                               final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
+                               final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
                                final Requester requester) {
         final CourtSchedule.CourtScheduleBuilder builder = new CourtSchedule.CourtScheduleBuilder();
         final String businessType = listingProfile.get(BUSINESS_TYPE);
@@ -64,7 +64,7 @@ public class CourtScheduleEnricher {
             populateListingProperties(builder, listingProfile, sessionDate, courtSessionStr, businessType);
             populateSessionAllocation(builder, businessType, sessionDate, courtSessionStr, courtRoomDetail, requester);
 
-            final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinDateRange.stream()
+            final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinRotaPeriod.stream()
                     .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(builder.getCourtRoomId())
                     && activeCourtSchedule.getSessionDate().equals(builder.getSessionDate())
                     && activeCourtSchedule.getBusinessType().equals(builder.getBusinessType())

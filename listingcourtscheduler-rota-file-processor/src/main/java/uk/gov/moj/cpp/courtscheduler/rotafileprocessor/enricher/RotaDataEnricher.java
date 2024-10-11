@@ -61,7 +61,7 @@ public class RotaDataEnricher {
                                                           final LocalDate rotaPeriodEndDate,
                                                           final Map<String, Boolean> migratedMap,
                                                           final Boolean migrated,
-                                                          final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
+                                                          final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
                                                           final Requester requester) {
         logger.info("enrichCourtListing - rotaPeriodEndDate: {}", rotaPeriodEndDate);
         long enrichCourtListingStartTime = System.currentTimeMillis();
@@ -76,7 +76,7 @@ public class RotaDataEnricher {
 
                 if (sessionDate.isBefore(rotaPeriodEndDate) || sessionDate.isEqual(rotaPeriodEndDate)) {
                     final CourtSchedule courtSchedule = courtSchedules.get(linkedSessionId);
-                    buildCourtSchedule(listingProfile, courtSchedule, courtSchedules, migratedMap, migrated, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinDateRange, requester);
+                    buildCourtSchedule(listingProfile, courtSchedule, courtSchedules, migratedMap, migrated, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
                 }
             } catch (final Exception ex) {
                 logger.error(format(EXCEPTION_MSG, listingProfile.get("id")), ex);
@@ -96,7 +96,7 @@ public class RotaDataEnricher {
                                     final Map<String, Boolean> migratedMap,
                                     final Boolean migrated,
                                     final Map<String, String> missingReferenceDataMappingMap,
-                                    final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
+                                    final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
                                     final Requester requester) {
         final String businessType = listingProfile.get(BUSINESS_TYPE);
         final String strSessionDate = listingProfile.get(SESSION_DATE);
@@ -104,12 +104,12 @@ public class RotaDataEnricher {
 
         CourtSchedule newCourtSchedule;
         if (isNull(courtSchedule) || !businessType.equals(courtSchedule.getBusinessType())) {
-            newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, activeCourtSchedulesByOuCodesWithinDateRange, requester);
+            newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
             if (migrated.equals(migratedMap.get(newCourtSchedule.getOuCode()))) {
                 addCourtSchedule(courtSchedules, newCourtSchedule);
             }
         } else {
-            newCourtSchedule = updateExistingCourtSchedule(courtSchedule, listingProfile.get(SESSION), missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinDateRange, requester);
+            newCourtSchedule = updateExistingCourtSchedule(courtSchedule, listingProfile.get(SESSION), missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
             courtSchedules.put(courtSchedule.getListingProfileId(), newCourtSchedule);
         }
     }
