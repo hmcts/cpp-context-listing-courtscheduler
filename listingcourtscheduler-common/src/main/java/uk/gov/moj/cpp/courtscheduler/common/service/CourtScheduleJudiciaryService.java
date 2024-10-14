@@ -57,6 +57,7 @@ public class CourtScheduleJudiciaryService {
     }
 
     public List<Object[]> getAllocatedScheduleJudiciaryInfo(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
-        return courtScheduleJudiciaryRepository.getAllocatedScheduleJudiciaryInfo(startDate, endDate, ouCodes);
+        final LocalDate hearingStartTimeEndBoundary = endDate.plusDays(1);
+        return courtScheduleJudiciaryRepository.getAllocatedScheduleJudiciaryInfo(startDate, hearingStartTimeEndBoundary, ouCodes);
     }
 }

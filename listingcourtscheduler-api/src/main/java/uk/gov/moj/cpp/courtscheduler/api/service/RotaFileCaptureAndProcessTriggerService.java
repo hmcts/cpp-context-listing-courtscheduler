@@ -58,6 +58,7 @@ public class RotaFileCaptureAndProcessTriggerService {
                 logger.info("File already leased and skipping to the next file");
             }
         });
+        referenceDataMapperService.clearReferenceDataInMemory();
 
         return new AsyncResult<>("SUCCESS");
     }
@@ -66,5 +67,6 @@ public class RotaFileCaptureAndProcessTriggerService {
         referenceDataMapperService.loadCourtRooms(requester);
         referenceDataMapperService.loadJudiciaries(requester);
         referenceDataMapperService.loadCourtRoomSessionAllocations(requester);
+        referenceDataMapperService.loadBusinessTypeMap(requester);
     }
 }

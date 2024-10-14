@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 
+import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
@@ -173,7 +174,12 @@ public class DatabaseSeeder {
             preparedStatement.setInt(6, allocatedListing.getCourtRoomId());
             preparedStatement.setString(7, allocatedListing.getRotaBusinessType());
             preparedStatement.setInt(8, allocatedListing.getDuration());
-            preparedStatement.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
+            if (isNull(allocatedListing.getHearingStartTime())) {
+                preparedStatement.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
+            } else {
+                preparedStatement.setTimestamp(9, new Timestamp(allocatedListing.getHearingStartTime().getTime()));
+            }
+
             preparedStatement.setTimestamp(10, new Timestamp(System.currentTimeMillis()));
             preparedStatement.setTimestamp(11, new Timestamp(System.currentTimeMillis()));
             preparedStatement.executeUpdate();

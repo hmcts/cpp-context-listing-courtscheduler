@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor;
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.lang.Integer.parseInt;
-import static java.util.Collections.emptyMap;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Optional.empty;
@@ -20,8 +19,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshot
 import uk.gov.justice.services.common.configuration.Value;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
-import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
-import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
+import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
@@ -53,7 +51,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.ejb.Asynchronous;
@@ -93,10 +90,7 @@ public class RotaFileProcessorService {
     private SessionsService sessionsService;
 
     @Inject
-    private ReferenceDataCache referenceDataCache;
-
-    @Inject
-    private ReferenceDataService referenceDataService;
+    private ReferenceDataMapperService referenceDataMapperService;
 
     @Inject
     private ProvisionalDataProducer provisionalDataProducer;
@@ -129,7 +123,9 @@ public class RotaFileProcessorService {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
         final CloudBlob blob = blobContent.getBlob();
         final byte[] blobByteArray = blobContent.getBlobByteArray();
+
         process(blobName, blobByteArray, requester);
+
         final AccessCondition accessCondition = new AccessCondition();
         accessCondition.setLeaseID(blobContent.getLeaseId());
         blob.releaseLease(accessCondition);
@@ -143,17 +139,8 @@ public class RotaFileProcessorService {
     }
 
     private void process(final String fileName, final byte[] content, final Requester requester) {
-        final OffsetDateTime fileDateTime = getLJASnapshotFileTimeStampAsOffsetDateTime(fileName);
-        if (fileName.contains(SNAPSHOT_NAME_PART)) {
-            final boolean newerVersionOfSnapshotFileProcessed = checkIfNewerVersionOfSnapshotFileProcessed(fileName, fileDateTime);
-            if (newerVersionOfSnapshotFileProcessed) {
-                logger.warn("There is a newer snapshot rota file has been processed already. Therefore, skipping.");
-                return;
-            }
-            if (isNull(fileDateTime)) {
-                logger.warn("fileDateTime part lacks of from the fileName: {}", fileName);
-                return;
-            }
+        if (fileName.contains(SNAPSHOT_NAME_PART) && checkFileDateTimeFieldAndIfNewerVersionOfSnapshotFileProcessed(fileName)) {
+            return;
         }
         this.migratedMap = sessionsService.migratedMapByOuCode();
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
@@ -196,7 +183,7 @@ public class RotaFileProcessorService {
             logger.warn("process Rota File rota period start date is in the past. Rota period start date : {}", rotaPeriodStartDate);
         }
 
-        final Map<String, BusinessType> businessTypesMap = getBusinessTypeMap(requester);
+        final Map<String, BusinessType> businessTypesMap = referenceDataMapperService.getBusinessTypeMap(requester);
 
         if (isEmpty(ouCodes)) {
             logger.warn("process Rota File execution cancelled ----- ouCodes are null or empty. Unable to find court mappings for locations: {}", locations);
@@ -204,6 +191,7 @@ public class RotaFileProcessorService {
         }
         int partIndex = 1;
         if (fileName.contains(SNAPSHOT_NAME_PART)) {
+            final OffsetDateTime fileDateTime = getLJASnapshotFileTimeStampAsOffsetDateTime(fileName);
             final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
             logger.info("DD-15703:RotaFileProcessor: Before  processSnapshotRotaFile");
             final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
@@ -233,11 +221,18 @@ public class RotaFileProcessorService {
         }
     }
 
-    private boolean checkIfNewerVersionOfSnapshotFileProcessed(final String fileName, final OffsetDateTime fileDateTime) {
+    private boolean checkFileDateTimeFieldAndIfNewerVersionOfSnapshotFileProcessed(final String fileName) {
+        final OffsetDateTime fileDateTime = getLJASnapshotFileTimeStampAsOffsetDateTime(fileName);
+        if (isNull(fileDateTime)) {
+            logger.warn("fileDateTime part lacks of from the fileName: {}", fileName);
+            return true;
+        }
         final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
-        if (nonNull(fileDateTime)) {
-            final List<RotaFileProcessHistory> rotaFileProcessHistories = rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, Timestamp.from(fileDateTime.toInstant()));
-            return isNotEmpty(rotaFileProcessHistories);
+        final List<RotaFileProcessHistory> rotaFileProcessHistories = rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, Timestamp.from(fileDateTime.toInstant()));
+        boolean isNewerVersionOfSnapshotFileProcessed = isNotEmpty(rotaFileProcessHistories);
+        if (isNewerVersionOfSnapshotFileProcessed) {
+            logger.warn("There is a newer snapshot rota file has been processed already. Therefore, skipping.");
+            return true;
         }
         return false;
     }
@@ -305,7 +300,7 @@ public class RotaFileProcessorService {
 
     private List<String> getOuCodesFromCourtRoomMappingsByLocationId(final List<String> locationIds, final Requester requester) {
         final Map<String, String> locationIdOuCodeMap = new HashMap<>();
-        referenceDataService.getCourtRoomsMap(requester).values()
+        referenceDataMapperService.getCourtRoomsMap(requester).values()
                 .forEach(courtRoom -> {
                     if(!locationIdOuCodeMap.containsKey(String.valueOf(courtRoom.getRotaLocationId()))) {
                         locationIdOuCodeMap.put(String.valueOf(courtRoom.getRotaLocationId()), courtRoom.getOucode());
@@ -321,15 +316,6 @@ public class RotaFileProcessorService {
                 });
 
         return ouCodes;
-    }
-
-    private Map<String, BusinessType> getBusinessTypeMap(final Requester requester) {
-        final List<BusinessType> businessTypes = referenceDataCache.getRotaBusinessTypes(requester);
-        if (isNotEmpty(businessTypes)) {
-            return businessTypes.stream()
-                    .collect(Collectors.toMap(BusinessType::getTypeCode, Function.identity()));
-        }
-        return emptyMap();
     }
 
     private Integer getRotaMonthsOfProvisionalDataToPopulate() {
