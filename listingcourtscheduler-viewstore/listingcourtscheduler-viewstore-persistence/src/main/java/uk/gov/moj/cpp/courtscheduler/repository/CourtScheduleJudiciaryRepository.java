@@ -30,9 +30,13 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
 
     private static final String SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "SELECT csj.court_schedule_id courtScheduleId, csj.judiciary_id judiciaryId " +
             "FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN " +
-            " (SELECT cs.id FROM court_schedule cs WHERE (cs.max_slot != cs.available_slot OR cs.max_duration_mins != cs.available_duration_mins) " +
-            "AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) " +
-            "OR exists (" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
+            " (SELECT distinct al.court_schedule_id FROM allocated_listings al WHERE " +
+            "al.hearing_start_time BETWEEN :startDate AND :endDate AND al.oucode IN (:ouCodes) " +
+            "UNION " +
+            "SELECT pb.court_schedule_id FROM provisional_booking pb, court_schedule cs " +
+            "WHERE pb.court_schedule_id = cs.id AND pb.active is true " +
+            "AND pb.hearing_start_time BETWEEN :startDate AND :endDate " +
+            "AND cs.oucode IN (:ouCodes)) AND csj.active = true";
 
     public abstract CourtScheduleJudiciary findByEmail(String email);
 

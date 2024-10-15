@@ -24,6 +24,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetRe
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
@@ -34,8 +35,11 @@ import java.io.InputStream;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import javax.ws.rs.core.Response;
 
@@ -139,7 +143,9 @@ class RotaFileProcessorIT extends AbstractIT {
     void shouldUpdateJudiciaryInfoAndShouldNotDeleteForTheOnesHavingAllocatedSlots() throws IOException, SQLException {
         final String fileBlobBaseName = "IT_Test_lja_bedfordshire_rota_20240402T190039Z";
         processFullRotaFile(fileBlobBaseName, false, 620, 11, 0);
+        final Optional<CourtSchedule> courtScheduleOptional = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305744")).findAny();
         databaseSeeder.setUpdateAvailableSlotForCourtSchedule("CS4305744");
+        databaseSeeder.insertAllocatedListing(getAllocatedListing(courtScheduleOptional.get()));
         databaseSeeder.cleanMigrationStatusTable();
         databaseSeeder.updateCourtScheduleSetListingProfileIdAsNull(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE);
         processFullRotaFile(fileBlobBaseName, true, 620, 11, 10);
@@ -276,6 +282,17 @@ class RotaFileProcessorIT extends AbstractIT {
             courtSchedulerMigrationStatus.setMigrated(migrated);
             databaseSeeder.insertCourtScheduleMigrationStatus(courtSchedulerMigrationStatus);
         }
+    }
+
+    private AllocatedListing getAllocatedListing(final CourtSchedule courtSchedule) {
+        final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
+        allocatedListing.setOucode(courtSchedule.getOuCode());
+
+        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0 ).atZone(ZoneId.of("Europe/London")).toInstant()));
+
+        return allocatedListing;
     }
 
 }
