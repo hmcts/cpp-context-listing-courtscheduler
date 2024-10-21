@@ -6,14 +6,16 @@ import static java.time.LocalDate.now;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import uk.gov.justice.services.common.configuration.Value;
+import uk.gov.moj.cpp.courtscheduler.common.exception.AzureAPIMInvocationException;
 import uk.gov.moj.cpp.courtscheduler.common.exception.AzureBlobClientException;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.InvalidKeyException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -23,8 +25,24 @@ import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import com.azure.core.credential.AccessToken;
+import com.azure.core.credential.TokenRequestContext;
+import com.azure.core.http.rest.PagedIterable;
+import com.azure.core.util.Configuration;
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.identity.ManagedIdentityCredential;
+import com.azure.identity.ManagedIdentityCredentialBuilder;
+import com.azure.storage.blob.BlobClientBuilder;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobContainerClientBuilder;
+import com.azure.storage.blob.BlobServiceClient;
+import com.azure.storage.blob.BlobServiceClientBuilder;
+import com.azure.storage.blob.models.BlobItem;
+import com.azure.storage.blob.models.ListBlobsOptions;
 import com.google.common.base.Stopwatch;
 import com.microsoft.azure.storage.CloudStorageAccount;
+import com.microsoft.azure.storage.StorageCredentialsToken;
 import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.CloudBlobClient;
 import com.microsoft.azure.storage.blob.CloudBlobContainer;
@@ -32,6 +50,7 @@ import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import com.microsoft.azure.storage.blob.ListBlobItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 
 @ApplicationScoped
 public class AzureBlobClientService {
@@ -46,6 +65,10 @@ public class AzureBlobClientService {
     private String rotaslStorageConnectionString;
 
     @Inject
+    @Value(key ="courtscheduler.rotaslStorageAccountName", defaultValue = "sasteccmscsl")
+    private String rotaslStorageAccountName;
+
+    @Inject
     @Value(key = "courtscheduler.rotaslInputContainerName", defaultValue = "schedulelistinginput")
     private String rotaslInputContainerName;
 
@@ -53,13 +76,19 @@ public class AzureBlobClientService {
     @Value(key = "courtscheduler.rotaslArchiveContainerName", defaultValue = "schedulelistingoutput")
     private String rotaslArchiveContainerName;
 
+    @Inject
+    private StorageApplicationParameters storageApplicationParameters;
+
     private CloudBlobContainer container = null;
+
+    private BlobContainerClient blobContainerClient = null;
+
+    public static final String AZURE_CLIENT_ID = "AZURE_CLIENT_ID";
+    public static final String AZURE_TENANT_ID = "AZURE_TENANT_ID";
+    public static final String BEARER_TOKEN = "Bearer %s";
 
     @PostConstruct
     void init() {
-        checkNotNull(rotaslStorageConnectionString,
-                format(ERROR_MSG, "connection string",
-                        "courtscheduler.rotaslStorageConnectionString"));
         checkNotNull(rotaslInputContainerName,
                 format(ERROR_MSG, "container name", "courtscheduler.rotaslInputContainerName"));
         checkNotNull(rotaslArchiveContainerName,
@@ -68,14 +97,40 @@ public class AzureBlobClientService {
 
     public void connect(final String blobContainerName) {
         try {
-            final CloudStorageAccount storageAccount = CloudStorageAccount.parse(rotaslStorageConnectionString);
+            final String manageIdentityToken = getTokenFromLocalClientSecretCredentials();
+            LOGGER.info("manageIdentityToken : {} - rotaslStorageAccountName: {}", manageIdentityToken, rotaslStorageAccountName);
+//            BlobServiceClient blobServiceClient = new BlobServiceClientBuilder().credential(
+//                    new ManagedIdentityCredentialBuilder()
+//                            .clientId(storageApplicationParameters.getAzureLocalMiClientId())
+//                            .build())
+//                    .buildClient();
+//            final BlobContainerClient blobContainerClient = blobServiceClient.getBlobContainerClient(blobContainerName);
+            final StorageCredentialsToken credentialsToken = new StorageCredentialsToken(rotaslStorageAccountName, format(BEARER_TOKEN, manageIdentityToken));
+            LOGGER.info("credentialsToken : {}", credentialsToken);
+            final CloudStorageAccount storageAccount = new CloudStorageAccount(credentialsToken, true);
+//            final CloudBlobClient blobClient = new CloudBlobClient(new URI(format("https://%s.blob.core.windows.net/", rotaslStorageAccountName)), credentialsToken);
             final CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
             container = blobClient.getContainerReference(blobContainerName);
-        } catch (InvalidKeyException ex) {
-            throw new AzureBlobClientException("Invalid connection string", ex);
-        } catch (URISyntaxException ex) {
+
+            final Configuration configuration = new Configuration();
+            configuration.put(AZURE_CLIENT_ID, storageApplicationParameters.getAzureLocalMiClientId());
+            configuration.put(AZURE_TENANT_ID, storageApplicationParameters.getAzureLocalMiTenantId());
+
+            final ManagedIdentityCredential managedIdentityCredential = getManagedIdentityCredential();
+            blobContainerClient = new BlobContainerClientBuilder()
+                    .endpoint(format("https://%s.blob.core.windows.net/", rotaslStorageAccountName))
+                    .configuration(configuration)
+                    .credential(managedIdentityCredential)
+                    .connectionString(rotaslStorageConnectionString)
+                                    .containerName(blobContainerName)
+                                            .buildClient();
+
+            LOGGER.info("container : {}", container);
+        }
+        catch (URISyntaxException ex) {
             throw new AzureBlobClientException(CONNECTION_URI_PARSE_ERROR, ex);
-        } catch (final StorageException ex) {
+        }
+        catch (final StorageException ex) {
             throw new AzureBlobClientException(format(
                     AZURE_SERVICE_HTTP_ERROR,
                     ex.getHttpStatusCode(), ex.getErrorCode()), ex);
@@ -83,14 +138,16 @@ public class AzureBlobClientService {
 
     }
 
-    public Map<String, ListBlobItem> collectListBlobItems(final String blobFilePrefix) {
+    public Map<String, BlobItem> collectListBlobItems(final String blobFilePrefix) {
         final Stopwatch stopwatch = Stopwatch.createStarted();
         LOGGER.info("Connecting to azure blob storage to collect Blob Items from : {} on {}", rotaslInputContainerName, now());
         connect(rotaslInputContainerName);
 
-        final Map<String, ListBlobItem> downloadedBlobMap = new HashMap<>();
-        for(ListBlobItem blobItem : container.listBlobs(blobFilePrefix)) {
-            final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
+        final Map<String, BlobItem> downloadedBlobMap = new HashMap<>();
+        LOGGER.info("before calling listBlobs: {}", blobFilePrefix);
+
+        for(BlobItem blobItem : blobContainerClient.listBlobs().stream().toList()) {
+            final String blobName = blobItem.getName();
             downloadedBlobMap.put(blobName, blobItem);
             LOGGER.info("Downloading blob file with name : {} from azure blob storage on {}", blobName, now());
         }
@@ -98,13 +155,13 @@ public class AzureBlobClientService {
         return downloadedBlobMap;
     }
 
-    public BlobContent downloadFiles(final ListBlobItem blobItem) {
+    public BlobContent downloadFiles(final BlobItem blobItem) {
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
             BlobContent blobContent = new BlobContent();
             LOGGER.info("Connecting to azure blob storage to download files from : {} on {}", rotaslInputContainerName, now());
             connect(rotaslInputContainerName);
-            final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
+            final String blobName = blobItem.getName();
             final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
             final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             String leaseId = blob.acquireLease(50, null);
@@ -208,6 +265,37 @@ public class AzureBlobClientService {
         } catch (IOException ex) {
             throw new AzureBlobClientException("Error while uploading file to azure blob storage", ex);
         }
+    }
+
+    public String getTokenFromLocalClientSecretCredentials() {
+        String accessToken = null;
+        final Configuration configuration = new Configuration();
+        configuration.put(AZURE_CLIENT_ID, storageApplicationParameters.getAzureLocalMiClientId());
+        configuration.put(AZURE_TENANT_ID, storageApplicationParameters.getAzureLocalMiTenantId());
+
+        try {
+            final ManagedIdentityCredential managedIdentityCredential = new ManagedIdentityCredentialBuilder()
+                    .configuration(configuration)
+                    .build();
+            final TokenRequestContext context = getTokenRequestContext();
+            final Mono<String> accessTokenMono = managedIdentityCredential.getToken(context)
+                    .map(AccessToken::getToken);
+            accessToken = accessTokenMono.block();
+        } catch (final AzureAPIMInvocationException azureAPIMInvocationException) {
+            LOGGER.error("Failed to acquire Local Access token", azureAPIMInvocationException);
+        }
+        return accessToken;
+    }
+
+    private ManagedIdentityCredential getManagedIdentityCredential() {
+        return new ManagedIdentityCredentialBuilder()
+                .clientId(storageApplicationParameters.getAzureLocalMiClientId())
+                .build();
+    }
+
+    private TokenRequestContext getTokenRequestContext() {
+        return new TokenRequestContext()
+                .addScopes(storageApplicationParameters.getAzureLocalScope());
     }
 
     private String getBlobName(final String blobFilePath, final String containerName) {

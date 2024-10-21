@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
+import com.azure.storage.blob.models.BlobItem;
 import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.ListBlobItem;
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
     private Requester requester;
 
     @Mock
-    private ListBlobItem listBlobItem;
+    private BlobItem listBlobItem;
 
     @Test
     void shouldCaptureRotaFilesAndProcessEach() throws IOException, StorageException {
@@ -60,10 +61,10 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         final BlobContent blobContent = new BlobContent();
         blobContent.setLeaseId(blobName);
         blobContent.setBlobByteArray(blobByteArray);
-        final Map<String, ListBlobItem> listBlobItemMap = Map.of(blobName, listBlobItem);
+        final Map<String, BlobItem> listBlobItemMap = Map.of(blobName, listBlobItem);
 
         when(azureBlobClientService.collectListBlobItems(eq("lja_"))).thenReturn(listBlobItemMap);
-        when(azureBlobClientService.downloadFiles(any(ListBlobItem.class))).thenReturn(blobContent);
+        when(azureBlobClientService.downloadFiles(any(BlobItem.class))).thenReturn(blobContent);
         doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName));
         doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));
@@ -86,10 +87,10 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         final BlobContent blobContent = new BlobContent();
         blobContent.setLeaseId(blobName);
         blobContent.setBlobByteArray(blobByteArray);
-        final Map<String, ListBlobItem> listBlobItemMap = Map.of(blobName, listBlobItem);
+        final Map<String, BlobItem> listBlobItemMap = Map.of(blobName, listBlobItem);
 
         when(azureBlobClientService.collectListBlobItems(eq("lja_"))).thenReturn(listBlobItemMap);
-        when(azureBlobClientService.downloadFiles(any(ListBlobItem.class))).thenReturn(blobContent);
+        when(azureBlobClientService.downloadFiles(any(BlobItem.class))).thenReturn(blobContent);
         doThrow(StorageException.class).when(rotaFileProcessorService).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName));
         doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));

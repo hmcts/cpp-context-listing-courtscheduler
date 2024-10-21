@@ -4,7 +4,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listingcourtscheduler-parent</artifactId>
-        <version>17.0.18-CSP2-SNAPSHOT</version>
+        <version>17.0.16-CSP2-SNAPSHOT</version>
     </parent>
 
     <artifactId>listingcourtscheduler-rota-file-processor</artifactId>
@@ -76,4 +76,19 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-identity</artifactId>
+                <version>${azure.identity.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-core</artifactId>
+                <version>${azure.core.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 </project>

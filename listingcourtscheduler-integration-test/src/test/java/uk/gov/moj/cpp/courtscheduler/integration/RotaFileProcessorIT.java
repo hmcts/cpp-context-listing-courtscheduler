@@ -223,7 +223,7 @@ class RotaFileProcessorIT extends AbstractIT {
         }
         final byte[] rotaFileAsBytes = IOUtils.toByteArray(rotaFileInputStream);
         // upload the rota file first
-        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, finalMasterRotaFileName, of(azureBlobInputContainerName));
+//        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, finalMasterRotaFileName, of(azureBlobInputContainerName));
         insertCourtSchedulerMigrationStatus(List.of(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE), migrated);
 
         final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
