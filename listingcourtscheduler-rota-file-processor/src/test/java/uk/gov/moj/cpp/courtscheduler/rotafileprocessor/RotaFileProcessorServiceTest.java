@@ -7,6 +7,7 @@ import static java.util.Optional.empty;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.apache.commons.lang3.RandomStringUtils.random;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -61,8 +62,6 @@ import java.util.stream.IntStream;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.microsoft.azure.storage.AccessCondition;
-import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -477,12 +476,44 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldSplitDateRangeIntoWeeks() {
-        LocalDate startDate = LocalDate.of(2024, 4, 21);
-        LocalDate endDate = LocalDate.of(2024, 8, 9);
+        final LocalDate startDate = LocalDate.of(2024, 4, 21);
+        final LocalDate endDate = LocalDate.of(2024, 9, 30);
 
         List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
 
         assertNotNull(dateRanges);
+    }
+
+    @Test
+    void shouldSplitDateRangeIntoWeeksForTheBorder() {
+        final LocalDate startDate = LocalDate.of(2024, 9, 17);
+        final LocalDate endDate = LocalDate.of(2025, 3, 31);
+
+        List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
+
+        assertNotNull(dateRanges);
+        IntStream.range(1, dateRanges.size()).forEach(index -> {
+            final DateRange previousDateRange = dateRanges.get(index - 1);
+            final DateRange currentDateRange = dateRanges.get(index);
+
+            assertNotEquals(previousDateRange.getEnd(), currentDateRange.getStart());
+        });
+    }
+
+    @Test
+    void shouldSplitDateRangeIntoWeeksForProper6Months() {
+        final LocalDate startDate = LocalDate.of(2024, 10, 1);
+        final LocalDate endDate = LocalDate.of(2025, 3, 31);
+
+        List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
+
+        assertNotNull(dateRanges);
+        IntStream.range(1, dateRanges.size()).forEach(index -> {
+            final DateRange previousDateRange = dateRanges.get(index - 1);
+            final DateRange currentDateRange = dateRanges.get(index);
+
+            assertNotEquals(previousDateRange.getEnd(), currentDateRange.getStart());
+        });
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
