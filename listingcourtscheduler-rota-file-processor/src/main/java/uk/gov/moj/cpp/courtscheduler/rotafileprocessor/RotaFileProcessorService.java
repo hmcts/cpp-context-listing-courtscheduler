@@ -57,8 +57,6 @@ import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
-import com.microsoft.azure.storage.AccessCondition;
-import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.CloudBlob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,16 +117,13 @@ public class RotaFileProcessorService {
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Asynchronous
-    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) throws StorageException {
+    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
         final CloudBlob blob = blobContent.getBlob();
         final byte[] blobByteArray = blobContent.getBlobByteArray();
 
         process(blobName, blobByteArray, requester);
 
-        final AccessCondition accessCondition = new AccessCondition();
-        accessCondition.setLeaseID(blobContent.getLeaseId());
-        blob.releaseLease(accessCondition);
         logger.info("rota file process completed for blob with name: {}", blobName);
         final long fileLength = blobByteArray.length;
         // upload the files processed into archive container

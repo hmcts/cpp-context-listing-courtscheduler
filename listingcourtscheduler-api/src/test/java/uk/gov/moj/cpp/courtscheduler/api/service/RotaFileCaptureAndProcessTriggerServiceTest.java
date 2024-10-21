@@ -58,7 +58,6 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent();
-        blobContent.setLeaseId(blobName);
         blobContent.setBlobByteArray(blobByteArray);
         final Map<String, ListBlobItem> listBlobItemMap = Map.of(blobName, listBlobItem);
 
@@ -70,32 +69,6 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations(eq(requester));
 
         rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, false);
-
-        verify(referenceDataMapperService, atLeastOnce()).loadJudiciaries(eq(requester));
-        verify(referenceDataMapperService, atLeastOnce()).loadCourtRooms(eq(requester));
-        verify(referenceDataMapperService, atLeastOnce()).loadCourtRoomSessionAllocations(eq(requester));
-        verify(azureBlobClientService, atLeastOnce()).collectListBlobItems(eq("lja_"));
-        verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName));
-    }
-
-    @Test
-    void shouldThrowRotaFileProcessorExceptionIfReceivesStorageExceptionWhilstDownloadingFile() throws IOException, StorageException {
-        final String file = "rotafileprocessor/rota_payload.xml";
-        final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
-        final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setLeaseId(blobName);
-        blobContent.setBlobByteArray(blobByteArray);
-        final Map<String, ListBlobItem> listBlobItemMap = Map.of(blobName, listBlobItem);
-
-        when(azureBlobClientService.collectListBlobItems(eq("lja_"))).thenReturn(listBlobItemMap);
-        when(azureBlobClientService.downloadFiles(any(ListBlobItem.class))).thenReturn(blobContent);
-        doThrow(StorageException.class).when(rotaFileProcessorService).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName));
-        doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
-        doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));
-        doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations(eq(requester));
-
-        assertThrows(RotaFileProcessorException.class, () -> rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, false));
 
         verify(referenceDataMapperService, atLeastOnce()).loadJudiciaries(eq(requester));
         verify(referenceDataMapperService, atLeastOnce()).loadCourtRooms(eq(requester));

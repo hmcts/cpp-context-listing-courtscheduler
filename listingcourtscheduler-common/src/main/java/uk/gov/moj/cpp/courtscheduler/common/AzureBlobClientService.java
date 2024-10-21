@@ -30,6 +30,7 @@ import com.microsoft.azure.storage.blob.CloudBlobClient;
 import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import com.microsoft.azure.storage.blob.ListBlobItem;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,13 +108,11 @@ public class AzureBlobClientService {
             final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
             final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
             final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            String leaseId = blob.acquireLease(50, null);
             blob.download(outputStream);
 
             LOGGER.info("Total time taken for all the blobs to be downloaded from {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
 
             byte[] blobByteArray = outputStream.toByteArray();
-            blobContent.setLeaseId(leaseId);
             blobContent.setBlob(blob);
             blobContent.setBlobByteArray(blobByteArray);
             return blobContent;
