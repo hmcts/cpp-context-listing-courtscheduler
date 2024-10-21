@@ -7,17 +7,8 @@ import com.microsoft.azure.storage.blob.CloudBlockBlob;
 
 public class BlobContent {
 
-    String leaseId;
     CloudBlockBlob blob;
     byte[] blobByteArray;
-
-    public String getLeaseId() {
-        return leaseId;
-    }
-
-    public void setLeaseId(final String leaseId) {
-        this.leaseId = leaseId;
-    }
 
     public CloudBlockBlob getBlob() {
         return blob;
@@ -40,13 +31,12 @@ public class BlobContent {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final BlobContent that = (BlobContent) o;
-        return Objects.equals(getLeaseId(), that.getLeaseId()) && Objects.equals(getBlob(), that.getBlob())
-                && Arrays.equals(getBlobByteArray(), that.getBlobByteArray());
+        return Objects.equals(getBlob(), that.getBlob()) && Arrays.equals(getBlobByteArray(), that.getBlobByteArray());
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(getLeaseId(), getBlob());
+        int result = Objects.hash(getBlob());
         result = 31 * result + Arrays.hashCode(getBlobByteArray());
         return result;
     }
