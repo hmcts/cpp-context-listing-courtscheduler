@@ -57,8 +57,6 @@ import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
-import com.microsoft.azure.storage.AccessCondition;
-import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.CloudBlob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,16 +117,13 @@ public class RotaFileProcessorService {
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Asynchronous
-    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) throws StorageException {
+    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
         final CloudBlob blob = blobContent.getBlob();
         final byte[] blobByteArray = blobContent.getBlobByteArray();
 
         process(blobName, blobByteArray, requester);
 
-        final AccessCondition accessCondition = new AccessCondition();
-        accessCondition.setLeaseID(blobContent.getLeaseId());
-        blob.releaseLease(accessCondition);
         logger.info("rota file process completed for blob with name: {}", blobName);
         final long fileLength = blobByteArray.length;
         // upload the files processed into archive container
@@ -200,7 +195,7 @@ public class RotaFileProcessorService {
                 startAndEndDate.put(START_DATE.getLabel(), dateRange.getStart());
                 startAndEndDate.put(END_DATE.getLabel(), dateRange.getEnd());
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
-                logger.info("Filtered Slots for Snapshot : {}", filteredSlots.keySet());
+                logger.info("Filtered Slots for Snapshot : {} within dateRange: {} - {}", filteredSlots.keySet(), dateRange.getStart(), dateRange.getEnd());
                 rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap);
                 logger.info("snapshot rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
@@ -375,25 +370,28 @@ public class RotaFileProcessorService {
         final List<DateRange> result = new ArrayList<>();
 
         int weekIndex = 1;
-        while (!start.isAfter(end)) {
+        LocalDate previousWeekEnd = start;
+        while (!start.isAfter(end) && (weekIndex == 1 || (weekIndex > 1 && start.isAfter(previousWeekEnd)))) {
             if(ChronoUnit.DAYS.between(start, end) > 6) {
                 final LocalDate weekStart = start;
                 start = start.plusDays(6);
                 final LocalDate weekEnd = start;
                 start = start.plusDays(1);
                 result.add(new DateRange(weekStart, weekEnd));
+                previousWeekEnd = weekEnd;
                 logger.info("Week range of Week #{} - StartDate: {}, EndDate: {}", weekIndex, weekStart, weekEnd);
             } else {
                 result.add(new DateRange(start, end));
                 logger.info("Week range of Week #{} - StartDate: {}, EndDate: {}", weekIndex, start, end);
-                start = start.plusDays(6);
+                start = start.plusDays(7);
+                previousWeekEnd = end;
             }
             weekIndex++;
         }
         return result;
     }
 
-    public Map<String, CourtSchedule> filterSlots(Map<String, CourtSchedule> slots, DateRange dateRange) {
+    public Map<String, CourtSchedule> filterSlots(final Map<String, CourtSchedule> slots, final DateRange dateRange) {
         return slots.entrySet().stream()
                 .filter(slot -> (slot.getValue().getSessionDate().isEqual(dateRange.getStart()) ||
                         slot.getValue().getSessionDate().isEqual(dateRange.getEnd()) ||
