@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileProcessorService;
 
 import java.util.Map;
@@ -13,6 +14,7 @@ import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
+import com.microsoft.azure.storage.blob.ListBlobItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,15 +40,16 @@ public class RotaFileCaptureAndProcessTriggerService {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
         // download all the files in the input container
-        final Map<String, byte[]> downloadedBlobsByteArrayMap = azureBlobClientService.downloadFiles(blobPrefix);
+        final Map<String, ListBlobItem> downloadedBlobsByteArrayMap = azureBlobClientService.collectListBlobItems(blobPrefix);
         if (!downloadedBlobsByteArrayMap.isEmpty()) {
             loadReferenceData(requester);
         }
         // for each of the files process rotasl
         downloadedBlobsByteArrayMap.keySet().forEach(blobName -> {
-            final byte[] blobContent = downloadedBlobsByteArrayMap.get(blobName);
+            final BlobContent blobContent = azureBlobClientService.downloadFiles(downloadedBlobsByteArrayMap.get(blobName));
             rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
         });
+        referenceDataMapperService.clearReferenceDataInMemory();
 
         return new AsyncResult<>("SUCCESS");
     }
@@ -55,5 +58,6 @@ public class RotaFileCaptureAndProcessTriggerService {
         referenceDataMapperService.loadCourtRooms(requester);
         referenceDataMapperService.loadJudiciaries(requester);
         referenceDataMapperService.loadCourtRoomSessionAllocations(requester);
+        referenceDataMapperService.loadBusinessTypeMap(requester);
     }
 }

@@ -9,21 +9,19 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
 
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.util.PropertiesLoader;
@@ -35,6 +33,7 @@ import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -51,9 +50,6 @@ class RotaDataEnricherTest {
 
     @InjectMocks
     private RotaDataEnricher rotaDataEnricher;
-
-    @Mock
-    private SessionsService sessionsService;
 
     @Mock
     private ReferenceDataMapperService referenceDataMapperService;
@@ -91,16 +87,21 @@ class RotaDataEnricherTest {
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
         final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
+        final List<CourtSchedule> courtScheduleList = List.of(CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                .withCourtSchedule(courtSchedule)
+                .withCourtScheduleId(courtScheduleId)
+                .withOuCode(courtSchedule.getOuCode())
+                .withCreatedOn(Calendar.getInstance().getTime())
+                .build());
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
-        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(new CourtScheduleMatcherInfo(courtScheduleId, Calendar.getInstance().getTime()));
-        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), eq(requester))).thenReturn(courtSchedule);
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyList(), eq(requester))).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
         final byte[] blobContent = givenBlobContent(file);
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, requester);
+        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester);
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
@@ -132,17 +133,22 @@ class RotaDataEnricherTest {
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
         final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
+        final List<CourtSchedule> courtScheduleList = List.of(CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                .withCourtSchedule(courtSchedule)
+                .withCourtScheduleId(courtScheduleId)
+                .withOuCode(courtSchedule.getOuCode())
+                .withCreatedOn(Calendar.getInstance().getTime())
+                .build());
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
-        when(sessionsService.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(anyString(), any(LocalDate.class), anyString(), eq(ALL_DAY))).thenReturn(new CourtScheduleMatcherInfo(courtScheduleId, Calendar.getInstance().getTime()));
-        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), eq(requester))).thenReturn(courtSchedule);
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyList(), eq(requester))).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
         final byte[] blobContent = givenBlobContent(file);
 
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, requester);
+        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester);
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();

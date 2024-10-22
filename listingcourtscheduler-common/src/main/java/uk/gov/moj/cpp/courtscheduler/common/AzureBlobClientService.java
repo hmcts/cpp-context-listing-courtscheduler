@@ -7,6 +7,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import uk.gov.justice.services.common.configuration.Value;
 import uk.gov.moj.cpp.courtscheduler.common.exception.AzureBlobClientException;
+import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -29,6 +30,7 @@ import com.microsoft.azure.storage.blob.CloudBlobClient;
 import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import com.microsoft.azure.storage.blob.ListBlobItem;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,27 +84,38 @@ public class AzureBlobClientService {
 
     }
 
-    public Map<String, byte[]> downloadFiles(final String blobFilePrefix) {
+    public Map<String, ListBlobItem> collectListBlobItems(final String blobFilePrefix) {
+        final Stopwatch stopwatch = Stopwatch.createStarted();
+        LOGGER.info("Connecting to azure blob storage to collect Blob Items from : {} on {}", rotaslInputContainerName, now());
+        connect(rotaslInputContainerName);
+
+        final Map<String, ListBlobItem> downloadedBlobMap = new HashMap<>();
+        for(ListBlobItem blobItem : container.listBlobs(blobFilePrefix)) {
+            final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
+            downloadedBlobMap.put(blobName, blobItem);
+            LOGGER.info("Downloading blob file with name : {} from azure blob storage on {}", blobName, now());
+        }
+        LOGGER.info("Total time taken to collect Blob Items from {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
+        return downloadedBlobMap;
+    }
+
+    public BlobContent downloadFiles(final ListBlobItem blobItem) {
         try {
             final Stopwatch stopwatch = Stopwatch.createStarted();
+            BlobContent blobContent = new BlobContent();
             LOGGER.info("Connecting to azure blob storage to download files from : {} on {}", rotaslInputContainerName, now());
             connect(rotaslInputContainerName);
-
-            final Map<String, byte[]> downloadedBlobMap = new HashMap<>();
-            for(ListBlobItem blobItem : container.listBlobs(blobFilePrefix)) {
-                final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
-                final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
-                final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                blob.download(outputStream);
-
-                downloadedBlobMap.put(blobName, outputStream.toByteArray());
-
-                LOGGER.info("Downloading blob file with name : {} from azure blob storage on {}", blobName, now());
-            }
+            final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
+            final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
+            final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            blob.download(outputStream);
 
             LOGGER.info("Total time taken for all the blobs to be downloaded from {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
 
-            return downloadedBlobMap;
+            byte[] blobByteArray = outputStream.toByteArray();
+            blobContent.setBlob(blob);
+            blobContent.setBlobByteArray(blobByteArray);
+            return blobContent;
         } catch (StorageException ex) {
             throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
                     ex.getHttpStatusCode(), ex.getErrorCode()), ex);

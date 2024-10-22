@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 
+import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
@@ -70,7 +71,12 @@ public class DatabaseSeeder {
     private static final String PROVISIONAL_BOOKING_DELETE_SQL = "DELETE FROM provisional_booking";
 
     private static final String COURT_SCHEDULE_JUDICIARY_DELETE_SQL = "DELETE FROM court_schedule_judiciary";
+    private static final String COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL = "DELETE FROM court_schedule_judiciary where court_listing_profile_id = ?";
     private static final String MIGRATION_STATUS_DELETE_SQL = "DELETE FROM courtscheduler_migration_status";
+    private static final String ROTA_FILE_PROCESS_HISTORY_DELETE_SQL = "DELETE FROM rota_file_process_history";
+
+    private static final String COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL = "UPDATE court_schedule SET court_listing_profile_id = null WHERE oucode = ?";
+    private static final String UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE = "UPDATE court_schedule SET available_slot = available_slot - 1 WHERE court_listing_profile_id = ?";
 
     private final ConnectionProvider connectionProvider = new ConnectionProvider();
 
@@ -102,9 +108,24 @@ public class DatabaseSeeder {
         }
     }
 
+    public void deleteJudiciaryByProfileId(final String listingProfileId) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL)) {
+            preparedStatement.setString(1, listingProfileId);
+            preparedStatement.executeUpdate();
+        }
+    }
+
     public void cleanMigrationStatusTable() throws SQLException {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
              final PreparedStatement preparedStatement = connection.prepareStatement(MIGRATION_STATUS_DELETE_SQL)) {
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    public void cleanRotaFileProcessHistoryTable() throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(ROTA_FILE_PROCESS_HISTORY_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
@@ -153,7 +174,12 @@ public class DatabaseSeeder {
             preparedStatement.setInt(6, allocatedListing.getCourtRoomId());
             preparedStatement.setString(7, allocatedListing.getRotaBusinessType());
             preparedStatement.setInt(8, allocatedListing.getDuration());
-            preparedStatement.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
+            if (isNull(allocatedListing.getHearingStartTime())) {
+                preparedStatement.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
+            } else {
+                preparedStatement.setTimestamp(9, new Timestamp(allocatedListing.getHearingStartTime().getTime()));
+            }
+
             preparedStatement.setTimestamp(10, new Timestamp(System.currentTimeMillis()));
             preparedStatement.setTimestamp(11, new Timestamp(System.currentTimeMillis()));
             preparedStatement.executeUpdate();
@@ -215,6 +241,24 @@ public class DatabaseSeeder {
         }
     }
 
+    public void updateCourtScheduleSetListingProfileIdAsNull(final String ouCode) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL)) {
+
+            preparedStatement.setString(1, ouCode);
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    public void setUpdateAvailableSlotForCourtSchedule(final String listingProfileId) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE)) {
+
+            preparedStatement.setString(1, listingProfileId);
+            preparedStatement.executeUpdate();
+        }
+    }
+
     public void insertCourtScheduleMigrationStatus(CourtSchedulerMigrationStatus courtSchedulerMigrationStatus) throws SQLException {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
              final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_MIGRATION_STATUS_INSERT_SQL)) {
@@ -249,6 +293,6 @@ public class DatabaseSeeder {
         cleanCourtScheduleTable();
         cleanCourtScheduleJudiciaryTable();
         cleanMigrationStatusTable();
-
+        cleanRotaFileProcessHistoryTable();
     }
 }

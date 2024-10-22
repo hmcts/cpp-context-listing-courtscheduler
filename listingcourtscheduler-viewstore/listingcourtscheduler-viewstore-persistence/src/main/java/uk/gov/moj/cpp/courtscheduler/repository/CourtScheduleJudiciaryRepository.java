@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
+import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
@@ -23,14 +23,20 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
     private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN " +
             " (SELECT cs.id FROM court_schedule cs WHERE cs.max_slot = cs.available_slot " +
             "AND cs.max_duration_mins = cs.available_duration_mins AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) " +
-            "AND not exists (" + NOT_EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
-
-    private static final String DELETE_COURT_SCHEDULE_JUDICIARY_NOT_IN_COURT_SCHEDULES_QUERY_FOR_SUBLIST = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id NOT IN " +
-            "(SELECT cs.id FROM court_schedule cs WHERE cs.court_listing_profile_id is not null AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes)) " +
-            "AND csj.court_listing_profile_id IN (:listingProfileIds) AND csj.judiciary_id IN (:judiciaryIds) AND csj.active = true";
+            "AND not exists (" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
 
     public static final String DELETE_CSJ_BY_IDS_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) " +
             "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)";
+
+    private static final String SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "SELECT csj.court_schedule_id courtScheduleId, csj.judiciary_id judiciaryId " +
+            "FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN " +
+            " (SELECT distinct al.court_schedule_id FROM allocated_listings al WHERE " +
+            "al.hearing_start_time BETWEEN :startDate AND :endDate AND al.oucode IN (:ouCodes) " +
+            "UNION " +
+            "SELECT pb.court_schedule_id FROM provisional_booking pb, court_schedule cs " +
+            "WHERE pb.court_schedule_id = cs.id AND pb.active is true " +
+            "AND pb.hearing_start_time BETWEEN :startDate AND :endDate " +
+            "AND cs.oucode IN (:ouCodes)) AND csj.active = true";
 
     public abstract CourtScheduleJudiciary findByEmail(String email);
 
@@ -76,26 +82,21 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 .executeUpdate();
     }
 
-    public int deleteCourtScheduleJudiciariesEntriesNotInCourtSchedules(@QueryParam("startDate") final LocalDate startDate,
-                                                                        @QueryParam("endDate") final LocalDate endDate,
-                                                                        @QueryParam("ouCodes") final List<String> ouCodes,
-                                                                        @QueryParam("listingProfileId") final List<String> listingProfileIds,
-                                                                        @QueryParam("judiciaryId") final List<String> judiciaryIds) {
-        return entityManager()
-                .createNativeQuery(DELETE_COURT_SCHEDULE_JUDICIARY_NOT_IN_COURT_SCHEDULES_QUERY_FOR_SUBLIST)
-                .setParameter("startDate", startDate)
-                .setParameter("endDate", endDate)
-                .setParameter("ouCodes", ouCodes)
-                .setParameter("listingProfileIds", listingProfileIds)
-                .setParameter("judiciaryIds", judiciaryIds)
-                .executeUpdate();
-    }
-
     public int deleteSchedules(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds) {
         return entityManager()
                 .createNativeQuery(DELETE_CSJ_BY_IDS_QUERY)
                 .setParameter("courtScheduleIds", courtScheduleIds)
                 .executeUpdate();
+    }
+
+    @SuppressWarnings("squid:S2077")
+    public List getAllocatedScheduleJudiciaryInfo(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
+        return entityManager()
+                .createNativeQuery(SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY)
+                .setParameter("startDate", startDate)
+                .setParameter("endDate", endDate)
+                .setParameter("ouCodes", ouCodes)
+                .getResultList();
     }
 
     @Modifying
