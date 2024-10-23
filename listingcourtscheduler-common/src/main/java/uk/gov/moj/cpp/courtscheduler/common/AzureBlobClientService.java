@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
+import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -30,7 +31,6 @@ import com.microsoft.azure.storage.blob.CloudBlobClient;
 import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import com.microsoft.azure.storage.blob.ListBlobItem;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -217,5 +217,25 @@ public class AzureBlobClientService {
                             blobFilePath, containerName));
         }
         return blobFilePath.substring(index + containerName.length() + 1);
+    }
+
+    public Optional<Map.Entry<String, ListBlobItem>> findAvailableFile(final String blobFilePrefix) throws URISyntaxException {
+        connect(rotaslInputContainerName);
+
+        for (ListBlobItem blobItem : container.listBlobs(blobFilePrefix)) {
+            final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
+            try {
+                final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
+                // Try to acquire a lease. If successful, it means the file is available.
+                String leaseId = blob.acquireLease(-1, null);
+                //blob.releaseLease(AccessCondition.generateLeaseCondition(leaseId));
+                return Optional.of(new AbstractMap.SimpleEntry<>(blobName, blobItem));
+            } catch (StorageException e) {
+                // If we can't acquire a lease, the file is already being processed
+                LOGGER.info("File {} is already being processed, skipping", blobName);
+            }
+        }
+
+        return Optional.empty();
     }
 }

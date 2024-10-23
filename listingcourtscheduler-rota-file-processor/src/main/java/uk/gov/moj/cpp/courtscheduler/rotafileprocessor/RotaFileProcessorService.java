@@ -57,6 +57,8 @@ import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
+import com.microsoft.azure.storage.AccessCondition;
+import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.CloudBlob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,16 +123,20 @@ public class RotaFileProcessorService {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
         final CloudBlob blob = blobContent.getBlob();
         final byte[] blobByteArray = blobContent.getBlobByteArray();
+        try {
+            process(blobName, blobByteArray, requester);
+            logger.info("rota file process completed for blob with name: {}", blobName);
+            final long fileLength = blobByteArray.length;
+            // upload the files processed into archive container
+            azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
+            logger.info("rota file upload to output container completed for blob with name: {}", blobName);
+            final AccessCondition accessCondition = new AccessCondition();
+            blob.releaseLease(accessCondition);
+            azureBlobClientService.deleteFile(blobName, empty());
+            logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
+        } catch (Exception storageException) {
 
-        process(blobName, blobByteArray, requester);
-
-        logger.info("rota file process completed for blob with name: {}", blobName);
-        final long fileLength = blobByteArray.length;
-        // upload the files processed into archive container
-        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
-        logger.info("rota file upload to output container completed for blob with name: {}", blobName);
-        azureBlobClientService.deleteFile(blobName, empty());
-        logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
+        }
     }
 
     private void process(final String fileName, final byte[] content, final Requester requester) {
