@@ -139,9 +139,7 @@ class RotaFileProcessorServiceTest {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setBlobByteArray(blobByteArray);
-        blobContent.setBlob(blob);
+        final BlobContent blobContent = new BlobContent(blobByteArray);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -195,9 +193,7 @@ class RotaFileProcessorServiceTest {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setBlobByteArray(blobByteArray);
-        blobContent.setBlob(blob);
+        final BlobContent blobContent = new BlobContent(blobByteArray);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -253,13 +249,10 @@ class RotaFileProcessorServiceTest {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setBlobByteArray(blobByteArray);
-        blobContent.setBlob(blob);
+        final BlobContent blobContent = new BlobContent(blobByteArray);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
-        List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
         final LocalDate extractStartDate = LocalDate.of(2019, 10, 1);
         final List<CourtSchedule> extractedSchedules = new ArrayList<>();
         final List<String> businessTypes = List.of(PSV_AS_EXISTING_BUSINESS_TYPE, CJU_AS_MISSING_BUSINESS_TYPE);
@@ -309,9 +302,7 @@ class RotaFileProcessorServiceTest {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setBlobByteArray(blobByteArray);
-        blobContent.setBlob(blob);
+        final BlobContent blobContent = new BlobContent(blobByteArray);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -352,9 +343,7 @@ class RotaFileProcessorServiceTest {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "dummysupport.xml";
         final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setBlobByteArray(blobByteArray);
-        blobContent.setBlob(blob);
+        final BlobContent blobContent = new BlobContent(blobByteArray);
 
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
@@ -369,9 +358,7 @@ class RotaFileProcessorServiceTest {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_bedfordshire_snapshot_20240402T180039Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setBlobByteArray(blobByteArray);
-        blobContent.setBlob(blob);
+        final BlobContent blobContent = new BlobContent(blobByteArray);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -411,9 +398,7 @@ class RotaFileProcessorServiceTest {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_bedfordshire_snapshot_20240402T180039Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setBlobByteArray(blobByteArray);
-        blobContent.setBlob(blob);
+        final BlobContent blobContent = new BlobContent(blobByteArray);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -446,9 +431,7 @@ class RotaFileProcessorServiceTest {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_bedfordshire_snapshot_.xml";
         final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setBlobByteArray(blobByteArray);
-        blobContent.setBlob(blob);
+        final BlobContent blobContent = new BlobContent(blobByteArray);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);

@@ -51,8 +51,10 @@
         <referencedata.version>17.0.29</referencedata.version>
         <lettuce.core.version>5.2.1.RELEASE</lettuce.core.version>
         <azure.storage.version>8.6.6</azure.storage.version>
-        <azure.core.version>1.47.0</azure.core.version>
-        <azure.identity.version>1.11.4</azure.identity.version>
+        <azure.core.version>1.53.0</azure.core.version>
+        <azure.identity.version>1.14.0</azure.identity.version>
+        <netty.common.version>4.1.112.Final</netty.common.version>
+        <reactor.core.version>3.4.41</reactor.core.version>
     </properties>
 
     <modules>
@@ -109,12 +111,12 @@
             <dependency>
                 <groupId>io.projectreactor</groupId>
                 <artifactId>reactor-core</artifactId>
-                <version>3.4.34</version>
+                <version>${reactor.core.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-common</artifactId>
-                <version>4.1.112.Final</version>
+                <version>${netty.common.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

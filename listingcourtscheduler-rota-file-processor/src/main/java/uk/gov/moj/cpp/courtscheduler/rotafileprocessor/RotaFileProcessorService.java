@@ -57,7 +57,6 @@ import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
-import com.microsoft.azure.storage.blob.CloudBlob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,7 +118,6 @@ public class RotaFileProcessorService {
     @Asynchronous
     public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
-        final CloudBlob blob = blobContent.getBlob();
         final byte[] blobByteArray = blobContent.getBlobByteArray();
 
         process(blobName, blobByteArray, requester);

@@ -16,19 +16,11 @@ public class StorageApplicationParameters {
     @GlobalValue(key = "azure.local.mi.tenantId", defaultValue = "e2995d11-9947-4e78-9de6-d44e0603518e")
     private String azureLocalMiTenantId;
 
-    @Inject
-    @GlobalValue(key = "azure.local.scope", defaultValue = "https://management.azure.com/.default")
-    private String azureLocalScope;
-
     public String getAzureLocalMiClientId() {
         return azureLocalMiClientId;
     }
 
     public String getAzureLocalMiTenantId() {
         return azureLocalMiTenantId;
-    }
-
-    public String getAzureLocalScope() {
-        return azureLocalScope;
     }
 }

@@ -24,6 +24,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetRe
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
+import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -86,7 +87,15 @@ class RotaFileProcessorIT extends AbstractIT {
     @BeforeEach
     public void setUpAzureBlobClientService() throws SQLException {
         databaseSeeder.cleanDb();
+        final StorageApplicationParameters storageApplicationParameters = new StorageApplicationParameters();
+        setField(storageApplicationParameters, "azureLocalMiClientId", "f4625b41-048b-4d8c-8c99-85f5aa442baa");
+        setField(storageApplicationParameters, "azureLocalMiTenantId", "e2995d11-9947-4e78-9de6-d44e0603518e");
+
         setField(azureBlobClientService, "rotaslStorageConnectionString", ROTASL_STORAGE_CONNECTION_STRING);
+        setField(azureBlobClientService, "rotaslStorageAccountName", "sasteccmscsl");
+        setField(azureBlobClientService, "rotaslInputContainerName", azureBlobInputContainerName);
+        setField(azureBlobClientService, "rotaslArchiveContainerName", azureBlobInputContainerName);
+        setField(azureBlobClientService, "storageApplicationParameters", storageApplicationParameters);
         maxCreatedOnForCourtScheduleJudiciary = null;
         maxCreatedOnForCourtSchedule = null;
         maxUpdatedOnForCourtSchedule = null;
@@ -223,7 +232,7 @@ class RotaFileProcessorIT extends AbstractIT {
         }
         final byte[] rotaFileAsBytes = IOUtils.toByteArray(rotaFileInputStream);
         // upload the rota file first
-//        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, finalMasterRotaFileName, of(azureBlobInputContainerName));
+        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, finalMasterRotaFileName, of(azureBlobInputContainerName));
         insertCourtSchedulerMigrationStatus(List.of(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE), migrated);
 
         final String payloadAsJsonString = getPayload("rota-file-processor-request.json");

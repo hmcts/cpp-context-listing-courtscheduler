@@ -47,16 +47,15 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
     private Requester requester;
 
     @Mock
-    private BlobItem listBlobItem;
+    private BlobItem blobItem;
 
     @Test
     void shouldCaptureRotaFilesAndProcessEach() throws IOException, StorageException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
-        final BlobContent blobContent = new BlobContent();
-        blobContent.setBlobByteArray(blobByteArray);
-        final Map<String, BlobItem> listBlobItemMap = Map.of(blobName, listBlobItem);
+        final BlobContent blobContent = new BlobContent(blobByteArray);
+        final Map<String, BlobItem> listBlobItemMap = Map.of(blobName, blobItem);
 
         when(azureBlobClientService.collectListBlobItems(eq("lja_"))).thenReturn(listBlobItemMap);
         when(azureBlobClientService.downloadFiles(any(BlobItem.class))).thenReturn(blobContent);
