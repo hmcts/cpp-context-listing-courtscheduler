@@ -24,6 +24,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetRe
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.PropertiesLoader;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -39,13 +40,13 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.ws.rs.core.Response;
 
 import com.google.common.base.Stopwatch;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -64,7 +65,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private final String azureBlobInputContainerName = "schedulelistinginput";
     private final String azureBlobOutputContainerName = "schedulelistingoutput";
-    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
+    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=http;AccountName=%s;AccountKey=%s;BlobEndpoint=%s;";
 
     public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 300;
 
@@ -85,16 +86,18 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     @BeforeEach
-    public void setUpAzureBlobClientService() throws SQLException {
+    public void setUpAzureBlobClientService() throws SQLException, IOException {
         databaseSeeder.cleanDb();
         final StorageApplicationParameters storageApplicationParameters = new StorageApplicationParameters();
+        final Map<String, String> storageAccountProperties = PropertiesLoader.getProperties("storage-account.properties");
+        final String storageAccountName = storageAccountProperties.get("storageAccountName");
+        final String storageAccountKey = storageAccountProperties.get("storageAccountKey");
+        final String storageAccountUrl = storageAccountProperties.get("storageAccountUrl");
+        final String rotaslStorageConnectionString = format(ROTASL_STORAGE_CONNECTION_STRING, storageAccountName, storageAccountKey, storageAccountUrl);
 
-        setField(azureBlobClientService, "rotaslStorageConnectionString", ROTASL_STORAGE_CONNECTION_STRING);
-        setField(azureBlobClientService, "rotaslStorageAccountName", "devstoreaccount1");
+        setField(azureBlobClientService, "rotaslStorageConnectionString", rotaslStorageConnectionString);
         setField(azureBlobClientService, "rotaslInputContainerName", azureBlobInputContainerName);
         setField(azureBlobClientService, "rotaslArchiveContainerName", azureBlobInputContainerName);
-        setField(storageApplicationParameters, "azureLocalMiClientId", StringUtils.EMPTY);
-        setField(storageApplicationParameters, "azureLocalMiTenantId", StringUtils.EMPTY);
         setField(azureBlobClientService, "storageApplicationParameters", storageApplicationParameters);
         maxCreatedOnForCourtScheduleJudiciary = null;
         maxCreatedOnForCourtSchedule = null;
