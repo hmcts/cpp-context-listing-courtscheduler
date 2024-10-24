@@ -11,6 +11,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -22,11 +23,14 @@ import javax.inject.Inject;
 import com.azure.core.util.Configuration;
 import com.azure.core.util.ConfigurationBuilder;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobItem;
 import com.azure.storage.blob.models.ListBlobsOptions;
+import com.azure.storage.blob.specialized.BlobLeaseClient;
+import com.azure.storage.blob.specialized.BlobLeaseClientBuilder;
 import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,8 +38,6 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 public class AzureBlobClientService {
 
-    private static final String AZURE_SERVICE_HTTP_ERROR = "Error returned from azure service. Http code: %d and error code: %s";
-    private static final String CONNECTION_URI_PARSE_ERROR = "Connection URI parse error";
     private static final Logger LOGGER = LoggerFactory.getLogger(AzureBlobClientService.class);
     private static final String ERROR_MSG = "Azure %s is not specified. Please add configuration for `%s`";
 
@@ -134,6 +136,7 @@ public class AzureBlobClientService {
         for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
             final String blobName = blobItem.getName();
             if (blobNameOfFileToBeDeleted.contains(blobName)) {
+                releaseLease(blobName);
                 blobContainerClient.getBlobClient(blobName).delete();
                 LOGGER.info("Deleted blob file successfully with name {} from azure blob storage container {} on {}", blobName, containerName, now());
                 LOGGER.info("Total time taken to delete files from azure blob storage container {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
@@ -159,5 +162,40 @@ public class AzureBlobClientService {
         LOGGER.info("Uploading {} file to azure blob storage on {}", destinationFileName, now());
         blobContainerClient.getBlobClient(destinationFileName).upload(file, fileSize, true);
         LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
+    }
+
+    public Optional<Map.Entry<String, BlobItem>> findAvailableFile(final String blobFilePrefix) {
+        connect(rotaslInputContainerName);
+
+        final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobFilePrefix);
+        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
+            final String blobName = blobItem.getName();
+            final BlobClient blob = blobContainerClient.getBlobClient(blobName);
+            // Try to acquire a lease. If successful, it means the file is available.
+            BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
+                    .blobClient(blob)
+                    .buildClient();
+            leaseClient.acquireLease(-1);
+            //blob.releaseLease(AccessCondition.generateLeaseCondition(leaseId));
+            return Optional.of(new AbstractMap.SimpleEntry<>(blobName, blobItem));
+        }
+
+        return Optional.empty();
+    }
+
+    public void releaseLease(String releaseBlobName) {
+        final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(releaseBlobName);
+        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
+            final String blobName = blobItem.getName();
+            if (releaseBlobName.contains(blobName)) {
+                final BlobClient blob = blobContainerClient.getBlobClient(blobName);
+                // Try to acquire a lease. If successful, it means the file is available.
+                BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
+                        .blobClient(blob)
+                        .buildClient();
+                leaseClient.releaseLease();
+                break;
+            }
+        }
     }
 }

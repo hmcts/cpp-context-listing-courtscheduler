@@ -119,16 +119,18 @@ public class RotaFileProcessorService {
     public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
         final byte[] blobByteArray = blobContent.getBlobByteArray();
-
-        process(blobName, blobByteArray, requester);
-
-        logger.info("rota file process completed for blob with name: {}", blobName);
-        final long fileLength = blobByteArray.length;
-        // upload the files processed into archive container
-        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
-        logger.info("rota file upload to output container completed for blob with name: {}", blobName);
-        azureBlobClientService.deleteFile(blobName, empty());
-        logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
+        try {
+            process(blobName, blobByteArray, requester);
+            logger.info("rota file process completed for blob with name: {}", blobName);
+            final long fileLength = blobByteArray.length;
+            // upload the files processed into archive container
+            azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
+            logger.info("rota file upload to output container completed for blob with name: {}", blobName);
+            azureBlobClientService.deleteFile(blobName, empty());
+            logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
+        } catch (Exception storageException) {
+            azureBlobClientService.releaseLease(blobName);
+        }
     }
 
     private void process(final String fileName, final byte[] content, final Requester requester) {
