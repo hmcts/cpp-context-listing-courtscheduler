@@ -9,27 +9,25 @@ import uk.gov.justice.services.common.configuration.Value;
 import uk.gov.moj.cpp.courtscheduler.common.exception.AzureBlobClientException;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.security.InvalidKeyException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.StreamSupport;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import com.azure.core.util.Configuration;
+import com.azure.core.util.ConfigurationBuilder;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobServiceClient;
+import com.azure.storage.blob.BlobServiceClientBuilder;
+import com.azure.storage.blob.models.BlobItem;
+import com.azure.storage.blob.models.ListBlobsOptions;
 import com.google.common.base.Stopwatch;
-import com.microsoft.azure.storage.CloudStorageAccount;
-import com.microsoft.azure.storage.StorageException;
-import com.microsoft.azure.storage.blob.CloudBlobClient;
-import com.microsoft.azure.storage.blob.CloudBlobContainer;
-import com.microsoft.azure.storage.blob.CloudBlockBlob;
-import com.microsoft.azure.storage.blob.ListBlobItem;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,8 +41,12 @@ public class AzureBlobClientService {
     private static final String ERROR_MSG = "Azure %s is not specified. Please add configuration for `%s`";
 
     @Inject
-    @Value(key = "courtscheduler.rotaslStorageConnectionString", defaultValue = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=+p3GXQguT4npJqxd6gAPfDgLu0YuJ3n1+hpTQYg1BQn0UL5Ut+bDDE7l2qrRNTt/yW5jNyf5mRUmM11F8dnkpA==;EndpointSuffix=core.windows.net;")
+    @Value(key = "courtscheduler.rotaslStorageConnectionString")
     private String rotaslStorageConnectionString;
+
+    @Inject
+    @Value(key ="courtscheduler.rotaslStorageAccountName", defaultValue = "sasteccmscsl")
+    private String rotaslStorageAccountName;
 
     @Inject
     @Value(key = "courtscheduler.rotaslInputContainerName", defaultValue = "schedulelistinginput")
@@ -54,44 +56,44 @@ public class AzureBlobClientService {
     @Value(key = "courtscheduler.rotaslArchiveContainerName", defaultValue = "schedulelistingoutput")
     private String rotaslArchiveContainerName;
 
-    private CloudBlobContainer container = null;
+    @Inject
+    private StorageApplicationParameters storageApplicationParameters;
+
+    private BlobContainerClient blobContainerClient = null;
+
+    public static final String AZURE_CLIENT_ID = "AZURE_CLIENT_ID";
+    public static final String AZURE_TENANT_ID = "AZURE_TENANT_ID";
 
     @PostConstruct
     void init() {
-        checkNotNull(rotaslStorageConnectionString,
-                format(ERROR_MSG, "connection string",
-                        "courtscheduler.rotaslStorageConnectionString"));
         checkNotNull(rotaslInputContainerName,
-                format(ERROR_MSG, "container name", "courtscheduler.rotaslInputContainerName"));
+                format(ERROR_MSG, "input container name", "courtscheduler.rotaslInputContainerName"));
         checkNotNull(rotaslArchiveContainerName,
-                format(ERROR_MSG, "container name", "courtscheduler.rotaslArchiveContainerName"));
+                format(ERROR_MSG, "archive container name", "courtscheduler.rotaslArchiveContainerName"));
+        checkNotNull(rotaslStorageAccountName,
+                format(ERROR_MSG, "storage account endpoint", "courtscheduler.rotaslStorageAccountName"));
     }
 
     public void connect(final String blobContainerName) {
-        try {
-            final CloudStorageAccount storageAccount = CloudStorageAccount.parse(rotaslStorageConnectionString);
-            final CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
-            container = blobClient.getContainerReference(blobContainerName);
-        } catch (InvalidKeyException ex) {
-            throw new AzureBlobClientException("Invalid connection string", ex);
-        } catch (URISyntaxException ex) {
-            throw new AzureBlobClientException(CONNECTION_URI_PARSE_ERROR, ex);
-        } catch (final StorageException ex) {
-            throw new AzureBlobClientException(format(
-                    AZURE_SERVICE_HTTP_ERROR,
-                    ex.getHttpStatusCode(), ex.getErrorCode()), ex);
-        }
+        final BlobServiceClient blobServiceClient = createBlobServiceClient();
 
+        blobContainerClient = blobServiceClient.getBlobContainerClient(blobContainerName);
+        blobContainerClient.createIfNotExists();
+        LOGGER.info("blobContainerClient : {}", blobContainerClient);
     }
 
-    public Map<String, ListBlobItem> collectListBlobItems(final String blobFilePrefix) {
+    public Map<String, BlobItem> collectListBlobItems(final String blobFilePrefix) {
         final Stopwatch stopwatch = Stopwatch.createStarted();
         LOGGER.info("Connecting to azure blob storage to collect Blob Items from : {} on {}", rotaslInputContainerName, now());
         connect(rotaslInputContainerName);
 
-        final Map<String, ListBlobItem> downloadedBlobMap = new HashMap<>();
-        for(ListBlobItem blobItem : container.listBlobs(blobFilePrefix)) {
-            final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
+        final Map<String, BlobItem> downloadedBlobMap = new HashMap<>();
+        LOGGER.info("before calling listBlobs: {}", blobFilePrefix);
+
+        final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobFilePrefix);
+
+        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10)).stream().toList()) {
+            final String blobName = blobItem.getName();
             downloadedBlobMap.put(blobName, blobItem);
             LOGGER.info("Downloading blob file with name : {} from azure blob storage on {}", blobName, now());
         }
@@ -99,82 +101,33 @@ public class AzureBlobClientService {
         return downloadedBlobMap;
     }
 
-    public BlobContent downloadFiles(final ListBlobItem blobItem) {
-        try {
+    public BlobContent downloadFiles(final BlobItem blobItem) {
             final Stopwatch stopwatch = Stopwatch.createStarted();
-            BlobContent blobContent = new BlobContent();
             LOGGER.info("Connecting to azure blob storage to download files from : {} on {}", rotaslInputContainerName, now());
             connect(rotaslInputContainerName);
-            final String blobName = getBlobName(blobItem.getUri().getPath(), rotaslInputContainerName);
-            final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
-            final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            blob.download(outputStream);
+            final String blobName = blobItem.getName();
+            byte[] blobByteArray = blobContainerClient.getBlobClient(blobName).downloadContent().toBytes();
 
             LOGGER.info("Total time taken for all the blobs to be downloaded from {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
 
-            byte[] blobByteArray = outputStream.toByteArray();
-            blobContent.setBlob(blob);
-            blobContent.setBlobByteArray(blobByteArray);
-            return blobContent;
-        } catch (StorageException ex) {
-            throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
-                    ex.getHttpStatusCode(), ex.getErrorCode()), ex);
-        } catch (URISyntaxException ex) {
-            throw new AzureBlobClientException(CONNECTION_URI_PARSE_ERROR, ex);
-        }
-    }
-
-    public byte[] downloadFile(final String blobName, final String containerName) {
-        try {
-            final Stopwatch stopwatch = Stopwatch.createStarted();
-            LOGGER.info("Connecting to azure blob storage to downloading file with name {} from : {} on {}", blobName, containerName, now());
-            connect(containerName);
-
-            final Optional<ListBlobItem> optionalBlobItem = StreamSupport.stream(container.listBlobs(blobName).spliterator(), false)
-                    .filter(blobItem -> blobName.equals(getBlobName(blobItem.getUri().getPath(), containerName)))
-                    .findAny();
-
-            if (optionalBlobItem.isPresent()) {
-                final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
-                final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                blob.download(outputStream);
-
-                LOGGER.info("Total time taken for the blob with name {} to be downloaded from {} is : {} : seconds", blobName, containerName, stopwatch.elapsed(SECONDS));
-                return outputStream.toByteArray();
-            }
-        } catch (StorageException ex) {
-            throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
-                    ex.getHttpStatusCode(), ex.getErrorCode()), ex);
-        } catch (URISyntaxException ex) {
-            throw new AzureBlobClientException(CONNECTION_URI_PARSE_ERROR, ex);
-        }
-
-        return null;
+            return new BlobContent(blobByteArray);
     }
 
     public void deleteFile(final String blobNameOfFileToBeDeleted, final Optional<String> containerNameOptional) {
-        try {
-            final String containerName = containerNameOptional.orElseGet(() -> rotaslInputContainerName);
-            final Stopwatch stopwatch = Stopwatch.createStarted();
-            LOGGER.info("Connecting to azure blob storage to delete files from the container {} on {}", containerName, now());
-            connect(containerName);
+        final String containerName = containerNameOptional.orElseGet(() -> rotaslInputContainerName);
+        final Stopwatch stopwatch = Stopwatch.createStarted();
+        LOGGER.info("Connecting to azure blob storage to delete files from the container {} on {}", containerName, now());
+        connect(containerName);
 
-            for(ListBlobItem blobItem : container.listBlobs(blobNameOfFileToBeDeleted)) {
-                final String blobName = getBlobName(blobItem.getUri().getPath(), containerName);
-                if (blobNameOfFileToBeDeleted.contains(blobName)) {
-                    final CloudBlockBlob blob = container.getBlockBlobReference(blobName);
-                    blob.delete();
-
-                    LOGGER.info("Deleted blob file successfully with name {} from azure blob storage container {} on {}", blobName, containerName, now());
-                    LOGGER.info("Total time taken to delete files from azure blob storage container {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
-                    break;
-                }
+        final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobNameOfFileToBeDeleted);
+        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
+            final String blobName = blobItem.getName();
+            if (blobNameOfFileToBeDeleted.contains(blobName)) {
+                blobContainerClient.getBlobClient(blobName).delete();
+                LOGGER.info("Deleted blob file successfully with name {} from azure blob storage container {} on {}", blobName, containerName, now());
+                LOGGER.info("Total time taken to delete files from azure blob storage container {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
+                break;
             }
-        } catch (StorageException ex) {
-            throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
-                    ex.getHttpStatusCode(), ex.getErrorCode()), ex);
-        } catch (URISyntaxException ex) {
-            throw new AzureBlobClientException(CONNECTION_URI_PARSE_ERROR, ex);
         }
     }
 
@@ -188,34 +141,34 @@ public class AzureBlobClientService {
      * @throws AzureBlobClientException
      */
     public void uploadProcessedFile(final InputStream file, final Long fileSize, final String destinationFileName, final Optional<String> containerNameOptional) {
-
-        try {
-            final Stopwatch stopwatch = Stopwatch.createStarted();
-            final String containerName = containerNameOptional.orElseGet(() -> rotaslArchiveContainerName);
-            LOGGER.info("Connecting to azure blob storage to upload files into {} on {}", containerName, now());
-            connect(containerName);
-            final CloudBlockBlob fileBlob = container.getBlockBlobReference(destinationFileName);
-            LOGGER.info("Uploading {} file to azure blob storage on {}", destinationFileName, now());
-            fileBlob.upload(file, fileSize);
-            LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
-
-        } catch (StorageException ex) {
-            throw new AzureBlobClientException(format(AZURE_SERVICE_HTTP_ERROR,
-                    ex.getHttpStatusCode(), ex.getErrorCode()), ex);
-        } catch (URISyntaxException ex) {
-            throw new AzureBlobClientException(CONNECTION_URI_PARSE_ERROR, ex);
-        } catch (IOException ex) {
-            throw new AzureBlobClientException("Error while uploading file to azure blob storage", ex);
-        }
+        final Stopwatch stopwatch = Stopwatch.createStarted();
+        final String containerName = containerNameOptional.orElseGet(() -> rotaslArchiveContainerName);
+        LOGGER.info("Connecting to azure blob storage to upload files into {} on {}", containerName, now());
+        connect(containerName);
+        LOGGER.info("Uploading {} file to azure blob storage on {}", destinationFileName, now());
+        blobContainerClient.getBlobClient(destinationFileName).upload(file, fileSize, true);
+        LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
     }
 
-    private String getBlobName(final String blobFilePath, final String containerName) {
-        final int index = blobFilePath.lastIndexOf(containerName);
-        if (index == -1) {
-            throw new AzureBlobClientException(
-                    format("Azure S&L blob storage file path and container name doesn't match, filePath: %s, containerName: %s",
-                            blobFilePath, containerName));
+    private BlobServiceClient createBlobServiceClient() {
+        if (StringUtils.isEmpty(storageApplicationParameters.getAzureLocalMiClientId()) && StringUtils.isEmpty(storageApplicationParameters.getAzureLocalMiTenantId())) {
+            return new BlobServiceClientBuilder()
+                    .connectionString(rotaslStorageConnectionString)
+                    .buildClient();
         }
-        return blobFilePath.substring(index + containerName.length() + 1);
+
+        final Configuration configuration = new ConfigurationBuilder()
+                .putProperty(AZURE_CLIENT_ID, storageApplicationParameters.getAzureLocalMiClientId())
+                .putProperty(AZURE_TENANT_ID, storageApplicationParameters.getAzureLocalMiTenantId())
+                .build();
+
+        return new BlobServiceClientBuilder()
+                .endpoint(format("https://%s.blob.core.windows.net/", rotaslStorageAccountName))
+                .credential(new DefaultAzureCredentialBuilder()
+                        .tenantId(storageApplicationParameters.getAzureLocalMiTenantId())
+                        .managedIdentityClientId(storageApplicationParameters.getAzureLocalMiClientId())
+                        .configuration(configuration)
+                        .build())
+                .buildClient();
     }
 }

@@ -14,7 +14,7 @@ import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
-import com.microsoft.azure.storage.blob.ListBlobItem;
+import com.azure.storage.blob.models.BlobItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,15 +32,13 @@ public class RotaFileCaptureAndProcessTriggerService {
     @Inject
     private AzureBlobClientService azureBlobClientService;
 
-    private static final String IT_TEST_BLOB_PREFIX = "IT_Test_";
     private static final String ORIGINAL_BLOB_PREFIX = "lja_";
 
     @Asynchronous
-    public Future<String> captureRotaFilesAndProcessEach(final Requester requester, boolean isForItTest) {
+    public Future<String> captureRotaFilesAndProcessEach(final Requester requester) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
-        final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
         // download all the files in the input container
-        final Map<String, ListBlobItem> downloadedBlobsByteArrayMap = azureBlobClientService.collectListBlobItems(blobPrefix);
+        final Map<String, BlobItem> downloadedBlobsByteArrayMap = azureBlobClientService.collectListBlobItems(ORIGINAL_BLOB_PREFIX);
         if (!downloadedBlobsByteArrayMap.isEmpty()) {
             loadReferenceData(requester);
         }
