@@ -64,7 +64,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations(eq(requester));
 
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, false);
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester);
 
         verify(referenceDataMapperService, atLeastOnce()).loadJudiciaries(eq(requester));
         verify(referenceDataMapperService, atLeastOnce()).loadCourtRooms(eq(requester));

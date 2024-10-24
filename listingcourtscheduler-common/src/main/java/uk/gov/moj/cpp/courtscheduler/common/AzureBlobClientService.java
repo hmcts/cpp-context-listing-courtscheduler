@@ -28,6 +28,7 @@ import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobItem;
 import com.azure.storage.blob.models.ListBlobsOptions;
 import com.google.common.base.Stopwatch;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +41,7 @@ public class AzureBlobClientService {
     private static final String ERROR_MSG = "Azure %s is not specified. Please add configuration for `%s`";
 
     @Inject
-    @Value(key = "courtscheduler.rotaslStorageConnectionString", defaultValue = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=+p3GXQguT4npJqxd6gAPfDgLu0YuJ3n1+hpTQYg1BQn0UL5Ut+bDDE7l2qrRNTt/yW5jNyf5mRUmM11F8dnkpA==;EndpointSuffix=core.windows.net;")
+    @Value(key = "courtscheduler.rotaslStorageConnectionString")
     private String rotaslStorageConnectionString;
 
     @Inject
@@ -70,26 +71,14 @@ public class AzureBlobClientService {
         checkNotNull(rotaslArchiveContainerName,
                 format(ERROR_MSG, "archive container name", "courtscheduler.rotaslArchiveContainerName"));
         checkNotNull(rotaslStorageAccountName,
-                format(ERROR_MSG, "storage account name", "courtscheduler.rotaslStorageAccountName"));
+                format(ERROR_MSG, "storage account endpoint", "courtscheduler.rotaslStorageAccountName"));
     }
 
     public void connect(final String blobContainerName) {
-        final Configuration configuration = new ConfigurationBuilder()
-                .putProperty(AZURE_CLIENT_ID, storageApplicationParameters.getAzureLocalMiClientId())
-                .putProperty(AZURE_TENANT_ID, storageApplicationParameters.getAzureLocalMiTenantId())
-                .build();
-
-        final BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
-                .endpoint(format("https://%s.blob.core.windows.net/", rotaslStorageAccountName))
-                .credential(new DefaultAzureCredentialBuilder()
-                        .tenantId(storageApplicationParameters.getAzureLocalMiTenantId())
-                        .managedIdentityClientId(storageApplicationParameters.getAzureLocalMiClientId())
-                        .configuration(configuration)
-                        .build())
-                .buildClient();
+        final BlobServiceClient blobServiceClient = createBlobServiceClient();
 
         blobContainerClient = blobServiceClient.getBlobContainerClient(blobContainerName);
-
+        blobContainerClient.createIfNotExists();
         LOGGER.info("blobContainerClient : {}", blobContainerClient);
     }
 
@@ -159,5 +148,27 @@ public class AzureBlobClientService {
         LOGGER.info("Uploading {} file to azure blob storage on {}", destinationFileName, now());
         blobContainerClient.getBlobClient(destinationFileName).upload(file, fileSize, true);
         LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
+    }
+
+    private BlobServiceClient createBlobServiceClient() {
+        if (StringUtils.isEmpty(storageApplicationParameters.getAzureLocalMiClientId()) && StringUtils.isEmpty(storageApplicationParameters.getAzureLocalMiTenantId())) {
+            return new BlobServiceClientBuilder()
+                    .connectionString(rotaslStorageConnectionString)
+                    .buildClient();
+        }
+
+        final Configuration configuration = new ConfigurationBuilder()
+                .putProperty(AZURE_CLIENT_ID, storageApplicationParameters.getAzureLocalMiClientId())
+                .putProperty(AZURE_TENANT_ID, storageApplicationParameters.getAzureLocalMiTenantId())
+                .build();
+
+        return new BlobServiceClientBuilder()
+                .endpoint(format("https://%s.blob.core.windows.net/", rotaslStorageAccountName))
+                .credential(new DefaultAzureCredentialBuilder()
+                        .tenantId(storageApplicationParameters.getAzureLocalMiTenantId())
+                        .managedIdentityClientId(storageApplicationParameters.getAzureLocalMiClientId())
+                        .configuration(configuration)
+                        .build())
+                .buildClient();
     }
 }

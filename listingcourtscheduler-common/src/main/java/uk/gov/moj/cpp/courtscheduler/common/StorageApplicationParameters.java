@@ -9,11 +9,11 @@ import javax.inject.Inject;
 public class StorageApplicationParameters {
 
     @Inject
-    @GlobalValue(key = "azure.local.mi.clientId", defaultValue = "a1a4f56c-a99b-4cc0-aaae-edd355daf67b")
+    @GlobalValue(key = "azure.local.mi.clientId", defaultValue = "")
     private String azureLocalMiClientId;
 
     @Inject
-    @GlobalValue(key = "azure.local.mi.tenantId", defaultValue = "e2995d11-9947-4e78-9de6-d44e0603518e")
+    @GlobalValue(key = "azure.local.mi.tenantId", defaultValue = "")
     private String azureLocalMiTenantId;
 
     public String getAzureLocalMiClientId() {
