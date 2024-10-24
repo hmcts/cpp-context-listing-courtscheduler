@@ -55,14 +55,14 @@ class RotaFileProcessorApiTest {
     void shouldProcessRotaFiles() {
         final String requestName = "courtscheduler.rotasl.process_rota_files";
 
-        final JsonObject payloadAsJsonObject = createObjectBuilder().add("isForItTest", false).build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder().build();
         final JsonEnvelope processRotaFilesJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
         when(enveloper.withMetadataFrom(processRotaFilesJsonEnvelope, requestName)).thenReturn(function);
-        when(rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(eq(requester), eq(false))).thenReturn(new AsyncResult<>("SUCCESS"));
+        when(rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(eq(requester))).thenReturn(new AsyncResult<>("SUCCESS"));
 
         rotaFileProcessorApi.processRotaFiles(processRotaFilesJsonEnvelope);
 
-        verify(rotaFileCaptureAndProcessTriggerService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester), eq(false));
+        verify(rotaFileCaptureAndProcessTriggerService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester));
         verify(LOGGER, atLeastOnce()).info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
         verify(enveloper, atLeastOnce()).withMetadataFrom(processRotaFilesJsonEnvelope, requestName);
     }
