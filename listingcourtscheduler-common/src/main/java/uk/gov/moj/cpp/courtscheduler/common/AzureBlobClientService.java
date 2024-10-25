@@ -176,6 +176,7 @@ public class AzureBlobClientService {
     }
 
     public void releaseLease(String releaseBlobName, final String leaseId) {
+        connect(rotaslInputContainerName);
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(releaseBlobName);
         for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
             final String blobName = blobItem.getName();
