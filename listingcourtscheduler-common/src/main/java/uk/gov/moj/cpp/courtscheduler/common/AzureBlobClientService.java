@@ -28,6 +28,7 @@ import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobItem;
+import com.azure.storage.blob.models.BlobStorageException;
 import com.azure.storage.blob.models.ListBlobsOptions;
 import com.azure.storage.blob.specialized.BlobLeaseClient;
 import com.azure.storage.blob.specialized.BlobLeaseClientBuilder;
@@ -125,7 +126,6 @@ public class AzureBlobClientService {
         for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
             final String blobName = blobItem.getName();
             if (blobNameOfFileToBeDeleted.contains(blobName)) {
-                releaseLease(blobName);
                 blobContainerClient.getBlobClient(blobName).delete();
                 LOGGER.info("Deleted blob file successfully with name {} from azure blob storage container {} on {}", blobName, containerName, now());
                 LOGGER.info("Total time taken to delete files from azure blob storage container {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
@@ -164,15 +164,18 @@ public class AzureBlobClientService {
             BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
                     .blobClient(blob)
                     .buildClient();
-            leaseClient.acquireLease(-1);
-            //blob.releaseLease(AccessCondition.generateLeaseCondition(leaseId));
-            return Optional.of(new AbstractMap.SimpleEntry<>(blobName, blobItem));
+            try {
+                String leaseId = leaseClient.acquireLease(-1);
+                return Optional.of(new AbstractMap.SimpleEntry<>(leaseId, blobItem));
+            } catch (BlobStorageException storageException) {
+                LOGGER.info(blobName + " blob is already acquired lease");
+            }
         }
 
         return Optional.empty();
     }
 
-    public void releaseLease(String releaseBlobName) {
+    public void releaseLease(String releaseBlobName, final String leaseId) {
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(releaseBlobName);
         for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
             final String blobName = blobItem.getName();
@@ -181,6 +184,7 @@ public class AzureBlobClientService {
                 // Try to acquire a lease. If successful, it means the file is available.
                 BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
                         .blobClient(blob)
+                        .leaseId(leaseId)
                         .buildClient();
                 leaseClient.releaseLease();
                 break;

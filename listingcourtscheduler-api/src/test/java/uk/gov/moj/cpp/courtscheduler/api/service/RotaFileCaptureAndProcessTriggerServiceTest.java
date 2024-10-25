@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.azure.storage.blob.models.BlobItem;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,10 +60,11 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
         final Optional<Map.Entry<String, BlobItem>> listBlobItemMap = Optional.of(new AbstractMap.SimpleEntry<>(blobName, blobItem));
+        final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
         when(azureBlobClientService.findAvailableFile(eq("lja_"))).thenReturn(listBlobItemMap);
         when(azureBlobClientService.downloadFiles(any(BlobItem.class))).thenReturn(blobContent);
-        doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName));
+        doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName), eq(leaseId));
         doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations(eq(requester));
@@ -70,7 +72,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester);
 
         verify(azureBlobClientService, atLeastOnce()).findAvailableFile(eq("lja_"));
-        verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName));
+        verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName), eq(leaseId));
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {

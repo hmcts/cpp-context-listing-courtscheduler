@@ -51,7 +51,8 @@ public class RotaFileCaptureAndProcessTriggerService {
             fileAvailable = availableFile.isPresent();
             if (fileAvailable) {
                 logger.info("Found file {}",availableFile.get());
-                final String blobName = availableFile.get().getKey();
+                final String leaseId = availableFile.get().getKey();
+                final String blobName = availableFile.get().getValue().getName();
                 final BlobItem blobItem = availableFile.get().getValue();
 
                 try {
@@ -61,7 +62,7 @@ public class RotaFileCaptureAndProcessTriggerService {
                     }
 
                     final BlobContent blobContent = azureBlobClientService.downloadFiles(blobItem);
-                    rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+                    rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
                     filesProcessed = true;
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);

@@ -116,7 +116,7 @@ public class RotaFileProcessorService {
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Asynchronous
-    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) {
+    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName, final String leaseId) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
         final byte[] blobByteArray = blobContent.getBlobByteArray();
         try {
@@ -126,10 +126,11 @@ public class RotaFileProcessorService {
             // upload the files processed into archive container
             azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
             logger.info("rota file upload to output container completed for blob with name: {}", blobName);
+            azureBlobClientService.releaseLease(blobName, leaseId);
             azureBlobClientService.deleteFile(blobName, empty());
             logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
         } catch (Exception storageException) {
-            azureBlobClientService.releaseLease(blobName);
+            azureBlobClientService.releaseLease(blobName, leaseId);
         }
     }
 
