@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.common;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.time.LocalDate.now;
+import static java.util.Optional.empty;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import uk.gov.justice.services.common.configuration.Value;
@@ -159,37 +160,45 @@ public class AzureBlobClientService {
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobFilePrefix);
         for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
             final String blobName = blobItem.getName();
-            final BlobClient blob = blobContainerClient.getBlobClient(blobName);
-            // Try to acquire a lease. If successful, it means the file is available.
-            BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
-                    .blobClient(blob)
-                    .buildClient();
-            try {
-                LOGGER.info(blobName + " Acquiring lease");
-                String leaseId = leaseClient.acquireLease(-1);
-                return Optional.of(new AbstractMap.SimpleEntry<>(leaseId, blobItem));
-            } catch (BlobStorageException storageException) {
-                LOGGER.info(blobName + " blob is already acquired lease");
+            if(!blobName.contains("failed")) {
+                final BlobClient blob = blobContainerClient.getBlobClient(blobName);
+                // Try to acquire a lease. If successful, it means the file is available.
+                BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
+                        .blobClient(blob)
+                        .buildClient();
+                try {
+                    LOGGER.info(blobName + " Acquiring lease");
+                    String leaseId = leaseClient.acquireLease(-1);
+                    return Optional.of(new AbstractMap.SimpleEntry<>(leaseId, blobItem));
+                } catch (BlobStorageException storageException) {
+                    LOGGER.info(blobName + " blob is already acquired lease");
+                }
             }
         }
 
         return Optional.empty();
     }
 
-    public void releaseLease(String releaseBlobName, final String leaseId) {
+    public void releaseLease(String releaseBlobName, final String leaseId, boolean failed) {
         connect(rotaslInputContainerName);
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(releaseBlobName);
         for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
             final String blobName = blobItem.getName();
             if (releaseBlobName.contains(blobName)) {
                 LOGGER.info(blobName + " Releasing lease");
-                final BlobClient blob = blobContainerClient.getBlobClient(blobName);
+                final BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
                 // Try to acquire a lease. If successful, it means the file is available.
                 BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
-                        .blobClient(blob)
+                        .blobClient(blobClient)
                         .leaseId(leaseId)
                         .buildClient();
                 leaseClient.releaseLease();
+                if(failed) {
+                    String newBlobName = blobName+"_failed";
+                    final BlobClient newBlobclient = blobContainerClient.getBlobClient(newBlobName);
+                    newBlobclient.copyFromUrl(blobClient.getBlobUrl());
+                    deleteFile(blobName, empty());
+                }
                 break;
             }
         }

@@ -53,7 +53,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
@@ -124,13 +123,14 @@ public class RotaFileProcessorService {
             logger.info("rota file process completed for blob with name: {}", blobName);
             final long fileLength = blobByteArray.length;
             // upload the files processed into archive container
-            azureBlobClientService.releaseLease(blobName, leaseId);
             azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
             logger.info("rota file upload to output container completed for blob with name: {}", blobName);
+            azureBlobClientService.releaseLease(blobName, leaseId, false);
             azureBlobClientService.deleteFile(blobName, empty());
             logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
         } catch (Exception storageException) {
-            azureBlobClientService.releaseLease(blobName, leaseId);
+            azureBlobClientService.releaseLease(blobName, leaseId, true);
+
         }
     }
 
