@@ -36,7 +36,6 @@ public class RotaFileCaptureAndProcessTriggerService {
 
     private static final String ORIGINAL_BLOB_PREFIX = "lja_";
 
-    @Asynchronous
     public Future<String> captureRotaFilesAndProcessEach(final Requester requester) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
 

@@ -165,6 +165,7 @@ public class AzureBlobClientService {
                     .blobClient(blob)
                     .buildClient();
             try {
+                LOGGER.info(blobName + " Acquiring lease");
                 String leaseId = leaseClient.acquireLease(-1);
                 return Optional.of(new AbstractMap.SimpleEntry<>(leaseId, blobItem));
             } catch (BlobStorageException storageException) {
@@ -181,6 +182,7 @@ public class AzureBlobClientService {
         for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
             final String blobName = blobItem.getName();
             if (releaseBlobName.contains(blobName)) {
+                LOGGER.info(blobName + " Releasing lease");
                 final BlobClient blob = blobContainerClient.getBlobClient(blobName);
                 // Try to acquire a lease. If successful, it means the file is available.
                 BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
