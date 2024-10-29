@@ -114,7 +114,7 @@ public class SessionsService {
     }
 
     public Result update(UpdateCourtSchedule updateCourtSchedule, Requester requester) {
-        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = courtScheduleRepository.findBy(updateCourtSchedule.getCourtScheduleId());
+        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
         if (Objects.isNull(persistedCourtSchedule)) {
             return new Result("Court Schedule not found", false);
         }
@@ -122,6 +122,7 @@ public class SessionsService {
         if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType)) {
             return new Result("Business Type cannot be changed from Slot to Non-Slot and vice versa", false);
         }
+        //TODO: add booked hearings check after DD-35012
         updateAvailability(updateCourtSchedule, persistedCourtSchedule);
 
         String courtRoomId = updateCourtSchedule.getCourtRoomId();
