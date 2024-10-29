@@ -284,19 +284,19 @@ public class SessionsService {
 
 
         logger.info("DD-15703:CourtScheduleRepository: before saveSlots");
-        final int numberOfSavedSlots = saveSlots(slotAndScheduleInfo.newSlots().values(), businessTypeMap, existingCourtSchedules);
-        logger.info("DD-15703:CourtScheduleRepository: after saveSlots with numberOfSavedSlots: {}", numberOfSavedSlots);
+        final List<String> courtScheduleIdsOfSavedSlots = saveSlots(slotAndScheduleInfo.newSlots().values(), businessTypeMap, existingCourtSchedules);
+        logger.info("DD-15703:CourtScheduleRepository: after saveSlots with numberOfSavedSlots: {}", courtScheduleIdsOfSavedSlots.size());
 
         for (final CourtSchedule courtSchedule : slotAndScheduleInfo.slotsToUpdate()) {
             slotAndScheduleInfo.newSlots().putIfAbsent(courtSchedule.getListingProfileId(), courtSchedule);
         }
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule");
-        final int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(slotAndScheduleInfo.newSlots(), slotAndScheduleInfo.newCourtScheduleJudiciaries(), false, ouCodes);
+        final int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(slotAndScheduleInfo.newSlots(), slotAndScheduleInfo.newCourtScheduleJudiciaries(), courtScheduleIdsOfSavedSlots,false, ouCodes);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedules: {}", numberOfSavedJudiciarySchedules);
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule for existing migrated slots");
-        final int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(slotsForMigrated, slotAndScheduleInfo.courtScheduleJudiciariesForMigratedExistingSlots(), true, ouCodes);
+        final int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(slotsForMigrated, slotAndScheduleInfo.courtScheduleJudiciariesForMigratedExistingSlots(), emptyList(),true, ouCodes);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedulesForMigratedExistingSlots: {}", numberOfSavedJudiciarySchedulesForMigratedExistingSlots);
 
         logger.info("DD-15703:CourtScheduleRepository: before updateSlots");
@@ -332,13 +332,13 @@ public class SessionsService {
         }
     }
 
-    private int saveSlots(final Collection<CourtSchedule> slots,
+    private List<String> saveSlots(final Collection<CourtSchedule> slots,
                           final Map<String, BusinessType> businessTypeMap,
                           final List<CourtSchedule> existingCourtSchedules) {
-        final AtomicInteger numberOfSavedSlots = new AtomicInteger();
+        final List<String> courtScheduleIdsOfSavedSlots = new ArrayList<>();
         slots.forEach(slot -> {
 
-            boolean toBePersisted = decideIfToBePersisted(existingCourtSchedules, slot);
+            final boolean toBePersisted = decideIfToBePersisted(existingCourtSchedules, slot);
             if (toBePersisted) {
                 logger.debug("slot decided to be persisted with ouCode: {}, courtRoomNumber: {}, businessType: {}, courtSession: {}, panel: {}, sessionDate: {}",
                         slot.getOuCode(), slot.getCourtRoomNumber(), slot.getBusinessType(), slot.getCourtSession(), slot.getPanel(), slot.getSessionDate());
@@ -348,13 +348,12 @@ public class SessionsService {
                 }
                 courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
                 courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
+                courtScheduleIdsOfSavedSlots.add(courtScheduleEntity.getCourtScheduleId());
                 courtScheduleService.saveSlot(courtScheduleEntity);
-
-                numberOfSavedSlots.getAndIncrement();
             }
         });
 
-        return numberOfSavedSlots.get();
+        return courtScheduleIdsOfSavedSlots;
     }
 
     private static boolean decideIfToBePersisted(final List<CourtSchedule> existingCourtSchedules, final CourtSchedule slot) {
@@ -447,13 +446,18 @@ public class SessionsService {
         final AtomicInteger numberOfUpdatedSlots = new AtomicInteger();
         slotsToUpdate.forEach(slotToUpdate -> {
             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule slotToUpdateEntity = CourtScheduleMapper.toEntity(slotToUpdate);
-            slotToUpdateEntity.setUpdatedOn(Calendar.getInstance().getTime());
-            slotToUpdateEntity.setActive(true);
-            slotToUpdate.setSlotBased(businessTypeMap.get(slotToUpdate.getBusinessType()).isSlot());
+            final BusinessType businessType = businessTypeMap.get(slotToUpdate.getBusinessType());
+            if (nonNull(businessType)) {
+                slotToUpdateEntity.setUpdatedOn(Calendar.getInstance().getTime());
+                slotToUpdateEntity.setActive(true);
+                slotToUpdate.setSlotBased(businessTypeMap.get(slotToUpdate.getBusinessType()).isSlot());
 
-            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = courtScheduleRepository.update(slotToUpdateEntity, true);
-            if (nonNull(courtSchedule)) {
-                numberOfUpdatedSlots.incrementAndGet();
+                final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = courtScheduleRepository.update(slotToUpdateEntity, true);
+                if (nonNull(courtSchedule)) {
+                    numberOfUpdatedSlots.incrementAndGet();
+                }
+            } else {
+                logger.warn("missing business type on update slot - {}", slotToUpdate.getBusinessType());
             }
         });
 
@@ -498,6 +502,7 @@ public class SessionsService {
 
     private int saveJudiciarySchedule(final Map<String, CourtSchedule> newRecords,
                                       final Collection<CourtScheduleJudiciary> scheduleJudiciaries,
+                                      final List<String> courtScheduleIdsOfSavedSlots,
                                       final boolean forMigrated,
                                       final List<String> ouCodes) {
 
@@ -505,7 +510,7 @@ public class SessionsService {
         scheduleJudiciaries.forEach(scheduleJudiciary -> {
             final CourtSchedule courtSchedule = newRecords.get(scheduleJudiciary.getCourtListingProfileId());
 
-            if (nonNull(courtSchedule)) {
+            if (nonNull(courtSchedule) && (forMigrated || courtScheduleIdsOfSavedSlots.contains(courtSchedule.getCourtScheduleId()))) {
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciaryEntity = CourtScheduleJudiciaryMapper.toEntity(scheduleJudiciary);
                 courtScheduleJudiciaryEntity.setUpdatedOn(Calendar.getInstance().getTime());
                 if (!forMigrated) {
