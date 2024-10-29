@@ -25,4 +25,39 @@ public record CourtScheduleRequestParam(String courtCentreId,
     public int hashCode() {
         return Objects.hash(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
     }
+
+    @Override
+    public String courtCentreId() {
+        return courtCentreId;
+    }
+
+    @Override
+    public String courtRoomId() {
+        return courtRoomId;
+    }
+
+    @Override
+    public String businessType() {
+        return businessType;
+    }
+
+    @Override
+    public String sessionStartDate() {
+        return sessionStartDate;
+    }
+
+    @Override
+    public String sessionEndDate() {
+        return sessionEndDate;
+    }
+
+    @Override
+    public String pageSize() {
+        return pageSize;
+    }
+
+    @Override
+    public String pageNumber() {
+        return pageNumber;
+    }
 }
