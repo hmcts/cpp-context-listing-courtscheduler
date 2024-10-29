@@ -63,6 +63,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -140,6 +141,7 @@ class RotaFileProcessorServiceTest {
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
+        final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -178,7 +180,7 @@ class RotaFileProcessorServiceTest {
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
         when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
 
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
 
         verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(false), anyList(), eq(requester));
         verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
@@ -194,6 +196,7 @@ class RotaFileProcessorServiceTest {
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
+        final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -233,7 +236,7 @@ class RotaFileProcessorServiceTest {
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
         when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
 
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
 
         verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(false), anyList(), eq(requester));
         verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
@@ -250,6 +253,7 @@ class RotaFileProcessorServiceTest {
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
+        final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -288,7 +292,7 @@ class RotaFileProcessorServiceTest {
         doNothing().when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap());
         mockMigratedMapByOuCode("CABC90", false);
 
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
 
         verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slots), eq(records), eq(false), anyList(), eq(requester));
         verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
@@ -303,6 +307,7 @@ class RotaFileProcessorServiceTest {
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
+        final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -333,7 +338,7 @@ class RotaFileProcessorServiceTest {
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
         when(records.get(RotaPayload.LOCATION)).thenReturn(new HashMap<>());
 
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
 
         verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
     }
@@ -344,11 +349,12 @@ class RotaFileProcessorServiceTest {
         final String blobName = "dummysupport.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
+        final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
 
         verify(judiciaryScheduleEnricher, never()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
     }
@@ -359,6 +365,7 @@ class RotaFileProcessorServiceTest {
         final String blobName = "lja_bedfordshire_snapshot_20240402T180039Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
+        final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -384,7 +391,7 @@ class RotaFileProcessorServiceTest {
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
         when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
 
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
 
         verify(judiciaryScheduleEnricher, atLeastOnce()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
         verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
@@ -399,6 +406,7 @@ class RotaFileProcessorServiceTest {
         final String blobName = "lja_bedfordshire_snapshot_20240402T180039Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
+        final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -416,7 +424,7 @@ class RotaFileProcessorServiceTest {
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
 
         verify(judiciaryScheduleEnricher, never()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
         verify(rotaDataEnricher, never()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));
@@ -432,6 +440,7 @@ class RotaFileProcessorServiceTest {
         final String blobName = "lja_bedfordshire_snapshot_.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
+        final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -447,7 +456,7 @@ class RotaFileProcessorServiceTest {
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
 
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName);
+        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
 
         verify(judiciaryScheduleEnricher, never()).enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester));
         verify(rotaDataEnricher, never()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester));

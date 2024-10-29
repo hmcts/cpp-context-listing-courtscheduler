@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.common;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.time.LocalDate.now;
+import static java.util.Optional.empty;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import uk.gov.justice.services.common.configuration.Value;
@@ -11,6 +12,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -22,11 +24,15 @@ import javax.inject.Inject;
 import com.azure.core.util.Configuration;
 import com.azure.core.util.ConfigurationBuilder;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobItem;
+import com.azure.storage.blob.models.BlobStorageException;
 import com.azure.storage.blob.models.ListBlobsOptions;
+import com.azure.storage.blob.specialized.BlobLeaseClient;
+import com.azure.storage.blob.specialized.BlobLeaseClientBuilder;
 import com.google.common.base.Stopwatch;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -35,8 +41,6 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 public class AzureBlobClientService {
 
-    private static final String AZURE_SERVICE_HTTP_ERROR = "Error returned from azure service. Http code: %d and error code: %s";
-    private static final String CONNECTION_URI_PARSE_ERROR = "Connection URI parse error";
     private static final Logger LOGGER = LoggerFactory.getLogger(AzureBlobClientService.class);
     private static final String ERROR_MSG = "Azure %s is not specified. Please add configuration for `%s`";
 
@@ -148,6 +152,56 @@ public class AzureBlobClientService {
         LOGGER.info("Uploading {} file to azure blob storage on {}", destinationFileName, now());
         blobContainerClient.getBlobClient(destinationFileName).upload(file, fileSize, true);
         LOGGER.info("Total time taken for file upload to azure blob storage {} is : {} : seconds", containerName, stopwatch.elapsed(SECONDS));
+    }
+
+    public Optional<Map.Entry<String, BlobItem>> findAvailableFile(final String blobFilePrefix) {
+        connect(rotaslInputContainerName);
+
+        final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobFilePrefix);
+        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
+            final String blobName = blobItem.getName();
+            if(!blobName.contains("failed")) {
+                final BlobClient blob = blobContainerClient.getBlobClient(blobName);
+                // Try to acquire a lease. If successful, it means the file is available.
+                BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
+                        .blobClient(blob)
+                        .buildClient();
+                try {
+                    LOGGER.info(blobName + " Acquiring lease");
+                    String leaseId = leaseClient.acquireLease(-1);
+                    return Optional.of(new AbstractMap.SimpleEntry<>(leaseId, blobItem));
+                } catch (BlobStorageException storageException) {
+                    LOGGER.info(blobName + " blob is already acquired lease");
+                }
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    public void releaseLease(String releaseBlobName, final String leaseId, boolean failed) {
+        connect(rotaslInputContainerName);
+        final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(releaseBlobName);
+        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
+            final String blobName = blobItem.getName();
+            if (releaseBlobName.contains(blobName)) {
+                LOGGER.info(blobName + " Releasing lease");
+                final BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
+                // Try to acquire a lease. If successful, it means the file is available.
+                BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
+                        .blobClient(blobClient)
+                        .leaseId(leaseId)
+                        .buildClient();
+                leaseClient.releaseLease();
+                if(failed) {
+                    String newBlobName = blobName+"_failed";
+                    final BlobClient newBlobclient = blobContainerClient.getBlobClient(newBlobName);
+                    newBlobclient.copyFromUrl(blobClient.getBlobUrl());
+                    deleteFile(blobName, empty());
+                }
+                break;
+            }
+        }
     }
 
     private BlobServiceClient createBlobServiceClient() {
