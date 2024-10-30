@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.concurrent.Future;
 
 import javax.ejb.AsyncResult;
-import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
@@ -39,7 +38,6 @@ public class RotaFileCaptureAndProcessTriggerService {
     public Future<String> captureRotaFilesAndProcessEach(final Requester requester) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
 
-        boolean filesProcessed = false;
         boolean referenceDataLoaded = false;
         boolean fileAvailable;
 
@@ -62,16 +60,11 @@ public class RotaFileCaptureAndProcessTriggerService {
 
                     final BlobContent blobContent = azureBlobClientService.downloadFiles(blobItem);
                     rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
-                    filesProcessed = true;
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);
                 }
             }
         } while (fileAvailable);
-
-        if (filesProcessed) {
-            referenceDataMapperService.clearReferenceDataInMemory();
-        }
 
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed");
         return new AsyncResult<>("SUCCESS");

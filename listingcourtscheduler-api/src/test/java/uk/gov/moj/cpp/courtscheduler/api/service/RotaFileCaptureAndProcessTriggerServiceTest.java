@@ -53,7 +53,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
     private BlobItem blobItem;
 
     @Test
-    @Disabled
+    @Disabled("Will be fixed later")
     void shouldCaptureRotaFilesAndProcessEach() throws IOException {
         final String file = "rotafileprocessor/rota_payload.xml";
         final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
