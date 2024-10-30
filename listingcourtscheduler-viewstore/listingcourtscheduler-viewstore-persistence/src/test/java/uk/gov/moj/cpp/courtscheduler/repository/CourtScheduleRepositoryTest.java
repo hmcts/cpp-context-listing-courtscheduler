@@ -308,11 +308,11 @@ public class CourtScheduleRepositoryTest {
         // then
         assertEquals(3, results.size());
         assertEquals(results.get(0).getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
-        assertEquals(results.get(0).getHasHearingsBooked(), true);
+        assertEquals(true, results.get(0).getHasHearingsBooked());
         assertEquals(results.get(1).getCourtScheduleId(), matchingCourtSchedule2.getCourtScheduleId());
-        assertEquals(results.get(1).getHasHearingsBooked(), true);
+        assertEquals(true, results.get(1).getHasHearingsBooked());
         assertEquals(results.get(2).getCourtScheduleId(), matchingCourtSchedule3.getCourtScheduleId());
-        assertEquals(results.get(2).getHasHearingsBooked(), false);
+        assertEquals(false, results.get(2).getHasHearingsBooked());
 
     }
 
