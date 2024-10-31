@@ -74,8 +74,6 @@ public class AzureBlobClientService {
                 format(ERROR_MSG, "input container name", "courtscheduler.rotaslInputContainerName"));
         checkNotNull(rotaslArchiveContainerName,
                 format(ERROR_MSG, "archive container name", "courtscheduler.rotaslArchiveContainerName"));
-        checkNotNull(rotaslStorageConnectionString,
-                format(ERROR_MSG, "storage account connection string", "courtscheduler.rotaslStorageConnectionString"));
     }
 
     public void connect(final String blobContainerName) {
