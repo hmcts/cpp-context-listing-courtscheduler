@@ -13,7 +13,6 @@ import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.AbstractMap;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -45,11 +44,11 @@ public class AzureBlobClientService {
     private static final String ERROR_MSG = "Azure %s is not specified. Please add configuration for `%s`";
 
     @Inject
-    @Value(key = "courtscheduler.rotaslStorageConnectionString")
+    @Value(key = "courtscheduler.rotaslStorageConnectionString", defaultValue = "")
     private String rotaslStorageConnectionString;
 
     @Inject
-    @Value(key ="courtscheduler.rotaslStorageAccountName", defaultValue = "sasteccmscsl")
+    @Value(key ="courtscheduler.rotaslStorageAccountName", defaultValue = "")
     private String rotaslStorageAccountName;
 
     @Inject
@@ -67,6 +66,7 @@ public class AzureBlobClientService {
 
     public static final String AZURE_CLIENT_ID = "AZURE_CLIENT_ID";
     public static final String AZURE_TENANT_ID = "AZURE_TENANT_ID";
+    public static final Duration TIMEOUT_DURATION_FOR_BLOB_STORAGE = Duration.ofMinutes(10);
 
     @PostConstruct
     void init() {
@@ -74,8 +74,8 @@ public class AzureBlobClientService {
                 format(ERROR_MSG, "input container name", "courtscheduler.rotaslInputContainerName"));
         checkNotNull(rotaslArchiveContainerName,
                 format(ERROR_MSG, "archive container name", "courtscheduler.rotaslArchiveContainerName"));
-        checkNotNull(rotaslStorageAccountName,
-                format(ERROR_MSG, "storage account endpoint", "courtscheduler.rotaslStorageAccountName"));
+        checkNotNull(rotaslStorageConnectionString,
+                format(ERROR_MSG, "storage account connection string", "courtscheduler.rotaslStorageConnectionString"));
     }
 
     public void connect(final String blobContainerName) {
@@ -84,25 +84,6 @@ public class AzureBlobClientService {
         blobContainerClient = blobServiceClient.getBlobContainerClient(blobContainerName);
         blobContainerClient.createIfNotExists();
         LOGGER.info("blobContainerClient : {}", blobContainerClient);
-    }
-
-    public Map<String, BlobItem> collectListBlobItems(final String blobFilePrefix) {
-        final Stopwatch stopwatch = Stopwatch.createStarted();
-        LOGGER.info("Connecting to azure blob storage to collect Blob Items from : {} on {}", rotaslInputContainerName, now());
-        connect(rotaslInputContainerName);
-
-        final Map<String, BlobItem> downloadedBlobMap = new HashMap<>();
-        LOGGER.info("before calling listBlobs: {}", blobFilePrefix);
-
-        final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobFilePrefix);
-
-        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10)).stream().toList()) {
-            final String blobName = blobItem.getName();
-            downloadedBlobMap.put(blobName, blobItem);
-            LOGGER.info("Downloading blob file with name : {} from azure blob storage on {}", blobName, now());
-        }
-        LOGGER.info("Total time taken to collect Blob Items from {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
-        return downloadedBlobMap;
     }
 
     public BlobContent downloadFiles(final BlobItem blobItem) {
@@ -124,7 +105,7 @@ public class AzureBlobClientService {
         connect(containerName);
 
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobNameOfFileToBeDeleted);
-        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
+        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, TIMEOUT_DURATION_FOR_BLOB_STORAGE)) {
             final String blobName = blobItem.getName();
             if (blobNameOfFileToBeDeleted.contains(blobName)) {
                 blobContainerClient.getBlobClient(blobName).delete();
@@ -158,7 +139,7 @@ public class AzureBlobClientService {
         connect(rotaslInputContainerName);
 
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobFilePrefix);
-        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
+        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, TIMEOUT_DURATION_FOR_BLOB_STORAGE)) {
             final String blobName = blobItem.getName();
             if(!blobName.contains("failed")) {
                 final BlobClient blob = blobContainerClient.getBlobClient(blobName);
@@ -182,7 +163,7 @@ public class AzureBlobClientService {
     public void releaseLease(String releaseBlobName, final String leaseId, boolean failed) {
         connect(rotaslInputContainerName);
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(releaseBlobName);
-        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, Duration.ofMinutes(10))) {
+        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, TIMEOUT_DURATION_FOR_BLOB_STORAGE)) {
             final String blobName = blobItem.getName();
             if (releaseBlobName.contains(blobName)) {
                 LOGGER.info(blobName + " Releasing lease");
@@ -205,7 +186,7 @@ public class AzureBlobClientService {
     }
 
     private BlobServiceClient createBlobServiceClient() {
-        if (StringUtils.isEmpty(storageApplicationParameters.getAzureLocalMiClientId()) && StringUtils.isEmpty(storageApplicationParameters.getAzureLocalMiTenantId())) {
+        if (StringUtils.isEmpty(rotaslStorageAccountName)) {
             return new BlobServiceClientBuilder()
                     .connectionString(rotaslStorageConnectionString)
                     .buildClient();

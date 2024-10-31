@@ -331,6 +331,8 @@ protocols: [ HTTP, HTTPS ]
         ...
     body:
       application/vnd.courtscheduler.rotasl.process_rota_files+json:
+        schema: !include json/schema/courtscheduler.rotasl.process_rota_files.json
+        example: !include json/courtscheduler.rotasl.process_rota_files.json
     responses:
       202:
         description: Request Accepted
