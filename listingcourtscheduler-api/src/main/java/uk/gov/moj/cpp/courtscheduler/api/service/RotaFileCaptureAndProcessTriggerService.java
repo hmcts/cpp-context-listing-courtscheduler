@@ -34,11 +34,13 @@ public class RotaFileCaptureAndProcessTriggerService {
     @Inject
     private AzureBlobClientService azureBlobClientService;
 
+    private static final String IT_TEST_BLOB_PREFIX = "IT_Test_";
     private static final String ORIGINAL_BLOB_PREFIX = "lja_";
 
     @Asynchronous
-    public Future<String> captureRotaFilesAndProcessEach(final Requester requester) {
+    public Future<String> captureRotaFilesAndProcessEach(final Requester requester, boolean isForItTest) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
+        final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
 
         boolean referenceDataLoaded = false;
         boolean fileAvailable;
@@ -46,7 +48,7 @@ public class RotaFileCaptureAndProcessTriggerService {
         do {
             // Look for an available file without an active lease
             logger.info("Searching for available file");
-            final Optional<Map.Entry<String, BlobItem>> availableFile = azureBlobClientService.findAvailableFile(ORIGINAL_BLOB_PREFIX);
+            final Optional<Map.Entry<String, BlobItem>> availableFile = azureBlobClientService.findAvailableFile(blobPrefix);
             fileAvailable = availableFile.isPresent();
             if (fileAvailable) {
                 logger.info("Found file {}",availableFile.get());

@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataCourtRoomSessionAllocations;
@@ -24,7 +25,6 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetRe
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
-import uk.gov.moj.cpp.courtscheduler.integration.utils.PropertiesLoader;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -40,7 +40,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import javax.ws.rs.core.Response;
@@ -65,7 +64,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private final String azureBlobInputContainerName = "schedulelistinginput";
     private final String azureBlobOutputContainerName = "schedulelistingoutput";
-    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=http;AccountName=%s;AccountKey=%s;BlobEndpoint=%s;";
+    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=+p3GXQguT4npJqxd6gAPfDgLu0YuJ3n1+hpTQYg1BQn0UL5Ut+bDDE7l2qrRNTt/yW5jNyf5mRUmM11F8dnkpA==;EndpointSuffix=core.windows.net;";
 
     public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 300;
 
@@ -75,6 +74,9 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private static final List<String> filesToBeDeletedFromOutputContainer = new ArrayList<>();
     private static final String BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE = "B40IM00";
+    private static final String BEDFORD_SHIRE_MASTER_FILE_BASE_NAME = "IT_Test_lja_bedfordshire_rota_20240402T180039Z";
+    private static final String BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME = "IT_Test_lja_bedfordshire_rota_20240402T190039Z";
+    private static final String WESTYORK_SHIRE_MASTER_FILE_BASE_NAME = "IT_Test_lja_westyorkshire_rota_20240827T154745Z";
 
     @BeforeAll
     static void setupRotaFileProcessorIT() {
@@ -86,16 +88,11 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     @BeforeEach
-    public void setUpAzureBlobClientService() throws SQLException, IOException {
+    public void setUpAzureBlobClientService() throws SQLException {
         databaseSeeder.cleanDb();
         final StorageApplicationParameters storageApplicationParameters = new StorageApplicationParameters();
-        final Map<String, String> storageAccountProperties = PropertiesLoader.getProperties("storage-account.properties");
-        final String storageAccountName = storageAccountProperties.get("storageAccountName");
-        final String storageAccountKey = storageAccountProperties.get("storageAccountKey");
-        final String storageAccountUrl = storageAccountProperties.get("storageAccountUrl");
-        final String rotaslStorageConnectionString = format(ROTASL_STORAGE_CONNECTION_STRING, storageAccountName, storageAccountKey, storageAccountUrl);
 
-        setField(azureBlobClientService, "rotaslStorageConnectionString", rotaslStorageConnectionString);
+        setField(azureBlobClientService, "rotaslStorageConnectionString", ROTASL_STORAGE_CONNECTION_STRING);
         setField(azureBlobClientService, "rotaslInputContainerName", azureBlobInputContainerName);
         setField(azureBlobClientService, "rotaslArchiveContainerName", azureBlobInputContainerName);
         setField(azureBlobClientService, "storageApplicationParameters", storageApplicationParameters);
@@ -111,29 +108,29 @@ class RotaFileProcessorIT extends AbstractIT {
 
     @Test
     void shouldProcessFullRotaFileForNonMigrated() throws IOException, SQLException {
-        processFullRotaFile("lja_bedfordshire_rota_20240402T180039Z", false, 623, 45, 0);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
     }
 
     @Test
     void shouldProcessFullRotaFileAndOnlyCourtScheduleJudiciaryProcessedForMigrated() throws IOException, SQLException {
-        processFullRotaFile("lja_bedfordshire_rota_20240402T180039Z", false, 623, 45, 0);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
         databaseSeeder.cleanCourtScheduleJudiciaryTable();
         databaseSeeder.cleanMigrationStatusTable();
-        processFullRotaFile("lja_bedfordshire_rota_20240402T180039Z", true, 623, 45, 45);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, true, 623, 45, 45);
     }
 
     @Test
     void shouldProcessFullRotaFileAndOnlyCourtScheduleJudiciaryProcessedEvenListingProfileIdNullForMigrated() throws IOException, SQLException {
-        processFullRotaFile("lja_bedfordshire_rota_20240402T180039Z", false, 623, 45, 0);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
         databaseSeeder.cleanCourtScheduleJudiciaryTable();
         databaseSeeder.cleanMigrationStatusTable();
         databaseSeeder.updateCourtScheduleSetListingProfileIdAsNull(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE);
-        processFullRotaFile("lja_bedfordshire_rota_20240402T180039Z", true, 623, 45, 45);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, true, 623, 45, 45);
     }
 
     @Test
     void shouldProcessOnlyJudiciaryInfoForMigratedEvenListingProfileIdNull() throws IOException, SQLException {
-        final String fileBlobBaseName = "lja_bedfordshire_rota_20240402T190039Z";
+        final String fileBlobBaseName = BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME;
         processFullRotaFile(fileBlobBaseName, false, 620, 11, 0);
         databaseSeeder.cleanCourtScheduleJudiciaryTable();
         databaseSeeder.cleanMigrationStatusTable();
@@ -143,7 +140,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     @Test
     void shouldProcessOnlyJudiciaryInfoAndJudiciaryDataAlreadyExistsForMigratedEvenListingProfileIdNull() throws IOException, SQLException {
-        final String fileBlobBaseName = "lja_bedfordshire_rota_20240402T190039Z";
+        final String fileBlobBaseName = BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME;
         processFullRotaFile(fileBlobBaseName, false, 620, 11, 0);
         databaseSeeder.deleteJudiciaryByProfileId("CS4305744");
         databaseSeeder.cleanMigrationStatusTable();
@@ -153,7 +150,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     @Test
     void shouldUpdateJudiciaryInfoAndShouldNotDeleteForTheOnesHavingAllocatedSlots() throws IOException, SQLException {
-        final String fileBlobBaseName = "lja_bedfordshire_rota_20240402T190039Z";
+        final String fileBlobBaseName = BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME;
         processFullRotaFile(fileBlobBaseName, false, 620, 11, 0);
         final Optional<CourtSchedule> courtScheduleOptional = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305744")).findAny();
         databaseSeeder.setUpdateAvailableSlotForCourtSchedule("CS4305744");
@@ -165,18 +162,17 @@ class RotaFileProcessorIT extends AbstractIT {
 
     @Test
     void shouldProcessAlsoBiggerFile() throws IOException, SQLException {
-        final String fileBlobBaseName = "lja_westyorkshire_rota_20240827T154745Z";
         insertCourtSchedulerMigrationStatus(List.of("B13HT00", "B13CC00", "C33LC00", "B13HD00"), false);
-        processFullRotaFile(fileBlobBaseName, false, 4251, 3629, 0);
+        processFullRotaFile(WESTYORK_SHIRE_MASTER_FILE_BASE_NAME, false, 4251, 3629, 0);
     }
 
     @Test
     void shouldProcessSnapshotRotaFile() throws SQLException, IOException {
-        processFullRotaFile("lja_bedfordshire_rota_20240402T180039Z", false, 623, 45, 0);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
 
         final Stopwatch stopwatch = Stopwatch.createStarted();
         final LocalDate snapshotFileStartDate = LocalDate.of(2024, 8, 1);
-        final String snapshotFileBaseNamePart1 = "lja_bedfodshire";
+        final String snapshotFileBaseNamePart1 = "IT_Test_lja_bedfodshire";
         final String snapshotFileBaseNamePart2 = "_snapshot_20240403T180039Z";
         final String generatedUniqueFileId = randomUUID().toString();
         final String finalSnapshotFileName = format("%s_%s%s.xml", snapshotFileBaseNamePart1, generatedUniqueFileId, snapshotFileBaseNamePart2);
@@ -191,8 +187,9 @@ class RotaFileProcessorIT extends AbstractIT {
         // upload the rota file first
         azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, finalSnapshotFileName, of(azureBlobInputContainerName));
 
+        final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, null);
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, payloadAsJsonString);
 
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
@@ -237,8 +234,9 @@ class RotaFileProcessorIT extends AbstractIT {
         azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, finalMasterRotaFileName, of(azureBlobInputContainerName));
         insertCourtSchedulerMigrationStatus(List.of(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE), migrated);
 
+        final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, null);
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, payloadAsJsonString);
 
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {

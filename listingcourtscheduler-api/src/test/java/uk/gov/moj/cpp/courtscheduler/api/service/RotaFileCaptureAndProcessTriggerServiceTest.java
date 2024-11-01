@@ -69,7 +69,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations(eq(requester));
 
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester);
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, false);
 
         verify(azureBlobClientService, atLeastOnce()).findAvailableFile(eq("lja_"));
         verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName), eq(leaseId));
