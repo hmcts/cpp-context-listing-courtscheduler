@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="032" author="baris.ozturkmen"
+               logicalFilePath="032-drop_index_provisional_booking.xml">
+        <sql>
+            DROP INDEX IF EXISTS idx_provisional_booking CASCADE;
+            DROP INDEX IF EXISTS idx_provisional_booking_active_court_schedule_id CASCADE;
+        </sql>
+    </changeSet>
+</databaseChangeLog>
