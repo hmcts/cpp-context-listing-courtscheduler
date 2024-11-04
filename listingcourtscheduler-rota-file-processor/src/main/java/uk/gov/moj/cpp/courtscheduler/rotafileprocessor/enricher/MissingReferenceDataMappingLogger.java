@@ -7,8 +7,6 @@ import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDa
 import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_DETAIL_NOT_FOUND_MSG;
 import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.DELIMITER;
 import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.JUDICIARY_NOT_FOUND_MSG;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.SESSION_ALLOCATION_NOT_FOUND;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.SESSION_ALLOCATION_NOT_FOUND_MSG;
 
 import java.util.Collection;
 import java.util.Map;
@@ -23,29 +21,7 @@ public class MissingReferenceDataMappingLogger {
 
     private static Logger logger = LoggerFactory.getLogger(MissingReferenceDataMappingLogger.class);
 
-    public void logMissingMessage(final Map<String, String> missingReferenceDataMappingMap) {
-        logSessionAllocationMissingMessage(missingReferenceDataMappingMap);
-        logCourtDetailsMessage(missingReferenceDataMappingMap);
-
-    }
-
-    private void logSessionAllocationMissingMessage(final Map<String, String> missingReferenceDataMappingMap) {
-        logger.info("------------------------------------------------------------------------------------");
-
-        final String sessionAllocationMissing = missingReferenceDataMappingMap.entrySet()
-                .stream()
-                .filter(e -> e.getValue().equals(SESSION_ALLOCATION_NOT_FOUND))
-                .map(Map.Entry::getKey)
-                .collect(joining(format(DELIMITER)));
-
-        if (isNotEmpty(sessionAllocationMissing)) {
-            logger.warn(format(SESSION_ALLOCATION_NOT_FOUND_MSG, sessionAllocationMissing));
-        }
-        logger.debug("------------------------------------------------------------------------------------");
-
-    }
-
-    private void logCourtDetailsMessage(final Map<String, String> missingReferenceDataMappingMap) {
+    public void logCourtDetailsMessage(final Map<String, String> missingReferenceDataMappingMap) {
         logger.info("------------------------------------------------------------------------------------");
 
         final String courtDetailMissing = missingReferenceDataMappingMap.entrySet()
