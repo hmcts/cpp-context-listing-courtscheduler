@@ -18,7 +18,7 @@ resources:
       type: github
       name: hmcts/cpp-azure-devops-templates
       endpoint: 'hmcts'
-      ref: 'dev/enable-client-id' # test branch
+      ref: 'dev/enable-client-id' # test branch.
 
 pool:
   name: "MDV-ADO-AGENT-AKS-01"
