@@ -3,19 +3,12 @@ package uk.gov.moj.cpp.courtscheduler.common.service.data;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.microsoft.azure.storage.blob.CloudBlockBlob;
-
 public class BlobContent {
 
-    CloudBlockBlob blob;
     byte[] blobByteArray;
 
-    public CloudBlockBlob getBlob() {
-        return blob;
-    }
-
-    public void setBlob(final CloudBlockBlob blob) {
-        this.blob = blob;
+    public BlobContent(byte[] blobByteArray) {
+        this.blobByteArray = blobByteArray;
     }
 
     public byte[] getBlobByteArray() {
@@ -31,13 +24,11 @@ public class BlobContent {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final BlobContent that = (BlobContent) o;
-        return Objects.equals(getBlob(), that.getBlob()) && Arrays.equals(getBlobByteArray(), that.getBlobByteArray());
+        return Objects.deepEquals(blobByteArray, that.blobByteArray);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(getBlob());
-        result = 31 * result + Arrays.hashCode(getBlobByteArray());
-        return result;
+        return Arrays.hashCode(blobByteArray);
     }
 }

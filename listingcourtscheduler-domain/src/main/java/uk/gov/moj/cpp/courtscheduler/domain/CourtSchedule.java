@@ -33,6 +33,7 @@ public class CourtSchedule {
 
     private Date createdOn;
     private Date updatedOn;
+    private boolean hasHearingsBooked;
 
     protected CourtSchedule(final CourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -59,6 +60,7 @@ public class CourtSchedule {
         this.active = builder.active;
         this.createdOn = builder.createdOn;
         this.updatedOn = builder.updatedOn;
+        this.hasHearingsBooked = builder.hasHearingsBooked;
     }
 
     public CourtSchedule() {
@@ -146,6 +148,10 @@ public class CourtSchedule {
 
     public boolean isActive() {
         return active;
+    }
+
+    public boolean getHasHearingsBooked() {
+        return hasHearingsBooked;
     }
 
     public void setCourtScheduleId(final String courtScheduleId) {
@@ -259,13 +265,11 @@ public class CourtSchedule {
     public void setUpdatedOn(Date updatedOn) {
         this.updatedOn = updatedOn;
     }
-
-    public boolean hasHearingsBooked() {
-        return (slotBased) ?
-                maxSlots.compareTo(availableSlots) != 0 :
-                maxDuration.compareTo(availableDuration) != 0;
-
+    public CourtSchedule setHasHearingsBooked(final boolean hasHearingsBooked) {
+        this.hasHearingsBooked = hasHearingsBooked;
+        return this;
     }
+
 
     public static final class CourtScheduleBuilder {
 
@@ -294,6 +298,8 @@ public class CourtSchedule {
 
         private Date createdOn;
         private Date updatedOn;
+
+        private boolean hasHearingsBooked;
 
         public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
             return new CourtSchedule.CourtScheduleBuilder();
@@ -386,6 +392,10 @@ public class CourtSchedule {
         public String getCourtScheduleId() {
             return courtScheduleId;
         }
+        public boolean getHasHearingsBooked() {
+            return hasHearingsBooked;
+        }
+
 
         public CourtScheduleBuilder withCourtSchedule(final CourtSchedule courtSchedule) {
             this.courtScheduleId = courtSchedule.courtScheduleId;
@@ -411,6 +421,7 @@ public class CourtSchedule {
             this.active = courtSchedule.active;
             this.createdOn = courtSchedule.createdOn;
             this.updatedOn = courtSchedule.updatedOn;
+            this.hasHearingsBooked = courtSchedule.hasHearingsBooked;
             return this;
         }
 
@@ -541,6 +552,11 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withUpdatedOn(final Date updatedOn) {
             this.updatedOn = updatedOn;
+            return this;
+        }
+
+        public CourtScheduleBuilder withHasHearingsBooked(final boolean hasHearingsBooked) {
+            this.hasHearingsBooked = hasHearingsBooked;
             return this;
         }
 

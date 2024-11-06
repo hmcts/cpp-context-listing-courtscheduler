@@ -33,8 +33,6 @@ public class RotaFileProcessorApi {
     public JsonEnvelope processRotaFiles(final JsonEnvelope envelope) {
         LOGGER.info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
         final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.rotasl.process_rota_files request payload: {}", payload);
-
         LOGGER.info("calling rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
         final boolean isForItTest = payload.getBoolean("forItTest", false);
         rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, isForItTest);

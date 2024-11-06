@@ -76,14 +76,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRepository.class.getName());
 
     private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY = "DELETE FROM court_schedule cs " +
-            "WHERE cs.max_slot = cs.available_slot AND cs.max_duration_mins = cs.available_duration_mins and " +
+            "WHERE  not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) and " +
             "cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND cs.active =true AND NOT EXISTS( " + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
     public static final String DELETE_UNALLOCATED_FORECAST_SLOT_QUERY = "DELETE FROM court_schedule " +
-            "WHERE court_listing_profile_id is null AND max_slot = available_slot AND max_duration_mins = available_duration_mins AND oucode IN (:ouCodes) " +
+            "WHERE court_listing_profile_id is null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = id) AND oucode IN (:ouCodes) " +
             "AND active =true and not exists( " + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
-    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule WHERE id IN (:courtScheduleIds) AND court_listing_profile_id is not null AND not exists(" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule cs WHERE cs.id IN (:courtScheduleIds) AND cs.court_listing_profile_id is not null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) AND  not exists(" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
     private static final int SLOT_DEFAULT = 1;
 
@@ -171,6 +171,56 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         List<CourtSchedule> resultList = entityManager.createQuery(criteriaQuery)
                 .setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize)
                 .getResultList();
+        return resultList.stream().map(CourtSchedulerConverter::convert).toList();
+    }
+
+    public CourtSchedule retrieveCourtScheduleWithListingById(final String courtScheduleId) {
+        StringBuilder queryString = new StringBuilder("SELECT s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true AND s.id  = :courtScheduleId");
+        final javax.persistence.Query query = entityManager.createNativeQuery(queryString.toString(), "CourtScheduleEntityMapping");
+        query.setParameter("courtScheduleId", courtScheduleId);
+        return (CourtSchedule) query.getSingleResult();
+    }
+
+    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
+        StringBuilder queryString = new StringBuilder("SELECT s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true ");
+        Map<String, Object> params = new HashMap<>();
+        if (courtScheduleRequestParam.courtCentreId() != null) {
+            {
+                queryString.append("AND s.court_house_id = :courtHouseId ");
+                params.put("courtHouseId", courtScheduleRequestParam.courtCentreId());
+            }
+            if (courtScheduleRequestParam.courtRoomId() != null) {
+                queryString.append("AND s.court_room_id = :courtRoomId ");
+                params.put("courtRoomId", courtScheduleRequestParam.courtRoomId());
+            }
+            if (courtScheduleRequestParam.businessType() != null) {
+                queryString.append("AND s.rota_business_type = :businessType ");
+                params.put("businessType", courtScheduleRequestParam.businessType());
+            }
+            if (courtScheduleRequestParam.sessionStartDate() != null) {
+                queryString.append("AND s.session_start >= :sessionStartDate ");
+                params.put("sessionStartDate", LocalDate.parse(courtScheduleRequestParam.sessionStartDate()));
+            }
+            if (courtScheduleRequestParam.sessionEndDate() != null) {
+                queryString.append("AND s.session_start <= :sessionEndDate ");
+                params.put("sessionEndDate", LocalDate.parse(courtScheduleRequestParam.sessionEndDate()));
+            }
+            if (courtScheduleRequestParam.pageSize() != null) {
+                queryString.append("LIMIT :pageSize ");
+                params.put("pageSize", new BigInteger(courtScheduleRequestParam.pageSize()));
+            }
+            if (courtScheduleRequestParam.pageNumber() != null) {
+                queryString.append("OFFSET :pageNumber ");
+                params.put("pageNumber", Integer.parseInt(courtScheduleRequestParam.pageNumber())-1);
+            }
+        }
+        final javax.persistence.Query query = entityManager.createNativeQuery(queryString.toString(), "CourtScheduleEntityMapping");
+        params.forEach((key, value) -> {
+            if (value != null) {
+                query.setParameter(key, value);
+            }
+        });
+        final List<CourtSchedule> resultList = query.getResultList();
         return resultList.stream().map(CourtSchedulerConverter::convert).toList();
     }
 

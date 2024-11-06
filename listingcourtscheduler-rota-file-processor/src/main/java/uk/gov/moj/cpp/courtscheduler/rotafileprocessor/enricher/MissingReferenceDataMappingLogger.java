@@ -41,7 +41,7 @@ public class MissingReferenceDataMappingLogger {
         if (isNotEmpty(sessionAllocationMissing)) {
             logger.warn(format(SESSION_ALLOCATION_NOT_FOUND_MSG, sessionAllocationMissing));
         }
-        logger.info("------------------------------------------------------------------------------------");
+        logger.debug("------------------------------------------------------------------------------------");
 
     }
 

@@ -53,11 +53,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
-import com.microsoft.azure.storage.blob.CloudBlob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,21 +114,24 @@ public class RotaFileProcessorService {
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
-    @Asynchronous
-    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName) {
+
+    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName, final String leaseId) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
-        final CloudBlob blob = blobContent.getBlob();
         final byte[] blobByteArray = blobContent.getBlobByteArray();
+        try {
+            process(blobName, blobByteArray, requester);
+            logger.info("rota file process completed for blob with name: {}", blobName);
+            final long fileLength = blobByteArray.length;
+            // upload the files processed into archive container
+            azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
+            logger.info("rota file upload to output container completed for blob with name: {}", blobName);
+            azureBlobClientService.releaseLease(blobName, leaseId, false);
+            azureBlobClientService.deleteFile(blobName, empty());
+            logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
+        } catch (Exception storageException) {
+            azureBlobClientService.releaseLease(blobName, leaseId, true);
 
-        process(blobName, blobByteArray, requester);
-
-        logger.info("rota file process completed for blob with name: {}", blobName);
-        final long fileLength = blobByteArray.length;
-        // upload the files processed into archive container
-        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
-        logger.info("rota file upload to output container completed for blob with name: {}", blobName);
-        azureBlobClientService.deleteFile(blobName, empty());
-        logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
+        }
     }
 
     private void process(final String fileName, final byte[] content, final Requester requester) {
@@ -138,8 +139,10 @@ public class RotaFileProcessorService {
             return;
         }
         this.migratedMap = sessionsService.migratedMapByOuCode();
+        final Long parsingStartTime = System.nanoTime();
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
-
+        final Long parsingEndTime = System.nanoTime();
+        logger.info("Time taken to parse the file: {} ms", (parsingEndTime - parsingStartTime) / 1000000);
         logger.info("File parsed successfully and parsed now enriching it.. for file: {}", fileName);
         if (fileName.contains(DUMMY_NAME_PART)) {
             logger.warn("Received dummy support file, hence skipping file processing, for file: {}", fileName);
