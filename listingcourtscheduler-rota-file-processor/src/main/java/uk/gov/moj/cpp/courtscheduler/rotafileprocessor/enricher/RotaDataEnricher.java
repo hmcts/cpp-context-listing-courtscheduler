@@ -13,8 +13,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.LINKE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.SESSION_ALLOCATION_ERR_MSG;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.SESSION_ALLOCATION_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
@@ -85,7 +84,7 @@ public class RotaDataEnricher {
         final long enrichCourtListingEndTime = System.currentTimeMillis();
         logger.info("Time taken to enrich court listings: {} ms", enrichCourtListingEndTime - enrichCourtListingStartTime);
         if (!missingReferenceDataMappingMap.isEmpty()) {
-            missingReferenceDataMappingLogger.logMissingMessage(missingReferenceDataMappingMap);
+            missingReferenceDataMappingLogger.logCourtDetailsMessage(missingReferenceDataMappingMap);
         }
         return courtSchedules;
     }
@@ -104,7 +103,7 @@ public class RotaDataEnricher {
 
         CourtSchedule newCourtSchedule;
         if (isNull(courtSchedule) || !businessType.equals(courtSchedule.getBusinessType())) {
-            newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
+            newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
             if (migrated.equals(migratedMap.get(newCourtSchedule.getOuCode()))) {
                 addCourtSchedule(courtSchedules, newCourtSchedule);
             }
@@ -156,12 +155,8 @@ public class RotaDataEnricher {
             courtScheduleBuilder.withMaxDuration(defaultIfNull(courtSchedule.getMaxDuration(), 0) + allocationMaxDurationMins);
             courtScheduleBuilder.withAvailableDuration(defaultIfNull(courtSchedule.getAvailableDuration(), 0) + allocationMaxDurationMins);
 
-        } else {
-            if (nonNull(courtSchedule.getOuCode())) {
-                missingReferenceDataMappingMap.putIfAbsent(format(SESSION_ALLOCATION_ERR_MSG,
-                        courtSchedule.getOuCode(), courtSchedule.getCourtRoomId(), courtSchedule.getBusinessType(),
-                        courtSession.getCourtSession(courtSchedule.getSessionDate(), sessionStr)), SESSION_ALLOCATION_NOT_FOUND);
-            }
+            logger.info(format(SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG, allocation.getOucode(), allocation.getCourtRoomId(),courtScheduleBuilder.getSessionDate(), allocation.getCourtSession(),
+                    allocation.getRotaBusinessTypeCode(), courtScheduleBuilder.getMaxSlots(), courtScheduleBuilder.getMaxDuration()));
         }
         return courtScheduleBuilder.build();
     }
