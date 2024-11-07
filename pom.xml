@@ -10,7 +10,7 @@
 
     <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
     <artifactId>listingcourtscheduler-parent</artifactId>
-    <version>17.0.23-CSP3-SNAPSHOT</version>
+    <version>17.0.24-CSP3-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>CourtScheduler Service - Parent Module</name>
@@ -56,6 +56,8 @@
         <netty.common.version>4.1.112.Final</netty.common.version>
         <reactor.core.version>3.4.41</reactor.core.version>
     </properties>
+
+
 
     <modules>
         <module>listingcourtscheduler-domain</module>
