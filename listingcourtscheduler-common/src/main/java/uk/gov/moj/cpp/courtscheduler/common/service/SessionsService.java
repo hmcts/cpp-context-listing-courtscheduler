@@ -5,7 +5,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
-import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.getValidationResult;
+import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.ADULT;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.YOUTH;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
@@ -64,6 +64,7 @@ import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.transaction.Transactional;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.slf4j.Logger;
@@ -122,7 +123,12 @@ public class SessionsService {
         if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType)) {
             return new Result("Business Type cannot be changed from Slot to Non-Slot and vice versa", false);
         }
-        //TODO: add booked hearings check after DD-35012
+        boolean isChanged = checkEditValuesModified(updateCourtSchedule, persistedCourtSchedule);
+
+        if(isChanged) {
+            return new Result("This session is being edited by another user. Your changes cannot be saved so please try again later.", false);
+        }
+
         updateAvailability(updateCourtSchedule, persistedCourtSchedule);
 
         String courtRoomId = updateCourtSchedule.getCourtRoomId();
@@ -140,7 +146,7 @@ public class SessionsService {
             result = courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule, courtRoom);
         } catch (Exception exception) {
             logger.error("update court schedule failing courScheduleId : {}", persistedCourtSchedule.getCourtScheduleId());
-            result = new Result("Duplicate entry in DB", false);
+            result = new Result("Session to be added has a duplicate", false);
         }
 
         return result;
@@ -159,6 +165,19 @@ public class SessionsService {
             updateCourtSchedule.setAvailableSlots(0);
 
         }
+    }
+
+    private boolean checkEditValuesModified(final UpdateCourtSchedule updateCourtSchedule,
+                                            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
+        boolean isChanged = false;
+
+        if(persistedCourtSchedule.getHasHearingsBooked() && (!StringUtils.equals(updateCourtSchedule.getCourtRoomId(), persistedCourtSchedule.getCourtRoomId()) ||
+                !StringUtils.equals(updateCourtSchedule.getSessionType(), persistedCourtSchedule.getCourtSession()) ||
+                !StringUtils.equals(updateCourtSchedule.getPanel(), persistedCourtSchedule.getPanel()))) {
+            isChanged = true;
+        }
+
+        return isChanged;
     }
 
     private boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType) {
@@ -615,7 +634,7 @@ public class SessionsService {
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
             //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
             if (sameSessionViolatesAllDayRestriction(session, sessionToCompare)) {
-                return getValidationResult(format("Session Integrity failure. The session you're trying to add is not compatible with a record, courtscheduleId : %s  in terms of AM/PM/AD session for the same date", sessionToCompare.getCourtScheduleId()));
+                return buildErrorResponse(format("Session Integrity failure. The session you're trying to add is not compatible with a record, courtscheduleId : %s  in terms of AM/PM/AD session for the same date", sessionToCompare.getCourtScheduleId()));
             }
         }
         return JsonValue.EMPTY_JSON_OBJECT;
