@@ -95,7 +95,7 @@ class RotaDataEnricherTest {
                 .build());
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
-        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyList(), eq(requester))).thenReturn(courtSchedule);
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), eq(requester))).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
         final byte[] blobContent = givenBlobContent(file);
@@ -141,7 +141,7 @@ class RotaDataEnricherTest {
                 .build());
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
-        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyList(), eq(requester))).thenReturn(courtSchedule);
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), eq(requester))).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
         final byte[] blobContent = givenBlobContent(file);
