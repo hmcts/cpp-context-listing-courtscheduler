@@ -57,6 +57,8 @@
         <reactor.core.version>3.4.41</reactor.core.version>
     </properties>
 
+
+
     <modules>
         <module>listingcourtscheduler-domain</module>
         <module>listingcourtscheduler-api</module>
