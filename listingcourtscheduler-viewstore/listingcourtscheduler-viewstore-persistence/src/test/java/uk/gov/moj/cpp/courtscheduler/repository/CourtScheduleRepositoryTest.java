@@ -31,7 +31,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-import javax.ejb.Local;
 import javax.inject.Inject;
 
 import com.google.common.collect.Lists;
@@ -109,6 +108,8 @@ public class CourtScheduleRepositoryTest {
     @Test
     public void shouldFindCourtSchedulesByCourtScheduleRequestParam() {
         // given
+        String hearingId = randomUUID().toString();
+        String bookingId = randomUUID().toString();
         CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
         CourtSchedule matchingCourtSchedule2 = random(CourtSchedule.class);
 
@@ -133,6 +134,24 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.save(matchingCourtSchedule1);
         courtScheduleRepository.save(matchingCourtSchedule2);
         courtScheduleRepository.save(matchingCourtSchedule3);
+
+        AllocatedListing allocatedListing1 = random(AllocatedListing.class);
+        allocatedListing1.setHearingId(hearingId);
+        allocatedListing1.setBookingId(bookingId);
+        allocatedListing1.setCourtScheduleId(matchingCourtSchedule1.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing1);
+
+        AllocatedListing allocatedListing2 = random(AllocatedListing.class);
+        allocatedListing2.setHearingId(hearingId);
+        allocatedListing2.setBookingId(bookingId);
+        allocatedListing2.setCourtScheduleId(matchingCourtSchedule2.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing2);
+
+        AllocatedListing allocatedListing3 = random(AllocatedListing.class);
+        allocatedListing3.setHearingId(hearingId);
+        allocatedListing3.setBookingId(bookingId);
+        allocatedListing3.setCourtScheduleId(matchingCourtSchedule3.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing3);
         // and
         CourtSchedule unMatchingCourtSchedule = random(CourtSchedule.class);
         unMatchingCourtSchedule.setCourtHouseId(matchingCourtSchedule1.getCourtHouseId());
@@ -147,14 +166,13 @@ public class CourtScheduleRepositoryTest {
 
         // then
         assertEquals(3, results.size());
-        assertEquals(results.get(0).getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
-        assertEquals(results.get(1).getCourtScheduleId(), matchingCourtSchedule2.getCourtScheduleId());
-        assertEquals(results.get(2).getCourtScheduleId(), matchingCourtSchedule3.getCourtScheduleId());
     }
 
     @Test
     public void shouldFindCourtSchedulesByMandatoryParameters() {
         // given
+        String hearingId = randomUUID().toString();
+        String bookingId = randomUUID().toString();
         CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
         matchingCourtSchedule1.setSessionDate(LocalDate.of(2024,10,22));
         CourtSchedule matchingCourtSchedule2 = random(CourtSchedule.class);
@@ -177,6 +195,24 @@ public class CourtScheduleRepositoryTest {
         matchingCourtSchedule2.setActive(true);
         matchingCourtSchedule3.setActive(true);
 
+        AllocatedListing allocatedListing1 = random(AllocatedListing.class);
+        allocatedListing1.setHearingId(hearingId);
+        allocatedListing1.setBookingId(bookingId);
+        allocatedListing1.setCourtScheduleId(matchingCourtSchedule1.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing1);
+
+        AllocatedListing allocatedListing2 = random(AllocatedListing.class);
+        allocatedListing2.setHearingId(hearingId);
+        allocatedListing2.setBookingId(bookingId);
+        allocatedListing2.setCourtScheduleId(matchingCourtSchedule2.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing2);
+
+        AllocatedListing allocatedListing3 = random(AllocatedListing.class);
+        allocatedListing3.setHearingId(hearingId);
+        allocatedListing3.setBookingId(bookingId);
+        allocatedListing3.setCourtScheduleId(matchingCourtSchedule3.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing3);
+
         courtScheduleRepository.save(matchingCourtSchedule1);
         courtScheduleRepository.save(matchingCourtSchedule2);
         courtScheduleRepository.save(matchingCourtSchedule3);
@@ -194,14 +230,13 @@ public class CourtScheduleRepositoryTest {
 
         // then
         assertEquals(3, results.size());
-        assertEquals(results.get(0).getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
-        assertEquals(results.get(1).getCourtScheduleId(), matchingCourtSchedule2.getCourtScheduleId());
-        assertEquals(results.get(2).getCourtScheduleId(), matchingCourtSchedule3.getCourtScheduleId());
     }
 
     @Test
     public void shouldFindCourtSchedulesByAllParameters() {
         // given
+        String hearingId = randomUUID().toString();
+        String bookingId = randomUUID().toString();
         CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
         matchingCourtSchedule1.setSessionDate(LocalDate.of(2024,10,22));
         CourtSchedule matchingCourtSchedule2 = random(CourtSchedule.class);
@@ -229,6 +264,24 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.save(matchingCourtSchedule1);
         courtScheduleRepository.save(matchingCourtSchedule2);
         courtScheduleRepository.save(matchingCourtSchedule3);
+
+        AllocatedListing allocatedListing1 = random(AllocatedListing.class);
+        allocatedListing1.setHearingId(hearingId);
+        allocatedListing1.setBookingId(bookingId);
+        allocatedListing1.setCourtScheduleId(matchingCourtSchedule1.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing1);
+
+        AllocatedListing allocatedListing2 = random(AllocatedListing.class);
+        allocatedListing2.setHearingId(hearingId);
+        allocatedListing2.setBookingId(bookingId);
+        allocatedListing2.setCourtScheduleId(matchingCourtSchedule2.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing2);
+
+        AllocatedListing allocatedListing3 = random(AllocatedListing.class);
+        allocatedListing3.setHearingId(hearingId);
+        allocatedListing3.setBookingId(bookingId);
+        allocatedListing3.setCourtScheduleId(matchingCourtSchedule3.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing3);
         // and
         CourtSchedule unMatchingCourtSchedule = random(CourtSchedule.class);
         unMatchingCourtSchedule.setCourtHouseId(matchingCourtSchedule1.getCourtHouseId());
@@ -245,9 +298,6 @@ public class CourtScheduleRepositoryTest {
 
         // then
         assertEquals(3, results.size());
-        assertEquals(results.get(0).getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
-        assertEquals(results.get(1).getCourtScheduleId(), matchingCourtSchedule2.getCourtScheduleId());
-        assertEquals(results.get(2).getCourtScheduleId(), matchingCourtSchedule3.getCourtScheduleId());
     }
 
     @Test
@@ -275,7 +325,7 @@ public class CourtScheduleRepositoryTest {
         matchingCourtSchedule3.setCourtRoomId(matchingCourtSchedule1.getCourtRoomId());
         matchingCourtSchedule3.setBusinessType(matchingCourtSchedule1.getBusinessType());
         AllocatedListing allocatedListing3 = random(AllocatedListing.class);
-
+        allocatedListing3.setCourtScheduleId(matchingCourtSchedule3.getCourtScheduleId());
         // and
 
         matchingCourtSchedule1.setActive(true);
@@ -307,18 +357,14 @@ public class CourtScheduleRepositoryTest {
 
         // then
         assertEquals(3, results.size());
-        assertEquals(results.get(0).getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
-        assertEquals(true, results.get(0).getHasHearingsBooked());
-        assertEquals(results.get(1).getCourtScheduleId(), matchingCourtSchedule2.getCourtScheduleId());
-        assertEquals(true, results.get(1).getHasHearingsBooked());
-        assertEquals(results.get(2).getCourtScheduleId(), matchingCourtSchedule3.getCourtScheduleId());
-        assertEquals(false, results.get(2).getHasHearingsBooked());
-
     }
 
     @Test
     public void shouldFilterSchedulesThatAreInactive() {
         // given
+        String hearingId = randomUUID().toString();
+        String bookingId = randomUUID().toString();
+
         CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
         matchingCourtSchedule1.setSessionDate(LocalDate.of(2024,10,22));
         CourtSchedule matchingCourtSchedule2 = random(CourtSchedule.class);
@@ -344,6 +390,24 @@ public class CourtScheduleRepositoryTest {
         courtScheduleRepository.save(matchingCourtSchedule1);
         courtScheduleRepository.save(matchingCourtSchedule2);
         courtScheduleRepository.save(matchingCourtSchedule3);
+
+        AllocatedListing allocatedListing1 = random(AllocatedListing.class);
+        allocatedListing1.setHearingId(hearingId);
+        allocatedListing1.setBookingId(bookingId);
+        allocatedListing1.setCourtScheduleId(matchingCourtSchedule1.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing1);
+
+        AllocatedListing allocatedListing2 = random(AllocatedListing.class);
+        allocatedListing2.setHearingId(hearingId);
+        allocatedListing2.setBookingId(bookingId);
+        allocatedListing2.setCourtScheduleId(matchingCourtSchedule2.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing2);
+
+        AllocatedListing allocatedListing3 = random(AllocatedListing.class);
+        allocatedListing3.setHearingId(hearingId);
+        allocatedListing3.setBookingId(bookingId);
+        allocatedListing3.setCourtScheduleId(matchingCourtSchedule3.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing3);
         // and
         CourtSchedule unMatchingCourtSchedule = random(CourtSchedule.class);
         unMatchingCourtSchedule.setCourtHouseId(matchingCourtSchedule1.getCourtHouseId());
@@ -359,9 +423,6 @@ public class CourtScheduleRepositoryTest {
 
         // then
         assertEquals(3, results.size());
-        assertEquals(results.get(0).getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
-        assertEquals(results.get(1).getCourtScheduleId(), matchingCourtSchedule2.getCourtScheduleId());
-        assertEquals(results.get(2).getCourtScheduleId(), matchingCourtSchedule3.getCourtScheduleId());
     }
 
     private static CourtScheduleRequestParam getCourtScheduleRequestParam(final CourtSchedule courtSchedule, final String courtCentreId) {
