@@ -200,9 +200,16 @@ public class SessionsService {
         List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = courtScheduleToDeleteResponseConverter.convert(courtSchedules);
         final ListToJsonArrayConverter<CourtScheduleDeleteResponse> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
         JsonArray jsonArray = courtSchedules.isEmpty() ? JsonValue.EMPTY_JSON_ARRAY : listToJsonArrayConverter.convert(courtScheduleDeleteResponses);
-        return Json.createObjectBuilder()
-                .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
-                .build();
+        if(jsonArray == JsonValue.EMPTY_JSON_ARRAY) {
+            return Json.createObjectBuilder()
+                    .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
+                    .build();
+        } else {
+            return Json.createObjectBuilder()
+                    .add("error", "Some sessions could not be removed. Please check again.")
+                    .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
+                    .build();
+        }
     }
 
     public boolean isMigrated(final String ouCode) {
