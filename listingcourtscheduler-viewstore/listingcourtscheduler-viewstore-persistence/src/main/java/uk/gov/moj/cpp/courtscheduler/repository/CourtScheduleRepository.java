@@ -183,7 +183,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
-        StringBuilder queryString = new StringBuilder("SELECT s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true ");
+        StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s inner join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true ");
         Map<String, Object> params = new HashMap<>();
         if (courtScheduleRequestParam.courtCentreId() != null) {
             {
