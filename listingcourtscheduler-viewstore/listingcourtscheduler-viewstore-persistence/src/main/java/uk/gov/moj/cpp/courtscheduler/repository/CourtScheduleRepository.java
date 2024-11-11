@@ -47,6 +47,7 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.transaction.Transactional;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
 import org.apache.deltaspike.data.api.EntityRepository;
@@ -189,7 +190,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 queryString.append("AND s.court_house_id = :courtHouseId ");
                 params.put("courtHouseId", courtScheduleRequestParam.courtCentreId());
             }
-            if (courtScheduleRequestParam.courtRoomId() != null) {
+            if (!StringUtils.isBlank(courtScheduleRequestParam.courtRoomId())) {
                 queryString.append("AND s.court_room_id = :courtRoomId ");
                 params.put("courtRoomId", courtScheduleRequestParam.courtRoomId());
             }
