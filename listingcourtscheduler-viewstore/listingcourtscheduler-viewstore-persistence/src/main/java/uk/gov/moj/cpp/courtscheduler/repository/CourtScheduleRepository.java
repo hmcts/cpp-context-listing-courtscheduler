@@ -190,7 +190,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 queryString.append("AND s.court_house_id = :courtHouseId ");
                 params.put("courtHouseId", courtScheduleRequestParam.courtCentreId());
             }
-            if (!StringUtils.isBlank(courtScheduleRequestParam.courtRoomId())) {
+            if (StringUtils.isNotBlank(courtScheduleRequestParam.courtRoomId())) {
                 queryString.append("AND s.court_room_id = :courtRoomId ");
                 params.put("courtRoomId", courtScheduleRequestParam.courtRoomId());
             }
