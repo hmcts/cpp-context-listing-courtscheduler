@@ -58,7 +58,6 @@
     </properties>
 
 
-
     <modules>
         <module>listingcourtscheduler-domain</module>
         <module>listingcourtscheduler-api</module>
