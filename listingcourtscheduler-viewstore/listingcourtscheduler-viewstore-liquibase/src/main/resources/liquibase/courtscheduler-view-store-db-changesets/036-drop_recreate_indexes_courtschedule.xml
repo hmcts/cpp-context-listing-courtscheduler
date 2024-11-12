@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="036" author="baris.ozturkmen"
+               logicalFilePath="036-drop_recreate_indexes_courtschedule.xml">
+        <sql>
+            DROP INDEX IF EXISTS idx_court_schedule_active_oucode_session_start CASCADE;
+            CREATE INDEX IF NOT EXISTS court_schedule_oucode_session_start_idx ON court_schedule (oucode, session_start);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

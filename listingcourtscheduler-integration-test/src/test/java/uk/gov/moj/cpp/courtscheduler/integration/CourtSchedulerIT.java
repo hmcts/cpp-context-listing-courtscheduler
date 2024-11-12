@@ -15,6 +15,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetRe
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
@@ -128,6 +129,8 @@ class CourtSchedulerIT extends AbstractIT {
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
 
         UUID courtScheduleId = UUID.randomUUID();
+        UUID hearingId = UUID.randomUUID();
+        UUID bookingId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         LocalDate fromDate = expected.getSessionDate().minusDays(1);
         LocalDate toDate = expected.getSessionDate().plusDays(1);
@@ -138,6 +141,12 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setAvailableDuration(5);
         expected.setCourtScheduleId(courtScheduleId.toString());
         databaseSeeder.insertCourtSchedule(expected);
+
+        AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setCourtScheduleId(expected.getCourtScheduleId());
+        allocatedListing.setHearingId(hearingId.toString());
+        allocatedListing.setBookingId(bookingId.toString());
+        databaseSeeder.insertAllocatedListing(allocatedListing);
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_CENTRE_ID", expected.getCourtHouseId());
