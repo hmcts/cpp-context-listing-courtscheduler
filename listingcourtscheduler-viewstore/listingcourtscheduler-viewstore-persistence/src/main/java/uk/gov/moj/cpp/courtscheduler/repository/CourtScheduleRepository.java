@@ -176,7 +176,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     public CourtSchedule retrieveCourtScheduleWithListingById(final String courtScheduleId) {
-        StringBuilder queryString = new StringBuilder("SELECT s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true AND s.id  = :courtScheduleId");
+        StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true AND s.id  = :courtScheduleId");
         final javax.persistence.Query query = entityManager.createNativeQuery(queryString.toString(), "CourtScheduleEntityMapping");
         query.setParameter("courtScheduleId", courtScheduleId);
         return (CourtSchedule) query.getSingleResult();
