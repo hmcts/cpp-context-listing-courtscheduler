@@ -47,6 +47,7 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.transaction.Transactional;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
 import org.apache.deltaspike.data.api.EntityRepository;
@@ -182,14 +183,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
-        StringBuilder queryString = new StringBuilder("SELECT s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true ");
+        StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true ");
         Map<String, Object> params = new HashMap<>();
         if (courtScheduleRequestParam.courtCentreId() != null) {
             {
                 queryString.append("AND s.court_house_id = :courtHouseId ");
                 params.put("courtHouseId", courtScheduleRequestParam.courtCentreId());
             }
-            if (courtScheduleRequestParam.courtRoomId() != null) {
+            if (StringUtils.isNotBlank(courtScheduleRequestParam.courtRoomId())) {
                 queryString.append("AND s.court_room_id = :courtRoomId ");
                 params.put("courtRoomId", courtScheduleRequestParam.courtRoomId());
             }
@@ -205,6 +206,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 queryString.append("AND s.session_start <= :sessionEndDate ");
                 params.put("sessionEndDate", LocalDate.parse(courtScheduleRequestParam.sessionEndDate()));
             }
+            queryString.append("group by s.id, al.id, s.court_room_number order by session_start ");
             if (courtScheduleRequestParam.pageSize() != null) {
                 queryString.append("LIMIT :pageSize ");
                 params.put("pageSize", new BigInteger(courtScheduleRequestParam.pageSize()));
