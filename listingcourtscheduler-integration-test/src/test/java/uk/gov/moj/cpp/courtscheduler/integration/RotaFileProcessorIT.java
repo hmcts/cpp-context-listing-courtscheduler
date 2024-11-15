@@ -302,4 +302,5 @@ class RotaFileProcessorIT extends AbstractIT {
 
         return allocatedListing;
     }
+
 }
