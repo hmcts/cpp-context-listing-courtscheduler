@@ -16,6 +16,14 @@
         </preConditions>
 
         <sql>
+            delete from allocated_listings where court_schedule_id in ( SELECT distinct al.court_schedule_id  FROM
+            allocated_listings al LEFT OUTER JOIN court_schedule cs
+            ON al.court_schedule_id = cs.id  where  cs.id is null);
+
+            delete from court_schedule_judiciary where court_schedule_id in ( SELECT distinct al.court_schedule_id  FROM
+            court_schedule_judiciary al LEFT OUTER JOIN court_schedule cs
+            ON al.court_schedule_id = cs.id  where  cs.id is null);
+
             ALTER TABLE allocated_listings ADD CONSTRAINT allocated_listings_court_schedule_id_fk FOREIGN KEY (court_schedule_id) REFERENCES court_schedule(id);
             ALTER TABLE court_schedule_judiciary
             ADD CONSTRAINT court_schedule_judiciary_court_schedule_id_fk FOREIGN KEY (
