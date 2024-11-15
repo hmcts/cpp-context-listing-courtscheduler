@@ -438,7 +438,7 @@ class SessionsServiceTest {
 
         Result result = sessionsService.update(updateCourtSchedule, requester);
 
-        assertEquals("Court Schedule not found", result.getMsg());
+        assertEquals("Court Session not found", result.getMsg());
     }
 
     @Test
