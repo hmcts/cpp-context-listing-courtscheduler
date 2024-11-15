@@ -4,8 +4,8 @@ import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
-import static uk.gov.moj.cpp.courtscheduler.api.CommonUtils.getValidationResult;
 
+import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
@@ -67,7 +67,7 @@ public class SessionsApiValidator {
             if(match){
                 Set<DayOfWeek> repeatDays = new HashSet<>(session.getRepeatDays());
                 if(repeatDaysToBeAdded.stream().anyMatch(repeatDays::contains) && isSessionTypeDuplicateOrNotValidForAllDay(session,sessionToBeAdded)) {
-                    return getValidationResult("SessionsToBe Added has a duplicate entry within SessionList: CourtCentreId,courtroomId,businessType,SessionType,RepeatDays");
+                    return buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS);
                 }
             }
         }

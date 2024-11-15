@@ -159,8 +159,8 @@ class CourtSchedulerApiTest {
             courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
         } catch (ValidationException e) {
             // Assert
-            assertEquals("{\"errorMessage\":\"Invalid parameters\"}", e.getMessage());
-            assertEquals(e.getErrors().getString("errorMessage"), validationError.getString("errorMessage"));
+            assertEquals("Invalid parameters", e.getMessage());
+            assertEquals(e.getMessage(), validationError.getString("errorMessage"));
          }
     }
 
@@ -382,10 +382,9 @@ class CourtSchedulerApiTest {
         final String requestName = "courtscheduler.validate.create";
 
         final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonObject);
-        final JsonObject validationResult = createObjectBuilder().add("validationResult",createObjectBuilder()
-                .add("status", ValidationStatus.FAILURE.getValidationStatus())
-                .add("validationError", "Validation failed")
-                .build()).build();
+        final JsonObject validationResult = createObjectBuilder()
+                .add("errorMessage", "Validation Failed")
+                .build();
 
         when(sessionsApiValidator.getSessionsCreateValidation(any())).thenReturn(validationResult);
 
