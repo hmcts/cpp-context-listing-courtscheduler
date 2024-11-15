@@ -15,6 +15,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SE
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
+import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
@@ -117,16 +118,16 @@ public class SessionsService {
     public Result update(UpdateCourtSchedule updateCourtSchedule, Requester requester) {
         uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
         if (Objects.isNull(persistedCourtSchedule)) {
-            return new Result("Court Schedule not found", false);
+            return new Result(ErrorMessages.SESSION_NOT_FOUND, false);
         }
         final String persistedBusinessType = persistedCourtSchedule.getBusinessType();
         if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType)) {
-            return new Result("Business Type cannot be changed from Slot to Non-Slot and vice versa", false);
+            return new Result(ErrorMessages.BUSINESS_TYPE_CHANGE_NOT_ALLOWED, false);
         }
         boolean isChanged = checkEditValuesModified(updateCourtSchedule, persistedCourtSchedule);
 
         if(isChanged) {
-            return new Result("This session is being edited by another user. Your changes cannot be saved so please try again later.", false);
+            return new Result(ErrorMessages.SESSION_EDIT_ANOTHER_USER, false);
         }
 
         updateAvailability(updateCourtSchedule, persistedCourtSchedule);
@@ -146,7 +147,7 @@ public class SessionsService {
             result = courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule, courtRoom);
         } catch (Exception exception) {
             logger.error("update court schedule failing courScheduleId : {}", persistedCourtSchedule.getCourtScheduleId());
-            result = new Result("Session to be added has a duplicate", false);
+            result = new Result(ErrorMessages.DUPLICATE_SESSIONS, false);
         }
 
         return result;
@@ -641,7 +642,7 @@ public class SessionsService {
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
             //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
             if (sameSessionViolatesAllDayRestriction(session, sessionToCompare)) {
-                return buildErrorResponse(format("Session Integrity failure. The session you're trying to add is not compatible with a record, courtscheduleId : %s  in terms of AM/PM/AD session for the same date", sessionToCompare.getCourtScheduleId()));
+                return buildErrorResponse(format(ErrorMessages.SESSION_INTEGRITY_FAILURE, sessionToCompare.getCourtScheduleId()));
             }
         }
         return JsonValue.EMPTY_JSON_OBJECT;
