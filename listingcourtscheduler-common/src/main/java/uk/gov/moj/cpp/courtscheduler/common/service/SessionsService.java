@@ -642,7 +642,7 @@ public class SessionsService {
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
             //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
             if (sameSessionViolatesAllDayRestriction(session, sessionToCompare)) {
-                return buildErrorResponse(format(ErrorMessages.SESSION_INTEGRITY_FAILURE, sessionToCompare.getCourtScheduleId()));
+                return buildErrorResponse(format(ErrorMessages.DUPLICATE_SESSIONS, sessionToCompare.getCourtScheduleId()));
             }
         }
         return JsonValue.EMPTY_JSON_OBJECT;
