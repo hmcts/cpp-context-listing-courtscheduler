@@ -86,13 +86,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule cs WHERE cs.id IN (:courtScheduleIds) AND cs.court_listing_profile_id is not null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) AND  not exists(" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
-    public static final String GET_ALLOCATED_SLOTS_FOR_COURT_SCHEDULE_QUERY = """
-            SELECT * FROM court_schedule cs WHERE cs.oucode in (:ouCodes)
-            AND cs.session_start between :startDate AND :endDate
-            AND EXISTS (SELECT 1 FROM allocated_listings al WHERE al.court_schedule_id = cs.id
-            AND al.hearing_start_time BETWEEN :startDate AND :hearingStartTimeEndBoundary);
-            """;
-
     private static final int SLOT_DEFAULT = 1;
 
 
@@ -568,17 +561,4 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                                                                                                            @QueryParam("sessionDate") LocalDate sessionDate,
                                                                                                            @QueryParam("businessType") String businessType,
                                                                                                            @QueryParam("courtSession") String courtSession);
-
-    public List<CourtSchedule> getAllocatedCourtSchedules(final LocalDate startDate, final LocalDate endDate, final LocalDate hearingStartTimeEndBoundary, final List<String> ouCodes) {
-        final long startAllocatedCourtSchedulesQuery = System.nanoTime();
-        final List<CourtSchedule> allocatedCourtSchedules = entityManager.createNativeQuery(GET_ALLOCATED_SLOTS_FOR_COURT_SCHEDULE_QUERY, CourtSchedule.class)
-                .setParameter("ouCodes", ouCodes)
-                .setParameter("startDate", startDate)
-                .setParameter("endDate", endDate)
-                .setParameter("hearingStartTimeEndBoundary", hearingStartTimeEndBoundary)
-                .getResultList();
-        final long endAllocatedCourtSchedulesQuery = System.nanoTime();
-        LOGGER.info("BRS: Time taken for getAllocatedCourtSchedules : {} - ouCode: {}", (endAllocatedCourtSchedulesQuery - startAllocatedCourtSchedulesQuery) / 1000000);
-        return allocatedCourtSchedules;
-    }
 }
