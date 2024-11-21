@@ -21,7 +21,7 @@ public class CourtSchedulerDatabaseHealthcheck implements Healthcheck {
 
     public static final String COURT_SCHEDULER_DATABASE_HEALTHCHECK_NAME = "courtscheduler-database-healthcheck";
 
-    protected static final List<String> TABLE_NAMES = of("business_type");
+    protected static final List<String> TABLE_NAMES = of("court_schedule", "court_schedule_judiciary", "allocated_listings", "rota_file_process_history", "provisional_booking");
 
     @Inject
     private CourtSchedulerDataSourceProvider courtSchedulerDataSourceProvider;

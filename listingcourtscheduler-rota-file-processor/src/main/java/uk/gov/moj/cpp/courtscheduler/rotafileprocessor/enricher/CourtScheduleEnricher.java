@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.BUSINESS_TYPE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.LOCATION_ID;
@@ -12,7 +13,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE_NAME;
 import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_DETAIL_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_ROOM_ERR_MSG;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
@@ -68,8 +68,10 @@ public class CourtScheduleEnricher {
                     && activeCourtSchedule.getCourtSession().equals(builder.getCourtSession()))
                     .findAny();
             if (courtScheduleOptional.isPresent() && isNotEmpty(courtScheduleOptional.get().getCourtScheduleId())) {
-                builder.withCourtScheduleId(courtScheduleOptional.get().getCourtScheduleId());
-                builder.withCreatedOn(courtScheduleOptional.get().getCreatedOn());
+                final CourtSchedule courtSchedule = courtScheduleOptional.get();
+                logger.info("slot matched between file and db with ouCode: {} - courtScheduleId: {}", courtSchedule.getOuCode(), courtSchedule.getCourtScheduleId());
+                builder.withCourtScheduleId(courtSchedule.getCourtScheduleId());
+                builder.withCreatedOn(courtSchedule.getCreatedOn());
             }
         } else {
             final String msgKey = format(COURT_ROOM_ERR_MSG, locationId, venueName, venueId);

@@ -6,6 +6,7 @@ import static java.util.Objects.nonNull;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.BUSINESS_TYPE;
@@ -13,7 +14,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.LINKE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
@@ -108,7 +108,7 @@ public class RotaDataEnricher {
                 addCourtSchedule(courtSchedules, newCourtSchedule);
             }
         } else {
-            newCourtSchedule = updateExistingCourtSchedule(courtSchedule, listingProfile.get(SESSION), missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
+            newCourtSchedule = updateExistingCourtSchedule(courtSchedule, listingProfile.get(SESSION), activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
             courtSchedules.put(courtSchedule.getListingProfileId(), newCourtSchedule);
         }
     }
@@ -122,7 +122,6 @@ public class RotaDataEnricher {
 
     private CourtSchedule updateExistingCourtSchedule(final CourtSchedule courtSchedule,
                                                       final String sessionStr,
-                                                      final Map<String, String> missingReferenceDataMappingMap,
                                                       final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
                                                       final Requester requester) {
 

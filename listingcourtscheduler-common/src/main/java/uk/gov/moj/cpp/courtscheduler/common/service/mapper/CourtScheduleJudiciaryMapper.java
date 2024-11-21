@@ -32,6 +32,7 @@ public class CourtScheduleJudiciaryMapper {
         entity.setPosition(domain.getPosition());
         entity.setCreatedOn(domain.getCreatedOn());
         entity.setUpdatedOn(domain.getUpdatedOn());
+        entity.setActive(domain.isActive());
         return entity;
     }
 
@@ -40,21 +41,22 @@ public class CourtScheduleJudiciaryMapper {
             return null;
         }
 
-        uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary courtScheduleJudiciary = new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary();
-        courtScheduleJudiciary.setJudiciaryId(entity.getId().getJudiciaryId());
-        courtScheduleJudiciary.setCourtScheduleId(entity.getId().getCourtScheduleId());
-        courtScheduleJudiciary.setJudiciaryType(entity.getJudiciaryType());
-        courtScheduleJudiciary.setSurname(entity.getSurname());
-        courtScheduleJudiciary.setForenames(entity.getForenames());
-        courtScheduleJudiciary.setPosition(entity.getPosition());
-        courtScheduleJudiciary.setCourtListingProfileId(entity.getCourtListingProfileId());
-        courtScheduleJudiciary.setBenchChairman(entity.getBenchChairman());
-        courtScheduleJudiciary.setRotaJudiciaryId(entity.getRotaJudiciaryId());
-        courtScheduleJudiciary.setTitle(entity.getTitle());
-        courtScheduleJudiciary.setDeputy(entity.getDeputy());
-        courtScheduleJudiciary.setEmailAddress(entity.getEmail());
-        courtScheduleJudiciary.setCreatedOn(entity.getCreatedOn());
-        courtScheduleJudiciary.setUpdatedOn(entity.getUpdatedOn());
-        return courtScheduleJudiciary;
+        return uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary()
+                .withJudiciaryId(entity.getId().getJudiciaryId())
+                .withCourtScheduleId(entity.getId().getCourtScheduleId())
+                .withJudiciaryType(entity.getJudiciaryType())
+                .withSurname(entity.getSurname())
+                .withForenames(entity.getForenames())
+                .withPosition(entity.getPosition())
+                .withCourtListingProfileId(entity.getCourtListingProfileId())
+                .withIsBenchChairman(entity.getBenchChairman())
+                .withRotaJudiciaryId(entity.getRotaJudiciaryId())
+                .withTitle(entity.getTitle())
+                .withIsDeputy(entity.getDeputy())
+                .withEmailAddress(entity.getEmail())
+                .withCreatedOn(entity.getCreatedOn())
+                .withUpdatedOn(entity.getUpdatedOn())
+                .withActive(entity.getActive())
+                .build();
     }
 }
