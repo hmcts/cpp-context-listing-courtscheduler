@@ -130,7 +130,6 @@ class RotaFileProcessorServiceTest {
 
     @BeforeEach
     public void setUp() {
-        setField(rotaFileProcessorService, "rotaMasterDataDaysLength", "168");
         setField(rotaFileProcessorService, "rotaMonthsOfProvisionalDataToPopulate", "6");
         setField(rotaFileProcessorService, "rotaCycleToPopulateLength", "28");
     }
