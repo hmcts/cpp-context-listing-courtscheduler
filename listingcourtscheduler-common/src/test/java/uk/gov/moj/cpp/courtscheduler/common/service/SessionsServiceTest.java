@@ -375,9 +375,11 @@ class SessionsServiceTest {
         // given
         UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
         updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(persistedCourtSchedule.getCourtSession());
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
         updateCourtSchedule.setSessionType(random(String.class));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(updateCourtSchedule.getCourtRoomId()), eq(requester))).thenReturn(Optional.of(random(CourtRoom.class)));
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
@@ -394,6 +396,8 @@ class SessionsServiceTest {
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setBusinessType("DVLA");
         updateCourtSchedule.setSessionType(random(String.class));
+        updateCourtSchedule.setSessionType(persistedCourtSchedule.getCourtSession());
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
         updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
@@ -434,7 +438,7 @@ class SessionsServiceTest {
 
         Result result = sessionsService.update(updateCourtSchedule, requester);
 
-        assertEquals("Court Schedule not found", result.getMsg());
+        assertEquals("Court Session not found", result.getMsg());
     }
 
     @Test
@@ -729,6 +733,7 @@ class SessionsServiceTest {
         courtSchedule.setBusinessType(businessTypeCode);
         courtSchedule.setSessionDate(random(LocalDate.class));
         courtSchedule.setCourtSession(random(String.class));
+        courtSchedule.setHasHearingsBooked(false);
         return courtSchedule;
     }
 

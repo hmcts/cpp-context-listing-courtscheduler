@@ -9,12 +9,10 @@ import java.util.Objects;
 import javax.json.JsonObject;
 
 public  class CommonUtils {
-    public static JsonObject getValidationResult(final String message) {
-        final ValidationStatus validationStatus = Objects.nonNull(message) ? ValidationStatus.FAILURE : ValidationStatus.SUCCESS;
-        return  createObjectBuilder().add("validationResult",createObjectBuilder()
-                .add("status", validationStatus.getValidationStatus())
-                .add("validationError", message)
-                .build()).build();
+    public static JsonObject buildErrorResponse(String errorMessage) {
+        return createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
     }
 
     private CommonUtils() {

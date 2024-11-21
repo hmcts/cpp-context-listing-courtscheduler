@@ -317,6 +317,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             if (allocatedListings != null && !allocatedListings.isEmpty()) {
                 uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule domainCourtSchedule =
                         modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class);
+                domainCourtSchedule.setHasHearingsBooked(true);
                 errorDeleteCourtSchedules.add(domainCourtSchedule);
             } else {
                 List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId);
