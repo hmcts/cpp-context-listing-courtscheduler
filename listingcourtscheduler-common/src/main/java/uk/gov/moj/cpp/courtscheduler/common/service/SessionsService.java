@@ -5,7 +5,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
-import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.getValidationResult;
+import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_ADULT_PANEL;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_AD_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_AM_OR_PM_SESSION;
@@ -19,6 +19,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SE
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
+import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
@@ -68,6 +69,7 @@ import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.transaction.Transactional;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.slf4j.Logger;
@@ -120,13 +122,18 @@ public class SessionsService {
     public Result update(UpdateCourtSchedule updateCourtSchedule, Requester requester) {
         uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
         if (Objects.isNull(persistedCourtSchedule)) {
-            return new Result("Court Schedule not found", false);
+            return new Result(ErrorMessages.SESSION_NOT_FOUND, false);
         }
         final String persistedBusinessType = persistedCourtSchedule.getBusinessType();
         if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType)) {
-            return new Result("Business Type cannot be changed from Slot to Non-Slot and vice versa", false);
+            return new Result(ErrorMessages.BUSINESS_TYPE_CHANGE_NOT_ALLOWED, false);
         }
-        //TODO: add booked hearings check after DD-35012
+        boolean isChanged = checkEditValuesModified(updateCourtSchedule, persistedCourtSchedule);
+
+        if(isChanged) {
+            return new Result(ErrorMessages.SESSION_EDIT_ANOTHER_USER, false);
+        }
+
         updateAvailability(updateCourtSchedule, persistedCourtSchedule);
 
         String courtRoomId = updateCourtSchedule.getCourtRoomId();
@@ -144,7 +151,7 @@ public class SessionsService {
             result = courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule, courtRoom);
         } catch (Exception exception) {
             logger.error("update court schedule failing courScheduleId : {}", persistedCourtSchedule.getCourtScheduleId());
-            result = new Result("Duplicate entry in DB", false);
+            result = new Result(ErrorMessages.DUPLICATE_SESSIONS, false);
         }
 
         return result;
@@ -163,6 +170,19 @@ public class SessionsService {
             updateCourtSchedule.setAvailableSlots(0);
 
         }
+    }
+
+    private boolean checkEditValuesModified(final UpdateCourtSchedule updateCourtSchedule,
+                                            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
+        boolean isChanged = false;
+
+        if(persistedCourtSchedule.getHasHearingsBooked() && (!StringUtils.equals(updateCourtSchedule.getCourtRoomId(), persistedCourtSchedule.getCourtRoomId()) ||
+                !StringUtils.equals(updateCourtSchedule.getSessionType(), persistedCourtSchedule.getCourtSession()) ||
+                !StringUtils.equals(updateCourtSchedule.getPanel(), persistedCourtSchedule.getPanel()))) {
+            isChanged = true;
+        }
+
+        return isChanged;
     }
 
     private boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType) {
@@ -185,9 +205,16 @@ public class SessionsService {
         List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = courtScheduleToDeleteResponseConverter.convert(courtSchedules);
         final ListToJsonArrayConverter<CourtScheduleDeleteResponse> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
         JsonArray jsonArray = courtSchedules.isEmpty() ? JsonValue.EMPTY_JSON_ARRAY : listToJsonArrayConverter.convert(courtScheduleDeleteResponses);
-        return Json.createObjectBuilder()
-                .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
-                .build();
+        if(jsonArray == JsonValue.EMPTY_JSON_ARRAY) {
+            return Json.createObjectBuilder()
+                    .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
+                    .build();
+        } else {
+            return Json.createObjectBuilder()
+                    .add("error", "Some sessions could not be removed. Please check again.")
+                    .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
+                    .build();
+        }
     }
 
     public boolean isMigrated(final String ouCode) {
@@ -580,7 +607,7 @@ public class SessionsService {
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
             //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
             if (sameSessionViolatesAllDayRestriction(session, sessionToCompare)) {
-                return getValidationResult(format("Session Integrity failure. The session you're trying to add is not compatible with a record, courtscheduleId : %s  in terms of AM/PM/AD session for the same date", sessionToCompare.getCourtScheduleId()));
+                return buildErrorResponse(format(ErrorMessages.DUPLICATE_SESSIONS, sessionToCompare.getCourtScheduleId()));
             }
         }
         return JsonValue.EMPTY_JSON_OBJECT;
