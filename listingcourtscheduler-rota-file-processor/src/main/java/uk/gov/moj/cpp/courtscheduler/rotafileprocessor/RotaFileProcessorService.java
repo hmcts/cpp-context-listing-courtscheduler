@@ -98,10 +98,6 @@ public class RotaFileProcessorService {
     private RotaFilePartialProcessor rotaFilePartialProcessor;
 
     @Inject
-    @Value(key = "rota.master.data.days.length", defaultValue = "168")
-    private String rotaMasterDataDaysLength;
-
-    @Inject
     @Value(key ="rota.months.of.provisional.data.to.populate", defaultValue = "6")
     private String rotaMonthsOfProvisionalDataToPopulate;
 
@@ -168,7 +164,7 @@ public class RotaFileProcessorService {
 
         final List<CourtSchedule> activeCourtSchedulesForMigratedOuCodesWithinDateRange = sessionsService.getExtractedCourtSchedules(migratedOuCodes, rotaPeriodStartDate, rotaPeriodEndDate);
         final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(records, rotaPeriodEndDate, migratedMap, TRUE, activeCourtSchedulesForMigratedOuCodesWithinDateRange, requester);
-        logger.info("received slots with slotsForNonMigrated size: {} and slotsForMigrated: {}", slotsForNonMigrated.size(), slotsForMigrated.size());
+        logger.info("received slots with slotsForNonMigrated size: {} of nonMigratedOuCodes: {} and slotsForMigrated: {} of migratedOuCodes: {}", slotsForNonMigrated.size(), nonMigratedOuCodes, slotsForMigrated.size(), migratedOuCodes);
 
         final Collection<CourtScheduleJudiciary> schedulesForNonMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForNonMigrated, records, FALSE, activeCourtSchedulesForNonMigratedOuCodesWithinRotaPeriod, requester);
         final Collection<CourtScheduleJudiciary> schedulesForMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForMigrated, records, TRUE, activeCourtSchedulesForMigratedOuCodesWithinDateRange, requester);
@@ -284,10 +280,6 @@ public class RotaFileProcessorService {
                                                     final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
                                                     final Requester requester) {
         return rotaDataEnricher.enrichCourtListings(records, rotaPeriodEndDate, migratedMap, migrated, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
-    }
-
-    private int getRotaMasterDataDaysLength() {
-        return parseInt(rotaMasterDataDaysLength);
     }
 
     private List<String> getLocationFromRecords(final Map<RotaPayload, Map<String, Map<String, String>>> records) {

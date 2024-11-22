@@ -5483,26 +5483,6 @@
             <welshSpeaking>false</welshSpeaking>
             <updatedDate>2024-01-11T09:31:21.144Z</updatedDate>
         </courtListingProfile>
-        <courtListingProfile id="CS4305478" linkedSessionId="CS4305478">
-            <sessionDate>2024-09-06</sessionDate>
-            <session>AM</session>
-            <panel>ADULT</panel>
-            <business>TRL</business>
-            <venueId>54198</venueId>
-            <locationId>67</locationId>
-            <welshSpeaking>false</welshSpeaking>
-            <updatedDate>2024-01-11T09:51:07.771Z</updatedDate>
-        </courtListingProfile>
-        <courtListingProfile id="CS4305479" linkedSessionId="CS4305478">
-            <sessionDate>2024-09-06</sessionDate>
-            <session>PM</session>
-            <panel>ADULT</panel>
-            <business>TRL</business>
-            <venueId>54198</venueId>
-            <locationId>67</locationId>
-            <welshSpeaking>false</welshSpeaking>
-            <updatedDate>2024-01-11T09:51:07.771Z</updatedDate>
-        </courtListingProfile>
         <courtListingProfile id="CS4305482">
             <sessionDate>2024-09-10</sessionDate>
             <session>AM</session>

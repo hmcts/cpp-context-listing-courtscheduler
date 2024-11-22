@@ -27,7 +27,7 @@ public class CourtScheduleCriteria {
                                                         CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtSchedule> criteriaQuery) {
         List<Predicate> predicateList = new ArrayList<>();
         Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
-        Predicate activePredicate = criteriaBuilder.equal(root.get("active"), true);
+        Predicate activePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.ACTIVE), true);
         Predicate panelPredicate;
         if (hearingSlotRequestParam.panel().contains(",")) {
             panelPredicate = root.get(CourtSchedule_.PANEL).in(hearingSlotRequestParam.panel());
@@ -144,6 +144,7 @@ public class CourtScheduleCriteria {
             andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.SESSION_DATE), sessionDate));
             andPredicates.add(root.get(CourtSchedule_.COURT_SESSION).in("AD", courtSession));
             andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_NUMBER), courtRoomNumber));
+            andPredicates.add(criteriaBuilder.equal(root.get(CourtSchedule_.ACTIVE), true));
             Predicate andCombination = criteriaBuilder.and(andPredicates.toArray(new Predicate[0]));
             criteriaQuery.where(andCombination);
         }
