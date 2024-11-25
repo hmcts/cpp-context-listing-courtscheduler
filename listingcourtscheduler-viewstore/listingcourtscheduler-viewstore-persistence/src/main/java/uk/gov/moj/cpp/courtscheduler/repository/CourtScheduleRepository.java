@@ -128,8 +128,9 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         if (persistedCourtSchedules.size() > 1 && isForRotaFile) {
             persistedCourtSchedule = persistedCourtSchedules.stream()
                     .filter(courtScheduleFound -> courtScheduleFound.getCourtSession().equals(courtSchedule.getCourtSession())
-                            && courtScheduleFound.getPanel().equals(courtSchedule.getPanel()))
-                    .findAny().orElse(persistedCourtSchedule);
+                            && courtScheduleFound.getPanel().equals(courtSchedule.getPanel()) && courtScheduleFound.isActive())
+                    .findAny()
+                    .orElse(persistedCourtSchedule);
             LOGGER.info("found persisted court schedule to update for rota file with courtScheduleId: {}", persistedCourtSchedule.getCourtScheduleId());
         }
         return persistedCourtSchedule;
