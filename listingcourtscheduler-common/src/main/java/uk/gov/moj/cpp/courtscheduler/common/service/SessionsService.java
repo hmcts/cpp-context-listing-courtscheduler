@@ -6,6 +6,10 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_ADULT_PANEL;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_AD_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_AM_OR_PM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_YOUTH_PANEL;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.ADULT;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.YOUTH;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
@@ -302,15 +306,6 @@ public class SessionsService {
                                         final List<CourtSchedule> existingCourtSchedules) {
         logger.info("DD-15703:CourtScheduleRepository: update process started");
 
-        logger.info("DD-15703:CourtScheduleRepository: before deactivateSlots");
-        deactivateSlots(slotAndScheduleInfo.existingNonMigratedSlotScheduleIds());
-        logger.info("DD-15703:CourtScheduleRepository: after deactivateSlots");
-
-        logger.info("DD-15703:CourtScheduleRepository: before deactivateSchedules");
-        deactivateSchedules(slotAndScheduleInfo.existingNonMigratedSlotScheduleIds());
-        logger.info("DD-15703:CourtScheduleRepository: after deactivateSchedules.update");
-
-
         logger.info("DD-15703:CourtScheduleRepository: before saveSlots");
         final List<String> courtScheduleIdsOfSavedSlots = saveSlots(slotAndScheduleInfo.newSlots().values(), businessTypeMap, existingCourtSchedules);
         logger.info("DD-15703:CourtScheduleRepository: after saveSlots with numberOfSavedSlots: {}", courtScheduleIdsOfSavedSlots.size());
@@ -346,18 +341,6 @@ public class SessionsService {
         }
 
         logger.info("DD-15703:CourtScheduleRepository: update process completed");
-    }
-
-    private void deactivateSlots(final List<String> snapshotSlotIds) {
-        if (isNotEmpty(snapshotSlotIds)) {
-            courtScheduleRepository.deactivateSlots(snapshotSlotIds, Calendar.getInstance().getTime());
-        }
-    }
-
-    private void deactivateSchedules(final List<String> snapshotSlotIds) {
-        if (isNotEmpty(snapshotSlotIds)) {
-            courtScheduleJudiciaryRepository.deactivateSchedules(snapshotSlotIds, Calendar.getInstance().getTime());
-        }
     }
 
     private List<String> saveSlots(final Collection<CourtSchedule> slots,
@@ -400,8 +383,7 @@ public class SessionsService {
                     );
 
             if (!toBePersisted) {
-                logger.error("the slot will not be persisted as having YOUTH panel slot existing and session will not be saved for panel: {}, ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
-                        slot.getPanel(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
+                logger.error(SLOT_WILL_NOT_BE_SAVED_HAVING_YOUTH_PANEL, slot.getPanel(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
                 return false;
             }
         } else if (YOUTH.name().equals(slot.getPanel())) {
@@ -414,8 +396,7 @@ public class SessionsService {
                     );
 
             if (!toBePersisted) {
-                logger.error("the slot will not be persisted as having ADULT panel slot existing and session will not be saved for panel: {}, ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
-                        slot.getPanel(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
+                logger.error(SLOT_WILL_NOT_BE_SAVED_HAVING_ADULT_PANEL, slot.getPanel(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
                 return false;
             }
         }
@@ -434,11 +415,10 @@ public class SessionsService {
                     );
 
             if (!toBePersisted) {
-                logger.error("the slot will not be persisted as having AM or PM session slot existing and {} session will not be saved for ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
-                        slot.getCourtSession(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
+                logger.error(SLOT_WILL_NOT_BE_SAVED_HAVING_AM_OR_PM_SESSION, slot.getCourtSession(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
                 return false;
             }
-        } else if (AM_SESSION.equals(slot.getCourtSession())) {
+        } else if (AM_SESSION.equals(slot.getCourtSession()) || PM_SESSION.equals(slot.getCourtSession())) {
             toBePersisted = existingCourtSchedules.stream()
                     .noneMatch(existingCourtSchedule -> existingCourtSchedule.getOuCode().equals(slot.getOuCode())
                             && existingCourtSchedule.getBusinessType().equals(slot.getBusinessType())
@@ -448,22 +428,7 @@ public class SessionsService {
                     );
 
             if (!toBePersisted) {
-                logger.error("the slot will not be persisted as having AD session slot existing and {} session will not be saved for ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
-                        slot.getCourtSession(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
-                return false;
-            }
-        } else if (PM_SESSION.equals(slot.getCourtSession())) {
-            toBePersisted = existingCourtSchedules.stream()
-                    .noneMatch(existingCourtSchedule -> existingCourtSchedule.getOuCode().equals(slot.getOuCode())
-                            && existingCourtSchedule.getBusinessType().equals(slot.getBusinessType())
-                            && existingCourtSchedule.getSessionDate().equals(slot.getSessionDate())
-                            && existingCourtSchedule.getCourtRoomNumber().equals(slot.getCourtRoomNumber())
-                            && ALL_DAY.equals(existingCourtSchedule.getCourtSession())
-                    );
-
-            if (!toBePersisted) {
-                logger.error("the slot will not be persisted as having AD session slot existing and {} session will not be saved for ouCode: {}, businessType: {}, sessionDate: {}, courtRoomNumber: {}",
-                        slot.getCourtSession(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
+                logger.error(SLOT_WILL_NOT_BE_SAVED_HAVING_AD_SESSION, slot.getCourtSession(), slot.getOuCode(), slot.getBusinessType(), slot.getSessionDate(), slot.getCourtRoomNumber());
                 return false;
             }
         }

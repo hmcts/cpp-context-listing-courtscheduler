@@ -170,6 +170,8 @@ class RotaFileProcessorIT extends AbstractIT {
     void shouldProcessSnapshotRotaFile() throws SQLException, IOException {
         processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
 
+        final Optional<CourtSchedule> courtScheduleOptional = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305478")).findAny();
+        databaseSeeder.insertAllocatedListing(getAllocatedListing(courtScheduleOptional.get()));
         final Stopwatch stopwatch = Stopwatch.createStarted();
         final LocalDate snapshotFileStartDate = LocalDate.of(2024, 8, 1);
         final String snapshotFileBaseNamePart1 = "IT_Test_lja_bedfodshire";
@@ -194,7 +196,7 @@ class RotaFileProcessorIT extends AbstractIT {
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
             final List<CourtSchedule> courtSchedulesFromSnapshotFile = databaseReader.courtSchedulesCreatedAfter(maxCreatedOnForCourtSchedule);
-            return isNotEmpty(courtSchedulesFromSnapshotFile) && courtSchedulesFromSnapshotFile.size() == 211;
+            return isNotEmpty(courtSchedulesFromSnapshotFile) && courtSchedulesFromSnapshotFile.size() == 210;
         });
 
         logger.info("snapshot rota file processing took time as seconds : {}", stopwatch.elapsed(SECONDS));
@@ -205,12 +207,16 @@ class RotaFileProcessorIT extends AbstractIT {
         final List<CourtSchedule> courtSchedulesFromSnapshotFile = databaseReader.courtSchedulesCreatedAfter(maxCreatedOnForCourtSchedule);
         final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = databaseReader.courtScheduleJudiciaries();
 
-        assertEquals(211, courtSchedulesFromSnapshotFile.size());
-        assertEquals(211, courtSchedulesFromSnapshotFile.stream()
+        assertEquals(210, courtSchedulesFromSnapshotFile.size());
+        assertEquals(210, courtSchedulesFromSnapshotFile.stream()
                 .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(snapshotFileStartDate) || courtSchedule.getSessionDate().isEqual(snapshotFileStartDate)).toList().size());
         assertEquals(0, courtSchedulesFromSnapshotFile.stream()
                 .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(snapshotFileStartDate)).toList().size());
         assertEquals(45, courtScheduleJudiciaryEntities.size());
+
+        final Optional<CourtSchedule> allocatedSlotNotBeingInSnapshotFile = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305478")).findAny();
+        assertTrue(allocatedSlotNotBeingInSnapshotFile.isPresent());
+        assertTrue(allocatedSlotNotBeingInSnapshotFile.get().isActive());
 
         filesToBeDeletedFromOutputContainer.add(finalSnapshotFileName);
     }

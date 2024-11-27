@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 
+import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.EMAIL_ADDRESS;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.FORENAMES;
@@ -11,11 +12,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.RIGHT
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ROTA_JUDICIARY_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SURNAME;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.TITLE;
-import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 
-import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Map;
 
@@ -43,6 +42,7 @@ public class JudiciaryBuilder {
                 .withIsDeputy(!isBenchChairman)
                 .withCreatedOn(Calendar.getInstance().getTime())
                 .withUpdatedOn(Calendar.getInstance().getTime())
+                .withActive(true)
                 .build();
     }
 
