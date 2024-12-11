@@ -97,6 +97,16 @@ rule "API - Action - courtscheduler.remove.hearing.slots"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.get.hearing.ids"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get.hearing.ids");
+        eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
+
+
 rule "API - Action - courtscheduler.create.provisional.booking"
   when
     $outcome: Outcome();

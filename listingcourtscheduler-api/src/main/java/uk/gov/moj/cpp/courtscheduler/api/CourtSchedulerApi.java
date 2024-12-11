@@ -12,41 +12,11 @@ import uk.gov.justice.services.core.annotation.Handles;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToViewConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
-import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
-import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
-import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
-import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
-import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
+import uk.gov.moj.cpp.courtscheduler.api.converter.*;
+import uk.gov.moj.cpp.courtscheduler.api.service.*;
+import uk.gov.moj.cpp.courtscheduler.api.validator.*;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 
 import java.util.List;
 
@@ -87,7 +57,7 @@ public class CourtSchedulerApi {
     @Inject
     private AllocatedSlotConverter converter;
     @Inject
-    private HearingSlotsApiValidator hearingSlotsApiValidator;
+    private HearingSlotsApiValidator hearingIdsApiValidator;
     @Inject
     private CourtScheduleApiValidator courtScheduleApiValidator;
     @Inject
@@ -108,6 +78,8 @@ public class CourtSchedulerApi {
     private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
     @Inject
     private OuCodeMigrateConverter ouCodeMigrateConverter;
+    @Inject
+    private AllocatedListingService allocatedListingService;
 
 
     @Handles("courtscheduler.create")
@@ -203,7 +175,7 @@ public class CourtSchedulerApi {
         LOGGER.info("courtscheduler.get.hearing.slots requested : {}", requestFromApiJsonObject);
         HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(requestFromApiJsonObject);
         final long validatestart = System.nanoTime();
-        JsonObject validate = hearingSlotsApiValidator.getHearingSlotsValidation(hearingSlotRequestParam);
+        JsonObject validate = hearingIdsApiValidator.getHearingSlotsValidation(hearingSlotRequestParam);
         final long validateEnd = System.nanoTime();
 
         LOGGER.info("BRS: Time taken for validation : {}", (validateEnd - validatestart) / 1000000);
@@ -226,6 +198,25 @@ public class CourtSchedulerApi {
         slotsRemoveService.remove(hearingId);
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.remove.hearing.slots").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.get.hearing.ids")
+    public JsonEnvelope getHearingIds(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.get.hearing.ids requested : {}", requestFromApiJsonObject);
+        HearingSlotRequestParam hearingIdsRequest = hearingSlotRequestParamConverter.convert(requestFromApiJsonObject);
+        final long validateStart = System.nanoTime();
+        JsonObject validate = hearingIdsApiValidator.getHearingSlotsValidation(hearingIdsRequest);
+        final long validateEnd = System.nanoTime();
+
+        LOGGER.info("Time taken for allocated hearing ids validation : {}", (validateEnd - validateStart) / 1000000);
+
+        if (!validate.isEmpty()) {
+            return envelopeFor(envelope, validate, ERROR);
+        }
+
+        JsonObject responseObject = allocatedListingService.getHearingIds(hearingIdsRequest);
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 
     @Handles("courtscheduler.export.court_schedule")

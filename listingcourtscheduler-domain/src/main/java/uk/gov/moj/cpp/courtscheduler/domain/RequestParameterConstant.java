@@ -40,6 +40,7 @@ public enum RequestParameterConstant {
     START_DATE("startDate"),
     END_DATE("endDate"),
     SESSION_TO_BE_ADDED("sessionToBeAdded"),
+    HEARING_IDS("hearingIds"),
     ;
 
     private final String name;
