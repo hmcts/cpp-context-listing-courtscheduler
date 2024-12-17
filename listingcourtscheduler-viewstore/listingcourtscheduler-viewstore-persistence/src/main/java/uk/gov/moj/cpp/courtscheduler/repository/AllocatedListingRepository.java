@@ -10,8 +10,10 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
@@ -63,56 +65,70 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
     @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked(al.courtScheduleId, sum(duration) AS totalbooked) FROM AllocatedListing al WHERE al.courtScheduleId IN :courtScheduleIds group by al.courtScheduleId")
     public abstract List<AllocatedListingTotalBooked> getAllocatedListingsByCourtScheduleId(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);
 
-    public Pair<Integer, List<String>> findHearingIdsBy(HearingSlotRequestParam hearingIdsReq) {
-        final StringBuilder queryString = new StringBuilder("select distinct al.hearing_id " +
+    public Pair<Integer, Set<String>> findHearingIdsBy(HearingSlotRequestParam hearingIdsReq) {
+        final Map<String, Object> params = new HashMap<>();
+        final StringBuilder queryStringBuilder = createQueryStringBuilderFrom(hearingIdsReq, params);
+
+        final javax.persistence.Query totalQuery = entityManager.createNativeQuery(queryStringBuilder.toString());
+        params.forEach(totalQuery::setParameter);
+        final List totalResultList = totalQuery.getResultList();
+
+        queryStringBuilder.append("LIMIT :pageSize ");
+        params.put("pageSize", Integer.parseInt(hearingIdsReq.pageSize()));
+        queryStringBuilder.append("OFFSET :pageNumber ");
+        params.put("pageNumber", Integer.parseInt(hearingIdsReq.pageNumber()) - 1);
+        final javax.persistence.Query pageQuery = entityManager.createNativeQuery(queryStringBuilder.toString());
+        params.forEach(pageQuery::setParameter);
+        final Set<String> pageResultSet = new LinkedHashSet<>(pageQuery.getResultList());
+
+        return Pair.of(totalResultList.size(), pageResultSet);
+    }
+
+    private StringBuilder createQueryStringBuilderFrom(HearingSlotRequestParam hearingIdsReq,
+                                                       Map<String, Object> params) {
+        final StringBuilder queryBuilder = new StringBuilder("select al.hearing_id " +
                 "from allocated_listings al, court_schedule cs " +
                 "where al.court_schedule_id = cs.id and cs.active = true ");
-        final Map<String, Object> params = new HashMap<>();
-        queryString.append("and cs.panel = :panel ");
+        queryBuilder.append("and cs.panel = :panel ");
         params.put("panel", hearingIdsReq.panel());
 
-        queryString.append("and cs.session_start >= :sessionStartDate ");
+        queryBuilder.append("and cs.session_start >= :sessionStartDate ");
         params.put("sessionStartDate", LocalDate.parse(hearingIdsReq.sessionStartDate()));
-        queryString.append("AND cs.session_start <= :sessionEndDate ");
+        queryBuilder.append("AND cs.session_start <= :sessionEndDate ");
         params.put("sessionEndDate", LocalDate.parse(hearingIdsReq.sessionEndDate()));
 
 
         if (StringUtils.isNotBlank(hearingIdsReq.oucodeL2Code())) {
-            queryString.append("and cs.operational_unit = :oucodeL2Code ");
+            queryBuilder.append("and cs.operational_unit = :oucodeL2Code ");
             params.put("oucodeL2Code", hearingIdsReq.oucodeL2Code());
         }
         if (StringUtils.isNotBlank(hearingIdsReq.ouCode())) {
-            queryString.append("and cs.oucode = :ouCode ");
+            queryBuilder.append("and cs.oucode = :ouCode ");
             params.put("ouCode", hearingIdsReq.ouCode());
         }
 
         if (StringUtils.isNotBlank(hearingIdsReq.courtRoomId())) {
-            queryString.append("and cs.court_room_id = :courtRoomId ");
+            queryBuilder.append("and cs.court_room_id = :courtRoomId ");
             params.put("courtRoomId", hearingIdsReq.courtRoomId());
         }
         if (StringUtils.isNotBlank(hearingIdsReq.courtRoomNumber())) {
-            queryString.append("and cs.court_room_number = :courtRoomNumber ");
+            queryBuilder.append("and cs.court_room_number = :courtRoomNumber ");
             params.put("courtRoomNumber", hearingIdsReq.courtRoomNumber());
         }
         if (StringUtils.isNotBlank(hearingIdsReq.businessType())) {
-            queryString.append("and cs.rota_business_type = :businessType ");
+            queryBuilder.append("and cs.rota_business_type = :businessType ");
             params.put("businessType", hearingIdsReq.businessType());
         }
         if (StringUtils.isNotBlank(hearingIdsReq.courtSession())) {
-            queryString.append("and cs.court_session = :courtSession ");
+            queryBuilder.append("and cs.court_session = :courtSession ");
             params.put("courtSession", hearingIdsReq.courtSession());
         }
-        queryString.append("order by al.hearing_id ");
+        queryBuilder.append("order by cs.session_start, " +
+                "cs.court_house_name, " +
+                "cs.court_room_name, " +
+                "cs.court_session, " +
+                "al.hearing_start_time ");
 
-        queryString.append("LIMIT :pageSize ");
-        params.put("pageSize", Integer.parseInt(hearingIdsReq.pageSize()));
-        queryString.append("OFFSET :pageNumber ");
-        params.put("pageNumber", Integer.parseInt(hearingIdsReq.pageNumber()) - 1);
-
-        final javax.persistence.Query query = entityManager.createNativeQuery(queryString.toString());
-        params.forEach(query::setParameter);
-        final List<String> resultList = query.getResultList();
-
-        return Pair.of(resultList.size(), resultList);
+        return queryBuilder;
     }
 }

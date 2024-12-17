@@ -18,6 +18,7 @@ import javax.transaction.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static java.lang.Integer.parseInt;
 import static java.util.stream.Collectors.toMap;
@@ -40,7 +41,7 @@ public class AllocatedListingService {
     }
 
     public JsonObject getHearingIds(HearingSlotRequestParam hearingIdsRequest) {
-        final Pair<Integer, List<String>> hearingIdsResult =
+        final Pair<Integer, Set<String>> hearingIdsResult =
                 allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         final long resultsCount = hearingIdsResult.getKey();
         int pageSize = parseInt(hearingIdsRequest.pageSize());

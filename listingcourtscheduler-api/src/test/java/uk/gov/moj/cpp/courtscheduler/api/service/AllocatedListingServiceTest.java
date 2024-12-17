@@ -13,9 +13,10 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
-import java.util.LinkedList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -75,7 +76,7 @@ class AllocatedListingServiceTest {
                         "Court-Room-Num-1",
                         "buss",
                         "Court-Session-1");
-        List<String> hearingIds = new LinkedList<>();
+        Set<String> hearingIds = new LinkedHashSet<>();
         hearingIds.add(randomUUID().toString());
         hearingIds.add(randomUUID().toString());
         hearingIds.add(randomUUID().toString());

@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
-import static java.util.Collections.sort;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -15,12 +14,12 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.inject.Inject;
 
@@ -153,47 +152,62 @@ public class AllocatedListingRepositoryTest {
 
     @Test
     public void shouldGetHearingIdsByReq() throws Exception {
-
+        final LocalDate today = LocalDate.now();
         final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
-        courtSchedule1.setCourtScheduleId("COURT-SCHEDULE-1");
         courtSchedule1.setPanel("ADULT");
-        courtSchedule1.setSessionDate(LocalDate.now());
-        courtSchedule1.setOperationalUnit("BA124");
-        courtSchedule1.setOuCode("BA124");
+        courtSchedule1.setCourtScheduleId("COURT-SCHEDULE-1");
+        final LocalDate sessionDate = today.minusDays(3);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setCourtHouseName("HOUSE-1");
         courtSchedule1.setActive(true);
         courtScheduleRepository.saveAndFlush(courtSchedule1);
 
         final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
-        courtSchedule2.setCourtScheduleId("COURT-SCHEDULE-2");
         courtSchedule2.setPanel("ADULT");
-        courtSchedule2.setSessionDate(LocalDate.now());
-        courtSchedule2.setOperationalUnit("BA124");
-        courtSchedule2.setOuCode("BA124");
+        courtSchedule2.setCourtScheduleId("COURT-SCHEDULE-2");
+        courtSchedule2.setSessionDate(sessionDate);
+        courtSchedule2.setCourtHouseName("HOUSE-2");
         courtSchedule2.setActive(true);
         courtScheduleRepository.saveAndFlush(courtSchedule2);
+
+        final CourtSchedule courtSchedule3 = random(CourtSchedule.class);
+        courtSchedule3.setPanel("ADULT");
+        courtSchedule3.setCourtScheduleId("COURT-SCHEDULE-3");
+        final LocalDate sessionDate1 = today.minusDays(1);
+        courtSchedule3.setSessionDate(sessionDate1);
+        courtSchedule3.setActive(true);
+        courtScheduleRepository.saveAndFlush(courtSchedule3);
 
         List<String> expHearingIds = new ArrayList<>();
         final String hearingId1 = randomUUID().toString();
         expHearingIds.add(hearingId1);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("1", "BOOKING-1", "COURT-SCHEDULE-1", hearingId1));
+        final LocalDateTime hearing1StartTime = sessionDate.atTime(14, 0);
+        allocatedListingRepository.saveAndFlush(createAllocateListing("1", "BOOKING-1", "COURT-SCHEDULE-1", hearingId1, hearing1StartTime));
         final String hearingId2 = randomUUID().toString();
         expHearingIds.add(hearingId2);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("2", "BOOKING-2", "COURT-SCHEDULE-1", hearingId2));
+        final LocalDateTime hearing2StartTime = sessionDate.atTime(16, 0);
+        allocatedListingRepository.saveAndFlush(createAllocateListing("2", "BOOKING-2", "COURT-SCHEDULE-1", hearingId2, hearing2StartTime));
+
         final String hearingId3 = randomUUID().toString();
         expHearingIds.add(hearingId3);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("3", "BOOKING-3", "COURT-SCHEDULE-2", hearingId3));
+        final LocalDateTime hearing3StartTime = sessionDate1.atTime(9, 0);
+        allocatedListingRepository.saveAndFlush(createAllocateListing("3", "BOOKING-3", "COURT-SCHEDULE-2", hearingId3, hearing3StartTime));
         final String hearingId4 = randomUUID().toString();
         expHearingIds.add(hearingId4);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("4", "BOOKING-4", "COURT-SCHEDULE-2", hearingId4));
+        final LocalDateTime hearing4StartTime = sessionDate1.atTime(11, 0);
+        allocatedListingRepository.saveAndFlush(createAllocateListing("4", "BOOKING-4", "COURT-SCHEDULE-2", hearingId4, hearing4StartTime));
+
         final String hearingId5 = randomUUID().toString();
+        expHearingIds.add(hearingId5);
         allocatedListingRepository.saveAndFlush(createAllocateListing("5", "BOOKING-5", "COURT-SCHEDULE-3", hearingId5));
+
         final String hearingId6 = randomUUID().toString();
         allocatedListingRepository.saveAndFlush(createAllocateListing("6", "BOOKING-6", "COURT-SCHEDULE-4", hearingId6));
 
         HearingSlotRequestParam hearingIdsRequest =
                 new HearingSlotRequestParam("ADULT",
-                        "2024-12-09",
-                        "2024-12-15",
+                        today.minusDays(6).toString(),
+                        today.toString(),
                         "",
                         "",
                         "10",
@@ -202,28 +216,44 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         "");
-        Pair<Integer, List<String>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
-        assertEquals(4, hearingIdsResult.getKey().longValue());
-        sort(expHearingIds);
-        List<String> hearingIds = hearingIdsResult.getValue();
-        assertEquals(expHearingIds.get(0), hearingIds.get(0));
-        assertEquals(expHearingIds.get(1), hearingIds.get(1));
-        assertEquals(expHearingIds.get(2), hearingIds.get(2));
-        assertEquals(expHearingIds.get(3), hearingIds.get(3));
+        Pair<Integer, Set<String>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
+        assertEquals(5, hearingIdsResult.getKey().longValue());
+        List<String> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
+        assertEquals(expHearingIds.get(0), actHearingIds.get(0));
+        assertEquals(expHearingIds.get(1), actHearingIds.get(1));
+        assertEquals(expHearingIds.get(2), actHearingIds.get(2));
+        assertEquals(expHearingIds.get(3), actHearingIds.get(3));
+        assertEquals(expHearingIds.get(4), actHearingIds.get(4));
     }
 
-    private AllocatedListing createAllocateListing(String id, String bookingId, String courtScheduleId, String hearingId) {
+    private AllocatedListing createAllocateListing(String id,
+                                                   String bookingId,
+                                                   String courtScheduleId,
+                                                   String hearingId) {
+        return createAllocateListing(id,
+                bookingId,
+                courtScheduleId,
+                hearingId,
+                LocalDate.parse("2024-12-09").atTime(14, 0));
+    }
+
+    private AllocatedListing createAllocateListing(String id,
+                                                   String bookingId,
+                                                   String courtScheduleId,
+                                                   String hearingId, LocalDateTime hearingStartTime) {
         AllocatedListing allocatedListing = new AllocatedListing();
         allocatedListing.setId(id);
         allocatedListing.setBookingId(bookingId);
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setCourtRoomId(1);
-        allocatedListing.setHearingStartTime(Date.from(LocalDate.parse("2024-12-09").atTime(14, 0).atZone(ZoneId.of("Europe/London")).toInstant()));
+        allocatedListing.setHearingStartTime(Date.from(hearingStartTime.atZone(ZoneId.of("Europe/London")).toInstant()));
         allocatedListing.setDuration(120);
         allocatedListing.setOucode("BA124");
         allocatedListing.setRotaBusinessType("BUSS");
 
         return allocatedListing;
     }
+
+
 }
