@@ -2,8 +2,10 @@ package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createObjectBuilder;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +17,7 @@ import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileCaptureAndProcessTriggerService;
+import uk.gov.moj.cpp.courtscheduler.api.service.RotaRedundantDataCleanerService;
 
 import java.util.UUID;
 import java.util.function.Function;
@@ -45,6 +48,9 @@ class RotaFileProcessorApiTest {
     @Mock
     private RotaFileCaptureAndProcessTriggerService rotaFileCaptureAndProcessTriggerService;
 
+    @Mock
+    private RotaRedundantDataCleanerService rotaRedundantDataCleanerService;
+
     @InjectMocks
     private RotaFileProcessorApi rotaFileProcessorApi;
 
@@ -65,6 +71,23 @@ class RotaFileProcessorApiTest {
         verify(rotaFileCaptureAndProcessTriggerService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester), eq(false));
         verify(LOGGER, atLeastOnce()).info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
         verify(enveloper, atLeastOnce()).withMetadataFrom(processRotaFilesJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldCleanRedundantRotaData() {
+        final String requestName = "courtscheduler.rotasl.clean_redundant_rota_data";
+
+        final JsonObject payloadAsJsonObject = createObjectBuilder().build();
+        final JsonEnvelope cleanRedundantRotaDataJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(cleanRedundantRotaDataJsonEnvelope, requestName)).thenReturn(function);
+        doNothing().when(rotaRedundantDataCleanerService).cleanDataForPreviousMonths(anyInt());
+
+        rotaFileProcessorApi.cleanRedundantRotaData(cleanRedundantRotaDataJsonEnvelope);
+
+        verify(rotaRedundantDataCleanerService, timeout(1000).atLeastOnce()).cleanDataForPreviousMonths(anyInt());
+        verify(LOGGER, atLeastOnce()).info("cleanRedundantRotaData api called - courtscheduler.rotasl.clean_redundant_rota_data");
+        verify(LOGGER, atLeastOnce()).info("successfully called and completed - rotaRedundantDataCleanerService.cleanDataForPreviousMonths asynchronously");
+        verify(enveloper, atLeastOnce()).withMetadataFrom(cleanRedundantRotaDataJsonEnvelope, requestName);
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {

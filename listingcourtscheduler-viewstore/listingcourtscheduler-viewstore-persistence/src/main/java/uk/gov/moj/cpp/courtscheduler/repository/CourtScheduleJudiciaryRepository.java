@@ -37,6 +37,8 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
             "AND pb.hearing_start_time BETWEEN :startDate AND :endDate " +
             "AND cs.oucode IN (:ouCodes)) AND csj.active = true";
 
+    private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (SELECT cs.id FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays))";
+
     public abstract CourtScheduleJudiciary findByEmail(String email);
 
     abstract List<CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
@@ -109,4 +111,11 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                                                               @QueryParam("courtScheduleId") final String courtScheduleId,
                                                               @QueryParam("judiciaryId") final String judiciaryId);
 
+
+    public int deleteRedundantRotaData(final int numberOfDays) {
+        return entityManager()
+                .createNativeQuery(DELETE_REDUNDANT_ROTA_DATA)
+                .setParameter("numberOfDays", numberOfDays)
+                .executeUpdate();
+    }
 }

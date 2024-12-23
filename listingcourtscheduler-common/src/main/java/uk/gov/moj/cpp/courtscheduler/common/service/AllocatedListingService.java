@@ -25,4 +25,9 @@ public class AllocatedListingService {
         return allocatedListingTotalBookeds.stream()
                 .collect(toMap(AllocatedListingTotalBooked::getCourtScheduleId, AllocatedListingTotalBooked::getTotalBooked));
     }
+
+    @Transactional
+    public int deleteRedundantRotaData(final int numberOfPreviousMonths) {
+        return allocatedListingRepository.deleteRedundantRotaData(numberOfPreviousMonths * 30);
+    }
 }

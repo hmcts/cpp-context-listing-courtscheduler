@@ -16,6 +16,9 @@ import org.apache.deltaspike.data.api.Repository;
 
 @Repository(forEntity = AllocatedListing.class)
 public abstract class AllocatedListingRepository extends AbstractFullEntityRepository<AllocatedListing, String> {
+
+    private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM allocated_listings WHERE court_schedule_id IN (SELECT cs.id FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays))";
+
     abstract List<AllocatedListing> findByHearingId(final String hearingId);
 
     abstract List<AllocatedListing> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
@@ -49,4 +52,11 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
 
     @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked(al.courtScheduleId, sum(duration) AS totalbooked) FROM AllocatedListing al WHERE al.courtScheduleId IN :courtScheduleIds group by al.courtScheduleId")
     public abstract List<AllocatedListingTotalBooked> getAllocatedListingsByCourtScheduleId(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);
+
+    public int deleteRedundantRotaData(final int numberOfDays) {
+        return entityManager()
+                .createNativeQuery(DELETE_REDUNDANT_ROTA_DATA)
+                .setParameter("numberOfDays", numberOfDays)
+                .executeUpdate();
+    }
 }

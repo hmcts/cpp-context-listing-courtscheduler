@@ -60,4 +60,8 @@ public class CourtScheduleJudiciaryService {
         final LocalDate hearingStartTimeEndBoundary = endDate.plusDays(1);
         return courtScheduleJudiciaryRepository.getAllocatedScheduleJudiciaryInfo(startDate, hearingStartTimeEndBoundary, ouCodes);
     }
+
+    public int deleteRedundantRotaData(final int numberOfPreviousMonthsAndOlder) {
+        return courtScheduleJudiciaryRepository.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder * 30);
+    }
 }

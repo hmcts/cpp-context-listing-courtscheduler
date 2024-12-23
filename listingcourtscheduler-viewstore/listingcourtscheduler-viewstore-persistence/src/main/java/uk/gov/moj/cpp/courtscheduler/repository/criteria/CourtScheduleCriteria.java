@@ -13,6 +13,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule_;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -30,7 +31,7 @@ public class CourtScheduleCriteria {
         Predicate activePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.ACTIVE), true);
         Predicate panelPredicate;
         if (hearingSlotRequestParam.panel().contains(",")) {
-            panelPredicate = root.get(CourtSchedule_.PANEL).in(hearingSlotRequestParam.panel());
+            panelPredicate = root.get(CourtSchedule_.PANEL).in(Arrays.asList(hearingSlotRequestParam.panel().split(",")));
         } else {
             panelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), hearingSlotRequestParam.panel());
         }
@@ -64,8 +65,13 @@ public class CourtScheduleCriteria {
             predicateList.add(businessTypePredicate);
         }
         if (isNotBlank(hearingSlotRequestParam.courtSession())) {
-            Predicate courtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION),
-                    hearingSlotRequestParam.courtSession());
+            Predicate courtSessionPredicate;
+            if (hearingSlotRequestParam.courtSession().contains(",")) {
+                courtSessionPredicate = root.get(CourtSchedule_.COURT_SESSION).in(Arrays.asList(hearingSlotRequestParam.courtSession().split(",")));
+            } else {
+                courtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION),
+                        hearingSlotRequestParam.courtSession());
+            }
             predicateList.add(courtSessionPredicate);
         }
 

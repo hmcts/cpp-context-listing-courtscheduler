@@ -2,7 +2,9 @@ package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 
 import static java.util.Collections.unmodifiableList;
+import static java.util.Objects.nonNull;
 
+import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
@@ -27,11 +29,13 @@ public class DatabaseReader {
 
     private static final String COURT_SCHEDULE_GET_SQL = "SELECT * FROM court_schedule WHERE active is true ORDER BY session_start";
     private static final String COURT_SCHEDULE_JUDICIARY_GET_SQL = "SELECT * FROM court_schedule_judiciary WHERE active is true";
+    private static final String ALLOCATED_LISTINGS_GET_SQL = "SELECT * FROM allocated_listings";
     private static final String COURT_SCHEDULE_MAX_UPDATED_ON_CREATED_ON_SQL = "SELECT max(created_on) maxCreatedOn, max(updated_on) maxUpdatedOn FROM court_schedule WHERE active is true";
     private static final String COURT_SCHEDULE_JUDICIARY_MAX_UPDATED_ON_CREATED_ON_SQL = "SELECT max(created_on) maxCreatedOn, max(updated_on) maxUpdatedOn FROM court_schedule_judiciary WHERE active is true";
     private static final String COURT_SCHEDULE_CREATED_AFTER_SQL = "SELECT * FROM court_schedule WHERE active is true AND created_on > ? ORDER BY session_start";
     private static final String COURT_SCHEDULE_UPDATED_AFTER_SQL = "SELECT * FROM court_schedule WHERE active is true AND updated_on > ? ORDER BY session_start";
     private static final String COURT_SCHEDULE_JUDICIARY_CREATED_AFTER_SQL = "SELECT * FROM court_schedule_judiciary WHERE active is true AND created_on > ?";
+    private static final String COURT_SCHEDULE_BY_ID_SQL = "SELECT * FROM court_schedule WHERE id = ?";
 
     private final ConnectionProvider connectionProvider = new ConnectionProvider();
 
@@ -41,6 +45,10 @@ public class DatabaseReader {
 
     public List<CourtScheduleJudiciary> courtScheduleJudiciaries() {
         return executeCourtScheduleJudiciaryQuery();
+    }
+
+    public List<AllocatedListing> allocatedListings() {
+        return executeAllocatedListingsQuery();
     }
 
     public List<CourtSchedule> courtSchedulesCreatedAfter(final LocalDateTime createdOn) {
@@ -53,6 +61,10 @@ public class DatabaseReader {
 
     public List<CourtScheduleJudiciary> courtScheduleJudiciariesCreatedAfter(final LocalDateTime createdOn) {
         return executeCourtScheduleJudiciariesCreatedAfterQuery(createdOn);
+    }
+
+    public CourtSchedule courtScheduleById(final String courtScheduleId) {
+        return executeCourtScheduleById(courtScheduleId);
     }
 
     public Pair<LocalDateTime, LocalDateTime> getMaxCreatedOnForCourtSchedule() {
@@ -117,6 +129,20 @@ public class DatabaseReader {
         }
     }
 
+    private CourtSchedule executeCourtScheduleById(final String courtScheduleId) {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_BY_ID_SQL)) {
+            statement.setString(1, courtScheduleId);
+            final ResultSet resultSet = statement.executeQuery();
+            if (nonNull(resultSet) && resultSet.next()) {
+                return resultSetToCourtSchedule(resultSet);
+            }
+            return null;
+        } catch (final SQLException exp) {
+            throw new RuntimeException("Exception while querying the DB", exp);
+        }
+    }
+
     private List<CourtSchedule> executeCourtScheduleUpdatedAfterQuery(final LocalDateTime updatedOn) {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
              final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_UPDATED_AFTER_SQL)) {
@@ -153,6 +179,20 @@ public class DatabaseReader {
             final List<CourtScheduleJudiciary> rows = new ArrayList<>();
             while (resultSet.next()) {
                 rows.add(resultSetToCourtScheduleJudiciary(resultSet));
+            }
+            return unmodifiableList(rows);
+        } catch (final SQLException exp) {
+            throw new RuntimeException("Exception while querying the DB", exp);
+        }
+    }
+
+    private List<AllocatedListing> executeAllocatedListingsQuery() {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final Statement statement = connection.createStatement()) {
+            final ResultSet resultSet = statement.executeQuery(ALLOCATED_LISTINGS_GET_SQL);
+            final List<AllocatedListing> rows = new ArrayList<>();
+            while (resultSet.next()) {
+                rows.add(resultSetToAllocatedListing(resultSet));
             }
             return unmodifiableList(rows);
         } catch (final SQLException exp) {
@@ -209,5 +249,21 @@ public class DatabaseReader {
         courtScheduleJudiciary.setUpdatedOn(resultSet.getDate("updated_on"));
 
         return courtScheduleJudiciary;
+    }
+
+    private AllocatedListing resultSetToAllocatedListing(final ResultSet resultSet) throws SQLException {
+        final AllocatedListing allocatedListing = new AllocatedListing();
+        allocatedListing.setId(resultSet.getString("id"));
+        allocatedListing.setCourtScheduleId(resultSet.getString("court_schedule_id"));
+        allocatedListing.setHearingId(resultSet.getString("hearing_id"));
+        allocatedListing.setOucode(resultSet.getString("oucode"));
+        allocatedListing.setCourtRoomId(resultSet.getInt("court_room_id"));
+        allocatedListing.setRotaBusinessType(resultSet.getString("rota_business_type"));
+        allocatedListing.setDuration(resultSet.getInt("duration"));
+        allocatedListing.setHearingStartTime(resultSet.getDate("hearing_start_time"));
+        allocatedListing.setCreatedOn(resultSet.getDate("created_on"));
+        allocatedListing.setUpdatedOn(resultSet.getDate("updated_on"));
+
+        return allocatedListing;
     }
 }

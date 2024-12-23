@@ -27,4 +27,8 @@ public class CourtScheduleService {
     public CourtSchedule saveSlot(final CourtSchedule courtSchedule) {
         return courtScheduleRepository.save(courtSchedule);
     }
+
+    public int deleteRedundantRotaData(final int cleanDataForPreviousMonths) {
+        return courtScheduleRepository.deleteRedundantRotaData(cleanDataForPreviousMonths * 30);
+    }
 }
