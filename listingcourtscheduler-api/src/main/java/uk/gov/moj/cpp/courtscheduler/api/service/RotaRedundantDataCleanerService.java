@@ -1,0 +1,39 @@
+package uk.gov.moj.cpp.courtscheduler.api.service;
+
+import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
+import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
+import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
+
+import javax.ejb.Asynchronous;
+import javax.ejb.Stateless;
+import javax.inject.Inject;
+import javax.transaction.Transactional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Stateless
+public class RotaRedundantDataCleanerService {
+
+    private static final Logger logger = LoggerFactory.getLogger(RotaRedundantDataCleanerService.class);
+
+    @Inject
+    private CourtScheduleService courtScheduleService;
+
+    @Inject
+    private CourtScheduleJudiciaryService courtScheduleJudiciaryService;
+
+    @Inject
+    private AllocatedListingService allocatedListingService;
+
+    @Asynchronous
+    @Transactional
+    public void cleanDataForPreviousMonths(final int numberOfPreviousMonthsAndOlder) {
+        final int numberOfDeletedAllocatedListingsForRedundancy = allocatedListingService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
+        logger.info("numberOfDeletedAllocatedListingsForRedundancy: {}", numberOfDeletedAllocatedListingsForRedundancy);
+        final int numberOfDeletedJudiciariesForRedundancy = courtScheduleJudiciaryService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
+        logger.info("numberOfDeletedJudiciariesForRedundancy: {}", numberOfDeletedJudiciariesForRedundancy);
+        final int numberOfDeletedCourtSchedulesForRedundancy = courtScheduleService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
+        logger.info("numberOfDeletedCourtSchedulesForRedundancy: {}", numberOfDeletedCourtSchedulesForRedundancy);
+    }
+}

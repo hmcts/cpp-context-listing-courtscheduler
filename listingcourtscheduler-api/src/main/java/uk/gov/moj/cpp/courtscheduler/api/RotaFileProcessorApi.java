@@ -8,6 +8,7 @@ import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileCaptureAndProcessTriggerService;
+import uk.gov.moj.cpp.courtscheduler.api.service.RotaRedundantDataCleanerService;
 
 import javax.inject.Inject;
 import javax.json.JsonObject;
@@ -29,6 +30,9 @@ public class RotaFileProcessorApi {
     @Inject
     private RotaFileCaptureAndProcessTriggerService rotaFileCaptureAndProcessTriggerService;
 
+    @Inject
+    private RotaRedundantDataCleanerService rotaRedundantDataCleanerService;
+
     @Handles("courtscheduler.rotasl.process_rota_files")
     public JsonEnvelope processRotaFiles(final JsonEnvelope envelope) {
         LOGGER.info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
@@ -39,5 +43,17 @@ public class RotaFileProcessorApi {
         LOGGER.info("successfully called and completed - rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.process_rota_files").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.rotasl.clean_redundant_rota_data")
+    public JsonEnvelope cleanRedundantRotaData(final JsonEnvelope envelope) {
+        LOGGER.info("cleanRedundantRotaData api called - courtscheduler.rotasl.clean_redundant_rota_data");
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("calling rotaRedundantDataCleanerService.cleanDataForPreviousMonths asynchronously");
+        final int numberOfPreviousMonthsAndOlder = payload.getInt("numberOfPreviousMonthsAndOlder", 6);
+        rotaRedundantDataCleanerService.cleanDataForPreviousMonths(numberOfPreviousMonthsAndOlder);
+        LOGGER.info("successfully called and completed - rotaRedundantDataCleanerService.cleanDataForPreviousMonths asynchronously");
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.clean_redundant_rota_data").apply(createObjectBuilder().build());
     }
 }

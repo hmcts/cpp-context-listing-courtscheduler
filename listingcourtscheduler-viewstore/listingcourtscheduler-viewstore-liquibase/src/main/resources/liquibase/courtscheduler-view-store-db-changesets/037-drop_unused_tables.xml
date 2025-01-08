@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="037" author="samialpak"
+               logicalFilePath="037-drop_unused_tables.xml">
+        <sql>
+            DROP TABLE IF EXISTS court_room_mapping;
+            DROP TABLE IF EXISTS court_room_session_allocation;
+            DROP TABLE IF EXISTS organisation_unit_hmi_status;
+            DROP TABLE IF EXISTS business_type;
+            DROP TABLE IF EXISTS judiciary_mapping;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

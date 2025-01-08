@@ -3,7 +3,7 @@
   "sessionStartDate": "SESSION_START_DATE",
   "sessionEndDate": "SESSION_END_DATE",
   "ouCode": "OU_CODE",
-  "pageSize": "1",
+  "pageSize": "10",
   "pageNumber": "1",
   "courtSession": "AM"
 }

@@ -15,6 +15,7 @@ import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.converter.*;
 import uk.gov.moj.cpp.courtscheduler.api.service.*;
 import uk.gov.moj.cpp.courtscheduler.api.validator.*;
+import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
 

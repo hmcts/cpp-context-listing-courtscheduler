@@ -1,6 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.util.UUID.randomUUID;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -71,6 +73,17 @@ class CourtScheduleJudiciaryServiceTest {
         );
 
         verify(courtScheduleJudiciaryRepository, atLeastOnce()).findInCourtScheduleIds(eq(courtScheduleIds));
+    }
+
+    @Test
+    void shouldDeleteRedundantRotaData() {
+        final int numberOfPreviousMonthsAndOlder = 6;
+        final int numberOfDeleted = 5;
+        when(courtScheduleJudiciaryRepository.deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder * 30))).thenReturn(numberOfDeleted);
+
+        final int expectedNumberOfDeletion = courtScheduleJudiciaryService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
+        verify(courtScheduleJudiciaryRepository, atLeastOnce()).deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder * 30));
+        assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
     }
 
     private List<CourtScheduleJudiciary> getCourtScheduleJudiciaryEntities(final String courtScheduleId, final String courtListingProfileId) throws JsonProcessingException {

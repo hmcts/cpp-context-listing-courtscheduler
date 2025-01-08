@@ -86,6 +86,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule cs WHERE cs.id IN (:courtScheduleIds) AND cs.court_listing_profile_id is not null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) AND  not exists(" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
+    private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays)";
+
     private static final int SLOT_DEFAULT = 1;
 
 
@@ -265,8 +267,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         final int pageSize = Integer.parseInt(hearingSlotRequestParam.pageSize());
         final int pageNumber = Integer.parseInt(hearingSlotRequestParam.pageNumber());
 
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+        final CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        final CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
         courtScheduleCriteria.createHearingSlotsCourtScheduleCriteria(hearingSlotRequestParam, criteriaBuilder, criteriaQuery);
         List<CourtSchedule> courtScheduleList = entityManager.createQuery(criteriaQuery).setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize).getResultList();
         List<CourtSchedule> totalCourtScheduleList = entityManager.createQuery(criteriaQuery).getResultList();
@@ -563,4 +565,11 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                                                                                                            @QueryParam("sessionDate") LocalDate sessionDate,
                                                                                                            @QueryParam("businessType") String businessType,
                                                                                                            @QueryParam("courtSession") String courtSession);
+
+    public int deleteRedundantRotaData(final int numberOfDays) {
+        return entityManager()
+                .createNativeQuery(DELETE_REDUNDANT_ROTA_DATA)
+                .setParameter("numberOfDays", numberOfDays)
+                .executeUpdate();
+    }
 }

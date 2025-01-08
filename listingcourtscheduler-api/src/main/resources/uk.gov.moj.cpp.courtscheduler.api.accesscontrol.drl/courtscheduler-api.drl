@@ -169,3 +169,12 @@ rule "API - Action - courtscheduler.rotasl.process_rota_files"
   then
     $outcome.setSuccess(true);
 end
+
+rule "API - Action - courtscheduler.rotasl.clean_redundant_rota_data"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.rotasl.clean_redundant_rota_data");
+        eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end

@@ -50,7 +50,7 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldCreateSlotBasedSchedule() {
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
         stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-        final String createCourtSchedulePayload = getPayload("create-court-schedule-duration-based.json");
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
@@ -59,7 +59,7 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldCreateDurationBasedSchedule() {
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        final String createCourtSchedulePayload = getPayload("create-court-schedule-duration-based.json");
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
@@ -68,7 +68,7 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldCreateOrUpdateCourtSchedule() {
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
 
-        final String createCourtSchedulePayload = getPayload("create-court-schedule-multiple-session.json");
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-multiple-session.json");
         final Response response = postCommand(BASE_RESOURCE_URL, "application/vnd.courtscheduler.create+json", USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
@@ -216,5 +216,14 @@ class CourtSchedulerIT extends AbstractIT {
         final Response response = postCommand(OUCODE_MIGRATE_URL, "application/vnd.courtscheduler.oucode.migrate+json", USER_ID, migrateOuCodePayload);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    public String prepareCreateCourtSchedulePayload(final String jsonFilePath) {
+        final LocalDate startDate = LocalDate.now().plusDays(3);
+        final LocalDate endDate = startDate.plusDays(28);
+
+        return getPayload(jsonFilePath)
+                .replaceAll("START_DATE", startDate.toString())
+                .replaceAll("END_DATE", endDate.toString());
     }
 }

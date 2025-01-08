@@ -1,6 +1,8 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.util.UUID.randomUUID;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -54,6 +56,17 @@ class AllocatedListingServiceTest {
         assertEquals(courtScheduleIds.size(), allocatedListingTotalBookeds.size());
 
         verify(allocatedListingRepository, atLeastOnce()).getAllocatedListingsByCourtScheduleId(eq(courtScheduleIds));
+    }
+
+    @Test
+    void shouldDeleteRedundantRotaData() {
+        final int numberOfPreviousMonthsAndOlder = 6;
+        final int numberOfDeleted = 20;
+        when(allocatedListingRepository.deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder * 30))).thenReturn(numberOfDeleted);
+
+        final int expectedNumberOfDeletion = allocatedListingService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
+        verify(allocatedListingRepository, atLeastOnce()).deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder * 30));
+        assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
     }
 
     private List<AllocatedListingTotalBooked> getAllocatedListingTotalBooked(final List<String> courtScheduleIds) {

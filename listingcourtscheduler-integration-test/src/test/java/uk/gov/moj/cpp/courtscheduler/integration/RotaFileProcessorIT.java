@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static java.lang.String.format;
 import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 import static java.util.Optional.of;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -34,6 +35,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -59,6 +61,7 @@ class RotaFileProcessorIT extends AbstractIT {
     private static Logger logger = LoggerFactory.getLogger(RotaFileProcessorIT.class);
 
     private static final String ROTASL_FILE_PROCESSOR_URL = "/rotasl/process-rota-files";
+    private static final String ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL = "/rotasl/clean-redundant-rota-data";
 
     private AzureBlobClientService azureBlobClientService = new AzureBlobClientService();
 
@@ -67,6 +70,7 @@ class RotaFileProcessorIT extends AbstractIT {
     private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=+p3GXQguT4npJqxd6gAPfDgLu0YuJ3n1+hpTQYg1BQn0UL5Ut+bDDE7l2qrRNTt/yW5jNyf5mRUmM11F8dnkpA==;EndpointSuffix=core.windows.net;";
 
     public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 300;
+    public static final int DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC = 300;
 
     private LocalDateTime maxCreatedOnForCourtSchedule;
     private LocalDateTime maxUpdatedOnForCourtSchedule;
@@ -221,6 +225,48 @@ class RotaFileProcessorIT extends AbstractIT {
         filesToBeDeletedFromOutputContainer.add(finalSnapshotFileName);
     }
 
+    @Test
+    void shouldCleanRedundantRotaData() throws IOException, SQLException {
+        final int numberOfPreviousMonthsAndOlder = 6;
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
+
+        final int numberOfPreviousDaysAndOlder = numberOfPreviousMonthsAndOlder * 30;
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+        final List<CourtSchedule> courtSchedules180DaysOlderOrMore = courtSchedules.stream()
+                .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(LocalDate.now().minusDays(numberOfPreviousDaysAndOlder)))
+                .toList();
+        insertAllocatedListingsForCourtSchedules(courtSchedules180DaysOlderOrMore);
+        final int numberOf180DaysOrOlderThan = courtSchedules180DaysOlderOrMore.size();
+        final int numberOfTotalCourtSchedules = courtSchedules.size();
+
+        final List<AllocatedListing> allocatedListings = databaseReader.allocatedListings();
+        assertEquals(numberOf180DaysOrOlderThan, allocatedListings.size());
+
+        String payloadAsJsonString = getPayload("rota-clean-redundant-data-request.json");
+        payloadAsJsonString = payloadAsJsonString.replace("NUMBER_OF_PREVIOUS_MONTHS_AND_OLDER", String.valueOf(numberOfPreviousMonthsAndOlder));
+        // then call rota file processor api
+        final Response response = postCommand(ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL, "application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json", USER_ID, payloadAsJsonString);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final LocalDate OneHundredAnd80DaysBeforeNow = LocalDate.now().minusDays(numberOfPreviousDaysAndOlder);
+        // await until this file uploaded into archive container
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC, SECONDS).until(() -> {
+            final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
+            return courtScheduleEntities.stream()
+                    .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(OneHundredAnd80DaysBeforeNow) || courtSchedule.getSessionDate().isEqual(OneHundredAnd80DaysBeforeNow))
+                    .toList().size() == (numberOfTotalCourtSchedules - numberOf180DaysOrOlderThan);
+        });
+
+        final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
+        assertTrue(courtScheduleEntities.stream()
+                .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(OneHundredAnd80DaysBeforeNow))
+                .findAny()
+                .isEmpty());
+        assertThat(courtScheduleEntities.size(), is(numberOfTotalCourtSchedules - numberOf180DaysOrOlderThan));
+
+        assertTrue(databaseReader.allocatedListings().isEmpty());
+    }
+
     private void processFullRotaFile(final String fileBlobBaseName, final boolean migrated,
                                      final int expectedNumberOfSlots,
                                      final int expectedNumberOfJudiciaries,
@@ -298,8 +344,21 @@ class RotaFileProcessorIT extends AbstractIT {
         }
     }
 
+    private void insertAllocatedListingsForCourtSchedules(final List<CourtSchedule> courtSchedules180DaysOlderOrMore) throws SQLException {
+        await().pollDelay(Duration.ofSeconds(2)).untilAsserted(() -> assertTrue(true));
+        for(final CourtSchedule courtSchedule180DaysOlderOrMore : courtSchedules180DaysOlderOrMore) {
+            final CourtSchedule courtSchedule = databaseReader.courtScheduleById(courtSchedule180DaysOlderOrMore.getCourtScheduleId());
+            if (nonNull(courtSchedule)) {
+                databaseSeeder.insertAllocatedListing(getAllocatedListing(courtSchedule180DaysOlderOrMore));
+            } else {
+                logger.info("courtScheduleId not found to be inserted to allocated_listings: {}", courtSchedule180DaysOlderOrMore.getCourtScheduleId());
+            }
+        }
+    }
+
     private AllocatedListing getAllocatedListing(final CourtSchedule courtSchedule) {
         final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setId(randomUUID().toString());
         allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
         allocatedListing.setOucode(courtSchedule.getOuCode());
@@ -308,5 +367,4 @@ class RotaFileProcessorIT extends AbstractIT {
 
         return allocatedListing;
     }
-
 }

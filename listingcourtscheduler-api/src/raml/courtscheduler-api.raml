@@ -343,6 +343,23 @@ protocols: [ HTTP, HTTPS ]
       202:
         description: Request Accepted
 
+/rotasl/clean-redundant-rota-data:
+  post:
+    description: |
+      deleting rotasl processed redundant data older than N months
+        ...
+        (mapping):
+            requestType: application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json
+            name: courtscheduler.rotasl.clean_redundant_rota_data
+        ...
+    body:
+      application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json:
+        schema: !include json/schema/courtscheduler.rotasl.clean_redundant_rota_data.json
+        example: !include json/courtscheduler.rotasl.clean_redundant_rota_data.json
+    responses:
+      202:
+        description: Request Accepted
+
 
 /validate:
   description: |
