@@ -217,6 +217,9 @@ public class CourtSchedulerApi {
         }
 
         JsonObject responseObject = allocatedListingService.getHearingIds(hearingIdsRequest);
+
+        LOGGER.info("courtscheduler.get.hearing.ids returned : {}", responseObject);
+
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 
