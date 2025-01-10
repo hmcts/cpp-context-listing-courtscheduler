@@ -151,7 +151,7 @@ public class AllocatedListingRepositoryTest {
     }
 
     @Test
-    public void shouldGetHearingIdsByReq() throws Exception {
+    public void shouldGetHearingIdsByReq() {
         final LocalDate today = LocalDate.now();
         final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
         courtSchedule1.setPanel("ADULT");
@@ -224,6 +224,54 @@ public class AllocatedListingRepositoryTest {
         assertEquals(expHearingIds.get(2), actHearingIds.get(2));
         assertEquals(expHearingIds.get(3), actHearingIds.get(3));
         assertEquals(expHearingIds.get(4), actHearingIds.get(4));
+    }
+
+
+    @Test
+    public void shouldGetHearingIdsByReqWithMultiPanels() {
+        final LocalDate today = LocalDate.now();
+        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setPanel("ADULT");
+        courtSchedule1.setCourtScheduleId("COURT-SCHEDULE-1");
+        final LocalDate sessionDate = today.minusDays(3);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setCourtHouseName("HOUSE-1");
+        courtSchedule1.setActive(true);
+        courtScheduleRepository.saveAndFlush(courtSchedule1);
+
+        final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
+        courtSchedule2.setPanel("YOUTH");
+        courtSchedule2.setCourtScheduleId("COURT-SCHEDULE-2");
+        courtSchedule2.setSessionDate(sessionDate);
+        courtSchedule2.setCourtHouseName("HOUSE-2");
+        courtSchedule2.setActive(true);
+        courtScheduleRepository.saveAndFlush(courtSchedule2);
+
+        final String hearingId1 = randomUUID().toString();
+        final LocalDateTime hearing1StartTime = sessionDate.atTime(14, 0);
+        allocatedListingRepository.saveAndFlush(createAllocateListing("1", "BOOKING-1", "COURT-SCHEDULE-1", hearingId1, hearing1StartTime));
+
+        final String hearingId2 = randomUUID().toString();
+        final LocalDateTime hearing2StartTime = sessionDate.atTime(16, 0);
+        allocatedListingRepository.saveAndFlush(createAllocateListing("2", "BOOKING-2", "COURT-SCHEDULE-2", hearingId2, hearing2StartTime));
+
+        HearingSlotRequestParam hearingIdsRequest =
+                new HearingSlotRequestParam("ADULT, YOUTH",
+                        today.minusDays(6).toString(),
+                        today.toString(),
+                        "",
+                        "",
+                        "10",
+                        "1",
+                        "",
+                        "",
+                        "",
+                        "");
+        Pair<Integer, Set<String>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
+        assertEquals(2, hearingIdsResult.getKey().longValue());
+        List<String> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
+        assertEquals(hearingId1, actHearingIds.get(0));
+        assertEquals(hearingId2, actHearingIds.get(1));
     }
 
     private AllocatedListing createAllocateListing(String id,

@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
+import static java.util.Arrays.stream;
+
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
@@ -99,8 +101,8 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
         final StringBuilder queryBuilder = new StringBuilder("select al.hearing_id " +
                 "from allocated_listings al, court_schedule cs " +
                 "where al.court_schedule_id = cs.id and cs.active = true ");
-        queryBuilder.append("and cs.panel = :panel ");
-        params.put("panel", hearingIdsReq.panel());
+        queryBuilder.append("and cs.panel in (:panel) ");
+        params.put("panel", stream(hearingIdsReq.panel().split(",")).map(String::trim).toList());
 
         queryBuilder.append("and cs.session_start >= :sessionStartDate ");
         params.put("sessionStartDate", LocalDate.parse(hearingIdsReq.sessionStartDate()));
