@@ -32,7 +32,6 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
 
     private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM allocated_listings WHERE court_schedule_id IN (SELECT cs.id FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays))";
 
-
     @Inject
     private EntityManager entityManager;
 
