@@ -93629,6 +93629,24 @@
       "lastModifiedTs": "2024-06-24T15:27:40.491"
     },
     {
+      "id": "5771a96b-1c5a-45d1-b647-1bec5212cafc",
+      "seqId": 906687,
+      "titlePrefix": "Mrs",
+      "titlePrefixWelsh": "Mrs",
+      "titleSuffix": "JP",
+      "titleSuffixWelsh": "YH",
+      "surname": "Richmondts-Changed",
+      "forenames": "Elvirats-Changed",
+      "judiciaryType": "Magistrate",
+      "personId": "151159",
+      "emailAddress": "richmondts.elvirats.4396@rotaemail.com",
+      "compulsoryRetireDate": "2047-03-09",
+      "currentJobStartDate": "2022-07-28",
+      "personalCode": "49936566",
+      "createdTs": "2022-09-21T16:21:08.382",
+      "lastModifiedTs": "2024-06-24T15:27:40.491"
+    },
+    {
       "id": "30de9ece-7cf3-390c-8c39-ccff1a044209",
       "seqId": 7940,
       "titlePrefix": "Mrs",
@@ -93688,7 +93706,7 @@
       "forenames": "Khosrow",
       "judiciaryType": "Magistrate",
       "personId": "11049",
-      "emailAddress": "Khosrow.Abadeh.JP@ejudiciary.net",
+      "emailAddress": "yardts.vonniets.654@rotaemail.com",
       "compulsoryRetireDate": "2035-08-22",
       "currentJobStartDate": "2005-06-02",
       "personalCode": "39157"
@@ -93704,7 +93722,7 @@
       "forenames": "Kunle",
       "judiciaryType": "Magistrate",
       "personId": "156021",
-      "emailAddress": "Kunle.Abayomi.JP@ejudiciary.net",
+      "emailAddress": "tessits.carlosts.246@rotaemail.com",
       "compulsoryRetireDate": "2072-12-11",
       "currentJobStartDate": "2024-02-07",
       "personalCode": "70102079",

@@ -169,7 +169,6 @@ public class RotaFileProcessorService {
         final Collection<CourtScheduleJudiciary> schedulesForNonMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForNonMigrated, records, FALSE, activeCourtSchedulesForNonMigratedOuCodesWithinRotaPeriod, requester);
         final Collection<CourtScheduleJudiciary> schedulesForMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForMigrated, records, TRUE, activeCourtSchedulesForMigratedOuCodesWithinDateRange, requester);
         logger.info("received schedules with schedules size: {} and schedulesForMigrated: {}", schedulesForNonMigrated.size(), schedulesForMigrated.size());
-
         logger.info("Enriched {} , saving it to DB..", slotsForNonMigrated.size());
 
         logger.info("DD-15703:RotaFileProcessor: Before checking for rota period");

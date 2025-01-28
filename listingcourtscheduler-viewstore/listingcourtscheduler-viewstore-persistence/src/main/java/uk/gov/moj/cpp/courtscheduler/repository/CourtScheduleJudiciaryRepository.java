@@ -21,8 +21,7 @@ import org.apache.deltaspike.data.api.Repository;
 public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey> {
 
     private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN " +
-            " (SELECT cs.id FROM court_schedule cs WHERE  not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) AND cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) " +
-            "AND not exists (" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")) AND active = true";
+            " (SELECT cs.id FROM court_schedule cs WHERE cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND active = true)";
 
     public static final String DELETE_CSJ_BY_IDS_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) " +
             "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)";

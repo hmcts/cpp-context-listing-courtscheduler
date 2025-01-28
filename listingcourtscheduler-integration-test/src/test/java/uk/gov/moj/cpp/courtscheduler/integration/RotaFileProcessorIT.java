@@ -52,6 +52,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,56 +113,56 @@ class RotaFileProcessorIT extends AbstractIT {
 
     @Test
     void shouldProcessFullRotaFileForNonMigrated() throws IOException, SQLException {
-        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 66, 0);
     }
 
     @Test
     void shouldProcessFullRotaFileAndOnlyCourtScheduleJudiciaryProcessedForMigrated() throws IOException, SQLException {
-        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 66, 0);
         databaseSeeder.cleanCourtScheduleJudiciaryTable();
         databaseSeeder.cleanMigrationStatusTable();
-        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, true, 623, 45, 45);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, true, 623, 66, 66);
     }
 
     @Test
     void shouldProcessFullRotaFileAndOnlyCourtScheduleJudiciaryProcessedEvenListingProfileIdNullForMigrated() throws IOException, SQLException {
-        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 66, 0);
         databaseSeeder.cleanCourtScheduleJudiciaryTable();
         databaseSeeder.cleanMigrationStatusTable();
         databaseSeeder.updateCourtScheduleSetListingProfileIdAsNull(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE);
-        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, true, 623, 45, 45);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, true, 623, 66, 66);
     }
 
     @Test
     void shouldProcessOnlyJudiciaryInfoForMigratedEvenListingProfileIdNull() throws IOException, SQLException {
         final String fileBlobBaseName = BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME;
-        processFullRotaFile(fileBlobBaseName, false, 620, 11, 0);
+        processFullRotaFile(fileBlobBaseName, false, 620, 32, 0);
         databaseSeeder.cleanCourtScheduleJudiciaryTable();
         databaseSeeder.cleanMigrationStatusTable();
         databaseSeeder.updateCourtScheduleSetListingProfileIdAsNull(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE);
-        processFullRotaFile(fileBlobBaseName, true, 620, 11, 11);
+        processFullRotaFile(fileBlobBaseName, true, 620, 32, 32);
     }
 
     @Test
     void shouldProcessOnlyJudiciaryInfoAndJudiciaryDataAlreadyExistsForMigratedEvenListingProfileIdNull() throws IOException, SQLException {
         final String fileBlobBaseName = BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME;
-        processFullRotaFile(fileBlobBaseName, false, 620, 11, 0);
+        processFullRotaFile(fileBlobBaseName, false, 620, 32, 0);
         databaseSeeder.deleteJudiciaryByProfileId("CS4305744");
         databaseSeeder.cleanMigrationStatusTable();
         databaseSeeder.updateCourtScheduleSetListingProfileIdAsNull(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE);
-        processFullRotaFile(fileBlobBaseName, true, 620, 11, 11);
+        processFullRotaFile(fileBlobBaseName, true, 620, 32, 32);
     }
 
     @Test
     void shouldUpdateJudiciaryInfoAndShouldNotDeleteForTheOnesHavingAllocatedSlots() throws IOException, SQLException {
         final String fileBlobBaseName = BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME;
-        processFullRotaFile(fileBlobBaseName, false, 620, 11, 0);
+        processFullRotaFile(fileBlobBaseName, false, 620, 32, 0);
         final Optional<CourtSchedule> courtScheduleOptional = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305744")).findAny();
         databaseSeeder.setUpdateAvailableSlotForCourtSchedule("CS4305744");
         databaseSeeder.insertAllocatedListing(getAllocatedListing(courtScheduleOptional.get()));
         databaseSeeder.cleanMigrationStatusTable();
         databaseSeeder.updateCourtScheduleSetListingProfileIdAsNull(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE);
-        processFullRotaFile(fileBlobBaseName, true, 620, 11, 10);
+        processFullRotaFile(fileBlobBaseName, true, 620, 32, 32);
     }
 
     @Test
@@ -172,13 +173,13 @@ class RotaFileProcessorIT extends AbstractIT {
 
     @Test
     void shouldProcessSnapshotRotaFile() throws SQLException, IOException {
-        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 66, 0);
 
         final Optional<CourtSchedule> courtScheduleOptional = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305478")).findAny();
         databaseSeeder.insertAllocatedListing(getAllocatedListing(courtScheduleOptional.get()));
         final Stopwatch stopwatch = Stopwatch.createStarted();
         final LocalDate snapshotFileStartDate = LocalDate.of(2024, 8, 1);
-        final String snapshotFileBaseNamePart1 = "IT_Test_lja_bedfodshire";
+        final String snapshotFileBaseNamePart1 = "IT_Test_lja_bedfordshire";
         final String snapshotFileBaseNamePart2 = "_snapshot_20240403T180039Z";
         final String generatedUniqueFileId = randomUUID().toString();
         final String finalSnapshotFileName = format("%s_%s%s.xml", snapshotFileBaseNamePart1, generatedUniqueFileId, snapshotFileBaseNamePart2);
@@ -216,7 +217,80 @@ class RotaFileProcessorIT extends AbstractIT {
                 .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(snapshotFileStartDate) || courtSchedule.getSessionDate().isEqual(snapshotFileStartDate)).toList().size());
         assertEquals(0, courtSchedulesFromSnapshotFile.stream()
                 .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(snapshotFileStartDate)).toList().size());
-        assertEquals(45, courtScheduleJudiciaryEntities.size());
+        assertEquals(66, courtScheduleJudiciaryEntities.size());
+
+        final Optional<CourtSchedule> allocatedSlotNotBeingInSnapshotFile = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305478")).findAny();
+        assertTrue(allocatedSlotNotBeingInSnapshotFile.isPresent());
+        assertTrue(allocatedSlotNotBeingInSnapshotFile.get().isActive());
+
+        filesToBeDeletedFromOutputContainer.add(finalSnapshotFileName);
+    }
+
+    @Test
+    void shouldProcessSnapshotRotaFileWithHavingJudiciaryDataChanged() throws SQLException, IOException {
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 66, 0);
+
+        final Optional<CourtSchedule> courtScheduleOptional = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305478")).findAny();
+        databaseSeeder.insertAllocatedListing(getAllocatedListing(courtScheduleOptional.get()));
+        final Optional<CourtSchedule> courtScheduleOptionalForCS4304756 = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4304756")).findAny();
+        databaseSeeder.insertAllocatedListing(getAllocatedListing(courtScheduleOptionalForCS4304756.get()));
+
+        final LocalDate snapshotFileStartDate = LocalDate.of(2024, 8, 1);
+        final String snapshotFileBaseNamePart1 = "IT_Test_lja_bedfordshire";
+        final String snapshotFileBaseNamePart2 = "_snapshot_20240403T180039Z";
+        processSnapshotFile(snapshotFileBaseNamePart1, snapshotFileBaseNamePart2, snapshotFileStartDate, 66, 0,209);
+
+        final LocalDate secondSnapshotFileStartDate = LocalDate.of(2024, 8, 2);
+        final String secondSnapshotFileBaseNamePart1 = "IT_Test_lja_bedfordshire";
+        final String secondSnapshotFileBaseNamePart2 = "_snapshot_20240802T180039Z";
+
+        processSnapshotFile(secondSnapshotFileBaseNamePart1, secondSnapshotFileBaseNamePart2, secondSnapshotFileStartDate, 66, 5,204);
+    }
+
+    private void processSnapshotFile(final String snapshotFileBaseNamePart1,
+                                     final String snapshotFileBaseNamePart2,
+                                     final LocalDate snapshotFileStartDate,
+                                     final int numberOfJOHs,
+                                     final int numberOfCreatedSlotBeforeSnapshotFile,
+                                     final int numberOfCreatedSlotFromSnapshot) throws IOException {
+        final Stopwatch stopwatch = Stopwatch.createStarted();
+        final String generatedUniqueFileId = randomUUID().toString();
+        final String finalSnapshotFileName = format("%s_%s%s.xml", snapshotFileBaseNamePart1, generatedUniqueFileId, snapshotFileBaseNamePart2);
+
+        final InputStream rotaFileInputStream = getClass().getClassLoader().getResourceAsStream(format("rotafileprocessor/%s%s.xml", snapshotFileBaseNamePart1, snapshotFileBaseNamePart2));
+
+        if (isNull(rotaFileInputStream)) {
+            fail("rotaFileInputStream is null");
+            return;
+        }
+        final byte[] rotaFileAsBytes = IOUtils.toByteArray(rotaFileInputStream);
+        // upload the rota file first
+        azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(rotaFileAsBytes), (long) rotaFileAsBytes.length, finalSnapshotFileName, of(azureBlobInputContainerName));
+
+        final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
+        // then call rota file processor api
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, payloadAsJsonString);
+
+        // await until this file uploaded into archive container
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
+            final List<CourtSchedule> courtSchedulesFromSnapshotFile = databaseReader.courtSchedulesCreatedAfter(maxCreatedOnForCourtSchedule);
+            return isNotEmpty(courtSchedulesFromSnapshotFile) && courtSchedulesFromSnapshotFile.size() == 209;
+        });
+
+        logger.info("snapshot rota file processing took time as seconds : {}", stopwatch.elapsed(SECONDS));
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // then after do validation against database to see if we have expected data for this rota file
+        final List<CourtSchedule> courtSchedulesFromSnapshotFile = databaseReader.courtSchedulesCreatedAfter(maxCreatedOnForCourtSchedule);
+        final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = databaseReader.courtScheduleJudiciaries();
+
+        assertEquals(209, courtSchedulesFromSnapshotFile.size());
+        assertEquals(numberOfCreatedSlotFromSnapshot, courtSchedulesFromSnapshotFile.stream()
+                .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(snapshotFileStartDate) || courtSchedule.getSessionDate().isEqual(snapshotFileStartDate)).toList().size());
+        assertEquals(numberOfCreatedSlotBeforeSnapshotFile, courtSchedulesFromSnapshotFile.stream()
+                .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(snapshotFileStartDate)).toList().size());
+        assertEquals(numberOfJOHs, courtScheduleJudiciaryEntities.size());
 
         final Optional<CourtSchedule> allocatedSlotNotBeingInSnapshotFile = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305478")).findAny();
         assertTrue(allocatedSlotNotBeingInSnapshotFile.isPresent());
@@ -228,7 +302,7 @@ class RotaFileProcessorIT extends AbstractIT {
     @Test
     void shouldCleanRedundantRotaData() throws IOException, SQLException {
         final int numberOfPreviousMonthsAndOlder = 6;
-        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 45, 0);
+        processFullRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, false, 623, 66, 0);
 
         final int numberOfPreviousDaysAndOlder = numberOfPreviousMonthsAndOlder * 30;
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
@@ -362,7 +436,6 @@ class RotaFileProcessorIT extends AbstractIT {
         allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
         allocatedListing.setOucode(courtSchedule.getOuCode());
-
         allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0 ).atZone(ZoneId.of("Europe/London")).toInstant()));
 
         return allocatedListing;

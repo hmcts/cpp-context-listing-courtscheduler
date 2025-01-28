@@ -311,7 +311,10 @@ public class SessionsService {
         logger.info("DD-15703:CourtScheduleRepository: after saveSlots with numberOfSavedSlots: {}", courtScheduleIdsOfSavedSlots.size());
 
         for (final CourtSchedule courtSchedule : slotAndScheduleInfo.slotsToUpdate()) {
-            slotAndScheduleInfo.newSlots().putIfAbsent(courtSchedule.getListingProfileId(), courtSchedule);
+            if (!slotAndScheduleInfo.newSlots().containsKey(courtSchedule.getListingProfileId())) {
+                slotAndScheduleInfo.newSlots().put(courtSchedule.getListingProfileId(), courtSchedule);
+                courtScheduleIdsOfSavedSlots.add(courtSchedule.getCourtScheduleId());
+            }
         }
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule");
