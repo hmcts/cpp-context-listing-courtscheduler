@@ -119,11 +119,11 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(sessionsService.validateSessionIntegrity(any(), any(), any())).thenReturn(errorResult);
+        when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(sessionsService.validateSessionIntegrity(any(), any(), any())).thenReturn(errorResult);
+        when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertEquals("Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ", result.getString("errorMessage"));
@@ -148,7 +148,7 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(sessionsService.validateSessionIntegrity(any(), any(), any())).thenReturn(errorResult);
+        when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
@@ -175,7 +175,7 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(sessionsService.validateSessionIntegrity(any(), any(), any())).thenReturn(errorResult);
+        when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertValidationFailure(result,"SessionsToBe Added has a duplicate entry within SessionList: CourtCentreId,courtroomId,businessType,SessionType,RepeatDays");
@@ -202,7 +202,7 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(sessionsService.validateSessionIntegrity(any(), any(), any())).thenReturn(errorResult);
+        when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertValidationFailure(result,"SessionsToBe Added has a duplicate entry within SessionList: CourtCentreId,courtroomId,businessType,SessionType,RepeatDays");
