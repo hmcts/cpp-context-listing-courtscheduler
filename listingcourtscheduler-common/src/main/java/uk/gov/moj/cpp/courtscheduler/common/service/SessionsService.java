@@ -610,7 +610,7 @@ public class SessionsService {
                 .getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate);
         // session.repeatDays is a set, if it includes dayofweekvalue of sessionsToCompare
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
-            logger.info("validateSessionIntegrity sessionToCompare : {}", sessionToCompare);
+            logger.debug("validateSessionIntegrity sessionToCompare : {}", sessionToCompare);
             //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
             if (validatedWeeklyFrequency(session, sessionToCompare, startDate, endDate, repeatFor)) {
                 return buildErrorResponse(format(ErrorMessages.DUPLICATE_SESSIONS, sessionToCompare.getCourtScheduleId()));
@@ -628,14 +628,14 @@ public class SessionsService {
         for (long weekNumber = 0; weekNumber <= weeksBetween; weekNumber += repeatFor) {
             for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
                 LocalDate sessionDateCandidate = startDate.plusWeeks(weekNumber).with(TemporalAdjusters.nextOrSame(dayOfWeek));
-                logger.info("validatedWeeklyFrequency sessionDateCandidate : {}", sessionDateCandidate);
-                logger.info("validatedWeeklyFrequency sessionToCompare.getSessionDate : {}", sessionToCompare.getSessionDate());
+                logger.debug("validatedWeeklyFrequency sessionDateCandidate : {}", sessionDateCandidate);
+                logger.debug("validatedWeeklyFrequency sessionToCompare.getSessionDate : {}", sessionToCompare.getSessionDate());
                 if (session.getCourtCentreId().equals(sessionToCompare.getCourtHouseId()) &&
                         session.getCourtRoomId().equals(sessionToCompare.getCourtRoomId()) &&
                         session.getBusinessType().equals(sessionToCompare.getBusinessType()) &&
                         session.getRepeatDays().contains(DayOfWeek.of(sessionToCompare.getSessionDate().getDayOfWeek().getValue())) &&
                         sessionToCompare.getSessionDate().equals(sessionDateCandidate)) {
-                    logger.info("validatedWeeklyFrequency condition met");
+                    logger.debug("validatedWeeklyFrequency condition met");
                     violated = session.getSessionType().equals(sessionToCompare.getCourtSession()) || session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
                 }
             }
