@@ -621,13 +621,12 @@ public class SessionsService {
 
     private boolean validatedWeeklyFrequency(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare,
                                           LocalDate startDate, LocalDate endDate, Integer repeatFor) {
+        //Method validates the hearing slots available for the EVERY_WEEK frequency considering repeatFor and repeatDays parameter
+        //These params are needed to skip the weeks based on the frequency
         boolean violated = false;
         final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
-        logger.info("validatedWeeklyFrequency weeksBetween : {}", weeksBetween);
         for (long weekNumber = 0; weekNumber <= weeksBetween; weekNumber += repeatFor) {
-            logger.info("validatedWeeklyFrequency weekNumber : {}", weekNumber);
             for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
-                logger.info("validatedWeeklyFrequency dayOfWeek : {}", dayOfWeek);
                 LocalDate sessionDateCandidate = startDate.plusWeeks(weekNumber).with(TemporalAdjusters.nextOrSame(dayOfWeek));
                 logger.info("validatedWeeklyFrequency sessionDateCandidate : {}", sessionDateCandidate);
                 logger.info("validatedWeeklyFrequency sessionToCompare.getSessionDate : {}", sessionToCompare.getSessionDate());
@@ -638,7 +637,6 @@ public class SessionsService {
                         sessionToCompare.getSessionDate().equals(sessionDateCandidate)) {
                     logger.info("validatedWeeklyFrequency condition met");
                     violated = session.getSessionType().equals(sessionToCompare.getCourtSession()) || session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
-                    logger.info("validatedWeeklyFrequency violated : {}", violated);
                 }
             }
         }
