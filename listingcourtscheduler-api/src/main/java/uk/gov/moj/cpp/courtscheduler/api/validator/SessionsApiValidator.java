@@ -40,22 +40,22 @@ public class SessionsApiValidator {
         LOGGER.info("Validating CREATE Sessions input : {}", createSessionRequestParam);
 
         if (patternStartDate.isBefore(ChronoLocalDate.from(LocalDateTime.now()))) {
-            LOGGER.info("getSessionsCreateValidation patternStartDate isBefore");
+            LOGGER.debug("getSessionsCreateValidation patternStartDate isBefore");
             return getMessageForInvalidDate(patternStartDate.toString());
         }
 
         if(repeatFrequency == RepeatFrequency.EVERY_WEEK && patternEndDate == null) {
-            LOGGER.info("getSessionsCreateValidation repeatFrequency EVERY_WEEK and patternEndDate null");
+            LOGGER.debug("getSessionsCreateValidation repeatFrequency EVERY_WEEK and patternEndDate null");
             return getMessageForInvalidParameterCombination(RepeatFrequency.EVERY_WEEK);
         }
         //if the request is coming from validate endpoint, this object should be populated
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
-            LOGGER.info("getSessionsCreateValidation getSessionToBeAdded not null");
+            LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
             final JsonObject addSessionValidationResult = validateAddedSessionPayload(createSessionRequestParam);
             if(addSessionValidationResult != EMPTY_JSON_OBJECT){
                 return addSessionValidationResult;
             }
-            LOGGER.info("getSessionsCreateValidation addSessionValidationResult is empty");
+            LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
             return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor());
         }
         return EMPTY_JSON_OBJECT;
