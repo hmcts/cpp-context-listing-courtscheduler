@@ -37,22 +37,26 @@ public class SessionsApiValidator {
         final LocalDate patternEndDate =  createSessionRequestParam.getRepeatPattern().getEndDate();
         final RepeatFrequency repeatFrequency = createSessionRequestParam.getRepeatPattern().getFrequency();
 
-        LOGGER.info("Validating CREATE Sessions  input : {}", createSessionRequestParam);
+        LOGGER.info("Validating CREATE Sessions input : {}", createSessionRequestParam);
 
         if (patternStartDate.isBefore(ChronoLocalDate.from(LocalDateTime.now()))) {
+            LOGGER.debug("getSessionsCreateValidation patternStartDate isBefore");
             return getMessageForInvalidDate(patternStartDate.toString());
         }
 
         if(repeatFrequency == RepeatFrequency.EVERY_WEEK && patternEndDate == null) {
+            LOGGER.debug("getSessionsCreateValidation repeatFrequency EVERY_WEEK and patternEndDate null");
             return getMessageForInvalidParameterCombination(RepeatFrequency.EVERY_WEEK);
         }
         //if the request is coming from validate endpoint, this object should be populated
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
+            LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
             final JsonObject addSessionValidationResult = validateAddedSessionPayload(createSessionRequestParam);
             if(addSessionValidationResult != EMPTY_JSON_OBJECT){
                 return addSessionValidationResult;
             }
-            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate);
+            LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
+            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor());
         }
         return EMPTY_JSON_OBJECT;
     }
@@ -61,12 +65,15 @@ public class SessionsApiValidator {
         final Session sessionToBeAdded = createSessionRequestParam.getSessionToBeAdded();
         final Set<DayOfWeek> repeatDaysToBeAdded = new HashSet<>(sessionToBeAdded.getRepeatDays());
         for(Session session : createSessionRequestParam.getSessionList()) {
+            LOGGER.info("getSessionsCreateValidation getSessionList not null");
             boolean match = session.getCourtCentreId().equals(sessionToBeAdded.getCourtCentreId()) &&
                     session.getCourtRoomId().equals(sessionToBeAdded.getCourtRoomId()) &&
                     session.getBusinessType().equals(sessionToBeAdded.getBusinessType());
+            LOGGER.info("getSessionsCreateValidation match value : {}", match);
             if(match){
                 Set<DayOfWeek> repeatDays = new HashSet<>(session.getRepeatDays());
                 if(repeatDaysToBeAdded.stream().anyMatch(repeatDays::contains) && isSessionTypeDuplicateOrNotValidForAllDay(session,sessionToBeAdded)) {
+                    LOGGER.info("getSessionsCreateValidation DUPLICATE_SESSIONS");
                     return buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS);
                 }
             }
@@ -77,7 +84,7 @@ public class SessionsApiValidator {
 
     //this should be called after we have a day match. This is to check if the session type is duplicate or not valid for all day
     private boolean isSessionTypeDuplicateOrNotValidForAllDay(final Session sessionInList, final Session sessionToBeAdded) {
-        return sessionInList.getSessionType().equals(sessionToBeAdded.getSessionType()) ||  sessionInList.getSessionType().equals("AD") || sessionToBeAdded.getSessionType().equals("AD");
+        return sessionInList.getSessionType().equals(sessionToBeAdded.getSessionType()) || sessionInList.getSessionType().equals("AD") || sessionToBeAdded.getSessionType().equals("AD");
     }
 
     private JsonObject getMessageForInvalidDate(final String value) {
@@ -86,7 +93,7 @@ public class SessionsApiValidator {
 
     private JsonObject getMessageForInvalidParameterCombination(final RepeatFrequency repeatFrequency) {
         String errorMessage = "Invalid combination of parameters: ";
-        if(repeatFrequency == RepeatFrequency.EVERY_WEEK) {
+        if (repeatFrequency == RepeatFrequency.EVERY_WEEK) {
             errorMessage += "For More Than once, you should supply a repeat-for and end date ";
         } else if (repeatFrequency == RepeatFrequency.ONCE) {
             errorMessage += "For Once, you should not supply a repeat-for and end date ";
