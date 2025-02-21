@@ -44,7 +44,7 @@ class HearingIdIT extends AbstractIT {
     }
 
     @Test
-    void testHearingIdsRetrieval() throws Exception {
+    void shouldFindHearingIds() throws Exception {
         final LocalDate today = LocalDate.now();
         final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
         courtSchedule1.setCourtScheduleId("COURT-SCHEDULE-1");
