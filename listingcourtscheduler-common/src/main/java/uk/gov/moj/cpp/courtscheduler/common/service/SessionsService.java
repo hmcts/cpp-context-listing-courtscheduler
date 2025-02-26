@@ -604,27 +604,41 @@ public class SessionsService {
         }
     }
 
-    public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate) {
-        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessionsToCompare = courtScheduleRepository.getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate);
+    public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor) {
+        logger.info("validateSessionIntegrity to check session integrity");
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessionsToCompare = courtScheduleRepository
+                .getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate);
         // session.repeatDays is a set, if it includes dayofweekvalue of sessionsToCompare
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
+            logger.debug("validateSessionIntegrity sessionToCompare : {}", sessionToCompare);
             //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
-            if (sameSessionViolatesAllDayRestriction(session, sessionToCompare)) {
+            if (validatedWeeklyFrequency(session, sessionToCompare, startDate, endDate, repeatFor)) {
                 return buildErrorResponse(format(ErrorMessages.DUPLICATE_SESSIONS, sessionToCompare.getCourtScheduleId()));
             }
         }
         return JsonValue.EMPTY_JSON_OBJECT;
     }
 
-    private static boolean sameSessionViolatesAllDayRestriction(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare) {
+    private boolean validatedWeeklyFrequency(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare,
+                                          LocalDate startDate, LocalDate endDate, Integer repeatFor) {
+        //Method validates the hearing slots available for the EVERY_WEEK frequency considering repeatFor and repeatDays parameter
+        //These params are needed to skip the weeks based on the frequency
         boolean violated = false;
-        if(session.getCourtCentreId().equals(sessionToCompare.getCourtHouseId()) &&
-                session.getCourtRoomId().equals(sessionToCompare.getCourtRoomId()) &&
-                session.getBusinessType().equals(sessionToCompare.getBusinessType()) &&
-                session.getRepeatDays().contains(DayOfWeek.of(sessionToCompare.getSessionDate().getDayOfWeek().getValue())))
-        {
-            violated = session.getSessionType().equals(sessionToCompare.getCourtSession()) || session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
-
+        final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
+        for (long weekNumber = 0; weekNumber <= weeksBetween; weekNumber += repeatFor) {
+            for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
+                LocalDate sessionDateCandidate = startDate.plusWeeks(weekNumber).with(TemporalAdjusters.nextOrSame(dayOfWeek));
+                logger.debug("validatedWeeklyFrequency sessionDateCandidate : {}", sessionDateCandidate);
+                logger.debug("validatedWeeklyFrequency sessionToCompare.getSessionDate : {}", sessionToCompare.getSessionDate());
+                if (session.getCourtCentreId().equals(sessionToCompare.getCourtHouseId()) &&
+                        session.getCourtRoomId().equals(sessionToCompare.getCourtRoomId()) &&
+                        session.getBusinessType().equals(sessionToCompare.getBusinessType()) &&
+                        session.getRepeatDays().contains(DayOfWeek.of(sessionToCompare.getSessionDate().getDayOfWeek().getValue())) &&
+                        sessionToCompare.getSessionDate().equals(sessionDateCandidate)) {
+                    logger.debug("validatedWeeklyFrequency condition met");
+                    violated = session.getSessionType().equals(sessionToCompare.getCourtSession()) || session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
+                }
+            }
         }
         return violated;
     }
