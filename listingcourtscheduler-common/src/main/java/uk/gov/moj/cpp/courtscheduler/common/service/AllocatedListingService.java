@@ -45,7 +45,6 @@ public class AllocatedListingService {
         return allocatedListingRepository.deleteRedundantRotaData(numberOfPreviousMonths * 30);
     }
 
-
     public JsonObject getHearingIds(HearingSlotRequestParam hearingIdsRequest) {
         final Pair<Integer, Set<String>> hearingIdsResult =
                 allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
@@ -66,4 +65,5 @@ public class AllocatedListingService {
                 .add(RequestParameterConstant.HEARING_IDS.getLabel(), hearingIdsJsonArray)
                 .build();
     }
+
 }

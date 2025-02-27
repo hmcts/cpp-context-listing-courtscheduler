@@ -136,11 +136,8 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
             queryBuilder.append("and cs.court_session = :courtSession ");
             params.put("courtSession", hearingIdsReq.courtSession());
         }
-        queryBuilder.append("order by cs.session_start, " +
-                "cs.court_house_name, " +
-                "cs.court_room_name, " +
-                "cs.court_session, " +
-                "al.hearing_start_time ");
+
+        queryBuilder.append("order by cs.session_start, cs.court_house_name, cs.court_room_name, cs.court_session, al.hearing_start_time ");
 
         return queryBuilder;
     }
