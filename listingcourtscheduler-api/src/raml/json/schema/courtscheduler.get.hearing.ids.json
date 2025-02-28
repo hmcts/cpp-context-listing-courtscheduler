@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "integer"
+    },
+    "pageCount": {
+      "type": "integer"
+    },
+    "hearingIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "results",
+    "pageCount",
+    "hearingIds"
+  ]
+}

@@ -137,6 +137,9 @@ protocols: [ HTTP, HTTPS ]
         (mapping):
             responseType: application/vnd.courtscheduler.get.hearing.slots+json
             name: courtscheduler.get.hearing.slots
+        (mapping):
+            responseType: application/vnd.courtscheduler.get.hearing.ids+json
+            name: courtscheduler.get.hearing.ids      
         ...
     queryParameters:
       panel:
@@ -189,6 +192,9 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.get.hearing.slots+json:
             example: !include json/courtscheduler.get.hearing.slots.json
             schema: !include json/schema/courtscheduler.get.hearing.slots.json
+          application/vnd.courtscheduler.get.hearing.ids+json:
+            example: !include json/courtscheduler.get.hearing.ids.json
+            schema: !include json/schema/courtscheduler.get.hearing.ids.json
 
 /provisionalBooking:
   post:

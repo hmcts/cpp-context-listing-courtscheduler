@@ -45,7 +45,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
-import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationStatus;
+import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
@@ -80,6 +80,8 @@ class CourtSchedulerApiTest {
     private SessionsService sessionsService;
     @Mock
     private SlotsSearchService slotsSearchService;
+    @Mock
+    private AllocatedListingService allocatedListingService;
     @Mock
     private Requester requester;
     @Mock
@@ -150,18 +152,18 @@ class CourtSchedulerApiTest {
                 .add("errorMessage", "Invalid parameters")
                 .build();
 
-        when(createSessionsRequestParamConverter.convert(any())).thenReturn(new CreateSessionRequestParam(Collections.emptyList(), null,null));
+        when(createSessionsRequestParamConverter.convert(any())).thenReturn(new CreateSessionRequestParam(Collections.emptyList(), null, null));
 
         when(sessionsApiValidator.getSessionsCreateValidation(any(CreateSessionRequestParam.class))).thenReturn(validationError);
 
-         try {
+        try {
             // Act
             courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
         } catch (ValidationException e) {
             // Assert
             assertEquals("Invalid parameters", e.getMessage());
             assertEquals(e.getMessage(), validationError.getString("errorMessage"));
-         }
+        }
     }
 
     @Test
@@ -263,6 +265,23 @@ class CourtSchedulerApiTest {
 
         verify(slotsSearchService, atLeastOnce()).search(hearingSlotRequestParamConverter.convert(jsonObject));
         verify(enveloper, atLeastOnce()).withMetadataFrom(getHearingSlotsEnvelope, requestName);
+    }
+
+    @Test
+    void shouldRetrieveHearingIds() throws IOException {
+        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.get.hearing.slots.json"));
+        final String requestName = "courtscheduler.get.hearing.ids";
+        final JsonEnvelope hearingIdsEnvelope = createEnvelope(requestName, jsonObject);
+
+        when(enveloper.withMetadataFrom(hearingIdsEnvelope, requestName)).thenReturn(function);
+        when(hearingSlotRequestParamConverter.convert(jsonObject)).thenReturn(new HearingSlotRequestParamConverter().convert(jsonObject));
+        when(allocatedListingService.getHearingIds(hearingSlotRequestParamConverter.convert(jsonObject))).thenReturn(EMPTY_JSON_OBJECT);
+        when(hearingSlotsApiValidator.getHearingSlotsValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
+
+        courtSchedulerApi.getHearingIds(hearingIdsEnvelope);
+
+        verify(allocatedListingService, atLeastOnce()).getHearingIds(hearingSlotRequestParamConverter.convert(jsonObject));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(hearingIdsEnvelope, requestName);
     }
 
     @Test
@@ -389,7 +408,7 @@ class CourtSchedulerApiTest {
         when(sessionsApiValidator.getSessionsCreateValidation(any())).thenReturn(validationResult);
 
         //verify it returns bad request with error message
-      assertThrows(ValidationException.class, () -> courtSchedulerApi.validateCreateCourtSchedule(validationEnvelope));
+        assertThrows(ValidationException.class, () -> courtSchedulerApi.validateCreateCourtSchedule(validationEnvelope));
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {
