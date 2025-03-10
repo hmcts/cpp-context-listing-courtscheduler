@@ -22,7 +22,7 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "hasHearingsBooked": false
+          "totalBooked" : 120
         },
         {
           "courtScheduleId": "AjmueCnClLfGZXNpngWHdOelSWXhE",
@@ -42,7 +42,7 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "hasHearingsBooked": false
+          "totalBooked": 0
         }
       ]
     },
@@ -68,7 +68,7 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "hasHearingsBooked": false
+          "totalBooked": 0
         },
         {
           "courtScheduleId": "dffg",
@@ -88,7 +88,32 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "hasHearingsBooked": false
+          "totalBooked": 0
+        },
+        {
+          "courtScheduleId": "dffg",
+          "listingProfileId": "bIAkijRvqQYzYSGk",
+          "ouCode": "SJQBDOnjjqrL",
+          "courtHouseId": "bOhSiTykkDcApEKLyotT",
+          "courtHouseName": "UelLISQnAtoiogGlveIhHdrc",
+          "courtRoomName": "MmoMdWqdUDTSsrQoerHDOLLOIqXeN",
+          "operationalUnit": "uEWrahOuMBmfaULmQrBTpyQyMUhRajH",
+          "businessType": "IVSEjnkyDFCUynMGPv",
+          "panel": "SkPeSEquziJSThLD",
+          "courtSession": "OssZYTmGGZgzm",
+          "active": true,
+          "slotBased": false,
+          "sessionDate": "Dec 27, 2027, 6:06:32 PM",
+          "maxSlots": 0,
+          "maxDuration": 0,
+          "availableSlots": 0,
+          "availableDuration": 0,
+          "totalBooked": 90,
+          "allDaySplit": true,
+          "maxDurationForMorning": 120,
+          "maxDurationForAfternoon": 60,
+          "availableDurationForMorning": 60,
+          "availableDurationForAfternoon": 30
         }
       ]
     }

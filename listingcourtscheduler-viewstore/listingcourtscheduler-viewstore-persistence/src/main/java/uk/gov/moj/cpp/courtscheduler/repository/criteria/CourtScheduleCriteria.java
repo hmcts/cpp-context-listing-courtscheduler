@@ -4,16 +4,11 @@ import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey_;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary_;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule_;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -24,65 +19,6 @@ import javax.persistence.criteria.Root;
 
 @ApplicationScoped
 public class CourtScheduleCriteria {
-    public void createHearingSlotsCourtScheduleCriteria(final HearingSlotRequestParam hearingSlotRequestParam,
-                                                        CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtSchedule> criteriaQuery) {
-        List<Predicate> predicateList = new ArrayList<>();
-        Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
-        Predicate activePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.ACTIVE), true);
-        Predicate panelPredicate;
-        if (hearingSlotRequestParam.panel().contains(",")) {
-            panelPredicate = root.get(CourtSchedule_.PANEL).in(Arrays.asList(hearingSlotRequestParam.panel().split(",")));
-        } else {
-            panelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), hearingSlotRequestParam.panel());
-        }
-        Predicate dateBetween = criteriaBuilder.between(root.get(CourtSchedule_.SESSION_DATE),
-                LocalDate.parse(hearingSlotRequestParam.sessionStartDate()),
-                LocalDate.parse(hearingSlotRequestParam.sessionEndDate()));
-        predicateList.add(activePredicate);
-        predicateList.add(panelPredicate);
-        predicateList.add(dateBetween);
-        if (isNotBlank(hearingSlotRequestParam.oucodeL2Code())) {
-            Predicate ouLevelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.OPERATIONAL_UNIT), hearingSlotRequestParam.oucodeL2Code());
-            predicateList.add(ouLevelPredicate);
-        }
-        if (isNotBlank(hearingSlotRequestParam.ouCode())) {
-            Predicate ouCodePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.OU_CODE), hearingSlotRequestParam.ouCode());
-            predicateList.add(ouCodePredicate);
-        }
-        if (isNotBlank(hearingSlotRequestParam.courtRoomId())) {
-            Predicate courtRoomPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_ID),
-                    hearingSlotRequestParam.courtRoomId());
-            predicateList.add(courtRoomPredicate);
-        }
-        if (isNotBlank(hearingSlotRequestParam.courtRoomNumber())) {
-            Predicate courtRoomNumberPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_ROOM_NUMBER),
-                    hearingSlotRequestParam.courtRoomNumber());
-            predicateList.add(courtRoomNumberPredicate);
-        }
-        if (isNotBlank(hearingSlotRequestParam.businessType())) {
-            Predicate businessTypePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.BUSINESS_TYPE),
-                    hearingSlotRequestParam.businessType());
-            predicateList.add(businessTypePredicate);
-        }
-        if (isNotBlank(hearingSlotRequestParam.courtSession())) {
-            Predicate courtSessionPredicate;
-            if (hearingSlotRequestParam.courtSession().contains(",")) {
-                courtSessionPredicate = root.get(CourtSchedule_.COURT_SESSION).in(Arrays.asList(hearingSlotRequestParam.courtSession().split(",")));
-            } else {
-                courtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION),
-                        hearingSlotRequestParam.courtSession());
-            }
-            predicateList.add(courtSessionPredicate);
-        }
-
-        criteriaQuery.select(root).where(predicateList.toArray(new Predicate[]{}));
-
-        criteriaQuery.orderBy(criteriaBuilder.asc(root.get(CourtSchedule_.SESSION_DATE)),
-                criteriaBuilder.asc(root.get(CourtSchedule_.COURT_HOUSE_NAME)),
-                criteriaBuilder.asc(root.get(CourtSchedule_.COURT_ROOM_NAME)),
-                criteriaBuilder.asc(root.get(CourtSchedule_.COURT_SESSION)),
-                criteriaBuilder.asc(root.get(CourtSchedule_.BUSINESS_TYPE)));
-    }
 
     public void getCourtScheduleCriteria(final CourtScheduleRequestParam courtScheduleRequestParam,
                                          CriteriaBuilder criteriaBuilder,
@@ -113,20 +49,6 @@ public class CourtScheduleCriteria {
                 criteriaBuilder.asc(root.get(CourtSchedule_.COURT_ROOM_NAME)),
                 criteriaBuilder.asc(root.get(CourtSchedule_.SESSION_DATE)));
 
-    }
-
-    public void createCourtScheduleJudiciaryCriteria(List<CourtSchedule> courtScheduleList,
-                                                     CriteriaBuilder criteriaBuilder, CriteriaQuery<CourtScheduleJudiciary> criteriaQuery) {
-        Root<CourtScheduleJudiciary> root = criteriaQuery.from(CourtScheduleJudiciary.class);
-        courtScheduleList.forEach(e -> {
-            if (isNotBlank(e.getCourtScheduleId()) && isNotBlank(e.getListingProfileId())) {
-                Predicate activePredicate = criteriaBuilder.equal(root.get("active"), true);
-                Predicate courtScheduleIdPredicate = criteriaBuilder.equal(root.get(CourtScheduleJudiciary_.id)
-                        .get(CourtScheduleJudiciaryKey_.COURT_SCHEDULE_ID), e.getCourtScheduleId());
-                Predicate courtListIdPredicate = criteriaBuilder.equal(root.get(CourtScheduleJudiciary_.COURT_LISTING_PROFILE_ID), e.getListingProfileId());
-                criteriaQuery.select(root).where(criteriaBuilder.and(activePredicate, courtScheduleIdPredicate, courtListIdPredicate));
-            }
-        });
     }
 
     //Fetch single  courtsession either by courtscheduleId or filters : OuCode+SessionDate+CourtSession+CourtRoomNumber

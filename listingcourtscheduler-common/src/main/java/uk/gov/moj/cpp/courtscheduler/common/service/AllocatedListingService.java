@@ -2,8 +2,10 @@ package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.lang.Integer.parseInt;
 import static java.lang.Integer.parseInt;
+import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
 
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -11,6 +13,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,6 +48,7 @@ public class AllocatedListingService {
         return allocatedListingRepository.deleteRedundantRotaData(numberOfPreviousMonths * 30);
     }
 
+
     public JsonObject getHearingIds(HearingSlotRequestParam hearingIdsRequest) {
         final Pair<Integer, Set<String>> hearingIdsResult =
                 allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
@@ -64,6 +68,24 @@ public class AllocatedListingService {
                 .add(RequestParameterConstant.PAGE_COUNT.getLabel(), pageCount)
                 .add(RequestParameterConstant.HEARING_IDS.getLabel(), hearingIdsJsonArray)
                 .build();
+    }
+
+    public Map<String, Integer> getTotalBookedPerCourtScheduleIds(final List<String> courtScheduleIds) {
+        final Map<String, Integer> totalBookedPerCourtScheduleIds = new HashMap<>();
+        final List<AllocatedListingEachBooked> allocatedListingEachBookeds = allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(courtScheduleIds);
+
+        final Map<String, List<AllocatedListingEachBooked>> allocatedListingEachBookedMap = allocatedListingEachBookeds.stream()
+                .collect(groupingBy(AllocatedListingEachBooked::getCourtScheduleId));
+
+        allocatedListingEachBookedMap.keySet().forEach(courtScheduleId ->
+            totalBookedPerCourtScheduleIds.put(courtScheduleId, allocatedListingEachBookedMap.get(courtScheduleId).stream().mapToInt(AllocatedListingEachBooked::getDuration).sum())
+        );
+
+        return totalBookedPerCourtScheduleIds;
+    }
+
+    public List<AllocatedListingEachBooked> getAllocatedListingEachBookedByCourtScheduleId(final String courtScheduleId) {
+        return allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(List.of(courtScheduleId));
     }
 
 }

@@ -14,6 +14,12 @@ public class UpdateCourtSchedule {
 
     private Integer maxSlots;
     private Integer maxDuration;
+    private Integer maxDurationForMorning;
+    private Integer maxDurationForAfternoon;
+    private boolean allDaySplit;
+    private String sessionStartTime;
+    private String sessionEndTime;
+    private boolean isOverbookingAllowed;
 
     protected UpdateCourtSchedule(final UpdateCourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -25,6 +31,12 @@ public class UpdateCourtSchedule {
         this.availableDuration = builder.availableDuration;
         this.maxSlots = builder.maxSlots;
         this.maxDuration = builder.maxDuration;
+        this.maxDurationForMorning = builder.maxDurationForMorning;
+        this.maxDurationForAfternoon = builder.maxDurationForAfternoon;
+        this.allDaySplit = builder.allDaySplit;
+        this.sessionStartTime = builder.sessionStartTime;
+        this.sessionEndTime = builder.sessionEndTime;
+        this.isOverbookingAllowed = builder.isOverbookingAllowed;
     }
 
     public UpdateCourtSchedule() {
@@ -109,6 +121,55 @@ public class UpdateCourtSchedule {
         return this;
     }
 
+    public UpdateCourtSchedule setMaxDurationForMorning(final Integer maxDurationForMorning) {
+        this.maxDurationForMorning = maxDurationForMorning;
+        return this;
+    }
+
+    public UpdateCourtSchedule setMaxDurationForAfternoon(final Integer maxDurationForAfternoon) {
+        this.maxDurationForAfternoon = maxDurationForAfternoon;
+        return this;
+    }
+
+    public Integer getMaxDurationForMorning() {
+        return maxDurationForMorning;
+    }
+
+    public Integer getMaxDurationForAfternoon() {
+        return maxDurationForAfternoon;
+    }
+
+    public boolean isAllDaySplit() {
+        return allDaySplit;
+    }
+
+    public void setAllDaySplit(final boolean allDaySplit) {
+        this.allDaySplit = allDaySplit;
+    }
+
+    public String getSessionStartTime() {
+        return sessionStartTime;
+    }
+
+    public void setSessionStartTime(final String sessionStartTime) {
+        this.sessionStartTime = sessionStartTime;
+    }
+
+    public String getSessionEndTime() {
+        return sessionEndTime;
+    }
+
+    public void setSessionEndTime(final String sessionEndTime) {
+        this.sessionEndTime = sessionEndTime;
+    }
+
+    public boolean isOverbookingAllowed() {
+        return isOverbookingAllowed;
+    }
+
+    public void setIsOverbookingAllowed(final boolean isOverbookingAllowed) {
+        this.isOverbookingAllowed = isOverbookingAllowed;
+    }
 
     public static final class UpdateCourtScheduleBuilder {
         private String courtScheduleId;
@@ -121,6 +182,12 @@ public class UpdateCourtSchedule {
         private Integer availableDuration = 0;
         private Integer maxSlots = 0;
         private Integer maxDuration = 0;
+        private Integer maxDurationForMorning = 0;
+        private Integer maxDurationForAfternoon = 0;
+        private boolean allDaySplit = false;
+        private String sessionStartTime;
+        private String sessionEndTime;
+        private boolean isOverbookingAllowed;
 
         public static UpdateCourtSchedule.UpdateCourtScheduleBuilder courtSchedule() {
             return new UpdateCourtSchedule.UpdateCourtScheduleBuilder();
@@ -174,6 +241,35 @@ public class UpdateCourtSchedule {
             return this;
         }
 
+        public UpdateCourtScheduleBuilder withMaxDurationForMorning(final Integer maxDurationForMorning) {
+            this.maxDurationForMorning = maxDurationForMorning;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withMaxDurationForAfternoon(final Integer maxDurationForAfternoon) {
+            this.maxDurationForAfternoon = maxDurationForAfternoon;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withAllDaySplit(final boolean allDaySplit) {
+            this.allDaySplit = allDaySplit;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withSessionStartTime(final String sessionStartTime) {
+            this.sessionStartTime = sessionStartTime;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withSessionEndTime(final String sessionEndTime) {
+            this.sessionEndTime = sessionEndTime;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withIsOverbookingAllowed(final boolean isOverbookingAllowed) {
+            this.isOverbookingAllowed = isOverbookingAllowed;
+            return this;
+        }
 
         public UpdateCourtSchedule build() {
             return new UpdateCourtSchedule(this);

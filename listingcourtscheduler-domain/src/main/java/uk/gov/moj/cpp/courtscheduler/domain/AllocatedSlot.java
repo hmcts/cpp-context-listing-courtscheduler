@@ -8,11 +8,14 @@ public class AllocatedSlot {
     private String hearingStartTime;
     private String session;
     private String courtRoomId;
+    private String courtRoomUUId;
     private String ouCode;
     private String hearingId;
     private String courtScheduleId;
     private boolean isSlotBased;
     private String bookingId;
+    private String prosecutor;
+    private String courtRoom;
 
     @SuppressWarnings("squid:S1186")
     public AllocatedSlot() {
@@ -98,6 +101,30 @@ public class AllocatedSlot {
         this.hearingStartTime = hearingStartTime;
     }
 
+    public String getCourtRoom() {
+        return courtRoom;
+    }
+
+    public void setCourtRoom(final String courtRoom) {
+        this.courtRoom = courtRoom;
+    }
+
+    public String getProsecutor() {
+        return prosecutor;
+    }
+
+    public void setProsecutor(final String prosecutor) {
+        this.prosecutor = prosecutor;
+    }
+
+    public String getCourtRoomUUId() {
+        return courtRoomUUId;
+    }
+
+    public void setCourtRoomUUId(final String courtRoomUUId) {
+        this.courtRoomUUId = courtRoomUUId;
+    }
+
     @SuppressWarnings("squid:S1067")
     @Override
     public boolean equals(final Object o) {
@@ -117,12 +144,15 @@ public class AllocatedSlot {
                 Objects.equals(ouCode, that.ouCode) &&
                 Objects.equals(hearingId, that.hearingId) &&
                 Objects.equals(courtScheduleId, that.courtScheduleId) &&
-                Objects.equals(bookingId, that.bookingId);
+                Objects.equals(bookingId, that.bookingId) &&
+                Objects.equals(prosecutor, that.prosecutor) &&
+                Objects.equals(courtRoom, that.courtRoom) &&
+                Objects.equals(courtRoomUUId, that.courtRoomUUId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(duration, sessionDate, hearingStartTime, session, courtRoomId, ouCode, hearingId, courtScheduleId, isSlotBased, bookingId);
+        return Objects.hash(duration, sessionDate, hearingStartTime, session, courtRoomId, ouCode, hearingId, courtScheduleId, isSlotBased, bookingId, prosecutor, courtRoom, courtRoomUUId);
     }
 
     @Override
@@ -138,6 +168,9 @@ public class AllocatedSlot {
                 ", courtScheduleId='" + courtScheduleId + '\'' +
                 ", isSlotBased=" + isSlotBased +
                 ", bookingId='" + bookingId + '\'' +
+                ", prosecutor='" + prosecutor + '\'' +
+                ", courtRoom='" + courtRoom + '\'' +
+                ", courtRoomUUId='" + courtRoomUUId + '\'' +
                 '}';
     }
 }

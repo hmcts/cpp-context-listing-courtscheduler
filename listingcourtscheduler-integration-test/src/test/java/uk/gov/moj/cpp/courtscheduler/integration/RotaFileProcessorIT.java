@@ -14,9 +14,13 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
@@ -26,6 +30,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetRe
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -223,6 +228,8 @@ class RotaFileProcessorIT extends AbstractIT {
         assertTrue(allocatedSlotNotBeingInSnapshotFile.isPresent());
         assertTrue(allocatedSlotNotBeingInSnapshotFile.get().isActive());
 
+        assertDefaultStartTimeAndEndTime(courtSchedulesFromSnapshotFile);
+
         filesToBeDeletedFromOutputContainer.add(finalSnapshotFileName);
     }
 
@@ -341,7 +348,9 @@ class RotaFileProcessorIT extends AbstractIT {
         assertTrue(databaseReader.allocatedListings().isEmpty());
     }
 
-    private void processFullRotaFile(final String fileBlobBaseName, final boolean migrated,
+
+    private void processFullRotaFile(final String fileBlobBaseName,
+                                     final boolean migrated,
                                      final int expectedNumberOfSlots,
                                      final int expectedNumberOfJudiciaries,
                                      final int expectedNumberOfJudiciariesCreatedAfterMigration) throws SQLException, IOException {
@@ -405,6 +414,10 @@ class RotaFileProcessorIT extends AbstractIT {
             assertEquals(expectedNumberOfJudiciaries, courtScheduleJudiciaryEntities.size());
         }
 
+        if (!migrated) {
+            assertDefaultStartTimeAndEndTime(courtScheduleEntities);
+        }
+
         filesToBeDeletedFromOutputContainer.add(finalMasterRotaFileName);
     }
 
@@ -439,5 +452,23 @@ class RotaFileProcessorIT extends AbstractIT {
         allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0 ).atZone(ZoneId.of("Europe/London")).toInstant()));
 
         return allocatedListing;
+    }
+
+    private static void assertDefaultStartTimeAndEndTime(final List<CourtSchedule> courtSchedules) {
+        courtSchedules.forEach(courtSchedule -> {
+            assertNotNull(courtSchedule.getSessionStartTime());
+            assertNotNull(courtSchedule.getSessionEndTime());
+
+            if (AM_SESSION.equals(courtSchedule.getCourtSession())) {
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_START_TIME));
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_END_TIME));
+            } else if (PM_SESSION.equals(courtSchedule.getCourtSession())) {
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_START_TIME));
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_END_TIME));
+            } else if (ALL_DAY.equals(courtSchedule.getCourtSession())) {
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_START_TIME));
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_END_TIME));
+            }
+        });
     }
 }

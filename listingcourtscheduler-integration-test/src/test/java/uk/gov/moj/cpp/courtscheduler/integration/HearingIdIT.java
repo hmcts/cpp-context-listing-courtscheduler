@@ -104,6 +104,7 @@ class HearingIdIT extends AbstractIT {
         String hearingIdsReq = getPayload("courtscheduler.get.hearing.slots.json");
         hearingIdsReq = hearingIdsReq.replace("PANEL", "ADULT");
         hearingIdsReq = hearingIdsReq.replace("OU_CODE", "BA123");
+        hearingIdsReq = hearingIdsReq.replace("COURT_SESSION", "AM");
         hearingIdsReq = hearingIdsReq.replace("SESSION_START_DATE", today.minusDays(10).toString());
         hearingIdsReq = hearingIdsReq.replace("SESSION_END_DATE", today.minusDays(1).toString());
         hearingIdsReq = hearingIdsReq.replace("\"pageSize\": \"1\"", "\"pageSize\": \"10\"");

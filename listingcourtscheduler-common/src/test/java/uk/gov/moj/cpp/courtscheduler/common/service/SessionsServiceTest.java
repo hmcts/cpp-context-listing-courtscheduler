@@ -23,6 +23,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
@@ -54,6 +56,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -331,6 +334,20 @@ class SessionsServiceTest {
     }
 
     @Test
+    void shouldCreateSingleCourtSchedulesForOnceFrequencyWithDefaultSessionTimes() {
+        final CreateSessionRequestParam createSessionRequest = createSessionRequestWithoutTimes(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        sessionsService.create(createSessionRequest,requester);
+        verify(courtScheduleRepository, times(1)).save(courtScheduleArgumentCaptor.capture());
+        CourtSchedule capturedCourtSchedule = courtScheduleArgumentCaptor.getValue();
+
+        SimpleDateFormat formatter = new SimpleDateFormat("HH:mm");
+        assertEquals("10:00", formatter.format(capturedCourtSchedule.getSessionStartTime()));
+        assertEquals("13:00", formatter.format(capturedCourtSchedule.getSessionEndTime()));
+    }
+
+    @Test
     void shouldCreateMultipleCourtSchedulesForOnceFrequency() {
         final LocalDate startDate = LocalDate.of(2024, 06, 20);
         final Session session = singleSession(WEEK_DAYS_FIRST_HALF, true);
@@ -360,7 +377,6 @@ class SessionsServiceTest {
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = new ArrayList<>();
 
         when(courtScheduleRepository.deleteCourtSchedule(anyList())).thenReturn(courtSchedules);
-        when(courtScheduleToDeleteResponseConverter.convert(anyList())).thenReturn(anyList());
 
         JsonObject response = sessionsService.deleteCourtScheduleSessions(sessionsParam, requester);
 
@@ -378,7 +394,11 @@ class SessionsServiceTest {
         updateCourtSchedule.setBusinessType("DVLA");
         updateCourtSchedule.setSessionType(persistedCourtSchedule.getCourtSession());
         updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
-        updateCourtSchedule.setSessionType(random(String.class));
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setSessionStartTime("11:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
+
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
@@ -398,6 +418,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setSessionType(persistedCourtSchedule.getCourtSession());
         updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
         updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setSessionStartTime("11:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
@@ -417,6 +441,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setBusinessType("DVLA");
         updateCourtSchedule.setSessionType(random(String.class));
         updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setSessionStartTime("11:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
@@ -457,6 +485,25 @@ class SessionsServiceTest {
         Result result = sessionsService.update(updateCourtSchedule, requester);
 
         assertEquals("Business Type cannot be changed from Slot to Non-Slot and vice versa", result.getMsg());
+    }
+
+    @Test
+    void shouldReturnFailure_WhenADSplitChanges() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setSupportAdSplit(true);
+        // given
+        UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(random(String.class));
+        updateCourtSchedule.setAllDaySplit(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertEquals("All day split flag cannot be changed for this session", result.getMsg());
     }
 
     @Test
@@ -723,8 +770,9 @@ class SessionsServiceTest {
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setBusinessType(businessTypeCode);
         courtSchedule.setSessionDate(random(LocalDate.class));
-        courtSchedule.setCourtSession(random(String.class));
+        courtSchedule.setCourtSession(ALL_DAY);
         courtSchedule.setHasHearingsBooked(false);
+        courtSchedule.setSupportAdSplit(false);
         return courtSchedule;
     }
 
@@ -846,6 +894,8 @@ class SessionsServiceTest {
                 .withCourtRoomId(courtRoomId)
                 .withSessionType(courtSession)
                 .withPanelType(panel)
+                .withSessionStartTime("10:00")
+                .withSessionEndTime("12:00")
                 .build();
 
         return List.of(session);
@@ -861,6 +911,13 @@ class SessionsServiceTest {
     }
 
     private CreateSessionRequestParam createSessionRequest(List<Session> sessionList, RepeatPattern repeatPattern) {
+        return CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam()
+                .withSessionList(sessionList)
+                .withRepeatPattern(repeatPattern)
+                .build();
+    }
+
+    private CreateSessionRequestParam createSessionRequestWithoutTimes(List<Session> sessionList, RepeatPattern repeatPattern) {
         return CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam()
                 .withSessionList(sessionList)
                 .withRepeatPattern(repeatPattern)

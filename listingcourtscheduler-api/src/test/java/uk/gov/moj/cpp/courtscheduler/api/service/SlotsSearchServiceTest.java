@@ -16,20 +16,19 @@ import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 import javax.json.JsonObject;
 
-import jakarta.persistence.EntityManager;
-import liquibase.pro.packaged.T;
 import org.apache.commons.lang3.tuple.Pair;
-import javax.persistence.criteria.CriteriaQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,10 +38,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class SlotsSearchServiceTest {
+
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
-    @Mock
-    private EntityManager entityManager;
     @InjectMocks
     private SlotsSearchService slotsSearchService;
     private UUID rightWingerId = randomUUID();
@@ -88,7 +86,6 @@ class SlotsSearchServiceTest {
         assertThat(courtSchedulesActual.getValue().size(), is(1));
         final CourtSchedule courtSchedule = courtSchedulesActual.getValue().get(0);
         assertThat(courtSchedule.getCourtScheduleId().toString(), is("0000fbb0-8579-4f2b-948e-c4e48a48e3f8"));
-        assertThat(courtSchedule.getListingProfileId(), is("0000fbb0-8579-4f2b-948e-c4e48a48e3f7"));
         assertThat(courtSchedule.getSessionDate(), is(LocalDate.of(2020, 12, 1)));
         assertThat(courtSchedule.getOuCode(), is("CABC90"));
         assertThat(courtSchedule.getCourtRoomId(), is("001c067d-eaca-4ce5-ad90-a366ef3e4bb6"));
@@ -128,35 +125,12 @@ class SlotsSearchServiceTest {
         verify(courtScheduleRepository, times(0)).getCourtScheduleJudiciaries(any());
     }
 
-    private CourtSchedule createCourtScheduleWithListingProfileId(String listingProfileId) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withListingProfileId(listingProfileId)
-                .build();
-    }
-
-
-
-    private CourtSchedule createCourtScheduleWithListingProfileId() {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withListingProfileId(randomUUID().toString())
-                .build();
-    }
-
-
 
     private CourtSchedule createCourtScheduleWithoutListingProfileId() {
         return new CourtSchedule.CourtScheduleBuilder()
                 .withCourtScheduleId(randomUUID().toString())
                 .withListingProfileId(null)
                 .build();
-    }
-
-    private List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> createCourtScheduleJudiciaries() {
-        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary judiciary1 = uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.CourtScheduleJudiciaryBuilder.courtScheduleJudiciary().withId(new CourtScheduleJudiciaryKey()).withPosition("LEFT_WINGER").build();
-        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary judiciary2 = uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.CourtScheduleJudiciaryBuilder.courtScheduleJudiciary().withId(new CourtScheduleJudiciaryKey()).withPosition("RIGHT_WINGER").build();
-        return List.of(judiciary1, judiciary2);
     }
 
 
@@ -181,7 +155,7 @@ class SlotsSearchServiceTest {
     private CourtSchedule courtSchedule(final List<CourtScheduleJudiciary> courtScheduleJudiciary) {
         return new CourtSchedule.CourtScheduleBuilder()
                 .withCourtScheduleId("0000fbb0-8579-4f2b-948e-c4e48a48e3f8")
-                .withListingProfileId("0000fbb0-8579-4f2b-948e-c4e48a48e3f7")
+                .withListingProfileId(null)
                 .withSessionDate(parse("2020-12-01"))
                 .withOuCode("CABC90")
                 .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
@@ -200,6 +174,9 @@ class SlotsSearchServiceTest {
                 .withMaxSlots(125)
                 .withJudiciaries(courtScheduleJudiciary)
                 .withActive(true)
+                .withSessionStartTime(Date.from(LocalTime.parse("09:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withIsOverbookingAllowed(true)
                 .build();
     }
 

@@ -31,7 +31,8 @@
     },
     "maxDuration": {
       "type": "integer"
-    }
+    },
+    "isOverbookingAllowed": {"type": "boolean"}
   },
   "oneOf": [
     {

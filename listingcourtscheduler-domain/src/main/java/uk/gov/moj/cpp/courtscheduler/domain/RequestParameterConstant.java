@@ -41,6 +41,13 @@ public enum RequestParameterConstant {
     END_DATE("endDate"),
     SESSION_TO_BE_ADDED("sessionToBeAdded"),
     HEARING_IDS("hearingIds"),
+    ALL_DAY_SPLIT("allDaySplit"),
+    MAX_DURATION_FOR_MORNING("maxDurationForMorning"),
+    MAX_DURATION_FOR_AFTERNOON("maxDurationForAfternoon"),
+    SESSION_START_TIME("sessionStartTime"),
+    SESSION_END_TIME("sessionEndTime"),
+    IS_OVERBOOKING_ALLOWED("isOverbookingAllowed")
+
     ;
 
     private final String name;

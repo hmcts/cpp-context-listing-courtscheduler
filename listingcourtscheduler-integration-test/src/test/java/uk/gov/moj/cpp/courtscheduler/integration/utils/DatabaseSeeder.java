@@ -29,8 +29,8 @@ public class DatabaseSeeder {
     private static final String COURT_SCHEDULE_INSERT_SQL = "INSERT INTO court_schedule (" +
             "id, court_listing_profile_id, oucode, court_room_id, court_room_number, court_house_id, court_house_name," +
             "court_room_name, operational_unit, rota_business_type, panel, court_session, is_slot_based, session_start, " +
-            "max_slot, max_duration_mins, available_slot, available_duration_mins) \n" +
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "max_slot, max_duration_mins, available_slot, available_duration_mins, support_ad_split, max_ad_morning_duration, max_ad_afternoon_duration, session_start_time, session_end_time) \n" +
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String ALLOCATED_LISTING_INSERT_SQL = "INSERT INTO allocated_listings (" +
             "id, court_schedule_id, booking_id, hearing_id, oucode, court_room_id, rota_business_type," +
@@ -154,7 +154,11 @@ public class DatabaseSeeder {
             preparedStatement.setInt(16, courtSchedule.getMaxDuration());
             preparedStatement.setInt(17, courtSchedule.getAvailableSlots());
             preparedStatement.setInt(18, courtSchedule.getAvailableDuration());
-
+            preparedStatement.setBoolean(19, courtSchedule.getSupportAdSplit());
+            preparedStatement.setInt(20, courtSchedule.getMaxAdMorningDuration());
+            preparedStatement.setInt(21, courtSchedule.getMaxAdAfternoonDuration());
+            preparedStatement.setTimestamp(22, new Timestamp(courtSchedule.getSessionStartTime().getTime()));
+            preparedStatement.setTimestamp(23, new Timestamp(courtSchedule.getSessionEndTime().getTime()));
 
             preparedStatement.executeUpdate();
         }

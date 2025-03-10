@@ -25,9 +25,15 @@
               "type": "string",
               "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             }
-          }
+          },
+          "allDaySplit": {"type": "boolean"},
+          "maxDurationForMorning": {"type": "number"},
+          "maxDurationForAfternoon": {"type": "number"},
+          "sessionStartTime": {"type": "string"},
+          "sessionEndTime": {"type": "string"},
+          "isOverbookingAllowed": {"type": "boolean"}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "duration", "panel", "repeatDays"]
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "repeatDays"]
       }
     },
     "repeatPattern": {
@@ -54,9 +60,14 @@
             "panel": {
             "type": "string",
             "enum": ["YOUTH", "ADULT"]
-            }
+            },
+          "allDaySplit": {"type": "boolean"},
+          "maxDurationForMorning": {"type": "number"},
+          "maxDurationForAfternoon": {"type": "number"},
+          "sessionStartTime": {"type": "string"},
+          "sessionEndTime": {"type": "string"}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "duration", "panel"]
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel"]
     }
   },
   "required": ["repeatPattern", "sessionToBeAdded"],

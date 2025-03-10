@@ -25,7 +25,6 @@ import javax.inject.Inject;
 import javax.json.Json;
 import javax.json.JsonObject;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.modelmapper.ModelMapper;
 
 @ApplicationScoped
@@ -69,7 +68,7 @@ public class ProvisionalBookingService {
                 .toList();
         //judiciary details are not required for provisional bookings without listing profile(ghost rota)
         if (isNotEmpty(courtSchedulesWithListingProfile)) {
-            List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciaries(courtSchedulesWithListingProfile);
+            List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciariesForProvisionalBooking(courtSchedulesWithListingProfile);
             courtScheduleJudiciaries.forEach(courtScheduleJudiciary ->
                     courtScheduleJudiciariesArrayList.add(modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class)));
         }

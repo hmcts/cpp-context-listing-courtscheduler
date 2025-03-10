@@ -1,15 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static java.util.Arrays.stream;
 
 import static java.util.Arrays.stream;
 
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.time.LocalDate;
 import java.util.Date;
@@ -71,6 +72,9 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
     @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked(al.courtScheduleId, sum(duration) AS totalbooked) FROM AllocatedListing al WHERE al.courtScheduleId IN :courtScheduleIds group by al.courtScheduleId")
     public abstract List<AllocatedListingTotalBooked> getAllocatedListingsByCourtScheduleId(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);
 
+    @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked(al.courtScheduleId, al.duration, al.hearingStartTime) FROM AllocatedListing al WHERE al.courtScheduleId IN :courtScheduleIds")
+    public abstract List<AllocatedListingEachBooked> getAllocatedListingsEachBookedByCourtScheduleId(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);
+
     public int deleteRedundantRotaData(final int numberOfDays) {
         return entityManager()
                 .createNativeQuery(DELETE_REDUNDANT_ROTA_DATA)
@@ -84,7 +88,7 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
 
         final javax.persistence.Query totalQuery = entityManager.createNativeQuery(queryStringBuilder.toString());
         params.forEach(totalQuery::setParameter);
-        final List totalResultList = totalQuery.getResultList();
+        final List<String> totalResultList = totalQuery.getResultList();
 
         queryStringBuilder.append("LIMIT :pageSize ");
         params.put("pageSize", Integer.parseInt(hearingIdsReq.pageSize()));

@@ -31,29 +31,30 @@
     },
     "maxDuration": {
       "type": "integer"
-    }
-  },
-  "oneOf": [
-    {
-      "required": [
-        "courtScheduleId",
-        "courtRoomId",
-        "courtSession",
-        "businessType",
-        "panel",
-        "maxSlots"
-      ]
     },
-    {
-      "required": [
-        "courtScheduleId",
-        "courtRoomId",
-        "courtSession",
-        "businessType",
-        "panel",
-        "maxDuration"
-      ]
-    }
+    "maxDurationForMorning": {
+      "type": "integer"
+    },
+    "maxDurationForAfternoon": {
+      "type": "integer"
+    },
+    "allDaySplit": {
+      "type": "boolean"
+    },
+    "sessionStartTime": {
+      "type": "string"
+    },
+    "sessionEndTime": {
+      "type": "string"
+    },
+    "isOverbookingAllowed": {"type": "boolean"}
+  },
+  "required": [
+    "courtScheduleId",
+    "courtRoomId",
+    "courtSession",
+    "businessType",
+    "panel"
   ],
   "additionalProperties": false,
   "definitions": {

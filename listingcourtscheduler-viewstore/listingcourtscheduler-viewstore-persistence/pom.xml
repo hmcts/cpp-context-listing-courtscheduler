@@ -3,7 +3,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listingcourtscheduler-viewstore</artifactId>
-        <version>17.0.39-SNAPSHOT</version>
+        <version>17.0.40-SNAPSHOT</version>
     </parent>
 
     <artifactId>listingcourtscheduler-viewstore-persistence</artifactId>
@@ -57,6 +57,8 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+
         <dependency>
             <groupId>uk.gov.justice.event-store</groupId>
             <artifactId>test-utils-persistence</artifactId>
@@ -179,7 +181,6 @@
             <scope>test</scope>
             <version>${activemq-ra.version}</version>
         </dependency>
-
     </dependencies>
 
     <build>

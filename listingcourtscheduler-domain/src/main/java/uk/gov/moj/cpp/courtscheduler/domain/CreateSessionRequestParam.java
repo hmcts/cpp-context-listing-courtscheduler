@@ -10,7 +10,6 @@ public class CreateSessionRequestParam {
 
     private Session sessionToBeAdded;
 
-
     public List<Session> getSessionList() {
         return sessionList;
     }
@@ -19,16 +18,15 @@ public class CreateSessionRequestParam {
         return repeatPattern;
     }
 
-    public Session getSessionToBeAdded() {return sessionToBeAdded;}
+    public Session getSessionToBeAdded() {
+        return sessionToBeAdded;
+    }
 
-    public CreateSessionRequestParam(final List<Session> sessionList, final RepeatPattern repeatPattern,final Session sessionToBeAdded) {
+    public CreateSessionRequestParam(final List<Session> sessionList, final RepeatPattern repeatPattern, final Session sessionToBeAdded) {
         this.sessionList = sessionList;
         this.repeatPattern = repeatPattern;
         this.sessionToBeAdded = sessionToBeAdded;
     }
-
-
-
 
     public static final class CreateSessionRequestParamBuilder {
         private List<Session> sessionList;
@@ -57,9 +55,9 @@ public class CreateSessionRequestParam {
             this.sessionToBeAdded = sessionToBeAdded;
             return this;
         }
-
+        
         public CreateSessionRequestParam build() {
-            return new CreateSessionRequestParam(sessionList, repeatPattern,sessionToBeAdded);
+            return new CreateSessionRequestParam(sessionList, repeatPattern, sessionToBeAdded);
         }
     }
 

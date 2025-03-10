@@ -25,9 +25,15 @@
               "type": "string",
               "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             }
-          }
+          },
+          "allDaySplit": {"type": "boolean"},
+          "maxDurationForMorning": {"type": "integer"},
+          "maxDurationForAfternoon": {"type": "integer"},
+          "sessionStartTime": {"type": "string"},
+          "sessionEndTime": {"type": "string"},
+          "isOverbookingAllowed": {"type": "boolean"}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "duration", "panel", "repeatDays"]
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "repeatDays"]
       }
     },
     "repeatPattern": {

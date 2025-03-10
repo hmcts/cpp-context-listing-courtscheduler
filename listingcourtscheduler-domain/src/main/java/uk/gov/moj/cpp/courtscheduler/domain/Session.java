@@ -13,7 +13,12 @@ public class Session {
     private Integer slotsOrDuration;
     private String panel;
     private Set<DayOfWeek> repeatDays;
-
+    private Boolean allDaySplit;
+    private Integer maxDurationForMorning;
+    private Integer maxDurationForAfternoon;
+    private String sessionStartTime;
+    private String sessionEndTime;
+    private Boolean isOverbookingAllowed;
 
     public String getCourtCentreId() {
         return courtCentreId;
@@ -43,6 +48,29 @@ public class Session {
         return repeatDays;
     }
 
+    public Boolean isAllDaySplit() {
+        return allDaySplit;
+    }
+
+    public Integer getMaxDurationForMorning() {
+        return maxDurationForMorning;
+    }
+
+    public Integer getMaxDurationForAfternoon() {
+        return maxDurationForAfternoon;
+    }
+
+    public String getSessionStartTime() {
+        return sessionStartTime;
+    }
+
+    public String getSessionEndTime() {
+        return sessionEndTime;
+    }
+
+    public Boolean isOverbookingAllowed() {
+        return isOverbookingAllowed;
+    }
 
     public static final class SessionBuilder {
         private String courtCentreId;
@@ -52,6 +80,12 @@ public class Session {
         private Integer slotsOrDuration;
         private String panelType;
         private Set<DayOfWeek> repeatDays;
+        private Boolean allDaySplit;
+        private Integer maxDurationForMorning;
+        private Integer maxDurationForAfternoon;
+        private String sessionStartTime;
+        private String sessionEndTime;
+        private Boolean isOverbookingAllowed;
 
         private SessionBuilder() {
         }
@@ -95,6 +129,36 @@ public class Session {
             return this;
         }
 
+        public SessionBuilder withAllDaySplit(final Boolean allDaySplit) {
+            this.allDaySplit = allDaySplit;
+            return this;
+        }
+
+        public SessionBuilder withMaxDurationForMorning(final Integer maxDurationForMorning) {
+            this.maxDurationForMorning = maxDurationForMorning;
+            return this;
+        }
+
+        public SessionBuilder withMaxDurationForAfternoon(final Integer maxDurationForAfternoon) {
+            this.maxDurationForAfternoon = maxDurationForAfternoon;
+            return this;
+        }
+
+        public SessionBuilder withSessionStartTime(final String sessionStartTime) {
+            this.sessionStartTime = sessionStartTime;
+            return this;
+        }
+
+        public SessionBuilder withSessionEndTime(final String sessionEndTime) {
+            this.sessionEndTime = sessionEndTime;
+            return this;
+        }
+
+        public SessionBuilder withIsOverbookingAllowed(final Boolean isOverbookingAllowed) {
+            this.isOverbookingAllowed = isOverbookingAllowed;
+            return this;
+        }
+
         public Session build() {
             Session session = new Session();
             session.slotsOrDuration = this.slotsOrDuration;
@@ -104,6 +168,12 @@ public class Session {
             session.courtCentreId = this.courtCentreId;
             session.courtRoomId = this.courtRoomId;
             session.panel = this.panelType;
+            session.allDaySplit = this.allDaySplit;
+            session.maxDurationForMorning = this.maxDurationForMorning;
+            session.maxDurationForAfternoon = this.maxDurationForAfternoon;
+            session.sessionStartTime = this.sessionStartTime;
+            session.sessionEndTime = this.sessionEndTime;
+            session.isOverbookingAllowed = this.isOverbookingAllowed;
             return session;
         }
     }

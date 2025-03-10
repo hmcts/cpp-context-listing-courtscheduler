@@ -7,7 +7,8 @@
       "businessType": "DVLA",
       "duration": 2,
       "panel": "YOUTH",
-      "repeatDays": ["Monday", "Wednesday", "Friday"]
+      "repeatDays": ["Monday", "Wednesday", "Friday"],
+      "isOverbookingAllowed": true
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
@@ -16,7 +17,8 @@
       "businessType": "DVLA",
       "duration": 2,
       "panel": "YOUTH",
-      "repeatDays": ["Monday", "Wednesday", "Friday"]
+      "repeatDays": ["Monday", "Wednesday", "Friday"],
+      "isOverbookingAllowed": true
     }
   ],
   "repeatPattern": {

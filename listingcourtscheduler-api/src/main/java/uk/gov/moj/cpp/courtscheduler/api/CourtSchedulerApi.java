@@ -118,7 +118,7 @@ public class CourtSchedulerApi {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.create requested : {}", requestFromApiJsonObject);
         CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
-        JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+        JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
@@ -134,7 +134,7 @@ public class CourtSchedulerApi {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.validate.create requested : {}", requestFromApiJsonObject);
         CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
-        JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+        JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
@@ -159,17 +159,17 @@ public class CourtSchedulerApi {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.get.court_schedule requested : {}", requestFromApiJsonObject);
 
-        CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParamConverter.convert(requestFromApiJsonObject);
+        final CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParamConverter.convert(requestFromApiJsonObject);
 
-        JsonObject validate = courtScheduleApiValidator.getCourtSchedulesValidation(courtScheduleRequestParam);
+        final JsonObject validate = courtScheduleApiValidator.getCourtSchedulesValidation(courtScheduleRequestParam);
 
         if (!validate.isEmpty()) {
             return envelopeFor(envelope, validate, ERROR);
         }
 
-        List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(courtScheduleRequestParam, requester);
+        final List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(courtScheduleRequestParam, requester);
 
-        List<CourtSessionsView> courtSessionsViewList = CourtScheduleToViewConverter.getCourtSessionsViews(courtSchedules);
+        final List<CourtSessionsView> courtSessionsViewList = CourtScheduleToViewConverter.getCourtSessionsViews(courtSchedules);
 
         return envelopeFor(envelope, new ListToJsonArrayConverter<CourtSessionsView>().convert(courtSessionsViewList), COURT_SCHEDULES);
     }
@@ -179,6 +179,13 @@ public class CourtSchedulerApi {
         final JsonObject payload = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.update requested : {}", payload);
         UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(envelope.payloadAsJsonObject());
+
+        JsonObject validate = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
         Result result = sessionsService.update(updateCourtSchedule, requester);
         if (!result.isSuccess()) {
             throw new ValidationException(createObjectBuilder().add(ERROR_MESSAGE, result.getMsg()).build());
@@ -200,6 +207,21 @@ public class CourtSchedulerApi {
         return enveloper.withMetadataFrom(envelope, "courtscheduler.update.hearing.slots").apply(createObjectBuilder().build());
     }
 
+    @Handles("courtscheduler.search.update.hearing.slots")
+    public JsonEnvelope searchUpdateHearingSlots(final JsonEnvelope envelope) {
+        final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
+        LOGGER.info("courtscheduler.search.update.hearing.slots:{}", payloadAsJsonString);
+        List<AllocatedSlot> allocatedSlots = converter.convert(payloadAsJsonString).getHearingSlots();
+
+        Result result = slotsUpdateService.searchUpdate(allocatedSlots);
+
+        JsonObject responseObject = createObjectBuilder()
+                .add(RESULTS, objectToJsonObjectConverter.convert(result))
+                .build();
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.search.update.hearing.slots").apply(responseObject);
+    }
+
     @Handles("courtscheduler.get.hearing.slots")
     public JsonEnvelope getHearingSlots(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
@@ -215,7 +237,7 @@ public class CourtSchedulerApi {
             return envelopeFor(envelope, validate, ERROR);
         }
 
-        JsonObject responseObject = slotsSearchService.search(hearingSlotRequestParam);
+        final JsonObject responseObject = slotsSearchService.search(hearingSlotRequestParam);
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 

@@ -4,13 +4,19 @@ import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.BUSINESS_TYPE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.LOCATION_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PANEL;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE_NAME;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_END_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_END_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_DETAIL_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_ROOM_ERR_MSG;
 
@@ -20,6 +26,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -91,6 +98,14 @@ public class CourtScheduleEnricher {
                 .withBusinessType(businessType)
                 .withSessionDate(sessionDate)
                 .withCourtSession(courtSessionStr);
+
+        if (AM_SESSION.equals(courtSessionStr)) {
+            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_MORNING_START_TIME))
+                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_MORNING_END_TIME));
+        } else if (PM_SESSION.equals(courtSessionStr)) {
+            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_START_TIME))
+                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_END_TIME));
+        }
     }
 
     private void populateSessionAllocation(final CourtSchedule.CourtScheduleBuilder builder,

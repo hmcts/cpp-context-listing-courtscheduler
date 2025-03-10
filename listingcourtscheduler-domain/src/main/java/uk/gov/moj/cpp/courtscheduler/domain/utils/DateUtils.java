@@ -1,7 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum.fromName;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.MeridianHelper.getMeridian;
 
 import uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum;
@@ -12,6 +16,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -21,6 +26,13 @@ import java.time.format.DateTimeFormatter;
 
 public class DateUtils {
     protected static final DateTimeFormatter ISO_8601_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    public static final String DEFAULT_MORNING_START_TIME = "10:00";
+    public static final String DEFAULT_MORNING_END_TIME = "13:00";
+    public static final String DEFAULT_AFTERNOON_START_TIME = "14:00";
+    public static final String DEFAULT_AFTERNOON_END_TIME = "17:00";
+    public static final String DEFAULT_ALL_DAY_START_TIME = "10:00";
+    public static final String DEFAULT_ALL_DAY_END_TIME = "17:00";
 
     private DateUtils() {
     }
@@ -42,6 +54,13 @@ public class DateUtils {
             return null;
         }
         return LocalDateTime.parse(isoDate, ISO_8601_FORMATTER).atOffset(ZoneOffset.UTC);
+    }
+
+    public static final String toIsoString(final LocalDateTime localDateTime) {
+        if (localDateTime == null) {
+            return null;
+        }
+        return localDateTime.format(ISO_8601_FORMATTER);
     }
 
     public static final ZonedDateTime toZonedDateTime(final String isoDate) {
@@ -107,6 +126,11 @@ public class DateUtils {
         }
     }
 
+    public static final java.util.Date localDateToDateWithTime(final LocalDate localDate, final int hour, final int minute) {
+        final ZonedDateTime zonedDateTime = localDate.atTime(hour, minute).atZone(ZoneId.of("UTC"));
+        return java.util.Date.from(zonedDateTime.toInstant());
+    }
+
     public static String createDefaultHearingStartTime(final String session, final String sessionDate) {
         if (isBlank(sessionDate) || isBlank(session)) {
             return null;
@@ -126,5 +150,52 @@ public class DateUtils {
 
     public static String toMeridian(final String isoDateTime) {
         return getMeridian(toZonedDateTime(isoDateTime));
+    }
+
+    public static java.util.Date combineDateAndTime(final LocalDate date, final String time) {
+        LocalTime localTime = LocalTime.parse(time, TIME_FORMATTER);
+        LocalDateTime localDateTime = LocalDateTime.of(date, localTime);
+        return java.util.Date.from(localDateTime.atOffset(ZoneOffset.UTC).toInstant());
+    }
+
+    public static LocalTime toLocalTime(final String time) {
+        return LocalTime.parse(time, TIME_FORMATTER);
+    }
+
+    public static sessionStartAndEndTime getOrElseDefaultSessionStartAndEndTimeIfEmpty(final String sessionType, String sessionStartTime, String sessionEndTime) {
+        if (isEmpty(sessionStartTime)) {
+            switch (sessionType) {
+                case AM_SESSION:
+                    sessionStartTime = DEFAULT_MORNING_START_TIME;
+                    break;
+                case PM_SESSION:
+                    sessionStartTime = DEFAULT_AFTERNOON_START_TIME;
+                    break;
+                case ALL_DAY:
+                    sessionStartTime = DEFAULT_ALL_DAY_START_TIME;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (isEmpty(sessionEndTime)) {
+            switch (sessionType) {
+                case AM_SESSION:
+                    sessionEndTime = DEFAULT_MORNING_END_TIME;
+                    break;
+                case PM_SESSION:
+                    sessionEndTime = DEFAULT_AFTERNOON_END_TIME;
+                    break;
+                case ALL_DAY:
+                    sessionEndTime = DEFAULT_ALL_DAY_END_TIME;
+                    break;
+                default:
+                    break;
+            }
+        }
+        return new sessionStartAndEndTime(sessionStartTime, sessionEndTime);
+    }
+
+    public record sessionStartAndEndTime(String sessionStartTime, String sessionEndTime) {
     }
 }

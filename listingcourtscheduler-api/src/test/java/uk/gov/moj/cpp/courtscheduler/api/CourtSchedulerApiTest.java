@@ -134,7 +134,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope createCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
         when(this.enveloper.withMetadataFrom(createCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
-        when(sessionsApiValidator.getSessionsCreateValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
+        when(sessionsApiValidator.getSessionsCreateValidation(any(), any(Requester.class))).thenReturn(EMPTY_JSON_OBJECT);
         courtSchedulerApi.createCourtSchedule(createCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(createCourtScheduleJsonEnvelope, requestName);
@@ -154,7 +154,7 @@ class CourtSchedulerApiTest {
 
         when(createSessionsRequestParamConverter.convert(any())).thenReturn(new CreateSessionRequestParam(Collections.emptyList(), null, null));
 
-        when(sessionsApiValidator.getSessionsCreateValidation(any(CreateSessionRequestParam.class))).thenReturn(validationError);
+        when(sessionsApiValidator.getSessionsCreateValidation(any(CreateSessionRequestParam.class), any(Requester.class))).thenReturn(validationError);
 
         try {
             // Act
@@ -194,6 +194,7 @@ class CourtSchedulerApiTest {
         when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
                 .add(RESULTS, "ok")
                 .build());
+        when(sessionsApiValidator.getSessionsUpdateValidation(any(), any(Requester.class))).thenReturn(EMPTY_JSON_OBJECT);
 
         courtSchedulerApi.updateCourtSchedule(updateCourtScheduleJsonEnvelope);
 
@@ -209,6 +210,7 @@ class CourtSchedulerApiTest {
 
         Result failure = new Result("Court Schedule not found", false);
         when(sessionsService.update(any(), eq(requester))).thenReturn(failure);
+        when(sessionsApiValidator.getSessionsUpdateValidation(any(), any(Requester.class))).thenReturn(EMPTY_JSON_OBJECT);
 
         BadRequestException badRequestException = assertThrows(BadRequestException.class, () -> courtSchedulerApi.updateCourtSchedule(updateCourtScheduleJsonEnvelope));
 
@@ -247,6 +249,28 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.updateHearingSlots(updateHearingSlotsEnvelope);
 
         verify(slotsUpdateService, atLeastOnce()).update(new AllocatedSlotConverter().convert(payload).getHearingSlots());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(updateHearingSlotsEnvelope, requestName);
+    }
+
+    @Test
+    void shouldSearchUpdateHearingSlots() throws IOException {
+        String payload = FileUtil.getPayload("courtscheduler.search.update.hearing.slots.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.search.update.hearing.slots";
+
+        final JsonEnvelope updateHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
+
+        when(enveloper.withMetadataFrom(updateHearingSlotsEnvelope, requestName)).thenReturn(function);
+        Result success = Result.SUCCESS();
+        when(slotsUpdateService.searchUpdate(any())).thenReturn(success);
+        when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
+                .add(RESULTS, "Success")
+                .build());
+        when(allocatedSlotConverter.convert(jsonObject.toString())).thenReturn(new AllocatedSlotConverter().convert(payload));
+
+        courtSchedulerApi.searchUpdateHearingSlots(updateHearingSlotsEnvelope);
+
+        verify(slotsUpdateService, atLeastOnce()).searchUpdate(new AllocatedSlotConverter().convert(payload).getHearingSlots());
         verify(enveloper, atLeastOnce()).withMetadataFrom(updateHearingSlotsEnvelope, requestName);
     }
 
@@ -405,7 +429,7 @@ class CourtSchedulerApiTest {
                 .add("errorMessage", "Validation Failed")
                 .build();
 
-        when(sessionsApiValidator.getSessionsCreateValidation(any())).thenReturn(validationResult);
+        when(sessionsApiValidator.getSessionsCreateValidation(any(), any(Requester.class))).thenReturn(validationResult);
 
         //verify it returns bad request with error message
         assertThrows(ValidationException.class, () -> courtSchedulerApi.validateCreateCourtSchedule(validationEnvelope));

@@ -15,7 +15,6 @@ public class CourtScheduleToDeleteResponseConverter implements Converter<List<Co
             CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
                     .withActive(courtSchedule.isActive())
-                    .withHasHearingsBooked(courtSchedule.getHasHearingsBooked())
                     .withSlotBased(courtSchedule.isSlotBased())
                     .withAvailableDuration(courtSchedule.getAvailableDuration())
                     .withAvailableSlots(courtSchedule.getAvailableSlots())

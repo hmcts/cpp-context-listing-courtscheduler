@@ -33,7 +33,20 @@ public class CourtSchedule {
 
     private Date createdOn;
     private Date updatedOn;
-    private boolean hasHearingsBooked;
+
+    private boolean allDaySplit;
+    private Integer maxDurationForMorning = 0;
+    private Integer maxDurationForAfternoon = 0;
+    private Integer totalBooked = 0;
+    private Integer availableDurationForMorning = 0;
+    private Integer availableDurationForAfternoon = 0;
+
+    private Integer totalBookedForMorning = 0;
+    private Integer totalBookedForAfternoon = 0;
+    private boolean isOverbookingAllowed;
+
+    private Date sessionStartTime;
+    private Date sessionEndTime;
 
     protected CourtSchedule(final CourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -60,7 +73,17 @@ public class CourtSchedule {
         this.active = builder.active;
         this.createdOn = builder.createdOn;
         this.updatedOn = builder.updatedOn;
-        this.hasHearingsBooked = builder.hasHearingsBooked;
+        this.allDaySplit = builder.allDaySplit;
+        this.maxDurationForMorning = builder.maxDurationForMorning;
+        this.maxDurationForAfternoon = builder.maxDurationForAfternoon;
+        this.totalBookedForMorning = builder.totalBookedForMorning;
+        this.totalBookedForAfternoon = builder.totalBookedForAfternoon;
+        this.availableDurationForMorning = builder.availableDurationForMorning;
+        this.availableDurationForAfternoon = builder.availableDurationForAfternoon;
+        this.totalBooked = builder.totalBooked;
+        this.sessionStartTime = builder.sessionStartTime;
+        this.sessionEndTime = builder.sessionEndTime;
+        this.isOverbookingAllowed = builder.isOverbookingAllowed;
     }
 
     public CourtSchedule() {
@@ -148,10 +171,6 @@ public class CourtSchedule {
 
     public boolean isActive() {
         return active;
-    }
-
-    public boolean getHasHearingsBooked() {
-        return hasHearingsBooked;
     }
 
     public void setCourtScheduleId(final String courtScheduleId) {
@@ -265,11 +284,94 @@ public class CourtSchedule {
     public void setUpdatedOn(Date updatedOn) {
         this.updatedOn = updatedOn;
     }
-    public CourtSchedule setHasHearingsBooked(final boolean hasHearingsBooked) {
-        this.hasHearingsBooked = hasHearingsBooked;
-        return this;
+
+    public boolean isAllDaySplit() {
+        return allDaySplit;
     }
 
+    public void setAllDaySplit(final boolean allDaySplit) {
+        this.allDaySplit = allDaySplit;
+    }
+
+    public Integer getMaxDurationForMorning() {
+        return maxDurationForMorning;
+    }
+
+    public void setMaxDurationForMorning(final Integer maxDurationForMorning) {
+        this.maxDurationForMorning = maxDurationForMorning;
+    }
+
+    public Integer getMaxDurationForAfternoon() {
+        return maxDurationForAfternoon;
+    }
+
+    public void setMaxDurationForAfternoon(final Integer maxDurationForAfternoon) {
+        this.maxDurationForAfternoon = maxDurationForAfternoon;
+    }
+
+    public Integer getTotalBookedForMorning() {
+        return totalBookedForMorning;
+    }
+
+    public void setTotalBookedForMorning(final Integer totalBookedForMorning) {
+        this.totalBookedForMorning = totalBookedForMorning;
+    }
+
+    public void setTotalBookedForAfternoon(final Integer totalBookedForAfternoon) {
+        this.totalBookedForAfternoon = totalBookedForAfternoon;
+    }
+
+    public Integer getTotalBookedForAfternoon() {
+        return totalBookedForAfternoon;
+    }
+
+    public Integer getAvailableDurationForMorning() {
+        return availableDurationForMorning;
+    }
+
+    public void setAvailableDurationForMorning(final Integer availableDurationForMorning) {
+        this.availableDurationForMorning = availableDurationForMorning;
+    }
+
+    public Integer getAvailableDurationForAfternoon() {
+        return availableDurationForAfternoon;
+    }
+
+    public void setAvailableDurationForAfternoon(final Integer availableDurationForAfternoon) {
+        this.availableDurationForAfternoon = availableDurationForAfternoon;
+    }
+
+    public Integer getTotalBooked() {
+        return totalBooked;
+    }
+
+    public void setTotalBooked(final Integer totalBooked) {
+        this.totalBooked = totalBooked;
+    }
+
+    public Date getSessionStartTime() {
+        return sessionStartTime;
+    }
+
+    public void setSessionStartTime(Date sessionStartTime) {
+        this.sessionStartTime = sessionStartTime;
+    }
+
+    public void setSessionEndTime(Date sessionEndTime) {
+        this.sessionEndTime = sessionEndTime;
+    }
+
+    public Date getSessionEndTime() {
+        return sessionEndTime;
+    }
+
+    public boolean isOverbookingAllowed() {
+        return isOverbookingAllowed;
+    }
+
+    public void setIsOverbookingAllowed(boolean isOverbookingAllowed) {
+        this.isOverbookingAllowed = isOverbookingAllowed;
+    }
 
     public static final class CourtScheduleBuilder {
 
@@ -299,7 +401,18 @@ public class CourtSchedule {
         private Date createdOn;
         private Date updatedOn;
 
-        private boolean hasHearingsBooked;
+        private boolean allDaySplit;
+        private Integer maxDurationForMorning = 0;
+        private Integer maxDurationForAfternoon = 0;
+        private Integer totalBooked = 0;
+        private Integer totalBookedForMorning = 0;
+        private Integer totalBookedForAfternoon = 0;
+        private Integer availableDurationForMorning = 0;
+        private Integer availableDurationForAfternoon = 0;
+        private boolean isOverbookingAllowed;
+
+        private Date sessionStartTime;
+        private Date sessionEndTime;
 
         public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
             return new CourtSchedule.CourtScheduleBuilder();
@@ -392,10 +505,42 @@ public class CourtSchedule {
         public String getCourtScheduleId() {
             return courtScheduleId;
         }
-        public boolean getHasHearingsBooked() {
-            return hasHearingsBooked;
+
+        public boolean isAllDaySplit() {
+            return allDaySplit;
         }
 
+        public Integer getMaxDurationForMorning() {
+            return maxDurationForMorning;
+        }
+
+        public Integer getMaxDurationForAfternoon() {
+            return maxDurationForAfternoon;
+        }
+
+        public Integer getTotalBooked() {
+            return totalBooked;
+        }
+
+        public Integer getTotalBookedForMorning() {
+            return totalBookedForMorning;
+        }
+
+        public Integer getTotalBookedForAfternoon() {
+            return totalBookedForAfternoon;
+        }
+
+        public Date getSessionStartTime() {
+            return sessionStartTime;
+        }
+
+        public Date getSessionEndTime() {
+            return sessionEndTime;
+        }
+
+        public boolean isOverbookingAllowed() {
+            return isOverbookingAllowed;
+        }
 
         public CourtScheduleBuilder withCourtSchedule(final CourtSchedule courtSchedule) {
             this.courtScheduleId = courtSchedule.courtScheduleId;
@@ -421,7 +566,17 @@ public class CourtSchedule {
             this.active = courtSchedule.active;
             this.createdOn = courtSchedule.createdOn;
             this.updatedOn = courtSchedule.updatedOn;
-            this.hasHearingsBooked = courtSchedule.hasHearingsBooked;
+            this.allDaySplit = courtSchedule.allDaySplit;
+            this.maxDurationForMorning = courtSchedule.maxDurationForMorning;
+            this.maxDurationForAfternoon = courtSchedule.maxDurationForAfternoon;
+            this.totalBooked = courtSchedule.totalBooked;
+            this.sessionStartTime = courtSchedule.sessionStartTime;
+            this.sessionEndTime = courtSchedule.sessionEndTime;
+            this.totalBookedForMorning = courtSchedule.totalBookedForMorning;
+            this.totalBookedForAfternoon = courtSchedule.totalBookedForAfternoon;
+            this.availableDurationForMorning = courtSchedule.availableDurationForMorning;
+            this.availableDurationForAfternoon = courtSchedule.availableDurationForAfternoon;
+            this.isOverbookingAllowed = courtSchedule.isOverbookingAllowed;
             return this;
         }
 
@@ -555,11 +710,60 @@ public class CourtSchedule {
             return this;
         }
 
-        public CourtScheduleBuilder withHasHearingsBooked(final boolean hasHearingsBooked) {
-            this.hasHearingsBooked = hasHearingsBooked;
+        public CourtScheduleBuilder withAllDaySplit(final boolean allDaySplit) {
+            this.allDaySplit = allDaySplit;
             return this;
         }
 
+        public CourtScheduleBuilder withMaxDurationForMorning(final Integer maxDurationForMorning) {
+            this.maxDurationForMorning = maxDurationForMorning;
+            return this;
+        }
+
+        public CourtScheduleBuilder withMaxDurationForAfternoon(final Integer maxDurationForAfternoon) {
+            this.maxDurationForAfternoon = maxDurationForAfternoon;
+            return this;
+        }
+
+        public CourtScheduleBuilder withTotalBookedForMorning(final Integer totalBookedForMorning) {
+            this.totalBookedForMorning = totalBookedForMorning;
+            return this;
+        }
+
+        public CourtScheduleBuilder withTotalBookedForAfternoon(final Integer totalBookedForAfternoon) {
+            this.totalBookedForAfternoon = totalBookedForAfternoon;
+            return this;
+        }
+
+        public CourtScheduleBuilder withAvailableDurationForMorning(final Integer availableDurationForMorning) {
+            this.availableDurationForMorning = availableDurationForMorning;
+            return this;
+        }
+
+        public CourtScheduleBuilder withAvailableDurationForAfternoon(final Integer availableDurationForAfternoon) {
+            this.availableDurationForAfternoon = availableDurationForAfternoon;
+            return this;
+        }
+
+        public CourtScheduleBuilder withTotalBooked(final Integer totalBooked) {
+            this.totalBooked = totalBooked;
+            return this;
+        }
+
+        public CourtScheduleBuilder withSessionStartTime(final Date sessionStartTime) {
+            this.sessionStartTime = sessionStartTime;
+            return this;
+        }
+
+        public CourtScheduleBuilder withSessionEndTime(final Date sessionEndTime) {
+            this.sessionEndTime = sessionEndTime;
+            return this;
+        }
+
+        public CourtScheduleBuilder withIsOverbookingAllowed(final boolean isOverbookingAllowed) {
+            this.isOverbookingAllowed = isOverbookingAllowed;
+            return this;
+        }
 
         public CourtSchedule build() {
             return new CourtSchedule(this);

@@ -19,7 +19,7 @@ public class CourtScheduleToViewConverter {
             final CourtScheduleView courtScheduleView = new CourtScheduleView.CourtScheduleViewBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
                     .withActive(courtSchedule.isActive())
-                    .withHasHearingsBooked(courtSchedule.getHasHearingsBooked())
+                    .withTotalBooked(courtSchedule.getTotalBooked())
                     .withSlotBased(courtSchedule.isSlotBased())
                     .withAvailableDuration(courtSchedule.getAvailableDuration())
                     .withAvailableSlots(courtSchedule.getAvailableSlots())
@@ -38,6 +38,13 @@ public class CourtScheduleToViewConverter {
                     .withOuCode(courtSchedule.getOuCode())
                     .withPanel(courtSchedule.getPanel())
                     .withSessionDate(courtSchedule.getSessionDate())
+                    .withAllDaySplit(courtSchedule.isAllDaySplit())
+                    .withMaxDurationForMorning(courtSchedule.getMaxDurationForMorning())
+                    .withMaxDurationForAfternoon(courtSchedule.getMaxDurationForAfternoon())
+                    .withTotalBookedForMorning(courtSchedule.getTotalBookedForMorning())
+                    .withTotalBookedForAfternoon(courtSchedule.getTotalBookedForAfternoon())
+                    .withAvailableDurationForMorning(courtSchedule.getAvailableDurationForMorning())
+                    .withAvailableDurationForAfternoon(courtSchedule.getAvailableDurationForAfternoon())
                     .build();
             CourtSessionsView courtSessionsView;
             if (courtSessionsViews.containsKey(courtRoomName)) {
