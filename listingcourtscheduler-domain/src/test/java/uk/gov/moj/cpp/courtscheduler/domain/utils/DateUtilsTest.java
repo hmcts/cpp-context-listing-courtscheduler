@@ -8,6 +8,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toSqlDate;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
@@ -125,6 +127,18 @@ public class DateUtilsTest {
     @Test
     public void shouldConvertToMeridian() {
         assertThat(toMeridian("2020-08-01T16:08:08.000Z"), is("PM"));
+    }
+
+    @Test
+    public void shouldReturnBSTNotApplied(){
+        final java.util.Date expectedDate = java.util.Date.from(LocalDateTime.of(2025,03,15,10,00).toInstant(ZoneOffset.UTC));
+        assertThat(DateUtils.combineDateAndTime(LocalDate.of(2025,03,15), "10:00"), is(expectedDate));;
+    }
+
+    @Test
+    public void shouldReturnBSTApplied(){
+        final java.util.Date expectedDate = java.util.Date.from(LocalDateTime.of(2025,04,15,9,0).toInstant(ZoneOffset.UTC));
+        assertThat(DateUtils.combineDateAndTime(LocalDate.of(2025,04,15), "10:00"), is(expectedDate));;
     }
 }
 

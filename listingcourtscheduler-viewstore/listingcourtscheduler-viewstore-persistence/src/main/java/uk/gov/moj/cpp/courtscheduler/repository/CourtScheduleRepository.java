@@ -136,19 +136,19 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                                                                CASE
                                                                    WHEN cs.court_session = 'AD' AND cs.support_ad_split = true THEN
                                                                        CASE
-                                                                           WHEN CAST(al.hearing_start_time AS time) < CAST('13:00:00' AS TIME)
-                                                                               AND CAST(al.hearing_start_time AS time) +
+                                                                           WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) < CAST('13:00:00' AS TIME)
+                                                                               AND CAST((al.hearing_start_time at time zone 'Europe/London') AS time) +
                                                                                    CAST(al.duration || ' minutes' AS INTERVAL) <= CAST('13:00:00' AS TIME)
                                                                                THEN al.duration
-                                                                           WHEN CAST(al.hearing_start_time AS time) < CAST('13:00:00' AS TIME)
-                                                                               AND CAST(al.hearing_start_time AS time) +
+                                                                           WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) < CAST('13:00:00' AS TIME)
+                                                                               AND CAST((al.hearing_start_time at time zone 'Europe/London') AS time) +
                                                                                    CAST(al.duration || ' minutes' AS INTERVAL) > CAST('13:00:00' AS TIME)
                                                                                THEN EXTRACT(EPOCH FROM
-                                                                                            (CAST('13:00:00' AS TIME) - CAST(al.hearing_start_time AS time))) /
+                                                                                            (CAST('13:00:00' AS TIME) - CAST((al.hearing_start_time at time zone 'Europe/London') AS time))) /
                                                                                     60
                                                                            ELSE 0
                                                                            END
-                                                                   WHEN CAST(al.hearing_start_time AS time) < CAST('13:00:00' AS TIME)
+                                                                   WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) < CAST('13:00:00' AS TIME)
                                                                        THEN al.duration
                                                                    ELSE 0
                                                                    END
@@ -162,17 +162,17 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                                                                CASE
                                                                    WHEN cs.court_session = 'AD' AND cs.support_ad_split = true THEN
                                                                        CASE
-                                                                           WHEN CAST(al.hearing_start_time AS time) >= CAST('13:00:00' AS TIME)
+                                                                           WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) >= CAST('13:00:00' AS TIME)
                                                                                THEN al.duration
-                                                                           WHEN CAST(al.hearing_start_time AS time) < CAST('13:00:00' AS TIME)
-                                                                               AND CAST(al.hearing_start_time AS time) +
+                                                                           WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) < CAST('13:00:00' AS TIME)
+                                                                               AND CAST((al.hearing_start_time at time zone 'Europe/London') AS time) +
                                                                                    CAST(al.duration || ' minutes' AS INTERVAL) > CAST('13:00:00' AS TIME)
-                                                                               THEN EXTRACT(EPOCH FROM (CAST(al.hearing_start_time AS time) +
+                                                                               THEN EXTRACT(EPOCH FROM (CAST((al.hearing_start_time at time zone 'Europe/London') AS time) +
                                                                                                         CAST(al.duration || ' minutes' AS INTERVAL) -
                                                                                                         CAST('13:00:00' AS TIME))) / 60
                                                                            ELSE 0
                                                                            END
-                                                                   WHEN CAST(al.hearing_start_time AS time) >= CAST('13:00:00' AS TIME)
+                                                                   WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) >= CAST('13:00:00' AS TIME)
                                                                        THEN al.duration
                                                                    ELSE 0
                                                                    END
