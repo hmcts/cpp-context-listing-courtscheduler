@@ -155,7 +155,8 @@ public class DateUtils {
     public static java.util.Date combineDateAndTime(final LocalDate date, final String time) {
         LocalTime localTime = LocalTime.parse(time, TIME_FORMATTER);
         LocalDateTime localDateTime = LocalDateTime.of(date, localTime);
-        return java.util.Date.from(localDateTime.atOffset(ZoneOffset.UTC).toInstant());
+        ZonedDateTime zonedDateTime = localDateTime.atZone(ZoneId.of("Europe/London")).withZoneSameInstant(ZoneOffset.UTC);
+        return java.util.Date.from(zonedDateTime.toInstant());
     }
 
     public static LocalTime toLocalTime(final String time) {
