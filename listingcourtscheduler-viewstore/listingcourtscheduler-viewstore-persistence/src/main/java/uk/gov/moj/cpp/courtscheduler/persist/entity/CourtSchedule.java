@@ -25,6 +25,45 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Table(name = "court_schedule")
 @SqlResultSetMappings({
         @SqlResultSetMapping(
+                name = "CourtScheduleEntityMappingForAllFields",
+                classes = @ConstructorResult(
+                        targetClass = CourtSchedule.class,
+                        columns = {
+                                @ColumnResult(name = "id", type = String.class),
+                                @ColumnResult(name = "court_listing_profile_id", type = String.class),
+                                @ColumnResult(name = "oucode", type = String.class),
+                                @ColumnResult(name = "court_room_id", type = String.class),
+                                @ColumnResult(name = "court_room_number", type = Integer.class),
+                                @ColumnResult(name = "court_house_id", type = String.class),
+                                @ColumnResult(name = "court_house_name", type = String.class),
+                                @ColumnResult(name = "court_room_name", type = String.class),
+                                @ColumnResult(name = "operational_unit", type = String.class),
+                                @ColumnResult(name = "rota_business_type", type = String.class),
+                                @ColumnResult(name = "panel", type = String.class),
+                                @ColumnResult(name = "court_session", type = String.class),
+                                @ColumnResult(name = "active", type = Boolean.class),
+                                @ColumnResult(name = "is_slot_based", type = Boolean.class),
+                                @ColumnResult(name = "session_start", type = LocalDate.class),
+                                @ColumnResult(name = "max_slot", type = Integer.class),
+                                @ColumnResult(name = "max_duration_mins", type = Integer.class),
+                                @ColumnResult(name = "available_slot", type = Integer.class),
+                                @ColumnResult(name = "available_duration_mins", type = Integer.class),
+                                @ColumnResult(name = "support_ad_split", type = Boolean.class),
+                                @ColumnResult(name = "max_ad_morning_duration", type = Integer.class),
+                                @ColumnResult(name = "max_ad_afternoon_duration", type = Integer.class),
+                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class),
+                                @ColumnResult(name = "session_start_time", type = Date.class),
+                                @ColumnResult(name = "session_end_time", type = Date.class),
+                                @ColumnResult(name = "created_on", type = Timestamp.class),
+                                @ColumnResult(name = "updated_on", type = Timestamp.class),
+                                @ColumnResult(name = "hasHearingsBooked", type = Boolean.class),
+                                @ColumnResult(name = "totalbookedformorning", type = Integer.class),
+                                @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
+                                @ColumnResult(name = "totalbooked", type = Integer.class)
+                        }
+                )
+        ),
+        @SqlResultSetMapping(
                 name = "CourtScheduleEntityMappingForSlots",
                 classes = @ConstructorResult(
                         targetClass = CourtSchedule.class,
@@ -307,6 +346,71 @@ public class CourtSchedule {
         this.totalBooked = totalBooked;
     }
 
+    public CourtSchedule(
+            String id,
+            String courtListingProfileId,
+            String ouCode,
+            String courtRoomId,
+            Integer courtRoomNumber,
+            String courtHouseId,
+            String courtHouseName,
+            String courtRoomName,
+            String operationalUnit,
+            String businessType,
+            String panel,
+            String courtSession,
+            Boolean active,
+            Boolean slotBased,
+            LocalDate sessionDate,
+            Integer maxSlots,
+            Integer maxDuration,
+            Integer availableSlots,
+            Integer availableDuration,
+            Boolean supportAdSplit,
+            Integer maxAdMorningDuration,
+            Integer maxAdAfternoonDuration,
+            Boolean isOverbookingAllowed,
+            Date sessionStartTime,
+            Date sessionEndTime,
+            Date createdOn,
+            Date updatedOn,
+            Boolean hasHearingsBooked,
+            Integer totalBookedMorning,
+            Integer totalBookedAfternoon,
+            Integer totalBooked
+    ) {
+        this.courtScheduleId = id;
+        this.listingProfileId = courtListingProfileId;
+        this.ouCode = ouCode;
+        this.courtRoomId = courtRoomId;
+        this.courtRoomNumber = courtRoomNumber;
+        this.courtHouseId = courtHouseId;
+        this.courtHouseName = courtHouseName;
+        this.courtRoomName = courtRoomName;
+        this.operationalUnit = operationalUnit;
+        this.businessType = businessType;
+        this.panel = panel;
+        this.courtSession = courtSession;
+        this.active = active;
+        this.slotBased = slotBased;
+        this.sessionDate = sessionDate;
+        this.maxSlots = maxSlots;
+        this.maxDuration = maxDuration;
+        this.availableSlots = availableSlots;
+        this.availableDuration = availableDuration;
+        this.supportAdSplit = supportAdSplit;
+        this.maxAdMorningDuration = maxAdMorningDuration;
+        this.maxAdAfternoonDuration = maxAdAfternoonDuration;
+        this.isOverbookingAllowed = isOverbookingAllowed;
+        this.sessionStartTime = sessionStartTime;
+        this.sessionEndTime = sessionEndTime;
+        this.createdOn = createdOn;
+        this.updatedOn = updatedOn;
+        this.hasHearingsBooked = hasHearingsBooked;
+        this.totalBookedMorning = totalBookedMorning;
+        this.totalBookedAfternoon = totalBookedAfternoon;
+        this.totalBooked = totalBooked;
+    }
 
     public String getCourtScheduleId() {
         return courtScheduleId;

@@ -42,6 +42,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
@@ -707,5 +708,9 @@ public class SessionsService {
 
         }
         return violated;
+    }
+
+    public List<CourtSchedule> getCourtSchedulesById(final SearchCourtSchedulesByIdRequestParam requestParam, final Requester requester) {
+        return courtScheduleRepository.getCourtSchedulesByIdList(requestParam.getCourtScheduleIds());
     }
 }
