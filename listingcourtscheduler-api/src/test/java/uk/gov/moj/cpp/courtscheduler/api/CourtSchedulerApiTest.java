@@ -29,6 +29,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
@@ -49,12 +50,19 @@ import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -102,6 +110,8 @@ class CourtSchedulerApiTest {
     private AllocatedSlotConverter allocatedSlotConverter;
     @Mock
     private HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
+    @Mock
+    private HearingSlotSearchRequestConverter hearingSlotSearchRequestConverter;
     @Mock
     private HearingSlotsApiValidator hearingSlotsApiValidator;
     @Mock
@@ -324,6 +334,27 @@ class CourtSchedulerApiTest {
     }
 
     @Test
+    void shouldSearchListHearingSlots() throws IOException {
+        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.search.list.hearings-in-court-sessions.json"));
+        final String requestName = "courtscheduler.search.list.hearings-in-court-sessions";
+        final JsonEnvelope getSearchListHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
+        final HearingSlotSearchResponse hearingSlotSearchResponse = createHearingSlotsResponse("432c067d-eaca-4ce5-ad90-a366ef3e4bb6");
+
+        when(enveloper.withMetadataFrom(getSearchListHearingSlotsEnvelope, requestName)).thenReturn(function);
+        when(hearingSlotSearchRequestConverter.convert(jsonObject)).thenReturn(new HearingSlotSearchRequestConverter().convert(jsonObject));
+        when(slotsSearchService.searchAndList(hearingSlotSearchRequestConverter.convert(jsonObject))).thenReturn(Optional.of(hearingSlotSearchResponse));
+        when(hearingSlotsApiValidator.searchHearingSlotsValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
+        when(objectToJsonObjectConverter.convert(hearingSlotSearchResponse)).thenReturn(createObjectBuilder()
+                .add(RequestParameterConstant.HEARING_SLOTS.getLabel(), "ok")
+                .build());
+
+        courtSchedulerApi.searchListHearingSlots(getSearchListHearingSlotsEnvelope);
+
+        verify(slotsSearchService, atLeastOnce()).searchAndList(hearingSlotSearchRequestConverter.convert(jsonObject));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(getSearchListHearingSlotsEnvelope, requestName);
+    }
+
+    @Test
     void shouldExportCourtSchedules() throws IOException {
         final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.export.court_schedule.json"));
         final String requestName = "courtscheduler.export.court_schedule.json";
@@ -446,5 +477,9 @@ class CourtSchedulerApiTest {
                 .withUserId(userId.toString())
                 .build();
         return new DefaultJsonEnvelopeProvider().envelopeFrom(metadata, payload);
+    }
+    private HearingSlotSearchResponse createHearingSlotsResponse(String hearingId) {
+        Date sessionStartTime = Date.from(LocalTime.parse("09:00").atDate(LocalDate.of(2024, 7, 15)).atZone(ZoneId.of("UTC")).toInstant());
+        return new HearingSlotSearchResponse(hearingId, "432c067d-eaca-4ce5-ad90-a366ef3e4bb6", "001c067d-eaca-4ce5-ad90-a366ef3e4bb6", sessionStartTime.toString(), 20);
     }
 }

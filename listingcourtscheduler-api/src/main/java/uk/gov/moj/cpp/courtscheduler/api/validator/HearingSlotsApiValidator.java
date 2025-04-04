@@ -12,6 +12,7 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CR
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
 
 import uk.gov.justice.services.common.converter.LocalDates;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
@@ -59,6 +60,27 @@ public class HearingSlotsApiValidator {
         if (StringUtils.isBlank(hearingSlotRequestParam.pageNumber())) {
             return getMessage(RequestParameterConstant.PAGE_NUMBER.getLabel());
         }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    public JsonObject searchHearingSlotsValidation(final HearingSlotSearchRequest hearingSlotSearchRequest) {
+
+        LOGGER.info("Validating Search List Hearing Slot input : {}", hearingSlotSearchRequest);
+
+        if (StringUtils.isBlank(hearingSlotSearchRequest.hearingId())) {
+            return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
+        }
+
+        if (StringUtils.isBlank(hearingSlotSearchRequest.ouCode())) {
+            return getMessage(RequestParameterConstant.OU_CODE.getLabel() + " should be entered");
+        }
+
+        if (StringUtils.isBlank(hearingSlotSearchRequest.hearingSessionDate())) {
+            return getMessage(RequestParameterConstant.HEARING_SESSION_DATE.getLabel());
+        } else if (isInvalidDateFormat(hearingSlotSearchRequest.hearingSessionDate())) {
+            return getMessage(format(START_DATE_IS_IN_BAD_FORMAT, hearingSlotSearchRequest.hearingSessionDate()));
+        }
+
         return EMPTY_JSON_OBJECT;
     }
 

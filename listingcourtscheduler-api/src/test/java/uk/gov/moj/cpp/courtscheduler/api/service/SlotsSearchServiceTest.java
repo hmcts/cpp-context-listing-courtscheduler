@@ -1,10 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
+import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.time.LocalDate.parse;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,14 +20,18 @@ import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.json.JsonObject;
@@ -125,6 +133,25 @@ class SlotsSearchServiceTest {
         verify(courtScheduleRepository, times(0)).getCourtScheduleJudiciaries(any());
     }
 
+    @Test
+    void shouldSearchAndList_HearingSlots_ForTheGivenParameters() {
+
+        HearingSlotSearchRequest hearingSlotSearchRequest = createHearingSlotsRequest();
+        HearingSlotSearchResponse hearingSlotSearchResponse = createHearingSlotsResponse(hearingSlotSearchRequest.hearingId());
+        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = random(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(hearingSlotSearchResponse.courtScheduleId());
+        List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules = List.of(courtSchedule);
+
+        when(courtScheduleRepository.searchListHearingSlotFilterCriteria(hearingSlotSearchRequest.ouCode(), LocalDate.parse(hearingSlotSearchRequest.hearingSessionDate()),
+                LocalDate.parse(hearingSlotSearchRequest.hearingSessionDateSearchCutOff()), LocalDateTime.parse(hearingSlotSearchRequest.sessionStartTime()),
+                hearingSlotSearchRequest.courtRoomId())).thenReturn(courtSchedules);
+
+        Optional<HearingSlotSearchResponse> hearingSlotSearchResponseReceived = slotsSearchService.searchAndList(hearingSlotSearchRequest);
+
+        verify(courtScheduleRepository, times(1)).searchListHearingSlotFilterCriteria(anyString(), any(LocalDate.class), any(LocalDate.class), any(LocalDateTime.class), anyString());
+        assertNotNull(hearingSlotSearchResponseReceived);
+        assertEquals(hearingSlotSearchResponse.courtScheduleId(), hearingSlotSearchResponseReceived.get().courtScheduleId());
+    }
 
     private CourtSchedule createCourtScheduleWithoutListingProfileId() {
         return new CourtSchedule.CourtScheduleBuilder()
@@ -183,6 +210,18 @@ class SlotsSearchServiceTest {
     private HearingSlotRequestParam createRequestParam(String pageSize) {
         return new HearingSlotRequestParam("ADULT", LocalDate.now().toString(), LocalDate.now().toString(),
                 null, "BA124", pageSize, "1", null, null, null, null);
+    }
+
+    private HearingSlotSearchRequest createHearingSlotsRequest() {
+        String hearingId = randomUUID().toString();
+        LocalDateTime sessionStartTime = LocalDateTime.parse("2024-07-15T10:15:30");
+        return new HearingSlotSearchRequest(hearingId, "B01LY00", "2024-07-15",
+                "001c067d-eaca-4ce5-ad90-a366ef3e4bb6", "2024-07-20", sessionStartTime.toString(),20);
+    }
+
+    private HearingSlotSearchResponse createHearingSlotsResponse(String hearingId) {
+        Date sessionStartTime = Date.from(LocalTime.parse("09:00").atDate(LocalDate.of(2024, 7, 15)).atZone(ZoneId.of("UTC")).toInstant());
+        return new HearingSlotSearchResponse(hearingId, "432c067d-eaca-4ce5-ad90-a366ef3e4bb6", "001c067d-eaca-4ce5-ad90-a366ef3e4bb6", sessionStartTime.toString(), 20);
     }
 
     private JsonObject toJsonObject(UUID judiciaryId1, UUID judiciaryId2, UUID judiciaryId3) {

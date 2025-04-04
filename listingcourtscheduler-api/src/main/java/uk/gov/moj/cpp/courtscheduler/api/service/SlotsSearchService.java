@@ -2,12 +2,18 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.Integer.parseInt;
 
+import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchResponseConverter;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
+import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -72,6 +78,16 @@ public class SlotsSearchService {
         final long endFiltering = System.nanoTime();
         LOGGER.info("BRS: Time taken for filtering : {}", (endFiltering - startFiltering) / 1000000);
         return Pair.of(courtSchedules.getKey(), filteredCourtSchedules);
+    }
+
+    public Optional<HearingSlotSearchResponse> searchAndList(HearingSlotSearchRequest hearingSlotSearchRequest) {
+        LOGGER.info("SlotsSearchService:searchAndList hearingSlotSearchRequest: {}", hearingSlotSearchRequest);
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules = courtScheduleRepository.searchListHearingSlotFilterCriteria(hearingSlotSearchRequest.ouCode(),
+                LocalDate.parse(hearingSlotSearchRequest.hearingSessionDate()), LocalDate.parse(hearingSlotSearchRequest.hearingSessionDateSearchCutOff()),
+                LocalDateTime.parse(hearingSlotSearchRequest.sessionStartTime()),hearingSlotSearchRequest.courtRoomId());
+        LOGGER.info("SlotsSearchService:searchAndList courtSchedules: {}", courtSchedules);
+        return courtSchedules.stream().findFirst()
+                .map(CourtSchedulerConverter::convert).map(schedule -> HearingSlotSearchResponseConverter.convert(schedule, hearingSlotSearchRequest.hearingId()));
     }
 
     private long toPageCount(final long totalCount, final Integer pageSize) {
