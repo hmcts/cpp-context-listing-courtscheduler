@@ -76,6 +76,8 @@ import org.slf4j.LoggerFactory;
 public abstract class CourtScheduleRepository extends AbstractEntityRepository<CourtSchedule, String> implements EntityRepository<CourtSchedule, String> {
 
     public static final String BUSINESS_TYPE = "businessType";
+    public static final String COURT_ROOM_ID = "courtRoomId";
+    public static final String OU_CODE = "ouCode";
     @Inject
     EntityManager entityManager;
     @Inject
@@ -387,7 +389,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         }
         if (StringUtils.isNotBlank(courtScheduleRequestParam.courtRoomId())) {
             queryString.append("AND s.court_room_id = :courtRoomId ");
-            params.put("courtRoomId", courtScheduleRequestParam.courtRoomId());
+            params.put(COURT_ROOM_ID, courtScheduleRequestParam.courtRoomId());
         }
         if (courtScheduleRequestParam.businessType() != null) {
             queryString.append("AND s.rota_business_type = :businessType ");
@@ -501,7 +503,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         params.put("sessionEnd", LocalDate.parse(requestParam.sessionEndDate()));
 
         if (StringUtils.isNotBlank(requestParam.ouCode())) {
-            params.put("ouCode", requestParam.ouCode());
+            params.put(OU_CODE, requestParam.ouCode());
         }
 
         if (StringUtils.isNotBlank(requestParam.oucodeL2Code())) {
@@ -510,7 +512,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         // Add optional parameters only if they are present
         if (StringUtils.isNotBlank(requestParam.courtRoomId())) {
-            params.put("courtRoomId", requestParam.courtRoomId());
+            params.put(COURT_ROOM_ID, requestParam.courtRoomId());
         }
         
         if (StringUtils.isNotBlank(requestParam.businessType())) {
@@ -801,7 +803,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         Map<String, Object> params = new HashMap<>();
 
         queryString.append("AND s.oucode = :ouCode ");
-        params.put("ouCode", ouCode);
+        params.put(OU_CODE, ouCode);
         queryString.append("AND s.session_start = :sessionDate ");
         params.put("sessionDate", sessionDate);
         queryString.append("AND s.court_session IN (:courtSession) ");
@@ -867,7 +869,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             queryString.append("AND s.rota_business_type IN (:businessType) ");
             params.put(BUSINESS_TYPE, businessType);
             queryString.append("AND s.oucode = :ouCode ");
-            params.put("ouCode", ouCode);
+            params.put(OU_CODE, ouCode);
             queryString.append("AND s.session_start = :sessionDate ");
             params.put("sessionDate", sessionDate);
             if(sessionStartTime != null) {
@@ -876,7 +878,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             }
             if(courtRoomId != null) {
                 queryString.append("AND s.court_room_id = :courtRoomId ");
-                params.put("courtRoomId", courtRoomId);
+                params.put(COURT_ROOM_ID, courtRoomId);
             }
 
             queryString.append("order by s.rota_business_type desc, s.court_room_number asc");
