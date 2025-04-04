@@ -222,8 +222,8 @@ protocols: [ HTTP, HTTPS ]
       Query via parameters
       ...
       (mapping):
-          responseType: application/vnd.courtscheduler.search.list.hearings-in-court-sessions+json
-          name: courtscheduler.search.list.hearings-in-court-sessions
+          responseType: application/vnd.courtscheduler.search.book.hearing.slots+json
+          name: courtscheduler.search.book.hearing.slots
       ...
     queryParameters:
       hearingId:
@@ -257,9 +257,9 @@ protocols: [ HTTP, HTTPS ]
     responses:
       200:
         body:
-          application/vnd.courtscheduler.search.list.hearings-in-court-sessions+json:
-            example: !include json/courtscheduler.search.list.hearings-in-court-sessions.json
-            schema: !include json/schema/courtscheduler.search.list.hearings-in-court-sessions.json
+          application/vnd.courtscheduler.search.book.hearing.slots+json:
+            example: !include json/courtscheduler.search.book.hearing.slots.json
+            schema: !include json/schema/courtscheduler.search.book.hearing.slots.json
 
 /provisionalBooking:
   post:

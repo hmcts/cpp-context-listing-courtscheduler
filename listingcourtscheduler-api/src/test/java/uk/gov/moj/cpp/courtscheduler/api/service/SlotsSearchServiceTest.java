@@ -1,14 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
-import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.time.LocalDate.parse;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,7 +27,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import javax.json.JsonObject;
@@ -131,26 +126,6 @@ class SlotsSearchServiceTest {
         slotsSearchService.getCourtSchedules(hearingSlotRequestParam);
 
         verify(courtScheduleRepository, times(0)).getCourtScheduleJudiciaries(any());
-    }
-
-    @Test
-    void shouldSearchAndList_HearingSlots_ForTheGivenParameters() {
-
-        HearingSlotSearchRequest hearingSlotSearchRequest = createHearingSlotsRequest();
-        HearingSlotSearchResponse hearingSlotSearchResponse = createHearingSlotsResponse(hearingSlotSearchRequest.hearingId());
-        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = random(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule.class);
-        courtSchedule.setCourtScheduleId(hearingSlotSearchResponse.courtScheduleId());
-        List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules = List.of(courtSchedule);
-
-        when(courtScheduleRepository.searchListHearingSlotFilterCriteria(hearingSlotSearchRequest.ouCode(), LocalDate.parse(hearingSlotSearchRequest.hearingSessionDate()),
-                LocalDate.parse(hearingSlotSearchRequest.hearingSessionDateSearchCutOff()), LocalDateTime.parse(hearingSlotSearchRequest.sessionStartTime()),
-                hearingSlotSearchRequest.courtRoomId())).thenReturn(courtSchedules);
-
-        Optional<HearingSlotSearchResponse> hearingSlotSearchResponseReceived = slotsSearchService.searchAndList(hearingSlotSearchRequest);
-
-        verify(courtScheduleRepository, times(1)).searchListHearingSlotFilterCriteria(anyString(), any(LocalDate.class), any(LocalDate.class), any(LocalDateTime.class), anyString());
-        assertNotNull(hearingSlotSearchResponseReceived);
-        assertEquals(hearingSlotSearchResponse.courtScheduleId(), hearingSlotSearchResponseReceived.get().courtScheduleId());
     }
 
     private CourtSchedule createCourtScheduleWithoutListingProfileId() {

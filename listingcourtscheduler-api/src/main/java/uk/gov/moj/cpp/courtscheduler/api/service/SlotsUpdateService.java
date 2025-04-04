@@ -2,7 +2,11 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.String.format;
 
+import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotToHearingSlotSearchResponseConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestToAllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
@@ -23,14 +27,11 @@ import javax.inject.Inject;
 
 import org.apache.commons.collections.CollectionUtils;
 
-
 @ApplicationScoped
 public class SlotsUpdateService {
 
-
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
-
     @Inject
     private ProvisionalBookingRepository provisionalBookingRepository;
 
@@ -83,6 +84,16 @@ public class SlotsUpdateService {
         return result;
     }
 
+    public HearingSlotSearchResponse searchAndBook(final HearingSlotSearchRequest hearingSlotSearchRequest) {
+        HearingSlotSearchResponse hearingSlotSearchResponse = null;
+        AllocatedSlot allocatedSlot = HearingSlotSearchRequestToAllocatedSlotConverter.convert(hearingSlotSearchRequest);
+        List<AllocatedSlot> allocatedSlots = List.of(allocatedSlot);
+        courtScheduleRepository.searchBookHearingSlots(allocatedSlots);
+        if(CollectionUtils.isNotEmpty(allocatedSlots))
+            hearingSlotSearchResponse = AllocatedSlotToHearingSlotSearchResponseConverter.convert(allocatedSlots.get(0), hearingSlotSearchRequest.hearingId());
+        return hearingSlotSearchResponse;
+    }
+
     private boolean isCourtScheduleIdsMatching(final List<String> slotsCourtScheduleIdList, final List<String> provisionalBookingCourtScheduleIdList) {
         Collections.sort(provisionalBookingCourtScheduleIdList);
 
@@ -93,5 +104,4 @@ public class SlotsUpdateService {
         return slots.stream()
                 .anyMatch(slot -> Objects.nonNull(slot.getBookingId()));
     }
-
 }

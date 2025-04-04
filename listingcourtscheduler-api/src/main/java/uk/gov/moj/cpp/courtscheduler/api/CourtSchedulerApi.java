@@ -53,7 +53,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 
 import java.util.List;
-import java.util.Optional;
 
 import javax.inject.Inject;
 import javax.json.Json;
@@ -215,18 +214,45 @@ public class CourtSchedulerApi {
     }
 
     @Handles("courtscheduler.search.update.hearing.slots")
+    @Deprecated
     public JsonEnvelope searchUpdateHearingSlots(final JsonEnvelope envelope) {
         final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
         LOGGER.info("courtscheduler.search.update.hearing.slots:{}", payloadAsJsonString);
         List<AllocatedSlot> allocatedSlots = converter.convert(payloadAsJsonString).getHearingSlots();
 
-        Result result = slotsUpdateService.searchUpdate(allocatedSlots);
+        Result result = Result.FAILED("Deprecated Not to use");//slotsUpdateService.searchBook(allocatedSlots);
 
         JsonObject responseObject = createObjectBuilder()
                 .add(RESULTS, objectToJsonObjectConverter.convert(result))
                 .build();
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.search.update.hearing.slots").apply(responseObject);
+    }
+
+    @Handles("courtscheduler.search.book.hearing.slots")
+    public JsonEnvelope searchBookHearingSlots(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.search.book.hearing.slots requested : {}", requestFromApiJsonObject);
+        HearingSlotSearchRequest hearingSlotSearchRequest = hearingSlotSearchRequestConverter.convert(requestFromApiJsonObject);
+
+        final long validateStart = System.nanoTime();
+        JsonObject validate = hearingIdsApiValidator.searchAndBookRequestValidation(hearingSlotSearchRequest);
+        final long validateEnd = System.nanoTime();
+
+        LOGGER.info("Search Book: Time taken for validation : {}", (validateEnd - validateStart) / 1000000);
+
+        if (!validate.isEmpty()) {
+            return envelopeFor(envelope, validate, ERROR);
+        }
+
+        final HearingSlotSearchResponse hearingSlotSearchResponse = slotsUpdateService.searchAndBook(hearingSlotSearchRequest);
+
+        JsonObject responseObject =  Json.createObjectBuilder()
+                .add(RequestParameterConstant.HEARING_SLOTS.getLabel(),
+                        objectToJsonObjectConverter.convert(hearingSlotSearchResponse))
+                .build();
+
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }
 
     @Handles("courtscheduler.get.hearing.slots")
@@ -278,32 +304,6 @@ public class CourtSchedulerApi {
         JsonObject responseObject = allocatedListingService.getHearingIds(hearingIdsRequest);
 
         LOGGER.info("courtscheduler.get.hearing.ids returned : {}", responseObject);
-
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
-    }
-
-    @Handles("courtscheduler.search.list.hearings-in-court-sessions")
-    public JsonEnvelope searchListHearingSlots(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.search.list.hearings-in-court-sessions requested : {}", requestFromApiJsonObject);
-        HearingSlotSearchRequest hearingSlotSearchRequest = hearingSlotSearchRequestConverter.convert(requestFromApiJsonObject);
-
-        final long validateStart = System.nanoTime();
-        JsonObject validate = hearingIdsApiValidator.searchHearingSlotsValidation(hearingSlotSearchRequest);
-        final long validateEnd = System.nanoTime();
-
-        LOGGER.info("Search List: Time taken for validation : {}", (validateEnd - validateStart) / 1000000);
-
-        if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
-        }
-
-        final Optional<HearingSlotSearchResponse> hearingSlotSearchResponse = slotsSearchService.searchAndList(hearingSlotSearchRequest);
-
-        JsonObject responseObject =  Json.createObjectBuilder()
-                .add(RequestParameterConstant.HEARING_SLOTS.getLabel(),
-                        objectToJsonObjectConverter.convert(hearingSlotSearchResponse.isPresent() ? hearingSlotSearchResponse.get() : JsonValue.EMPTY_JSON_OBJECT))
-                .build();
 
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
     }

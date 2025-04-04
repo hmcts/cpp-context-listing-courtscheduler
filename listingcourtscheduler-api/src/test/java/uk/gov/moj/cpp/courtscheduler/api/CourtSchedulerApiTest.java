@@ -62,7 +62,6 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -263,28 +262,6 @@ class CourtSchedulerApiTest {
     }
 
     @Test
-    void shouldSearchUpdateHearingSlots() throws IOException {
-        String payload = FileUtil.getPayload("courtscheduler.search.update.hearing.slots.json");
-        final JsonObject jsonObject = payloadToObject(payload);
-        final String requestName = "courtscheduler.search.update.hearing.slots";
-
-        final JsonEnvelope updateHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
-
-        when(enveloper.withMetadataFrom(updateHearingSlotsEnvelope, requestName)).thenReturn(function);
-        Result success = Result.SUCCESS();
-        when(slotsUpdateService.searchUpdate(any())).thenReturn(success);
-        when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
-                .add(RESULTS, "Success")
-                .build());
-        when(allocatedSlotConverter.convert(jsonObject.toString())).thenReturn(new AllocatedSlotConverter().convert(payload));
-
-        courtSchedulerApi.searchUpdateHearingSlots(updateHearingSlotsEnvelope);
-
-        verify(slotsUpdateService, atLeastOnce()).searchUpdate(new AllocatedSlotConverter().convert(payload).getHearingSlots());
-        verify(enveloper, atLeastOnce()).withMetadataFrom(updateHearingSlotsEnvelope, requestName);
-    }
-
-    @Test
     void shouldRetrieveHearingSlots() throws IOException {
         final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.get.hearing.slots.json"));
         final String requestName = "courtscheduler.get.hearing.slots";
@@ -335,22 +312,22 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldSearchListHearingSlots() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.search.list.hearings-in-court-sessions.json"));
-        final String requestName = "courtscheduler.search.list.hearings-in-court-sessions";
+        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.search.book.hearing.slots.json"));
+        final String requestName = "courtscheduler.search.book.hearing.slots";
         final JsonEnvelope getSearchListHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
         final HearingSlotSearchResponse hearingSlotSearchResponse = createHearingSlotsResponse("432c067d-eaca-4ce5-ad90-a366ef3e4bb6");
 
         when(enveloper.withMetadataFrom(getSearchListHearingSlotsEnvelope, requestName)).thenReturn(function);
         when(hearingSlotSearchRequestConverter.convert(jsonObject)).thenReturn(new HearingSlotSearchRequestConverter().convert(jsonObject));
-        when(slotsSearchService.searchAndList(hearingSlotSearchRequestConverter.convert(jsonObject))).thenReturn(Optional.of(hearingSlotSearchResponse));
-        when(hearingSlotsApiValidator.searchHearingSlotsValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
+        when(slotsUpdateService.searchAndBook(hearingSlotSearchRequestConverter.convert(jsonObject))).thenReturn(hearingSlotSearchResponse);
+        when(hearingSlotsApiValidator.searchAndBookRequestValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
         when(objectToJsonObjectConverter.convert(hearingSlotSearchResponse)).thenReturn(createObjectBuilder()
                 .add(RequestParameterConstant.HEARING_SLOTS.getLabel(), "ok")
                 .build());
 
-        courtSchedulerApi.searchListHearingSlots(getSearchListHearingSlotsEnvelope);
+        courtSchedulerApi.searchBookHearingSlots(getSearchListHearingSlotsEnvelope);
 
-        verify(slotsSearchService, atLeastOnce()).searchAndList(hearingSlotSearchRequestConverter.convert(jsonObject));
+        verify(slotsUpdateService, atLeastOnce()).searchAndBook(hearingSlotSearchRequestConverter.convert(jsonObject));
         verify(enveloper, atLeastOnce()).withMetadataFrom(getSearchListHearingSlotsEnvelope, requestName);
     }
 
