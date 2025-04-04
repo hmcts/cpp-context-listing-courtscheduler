@@ -301,7 +301,8 @@ public class CourtSchedulerApi {
         final Optional<HearingSlotSearchResponse> hearingSlotSearchResponse = slotsSearchService.searchAndList(hearingSlotSearchRequest);
 
         JsonObject responseObject =  Json.createObjectBuilder()
-                .add(RequestParameterConstant.HEARING_SLOTS.getLabel(), objectToJsonObjectConverter.convert(hearingSlotSearchResponse.get()))
+                .add(RequestParameterConstant.HEARING_SLOTS.getLabel(),
+                        objectToJsonObjectConverter.convert(hearingSlotSearchResponse.isPresent() ? hearingSlotSearchResponse.get() : JsonValue.EMPTY_JSON_OBJECT))
                 .build();
 
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
