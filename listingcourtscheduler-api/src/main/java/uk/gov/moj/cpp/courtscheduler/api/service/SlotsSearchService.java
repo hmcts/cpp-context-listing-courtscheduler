@@ -80,16 +80,6 @@ public class SlotsSearchService {
         return Pair.of(courtSchedules.getKey(), filteredCourtSchedules);
     }
 
-    public Optional<HearingSlotSearchResponse> searchAndList(HearingSlotSearchRequest hearingSlotSearchRequest) {
-        LOGGER.info("SlotsSearchService:searchAndList hearingSlotSearchRequest: {}", hearingSlotSearchRequest);
-        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules = courtScheduleRepository.searchListHearingSlotFilterCriteria(hearingSlotSearchRequest.ouCode(),
-                LocalDate.parse(hearingSlotSearchRequest.hearingSessionDate()), LocalDate.parse(hearingSlotSearchRequest.hearingSessionDateSearchCutOff()),
-                LocalDateTime.parse(hearingSlotSearchRequest.sessionStartTime()),hearingSlotSearchRequest.courtRoomId());
-        LOGGER.info("SlotsSearchService:searchAndList courtSchedules: {}", courtSchedules);
-        return courtSchedules.stream().findFirst()
-                .map(CourtSchedulerConverter::convert).map(schedule -> HearingSlotSearchResponseConverter.convert(schedule, hearingSlotSearchRequest.hearingId()));
-    }
-
     private long toPageCount(final long totalCount, final Integer pageSize) {
         return (long) Math.ceil((double) totalCount / (double) pageSize);
     }

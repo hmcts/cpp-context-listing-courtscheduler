@@ -63,9 +63,9 @@ public class HearingSlotsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    public JsonObject searchHearingSlotsValidation(final HearingSlotSearchRequest hearingSlotSearchRequest) {
+    public JsonObject searchAndBookRequestValidation(final HearingSlotSearchRequest hearingSlotSearchRequest) {
 
-        LOGGER.info("Validating Search List Hearing Slot input : {}", hearingSlotSearchRequest);
+        LOGGER.info("Validating Search and Book Hearing Slot request : {}", hearingSlotSearchRequest);
 
         if (StringUtils.isBlank(hearingSlotSearchRequest.hearingId())) {
             return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
