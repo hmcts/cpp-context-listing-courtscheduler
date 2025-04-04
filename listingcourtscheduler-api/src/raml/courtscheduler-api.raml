@@ -196,6 +196,29 @@ protocols: [ HTTP, HTTPS ]
             example: !include json/courtscheduler.get.hearing.ids.json
             schema: !include json/schema/courtscheduler.get.hearing.ids.json
 
+/searchlist/hearingslots:
+  put:
+    description:  |
+      You can search and allocate a hearing slot through this PUT
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.search.list.hearings-in-court-schedules+json
+          name: courtscheduler.search.list.hearings-in-court-schedules
+      ...
+    body:
+      application/vnd.courtscheduler.search.list.hearings-in-court-schedules+json:
+        example:
+          !include json/courtscheduler.search.list.hearings-in-court-schedules.json
+        schema:
+          !include json/schema/courtscheduler.search.list.hearings-in-court-schedules.json
+    responses:
+      200:
+        description: OK
+        body:
+          application/vnd.courtscheduler.search.list.hearings-in-court-schedules.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.search.list.hearings-in-court-schedules.response.json
+
 /searchupdate/hearingslots:
   put:
     description:  |
