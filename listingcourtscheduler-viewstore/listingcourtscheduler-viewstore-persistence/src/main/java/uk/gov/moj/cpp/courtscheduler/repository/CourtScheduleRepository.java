@@ -826,6 +826,70 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return selectQuery.getResultList();
     }
 
+
+    public List<CourtSchedule> searchListHearingSlotFilterCriteria(String ouCode,
+                                                                              LocalDate sessionDate,
+                                                                              LocalDate sessionEndDate,
+                                                                              LocalDateTime sessionStartTime,
+                                                                              String courtRoomId) {
+        LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria ouCode: {}, sessionDate: {}, sessionEndDate: {}, sessionStartTime: {}, courtRoomId: {}",
+                ouCode, sessionDate, sessionEndDate, sessionStartTime, courtRoomId);
+
+        List<CourtSchedule> resultList;
+        do {
+            LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria First Call with All params for ouCode: {} and sessionDate: {}", ouCode, sessionDate);
+            resultList = searchListQueryFilterCriteria(ouCode, sessionDate, sessionStartTime, courtRoomId);
+            if(resultList == null || resultList.isEmpty()) {
+                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria Second Call with All params except courtRoom for ouCode: {} and sessionDate: {}", ouCode, sessionDate);
+                resultList = searchListQueryFilterCriteria(ouCode, sessionDate, sessionStartTime, null);
+            }
+            if(resultList == null || resultList.isEmpty()) {
+                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria Third Call with All params except courtRoom and sessionStartTime for ouCode: {} and sessionDate: {}", ouCode, sessionDate);
+                resultList = searchListQueryFilterCriteria(ouCode, sessionDate, null, null);
+            }
+            sessionDate = sessionDate.plusDays(1);
+        } while ((resultList == null || resultList.isEmpty()) && (sessionDate.isBefore(sessionEndDate) || sessionDate.isEqual(sessionEndDate)));
+
+        return resultList;
+    }
+
+    private List<CourtSchedule> searchListQueryFilterCriteria(String ouCode,
+                                                                   LocalDate sessionDate,
+                                                                   LocalDateTime sessionStartTime,
+                                                                   String courtRoomId) {
+            LOGGER.info("Criteria Query Params: ouCode {} sessionDate {} sessionStartTime {} courtRoomId {}", ouCode, sessionDate, sessionStartTime, courtRoomId);
+            final List<String> businessType = List.of("REM", "GAP", "NGAP", "TRF", "ENF");
+
+            StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM " +
+                    "court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
+            Map<String, Object> params = new HashMap<>();
+
+            queryString.append("AND s.rota_business_type IN (:businessType) ");
+            params.put(BUSINESS_TYPE, businessType);
+            queryString.append("AND s.oucode = :ouCode ");
+            params.put("ouCode", ouCode);
+            queryString.append("AND s.session_start = :sessionDate ");
+            params.put("sessionDate", sessionDate);
+            if(sessionStartTime != null) {
+                queryString.append("AND s.session_start_time IN (:sessionStartTime) ");
+                params.put("sessionStartTime", sessionStartTime);
+            }
+            if(courtRoomId != null) {
+                queryString.append("AND s.court_room_id = :courtRoomId ");
+                params.put("courtRoomId", courtRoomId);
+            }
+
+            queryString.append("order by s.rota_business_type desc, s.court_room_number asc");
+            LOGGER.info("Criteria Query Params: queryString {}", queryString);
+            final javax.persistence.Query selectQuery = entityManager.createNativeQuery(queryString.toString(), NATIVE_QUERY_COURT_SCHEDULE_MAPPING_VIEW);
+            params.forEach((key, value) -> {
+                if (value != null) {
+                    selectQuery.setParameter(key, value);
+                }
+            });
+            return selectQuery.getResultList();
+    }
+
     protected void updateCourtSchedule(final List<AllocatedSlot> allocatedSlots) {
         allocatedSlots.forEach(allocatedSlot -> {
             CourtSchedule courtSchedule = this.findBy(allocatedSlot.getCourtScheduleId());
