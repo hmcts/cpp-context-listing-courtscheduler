@@ -186,6 +186,10 @@ protocols: [ HTTP, HTTPS ]
         description: currentPageNumber details
         type: string
         required: true
+      isSlotBased:
+        description: slot based or not
+        type: boolean
+        required: false
     responses:
       200:
         body:

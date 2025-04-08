@@ -215,7 +215,8 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         "",
-                        "");
+                        "",
+                        null);
         Pair<Integer, Set<String>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(5, hearingIdsResult.getKey().longValue());
         List<String> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
@@ -266,7 +267,8 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         "",
-                        "");
+                        "",
+                        null);
         Pair<Integer, Set<String>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(2, hearingIdsResult.getKey().longValue());
         List<String> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
