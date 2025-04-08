@@ -13,15 +13,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTime
 import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -36,17 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -1048,5 +1030,39 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .createNativeQuery(DELETE_REDUNDANT_ROTA_DATA)
                 .setParameter("numberOfDays", numberOfDays)
                 .executeUpdate();
+    }
+
+    public ListHearingSlotsResponse updateListHearingSlots(List<Hearing> hearings) {
+        //find courtschedule by id
+        //set hearing id
+        //set session start time?
+        //set duration ?
+        //save court schedule
+        //return response object
+
+        //get hearingids list
+        //
+
+        hearings.stream()
+                .flatMap(hearing ->
+                        hearing.getCourtSchedules().stream()
+                                .map(schedule -> new AbstractMap.SimpleEntry<>(hearing.getHearingId(), schedule))
+                )
+                .forEach(entry -> {
+                    String hearingId = entry.getKey();
+                    uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule schedule = entry.getValue();
+                    // Do something with each court schedule
+                    CourtSchedule cs  = this.findBy(schedule.getCourtScheduleId());
+
+
+
+
+
+
+
+                });
+
+
+        return null;
     }
 }

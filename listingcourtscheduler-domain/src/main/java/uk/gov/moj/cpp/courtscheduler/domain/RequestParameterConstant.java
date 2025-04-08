@@ -46,8 +46,9 @@ public enum RequestParameterConstant {
     MAX_DURATION_FOR_AFTERNOON("maxDurationForAfternoon"),
     SESSION_START_TIME("sessionStartTime"),
     SESSION_END_TIME("sessionEndTime"),
-    IS_OVERBOOKING_ALLOWED("isOverbookingAllowed")
-
+    IS_OVERBOOKING_ALLOWED("isOverbookingAllowed"),
+    HEARING_ID("hearingId"),
+    COURT_SCHEDULES("courtSchedules")
     ;
 
     private final String name;

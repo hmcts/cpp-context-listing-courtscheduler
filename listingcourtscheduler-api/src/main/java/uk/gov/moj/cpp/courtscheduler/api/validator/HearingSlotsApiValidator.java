@@ -10,12 +10,20 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.*;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 
 import uk.gov.justice.services.common.converter.LocalDates;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
+import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.util.List;
+import java.util.Objects;
 
 import javax.json.JsonObject;
 
@@ -59,6 +67,33 @@ public class HearingSlotsApiValidator {
         if (StringUtils.isBlank(hearingSlotRequestParam.pageNumber())) {
             return getMessage(RequestParameterConstant.PAGE_NUMBER.getLabel());
         }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    public JsonObject listHearingSlotsValidation(final List<Hearing> hearings) {
+
+        LOGGER.info("Validating PUT Hearing Slots input : {}", hearings);
+
+        for (int i = 0; i < hearings.size(); i++) {
+            Hearing hearing = hearings.get(i);
+
+            if (hearing.getHearingId() == null || hearing.getHearingId().isEmpty()) {
+                return getMessage(RequestParameterConstant.HEARING_ID.getLabel() +" is missing at index " + i);
+            }
+
+            List<CourtSchedule> schedules = hearing.getCourtSchedules();
+            if (schedules == null || schedules.isEmpty()) {
+                return getMessage(RequestParameterConstant.COURT_SCHEDULES.getLabel()+ " missing for hearing at index " + i);
+            }
+
+            for (int j = 0; j < schedules.size(); j++) {
+                CourtSchedule schedule = schedules.get(j);
+                if (schedule.getCourtScheduleId() == null || schedule.getCourtScheduleId().isEmpty()) {
+                    return getMessage(RequestParameterConstant.COURT_SCHEDULE_ID.getLabel()+" is missing at hearing[" + i + "], courtSchedule[" + j + "]");
+                }
+            }
+        }
+
         return EMPTY_JSON_OBJECT;
     }
 
