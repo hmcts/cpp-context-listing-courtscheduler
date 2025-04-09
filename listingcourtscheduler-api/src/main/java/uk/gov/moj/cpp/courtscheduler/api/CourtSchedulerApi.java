@@ -196,6 +196,13 @@ public class CourtSchedulerApi {
 
         JsonObject validate = hearingIdsApiValidator.listHearingSlotsValidation(hearings);
 
+
+        //validation here
+        //pull the slots here
+        //insert allocated listings
+        //update max, avail_slots in court schedule
+
+
         if (!validate.isEmpty()) {
             return envelopeFor(envelope, validate, ERROR);
         }

@@ -1043,6 +1043,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         //get hearingids list
         //
 
+
+
         hearings.stream()
                 .flatMap(hearing ->
                         hearing.getCourtSchedules().stream()
@@ -1053,6 +1055,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule schedule = entry.getValue();
                     // Do something with each court schedule
                     CourtSchedule cs  = this.findBy(schedule.getCourtScheduleId());
+                    //validationns, duration, sl
 
 
 

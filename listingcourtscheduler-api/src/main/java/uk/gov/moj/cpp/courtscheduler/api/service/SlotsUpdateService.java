@@ -74,6 +74,7 @@ public class SlotsUpdateService {
     public ListHearingSlotsResponse updateSearchListHearingSlots(final List<Hearing> hearingsList) {
         ListHearingSlotsResponse listHearingSlotsResponse = null;
 
+
         listHearingSlotsResponse = courtScheduleRepository.updateListHearingSlots(hearingsList);
 
         return null;
