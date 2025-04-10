@@ -1,12 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.util.List;
 import java.util.Objects;
 
 public class HearingSlot {
     private String hearingId;
-    private String courtScheduleId;
-    private String sessionStartTime;
-    private Integer duration;
+    private List<CourtScheduleId> courtScheduleIds;
 
     public String getHearingId() {
         return hearingId;
@@ -16,53 +15,35 @@ public class HearingSlot {
         this.hearingId = hearingId;
     }
 
-    public String getCourtScheduleId() {
-        return courtScheduleId;
+    public List<CourtScheduleId> getCourtScheduleIds() {
+        return courtScheduleIds;
     }
 
-    public void setCourtScheduleId(String courtScheduleId) {
-        this.courtScheduleId = courtScheduleId;
+    public void setCourtScheduleIds(List<CourtScheduleId> courtScheduleIds) {
+        this.courtScheduleIds = courtScheduleIds;
     }
-
-    public String getSessionStartTime() {
-        return sessionStartTime;
-    }
-
-    public void setSessionStartTime(String sessionStartTime) {
-        this.sessionStartTime = sessionStartTime;
-    }
-
-    public Integer getDuration() {
-        return duration;
-    }
-
-    public void setDuration(Integer duration) {
-        this.duration = duration;
-    }
-
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof HearingSlot)) return false;
-        HearingSlot that = (HearingSlot) o;
-        return Objects.equals(hearingId, that.hearingId) &&
-                Objects.equals(courtScheduleId, that.courtScheduleId) &&
-                Objects.equals(sessionStartTime, that.sessionStartTime) &&
-                Objects.equals(duration, that.duration);
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final HearingSlot that = (HearingSlot) o;
+        return Objects.equals(hearingId, that.hearingId); //need to compare courtschedules?
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(hearingId, courtScheduleId, sessionStartTime, duration);
+        return Objects.hash(hearingId);
     }
 
     @Override
     public String toString() {
-        return "HearingSlot{" +
+        return "Hearing{" +
                 "hearingId='" + hearingId + '\'' +
-                ", courtScheduleId='" + courtScheduleId + '\'' +
-                ", sessionStartTime='" + sessionStartTime + '\'' +
-                ", duration=" + duration +
+                ", courtSchedules=" + courtScheduleIds +
                 '}';
     }
 }

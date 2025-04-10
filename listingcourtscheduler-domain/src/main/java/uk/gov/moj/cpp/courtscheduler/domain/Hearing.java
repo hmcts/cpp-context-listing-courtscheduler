@@ -1,13 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-import java.util.List;
 import java.util.Objects;
 
 public class Hearing {
     private String hearingId;
-    private List<CourtSchedule> courtSchedules;
+    private String courtScheduleId;
+    private String sessionStartTime;
+    private Integer duration;
 
-    // Getters and Setters
     public String getHearingId() {
         return hearingId;
     }
@@ -16,35 +16,52 @@ public class Hearing {
         this.hearingId = hearingId;
     }
 
-    public List<CourtSchedule> getCourtSchedules() {
-        return courtSchedules;
+    public String getCourtScheduleId() {
+        return courtScheduleId;
     }
 
-    public void setCourtSchedules(List<CourtSchedule> courtSchedules) {
-        this.courtSchedules = courtSchedules;
+    public void setCourtScheduleId(String courtScheduleId) {
+        this.courtScheduleId = courtScheduleId;
     }
+
+    public String getSessionStartTime() {
+        return sessionStartTime;
+    }
+
+    public void setSessionStartTime(String sessionStartTime) {
+        this.sessionStartTime = sessionStartTime;
+    }
+
+    public Integer getDuration() {
+        return duration;
+    }
+
+    public void setDuration(Integer duration) {
+        this.duration = duration;
+    }
+
     @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        final Hearing that = (Hearing) o;
-        return Objects.equals(hearingId, that.hearingId); //need to compare courtschedules?
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Hearing that)) return false;
+        return Objects.equals(hearingId, that.hearingId) &&
+                Objects.equals(courtScheduleId, that.courtScheduleId) &&
+                Objects.equals(sessionStartTime, that.sessionStartTime) &&
+                Objects.equals(duration, that.duration);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(hearingId);
+        return Objects.hash(hearingId, courtScheduleId, sessionStartTime, duration);
     }
 
     @Override
     public String toString() {
-        return "Hearing{" +
+        return "HearingSlot{" +
                 "hearingId='" + hearingId + '\'' +
-                ", courtSchedules=" + courtSchedules +
+                ", courtScheduleId='" + courtScheduleId + '\'' +
+                ", sessionStartTime='" + sessionStartTime + '\'' +
+                ", duration=" + duration +
                 '}';
     }
 }

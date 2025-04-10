@@ -3,13 +3,13 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 import java.util.List;
 
 public class ListHearingSlotsResponse {
-    private List<HearingSlot> hearings;
+    private List<Hearing> hearings;
 
-    public List<HearingSlot> getHearings() {
+    public List<Hearing> getHearings() {
         return hearings;
     }
 
-    public void setHearings(List<HearingSlot> hearings) {
+    public void setHearings(List<Hearing> hearings) {
         this.hearings = hearings;
     }
 

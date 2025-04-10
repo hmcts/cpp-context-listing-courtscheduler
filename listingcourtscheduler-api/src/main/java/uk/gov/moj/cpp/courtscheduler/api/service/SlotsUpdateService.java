@@ -2,23 +2,16 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.String.format;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
-import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException;
+import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -32,6 +25,9 @@ public class SlotsUpdateService {
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
+
+    @Inject
+    private AllocatedListingRepository allocatedListingRepository;
 
     @Inject
     private ProvisionalBookingRepository provisionalBookingRepository;
@@ -71,13 +67,15 @@ public class SlotsUpdateService {
         }
     }
 
-    public ListHearingSlotsResponse updateSearchListHearingSlots(final List<Hearing> hearingsList) {
-        ListHearingSlotsResponse listHearingSlotsResponse = null;
+    public ListHearingSlotsResponse updateSearchListHearingSlots(final HearingSlotWrapper hearingSlots) {
 
+        ListHearingSlotsResponse response = new ListHearingSlotsResponse();
 
-        listHearingSlotsResponse = courtScheduleRepository.updateListHearingSlots(hearingsList);
+        List<Hearing> listHearingSlots = courtScheduleRepository.updateSearchListHearingSlots(hearingSlots);
 
-        return null;
+        response.setHearings(listHearingSlots);
+
+        return response;
     }
 
     public Result searchUpdate(final List<AllocatedSlot> slots) {
@@ -104,6 +102,4 @@ public class SlotsUpdateService {
         return slots.stream()
                 .anyMatch(slot -> Objects.nonNull(slot.getBookingId()));
     }
-
-
 }

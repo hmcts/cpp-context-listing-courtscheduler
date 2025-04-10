@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static java.lang.String.format;
+import static java.util.Objects.isNull;
 import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
@@ -15,6 +16,7 @@ import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIO
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -448,6 +450,82 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         }
     }
 
+    public List<Hearing> updateSearchListHearingSlots(final HearingSlotWrapper slots) {
+
+        List<uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing> allocatedListings = new ArrayList<>();
+
+        List<Hearing> hearings = new ArrayList<>();
+        if (!isNull(slots)) {
+            hearings = flattenHearingSlots(slots);
+        }
+      //Hearing = hearingid, courtscheduleid, sessionstarttime, duration
+
+        for(Hearing hearing: hearings ) {
+
+            //get the slots here
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule slot = this.findBy(hearing.getCourtScheduleId());
+
+            if (!isNull(hearing.getSessionStartTime())) {
+                //  slot.setSessionStartTime(hearingSlot.getSessionStartTime());
+
+            }
+            //check slot based /duration based
+            if (!slot.isSlotBased()) {
+                if (isNull(hearing.getDuration())) {
+                    throw new CourtScheduleIdNotMatchingException(format("Duration not provided for this duration based scheduleId : %s", hearing.getCourtScheduleId()));
+                }
+                if ((slot.getSupportAdSplit() && ((slot.getMaxAdMorningDuration()
+                        + slot.getMaxAdAfternoonDuration()) < hearing.getDuration()))
+                        || (slot.getAvailableDuration() < hearing.getDuration())) {
+                    throw new CourtScheduleIdNotMatchingException(format("invalid duration for this all day split session with available duration: %s, " +
+                                    "MaxAdMorningDuration: %s, "+"MaxAdAfternoonDuration: %s, "+"Available Duration: %s, "+  hearing.getCourtScheduleId(),
+                            slot.getMaxAdMorningDuration(), slot.getMaxAdAfternoonDuration(), slot.getAvailableDuration()));               }
+            }
+//prepare allocate listing
+            uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedlisting = new AllocatedListing();
+            allocatedlisting.setHearingId(hearing.getHearingId());
+            allocatedlisting.setCourtScheduleId(hearing.getCourtScheduleId());
+            allocatedlisting.setCourtRoomId(Integer.parseInt(slot.getCourtRoomId()));
+            allocatedlisting.setOucode(slot.getOuCode());
+            allocatedlisting.setId(UUID.randomUUID().toString());
+            allocatedlisting.setHearingStartTime(toRoundedTimestamp(slot.getSessionStartTime().toString()));
+            allocatedListings.add(allocatedlisting);
+        }
+
+        updateCourtScheduleWithSearchList(hearings);
+        saveAllocatedListingWithSearchList(allocatedListings);
+
+        return hearings;//TODO: populate all fields in Hearings
+    }
+
+
+
+    private void updateCourtScheduleWithSearchList(List<Hearing> slots) {
+        slots.forEach(hearing -> {
+            CourtSchedule courtSchedule = this.findBy(hearing.getCourtScheduleId());
+            LOGGER.info("CourtSchedule to be updated: is {}", courtSchedule);
+            if (courtSchedule.isSlotBased()) {
+                Integer availableSlots = courtSchedule.getAvailableSlots();
+                LOGGER.info("CourtSchedule after allocation : with available slots {}", availableSlots);
+                //check if allocation gets us over max slots
+                if ((availableSlots+1) <= courtSchedule.getMaxSlots()) {
+                    courtSchedule.setAvailableSlots(availableSlots - 1);
+                } //else throw error?
+            } else {
+                LOGGER.info("CourtSchedule after allocation : with available duration {}", courtSchedule.getAvailableDuration());
+                courtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration() - hearing.getDuration());
+            }
+            LOGGER.info("CourtSchedule object before update : with available slots {}", courtSchedule);
+            this.save(courtSchedule);
+        });
+    }
+
+    private void saveAllocatedListingWithSearchList(List<AllocatedListing> slots) {
+        slots.forEach(allocatedListing -> {
+            this.allocatedListingRepository.save(allocatedListing);
+        });
+    }
+
 
     @SuppressWarnings("unchecked")
     public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam requestParam) {
@@ -842,6 +920,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         });
     }
 
+
+
     @Transactional
     protected void deleteProvisionalBooking(final String bookingId) {
         Optional<ProvisionalBooking> byBookingId = this.provisionalBookingRepository.findByBookingId(bookingId);
@@ -1032,40 +1112,19 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .executeUpdate();
     }
 
-    public ListHearingSlotsResponse updateListHearingSlots(List<Hearing> hearings) {
-        //find courtschedule by id
-        //set hearing id
-        //set session start time?
-        //set duration ?
-        //save court schedule
-        //return response object
+    public List<Hearing> flattenHearingSlots(HearingSlotWrapper hearingSlots) {
+        List<Hearing> result = new ArrayList<>();
 
-        //get hearingids list
-        //
-
-
-
-        hearings.stream()
-                .flatMap(hearing ->
-                        hearing.getCourtSchedules().stream()
-                                .map(schedule -> new AbstractMap.SimpleEntry<>(hearing.getHearingId(), schedule))
-                )
-                .forEach(entry -> {
-                    String hearingId = entry.getKey();
-                    uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule schedule = entry.getValue();
-                    // Do something with each court schedule
-                    CourtSchedule cs  = this.findBy(schedule.getCourtScheduleId());
-                    //validationns, duration, sl
-
-
-
-
-
-
-
-                });
-
-
-        return null;
+        for (HearingSlot hearingSlot : hearingSlots.getHearingSlots()) {
+            for (CourtScheduleId cs : hearingSlot.getCourtScheduleIds()) {
+                Hearing hearing = new Hearing();
+                hearing.setHearingId(hearingSlot.getHearingId());
+                hearing.setCourtScheduleId(cs.getCourtScheduleId());
+                hearing.setSessionStartTime(cs.getSessionStartTime());
+                hearing.setDuration(cs.getDurationInMinutes());
+                result.add(hearing);
+            }
+        }
+        return result;
     }
 }

@@ -192,25 +192,18 @@ public class CourtSchedulerApi {
     public JsonEnvelope searchListHearingSlotsInCourtSchedules(final JsonEnvelope envelope) {
         final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
         LOGGER.info("courtscheduler.search.list.hearing-in-court-schedules:{}", payloadAsJsonString);
-        List<Hearing> hearings = listHearingSlotConverter.convert(payloadAsJsonString).getHearings();
+        HearingSlotWrapper hearingSlotWrapper = listHearingSlotConverter.convert(payloadAsJsonString);
 
-        JsonObject validate = hearingIdsApiValidator.listHearingSlotsValidation(hearings);
-
-
-        //validation here
-        //pull the slots here
-        //insert allocated listings
-        //update max, avail_slots in court schedule
-
+        JsonObject validate = hearingIdsApiValidator.listHearingSlotsValidation(hearingSlotWrapper.getHearingSlots());
 
         if (!validate.isEmpty()) {
             return envelopeFor(envelope, validate, ERROR);
         }
 
-        final ListHearingSlotsResponse listHearingSlotsResponse = slotsUpdateService.updateSearchListHearingSlots(hearings);
+        final ListHearingSlotsResponse listHearingSlotsResponse = slotsUpdateService.updateSearchListHearingSlots(hearingSlotWrapper);
 
         JsonObject responseObject =  Json.createObjectBuilder()
-                .add(RequestParameterConstant.HEARING_SLOTS.getLabel(),
+                .add(RequestParameterConstant.HEARINGS.getLabel(),
                         objectToJsonObjectConverter.convert(listHearingSlotsResponse))
                 .build();
 

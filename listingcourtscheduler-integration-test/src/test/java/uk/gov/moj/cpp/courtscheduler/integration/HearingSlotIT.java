@@ -85,27 +85,15 @@ class HearingSlotIT extends AbstractIT {
     @Test
     void shouldUpdateSearchListHearingSlots() throws SQLException {
 
-        String courtScheduleId = randomUUID().toString();
-        String bookingId = randomUUID().toString();
-        String hearingId = randomUUID().toString();
         CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
-        courtSchedule.setCourtScheduleId(courtScheduleId);
-
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
-        allocatedListing.setCourtScheduleId(courtScheduleId);
-        allocatedListing.setHearingId(hearingId);
-        allocatedListing.setBookingId(bookingId);
-        databaseSeeder.insertAllocatedListing(allocatedListing);
-
-        ProvisionalBooking provisionalBooking = RANDOM.nextObject(ProvisionalBooking.class);
-        provisionalBooking.setProvisionalBookingKey(new ProvisionalBookingKey(courtSchedule, bookingId));
-        databaseSeeder.insertProvisionalBooking(provisionalBooking);
+        CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule2.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        databaseSeeder.insertCourtSchedule(courtSchedule2);
 
         String updateHearingSlotsPayload = getPayload("courtscheduler.search.list.hearings-in-court-schedules.json");
-//        updateHearingSlotsPayload = updateHearingSlotsPayload.replace("HEARING_ID", hearingId);
-//        updateHearingSlotsPayload = updateHearingSlotsPayload.replace("COURT_SCHEDULE_ID", courtScheduleId);
 
         final Response response = putCommand("/searchlist/hearingslots", "application/vnd.courtscheduler.search.list.hearings-in-court-schedules+json", USER_ID, updateHearingSlotsPayload);
 
