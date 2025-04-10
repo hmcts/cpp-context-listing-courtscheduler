@@ -22,6 +22,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.TimeZone;
 
 
 public class DateUtils {
@@ -123,6 +124,16 @@ public class DateUtils {
             return new SimpleDateFormat("yyyy-MM-dd").parse(localDate.toString());
         } catch (ParseException e) {
             throw new IllegalArgumentException(String.format("Passed localDate:%s cannot be parsed with format:yyyy-MM-dd", localDate));
+        }
+    }
+
+    public static final java.util.Date getDate(String dateString) {
+        try {
+            SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
+            isoFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+            return isoFormat.parse(dateString);
+        } catch (ParseException e) {
+            throw new IllegalArgumentException(String.format("Passed date string:%s cannot be parsed with format:yyyy-MM-dd'T'HH:mm:ssX", dateString));
         }
     }
 

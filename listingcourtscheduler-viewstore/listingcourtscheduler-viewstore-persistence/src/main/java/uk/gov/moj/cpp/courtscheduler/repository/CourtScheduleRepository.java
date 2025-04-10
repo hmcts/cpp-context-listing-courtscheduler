@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static java.lang.String.format;
-import static java.util.Objects.isNull;
 import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
@@ -16,7 +15,6 @@ import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIO
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
-import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -452,70 +450,43 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     public List<Hearing> updateSearchListHearingSlots(final HearingSlotWrapper slots) {
 
-        List<uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing> allocatedListings = new ArrayList<>();
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing> allocatedListings = new ArrayList<>();
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules = new ArrayList<>();
 
-        List<Hearing> hearings = new ArrayList<>();
-        if (!isNull(slots)) {
-            hearings = flattenHearingSlots(slots);
-        }
-      //Hearing = hearingid, courtscheduleid, sessionstarttime, duration
+        final List<Hearing> hearings = flattenHearingSlots(slots);
 
         for(Hearing hearing: hearings ) {
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = this.findBy(hearing.getCourtScheduleId());
 
-            //get the slots here
-            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule slot = this.findBy(hearing.getCourtScheduleId());
-
-            if (!isNull(hearing.getSessionStartTime())) {
-                //  slot.setSessionStartTime(hearingSlot.getSessionStartTime());
-
+            //check slot based /duration based for deducting the available slots
+            if (cs.isSlotBased()) {
+                cs.setAvailableSlots(cs.getAvailableSlots() - 1);
             }
-            //check slot based /duration based
-            if (!slot.isSlotBased()) {
-                if (isNull(hearing.getDuration())) {
-                    throw new CourtScheduleIdNotMatchingException(format("Duration not provided for this duration based scheduleId : %s", hearing.getCourtScheduleId()));
-                }
-                if ((slot.getSupportAdSplit() && ((slot.getMaxAdMorningDuration()
-                        + slot.getMaxAdAfternoonDuration()) < hearing.getDuration()))
-                        || (slot.getAvailableDuration() < hearing.getDuration())) {
-                    throw new CourtScheduleIdNotMatchingException(format("invalid duration for this all day split session with available duration: %s, " +
-                                    "MaxAdMorningDuration: %s, "+"MaxAdAfternoonDuration: %s, "+"Available Duration: %s, "+  hearing.getCourtScheduleId(),
-                            slot.getMaxAdMorningDuration(), slot.getMaxAdAfternoonDuration(), slot.getAvailableDuration()));               }
-            }
-//prepare allocate listing
+
+            //prepare allocated listing
             uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedlisting = new AllocatedListing();
             allocatedlisting.setHearingId(hearing.getHearingId());
             allocatedlisting.setCourtScheduleId(hearing.getCourtScheduleId());
-            allocatedlisting.setCourtRoomId(Integer.parseInt(slot.getCourtRoomId()));
-            allocatedlisting.setOucode(slot.getOuCode());
+            allocatedlisting.setCourtRoomId(cs.getCourtRoomNumber());
+            allocatedlisting.setOucode(cs.getOuCode());
             allocatedlisting.setId(UUID.randomUUID().toString());
-            allocatedlisting.setHearingStartTime(toRoundedTimestamp(slot.getSessionStartTime().toString()));
+            allocatedlisting.setHearingStartTime(cs.getSessionStartTime());
+            allocatedlisting.setDuration(hearing.getDuration());
+
+            courtSchedules.add(cs);
             allocatedListings.add(allocatedlisting);
         }
 
-        updateCourtScheduleWithSearchList(hearings);
+        updateCourtScheduleWithSearchList(courtSchedules);
         saveAllocatedListingWithSearchList(allocatedListings);
 
-        return hearings;//TODO: populate all fields in Hearings
+        return hearings;
     }
 
 
 
-    private void updateCourtScheduleWithSearchList(List<Hearing> slots) {
-        slots.forEach(hearing -> {
-            CourtSchedule courtSchedule = this.findBy(hearing.getCourtScheduleId());
-            LOGGER.info("CourtSchedule to be updated: is {}", courtSchedule);
-            if (courtSchedule.isSlotBased()) {
-                Integer availableSlots = courtSchedule.getAvailableSlots();
-                LOGGER.info("CourtSchedule after allocation : with available slots {}", availableSlots);
-                //check if allocation gets us over max slots
-                if ((availableSlots+1) <= courtSchedule.getMaxSlots()) {
-                    courtSchedule.setAvailableSlots(availableSlots - 1);
-                } //else throw error?
-            } else {
-                LOGGER.info("CourtSchedule after allocation : with available duration {}", courtSchedule.getAvailableDuration());
-                courtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration() - hearing.getDuration());
-            }
-            LOGGER.info("CourtSchedule object before update : with available slots {}", courtSchedule);
+    private void updateCourtScheduleWithSearchList(List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> slots) {
+        slots.forEach(courtSchedule -> {
             this.save(courtSchedule);
         });
     }

@@ -87,11 +87,63 @@ class HearingSlotIT extends AbstractIT {
 
         CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setSlotBased(false);
+        courtSchedule.setMaxSlots(0);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setMaxAdMorningDuration(180);
+        courtSchedule.setMaxAdAfternoonDuration(180);
+        courtSchedule.setMaxDuration(0);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 4, 3));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule2.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule2.setOuCode("B40IM00");
+        courtSchedule2.setCourtRoomNumber(1501);
+        courtSchedule2.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule2.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule2.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule2.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule2.setSlotBased(true);
+        courtSchedule2.setMaxSlots(2);
+        courtSchedule2.setSupportAdSplit(true);
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setMaxAdMorningDuration(180);
+        courtSchedule2.setMaxAdAfternoonDuration(180);
+        courtSchedule2.setMaxDuration(0);
+        courtSchedule2.setSessionDate(LocalDate.of(2025, 4, 5));
+        courtSchedule2.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule2);
+
+        CourtSchedule courtSchedule3 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule3.setCourtScheduleId("2771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule3.setOuCode("B40IM00");
+        courtSchedule3.setCourtRoomNumber(1501);
+        courtSchedule3.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule3.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule3.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule3.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule3.setSlotBased(true);
+        courtSchedule3.setMaxSlots(0);
+        courtSchedule3.setSupportAdSplit(true);
+        courtSchedule3.setCourtSession("AD");
+        courtSchedule3.setMaxAdMorningDuration(180);
+        courtSchedule3.setMaxAdAfternoonDuration(180);
+        courtSchedule3.setMaxDuration(360);
+        courtSchedule3.setSessionDate(LocalDate.of(2025, 5, 5));
+        courtSchedule3.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule3.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule3);
 
         String updateHearingSlotsPayload = getPayload("courtscheduler.search.list.hearings-in-court-schedules.json");
 

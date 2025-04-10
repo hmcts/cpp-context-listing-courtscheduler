@@ -27,6 +27,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
 
+import java.text.ParseException;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -195,6 +196,7 @@ public class CourtSchedulerApi {
         HearingSlotWrapper hearingSlotWrapper = listHearingSlotConverter.convert(payloadAsJsonString);
 
         JsonObject validate = hearingIdsApiValidator.listHearingSlotsValidation(hearingSlotWrapper.getHearingSlots());
+
 
         if (!validate.isEmpty()) {
             return envelopeFor(envelope, validate, ERROR);

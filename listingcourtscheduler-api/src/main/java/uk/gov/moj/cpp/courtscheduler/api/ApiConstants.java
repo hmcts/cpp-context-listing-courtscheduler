@@ -16,4 +16,5 @@ public class ApiConstants {
     public static final String BOOKING_IDS = "bookingIds";
     public static final String ERROR = "error";
     public static final String HEARING_SLOTS = "hearingSlots";
+    public static final int SLOT_DURATION_DEFAULT = 1;
 }
