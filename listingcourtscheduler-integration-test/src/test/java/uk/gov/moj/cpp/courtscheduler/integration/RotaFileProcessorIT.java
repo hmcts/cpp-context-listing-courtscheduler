@@ -75,8 +75,8 @@ class RotaFileProcessorIT extends AbstractIT {
     private final String azureBlobOutputContainerName = "schedulelistingoutput";
     private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=+p3GXQguT4npJqxd6gAPfDgLu0YuJ3n1+hpTQYg1BQn0UL5Ut+bDDE7l2qrRNTt/yW5jNyf5mRUmM11F8dnkpA==;EndpointSuffix=core.windows.net;";
 
-    public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 300;
-    public static final int DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC = 300;
+    public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
+    public static final int DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC = 50;
 
     private LocalDateTime maxCreatedOnForCourtSchedule;
     private LocalDateTime maxUpdatedOnForCourtSchedule;
@@ -92,7 +92,7 @@ class RotaFileProcessorIT extends AbstractIT {
     static void setupRotaFileProcessorIT() {
         setupUserAsSystemUser(USER_ID.toString());
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
+
         stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
         stubGetReferenceDataJudiciaries("referencedata.judiciaries.json");
     }
@@ -432,7 +432,6 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     private void insertAllocatedListingsForCourtSchedules(final List<CourtSchedule> courtSchedules180DaysOlderOrMore) throws SQLException {
-        await().pollDelay(Duration.ofSeconds(2)).untilAsserted(() -> assertTrue(true));
         for(final CourtSchedule courtSchedule180DaysOlderOrMore : courtSchedules180DaysOlderOrMore) {
             final CourtSchedule courtSchedule = databaseReader.courtScheduleById(courtSchedule180DaysOlderOrMore.getCourtScheduleId());
             if (nonNull(courtSchedule)) {

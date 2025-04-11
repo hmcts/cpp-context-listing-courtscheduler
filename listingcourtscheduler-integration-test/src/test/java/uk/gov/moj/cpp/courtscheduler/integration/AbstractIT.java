@@ -5,6 +5,8 @@ import static org.apache.commons.collections.MapUtils.isEmpty;
 import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
 import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.requestParams;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.http.HeaderConstants;
@@ -48,6 +50,12 @@ public abstract class AbstractIT extends RestClient {
     @BeforeEach
     public void cleanTheDatabase() throws Exception {
         databaseSeeder.cleanDb();
+        setupReferenceDataStubs();
+    }
+
+    protected void setupReferenceDataStubs() {
+        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
     }
 
     protected ObjectMapper mapper = new ObjectMapper();
