@@ -9,10 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
@@ -25,15 +22,7 @@ import uk.gov.justice.services.messaging.Envelope;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.*;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
@@ -47,10 +36,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -58,6 +44,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 
+import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
@@ -125,6 +112,8 @@ class CourtSchedulerApiTest {
     private OuCodeMigrateConverter ouCodeMigrateConverter;
     @Mock
     private JsonEnvelope envelope;
+    @Mock
+    private ListHearingSlotConverter listHearingSlotConverter;
 
     @Test
     void shouldCreateCourtSchedule() throws IOException {
@@ -189,6 +178,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope updateCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
         when(enveloper.withMetadataFrom(updateCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
+
         Result success = Result.SUCCESS();
         when(sessionsService.update(any(), eq(requester))).thenReturn(success);
         when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
@@ -250,6 +240,32 @@ class CourtSchedulerApiTest {
 
         verify(slotsUpdateService, atLeastOnce()).update(new AllocatedSlotConverter().convert(payload).getHearingSlots());
         verify(enveloper, atLeastOnce()).withMetadataFrom(updateHearingSlotsEnvelope, requestName);
+    }
+
+    @Test
+    void shouldUpdateSearchListHearingSlots() throws IOException {
+        final String payload = FileUtil.getPayload("courtscheduler.search.list.hearings-in-court-schedules.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.search.list.hearings-in-court-schedules";
+        final String responseName = "courtscheduler.search.list.hearings-in-court-schedules.response";
+
+        final JsonEnvelope updateSearchListHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
+        when(enveloper.withMetadataFrom(updateSearchListHearingSlotsEnvelope, responseName)).thenReturn(function);
+
+        final HearingSlotWrapper wrapper = new HearingSlotWrapper();
+        wrapper.setHearingSlots(Collections.emptyList());
+        when(listHearingSlotConverter.convert(anyString())).thenReturn(wrapper);
+
+        when(hearingSlotsApiValidator.listHearingSlotsValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
+        when(slotsUpdateService.updateSearchListHearingSlots(any())).thenReturn(new ListHearingSlotsResponse());
+
+        JsonObject jsonResponse = Json.createObjectBuilder().add("any", "any").build();
+        when(objectToJsonObjectConverter.convert(any())).thenReturn(jsonResponse);
+
+        courtSchedulerApi.searchListHearingSlotsInCourtSchedules(updateSearchListHearingSlotsEnvelope);
+
+        verify(slotsUpdateService, atLeastOnce()).updateSearchListHearingSlots(eq(wrapper));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(updateSearchListHearingSlotsEnvelope, responseName);
     }
 
     @Test

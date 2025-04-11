@@ -197,7 +197,6 @@ public class CourtSchedulerApi {
 
         JsonObject validate = hearingIdsApiValidator.listHearingSlotsValidation(hearingSlotWrapper.getHearingSlots());
 
-
         if (!validate.isEmpty()) {
             return envelopeFor(envelope, validate, ERROR);
         }
