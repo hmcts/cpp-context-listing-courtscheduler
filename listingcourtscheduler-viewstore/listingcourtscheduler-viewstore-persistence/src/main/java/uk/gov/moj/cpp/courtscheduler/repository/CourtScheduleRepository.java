@@ -470,6 +470,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             allocatedlisting.setCourtRoomId(cs.getCourtRoomNumber());
             allocatedlisting.setOucode(cs.getOuCode());
             allocatedlisting.setId(UUID.randomUUID().toString());
+            allocatedlisting.setBookingId(UUID.randomUUID().toString());
             allocatedlisting.setHearingStartTime(cs.getSessionStartTime());
             allocatedlisting.setDuration(hearing.getDuration());
 
@@ -483,8 +484,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return hearings;
     }
 
-
-
     private void updateCourtScheduleWithSearchList(List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> slots) {
         slots.forEach(courtSchedule -> {
             this.save(courtSchedule);
@@ -496,7 +495,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             this.allocatedListingRepository.save(allocatedListing);
         });
     }
-
 
     @SuppressWarnings("unchecked")
     public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam requestParam) {
@@ -1083,7 +1081,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .executeUpdate();
     }
 
-    public List<Hearing> flattenHearingSlots(HearingSlotWrapper hearingSlots) {
+    private List<Hearing> flattenHearingSlots(HearingSlotWrapper hearingSlots) {
         List<Hearing> result = new ArrayList<>();
 
         for (HearingSlot hearingSlot : hearingSlots.getHearingSlots()) {

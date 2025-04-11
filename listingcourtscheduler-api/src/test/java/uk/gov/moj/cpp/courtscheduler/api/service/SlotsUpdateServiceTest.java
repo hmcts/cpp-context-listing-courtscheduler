@@ -1,24 +1,18 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
 
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingInfo;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -143,5 +137,28 @@ public class SlotsUpdateServiceTest {
         service.searchUpdate(allocatedSlots);
 
         verify(courtScheduleRepository).saveBookedSlots(allocatedSlots, false, false);
+    }
+
+    @Test
+    void shouldUpdateSearchListHearingSlotsAndReturnResponse() {
+        final HearingSlotWrapper wrapper = new HearingSlotWrapper();
+
+        final Hearing hearing1 = new Hearing();
+        final String hearingId1 = UUID.randomUUID().toString();
+        hearing1.setHearingId(hearingId1);
+        final Hearing hearing2 = new Hearing();
+        final String hearingId2 = UUID.randomUUID().toString();
+        hearing2.setHearingId(hearingId2);
+        final List<Hearing> hearings = List.of(hearing1, hearing2);
+
+        when(courtScheduleRepository.updateSearchListHearingSlots(wrapper)).thenReturn(hearings);
+
+        ListHearingSlotsResponse response = service.updateSearchListHearingSlots(wrapper);
+
+        assertNotNull(response);
+        assertEquals(2, response.getHearings().size());
+        assertEquals(hearingId1, response.getHearings().get(0).getHearingId());
+        verify(courtScheduleRepository).updateSearchListHearingSlots(wrapper);
+        verifyNoMoreInteractions(courtScheduleRepository);
     }
 }
