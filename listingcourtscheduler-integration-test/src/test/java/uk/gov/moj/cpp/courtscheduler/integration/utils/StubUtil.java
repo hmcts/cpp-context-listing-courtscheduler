@@ -13,7 +13,6 @@ import static uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils
 import static uk.gov.justice.services.common.http.HeaderConstants.ID;
 import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.WiremockTestHelper.waitForStubToBeReady;
 
 import uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils;
 
@@ -49,8 +48,6 @@ public class StubUtil {
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", "application/json")
                         .withBody(getPayload("usersgroups.user-permissions.json"))));
-
-        waitForStubToBeReady("/usersgroups-service/query/api/rest/usersgroups/users/logged-in-user/permissions", CONTENT_TYPE_QUERY_PERMISSION);
     }
 
     public static void setupUserAsSystemUser(String userId) {
@@ -69,8 +66,6 @@ public class StubUtil {
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
-
-        waitForStubToBeReady(urlPath, ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE);
     }
 
     public static void stubGetReferenceCourtRooms(final String responsePath) {
@@ -80,8 +75,6 @@ public class StubUtil {
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", ROTA_COURTROOMS_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
-
-        waitForStubToBeReady(urlPath, ROTA_COURTROOMS_QUERY_MEDIA_TYPE);
     }
 
     public static void stubGetReferenceDataCourtRoomSessionAllocations(final String responsePath) {
@@ -91,8 +84,6 @@ public class StubUtil {
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", ROTA_COURTROOMSESSIONALLOCATIONS_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
-
-        waitForStubToBeReady(urlPath, ROTA_COURTROOMSESSIONALLOCATIONS_QUERY_MEDIA_TYPE);
     }
 
     public static void stubGetReferenceDataJudiciaries(final String responsePath) {
@@ -102,8 +93,6 @@ public class StubUtil {
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", ROTA_JUDICIARIES_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
-
-        waitForStubToBeReady(urlPath, ROTA_JUDICIARIES_QUERY_MEDIA_TYPE);
     }
 
 

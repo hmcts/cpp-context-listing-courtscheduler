@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -55,7 +56,7 @@ class MiExportIT extends AbstractIT {
 
         databaseSeeder.insertCourtSchedule(expected);
 
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
@@ -89,7 +90,7 @@ class MiExportIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(expected);
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
 
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
@@ -122,7 +123,7 @@ class MiExportIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(expected);
         databaseSeeder.insertAllocatedListing(allocatedListing);
 
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
