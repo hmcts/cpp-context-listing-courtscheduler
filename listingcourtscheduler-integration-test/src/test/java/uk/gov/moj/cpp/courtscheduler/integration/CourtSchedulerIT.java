@@ -20,8 +20,6 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SPLIT
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.localDateToDateWithTime;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
@@ -211,8 +209,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet400IfAllDaySplitTrueForSlotBasedAllDaySessionToValidateCreateSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-slot-based-having-all-day-split-true.json");
         final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
 
@@ -267,7 +263,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateOrUpdateCourtSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
 
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-multiple-session.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
@@ -276,7 +271,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldUpdateCourtSchedule() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -445,7 +439,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet400WhenUpdatingCourtScheduleWithNonDurationBasedBusinessType() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -473,7 +466,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet400WhenUpdatingCourtScheduleADSplit() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -532,7 +524,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldNotUpdateCourtScheduleIfTotalBookedExceedsMaxDurationOrSlot() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -659,7 +650,6 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     @Disabled
     void shouldNotAllowUpdateCourtScheduleForDifferentBusinessType() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -884,9 +874,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldMigrateOuCodes() throws Exception {
-        setupUserAsSystemUser(USER_ID.toString());
-        cleanTheDatabase();
-
         CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
         courtSchedulerMigrationStatus.setOuCode("B12345");
         courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
@@ -901,7 +888,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         String migrateOuCodePayload = getPayload("oucode-migrate-courtscheduler.json");
 
-        final Response response = postCommand(OUCODE_MIGRATE_URL, COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE, USER_ID, migrateOuCodePayload);
+        final Response response = postCommand(OUCODE_MIGRATE_URL, COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE, SYSTEM_USER_ID, migrateOuCodePayload);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }

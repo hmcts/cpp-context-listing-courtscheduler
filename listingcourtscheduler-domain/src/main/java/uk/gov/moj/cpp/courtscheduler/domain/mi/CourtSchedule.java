@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.domain.mi;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
 import java.util.Date;
+import java.text.SimpleDateFormat;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -257,7 +258,10 @@ public class CourtSchedule {
 
     @JsonProperty("created_on")
     public String getCreatedOn() {
-        return created_on == null ? null : DateUtils.toIsoString(created_on);
+        if (created_on == null) {
+            return null;
+        }
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(created_on);
     }
 
     public void setCreatedOn(Date createdOn) {
@@ -266,7 +270,10 @@ public class CourtSchedule {
 
     @JsonProperty("updated_on")
     public String getUpdatedOn() {
-        return updated_on == null ? null : DateUtils.toIsoString(updated_on);
+        if (updated_on == null) {
+            return null;
+        }
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(updated_on);
     }
 
     public void setUpdatedOn(Date updatedOn) {
