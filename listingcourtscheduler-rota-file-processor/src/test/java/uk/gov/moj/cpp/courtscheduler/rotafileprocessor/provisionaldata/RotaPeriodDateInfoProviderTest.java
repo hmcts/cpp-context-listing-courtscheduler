@@ -5,9 +5,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
 
+import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.util.PropertiesLoader;
-import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.io.IOException;
 import java.io.InputStream;

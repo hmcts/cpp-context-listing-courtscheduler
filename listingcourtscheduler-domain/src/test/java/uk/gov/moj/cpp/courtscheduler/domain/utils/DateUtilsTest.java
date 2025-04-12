@@ -5,6 +5,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toSqlDate;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -12,7 +13,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -123,7 +123,7 @@ public class DateUtilsTest {
         
         // The result should be in UTC
         ZonedDateTime expectedUtc = LocalDateTime.of(date, LocalTime.parse(time))
-            .atZone(ZoneId.of("Europe/London"))
+            .atZone(LONDON_ZONE)
             .withZoneSameInstant(ZoneOffset.UTC);
         
         assertThat(expectedUtc.toInstant().toEpochMilli(), is(result.getTime()));
@@ -141,7 +141,7 @@ public class DateUtilsTest {
         
         // The result should be in UTC
         ZonedDateTime expectedUtc = LocalDateTime.of(date, LocalTime.of(hour, minute))
-            .atZone(ZoneId.of("Europe/London"))
+            .atZone(LONDON_ZONE)
             .withZoneSameInstant(ZoneOffset.UTC);
         
         assertThat(expectedUtc.toInstant().toEpochMilli(), is(result.getTime()));
@@ -152,14 +152,14 @@ public class DateUtilsTest {
         // Test AM session
         String amResult = DateUtils.createDefaultHearingStartTime("AM", "2023-07-01");
         ZonedDateTime expectedAm = LocalDateTime.of(2023, 7, 1, 10, 0)
-            .atZone(ZoneId.of("Europe/London"))
+            .atZone(LONDON_ZONE)
             .withZoneSameInstant(ZoneOffset.UTC);
         assertThat(expectedAm.format(ISO_8601_FORMATTER), is(amResult));
         
         // Test PM session
         String pmResult = DateUtils.createDefaultHearingStartTime("PM", "2023-07-01");
         ZonedDateTime expectedPm = LocalDateTime.of(2023, 7, 1, 14, 0)
-            .atZone(ZoneId.of("Europe/London"))
+            .atZone(LONDON_ZONE)
             .withZoneSameInstant(ZoneOffset.UTC);
         assertThat(expectedPm.format(ISO_8601_FORMATTER), is(pmResult));
     }
