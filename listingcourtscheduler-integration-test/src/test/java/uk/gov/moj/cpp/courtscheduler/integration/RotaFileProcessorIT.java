@@ -35,6 +35,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatu
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -415,13 +416,30 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     private void insertAllocatedListingsForCourtSchedules(final List<CourtSchedule> courtSchedules180DaysOlderOrMore) throws SQLException {
-        for(final CourtSchedule courtSchedule180DaysOlderOrMore : courtSchedules180DaysOlderOrMore) {
-            final CourtSchedule courtSchedule = databaseReader.courtScheduleById(courtSchedule180DaysOlderOrMore.getCourtScheduleId());
-            if (nonNull(courtSchedule)) {
-                databaseSeeder.insertAllocatedListing(getAllocatedListing(courtSchedule180DaysOlderOrMore));
-            } else {
-                logger.info("courtScheduleId not found to be inserted to allocated_listings: {}", courtSchedule180DaysOlderOrMore.getCourtScheduleId());
+        if (courtSchedules180DaysOlderOrMore.isEmpty()) {
+            return;
+        }
+
+        final List<AllocatedListing> allocatedListings = new ArrayList<>();
+        
+        // Use a single connection for all database operations
+        try (Connection connection = databaseSeeder.getNewConnection()) {
+            connection.setAutoCommit(false);
+            
+            for(final CourtSchedule courtSchedule180DaysOlderOrMore : courtSchedules180DaysOlderOrMore) {
+                final CourtSchedule courtSchedule = databaseReader.courtScheduleById(courtSchedule180DaysOlderOrMore.getCourtScheduleId(), connection);
+                if (nonNull(courtSchedule)) {
+                    allocatedListings.add(getAllocatedListing(courtSchedule180DaysOlderOrMore));
+                } else {
+                    logger.info("courtScheduleId not found to be inserted to allocated_listings: {}", courtSchedule180DaysOlderOrMore.getCourtScheduleId());
+                }
             }
+            
+            if (!allocatedListings.isEmpty()) {
+                databaseSeeder.insertAllocatedListingsBatch(allocatedListings, connection);
+            }
+            
+            connection.commit();
         }
     }
 
