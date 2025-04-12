@@ -10,6 +10,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefa
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
@@ -35,8 +36,6 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -479,12 +478,12 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         LOGGER.info("GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS ******* allSchedules : {}", allSchedules);
         int totalCount = allSchedules.size();
         LOGGER.info("GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS ******* allSchedules count : {}", totalCount);
-        
+
         // Then get paginated results
         String paginatedQuery = buildFullQuery(requestParam);
         List<CourtSchedule> paginatedSchedules = executeQuery(paginatedQuery, queryParamsForResult);
         LOGGER.info("GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS ******* paginatedSchedules : {}", paginatedSchedules);
-        
+
         if (paginatedSchedules.isEmpty()) {
             return Pair.of(0, Collections.emptyList());
         }
@@ -513,7 +512,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         if (StringUtils.isNotBlank(requestParam.courtRoomId())) {
             params.put("courtRoomId", requestParam.courtRoomId());
         }
-        
+
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             params.put(BUSINESS_TYPE, requestParam.businessType());
         }
@@ -529,7 +528,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             params.put("pageSize", pageSize);
             params.put("offset", (pageNumber - 1) * pageSize);
         }
-        
+
         return params;
     }
 
@@ -547,7 +546,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         if (StringUtils.isNotBlank(requestParam.courtRoomId())) {
             query.append(" AND cs.court_room_id = :courtRoomId");
         }
-        
+
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             query.append(" AND cs.rota_business_type = :businessType");
         }
@@ -555,57 +554,57 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         if(StringUtils.isNotBlank(requestParam.courtSession())) {
             query.append(" AND cs.court_session in (:courtSession)");
         }
-        
+
         query.append(GET_HEARING_SLOTS_QUERY_GROUP_BY)
              .append(GET_HEARING_SLOTS_QUERY_PAGINATION);
-        
+
         return query.toString();
     }
 
     private List<CourtSchedule> executeQuery(String query, Map<String, Object> params) {
         javax.persistence.Query jpaQuery = entityManager.createNativeQuery(query, NATIVE_QUERY_COURT_SCHEDULE_MAPPING_SLOTS);
-        
+
         // Set parameters
         params.forEach(jpaQuery::setParameter);
-        
+
         return jpaQuery.getResultList();
     }
 
     private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> processScheduleEntities(List<CourtSchedule> scheduleEntities) {
         final long mappingStartTime = System.nanoTime();
-        
+
         Set<String> courtScheduleIds = new TreeSet<>();
         Map<String, CourtSchedule> courtScheduleMap = scheduleEntities.stream()
             .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, Function.identity()));
         scheduleEntities.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
-        
+
         Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds, courtScheduleMap);
-        
+
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules = scheduleEntities.stream()
             .map(CourtSchedulerConverter::convert)
             .toList();
 
         processJudiciaryDetails(scheduleEntities, domainSchedules);
-        
+
         domainSchedules.forEach(schedule ->
             addSlotStartTimes(slotStartTimeList, schedule));
-        
+
         final long mappingEndTime = System.nanoTime();
         LOGGER.info("BRS: Time taken for mapping : {}", (mappingEndTime - mappingStartTime) / 1000000);
-        
+
         return domainSchedules;
     }
 
-    private void processJudiciaryDetails(List<CourtSchedule> schedulesWithProfiles, 
+    private void processJudiciaryDetails(List<CourtSchedule> schedulesWithProfiles,
                                        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules) {
         ModelMapper modelMapper = new ModelMapper();
         List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(schedulesWithProfiles);
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> domainJudiciaries = 
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> domainJudiciaries =
             judiciaryList.stream()
                 .map(j -> modelMapper.map(j, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class))
                 .toList();
-                
-        domainSchedules.forEach(schedule -> 
+
+        domainSchedules.forEach(schedule ->
             addJudiciaries(domainJudiciaries, schedule));
     }
 
@@ -930,29 +929,29 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             final Date sessionStartTime = courtSchedule.getSessionStartTime();
             final Date sessionEndTime = courtSchedule.getSessionEndTime();
             final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair = hearingStartTimeMapByCourtSchedule.get(courtScheduleId);
-            
+
             // Convert to LocalDateTime with London timezone
             final LocalDateTime sessionStartDateTime = sessionStartTime.toInstant()
-                .atZone(ZoneId.of("Europe/London"))
+                .atZone(LONDON_ZONE)
                 .toLocalDateTime();
             final LocalDateTime sessionEndDateTime = sessionEndTime.toInstant()
-                .atZone(ZoneId.of("Europe/London"))
+                .atZone(LONDON_ZONE)
                 .toLocalDateTime();
-                
+
             final int sessionStartHour = sessionStartDateTime.getHour();
             final int sessionStartMinute = sessionStartDateTime.getMinute();
             final int sessionEndHour = sessionEndDateTime.getHour();
             final int sessionEndMinute = sessionEndDateTime.getMinute();
             final AtomicInteger nextMinutePart = new AtomicInteger(sessionStartMinute);
             final boolean slotBased = courtSchedule.isSlotBased();
-            final List<Pair<LocalDateTime, Integer>> courtScheduleAllocatedPairWithLocalDateTime = 
-                courtScheduleAllocatedPair != null ? 
+            final List<Pair<LocalDateTime, Integer>> courtScheduleAllocatedPairWithLocalDateTime =
+                courtScheduleAllocatedPair != null ?
                 courtScheduleAllocatedPair.stream()
                     .filter(pair -> pair != null && pair.getLeft() != null)
                     .map(pair -> Pair.of(pair.getLeft().toInstant()
-                                .atZone(ZoneId.of("Europe/London"))
+                                .atZone(LONDON_ZONE)
                                 .toLocalDateTime(), pair.getRight()))
-                    .toList() : 
+                    .toList() :
                 Collections.emptyList();
 
             final List<SlotStartTime> slotStartTimes = processSlotStartTimes(sessionStartHour, sessionEndHour, sessionEndMinute, nextMinutePart, courtScheduleAllocatedPairWithLocalDateTime, sessionStartDateTime, slotBased);

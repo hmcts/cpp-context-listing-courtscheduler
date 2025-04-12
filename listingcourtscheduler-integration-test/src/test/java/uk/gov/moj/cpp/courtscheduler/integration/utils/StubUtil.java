@@ -1,16 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.reset;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.any;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.matching;
-import static com.github.tomakehurst.wiremock.client.WireMock.request;
 import static java.util.UUID.randomUUID;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.http.HttpHeaders.CONTENT_TYPE;
@@ -20,21 +15,9 @@ import static uk.gov.justice.services.common.http.HeaderConstants.ID;
 import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.matching.UrlPattern;
-import com.github.tomakehurst.wiremock.stubbing.StubMapping;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.Predicate;
 import uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils;
 
 import java.util.UUID;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.stream.Collectors;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
 
 public class StubUtil {
     private static final String HOST = getHost();

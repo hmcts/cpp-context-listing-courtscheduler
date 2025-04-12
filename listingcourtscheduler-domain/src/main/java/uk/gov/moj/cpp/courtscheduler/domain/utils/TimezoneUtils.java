@@ -15,8 +15,8 @@ import java.util.Date;
  */
 public class TimezoneUtils {
     
-    private static final ZoneId LONDON_ZONE = ZoneId.of("Europe/London");
-    private static final ZoneOffset UTC_ZONE = ZoneOffset.UTC;
+    public static final ZoneId LONDON_ZONE = ZoneId.of("Europe/London");
+    public static final ZoneOffset UTC_ZONE = ZoneOffset.UTC;
     
     private TimezoneUtils() {
         // Private constructor to prevent instantiation

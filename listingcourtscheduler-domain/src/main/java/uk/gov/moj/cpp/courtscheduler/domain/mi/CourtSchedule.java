@@ -2,8 +2,8 @@ package uk.gov.moj.cpp.courtscheduler.domain.mi;
 
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
-import java.util.Date;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;

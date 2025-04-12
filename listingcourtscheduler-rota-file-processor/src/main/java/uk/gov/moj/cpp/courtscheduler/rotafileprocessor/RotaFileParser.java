@@ -16,9 +16,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.LOCATION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.ROTA_PERIOD;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 
+import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.exception.RotaFileProcessorException;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.util.PropertiesLoader;
-import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.io.ByteArrayInputStream;
 import java.util.EnumMap;

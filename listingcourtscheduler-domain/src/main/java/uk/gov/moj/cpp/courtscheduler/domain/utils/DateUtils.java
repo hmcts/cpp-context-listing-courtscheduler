@@ -7,6 +7,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_D
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.MeridianHelper.getMeridian;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum;
 
@@ -18,7 +19,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -156,7 +156,7 @@ public class DateUtils {
         final int day = Integer.parseInt(dateParts[2]);
 
         // Create in local time and convert to UTC
-        final ZonedDateTime localDate = ZonedDateTime.of(year, month, day, time, 0, 0, 0, ZoneId.of("Europe/London")).withZoneSameInstant(ZoneOffset.UTC);
+        final ZonedDateTime localDate = ZonedDateTime.of(year, month, day, time, 0, 0, 0, LONDON_ZONE).withZoneSameInstant(ZoneOffset.UTC);
         return localDate.format(ISO_8601_FORMATTER);
     }
 
