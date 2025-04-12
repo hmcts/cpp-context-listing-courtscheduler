@@ -5,6 +5,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.reset;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.any;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static com.github.tomakehurst.wiremock.client.WireMock.request;
 import static java.util.UUID.randomUUID;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.http.HttpHeaders.CONTENT_TYPE;
@@ -14,9 +20,21 @@ import static uk.gov.justice.services.common.http.HeaderConstants.ID;
 import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.UrlPattern;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Predicate;
 import uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class StubUtil {
     private static final String HOST = getHost();
@@ -61,11 +79,39 @@ public class StubUtil {
 
     public static void stubGetReferenceDataRotaBusinessTypes(final String responsePath) {
         final String urlPath = QUERY_RELATIVE_URL_BUSINESS_TYPE;
+        final String fullPayload = getPayload(responsePath);
+        
+        // Stub for requests with typeCode parameter
         stubFor(get(urlPathEqualTo(urlPath))
-                .willReturn(aResponse().withStatus(SC_OK)
+                .withQueryParam("typeCode",equalTo("TRL"))
+                .atPriority(1)
+                .willReturn(aResponse()
+                        .withStatus(SC_OK)
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE)
-                        .withBody(getPayload(responsePath))));
+                                .withBody("{\n" +
+                                        "          \"rotaBusinessTypes\": [\n" +
+                                        "            {\n" +
+                                        "              \"id\": \"c9bb572b-2769-4da6-a41b-c8d7f15fc4a8\",\n" +
+                                        "              \"seqNum\": 10,\n" +
+                                        "              \"typeCode\": \"TRL\",\n" +
+                                        "              \"typeDescription\": \"TRL\",\n" +
+                                        "              \"slot\": false,\n" +
+                                        "              \"duration\": true,\n" +
+                                        "              \"validFrom\": \"2019-01-01\",\n" +
+                                        "              \"validTo\": \"2019-12-31\"\n" +
+                                        "            }\n" +
+                                        "          ]\n" +
+                                        "        }")));
+
+        // Stub for requests without typeCode parameter
+        stubFor(get(urlPathEqualTo(urlPath))
+                .atPriority(2)
+                .willReturn(aResponse()
+                        .withStatus(SC_OK)
+                        .withHeader("CPPID", randomUUID().toString())
+                        .withHeader("Content-Type", ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE)
+                        .withBody(fullPayload)));
     }
 
     public static void stubGetReferenceCourtRooms(final String responsePath) {

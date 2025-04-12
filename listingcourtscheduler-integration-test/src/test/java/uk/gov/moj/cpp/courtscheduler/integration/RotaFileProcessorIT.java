@@ -22,11 +22,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_D
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataCourtRoomSessionAllocations;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
@@ -40,7 +35,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -55,9 +49,7 @@ import com.google.common.base.Stopwatch;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,18 +80,9 @@ class RotaFileProcessorIT extends AbstractIT {
     private static final String BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME = "IT_Test_lja_bedfordshire_rota_20240402T190039Z";
     private static final String WESTYORK_SHIRE_MASTER_FILE_BASE_NAME = "IT_Test_lja_westyorkshire_rota_20240827T154745Z";
 
-    @BeforeAll
-    static void setupRotaFileProcessorIT() {
-        setupUserAsSystemUser(USER_ID.toString());
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types.json");
-
-        stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
-        stubGetReferenceDataJudiciaries("referencedata.judiciaries.json");
-    }
 
     @BeforeEach
     public void setUpAzureBlobClientService() throws SQLException {
-        databaseSeeder.cleanDb();
         final StorageApplicationParameters storageApplicationParameters = new StorageApplicationParameters();
 
         setField(azureBlobClientService, "rotaslStorageConnectionString", ROTASL_STORAGE_CONNECTION_STRING);
@@ -201,7 +184,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
         final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, payloadAsJsonString);
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
@@ -276,7 +259,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
         final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, payloadAsJsonString);
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
@@ -326,7 +309,7 @@ class RotaFileProcessorIT extends AbstractIT {
         String payloadAsJsonString = getPayload("rota-clean-redundant-data-request.json");
         payloadAsJsonString = payloadAsJsonString.replace("NUMBER_OF_PREVIOUS_MONTHS_AND_OLDER", String.valueOf(numberOfPreviousMonthsAndOlder));
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL, "application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json", USER_ID, payloadAsJsonString);
+        final Response response = postCommand(ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL, "application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json", SYSTEM_USER_ID, payloadAsJsonString);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
         final LocalDate OneHundredAnd80DaysBeforeNow = LocalDate.now().minusDays(numberOfPreviousDaysAndOlder);
@@ -371,7 +354,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
         final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, payloadAsJsonString);
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
