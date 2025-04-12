@@ -68,6 +68,19 @@ public class DatabaseReader {
         return executeCourtScheduleById(courtScheduleId);
     }
 
+    public CourtSchedule courtScheduleById(final String courtScheduleId, final Connection connection) {
+        try (final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_BY_ID_SQL)) {
+            statement.setString(1, courtScheduleId);
+            final ResultSet resultSet = statement.executeQuery();
+            if (nonNull(resultSet) && resultSet.next()) {
+                return resultSetToCourtSchedule(resultSet);
+            }
+            return null;
+        } catch (final SQLException exp) {
+            throw new RuntimeException("Exception while querying the DB", exp);
+        }
+    }
+
     public Pair<LocalDateTime, LocalDateTime> getMaxCreatedOnForCourtSchedule() {
         LocalDateTime maxCreatedOn = null;
         LocalDateTime maxUpdatedOn = null;
