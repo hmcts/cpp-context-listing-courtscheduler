@@ -5,7 +5,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.time.OffsetDateTime;
-import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 

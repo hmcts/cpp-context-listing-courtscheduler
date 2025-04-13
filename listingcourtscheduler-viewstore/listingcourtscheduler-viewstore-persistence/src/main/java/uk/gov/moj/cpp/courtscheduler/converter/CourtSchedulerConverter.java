@@ -8,9 +8,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAn
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.Date;
@@ -158,9 +156,10 @@ public final class CourtSchedulerConverter {
 
     private static Date getDate(LocalDate localDate) {
         try {
-            return new SimpleDateFormat("yyyy-MM-dd").parse(localDate.toString());
-        } catch (ParseException e) {
-            LOGGER.error("Unable to parse date from, {}", localDate);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            return sdf.parse(localDate.toString());
+        } catch (Exception e) {
+            LOGGER.error("Error converting LocalDate to Date", e);
             return null;
         }
     }

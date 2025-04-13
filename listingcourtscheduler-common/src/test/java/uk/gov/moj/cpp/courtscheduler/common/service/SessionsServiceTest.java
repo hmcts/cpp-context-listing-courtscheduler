@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
@@ -72,6 +73,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -83,6 +85,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.common.constraint.Assert;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.QueryInvocationException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -122,6 +125,11 @@ class SessionsServiceTest {
     private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
     private static final int NEW_MAX_DURATION = 40;
     private static final int NEW_MAX_SLOTS = 20;
+
+    @BeforeEach
+    void setUp() {
+        TimeZone.setDefault(TimeZone.getTimeZone(LONDON_ZONE));
+    }
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingToday() {
@@ -343,8 +351,9 @@ class SessionsServiceTest {
         CourtSchedule capturedCourtSchedule = courtScheduleArgumentCaptor.getValue();
 
         SimpleDateFormat formatter = new SimpleDateFormat("HH:mm");
-        assertEquals("10:00", formatter.format(capturedCourtSchedule.getSessionStartTime()));
-        assertEquals("13:00", formatter.format(capturedCourtSchedule.getSessionEndTime()));
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        assertEquals("09:00", formatter.format(capturedCourtSchedule.getSessionStartTime()));
+        assertEquals("12:00", formatter.format(capturedCourtSchedule.getSessionEndTime()));
     }
 
     @Test

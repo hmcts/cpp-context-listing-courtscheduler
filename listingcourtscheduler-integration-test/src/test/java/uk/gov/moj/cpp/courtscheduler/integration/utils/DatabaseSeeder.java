@@ -19,6 +19,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Collection;
+import java.util.List;
 
 public class DatabaseSeeder {
 
@@ -79,6 +80,10 @@ public class DatabaseSeeder {
     private static final String UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE = "UPDATE court_schedule SET available_slot = available_slot - 1 WHERE court_listing_profile_id = ?";
 
     private final ConnectionProvider connectionProvider = new ConnectionProvider();
+
+    public Connection getNewConnection() throws SQLException {
+        return connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+    }
 
     public void cleanCourtScheduleTable() throws SQLException {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
@@ -187,6 +192,65 @@ public class DatabaseSeeder {
             preparedStatement.setTimestamp(10, new Timestamp(System.currentTimeMillis()));
             preparedStatement.setTimestamp(11, new Timestamp(System.currentTimeMillis()));
             preparedStatement.executeUpdate();
+        }
+    }
+
+    public void insertAllocatedListingsBatch(List<AllocatedListing> allocatedListings) throws SQLException {
+        insertAllocatedListingsBatch(allocatedListings, null);
+    }
+
+    public void insertAllocatedListingsBatch(List<AllocatedListing> allocatedListings, Connection existingConnection) throws SQLException {
+        if (allocatedListings.isEmpty()) {
+            return;
+        }
+
+        boolean isExternalConnection = existingConnection != null;
+        Connection connection = existingConnection;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            if (!isExternalConnection) {
+                connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+            }
+            
+            preparedStatement = connection.prepareStatement(ALLOCATED_LISTING_INSERT_SQL);
+            
+            if (!isExternalConnection) {
+                connection.setAutoCommit(false);
+            }
+            
+            for (AllocatedListing allocatedListing : allocatedListings) {
+                preparedStatement.setObject(1, allocatedListing.getId());
+                preparedStatement.setString(2, allocatedListing.getCourtScheduleId());
+                preparedStatement.setString(3, allocatedListing.getBookingId());
+                preparedStatement.setString(4, allocatedListing.getHearingId());
+                preparedStatement.setString(5, allocatedListing.getOucode());
+                preparedStatement.setInt(6, allocatedListing.getCourtRoomId());
+                preparedStatement.setString(7, allocatedListing.getRotaBusinessType());
+                preparedStatement.setInt(8, allocatedListing.getDuration());
+                if (isNull(allocatedListing.getHearingStartTime())) {
+                    preparedStatement.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
+                } else {
+                    preparedStatement.setTimestamp(9, new Timestamp(allocatedListing.getHearingStartTime().getTime()));
+                }
+
+                preparedStatement.setTimestamp(10, new Timestamp(System.currentTimeMillis()));
+                preparedStatement.setTimestamp(11, new Timestamp(System.currentTimeMillis()));
+                preparedStatement.addBatch();
+            }
+            
+            preparedStatement.executeBatch();
+            
+            if (!isExternalConnection) {
+                connection.commit();
+            }
+        } finally {
+            if (preparedStatement != null && !isExternalConnection) {
+                preparedStatement.close();
+            }
+            if (!isExternalConnection && connection != null) {
+                connection.close();
+            }
         }
     }
 
