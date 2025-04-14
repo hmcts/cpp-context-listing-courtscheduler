@@ -34,16 +34,14 @@ public class TimezoneUtils {
             return null;
         }
 
-        // Interpret the UTC instant as local time in London
-        LocalDateTime localDateTime = utcDate.toInstant()
-                .atZone(UTC_ZONE)
-                .withZoneSameInstant(LONDON_ZONE)
-                .toLocalDateTime();
-
-        // Reinterpret this local time as a new instant in London time zone
-        ZonedDateTime shifted = localDateTime.atZone(LONDON_ZONE);
-
-        return Date.from(shifted.toInstant());
+        // Convert to ZonedDateTime in UTC
+        ZonedDateTime utcZoned = utcDate.toInstant().atZone(UTC_ZONE);
+        
+        // Convert to London time
+        ZonedDateTime londonZoned = utcZoned.withZoneSameInstant(LONDON_ZONE);
+        
+        // Convert back to Date
+        return Date.from(londonZoned.toInstant());
     }
     
     /**
