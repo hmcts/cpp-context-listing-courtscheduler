@@ -36,7 +36,9 @@ import io.github.benas.randombeans.EnhancedRandomBuilder;
 import io.github.benas.randombeans.api.EnhancedRandom;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(TestDurationExtension.class)
 public abstract class AbstractIT extends RestClient {
     protected final String BASE_URL = "http://" + getHost() + ":8080/listingcourtscheduler-api/rest/courtscheduler";
     protected static final UUID USER_ID = fromString("bb593957-08a8-4d41-a5c1-7674d38d4f43");
