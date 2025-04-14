@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.lang.Integer.parseInt;
-import static java.lang.Integer.parseInt;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
 
@@ -9,14 +8,11 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Set;
 
 import javax.enterprise.context.ApplicationScoped;

@@ -4,6 +4,7 @@ import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static io.smallrye.common.constraint.Assert.assertTrue;
 import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -14,7 +15,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_D
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
@@ -39,7 +39,6 @@ import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 
@@ -48,11 +47,6 @@ class HearingSlotIT extends AbstractIT {
     private static final String RELATIVE_URL = "/hearingslots";
 
     private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
-
-    @BeforeAll
-    static void setupSystemUser() {
-        setupUserAsSystemUser(USER_ID.toString());
-    }
 
     @Test
     void shouldUpdateHearingSlot() throws SQLException {
@@ -77,7 +71,7 @@ class HearingSlotIT extends AbstractIT {
         updateHearingSlotsPayload = updateHearingSlotsPayload.replace("HEARING_ID", hearingId);
         updateHearingSlotsPayload = updateHearingSlotsPayload.replace("COURT_SCHEDULE_ID", courtScheduleId);
 
-        final Response response = putCommand(RELATIVE_URL, "application/vnd.courtscheduler.update.hearing.slots+json", USER_ID, updateHearingSlotsPayload);
+        final Response response = putCommand(RELATIVE_URL, "application/vnd.courtscheduler.update.hearing.slots+json", SYSTEM_USER_ID, updateHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
     }
@@ -126,8 +120,8 @@ class HearingSlotIT extends AbstractIT {
 
         Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, map);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -183,8 +177,8 @@ class HearingSlotIT extends AbstractIT {
 
         Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, map);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -285,8 +279,8 @@ class HearingSlotIT extends AbstractIT {
         Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {
         });
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, map);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -369,8 +363,8 @@ class HearingSlotIT extends AbstractIT {
 
         final Map<String, Object> requestParamMap = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, requestParamMap);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -444,8 +438,8 @@ class HearingSlotIT extends AbstractIT {
 
         final Map<String, Object> requestParamMap = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, requestParamMap);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -508,7 +502,7 @@ class HearingSlotIT extends AbstractIT {
         databaseSeeder.insertProvisionalBooking(provisionalBooking);
 
 
-        final Response response = deleteCommand(format("%s/%s", RELATIVE_URL, hearingId), "application/vnd.courtscheduler.remove.hearing.slots+json", USER_ID);
+        final Response response = deleteCommand(format("%s/%s", RELATIVE_URL, hearingId), "application/vnd.courtscheduler.remove.hearing.slots+json", SYSTEM_USER_ID);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }

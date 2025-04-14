@@ -10,7 +10,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.time.LocalDate;
 import java.util.Date;
