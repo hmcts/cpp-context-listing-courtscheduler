@@ -2,12 +2,14 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(TestDurationExtension.class)
 public class TestDurationTest {
 
     @Test
     public void testDurationTracking() {
+        long startTime = System.currentTimeMillis();
         System.out.println("Running test to verify duration tracking");
         try {
             // Simulate some work
@@ -15,5 +17,8 @@ public class TestDurationTest {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        assertTrue(duration >= 1000, "Test execution time should be at least 1000ms");
     }
 } 
