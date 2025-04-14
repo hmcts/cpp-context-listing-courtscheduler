@@ -39,6 +39,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.TimeZone;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -73,6 +74,11 @@ class CourtSchedulerIT extends AbstractIT {
     public static final String DEFAULT_ALL_DAY_START_TIME = "10:00";
     public static final String DEFAULT_ALL_DAY_END_TIME = "17:00";
     public static final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+    
+    static {
+        // Set the timezone for the SimpleDateFormat to London
+        sdf.setTimeZone(TimeZone.getTimeZone("Europe/London"));
+    }
     
     @Test
     void shouldCreateSlotBasedSchedule() {

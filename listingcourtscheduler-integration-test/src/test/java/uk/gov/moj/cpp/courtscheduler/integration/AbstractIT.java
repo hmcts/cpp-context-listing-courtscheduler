@@ -47,9 +47,13 @@ public abstract class AbstractIT extends RestClient {
     protected final DatabaseSeeder databaseSeeder = new DatabaseSeeder();
     protected final DatabaseReader databaseReader = new DatabaseReader();
 
+    // Set timezone to UTC as early as possible
+    static {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
+
     @BeforeAll
     public static void setUp() {
-        
         setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         setupUserAsSystemUser(SYSTEM_USER_ID.toString());
         stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
@@ -61,7 +65,6 @@ public abstract class AbstractIT extends RestClient {
     public void cleanTheDatabase() throws Exception {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         databaseSeeder.cleanDb();
-
     }
 
     protected static void setupReferenceDataStubs() {
