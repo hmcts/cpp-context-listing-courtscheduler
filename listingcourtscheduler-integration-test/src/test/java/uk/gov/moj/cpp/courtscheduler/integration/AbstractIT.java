@@ -5,6 +5,11 @@ import static org.apache.commons.collections.MapUtils.isEmpty;
 import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
 import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.requestParams;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataCourtRoomSessionAllocations;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.http.HeaderConstants;
@@ -18,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.UUID;
 
 import javax.ws.rs.client.Entity;
@@ -34,20 +40,36 @@ import org.junit.jupiter.api.BeforeEach;
 public abstract class AbstractIT extends RestClient {
     protected final String BASE_URL = "http://" + getHost() + ":8080/listingcourtscheduler-api/rest/courtscheduler";
     protected static final UUID USER_ID = fromString("bb593957-08a8-4d41-a5c1-7674d38d4f43");
+    protected static final UUID SYSTEM_USER_ID = fromString("8e035a94-437d-4f7f-af63-150ccb549bde");
     protected static final EnhancedRandom RANDOM = new EnhancedRandomBuilder()
             .maxStringLength(5)
             .build();
     protected final DatabaseSeeder databaseSeeder = new DatabaseSeeder();
     protected final DatabaseReader databaseReader = new DatabaseReader();
 
+    // Set timezone to UTC as early as possible
+    static {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
+
     @BeforeAll
     public static void setUp() {
         setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
+        setupUserAsSystemUser(SYSTEM_USER_ID.toString());
+        stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
+        stubGetReferenceDataJudiciaries("referencedata.judiciaries.json");
+        setupReferenceDataStubs();
     }
 
     @BeforeEach
     public void cleanTheDatabase() throws Exception {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         databaseSeeder.cleanDb();
+    }
+
+    protected static void setupReferenceDataStubs() {
+        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
+        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types.json");
     }
 
     protected ObjectMapper mapper = new ObjectMapper();
