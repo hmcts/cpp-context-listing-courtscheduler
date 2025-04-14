@@ -23,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.UUID;
 
 import javax.ws.rs.client.Entity;
@@ -48,6 +49,7 @@ public abstract class AbstractIT extends RestClient {
 
     @BeforeAll
     public static void setUp() {
+        
         setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         setupUserAsSystemUser(SYSTEM_USER_ID.toString());
         stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
@@ -57,6 +59,7 @@ public abstract class AbstractIT extends RestClient {
 
     @BeforeEach
     public void cleanTheDatabase() throws Exception {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         databaseSeeder.cleanDb();
 
     }

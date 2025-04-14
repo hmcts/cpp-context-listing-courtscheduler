@@ -128,7 +128,7 @@ class SessionsServiceTest {
 
     @BeforeEach
     void setUp() {
-        TimeZone.setDefault(TimeZone.getTimeZone(LONDON_ZONE));
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
     }
 
     @Test
