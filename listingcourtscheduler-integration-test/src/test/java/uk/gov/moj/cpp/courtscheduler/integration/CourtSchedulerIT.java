@@ -24,6 +24,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayloa
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
@@ -103,8 +104,13 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
-        assertThat(sdf.format(courtSchedule.getSessionStartTime()), is(DEFAULT_MORNING_START_TIME));
-        assertThat(sdf.format(courtSchedule.getSessionEndTime()), is(DEFAULT_MORNING_END_TIME));
+        
+        // Convert the UTC times from the database to local time for comparison
+        java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+        java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+        
+        assertThat(sdf.format(localStartTime), is(DEFAULT_MORNING_START_TIME));
+        assertThat(sdf.format(localEndTime), is(DEFAULT_MORNING_END_TIME));
     }
 
     @Test
@@ -116,8 +122,13 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
-        assertThat(sdf.format(courtSchedule.getSessionStartTime()), is(DEFAULT_AFTERNOON_START_TIME));
-        assertThat(sdf.format(courtSchedule.getSessionEndTime()), is(DEFAULT_AFTERNOON_END_TIME));
+        
+        // Convert the UTC times from the database to local time for comparison
+        java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+        java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+        
+        assertThat(sdf.format(localStartTime), is(DEFAULT_AFTERNOON_START_TIME));
+        assertThat(sdf.format(localEndTime), is(DEFAULT_AFTERNOON_END_TIME));
     }
 
     @Test
@@ -129,8 +140,13 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
-        assertThat(sdf.format(courtSchedule.getSessionStartTime()), is(DEFAULT_ALL_DAY_START_TIME));
-        assertThat(sdf.format(courtSchedule.getSessionEndTime()), is(DEFAULT_ALL_DAY_END_TIME));
+        
+        // Convert the UTC times from the database to local time for comparison
+        java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+        java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+        
+        assertThat(sdf.format(localStartTime), is(DEFAULT_ALL_DAY_START_TIME));
+        assertThat(sdf.format(localEndTime), is(DEFAULT_ALL_DAY_END_TIME));
     }
 
     @Test
