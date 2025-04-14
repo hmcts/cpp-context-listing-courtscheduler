@@ -1,8 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
-import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestExecutionListener;
-import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
 public class TestReportGenerator implements TestExecutionListener {
