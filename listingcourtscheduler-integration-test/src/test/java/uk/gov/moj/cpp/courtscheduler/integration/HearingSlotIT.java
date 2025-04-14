@@ -141,7 +141,7 @@ class HearingSlotIT extends AbstractIT {
 
         String updateHearingSlotsPayload = getPayload("courtscheduler.list.hearings-in-court-sessions.json");
 
-        final Response response = putCommand("/list/hearingslots", "application/vnd.courtscheduler.list.hearings-in-court-sessions+json", USER_ID, updateHearingSlotsPayload);
+        final Response response = putCommand("/list/hearingslots", "application/vnd.courtscheduler.list.hearings-in-court-sessions+json", SYSTEM_USER_ID, updateHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
     }
