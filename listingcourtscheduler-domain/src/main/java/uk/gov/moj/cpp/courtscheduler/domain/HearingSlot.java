@@ -5,7 +5,7 @@ import java.util.Objects;
 
 public class HearingSlot {
     private String hearingId;
-    private List<CourtScheduleId> courtScheduleIds;
+    private List<RequestedCourtSchedule> courtScheduleIds;
 
     public String getHearingId() {
         return hearingId;
@@ -15,11 +15,11 @@ public class HearingSlot {
         this.hearingId = hearingId;
     }
 
-    public List<CourtScheduleId> getCourtScheduleIds() {
+    public List<RequestedCourtSchedule> getCourtScheduleIds() {
         return courtScheduleIds;
     }
 
-    public void setCourtScheduleIds(List<CourtScheduleId> courtScheduleIds) {
+    public void setCourtScheduleIds(List<RequestedCourtSchedule> courtScheduleIds) {
         this.courtScheduleIds = courtScheduleIds;
     }
     @Override

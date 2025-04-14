@@ -6,13 +6,16 @@ import static java.util.logging.Level.WARNING;
 import static java.util.logging.Logger.getGlobal;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.*;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
 
 import uk.gov.justice.services.common.converter.LocalDates;
 import uk.gov.moj.cpp.courtscheduler.domain.*;
 
 import java.time.format.DateTimeParseException;
-import java.util.Date;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -21,7 +24,7 @@ import javax.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 public class HearingSlotsApiValidator {
@@ -69,47 +72,26 @@ public class HearingSlotsApiValidator {
 
         LOGGER.info("Validating list Hearing Slots input : {}", hearingSlots);
 
-
         for (HearingSlot hearingSlot : hearingSlots) {
-            List<CourtScheduleId> schedules = hearingSlot.getCourtScheduleIds();
+            List<RequestedCourtSchedule> schedules = hearingSlot.getCourtScheduleIds();
 
-            for (CourtScheduleId schedule : schedules) {
-                uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = courtScheduleRepository.findBy(schedule.getCourtScheduleId());
+            for (RequestedCourtSchedule requestedCourtSchedule : schedules) {
+                uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = courtScheduleRepository.findBy(requestedCourtSchedule.getCourtScheduleId());
 
                 if (isNull(cs)) {
-                    return buildErrorResponse("CourSchedule not found id: " + schedule.getCourtScheduleId());
+                    return buildErrorResponse("Requested CourSchedule not found. Id: " + requestedCourtSchedule.getCourtScheduleId());
                 }
 
-                validateSessionStartTime(schedule, cs);
-
-                if (notValidDuration(schedule, cs))
-                    return buildErrorResponse("No duration supplied for CourtSchedule: " + cs.getCourtScheduleId());
+                if (!hasValidDuration(requestedCourtSchedule, cs))
+                    return buildErrorResponse("No duration supplied for requested CourtSchedule: " + requestedCourtSchedule.getCourtScheduleId());
             }
         }
 
         return EMPTY_JSON_OBJECT;
     }
 
-    private static void validateSessionStartTime(CourtScheduleId schedule, uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs) {
-        if (isNull(schedule.getSessionStartTime())) {
-            schedule.setSessionStartTime(cs.getSessionStartTime().toString());
-        } else {
-            Date hearingStartTime = DateUtils.getDate(schedule.getSessionStartTime());
-            if ((hearingStartTime.before(cs.getSessionStartTime()) || hearingStartTime.after(cs.getSessionEndTime()))) {
-                schedule.setSessionStartTime(cs.getSessionStartTime().toString());
-            }
-        }
-    }
-
-    private boolean notValidDuration(CourtScheduleId schedule, uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs) {
-        if (isNull(schedule.getDurationInMinutes())) {
-            if (cs.isSlotBased()) {
-                schedule.setDurationInMinutes(SLOT_DURATION_DEFAULT);
-            } else {
-                return true;
-            }
-        }
-        return false;
+    private boolean hasValidDuration(RequestedCourtSchedule schedule, CourtSchedule cs) {
+        return !cs.isSlotBased() && !isNull(schedule.getDurationInMinutes());
     }
 
     private boolean isInvalidDateFormat(final String date) {

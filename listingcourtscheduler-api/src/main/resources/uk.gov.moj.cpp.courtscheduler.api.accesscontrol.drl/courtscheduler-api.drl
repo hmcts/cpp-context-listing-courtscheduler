@@ -115,10 +115,10 @@ rule "API - Action - courtscheduler.get.hearing.ids"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.search.list.hearings-in-court-schedules"
+rule "API - Action - courtscheduler.list.hearings-in-court-sessions"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.search.list.hearings-in-court-schedules");
+    $action: Action(name == "courtscheduler.list.hearings-in-court-sessions");
         eval(userAndGroupProvider.isSystemUser($action));
   then
     $outcome.setSuccess(true);

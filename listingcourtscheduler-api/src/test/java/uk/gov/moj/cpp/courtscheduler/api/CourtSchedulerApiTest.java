@@ -9,7 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
@@ -22,7 +25,16 @@ import uk.gov.justice.services.messaging.Envelope;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
-import uk.gov.moj.cpp.courtscheduler.api.converter.*;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
@@ -36,7 +48,6 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.*;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -54,6 +65,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 
 @ExtendWith(MockitoExtension.class)
 class CourtSchedulerApiTest {
@@ -114,6 +131,12 @@ class CourtSchedulerApiTest {
     private JsonEnvelope envelope;
     @Mock
     private ListHearingSlotConverter listHearingSlotConverter;
+
+    @Mock
+    private JsonEnvelope inputEnvelope;
+
+    @Mock
+    private JsonEnvelope errorEnvelope;
 
     @Test
     void shouldCreateCourtSchedule() throws IOException {
@@ -243,29 +266,29 @@ class CourtSchedulerApiTest {
     }
 
     @Test
-    void shouldUpdateSearchListHearingSlots() throws IOException {
-        final String payload = FileUtil.getPayload("courtscheduler.search.list.hearings-in-court-schedules.json");
+    void shouldUpdateRequestedListHearingSlots() throws IOException {
+        final String payload = FileUtil.getPayload("courtscheduler.list.hearings-in-court-sessions.json");
         final JsonObject jsonObject = payloadToObject(payload);
-        final String requestName = "courtscheduler.search.list.hearings-in-court-schedules";
-        final String responseName = "courtscheduler.search.list.hearings-in-court-schedules.response";
+        final String requestName = "courtscheduler.list.hearings-in-court-sessions";
+        final String responseName = "courtscheduler.list.hearings-in-court-sessions.response";
 
-        final JsonEnvelope updateSearchListHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
-        when(enveloper.withMetadataFrom(updateSearchListHearingSlotsEnvelope, responseName)).thenReturn(function);
+        final JsonEnvelope updateRequestedListHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
+        when(enveloper.withMetadataFrom(updateRequestedListHearingSlotsEnvelope, responseName)).thenReturn(function);
 
-        final HearingSlotWrapper wrapper = new HearingSlotWrapper();
+        final RequestedSlots wrapper = new RequestedSlots();
         wrapper.setHearingSlots(Collections.emptyList());
         when(listHearingSlotConverter.convert(anyString())).thenReturn(wrapper);
 
         when(hearingSlotsApiValidator.listHearingSlotsValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
-        when(slotsUpdateService.updateSearchListHearingSlots(any())).thenReturn(new ListHearingSlotsResponse());
+        when(slotsUpdateService.updateListHearingSlots(any())).thenReturn(new ListHearingSlotsResponse());
 
         JsonObject jsonResponse = Json.createObjectBuilder().add("any", "any").build();
         when(objectToJsonObjectConverter.convert(any())).thenReturn(jsonResponse);
 
-        courtSchedulerApi.searchListHearingSlotsInCourtSchedules(updateSearchListHearingSlotsEnvelope);
+        courtSchedulerApi.listHearingSlotsInCourtSchedules(updateRequestedListHearingSlotsEnvelope);
 
-        verify(slotsUpdateService, atLeastOnce()).updateSearchListHearingSlots(eq(wrapper));
-        verify(enveloper, atLeastOnce()).withMetadataFrom(updateSearchListHearingSlotsEnvelope, responseName);
+        verify(slotsUpdateService, atLeastOnce()).updateListHearingSlots(eq(wrapper));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(updateRequestedListHearingSlotsEnvelope, responseName);
     }
 
     @Test

@@ -129,11 +129,11 @@ public class DateUtils {
 
     public static final java.util.Date getDate(String dateString) {
         try {
-            SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
+            SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
             isoFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             return isoFormat.parse(dateString);
         } catch (ParseException e) {
-            throw new IllegalArgumentException(String.format("Passed date string:%s cannot be parsed with format:yyyy-MM-dd'T'HH:mm:ssX", dateString));
+            throw new IllegalArgumentException(String.format("Passed date string:%s cannot be parsed with format:yyyy-MM-dd'T'HH:mm:ss'Z'", dateString));
         }
     }
 

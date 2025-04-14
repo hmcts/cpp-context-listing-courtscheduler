@@ -83,7 +83,7 @@ class HearingSlotIT extends AbstractIT {
     }
 
     @Test
-    void shouldUpdateSearchListHearingSlots() throws SQLException {
+    void shouldUpdateRequestedListHearingSlots() throws SQLException {
 
         CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
@@ -145,9 +145,9 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule3.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule3);
 
-        String updateHearingSlotsPayload = getPayload("courtscheduler.search.list.hearings-in-court-schedules.json");
+        String updateHearingSlotsPayload = getPayload("courtscheduler.list.hearings-in-court-sessions.json");
 
-        final Response response = putCommand("/searchlist/hearingslots", "application/vnd.courtscheduler.search.list.hearings-in-court-schedules+json", USER_ID, updateHearingSlotsPayload);
+        final Response response = putCommand("/list/hearingslots", "application/vnd.courtscheduler.list.hearings-in-court-sessions+json", USER_ID, updateHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
     }

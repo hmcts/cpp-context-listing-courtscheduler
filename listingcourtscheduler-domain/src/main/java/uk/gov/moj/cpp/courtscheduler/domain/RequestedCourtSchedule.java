@@ -2,7 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 
 import java.util.Objects;
 
-public class CourtScheduleId {
+public class RequestedCourtSchedule {
 
         private String courtScheduleId;
         private String sessionStartTime;
@@ -35,7 +35,7 @@ public class CourtScheduleId {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof CourtScheduleId that)) return false;
+        if (!(o instanceof RequestedCourtSchedule that)) return false;
         return Objects.equals(courtScheduleId, that.courtScheduleId) &&
                 Objects.equals(sessionStartTime, that.sessionStartTime) &&
                 Objects.equals(durationInMinutes, that.durationInMinutes);

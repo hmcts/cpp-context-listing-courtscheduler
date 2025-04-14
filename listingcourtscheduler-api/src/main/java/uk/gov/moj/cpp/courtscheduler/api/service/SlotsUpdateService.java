@@ -2,7 +2,11 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.String.format;
 
-import uk.gov.moj.cpp.courtscheduler.domain.*;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
+import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException;
@@ -11,7 +15,12 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -67,11 +76,11 @@ public class SlotsUpdateService {
         }
     }
 
-    public ListHearingSlotsResponse updateSearchListHearingSlots(final HearingSlotWrapper hearingSlots) {
+    public ListHearingSlotsResponse updateListHearingSlots(final RequestedSlots hearingSlots) {
 
         ListHearingSlotsResponse response = new ListHearingSlotsResponse();
 
-        List<Hearing> listHearingSlots = courtScheduleRepository.updateSearchListHearingSlots(hearingSlots);
+        List<Hearing> listHearingSlots = courtScheduleRepository.updateListHearingSlots(hearingSlots);
 
         response.setHearings(listHearingSlots);
 
