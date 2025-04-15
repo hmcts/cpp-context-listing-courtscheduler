@@ -82,7 +82,7 @@ public class HearingSlotsApiValidator {
                     return buildErrorResponse("Requested CourSchedule not found. Id: " + requestedCourtSchedule.getCourtScheduleId());
                 }
 
-                if (!hasValidDuration(requestedCourtSchedule, cs))
+                if (invalidDuration(requestedCourtSchedule, cs))
                     return buildErrorResponse("No duration supplied for requested CourtSchedule: " + requestedCourtSchedule.getCourtScheduleId());
             }
         }
@@ -90,8 +90,8 @@ public class HearingSlotsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private boolean hasValidDuration(RequestedCourtSchedule schedule, CourtSchedule cs) {
-        return !cs.isSlotBased() && !isNull(schedule.getDurationInMinutes());
+    private boolean invalidDuration(RequestedCourtSchedule schedule, CourtSchedule cs) {
+        return !cs.isSlotBased() && isNull(schedule.getDurationInMinutes());
     }
 
     private boolean isInvalidDateFormat(final String date) {
