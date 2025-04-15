@@ -37,15 +37,6 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 
-import java.util.List;
-
-import javax.inject.Inject;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
@@ -61,6 +52,16 @@ import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+
+import java.util.List;
+
+import javax.inject.Inject;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @CustomServiceComponent("Courtscheduler.API")
 public class CourtSchedulerApi {
