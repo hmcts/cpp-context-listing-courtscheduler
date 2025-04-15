@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -164,6 +166,11 @@
             <plugin>
                 <groupId>uk.gov.justice.framework-generators</groupId>
                 <artifactId>rest-client-generator-plugin</artifactId>
+                <version>${cpp.framework.version}</version>
+                <configuration>
+                    <ramlDirectory>${project.basedir}/src/raml</ramlDirectory>
+                    <outputDirectory>${project.build.directory}/generated-sources/raml</outputDirectory>
+                </configuration>
                 <dependencies>
                     <dependency>
                         <groupId>uk.gov.moj.cpp.usersgroups</groupId>
@@ -192,7 +199,7 @@
                     <dependency>
                         <groupId>javax</groupId>
                         <artifactId>javaee-api</artifactId>
-                        <version>8.0.1</version>
+                        <version>${javaee-api.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>
