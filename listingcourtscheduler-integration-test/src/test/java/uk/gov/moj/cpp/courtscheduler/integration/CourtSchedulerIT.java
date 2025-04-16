@@ -1,6 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
+import static java.time.ZoneOffset.UTC;
 import static java.util.Date.from;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -24,7 +26,6 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayloa
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -40,8 +41,8 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.TimeZone;
+import java.util.UUID;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -792,7 +793,7 @@ class CourtSchedulerIT extends AbstractIT {
         final Response response = postCommand(
                 BASE_RESOURCE_URL + SEARCH_BY_ID_URL,
                 COURT_SCHEDULE_SEARCH_COURTSCHEDULES_BY_ID_CONTENT_TYPE,
-                USER_ID,
+                SYSTEM_USER_ID,
                 searchPayload
         );
 

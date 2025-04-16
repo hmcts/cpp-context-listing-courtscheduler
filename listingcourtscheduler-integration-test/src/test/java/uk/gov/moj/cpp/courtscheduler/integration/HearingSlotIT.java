@@ -291,24 +291,11 @@ class HearingSlotIT extends AbstractIT {
         });
     }
 
-    private void createAllocatedListingsAndInsertWithZone(String courtScheduleId, String hearingId, String bookingId, String localTime, int duration) throws Exception {
-        ZoneId zoneId = ZoneId.of("Europe/London");
-        LocalDate date = LocalDate.now().plusDays(1);
-        ZonedDateTime londonZdt = date.atTime(LocalTime.parse(localTime)).atZone(zoneId);
-        ZonedDateTime utcZdt = londonZdt.withZoneSameInstant(ZoneOffset.UTC);
-
-        String utcTime = utcZdt.toLocalTime().toString();
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId, bookingId, utcTime, duration);
-    }
-
     @Test
     void shouldRetrieveAllDaySplitWithBookings() throws Exception {
 
-        LocalDate sessionDate = LocalDate.now().plusDays(1);
 
         ZoneId zoneId = ZoneId.of("Europe/London");
-        ZonedDateTime startZdt = sessionDate.atTime(0, 1).atZone(zoneId);
-        ZonedDateTime endZdt = sessionDate.atTime(23, 59).atZone(zoneId);
 
         String courtScheduleId = randomUUID().toString();
         String bookingId = randomUUID().toString();
