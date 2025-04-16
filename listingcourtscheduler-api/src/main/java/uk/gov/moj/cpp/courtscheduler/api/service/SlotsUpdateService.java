@@ -10,7 +10,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException;
-import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
@@ -34,9 +33,6 @@ public class SlotsUpdateService {
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
-
-    @Inject
-    private AllocatedListingRepository allocatedListingRepository;
 
     @Inject
     private ProvisionalBookingRepository provisionalBookingRepository;
@@ -111,4 +107,5 @@ public class SlotsUpdateService {
         return slots.stream()
                 .anyMatch(slot -> Objects.nonNull(slot.getBookingId()));
     }
+
 }

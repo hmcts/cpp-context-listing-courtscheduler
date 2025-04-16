@@ -100,9 +100,8 @@ public class DateUtils {
         if (date == null) {
             return null;
         }
-        // Convert to UTC for storage
-        ZonedDateTime utcZoned = date.toInstant().atZone(ZoneOffset.UTC);
-        return utcZoned.format(ISO_8601_FORMATTER);
+
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(date);
     }
 
     public static final String toResponseDateString(final java.util.Date date) {

@@ -11,7 +11,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefa
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
@@ -498,7 +497,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             allocatedlisting.setCourtRoomId(cs.getCourtRoomNumber());
             allocatedlisting.setOucode(cs.getOuCode());
             allocatedlisting.setId(UUID.randomUUID().toString());
-            allocatedlisting.setBookingId(UUID.randomUUID().toString());
             allocatedlisting.setHearingStartTime(cs.getSessionStartTime());
             allocatedlisting.setDuration(hearing.getDuration());
 
