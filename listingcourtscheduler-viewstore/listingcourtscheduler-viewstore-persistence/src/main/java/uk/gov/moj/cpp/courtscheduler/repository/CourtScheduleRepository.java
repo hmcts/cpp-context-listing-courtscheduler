@@ -129,57 +129,57 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                                                cs.session_end_time,
                                                cs.created_on,
                                                cs.updated_on,
-                                        
-                                               -- Adjusted calculation for morning bookings
-                                               COALESCE(
-                                                       SUM(
-                                                               CASE
-                                                                   WHEN cs.court_session = 'AD' AND cs.support_ad_split = true THEN
-                                                                       CASE
-                                                                           WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) < CAST('13:00:00' AS TIME)
-                                                                               AND CAST((al.hearing_start_time at time zone 'Europe/London') AS time) +
-                                                                                   CAST(al.duration || ' minutes' AS INTERVAL) <= CAST('13:00:00' AS TIME)
-                                                                               THEN al.duration
-                                                                           WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) < CAST('13:00:00' AS TIME)
-                                                                               AND CAST((al.hearing_start_time at time zone 'Europe/London') AS time) +
-                                                                                   CAST(al.duration || ' minutes' AS INTERVAL) > CAST('13:00:00' AS TIME)
-                                                                               THEN EXTRACT(EPOCH FROM
-                                                                                            (CAST('13:00:00' AS TIME) - CAST((al.hearing_start_time at time zone 'Europe/London') AS time))) /
-                                                                                    60
-                                                                           ELSE 0
-                                                                           END
-                                                                   WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) < CAST('13:00:00' AS TIME)
-                                                                       THEN al.duration
-                                                                   ELSE 0
-                                                                   END
-                                                       ),
-                                                       0
-                                               ) AS totalbookedformorning,
-                                        
-                                               -- Adjusted calculation for afternoon bookings
-                                               COALESCE(
-                                                       SUM(
-                                                               CASE
-                                                                   WHEN cs.court_session = 'AD' AND cs.support_ad_split = true THEN
-                                                                       CASE
-                                                                           WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) >= CAST('13:00:00' AS TIME)
-                                                                               THEN al.duration
-                                                                           WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) < CAST('13:00:00' AS TIME)
-                                                                               AND CAST((al.hearing_start_time at time zone 'Europe/London') AS time) +
-                                                                                   CAST(al.duration || ' minutes' AS INTERVAL) > CAST('13:00:00' AS TIME)
-                                                                               THEN EXTRACT(EPOCH FROM (CAST((al.hearing_start_time at time zone 'Europe/London') AS time) +
-                                                                                                        CAST(al.duration || ' minutes' AS INTERVAL) -
-                                                                                                        CAST('13:00:00' AS TIME))) / 60
-                                                                           ELSE 0
-                                                                           END
-                                                                   WHEN CAST((al.hearing_start_time at time zone 'Europe/London') AS time) >= CAST('13:00:00' AS TIME)
-                                                                       THEN al.duration
-                                                                   ELSE 0
-                                                                   END
-                                                       ),
-                                                       0
-                                               ) AS totalbookedforafternoon,
-                                        
+            
+             -- Adjusted calculation for morning bookings
+                   COALESCE(
+                           SUM(
+                                   CASE
+                                       WHEN cs.court_session = 'AD' AND cs.support_ad_split = true THEN
+                                           CASE
+                                               WHEN al.hearing_start_time < national_break_time
+                                                   AND al.hearing_start_time +
+                                                       CAST(al.duration || ' minutes' AS INTERVAL) <= national_break_time
+                                                   THEN al.duration
+                                               WHEN al.hearing_start_time < national_break_time
+                                                   AND al.hearing_start_time +
+                                                       CAST(al.duration || ' minutes' AS INTERVAL) > national_break_time
+                                                   THEN EXTRACT(EPOCH FROM
+                                                                (national_break_time - al.hearing_start_time)) /
+                                                        60
+                                               ELSE 0
+                                               END
+                                       WHEN al.hearing_start_time < national_break_time
+                                           THEN al.duration
+                                       ELSE 0
+                                       END
+                           ),
+                           0
+                   ) AS totalbookedformorning,
+            
+                   -- Adjusted calculation for afternoon bookings
+                   COALESCE(
+                           SUM(
+                                   CASE
+                                       WHEN cs.court_session = 'AD' AND cs.support_ad_split = true THEN
+                                           CASE
+                                               WHEN al.hearing_start_time >= national_break_time
+                                                   THEN al.duration
+                                               WHEN al.hearing_start_time < national_break_time
+                                                   AND al.hearing_start_time +
+                                                       CAST(al.duration || ' minutes' AS INTERVAL) > national_break_time
+                                                   THEN EXTRACT(EPOCH FROM (al.hearing_start_time +
+                                                                            CAST(al.duration || ' minutes' AS INTERVAL) -
+                                                                            national_break_time)) / 60
+                                               ELSE 0
+                                               END
+                                       WHEN al.hearing_start_time >= national_break_time
+                                           THEN al.duration
+                                       ELSE 0
+                                       END
+                           ),
+                           0
+                   ) AS totalbookedforafternoon,
+            
                                                -- Total booked duration (sum of both)
                                                COALESCE(
                                                        SUM(al.duration),
@@ -192,32 +192,32 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                                           AND cs.session_start BETWEEN :sessionStart AND :sessionEnd
             """;
     private static final String GET_HEARING_SLOTS_QUERY_GROUP_BY = """
-            GROUP BY 
-                cs.id,
-                cs.court_listing_profile_id,
-                cs.oucode,
-                cs.court_room_id,
-                cs.court_room_number,
-                cs.court_house_id,
-                cs.court_house_name,
-                cs.court_room_name,
-                cs.operational_unit,
-                cs.rota_business_type,
-                cs.panel,
-                cs.court_session,
-                cs.active,
-                cs.is_slot_based,
-                cs.session_start,
-                cs.max_slot,
-                cs.max_duration_mins,
-                cs.available_slot,
-                cs.available_duration_mins,
-                cs.support_ad_split,
-                cs.max_ad_morning_duration,
-                cs.max_ad_afternoon_duration,
-                cs.is_overbooking_allowed
-            ORDER BY cs.session_start, cs.court_house_name, cs.court_room_name, cs.court_session, cs.rota_business_type
-        """;
+                GROUP BY 
+                    cs.id,
+                    cs.court_listing_profile_id,
+                    cs.oucode,
+                    cs.court_room_id,
+                    cs.court_room_number,
+                    cs.court_house_id,
+                    cs.court_house_name,
+                    cs.court_room_name,
+                    cs.operational_unit,
+                    cs.rota_business_type,
+                    cs.panel,
+                    cs.court_session,
+                    cs.active,
+                    cs.is_slot_based,
+                    cs.session_start,
+                    cs.max_slot,
+                    cs.max_duration_mins,
+                    cs.available_slot,
+                    cs.available_duration_mins,
+                    cs.support_ad_split,
+                    cs.max_ad_morning_duration,
+                    cs.max_ad_afternoon_duration,
+                    cs.is_overbooking_allowed
+                ORDER BY cs.session_start, cs.court_house_name, cs.court_room_name, cs.court_session, cs.rota_business_type
+            """;
 
     private static final String GET_HEARING_SLOTS_QUERY_PAGINATION = """
             LIMIT :pageSize OFFSET :offset
@@ -267,10 +267,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             boolean hasSameADSplit = Objects.equals(persistedCourtSchedule.getSupportAdSplit(), courtSchedule.getSupportAdSplit());
 
             if ((isForRotaFile || hasMaxSlotsChanged || hasMaxDurationChanged || hasNewMaxSlotsOrDuration || hasSupportAdSplitChanged) && hasSameADSplit) {
-                if(Boolean.TRUE.equals(persistedCourtSchedule.getSupportAdSplit())) {
+                if (Boolean.TRUE.equals(persistedCourtSchedule.getSupportAdSplit())) {
                     persistedCourtSchedule.setMaxAdMorningDuration(courtSchedule.getMaxAdMorningDuration());
                     persistedCourtSchedule.setMaxAdAfternoonDuration(courtSchedule.getMaxAdAfternoonDuration());
-                }else {
+                } else {
                     persistedCourtSchedule.setMaxDuration(courtSchedule.getMaxDuration());
                 }
                 persistedCourtSchedule.setMaxSlots(courtSchedule.getMaxSlots());
@@ -470,8 +470,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     @SuppressWarnings("unchecked")
     public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam requestParam) {
-        Map<String, Object> queryParamsForCount = buildQueryParams(requestParam,true);
-        Map<String, Object> queryParamsForResult = buildQueryParams(requestParam,false);
+        Map<String, Object> queryParamsForCount = buildQueryParams(requestParam, true);
+        Map<String, Object> queryParamsForResult = buildQueryParams(requestParam, false);
 
         // First, get total count without pagination
         String countQuery = buildFullQuery(requestParam).replace(GET_HEARING_SLOTS_QUERY_PAGINATION, "");
@@ -490,12 +490,12 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         }
 
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules =
-            processScheduleEntities(paginatedSchedules);
+                processScheduleEntities(paginatedSchedules);
 
         return Pair.of(totalCount, domainSchedules);
     }
 
-    private Map<String, Object> buildQueryParams(HearingSlotRequestParam requestParam,boolean isCountQuery) {
+    private Map<String, Object> buildQueryParams(HearingSlotRequestParam requestParam, boolean isCountQuery) {
         Map<String, Object> params = new HashMap<>();
         params.put("panelType", List.of(requestParam.panel().split(",")));
         params.put("sessionStart", LocalDate.parse(requestParam.sessionStartDate()));
@@ -518,7 +518,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             params.put(BUSINESS_TYPE, requestParam.businessType());
         }
 
-        if(StringUtils.isNotBlank(requestParam.courtSession())) {
+        if (StringUtils.isNotBlank(requestParam.courtSession())) {
             params.put("courtSession", List.of(requestParam.courtSession().split(",")));
         }
 
@@ -552,12 +552,12 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             query.append(" AND cs.rota_business_type = :businessType");
         }
 
-        if(StringUtils.isNotBlank(requestParam.courtSession())) {
+        if (StringUtils.isNotBlank(requestParam.courtSession())) {
             query.append(" AND cs.court_session in (:courtSession)");
         }
 
         query.append(GET_HEARING_SLOTS_QUERY_GROUP_BY)
-             .append(GET_HEARING_SLOTS_QUERY_PAGINATION);
+                .append(GET_HEARING_SLOTS_QUERY_PAGINATION);
 
         return query.toString();
     }
@@ -576,19 +576,19 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         Set<String> courtScheduleIds = new TreeSet<>();
         Map<String, CourtSchedule> courtScheduleMap = scheduleEntities.stream()
-            .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, Function.identity()));
+                .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, Function.identity()));
         scheduleEntities.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
 
         Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds, courtScheduleMap);
 
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules = scheduleEntities.stream()
-            .map(CourtSchedulerConverter::convert)
-            .toList();
+                .map(CourtSchedulerConverter::convert)
+                .toList();
 
         processJudiciaryDetails(scheduleEntities, domainSchedules);
 
         domainSchedules.forEach(schedule ->
-            addSlotStartTimes(slotStartTimeList, schedule));
+                addSlotStartTimes(slotStartTimeList, schedule));
 
         final long mappingEndTime = System.nanoTime();
         LOGGER.info("BRS: Time taken for mapping : {}", (mappingEndTime - mappingStartTime) / 1000000);
@@ -597,16 +597,16 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     private void processJudiciaryDetails(List<CourtSchedule> schedulesWithProfiles,
-                                       List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules) {
+                                         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules) {
         ModelMapper modelMapper = new ModelMapper();
         List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(schedulesWithProfiles);
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> domainJudiciaries =
-            judiciaryList.stream()
-                .map(j -> modelMapper.map(j, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class))
-                .toList();
+                judiciaryList.stream()
+                        .map(j -> modelMapper.map(j, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class))
+                        .toList();
 
         domainSchedules.forEach(schedule ->
-            addJudiciaries(domainJudiciaries, schedule));
+                addJudiciaries(domainJudiciaries, schedule));
     }
 
     public List<CourtScheduleJudiciary> getCourtScheduleJudiciaries(List<CourtSchedule> courtScheduleList) {
@@ -757,11 +757,11 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     private CourtSchedule getCourtScheduleIdAndSlotBased(final String ouCode,
-                                                                           final LocalDate sessionDate,
-                                                                           final String session,
-                                                                           final String courtRoomNumber,
-                                                                           final String courtScheduleId,
-                                                                           final boolean isSearchUpdate) {
+                                                         final LocalDate sessionDate,
+                                                         final String session,
+                                                         final String courtRoomNumber,
+                                                         final String courtScheduleId,
+                                                         final boolean isSearchUpdate) {
 
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
@@ -790,10 +790,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     private List<CourtSchedule> getCourtScheduleForSearchUpdateFilterCriteria(String ouCode,
-                                                                                          LocalDate sessionDate,
-                                                                                          String courtSessionString,
-                                                                                          String courtRoomNumber,
-                                                                                          boolean isNarrowSearch) {
+                                                                              LocalDate sessionDate,
+                                                                              String courtSessionString,
+                                                                              String courtRoomNumber,
+                                                                              boolean isNarrowSearch) {
         LOGGER.info("Criteria Query Params: ouCode {} sessionDate {} courtSessionString {} courtRoomNumber {}", ouCode, sessionDate, courtSessionString, courtRoomNumber);
         final List<String> businessType = List.of("REM", "NGAP", "GAP");
         final List<String> courtSession = List.of("AD", courtSessionString);
@@ -810,7 +810,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         queryString.append("AND s.rota_business_type IN (:businessType) ");
         params.put(BUSINESS_TYPE, businessType);
 
-        if(isNarrowSearch && StringUtils.isNotBlank(courtRoomNumber)) {
+        if (isNarrowSearch && StringUtils.isNotBlank(courtRoomNumber)) {
             queryString.append("AND s.court_room_number = :courtRoomNumber ");
             params.put("courtRoomNumber", Integer.parseInt(courtRoomNumber));
         }
@@ -946,13 +946,13 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     private static List<SlotStartTime> processSlotStartTimes(final int sessionStartHour,
-                                              final int sessionEndHour,
-                                              final int sessionEndMinute,
-                                              final AtomicInteger nextMinutePart,
-                                              final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair,
-                                              final LocalDateTime sessionStartDateTime, final boolean slotBased) {
+                                                             final int sessionEndHour,
+                                                             final int sessionEndMinute,
+                                                             final AtomicInteger nextMinutePart,
+                                                             final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair,
+                                                             final LocalDateTime sessionStartDateTime, final boolean slotBased) {
         final List<SlotStartTime> slotStartTimes = new ArrayList<>();
-        for(int currentHour = sessionStartHour; currentHour <= sessionEndHour; currentHour++) {
+        for (int currentHour = sessionStartHour; currentHour <= sessionEndHour; currentHour++) {
             if ((currentHour == sessionEndHour && sessionEndMinute > 0) || currentHour < sessionEndHour) {
                 decideNextMinutePart(currentHour, sessionStartHour, sessionEndHour, nextMinutePart, sessionEndMinute);
                 final List<Pair<Timestamp, Integer>> filteredList = getCourtScheduleAllocatedPairForHourlyPart(courtScheduleAllocatedPair, currentHour, sessionEndHour, nextMinutePart);
@@ -974,7 +974,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     private static void setHearingTimestamp(final boolean slotBased, final int currentHour, final List<Pair<Timestamp, Integer>> filteredList, final int slotEndHour, final SlotStartTime responseSlotStartTime) {
-        if(slotBased) {
+        if (slotBased) {
             final int slotStartHour = currentHour;
             filteredList.forEach(timestampIntegerPair -> {
                 final int hearingHour = timestampIntegerPair.getLeft().toLocalDateTime().getHour();
