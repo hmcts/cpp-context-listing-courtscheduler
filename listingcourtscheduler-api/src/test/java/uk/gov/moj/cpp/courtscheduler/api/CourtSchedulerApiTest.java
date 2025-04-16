@@ -281,7 +281,7 @@ class CourtSchedulerApiTest {
 
         courtSchedulerApi.listHearingSlotsInCourtSchedules(updateRequestedListHearingSlotsEnvelope);
 
-        verify(slotsUpdateService, atLeastOnce()).updateListHearingSlots(eq(wrapper));
+        verify(slotsUpdateService, atLeastOnce()).updateListHearingSlots(wrapper);
         verify(enveloper, atLeastOnce()).withMetadataFrom(updateRequestedListHearingSlotsEnvelope, responseName);
     }
 
