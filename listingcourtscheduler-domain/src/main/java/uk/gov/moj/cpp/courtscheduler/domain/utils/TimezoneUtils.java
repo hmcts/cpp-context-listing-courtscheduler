@@ -135,4 +135,43 @@ public class TimezoneUtils {
         // Convert to Date
         return Date.from(utcZoned.toInstant());
     }
+    
+    /**
+     * Calculates the national break time based on whether the date is in BST or not.
+     * During BST (British Summer Time), the break time is 13:00 UTC.
+     * During GMT (Greenwich Mean Time), the break time is 12:00 UTC.
+     * 
+     * @param sessionDate The session date to check
+     * @return The national break time as a Date object
+     */
+    public static Date calculateNationalBreakTime(LocalDate sessionDate) {
+        if (sessionDate == null) {
+            return null;
+        }
+        
+        // Create a LocalDateTime at noon on the session date
+        LocalDateTime noonTime = sessionDate.atTime(12, 0);
+        
+        // Convert to ZonedDateTime in London time
+        ZonedDateTime londonZoned = noonTime.atZone(LONDON_ZONE);
+        
+        // Convert to UTC
+        ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
+        
+        // Check if the date is in BST by comparing the hour in London time vs UTC
+        // If the hour is different, it means we're in BST
+        boolean isBST = londonZoned.getHour() != utcZoned.getHour();
+        
+        // Set the break time based on whether we're in BST or not
+        // During BST, the break time is 13:00 UTC
+        // During GMT, the break time is 12:00 UTC
+        LocalTime breakTime = isBST ? LocalTime.of(13, 0) : LocalTime.of(12, 0);
+        
+        // Create the final break time
+        LocalDateTime breakDateTime = sessionDate.atTime(breakTime);
+        ZonedDateTime breakZoned = breakDateTime.atZone(UTC_ZONE);
+        
+        // Convert to Date
+        return Date.from(breakZoned.toInstant());
+    }
 } 
