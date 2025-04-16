@@ -10,7 +10,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefa
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
@@ -36,6 +35,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -929,32 +929,15 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             final Date sessionStartTime = courtSchedule.getSessionStartTime();
             final Date sessionEndTime = courtSchedule.getSessionEndTime();
             final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair = hearingStartTimeMapByCourtSchedule.get(courtScheduleId);
-
-            // Convert to LocalDateTime with London timezone
-            final LocalDateTime sessionStartDateTime = sessionStartTime.toInstant()
-                .atZone(LONDON_ZONE)
-                .toLocalDateTime();
-            final LocalDateTime sessionEndDateTime = sessionEndTime.toInstant()
-                .atZone(LONDON_ZONE)
-                .toLocalDateTime();
-
+            final LocalDateTime sessionStartDateTime = sessionStartTime.toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime();
+            final LocalDateTime sessionEndDateTime = sessionEndTime.toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime();
             final int sessionStartHour = sessionStartDateTime.getHour();
             final int sessionStartMinute = sessionStartDateTime.getMinute();
             final int sessionEndHour = sessionEndDateTime.getHour();
             final int sessionEndMinute = sessionEndDateTime.getMinute();
             final AtomicInteger nextMinutePart = new AtomicInteger(sessionStartMinute);
             final boolean slotBased = courtSchedule.isSlotBased();
-            final List<Pair<LocalDateTime, Integer>> courtScheduleAllocatedPairWithLocalDateTime =
-                courtScheduleAllocatedPair != null ?
-                courtScheduleAllocatedPair.stream()
-                    .filter(pair -> pair != null && pair.getLeft() != null)
-                    .map(pair -> Pair.of(pair.getLeft().toInstant()
-                                .atZone(LONDON_ZONE)
-                                .toLocalDateTime(), pair.getRight()))
-                    .toList() :
-                Collections.emptyList();
-
-            final List<SlotStartTime> slotStartTimes = processSlotStartTimes(sessionStartHour, sessionEndHour, sessionEndMinute, nextMinutePart, courtScheduleAllocatedPairWithLocalDateTime, sessionStartDateTime, slotBased);
+            final List<SlotStartTime> slotStartTimes = processSlotStartTimes(sessionStartHour, sessionEndHour, sessionEndMinute, nextMinutePart, courtScheduleAllocatedPair, sessionStartDateTime, slotBased);
             resultStringListMap.put(courtScheduleId, slotStartTimes);
 
         });
@@ -965,13 +948,13 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                                               final int sessionEndHour,
                                               final int sessionEndMinute,
                                               final AtomicInteger nextMinutePart,
-                                              final List<Pair<LocalDateTime, Integer>> courtScheduleAllocatedPair,
+                                              final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair,
                                               final LocalDateTime sessionStartDateTime, final boolean slotBased) {
         final List<SlotStartTime> slotStartTimes = new ArrayList<>();
         for(int currentHour = sessionStartHour; currentHour <= sessionEndHour; currentHour++) {
             if ((currentHour == sessionEndHour && sessionEndMinute > 0) || currentHour < sessionEndHour) {
                 decideNextMinutePart(currentHour, sessionStartHour, sessionEndHour, nextMinutePart, sessionEndMinute);
-                final List<Pair<LocalDateTime, Integer>> filteredList = getCourtScheduleAllocatedPairForHourlyPart(courtScheduleAllocatedPair, currentHour, sessionEndHour, nextMinutePart);
+                final List<Pair<Timestamp, Integer>> filteredList = getCourtScheduleAllocatedPairForHourlyPart(courtScheduleAllocatedPair, currentHour, sessionEndHour, nextMinutePart);
                 final Pair<Integer, Integer> startAndEndTimeForHourlyPart = getStartAndEndTimeForHourlyPart(currentHour, sessionStartHour, sessionEndHour, sessionEndMinute, nextMinutePart);
                 final int slotEndHour = (currentHour == sessionEndHour && sessionEndMinute > 0) ? sessionEndHour : currentHour + 1;
                 final LocalDateTime slotStartTime = LocalDateTime.of(sessionStartDateTime.toLocalDate(), LocalTime.of(currentHour, startAndEndTimeForHourlyPart.getLeft()));
@@ -989,13 +972,13 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return slotStartTimes;
     }
 
-    private static void setHearingTimestamp(final boolean slotBased, final int currentHour, final List<Pair<LocalDateTime, Integer>> filteredList, final int slotEndHour, final SlotStartTime responseSlotStartTime) {
+    private static void setHearingTimestamp(final boolean slotBased, final int currentHour, final List<Pair<Timestamp, Integer>> filteredList, final int slotEndHour, final SlotStartTime responseSlotStartTime) {
         if(slotBased) {
             final int slotStartHour = currentHour;
-            filteredList.forEach(pair -> {
-                final int hearingHour = pair.getLeft().getHour();
+            filteredList.forEach(timestampIntegerPair -> {
+                final int hearingHour = timestampIntegerPair.getLeft().toLocalDateTime().getHour();
                 if (hearingHour >= slotStartHour && hearingHour < slotEndHour)
-                    responseSlotStartTime.setHearingStartTime(toIsoString(pair.getLeft()));
+                    responseSlotStartTime.setHearingStartTime(toIsoString(timestampIntegerPair.getLeft().toLocalDateTime()));
             });
         }
     }
@@ -1011,14 +994,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return Pair.of(startTimeMinute, endTimeMinute);
     }
 
-    private static List<Pair<LocalDateTime, Integer>> getCourtScheduleAllocatedPairForHourlyPart(final List<Pair<LocalDateTime, Integer>> courtScheduleAllocatedPair, final int currentHourPart, final int sessionEndHour, final AtomicInteger nextMinutePart) {
+    private static List<Pair<Timestamp, Integer>> getCourtScheduleAllocatedPairForHourlyPart(final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair, final int currentHourPart, final int sessionEndHour, final AtomicInteger nextMinutePart) {
         if (isEmpty(courtScheduleAllocatedPair)) {
             return Collections.emptyList();
         }
         return courtScheduleAllocatedPair.stream()
                 .filter(pair -> {
-                    final int pairHour = pair.getLeft().getHour();
-                    final int pairMinute = pair.getLeft().getMinute();
+                    final int pairHour = pair.getLeft().toLocalDateTime().getHour();
+                    final int pairMinute = pair.getLeft().toLocalDateTime().getMinute();
                     return pairHour == currentHourPart &&
                             ((currentHourPart < sessionEndHour && pairMinute >= nextMinutePart.get())
                                     || currentHourPart == sessionEndHour && pairMinute <= nextMinutePart.get());
