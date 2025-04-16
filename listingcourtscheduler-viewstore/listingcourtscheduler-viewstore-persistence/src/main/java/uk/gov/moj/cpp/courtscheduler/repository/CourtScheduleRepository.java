@@ -322,6 +322,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             persistedCourtSchedule.setSessionStartTime(combineDateAndTime(persistedCourtSchedule.getSessionDate(), sessionStartAndEndTime.sessionStartTime()));
             persistedCourtSchedule.setSessionEndTime(combineDateAndTime(persistedCourtSchedule.getSessionDate(), sessionStartAndEndTime.sessionEndTime()));
         }
+        persistedCourtSchedule.setNationalBreakTime(persistedCourtSchedule.getNationalBreakTime());
         persistedCourtSchedule.setUpdatedOn(new Date());
         persistedCourtSchedule.setIsOverbookingAllowed(updateCourtSchedule.isOverbookingAllowed());
 

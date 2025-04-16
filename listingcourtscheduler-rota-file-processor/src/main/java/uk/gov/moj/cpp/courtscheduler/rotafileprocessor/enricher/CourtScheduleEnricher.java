@@ -107,7 +107,8 @@ public class CourtScheduleEnricher {
             builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_START_TIME))
                     .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_END_TIME));
         }
-        builder.withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+            builder.withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+                    
     }
 
     private void populateSessionAllocation(final CourtSchedule.CourtScheduleBuilder builder,
