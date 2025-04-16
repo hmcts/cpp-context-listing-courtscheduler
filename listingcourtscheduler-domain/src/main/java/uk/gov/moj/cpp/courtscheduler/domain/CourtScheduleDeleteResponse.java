@@ -23,12 +23,12 @@ public class CourtScheduleDeleteResponse {
     private String courtSession;
     private boolean slotBased;
     private boolean active;
-    private boolean hasHearingsBooked;
     private LocalDate sessionDate;
     private Integer maxSlots;
     private Integer maxDuration;
     private Integer availableSlots;
     private Integer availableDuration;
+    private Integer totalBooked;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
     private Date createdOn;
@@ -57,9 +57,9 @@ public class CourtScheduleDeleteResponse {
         this.slotStartTimes = builder.slotStartTimes;
         this.slotBased = builder.slotBased;
         this.active = builder.active;
-        this.hasHearingsBooked = builder.hasHearingsBooked;
         this.createdOn = builder.createdOn;
         this.updatedOn = builder.updatedOn;
+        this.totalBooked = builder.totalBooked;
     }
 
     public CourtScheduleDeleteResponse() {
@@ -141,9 +141,6 @@ public class CourtScheduleDeleteResponse {
         return active;
     }
 
-    public boolean isHasHearingsBooked() {
-        return hasHearingsBooked;
-    }
 
     public Date getCreatedOn() {
         return createdOn;
@@ -253,16 +250,20 @@ public class CourtScheduleDeleteResponse {
         this.active = active;
     }
 
-    public void setHasHearingsBooked(boolean hasHearingsBooked) {
-        this.hasHearingsBooked = hasHearingsBooked;
-    }
-
     public void setCreatedOn(final Date createdOn) {
         this.createdOn = createdOn;
     }
 
     public void setUpdatedOn(final Date updatedOn) {
         this.updatedOn = updatedOn;
+    }
+
+    public Integer getTotalBooked() {
+        return totalBooked;
+    }
+
+    public void setTotalBooked(final Integer totalBooked) {
+        this.totalBooked = totalBooked;
     }
 
     public static final class CourtScheduleDeleteResponseBuilder {
@@ -286,10 +287,10 @@ public class CourtScheduleDeleteResponse {
         private Integer maxDuration = 0;
         private Integer availableSlots = 0;
         private Integer availableDuration = 0;
+        private Integer totalBooked = 0;
         private String courtSession;
         private boolean slotBased;
         private boolean active;
-        private boolean hasHearingsBooked;
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
         private Date createdOn;
@@ -298,7 +299,6 @@ public class CourtScheduleDeleteResponse {
         public static CourtScheduleDeleteResponseBuilder courtSchedule() {
             return new CourtScheduleDeleteResponseBuilder();
         }
-
 
         public CourtScheduleDeleteResponseBuilder withCourtScheduleId(final String courtScheduleId) {
             this.courtScheduleId = courtScheduleId;
@@ -376,12 +376,6 @@ public class CourtScheduleDeleteResponse {
             return this;
         }
 
-        public CourtScheduleDeleteResponseBuilder withHasHearingsBooked(final boolean hasHearingsBooked) {
-            this.hasHearingsBooked = hasHearingsBooked;
-            return this;
-        }
-
-
         public CourtScheduleDeleteResponseBuilder withSessionDate(final LocalDate sessionDate) {
             this.sessionDate = sessionDate;
             return this;
@@ -434,6 +428,11 @@ public class CourtScheduleDeleteResponse {
 
         public CourtScheduleDeleteResponseBuilder withUpdatedOn(final Date updatedOn) {
             this.updatedOn = updatedOn;
+            return this;
+        }
+
+        public CourtScheduleDeleteResponseBuilder withTotalBooked(final Integer totalBooked){
+            this.totalBooked = totalBooked;
             return this;
         }
 

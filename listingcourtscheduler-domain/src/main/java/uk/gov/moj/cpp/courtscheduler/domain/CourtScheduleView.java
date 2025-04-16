@@ -22,12 +22,20 @@ public class CourtScheduleView {
     private String courtSession;
     private boolean slotBased;
     private boolean active;
-    private boolean hasHearingsBooked;
     private LocalDate sessionDate;
     private Integer maxSlots;
     private Integer maxDuration;
     private Integer availableSlots;
     private Integer availableDuration;
+    private Integer totalBooked;
+    private boolean allDaySplit;
+    private Integer maxDurationForMorning;
+    private Integer maxDurationForAfternoon;
+
+    private Integer totalBookedForMorning;
+    private Integer totalBookedForAfternoon;
+    private Integer availableDurationForMorning;
+    private Integer availableDurationForAfternoon;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
@@ -54,7 +62,14 @@ public class CourtScheduleView {
         this.slotStartTimes = builder.slotStartTimes;
         this.slotBased = builder.slotBased;
         this.active = builder.active;
-        this.hasHearingsBooked = builder.hasHearingsBooked;
+        this.totalBooked = builder.totalBooked;
+        this.allDaySplit = builder.allDaySplit;
+        this.maxDurationForMorning = builder.maxDurationForMorning;
+        this.maxDurationForAfternoon = builder.maxDurationForAfternoon;
+        this.totalBookedForMorning = builder.totalBookedForMorning;
+        this.totalBookedForAfternoon = builder.totalBookedForAfternoon;
+        this.availableDurationForMorning = builder.availableDurationForMorning;
+        this.availableDurationForAfternoon = builder.availableDurationForAfternoon;
     }
 
     public CourtScheduleView() {
@@ -134,10 +149,6 @@ public class CourtScheduleView {
 
     public boolean isActive() {
         return active;
-    }
-
-    public boolean isHasHearingsBooked() {
-        return hasHearingsBooked;
     }
 
     public void setCourtScheduleId(final String courtScheduleId) {
@@ -240,8 +251,40 @@ public class CourtScheduleView {
         this.active = active;
     }
 
-    public void setHasHearingsBooked(boolean hasHearingsBooked) {
-        this.hasHearingsBooked = hasHearingsBooked;
+    public Integer getTotalBooked() {
+        return totalBooked;
+    }
+
+    public void setTotalBooked(final Integer totalBooked) {
+        this.totalBooked = totalBooked;
+    }
+
+    public boolean isAllDaySplit() {
+        return allDaySplit;
+    }
+
+    public Integer getMaxDurationForMorning() {
+        return maxDurationForMorning;
+    }
+
+    public Integer getMaxDurationForAfternoon() {
+        return maxDurationForAfternoon;
+    }
+
+    public Integer getTotalBookedForMorning() {
+        return totalBookedForMorning;
+    }
+
+    public Integer getTotalBookedForAfternoon() {
+        return totalBookedForAfternoon;
+    }
+
+    public Integer getAvailableDurationForMorning() {
+        return availableDurationForMorning;
+    }
+
+    public Integer getAvailableDurationForAfternoon() {
+        return availableDurationForAfternoon;
     }
 
     public static final class CourtScheduleViewBuilder {
@@ -268,7 +311,14 @@ public class CourtScheduleView {
         private String courtSession;
         private boolean slotBased;
         private boolean active;
-        private boolean hasHearingsBooked;
+        private Integer totalBooked;
+        private boolean allDaySplit;
+        private Integer maxDurationForMorning;
+        private Integer maxDurationForAfternoon;
+        private Integer totalBookedForMorning;
+        private Integer totalBookedForAfternoon;
+        private Integer availableDurationForMorning;
+        private Integer availableDurationForAfternoon;
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
@@ -353,12 +403,6 @@ public class CourtScheduleView {
             return this;
         }
 
-        public CourtScheduleViewBuilder withHasHearingsBooked(final boolean hasHearingsBooked) {
-            this.hasHearingsBooked = hasHearingsBooked;
-            return this;
-        }
-
-
         public CourtScheduleViewBuilder withSessionDate(final LocalDate sessionDate) {
             this.sessionDate = sessionDate;
             return this;
@@ -404,6 +448,45 @@ public class CourtScheduleView {
             return this;
         }
 
+        public CourtScheduleViewBuilder withTotalBooked(final Integer totalBooked) {
+            this.totalBooked = totalBooked;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withAllDaySplit(final boolean allDaySplit) {
+            this.allDaySplit = allDaySplit;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withMaxDurationForMorning(final Integer maxDurationForMorning) {
+            this.maxDurationForMorning = maxDurationForMorning;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withMaxDurationForAfternoon(final Integer maxDurationForAfternoon) {
+            this.maxDurationForAfternoon = maxDurationForAfternoon;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withTotalBookedForMorning(final Integer totalBookedForMorning) {
+            this.totalBookedForMorning = totalBookedForMorning;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withTotalBookedForAfternoon(final Integer totalBookedForAfternoon) {
+            this.totalBookedForAfternoon = totalBookedForAfternoon;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withAvailableDurationForMorning(final Integer availableDurationForMorning) {
+            this.availableDurationForMorning = availableDurationForMorning;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withAvailableDurationForAfternoon(final Integer availableDurationForAfternoon) {
+            this.availableDurationForAfternoon = availableDurationForAfternoon;
+            return this;
+        }
 
         public CourtScheduleView build() {
             return new CourtScheduleView(this);

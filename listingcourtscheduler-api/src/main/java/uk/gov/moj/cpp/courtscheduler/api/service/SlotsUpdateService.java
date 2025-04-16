@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.lang.String.format;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException;
@@ -21,8 +22,6 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 @ApplicationScoped
@@ -64,10 +63,24 @@ public class SlotsUpdateService {
                 allocatedSlot.setHearingStartTime(isoString);
             });
 
-            courtScheduleRepository.saveBookedSlots(slots, true);
+            courtScheduleRepository.saveBookedSlots(slots, true, false);
         } else {
-            courtScheduleRepository.saveBookedSlots(slots, false);
+            courtScheduleRepository.saveBookedSlots(slots, false, false);
         }
+    }
+
+    public Result searchUpdate(final List<AllocatedSlot> slots) {
+        Result result;
+        if("Police".equalsIgnoreCase(slots.get(0).getProsecutor())) {
+            result = courtScheduleRepository.saveBookedSlots(slots, false, true);
+        } else {
+            result = courtScheduleRepository.saveBookedSlots(slots, false, false);
+        }
+        if(result.isSuccess()) {
+            result.setCourtRoomId(slots.get(0).getCourtRoomUUId());
+            result.setCourtRoomName(slots.get(0).getCourtRoom());
+        }
+        return result;
     }
 
     private boolean isCourtScheduleIdsMatching(final List<String> slotsCourtScheduleIdList, final List<String> provisionalBookingCourtScheduleIdList) {

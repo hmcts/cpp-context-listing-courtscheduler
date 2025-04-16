@@ -25,6 +25,11 @@ import javax.json.JsonObject;
 import javax.json.JsonString;
 
 import org.apache.commons.lang3.tuple.Pair;
+import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -75,6 +80,7 @@ class AllocatedListingServiceTest {
                 .toList();
     }
 
+
     @Test
     void shouldGetHearingIds() {
         HearingSlotRequestParam hearingIdsReq =
@@ -108,4 +114,5 @@ class AllocatedListingServiceTest {
         hearingIdsJsonArr.forEach(e -> assertTrue(hearingIds.contains(((JsonString) e).getString())));
 
     }
+
 }

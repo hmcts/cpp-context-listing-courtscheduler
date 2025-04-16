@@ -110,7 +110,10 @@
                 {
                   "type": "object",
                   "properties": {
-                    "hearingStartTime": {
+                    "sessionStartTime": {
+                      "type": "string"
+                    },
+                    "sessionEndTime": {
                       "type": "string"
                     },
                     "count": {
@@ -118,7 +121,8 @@
                     }
                   },
                   "required": [
-                    "hearingStartTime",
+                    "sessionStartTime",
+                    "sessionEndTime",
                     "count"
                   ]
                 }

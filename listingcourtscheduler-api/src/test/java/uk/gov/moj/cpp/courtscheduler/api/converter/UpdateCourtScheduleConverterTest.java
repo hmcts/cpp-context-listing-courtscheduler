@@ -23,7 +23,7 @@ class UpdateCourtScheduleConverterTest {
     @Test
     public void shouldConvertJsonObject_ToUpdateCourtSchedule() {
 
-        JsonObject jsonObject = Json.createObjectBuilder()
+        final JsonObject jsonObject = Json.createObjectBuilder()
                 .add("courtScheduleId", UUID.randomUUID().toString())
                 .add("courtRoomId", "2")
                 .add("businessType", "BusType")
@@ -31,10 +31,14 @@ class UpdateCourtScheduleConverterTest {
                 .add("panel", "ADULT")
                 .add("maxSlots", 1)
                 .add("maxDuration", 1)
+                .add("sessionStartTime", "11:00")
+                .add("sessionEndTime", "17:00")
                 .build();
 
-        UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(jsonObject);
+        final UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(jsonObject);
 
         assertEquals("2", updateCourtSchedule.getCourtRoomId());
+        assertEquals("11:00", updateCourtSchedule.getSessionStartTime());
+        assertEquals("17:00", updateCourtSchedule.getSessionEndTime());
     }
 }

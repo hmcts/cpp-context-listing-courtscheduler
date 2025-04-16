@@ -1,8 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum.fromName;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.MeridianHelper.getMeridian;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum;
 
@@ -12,15 +17,27 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 
+/**
+ * Utility class for handling date and time operations.
+ * This class is designed to store all dates in UTC format.
+ * Timezone conversions should be handled by the UI.
+ */
 public class DateUtils {
     protected static final DateTimeFormatter ISO_8601_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    public static final String DEFAULT_MORNING_START_TIME = "10:00";
+    public static final String DEFAULT_MORNING_END_TIME = "13:00";
+    public static final String DEFAULT_AFTERNOON_START_TIME = "14:00";
+    public static final String DEFAULT_AFTERNOON_END_TIME = "17:00";
+    public static final String DEFAULT_ALL_DAY_START_TIME = "10:00";
+    public static final String DEFAULT_ALL_DAY_END_TIME = "17:00";
 
     private DateUtils() {
     }
@@ -44,6 +61,15 @@ public class DateUtils {
         return LocalDateTime.parse(isoDate, ISO_8601_FORMATTER).atOffset(ZoneOffset.UTC);
     }
 
+    public static final String toIsoString(final LocalDateTime localDateTime) {
+        if (localDateTime == null) {
+            return null;
+        }
+        // Convert to UTC for storage
+        ZonedDateTime utcZoned = localDateTime.atZone(ZoneOffset.UTC);
+        return utcZoned.format(ISO_8601_FORMATTER);
+    }
+
     public static final ZonedDateTime toZonedDateTime(final String isoDate) {
         if (isBlank(isoDate)) {
             return null;
@@ -60,6 +86,7 @@ public class DateUtils {
         if (dateTimeOffset == null) {
             return null;
         }
+        // Keep in UTC for storage
         return dateTimeOffset.format(ISO_8601_FORMATTER);
     }
 
@@ -67,15 +94,18 @@ public class DateUtils {
         if (timestamp == null) {
             return null;
         }
-        return timestamp.toLocalDateTime().atOffset(ZoneOffset.UTC).format(ISO_8601_FORMATTER);
+        // Convert to UTC for storage
+        ZonedDateTime utcZoned = timestamp.toLocalDateTime().atZone(ZoneOffset.UTC);
+        return utcZoned.format(ISO_8601_FORMATTER);
     }
 
     public static final String toIsoString(final java.util.Date date) {
         if (date == null) {
             return null;
         }
-
-        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(date);
+        // Convert to UTC for storage
+        ZonedDateTime utcZoned = date.toInstant().atZone(ZoneOffset.UTC);
+        return utcZoned.format(ISO_8601_FORMATTER);
     }
 
     public static final Date toSqlDate(String dateString) {
@@ -107,6 +137,11 @@ public class DateUtils {
         }
     }
 
+    public static final java.util.Date localDateToDateWithTime(final LocalDate localDate, final int hour, final int minute) {
+        // Use TimezoneUtils to convert local time to UTC
+        return TimezoneUtils.combineLocalDateAndTimeToUtc(localDate, LocalTime.of(hour, minute));
+    }
+
     public static String createDefaultHearingStartTime(final String session, final String sessionDate) {
         if (isBlank(sessionDate) || isBlank(session)) {
             return null;
@@ -120,11 +155,59 @@ public class DateUtils {
         final int month = Integer.parseInt(dateParts[1]);
         final int day = Integer.parseInt(dateParts[2]);
 
-        final ZonedDateTime localDate = ZonedDateTime.of(year, month, day, time, 0, 0, 0, ZoneId.of("Europe/London")).withZoneSameInstant(ZoneOffset.UTC);
+        // Create in local time and convert to UTC
+        final ZonedDateTime localDate = ZonedDateTime.of(year, month, day, time, 0, 0, 0, LONDON_ZONE).withZoneSameInstant(ZoneOffset.UTC);
         return localDate.format(ISO_8601_FORMATTER);
     }
 
     public static String toMeridian(final String isoDateTime) {
         return getMeridian(toZonedDateTime(isoDateTime));
+    }
+
+    public static java.util.Date combineDateAndTime(final LocalDate date, final String time) {
+        // Use TimezoneUtils to convert local time to UTC
+        LocalTime localTime = LocalTime.parse(time, TIME_FORMATTER);
+        return TimezoneUtils.combineLocalDateAndTimeToUtc(date, localTime);
+    }
+
+    public static LocalTime toLocalTime(final String time) {
+        return LocalTime.parse(time, TIME_FORMATTER);
+    }
+
+    public static sessionStartAndEndTime getOrElseDefaultSessionStartAndEndTimeIfEmpty(final String sessionType, String sessionStartTime, String sessionEndTime) {
+        if (isEmpty(sessionStartTime)) {
+            switch (sessionType) {
+                case AM_SESSION:
+                    sessionStartTime = DEFAULT_MORNING_START_TIME;
+                    break;
+                case PM_SESSION:
+                    sessionStartTime = DEFAULT_AFTERNOON_START_TIME;
+                    break;
+                case ALL_DAY:
+                    sessionStartTime = DEFAULT_ALL_DAY_START_TIME;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (isEmpty(sessionEndTime)) {
+            switch (sessionType) {
+                case AM_SESSION:
+                    sessionEndTime = DEFAULT_MORNING_END_TIME;
+                    break;
+                case PM_SESSION:
+                    sessionEndTime = DEFAULT_AFTERNOON_END_TIME;
+                    break;
+                case ALL_DAY:
+                    sessionEndTime = DEFAULT_ALL_DAY_END_TIME;
+                    break;
+                default:
+                    break;
+            }
+        }
+        return new sessionStartAndEndTime(sessionStartTime, sessionEndTime);
+    }
+
+    public record sessionStartAndEndTime(String sessionStartTime, String sessionEndTime) {
     }
 }

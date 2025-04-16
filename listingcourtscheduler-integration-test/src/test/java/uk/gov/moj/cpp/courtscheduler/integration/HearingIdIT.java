@@ -1,16 +1,17 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
-import static java.util.Collections.sort;
+import static java.lang.String.valueOf;
 import static java.util.UUID.randomUUID;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
@@ -30,7 +31,6 @@ import javax.json.JsonObject;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 
@@ -38,81 +38,61 @@ class HearingIdIT extends AbstractIT {
 
     private static final String RELATIVE_URL = "/hearingslots";
 
-    @BeforeAll
-    static void setupSystemUser() {
-        setupUserAsSystemUser(USER_ID.toString());
-    }
-
     @Test
-    void shouldFindHearingIds() throws Exception {
+    void testSinglePageHearingIdsRetrieval() throws Exception {
         final LocalDate today = LocalDate.now();
-        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
-        courtSchedule1.setCourtScheduleId("COURT-SCHEDULE-1");
-        courtSchedule1.setPanel("ADULT");
-        courtSchedule1.setOuCode("BA123");
-        courtSchedule1.setCourtSession("AM");
         final LocalDate sessionDate = today.minusDays(5);
-        courtSchedule1.setSessionDate(sessionDate);
-        courtSchedule1.setCourtHouseName("HOUSE-1");
-        courtSchedule1.setBusinessType("BUSS");
-        courtSchedule1.setActive(true);
+        final CourtSchedule courtSchedule1 = createCourtSchedule(sessionDate, "COURT-SCHEDULE-1", "HOUSE-1");
         databaseSeeder.insertCourtSchedule(courtSchedule1);
 
-        final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
-        courtSchedule2.setCourtScheduleId("COURT-SCHEDULE-2");
-        courtSchedule2.setPanel("ADULT");
-        courtSchedule2.setOuCode("BA123");
-        courtSchedule2.setSessionDate(sessionDate);
-        courtSchedule2.setCourtHouseName("HOUSE-2");
-        courtSchedule2.setCourtSession("AM");
-        courtSchedule2.setBusinessType("BUSS");
-        courtSchedule2.setActive(true);
+        final CourtSchedule courtSchedule2 = createCourtSchedule(sessionDate, "COURT-SCHEDULE-2", "HOUSE-2");
         databaseSeeder.insertCourtSchedule(courtSchedule2);
 
-        final CourtSchedule courtSchedule3 = random(CourtSchedule.class);
-        courtSchedule3.setCourtScheduleId("COURT-SCHEDULE-3");
-        courtSchedule3.setPanel("ADULT");
-        courtSchedule3.setOuCode("BA123");
         final LocalDate sessionDate1 = today.minusDays(3);
-        courtSchedule3.setSessionDate(sessionDate1);
-        courtSchedule3.setActive(true);
-        courtSchedule3.setCourtSession("AM");
-        courtSchedule3.setBusinessType("BUSS");
+        final CourtSchedule courtSchedule3 = createCourtSchedule(sessionDate1, "COURT-SCHEDULE-3", "HOUSE-3");
         databaseSeeder.insertCourtSchedule(courtSchedule3);
 
         List<String> expHearingIds = new ArrayList<>();
         final String hearingId1 = randomUUID().toString();
         final LocalDateTime hearing1StartTime = sessionDate.atTime(17, 0);
-        databaseSeeder.insertAllocatedListing(createAllocateListing("1", "BOOKING-1", "COURT-SCHEDULE-1", hearingId1, hearing1StartTime));
-        final String hearingId2 = randomUUID().toString();
-        final LocalDateTime hearing2StartTime = sessionDate.atTime(11, 0);
-        databaseSeeder.insertAllocatedListing(createAllocateListing("2", "BOOKING-2", "COURT-SCHEDULE-1", hearingId2, hearing2StartTime));
-        expHearingIds.add(hearingId2);
+        final AllocatedListing allocateListing1 =
+                createAllocateListing("1", "BOOKING-1", courtSchedule1.getCourtScheduleId(), hearingId1, hearing1StartTime);
+        databaseSeeder.insertAllocatedListing(allocateListing1);
         expHearingIds.add(hearingId1);
+
+        final String hearingId2 = randomUUID().toString();
+        final LocalDateTime hearing2StartTime = sessionDate.atTime(18, 0);
+        final AllocatedListing allocateListing2 =
+                createAllocateListing("2", "BOOKING-2", courtSchedule1.getCourtScheduleId(), hearingId2, hearing2StartTime);
+        databaseSeeder.insertAllocatedListing(allocateListing2);
+        expHearingIds.add(hearingId2);
 
         final String hearingId3 = randomUUID().toString();
         final LocalDateTime hearing3StartTime = sessionDate1.atTime(9, 0);
-        databaseSeeder.insertAllocatedListing(createAllocateListing("3", "BOOKING-3", "COURT-SCHEDULE-2", hearingId3, hearing3StartTime));
+        final AllocatedListing allocateListing3 =
+                createAllocateListing("3", "BOOKING-3", courtSchedule2.getCourtScheduleId(), hearingId3, hearing3StartTime);
+        databaseSeeder.insertAllocatedListing(allocateListing3);
+        expHearingIds.add(hearingId3);
 
         final String hearingId4 = randomUUID().toString();
         final LocalDateTime hearing4StartTime = sessionDate1.atTime(11, 0);
-        databaseSeeder.insertAllocatedListing(createAllocateListing("4", "BOOKING-4", "COURT-SCHEDULE-3", hearingId4, hearing4StartTime));
-        expHearingIds.add(hearingId3);
+        final AllocatedListing allocateListing4 =
+                createAllocateListing("4", "BOOKING-4", courtSchedule3.getCourtScheduleId(), hearingId4, hearing4StartTime);
+        databaseSeeder.insertAllocatedListing(allocateListing4);
         expHearingIds.add(hearingId4);
-
 
         String hearingIdsReq = getPayload("courtscheduler.get.hearing.slots.json");
         hearingIdsReq = hearingIdsReq.replace("PANEL", "ADULT");
         hearingIdsReq = hearingIdsReq.replace("OU_CODE", "BA123");
+        hearingIdsReq = hearingIdsReq.replace("COURT_SESSION", "AM");
         hearingIdsReq = hearingIdsReq.replace("SESSION_START_DATE", today.minusDays(10).toString());
         hearingIdsReq = hearingIdsReq.replace("SESSION_END_DATE", today.minusDays(1).toString());
         hearingIdsReq = hearingIdsReq.replace("\"pageSize\": \"1\"", "\"pageSize\": \"10\"");
 
-        Map<String, Object> map = new ObjectMapper().readValue(hearingIdsReq, new TypeReference<>() {
-        });
+        Map<String, Object> map = new ObjectMapper().readValue(hearingIdsReq, new TypeReference<>(){});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", USER_ID, map);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertEquals(OK.getStatusCode(), tempResponseData.getStatus().getStatusCode());
 
@@ -125,6 +105,82 @@ class HearingIdIT extends AbstractIT {
         assertThat(hearingIds.getString(1), is(expHearingIds.get(1)));
         assertThat(hearingIds.getString(2), is(expHearingIds.get(2)));
         assertThat(hearingIds.getString(3), is(expHearingIds.get(3)));
+    }
+
+
+    @Test
+    void testMultiPageHearingIdsRetrieval() throws Exception {
+        List<String> expHearingIds = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        int numOfHearings = 18;
+        for (int idx = 1; idx <= numOfHearings; idx++) {
+            LocalDate sessionDate = today.minusDays(numOfHearings - idx);
+            CourtSchedule courtSchedule = createCourtSchedule(sessionDate, "COURT-SCHEDULE-" + idx, "HOUSE-" + idx);
+            databaseSeeder.insertCourtSchedule(courtSchedule);
+
+            String hearingId = randomUUID().toString();
+            LocalDateTime hearingStartTime = sessionDate.atTime(11, 0);
+            AllocatedListing allocateListing =
+                    createAllocateListing(valueOf(idx), "BOOKING-" + idx, courtSchedule.getCourtScheduleId(), hearingId, hearingStartTime);
+            databaseSeeder.insertAllocatedListing(allocateListing);
+            expHearingIds.add(hearingId);
+        }
+
+        String hearingIdsReq = getPayload("courtscheduler.get.hearing.slots.json");
+        hearingIdsReq = hearingIdsReq.replace("PANEL", "ADULT");
+        hearingIdsReq = hearingIdsReq.replace("OU_CODE", "BA123");
+        hearingIdsReq = hearingIdsReq.replace("COURT_SESSION", "AM");
+        hearingIdsReq = hearingIdsReq.replace("SESSION_START_DATE", today.minusDays(numOfHearings).toString());
+        hearingIdsReq = hearingIdsReq.replace("SESSION_END_DATE", today.toString());
+
+        final ObjectMapper objMapper = new ObjectMapper();
+        Map<String, Object> paramsMap = objMapper.readValue(hearingIdsReq, new TypeReference<>(){});
+        RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, paramsMap);
+        ResponseData responseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+
+        assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
+
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        assertThat(jsonObject.getInt("results"), is(numOfHearings));
+        assertThat(jsonObject.getInt("pageCount"), is(2));
+
+        JsonArray hearingIds = jsonObject.getJsonArray("hearingIds");
+        int defaultPageSize = 10;
+        for (int idx = 0; idx < defaultPageSize; idx++) {
+            assertThat(hearingIds.getString(idx), is(expHearingIds.get(idx)));
+        }
+
+        paramsMap.put("pageNumber:", 2);
+        requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, paramsMap);
+        responseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+
+        assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
+
+        jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        assertThat(jsonObject.getInt("pageCount"), is(2));
+
+
+        hearingIds = jsonObject.getJsonArray("hearingIds");
+        for (int idx = numOfHearings; idx < numOfHearings - defaultPageSize; idx++) {
+            assertThat(hearingIds.getString(idx), is(expHearingIds.get(idx)));
+        }
+    }
+
+
+    private CourtSchedule createCourtSchedule(LocalDate sessionDate,
+                                              String courtScheduleId,
+                                              String courtHouseName) {
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setPanel("ADULT");
+        courtSchedule.setOuCode("BA123");
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setCourtHouseName(courtHouseName);
+        courtSchedule.setBusinessType("BUSS");
+        courtSchedule.setActive(true);
+
+        return courtSchedule;
     }
 
     private AllocatedListing createAllocateListing(String id,

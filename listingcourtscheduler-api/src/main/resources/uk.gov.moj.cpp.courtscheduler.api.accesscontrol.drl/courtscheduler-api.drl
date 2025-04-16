@@ -79,6 +79,15 @@ rule "API - Action - courtscheduler.update.hearing.slots"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.search.update.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.search.update.hearing.slots");
+         eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.get.hearing.slots"
   when
     $outcome: Outcome();

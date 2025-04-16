@@ -1,36 +1,56 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import static io.smallrye.common.constraint.Assert.assertTrue;
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createObjectBuilder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
+import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 
+import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
+import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
+import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
+import uk.gov.moj.cpp.courtscheduler.domain.SessionValidationParams;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.lang.reflect.Field;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import javax.json.JsonObject;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-public class SessionsApiValidatorTest {
 
+class SessionsApiValidatorTest {
+
+    @InjectMocks
     private SessionsApiValidator sessionsApiValidator;
 
     @Mock
@@ -45,29 +65,44 @@ public class SessionsApiValidatorTest {
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
 
+    @Mock
+    private Requester requester;
+
+    @Mock
+    private ReferenceDataCache referenceDataCache;
+
     private final String courtCentreId = randomUUID().toString();
     private final String courtRoomId = randomUUID().toString();
 
+    private final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+
     @BeforeEach
-    public void setUp() {
+    public void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
         sessionsApiValidator = new SessionsApiValidator();
+        injectReferenceDataCache();
+    }
+
+    private void injectReferenceDataCache() throws Exception {
+        Field field = SessionsApiValidator.class.getDeclaredField("referenceDataCache");
+        field.setAccessible(true);
+        field.set(sessionsApiValidator, referenceDataCache);
     }
 
     @Test
-    public void shouldReturnErrorWhenPatternStartDateIsInPast() {
+    void shouldReturnErrorWhenPatternStartDateIsInPast() throws JsonProcessingException {
         LocalDate pastDate = LocalDate.now().minusDays(1);
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(repeatPattern.getStartDate()).thenReturn(pastDate);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
-        assertEquals(START_DATE_IS_INVALID + pastDate.toString(), result.getString("errorMessage"));
+        assertEquals(START_DATE_IS_INVALID + pastDate, result.getString("errorMessage"));
     }
 
     @Test
-    public void shouldReturnErrorWhenFrequencyIsEveryWeekAndEndDateIsNull() {
+    void shouldReturnErrorWhenFrequencyIsEveryWeekAndEndDateIsNull() throws JsonProcessingException {
         LocalDate futureDate = LocalDate.now().plusDays(1);
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
@@ -75,16 +110,65 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals("Invalid combination of parameters: For More Than once, you should supply a repeat-for and end date ", result.getString("errorMessage"));
     }
 
     @Test
-    @Disabled("will be handled separately")
-    public void shouldReturnErrorWhenSessionTypeIsDuplicateWithRequest() {
+    void shouldReturnErrorWhenPMSessionStartsBefore14() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
-        final List<Session> sessionList  = Arrays.asList(session().withSessionType("AM").build(), session().withSessionType("PM").build());
+        Session sessionToBeAdded = createPMSessionWithTimes("13:00", "15:00");
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionToBeAdded));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals("PM Session Start Time cannot be earlier than 14:00", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenAMSessionEndsAfter13() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session sessionToBeAdded = createAMSessionWithTimes("10:00", "14:00");
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionToBeAdded));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals("AM Session End Time cannot exceed 13:00", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenTimeFormatIsInvalid() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session sessionToBeAdded = createAMSessionWithTimes("sometime", "14:00");
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionToBeAdded));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("Invalid time format. Please use HH:mm format.", result.getString("errorMessage"));
+    }
+
+    @Test
+    @Disabled("will be handled separately")
+    void shouldReturnErrorWhenSessionTypeIsDuplicateWithRequest() throws JsonProcessingException {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        final List<Session> sessionList = Arrays.asList(session().withSessionType("AM").build(), session().withSessionType("PM").build());
         when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
 
         final Session sessionToBeAdded = session().withSessionType("AM").build();
@@ -94,20 +178,20 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals("Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ", result.getString("errorMessage"));
     }
 
     @Test
     @Disabled("will be handled separately")
-    public void shouldReturnErrorWhenSessionTypeIsDuplicateWithDatabase() {
+    void shouldReturnErrorWhenSessionTypeIsDuplicateWithDatabase() throws JsonProcessingException {
         LocalDate futureDate = LocalDate.now().plusDays(1);
         final Session sessionToBeAdded = createAMSession();
-        final List<Session> sessionList  = List.of(createPMSession());
-        final List<CourtSchedule> clashingAllDaySession = List.of(createCourtScheduleFromSession(sessionToBeAdded,"AM"));
+        final List<Session> sessionList = List.of(createPMSession());
+        final List<CourtSchedule> clashingAllDaySession = List.of(createCourtScheduleFromSession(sessionToBeAdded, "AM"));
 
-        final JsonObject errorResult = createObjectBuilder().add("validationResult",createObjectBuilder()
+        final JsonObject errorResult = createObjectBuilder().add("validationResult", createObjectBuilder()
                 .add("status", ValidationStatus.FAILURE.getValidationStatus())
                 .add("validationError", "Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ")
                 .build()).build();
@@ -125,14 +209,14 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
         when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ", result.getString("errorMessage"));
     }
 
     @Test
-    public void shouldReturnErrorWhenSessionTypeIsDuplicateWithInPayload() {
+    void shouldReturnErrorWhenSessionTypeIsDuplicateWithInPayload() throws JsonProcessingException {
 
-        final List<Session> sessionList  = Arrays.asList(createAMSession(), createPMSession());
+        final List<Session> sessionList = Arrays.asList(createAMSession(), createPMSession());
         final Session sessionToBeAdded = createAMSession();
 
 
@@ -150,21 +234,21 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
         when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
     }
 
     @Test
     @Disabled
-    public void shouldReturnErrorWhenSessionToBeAddedIsNotValidForAllDayWithInPayload() {
+    void shouldReturnErrorWhenSessionToBeAddedIsNotValidForAllDayWithInPayload() throws JsonProcessingException {
 
-        final List<Session> sessionList  = Arrays.asList(createAMSession(), createPMSession());
+        final List<Session> sessionList = Arrays.asList(createAMSession(), createPMSession());
         final Session sessionToBeAdded = createAllDaySession();
 
 
         LocalDate futureDate = LocalDate.now().plusDays(1);
 
-        final JsonObject errorResult = createObjectBuilder().add("validationResult",createObjectBuilder()
+        final JsonObject errorResult = createObjectBuilder().add("validationResult", createObjectBuilder()
                 .add("status", ValidationStatus.FAILURE.getValidationStatus())
                 .add("validationError", "Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ")
                 .build()).build();
@@ -177,21 +261,21 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
         when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
-        assertValidationFailure(result,"SessionsToBe Added has a duplicate entry within SessionList: CourtCentreId,courtroomId,businessType,SessionType,RepeatDays");
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        assertValidationFailure(result, "SessionsToBe Added has a duplicate entry within SessionList: CourtCentreId,courtroomId,businessType,SessionType,RepeatDays");
     }
 
     @Test
     @Disabled
-    public void shouldReturnErrorWhenSessionTypeIsNotValidForAllDayWithInPayload() {
+    void shouldReturnErrorWhenSessionTypeIsNotValidForAllDayWithInPayload() throws JsonProcessingException {
 
-        final List<Session> sessionList  = Arrays.asList(createAllDaySession());
+        final List<Session> sessionList = Arrays.asList(createAllDaySession());
         final Session sessionToBeAdded = createPMSession();
 
 
         LocalDate futureDate = LocalDate.now().plusDays(1);
 
-        final JsonObject errorResult = createObjectBuilder().add("validationResult",createObjectBuilder()
+        final JsonObject errorResult = createObjectBuilder().add("validationResult", createObjectBuilder()
                 .add("status", ValidationStatus.FAILURE.getValidationStatus())
                 .add("validationError", "Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ")
                 .build()).build();
@@ -204,12 +288,12 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
         when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
-        assertValidationFailure(result,"SessionsToBe Added has a duplicate entry within SessionList: CourtCentreId,courtroomId,businessType,SessionType,RepeatDays");
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        assertValidationFailure(result, "SessionsToBe Added has a duplicate entry within SessionList: CourtCentreId,courtroomId,businessType,SessionType,RepeatDays");
     }
 
     @Test
-    public void shouldReturnEmptyJsonObjectWhenValidationIsSuccessful() {
+    void shouldReturnEmptyJsonObjectWhenValidationIsSuccessful() throws JsonProcessingException {
         LocalDate futureDate = LocalDate.now().plusDays(1);
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
@@ -218,16 +302,17 @@ public class SessionsApiValidatorTest {
         when(repeatPattern.getRepeatFor()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals(0, result.size());
     }
 
     private boolean assertValidationSuccess(final JsonObject result) {
-        return  result.get("validationResult").asJsonObject().getString("status").equals("SUCCESS") && result.get("validationResult").asJsonObject().getString("validationError").isEmpty();
+        return result.get("validationResult").asJsonObject().getString("status").equals("SUCCESS") && result.get("validationResult").asJsonObject().getString("validationError").isEmpty();
     }
-    private boolean assertValidationFailure(final JsonObject result,final String errorMessage) {
-        return  result.get("validationResult").asJsonObject().getString("status").equals("FAILURE") && result.get("validationResult").asJsonObject().getString("validationError").equalsIgnoreCase(errorMessage);
+
+    private boolean assertValidationFailure(final JsonObject result, final String errorMessage) {
+        return result.get("validationResult").asJsonObject().getString("status").equals("FAILURE") && result.get("validationResult").asJsonObject().getString("validationError").equalsIgnoreCase(errorMessage);
     }
 
 
@@ -250,14 +335,71 @@ public class SessionsApiValidatorTest {
                 .withSessionType(sessionType)
                 .withBusinessType(businessType)
                 .withPanelType(panelType)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY)).build();
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .build();
     }
 
-    private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule createCourtScheduleFromSession(final Session session,final String sessionType) {
+    private Session createAMSessionWithTimes(String sessionStartTime, String sessionEndTime) {
+        return createSessionWithTimes("AM", "DVLA", "ADULT", sessionStartTime, sessionEndTime);
+    }
+
+    private Session createPMSessionWithTimes(String sessionStartTime, String sessionEndTime) {
+        return createSessionWithTimes("PM", "DVLA", "ADULT", sessionStartTime, sessionEndTime);
+    }
+
+    private Session createSessionWithTimes(String sessionType, String businessType, String panelType, String sessionStartTime, String sessionEndTime) {
+        return session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType(sessionType)
+                .withBusinessType(businessType)
+                .withPanelType(panelType)
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withSessionStartTime(sessionStartTime)
+                .withSessionEndTime(sessionEndTime)
+                .withSlotsOrDuration(60)
+                .build();
+    }
+
+    private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule createCourtScheduleFromSession(final Session session, final String sessionType) {
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = new uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule();
         courtSchedule.setCourtHouseId(session.getCourtCentreId());
         courtSchedule.setCourtRoomId(session.getCourtRoomId());
         courtSchedule.setCourtSession(sessionType);
         return courtSchedule;
+    }
+
+    private Map<String, BusinessType> getRotaBusinessTypes() throws JsonProcessingException {
+        final String businessTypesJsonStr = getPayload("test-data/business-types.json");
+        final List<BusinessType> businessTypes = objectMapper.readValue(businessTypesJsonStr, new TypeReference<>() {
+        });
+        return businessTypes.stream().collect(Collectors.toMap(BusinessType::getTypeCode, Function.identity()));
+    }
+
+    @Test
+    void shouldReturnErrorWhenIsAllDaySplitIsTrueAndSessionTypeIsNotAllDay() {
+        SessionValidationParams params = new SessionValidationParams(60, 60, true, "AM", "BUSINESS_TYPE", null, null);
+        JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
+        assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenIsAllDaySplitIsTrueAndMaxDurationIsInvalid() {
+        SessionValidationParams params = new SessionValidationParams(null, 60, true, ALL_DAY, "BUSINESS_TYPE", null, null);
+        when(referenceDataCache.getRotaBusinessTypeByCode(params.getBusinessType(), requester)).thenReturn(Optional.of(BusinessType.BusinessTypeBuilder.aBusinessType()
+                .withTypeCode(params.getBusinessType()).withDuration(true).build()));
+
+        JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
+        assertEquals(ErrorMessages.MAX_DURATION_AM_PM_PROVIDED_FOR_ALL_DAY_SPLIT_SESSION, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenIsAllDaySplitIsTrueAndBusinessTypeIsNotDurationBased() {
+        SessionValidationParams params = new SessionValidationParams(60, 60, true, ALL_DAY, "BUSINESS_TYPE", null, null);
+        BusinessType businessType = new BusinessType("BUSINESS_TYPE", 1, "Description", "Category", false, false);
+        when(referenceDataCache.getRotaBusinessTypeByCode("BUSINESS_TYPE", requester)).thenReturn(Optional.of(businessType));
+        JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_DURATION_BASED_SESSION, result.getString("errorMessage"));
     }
 }

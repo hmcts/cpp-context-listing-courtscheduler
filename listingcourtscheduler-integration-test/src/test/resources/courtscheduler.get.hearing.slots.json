@@ -5,5 +5,5 @@
   "ouCode": "OU_CODE",
   "pageSize": "10",
   "pageNumber": "1",
-  "courtSession": "AM"
+  "courtSession": "COURT_SESSION"
 }

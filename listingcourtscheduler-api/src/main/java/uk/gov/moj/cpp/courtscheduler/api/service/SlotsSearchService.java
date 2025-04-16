@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.Integer.parseInt;
 
-import uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -53,7 +52,7 @@ public class SlotsSearchService {
         final long endcourtschedulequery = System.nanoTime();
         LOGGER.info("BRS: Time taken for validation : {}", (endcourtschedulequery - startcourtschedulequery) / 1000000);
 
-        final long startfiltering = System.nanoTime();
+        final long startFiltering = System.nanoTime();
         final List<CourtSchedule> filteredCourtSchedules = new ArrayList<>();
         for (final CourtSchedule courtSchedule : courtSchedules.getValue()) {
             final Optional<CourtSchedule> foundCourtSchedule = filteredCourtSchedules
@@ -61,14 +60,17 @@ public class SlotsSearchService {
                     .filter(addedCourtSchedule -> addedCourtSchedule.getCourtScheduleId()
                             .equals(courtSchedule.getCourtScheduleId()))
                     .findAny();
+            LOGGER.info("getCourtSchedules foundCourtSchedule: {}", foundCourtSchedule);
             if (foundCourtSchedule.isPresent()) {
-                foundCourtSchedule.get().getJudiciaries().add(courtSchedule.getJudiciaries().get(0));
+                LOGGER.info("getCourtSchedules foundCourtSchedule.isPresent()");
+                foundCourtSchedule.get().getJudiciaries().addAll(courtSchedule.getJudiciaries());
+                LOGGER.info("getCourtSchedules foundCourtSchedule after adding Judiciaries : {}", foundCourtSchedule);
             } else {
                 filteredCourtSchedules.add(courtSchedule);
             }
         }
-        final long endfiltering = System.nanoTime();
-        LOGGER.info("BRS: Time taken for filtering : {}", (endfiltering - startfiltering) / 1000000);
+        final long endFiltering = System.nanoTime();
+        LOGGER.info("BRS: Time taken for filtering : {}", (endFiltering - startFiltering) / 1000000);
         return Pair.of(courtSchedules.getKey(), filteredCourtSchedules);
     }
 

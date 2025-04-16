@@ -11,6 +11,7 @@ import javax.persistence.ConstructorResult;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.SqlResultSetMapping;
+import javax.persistence.SqlResultSetMappings;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
@@ -22,36 +23,83 @@ import org.hibernate.annotations.UpdateTimestamp;
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 @Entity
 @Table(name = "court_schedule")
-@SqlResultSetMapping(
-        name = "CourtScheduleEntityMapping",
-        classes = @ConstructorResult(
-                targetClass = CourtSchedule.class,
-                columns = {
-                        @ColumnResult(name = "id", type = String.class), // Replace with actual column types
-                        @ColumnResult(name = "court_listing_profile_id", type = String.class),
-                        @ColumnResult(name = "oucode", type = String.class),
-                        @ColumnResult(name = "court_room_id", type = String.class),
-                        @ColumnResult(name = "court_room_number", type = Integer.class),
-                        @ColumnResult(name = "court_house_id", type = String.class),
-                        @ColumnResult(name = "court_house_name", type = String.class),
-                        @ColumnResult(name = "court_room_name", type = String.class),
-                        @ColumnResult(name = "operational_unit", type = String.class),
-                        @ColumnResult(name = "rota_business_type", type = String.class),
-                        @ColumnResult(name = "panel", type = String.class),
-                        @ColumnResult(name = "court_session", type = String.class),
-                        @ColumnResult(name = "active", type = Boolean.class),
-                        @ColumnResult(name = "is_slot_based", type = Boolean.class),
-                        @ColumnResult(name = "session_start", type = LocalDate.class),
-                        @ColumnResult(name = "max_slot", type = Integer.class),
-                        @ColumnResult(name = "max_duration_mins", type = Integer.class),
-                        @ColumnResult(name = "available_slot", type = Integer.class),
-                        @ColumnResult(name = "available_duration_mins", type = Integer.class),
-                        @ColumnResult(name = "hasHearingsBooked", type = Boolean.class),
-                        @ColumnResult(name = "created_on", type = Timestamp.class),
-                        @ColumnResult(name = "updated_on", type = Timestamp.class)
-                }
+@SqlResultSetMappings({
+        @SqlResultSetMapping(
+                name = "CourtScheduleEntityMappingForSlots",
+                classes = @ConstructorResult(
+                        targetClass = CourtSchedule.class,
+                        columns = {
+                                @ColumnResult(name = "id", type = String.class),
+                                @ColumnResult(name = "court_listing_profile_id", type = String.class),
+                                @ColumnResult(name = "oucode", type = String.class),
+                                @ColumnResult(name = "court_room_id", type = String.class),
+                                @ColumnResult(name = "court_room_number", type = Integer.class),
+                                @ColumnResult(name = "court_house_id", type = String.class),
+                                @ColumnResult(name = "court_house_name", type = String.class),
+                                @ColumnResult(name = "court_room_name", type = String.class),
+                                @ColumnResult(name = "operational_unit", type = String.class),
+                                @ColumnResult(name = "rota_business_type", type = String.class),
+                                @ColumnResult(name = "panel", type = String.class),
+                                @ColumnResult(name = "court_session", type = String.class),
+                                @ColumnResult(name = "active", type = Boolean.class),
+                                @ColumnResult(name = "is_slot_based", type = Boolean.class),
+                                @ColumnResult(name = "session_start", type = LocalDate.class),
+                                @ColumnResult(name = "max_slot", type = Integer.class),
+                                @ColumnResult(name = "max_duration_mins", type = Integer.class),
+                                @ColumnResult(name = "available_slot", type = Integer.class),
+                                @ColumnResult(name = "available_duration_mins", type = Integer.class),
+                                @ColumnResult(name = "support_ad_split", type = Boolean.class),
+                                @ColumnResult(name = "max_ad_morning_duration", type = Integer.class),
+                                @ColumnResult(name = "max_ad_afternoon_duration", type = Integer.class),
+                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class),
+                                @ColumnResult(name = "session_start_time", type = Date.class),
+                                @ColumnResult(name = "session_end_time", type = Date.class),
+                                @ColumnResult(name = "created_on", type = Timestamp.class),
+                                @ColumnResult(name = "updated_on", type = Timestamp.class),
+                                @ColumnResult(name = "totalbookedformorning", type = Integer.class),
+                                @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
+                                @ColumnResult(name = "totalbooked", type = Integer.class)
+                        }
+                )
+        ),
+        @SqlResultSetMapping(
+                name = "CourtScheduleEntityMappingForView",
+                classes = @ConstructorResult(
+                        targetClass = CourtSchedule.class,
+                        columns = {
+                                @ColumnResult(name = "id", type = String.class), // Replace with actual column types
+                                @ColumnResult(name = "court_listing_profile_id", type = String.class),
+                                @ColumnResult(name = "oucode", type = String.class),
+                                @ColumnResult(name = "court_room_id", type = String.class),
+                                @ColumnResult(name = "court_room_number", type = Integer.class),
+                                @ColumnResult(name = "court_house_id", type = String.class),
+                                @ColumnResult(name = "court_house_name", type = String.class),
+                                @ColumnResult(name = "court_room_name", type = String.class),
+                                @ColumnResult(name = "operational_unit", type = String.class),
+                                @ColumnResult(name = "rota_business_type", type = String.class),
+                                @ColumnResult(name = "panel", type = String.class),
+                                @ColumnResult(name = "court_session", type = String.class),
+                                @ColumnResult(name = "active", type = Boolean.class),
+                                @ColumnResult(name = "is_slot_based", type = Boolean.class),
+                                @ColumnResult(name = "session_start", type = LocalDate.class),
+                                @ColumnResult(name = "max_slot", type = Integer.class),
+                                @ColumnResult(name = "max_duration_mins", type = Integer.class),
+                                @ColumnResult(name = "available_slot", type = Integer.class),
+                                @ColumnResult(name = "available_duration_mins", type = Integer.class),
+                                @ColumnResult(name = "hasHearingsBooked", type = Boolean.class),
+                                @ColumnResult(name = "created_on", type = Timestamp.class),
+                                @ColumnResult(name = "updated_on", type = Timestamp.class),
+                                @ColumnResult(name = "support_ad_split", type = Boolean.class),
+                                @ColumnResult(name = "max_ad_morning_duration", type = Integer.class),
+                                @ColumnResult(name = "max_ad_afternoon_duration", type = Integer.class),
+                                @ColumnResult(name = "session_start_time", type = Date.class),
+                                @ColumnResult(name = "session_end_time", type = Date.class),
+                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class)
+                        }
+                )
         )
-)
+})
+
 public class CourtSchedule {
 
     @Id
@@ -98,6 +146,22 @@ public class CourtSchedule {
     @Column(name = "hasHearingsBooked", nullable = false)
     private Boolean hasHearingsBooked;
 
+    @Column(name = "support_ad_split", nullable = false)
+    private Boolean supportAdSplit;
+    @Column(name = "max_ad_morning_duration", nullable = false)
+    private Integer maxAdMorningDuration;
+    @Column(name = "max_ad_afternoon_duration", nullable = false)
+    private Integer maxAdAfternoonDuration;
+
+    @Column(name = "session_start_time", nullable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date sessionStartTime;
+    @Column(name = "session_end_time", nullable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date sessionEndTime;
+
+    @Column(name = "is_overbooking_allowed", nullable = false)
+    private Boolean isOverbookingAllowed;
 
     @CreationTimestamp
     @Temporal(TemporalType.TIMESTAMP)
@@ -109,11 +173,19 @@ public class CourtSchedule {
     @Column(name = "updated_on", nullable = false)
     private Date updatedOn;
 
+    @Transient
+    private Integer totalBookedMorning;
+
+    @Transient
+    private Integer totalBookedAfternoon;
+
+    @Transient
+    private Integer totalBooked;
+
     public CourtSchedule() {
         //For JPA
     }
 
-    //this constructor is used in the SqlResultSetMapping. columnn order is significant!
     public CourtSchedule(final String courtScheduleId,
                          final String listingProfileId,
                          final String ouCode,
@@ -135,7 +207,13 @@ public class CourtSchedule {
                          final Integer availableDuration,
                          final Boolean hasHearingsBooked,
                          final Date createdOn,
-                         final Date updatedOn) {
+                         final Date updatedOn,
+                         final Boolean supportAdSplit,
+                         final Integer maxAdMorningDuration,
+                         final Integer maxAdAfternoonDuration,
+                         final Date sessionStartTime,
+                         final Date sessionEndTime,
+                         final Boolean isOverbookingAllowed) {
         this.courtRoomNumber = courtRoomNumber;
         this.courtScheduleId = courtScheduleId;
         this.listingProfileId = listingProfileId;
@@ -158,8 +236,76 @@ public class CourtSchedule {
         this.hasHearingsBooked = hasHearingsBooked;
         this.createdOn = createdOn;
         this.updatedOn = updatedOn;
+        this.supportAdSplit = supportAdSplit;
+        this.maxAdMorningDuration = maxAdMorningDuration;
+        this.maxAdAfternoonDuration = maxAdAfternoonDuration;
+        this.sessionStartTime = sessionStartTime;
+        this.sessionEndTime = sessionEndTime;
+        this.isOverbookingAllowed = isOverbookingAllowed;
     }
 
+    //this constructor is used in the SqlResultSetMapping. columnn order is significant!
+    public CourtSchedule(final String id,
+                         final String courtListingProfileId,
+                         final String ouCode,
+                         final String courtRoomId,
+                         final Integer courtRoomNumber,
+                         final String courtHouseId,
+                         final String courtHouseName,
+                         final String courtRoomName,
+                         final String operationalUnit,
+                         final String businessType,
+                         final String panel,
+                         final String courtSession,
+                         final Boolean active,
+                         final Boolean slotBased,
+                         final LocalDate sessionDate,
+                         final Integer maxSlots,
+                         final Integer maxDuration,
+                         final Integer availableSlots,
+                         final Integer availableDuration,
+                         final Boolean supportAdSplit,
+                         final Integer maxAdMorningDuration,
+                         final Integer maxAdAfternoonDuration,
+                         final Boolean isOverbookingAllowed,
+                         final Date sessionStartTime,
+                         final Date sessionEndTime,
+                         final Date createdOn,
+                         final Date updatedOn,
+                         final Integer totalBookedMorning,
+                         final Integer totalBookedAfternoon,
+                         final Integer totalBooked) {
+        this.courtScheduleId = id;
+        this.listingProfileId = courtListingProfileId;
+        this.ouCode = ouCode;
+        this.courtRoomId = courtRoomId;
+        this.courtRoomNumber = courtRoomNumber;
+        this.courtHouseId = courtHouseId;
+        this.courtHouseName = courtHouseName;
+        this.courtRoomName = courtRoomName;
+        this.operationalUnit = operationalUnit;
+        this.businessType = businessType;
+        this.panel = panel;
+        this.courtSession = courtSession;
+        this.slotBased = slotBased;
+        this.active = active;
+        this.sessionDate = sessionDate;
+        this.maxSlots = maxSlots;
+        this.availableSlots = availableSlots;
+        this.maxDuration = maxDuration;
+        this.availableDuration = availableDuration;
+        this.maxAdMorningDuration = maxAdMorningDuration;
+        this.maxAdAfternoonDuration = maxAdAfternoonDuration;
+        this.isOverbookingAllowed = isOverbookingAllowed;
+        this.createdOn = createdOn;
+        this.updatedOn = updatedOn;
+        this.supportAdSplit = supportAdSplit;
+        this.totalBookedMorning = totalBookedMorning;
+        this.totalBookedAfternoon = totalBookedAfternoon;
+        this.sessionStartTime = sessionStartTime;
+        this.sessionEndTime = sessionEndTime;
+        this.totalBooked = totalBooked;
+    }
 
 
     public String getCourtScheduleId() {
@@ -339,6 +485,78 @@ public class CourtSchedule {
         return this;
     }
 
+    public Boolean getSupportAdSplit() {
+        return supportAdSplit;
+    }
+
+    public void setSupportAdSplit(Boolean supportAdSplit) {
+        this.supportAdSplit = supportAdSplit;
+    }
+
+    public Integer getMaxAdMorningDuration() {
+        return maxAdMorningDuration;
+    }
+
+    public void setMaxAdMorningDuration(Integer maxAdMorningDuration) {
+        this.maxAdMorningDuration = maxAdMorningDuration;
+    }
+
+    public Integer getMaxAdAfternoonDuration() {
+        return maxAdAfternoonDuration;
+    }
+
+    public void setMaxAdAfternoonDuration(Integer maxAdAfternoonDuration) {
+        this.maxAdAfternoonDuration = maxAdAfternoonDuration;
+    }
+
+    public Date getSessionStartTime() {
+        return sessionStartTime;
+    }
+
+    public void setSessionStartTime(Date sessionStartTime) {
+        this.sessionStartTime = sessionStartTime;
+    }
+
+    public Date getSessionEndTime() {
+        return sessionEndTime;
+    }
+
+    public void setSessionEndTime(Date sessionEndTime) {
+        this.sessionEndTime = sessionEndTime;
+    }
+
+    public Boolean getIsOverbookingAllowed() {
+        return isOverbookingAllowed;
+    }
+
+    public void setIsOverbookingAllowed(Boolean isOverbookingAllowed) {
+        this.isOverbookingAllowed = isOverbookingAllowed;
+    }
+
+    public Integer getTotalBookedMorning() {
+        return totalBookedMorning;
+    }
+
+    public void setTotalBookedMorning(Integer totalBookedMorning) {
+        this.totalBookedMorning = totalBookedMorning;
+    }
+
+    public Integer getTotalBookedAfternoon() {
+        return totalBookedAfternoon;
+    }
+
+    public void setTotalBookedAfternoon(Integer totalBookedAfternoon) {
+        this.totalBookedAfternoon = totalBookedAfternoon;
+    }
+
+    public Integer getTotalBooked() {
+        return totalBooked;
+    }
+
+    public void setTotalBooked(Integer totalBooked) {
+        this.totalBooked = totalBooked;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -364,7 +582,16 @@ public class CourtSchedule {
                 && Objects.equals(getAvailableSlots(), that.getAvailableSlots())
                 && Objects.equals(getAvailableDuration(), that.getAvailableDuration())
                 && Objects.equals(getCreatedOn(), that.getCreatedOn())
-                && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
+                && Objects.equals(getUpdatedOn(), that.getUpdatedOn())
+                && Objects.equals(getSupportAdSplit(), that.getSupportAdSplit())
+                && Objects.equals(getMaxAdMorningDuration(), that.getMaxAdMorningDuration())
+                && Objects.equals(getMaxAdAfternoonDuration(), that.getMaxAdAfternoonDuration())
+                && Objects.equals(getSessionStartTime(), that.getSessionStartTime())
+                && Objects.equals(getSessionEndTime(), that.getSessionEndTime())
+                && Objects.equals(getIsOverbookingAllowed(), that.getIsOverbookingAllowed())
+                && Objects.equals(getTotalBookedMorning(), that.getTotalBookedMorning())
+                && Objects.equals(getTotalBookedAfternoon(), that.getTotalBookedAfternoon())
+                && Objects.equals(getTotalBooked(), that.getTotalBooked());
     }
 
     @Override
@@ -373,7 +600,8 @@ public class CourtSchedule {
                 getCourtRoomId(), getCourtRoomNumber(), getCourtHouseId(), getCourtHouseName(),
                 getCourtRoomName(), getOperationalUnit(), getBusinessType(), getPanel(), getCourtSession(),
                 isActive(), isSlotBased(), getSessionDate(), getMaxSlots(), getMaxDuration(), getAvailableSlots(),
-                getAvailableDuration(), getCreatedOn(), getUpdatedOn());
+                getAvailableDuration(), getCreatedOn(), getUpdatedOn(), getSupportAdSplit(), getMaxAdMorningDuration(), getMaxAdAfternoonDuration(),
+                getSessionStartTime(), getSessionEndTime(), getIsOverbookingAllowed(), getTotalBookedMorning(), getTotalBookedAfternoon(), getTotalBooked());
     }
 
     @Override
@@ -400,6 +628,15 @@ public class CourtSchedule {
                 ", availableDuration=" + availableDuration +
                 ", createdOn=" + createdOn +
                 ", updatedOn=" + updatedOn +
+                ", supportAdSplit=" + supportAdSplit +
+                ", maxAdMorningDuration=" + maxAdMorningDuration +
+                ", maxAdAfternoonDuration=" + maxAdAfternoonDuration +
+                ", sessionStartTime=" + sessionStartTime +
+                ", sessionEndTime=" + sessionEndTime +
+                ", isOverbookingAllowed=" + isOverbookingAllowed +
+                ", totalBookedMorning=" + totalBookedMorning +
+                ", totalBookedAfternoon=" + totalBookedAfternoon +
+                ", totalBooked=" + totalBooked +
                 '}';
     }
 }

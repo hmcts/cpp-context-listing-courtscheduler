@@ -7,7 +7,14 @@
       "businessType": "TRL",
       "duration": 20,
       "panel": "YOUTH",
-      "repeatDays": ["Monday", "Wednesday", "Friday"]
+      "repeatDays": [
+        "Monday",
+        "Wednesday",
+        "Friday"
+      ],
+      "sessionStartTime": "10:00",
+      "sessionEndTime": "12:00",
+      "isOverbookingAllowed": true
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
@@ -16,7 +23,13 @@
       "businessType": "TRL",
       "duration": 20,
       "panel": "ADULT",
-      "repeatDays": ["Tuesday", "Thursday"]
+      "repeatDays": [
+        "Tuesday",
+        "Thursday"
+      ],
+      "sessionStartTime": "14:00",
+      "sessionEndTime": "17:00",
+      "isOverbookingAllowed": true
     }
   ],
   "repeatPattern": {

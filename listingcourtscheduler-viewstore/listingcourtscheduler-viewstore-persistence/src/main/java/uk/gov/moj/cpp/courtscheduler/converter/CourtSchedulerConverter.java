@@ -1,9 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
-import java.text.ParseException;
+import static java.util.Objects.nonNull;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils.updateTotalBooked;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
+
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,12 +21,61 @@ import org.slf4j.LoggerFactory;
 public final class CourtSchedulerConverter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtSchedulerConverter.class);
+    public static final int DEFAULT_DURATION = 180;
 
     private CourtSchedulerConverter() {
     }
 
     public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
-        return new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
+        final Boolean isAllDaySplit = courtScheduleEntity.getSupportAdSplit();
+        final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder()
+                .withListingProfileId(courtScheduleEntity.getListingProfileId())
+                .withOuCode(courtScheduleEntity.getOuCode())
+                .withCourtRoomNumber(courtScheduleEntity.getCourtRoomNumber())
+                .withOperationalUnit(courtScheduleEntity.getOperationalUnit())
+                .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
+                .withMaxDuration(courtScheduleEntity.getMaxDuration())
+                .withTotalBooked(courtScheduleEntity.getTotalBooked())
+                .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
+                .withAvailableSlots(courtScheduleEntity.getAvailableSlots())
+                .withMaxSlots(courtScheduleEntity.getMaxSlots())
+                .withBusinessType(courtScheduleEntity.getBusinessType())
+                .withCourtHouseId(courtScheduleEntity.getCourtHouseId())
+                .withCourtHouseName(courtScheduleEntity.getCourtHouseName())
+                .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
+                .withCourtRoomName(courtScheduleEntity.getCourtRoomName())
+                .withCourtSession(courtScheduleEntity.getCourtSession())
+                .withSessionDate(courtScheduleEntity.getSessionDate())
+                .withSlotBased(courtScheduleEntity.isSlotBased())
+                .withActive(courtScheduleEntity.isActive())
+                .withPanel(courtScheduleEntity.getPanel())
+                .withAllDaySplit(nonNull(isAllDaySplit) && isAllDaySplit)
+                .withCreatedOn(courtScheduleEntity.getCreatedOn())
+                .withUpdatedOn(courtScheduleEntity.getUpdatedOn())
+                .withSessionStartTime(courtScheduleEntity.getSessionStartTime())
+                .withSessionEndTime(courtScheduleEntity.getSessionEndTime());
+        if (nonNull(isAllDaySplit) && Boolean.TRUE.equals(isAllDaySplit)) {
+            courtScheduleBuilder
+                    .withMaxDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration())
+                    .withMaxDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration())
+                    .withTotalBookedForMorning(courtScheduleEntity.getTotalBookedMorning())
+                    .withTotalBookedForAfternoon(courtScheduleEntity.getTotalBookedAfternoon())
+                    .withAvailableDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration() - courtScheduleEntity.getTotalBookedMorning())
+                    .withAvailableDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration() - courtScheduleEntity.getTotalBookedAfternoon());
+        }
+
+        return courtScheduleBuilder.build();
+    }
+
+    public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity,
+                                                                             final List<AllocatedListingEachBooked> allocatedListingEachBooked) {
+        final List<AllocatedListingEachBooked> allocatedListingEachBookedForThisSchedule = allocatedListingEachBooked.stream()
+                .filter(eachBooked -> eachBooked.getCourtScheduleId().equals(courtScheduleEntity.getCourtScheduleId()))
+                .toList();
+
+        final Integer totalBooked = allocatedListingEachBookedForThisSchedule.stream().mapToInt(AllocatedListingEachBooked::getDuration).sum();
+        final Boolean isAllDaySplit = courtScheduleEntity.getSupportAdSplit();
+        final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
                 .withListingProfileId(courtScheduleEntity.getListingProfileId())
                 .withOuCode(courtScheduleEntity.getOuCode())
                 .withCourtRoomNumber(courtScheduleEntity.getCourtRoomNumber())
@@ -36,10 +95,37 @@ public final class CourtSchedulerConverter {
                 .withSlotBased(courtScheduleEntity.isSlotBased())
                 .withActive(courtScheduleEntity.isActive())
                 .withPanel(courtScheduleEntity.getPanel())
+                .withTotalBooked(totalBooked)
+                .withAllDaySplit(nonNull(isAllDaySplit) && isAllDaySplit)
+                .withMaxDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration())
+                .withMaxDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration())
                 .withCreatedOn(courtScheduleEntity.getCreatedOn())
                 .withUpdatedOn(courtScheduleEntity.getUpdatedOn())
-                .withHasHearingsBooked(courtScheduleEntity.getHasHearingsBooked())
-                .build();
+                .withTotalBooked(totalBooked)
+                .withSessionStartTime(courtScheduleEntity.getSessionStartTime())
+                .withSessionEndTime(courtScheduleEntity.getSessionEndTime());
+
+        if (Boolean.TRUE.equals(courtScheduleEntity.getSupportAdSplit()) && ALL_DAY.equals(courtScheduleEntity.getCourtSession())) {
+            final AtomicInteger totalBookedForMorning = new AtomicInteger(0);
+            final AtomicInteger totalBookedForAfternoon = new AtomicInteger(0);
+
+            allocatedListingEachBookedForThisSchedule
+                    .forEach(eachBooked -> {
+                        if ((eachBooked.getHearingStartTime().after(courtScheduleEntity.getSessionStartTime()) || eachBooked.getHearingStartTime().equals(courtScheduleEntity.getSessionStartTime()))
+                                && eachBooked.getHearingStartTime().before(combineDateAndTime(courtScheduleEntity.getSessionDate(), DEFAULT_AFTERNOON_START_TIME))
+                        ) {
+                            updateTotalBooked(eachBooked.getDuration(), totalBookedForMorning, totalBookedForAfternoon, DEFAULT_DURATION);
+                        } else {
+                            totalBookedForAfternoon.set(totalBookedForAfternoon.get() + eachBooked.getDuration());
+                        }
+                    });
+            courtScheduleBuilder
+                    .withTotalBookedForMorning(totalBookedForMorning.get())
+                    .withTotalBookedForAfternoon(totalBookedForAfternoon.get())
+                    .withAvailableDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration() - totalBookedForMorning.get())
+                    .withAvailableDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration() - totalBookedForAfternoon.get());
+        }
+        return courtScheduleBuilder.build();
     }
 
     public static uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule convertToMi(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
@@ -70,9 +156,10 @@ public final class CourtSchedulerConverter {
 
     private static Date getDate(LocalDate localDate) {
         try {
-            return new SimpleDateFormat("yyyy-MM-dd").parse(localDate.toString());
-        } catch (ParseException e) {
-            LOGGER.error("Unable to parse date from, {}", localDate);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            return sdf.parse(localDate.toString());
+        } catch (Exception e) {
+            LOGGER.error("Error converting LocalDate to Date", e);
             return null;
         }
     }

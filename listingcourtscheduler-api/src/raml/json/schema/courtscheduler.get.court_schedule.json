@@ -73,8 +73,29 @@
                 "slotBased": {
                   "type": "boolean"
                 },
-                "hasHearingsBooked": {
+                "totalBooked": {
+                  "type": "number"
+                },
+                "allDaySplit": {
                   "type": "boolean"
+                },
+                "maxDurationForMorning": {
+                  "type": "integer"
+                },
+                "maxDurationForAfternoon": {
+                  "type": "integer"
+                },
+                "totalBookedForMorning": {
+                  "type": "integer"
+                },
+                "totalBookedForAfternoon": {
+                  "type": "integer"
+                },
+                "availableDurationForMorning": {
+                    "type": "integer"
+                },
+                "availableDurationForAfternoon": {
+                    "type": "integer"
                 }
               },
               "required": [

@@ -14,18 +14,19 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataCourtRoomSessionAllocations;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -34,11 +35,10 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatu
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -50,7 +50,6 @@ import com.google.common.base.Stopwatch;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -70,8 +69,8 @@ class RotaFileProcessorIT extends AbstractIT {
     private final String azureBlobOutputContainerName = "schedulelistingoutput";
     private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=+p3GXQguT4npJqxd6gAPfDgLu0YuJ3n1+hpTQYg1BQn0UL5Ut+bDDE7l2qrRNTt/yW5jNyf5mRUmM11F8dnkpA==;EndpointSuffix=core.windows.net;";
 
-    public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 300;
-    public static final int DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC = 300;
+    public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
+    public static final int DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC = 50;
 
     private LocalDateTime maxCreatedOnForCourtSchedule;
     private LocalDateTime maxUpdatedOnForCourtSchedule;
@@ -83,18 +82,9 @@ class RotaFileProcessorIT extends AbstractIT {
     private static final String BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME = "IT_Test_lja_bedfordshire_rota_20240402T190039Z";
     private static final String WESTYORK_SHIRE_MASTER_FILE_BASE_NAME = "IT_Test_lja_westyorkshire_rota_20240827T154745Z";
 
-    @BeforeAll
-    static void setupRotaFileProcessorIT() {
-        setupUserAsSystemUser(USER_ID.toString());
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-        stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
-        stubGetReferenceDataJudiciaries("referencedata.judiciaries.json");
-    }
 
     @BeforeEach
     public void setUpAzureBlobClientService() throws SQLException {
-        databaseSeeder.cleanDb();
         final StorageApplicationParameters storageApplicationParameters = new StorageApplicationParameters();
 
         setField(azureBlobClientService, "rotaslStorageConnectionString", ROTASL_STORAGE_CONNECTION_STRING);
@@ -196,7 +186,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
         final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, payloadAsJsonString);
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
@@ -222,6 +212,8 @@ class RotaFileProcessorIT extends AbstractIT {
         final Optional<CourtSchedule> allocatedSlotNotBeingInSnapshotFile = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305478")).findAny();
         assertTrue(allocatedSlotNotBeingInSnapshotFile.isPresent());
         assertTrue(allocatedSlotNotBeingInSnapshotFile.get().isActive());
+
+        assertDefaultStartTimeAndEndTime(courtSchedulesFromSnapshotFile);
 
         filesToBeDeletedFromOutputContainer.add(finalSnapshotFileName);
     }
@@ -269,7 +261,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
         final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, payloadAsJsonString);
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
@@ -319,7 +311,7 @@ class RotaFileProcessorIT extends AbstractIT {
         String payloadAsJsonString = getPayload("rota-clean-redundant-data-request.json");
         payloadAsJsonString = payloadAsJsonString.replace("NUMBER_OF_PREVIOUS_MONTHS_AND_OLDER", String.valueOf(numberOfPreviousMonthsAndOlder));
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL, "application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json", USER_ID, payloadAsJsonString);
+        final Response response = postCommand(ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL, "application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json", SYSTEM_USER_ID, payloadAsJsonString);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
         final LocalDate OneHundredAnd80DaysBeforeNow = LocalDate.now().minusDays(numberOfPreviousDaysAndOlder);
@@ -341,7 +333,9 @@ class RotaFileProcessorIT extends AbstractIT {
         assertTrue(databaseReader.allocatedListings().isEmpty());
     }
 
-    private void processFullRotaFile(final String fileBlobBaseName, final boolean migrated,
+
+    private void processFullRotaFile(final String fileBlobBaseName,
+                                     final boolean migrated,
                                      final int expectedNumberOfSlots,
                                      final int expectedNumberOfJudiciaries,
                                      final int expectedNumberOfJudiciariesCreatedAfterMigration) throws SQLException, IOException {
@@ -362,7 +356,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
         final String payloadAsJsonString = getPayload("rota-file-processor-request.json");
         // then call rota file processor api
-        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", USER_ID, payloadAsJsonString);
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
@@ -405,6 +399,10 @@ class RotaFileProcessorIT extends AbstractIT {
             assertEquals(expectedNumberOfJudiciaries, courtScheduleJudiciaryEntities.size());
         }
 
+        if (!migrated) {
+            assertDefaultStartTimeAndEndTime(courtScheduleEntities);
+        }
+
         filesToBeDeletedFromOutputContainer.add(finalMasterRotaFileName);
     }
 
@@ -419,14 +417,30 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     private void insertAllocatedListingsForCourtSchedules(final List<CourtSchedule> courtSchedules180DaysOlderOrMore) throws SQLException {
-        await().pollDelay(Duration.ofSeconds(2)).untilAsserted(() -> assertTrue(true));
-        for(final CourtSchedule courtSchedule180DaysOlderOrMore : courtSchedules180DaysOlderOrMore) {
-            final CourtSchedule courtSchedule = databaseReader.courtScheduleById(courtSchedule180DaysOlderOrMore.getCourtScheduleId());
-            if (nonNull(courtSchedule)) {
-                databaseSeeder.insertAllocatedListing(getAllocatedListing(courtSchedule180DaysOlderOrMore));
-            } else {
-                logger.info("courtScheduleId not found to be inserted to allocated_listings: {}", courtSchedule180DaysOlderOrMore.getCourtScheduleId());
+        if (courtSchedules180DaysOlderOrMore.isEmpty()) {
+            return;
+        }
+
+        final List<AllocatedListing> allocatedListings = new ArrayList<>();
+
+        // Use a single connection for all database operations
+        try (Connection connection = databaseSeeder.getNewConnection()) {
+            connection.setAutoCommit(false);
+
+            for(final CourtSchedule courtSchedule180DaysOlderOrMore : courtSchedules180DaysOlderOrMore) {
+                final CourtSchedule courtSchedule = databaseReader.courtScheduleById(courtSchedule180DaysOlderOrMore.getCourtScheduleId(), connection);
+                if (nonNull(courtSchedule)) {
+                    allocatedListings.add(getAllocatedListing(courtSchedule180DaysOlderOrMore));
+                } else {
+                    logger.info("courtScheduleId not found to be inserted to allocated_listings: {}", courtSchedule180DaysOlderOrMore.getCourtScheduleId());
+                }
             }
+
+            if (!allocatedListings.isEmpty()) {
+                databaseSeeder.insertAllocatedListingsBatch(allocatedListings, connection);
+            }
+
+            connection.commit();
         }
     }
 
@@ -436,8 +450,26 @@ class RotaFileProcessorIT extends AbstractIT {
         allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
         allocatedListing.setOucode(courtSchedule.getOuCode());
-        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0 ).atZone(ZoneId.of("Europe/London")).toInstant()));
+        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0 ).atZone(LONDON_ZONE).toInstant()));
 
         return allocatedListing;
+    }
+
+    private static void assertDefaultStartTimeAndEndTime(final List<CourtSchedule> courtSchedules) {
+        courtSchedules.forEach(courtSchedule -> {
+            assertNotNull(courtSchedule.getSessionStartTime());
+            assertNotNull(courtSchedule.getSessionEndTime());
+
+            if (AM_SESSION.equals(courtSchedule.getCourtSession())) {
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_START_TIME));
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_END_TIME));
+            } else if (PM_SESSION.equals(courtSchedule.getCourtSession())) {
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_START_TIME));
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_END_TIME));
+            } else if (ALL_DAY.equals(courtSchedule.getCourtSession())) {
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_START_TIME));
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_END_TIME));
+            }
+        });
     }
 }

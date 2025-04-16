@@ -7,7 +7,9 @@
       "businessType": "Business Type 1",
       "duration": 2,
       "panel": "YOUTH",
-      "repeatDays": ["MON", "WED", "FRI"]
+      "repeatDays": ["MON", "WED", "FRI"],
+      "sessionStartTime": "10:00",
+      "sessionEndTime": "12:00"
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
@@ -16,7 +18,9 @@
       "businessType": "Business Type 2",
       "duration": 3,
       "panel": "ADULT",
-      "repeatDays": ["TUE", "THU"]
+      "repeatDays": ["TUE", "THU"],
+      "sessionStartTime": "13:00",
+      "sessionEndTime": "15:00"
     }
   ],
   "repeatPattern": {

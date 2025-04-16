@@ -11,6 +11,7 @@ import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setFi
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingInfo;
+import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
@@ -61,7 +62,7 @@ public class SlotsUpdateServiceTest {
 
         service.update(allocatedSlots);
 
-        verify(courtScheduleRepository).saveBookedSlots(allocatedSlots, false);
+        verify(courtScheduleRepository).saveBookedSlots(allocatedSlots, false, false);
     }
 
     @Test
@@ -82,7 +83,7 @@ public class SlotsUpdateServiceTest {
 
         service.update(allocatedSlots);
 
-        verify(courtScheduleRepository, atLeastOnce()).saveBookedSlots(any(), eq(true));
+        verify(courtScheduleRepository, atLeastOnce()).saveBookedSlots(any(), eq(true), eq(false));
     }
 
     @Test
@@ -118,5 +119,29 @@ public class SlotsUpdateServiceTest {
 
             service.update(allocatedSlots);
         });
+    }
+
+    @Test
+    public void shouldSearchUpdateAllocatedSlots() {
+
+        final String payload = fileToString("/test-data/courtscheduler.search.update.available.hearing.slots-police.json");
+        final List<AllocatedSlot> allocatedSlots = new AllocatedSlotConverter().convert(payload).getHearingSlots();
+
+        when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(true))).thenReturn(new Result("", true));
+
+        service.searchUpdate(allocatedSlots);
+
+        verify(courtScheduleRepository).saveBookedSlots(allocatedSlots, false, true);
+    }
+
+    @Test
+    public void shouldSearchUpdateAllocatedSlots_NonPolice() {
+
+        final String payload = fileToString("/test-data/courtscheduler.search.update.available.hearing.slots-non-police.json");
+        final List<AllocatedSlot> allocatedSlots = new AllocatedSlotConverter().convert(payload).getHearingSlots();
+        when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(new Result("", true));
+        service.searchUpdate(allocatedSlots);
+
+        verify(courtScheduleRepository).saveBookedSlots(allocatedSlots, false, false);
     }
 }

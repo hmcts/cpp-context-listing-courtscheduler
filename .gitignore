@@ -60,3 +60,4 @@ buildContexts.sh
 lightning-jenkins.properties
 **/.DS_Store
 
+.vscode/settings.json

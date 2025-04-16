@@ -1,0 +1,45 @@
+{
+  "sessions": [
+    {
+      "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
+      "courtRoomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c",
+      "sessionType": "AD",
+      "businessType": "TRL",
+      "panel": "YOUTH",
+      "allDaySplit": true,
+      "maxDurationForMorning": MAX_DURATION_FOR_MORNING_SLOT_1,
+      "maxDurationForAfternoon": MAX_DURATION_FOR_AFTERNOON_SLOT_1,
+      "repeatDays": [
+        "Monday",
+        "Wednesday",
+        "Friday"
+      ],
+      "sessionStartTime": "10:00",
+      "sessionEndTime": "17:00",
+      "isOverbookingAllowed": true
+    },
+    {
+      "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
+      "courtRoomId": "41a41156-0ca9-3352-999e-8d26274bb1aa",
+      "sessionType": "AD",
+      "businessType": "TRL",
+      "panel": "ADULT",
+      "allDaySplit": true,
+      "maxDurationForMorning": MAX_DURATION_FOR_MORNING_SLOT_2,
+      "maxDurationForAfternoon": MAX_DURATION_FOR_AFTERNOON_SLOT_2,
+      "repeatDays": [
+        "Tuesday",
+        "Thursday"
+      ],
+      "sessionStartTime": "10:00",
+      "sessionEndTime": "17:00",
+      "isOverbookingAllowed": true
+    }
+  ],
+  "repeatPattern": {
+    "frequency": "EVERY_WEEK",
+    "repeatFor": 4,
+    "startDate": "START_DATE",
+    "endDate": "END_DATE"
+  }
+}

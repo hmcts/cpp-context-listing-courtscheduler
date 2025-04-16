@@ -14,9 +14,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -67,6 +69,19 @@ public class DatabaseReader {
         return executeCourtScheduleById(courtScheduleId);
     }
 
+    public CourtSchedule courtScheduleById(final String courtScheduleId, final Connection connection) {
+        try (final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_BY_ID_SQL)) {
+            statement.setString(1, courtScheduleId);
+            final ResultSet resultSet = statement.executeQuery();
+            if (nonNull(resultSet) && resultSet.next()) {
+                return resultSetToCourtSchedule(resultSet);
+            }
+            return null;
+        } catch (final SQLException exp) {
+            throw new RuntimeException("Exception while querying the DB", exp);
+        }
+    }
+
     public Pair<LocalDateTime, LocalDateTime> getMaxCreatedOnForCourtSchedule() {
         LocalDateTime maxCreatedOn = null;
         LocalDateTime maxUpdatedOn = null;
@@ -82,6 +97,7 @@ public class DatabaseReader {
             throw new RuntimeException("Exception while querying the DB", exp);
         }
     }
+
 
     public Pair<LocalDateTime, LocalDateTime> getMaxUpdatedAndCreatedOnForCourtScheduleJudiciary() {
         LocalDateTime maxCreatedOn = null;
@@ -220,9 +236,24 @@ public class DatabaseReader {
         courtSchedule.setMaxSlots(resultSet.getInt("max_slot"));
         courtSchedule.setMaxDuration(resultSet.getInt("max_duration_mins"));
         courtSchedule.setSlotBased(resultSet.getBoolean("is_slot_based"));
+        courtSchedule.setSupportAdSplit(resultSet.getBoolean("support_ad_split"));
+        courtSchedule.setMaxAdMorningDuration(resultSet.getInt("max_ad_morning_duration"));
+        courtSchedule.setMaxAdAfternoonDuration(resultSet.getInt("max_ad_afternoon_duration"));
         courtSchedule.setActive(resultSet.getBoolean("active"));
         courtSchedule.setCreatedOn(resultSet.getDate("created_on"));
         courtSchedule.setUpdatedOn(resultSet.getDate("updated_on"));
+
+        final Timestamp sessionStartTime = resultSet.getTimestamp("session_start_time");
+        if (nonNull(sessionStartTime)) {
+            courtSchedule.setSessionStartTime(new Date(sessionStartTime.getTime()));
+        }
+
+        final Timestamp sessionEndTime = resultSet.getTimestamp("session_end_time");
+        if (nonNull(sessionEndTime)) {
+            courtSchedule.setSessionEndTime(new Date(sessionEndTime.getTime()));
+        }
+
+        courtSchedule.setIsOverbookingAllowed(resultSet.getBoolean("is_overbooking_allowed"));
 
         return courtSchedule;
     }

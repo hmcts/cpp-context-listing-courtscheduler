@@ -37,6 +37,12 @@ public class CourtScheduleMapper {
         entity.setAvailableSlots(domain.getAvailableSlots());
         entity.setAvailableDuration(domain.getAvailableDuration());
         entity.setCreatedOn(domain.getCreatedOn());
+        entity.setSupportAdSplit(domain.isAllDaySplit());
+        entity.setMaxAdMorningDuration(domain.getMaxDurationForMorning());
+        entity.setMaxAdAfternoonDuration(domain.getMaxDurationForAfternoon());
+        entity.setSessionStartTime(domain.getSessionStartTime());
+        entity.setSessionEndTime(domain.getSessionEndTime());
+        entity.setIsOverbookingAllowed(domain.isOverbookingAllowed());
         return entity;
     }
 

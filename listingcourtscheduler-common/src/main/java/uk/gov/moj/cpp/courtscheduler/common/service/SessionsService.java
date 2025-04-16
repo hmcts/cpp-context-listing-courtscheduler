@@ -4,8 +4,11 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_ADULT_PANEL;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_AD_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_AM_OR_PM_SESSION;
@@ -15,6 +18,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.YOUTH;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toLocalTime;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteResponseConverter;
@@ -22,6 +28,7 @@ import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -39,6 +46,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
@@ -47,14 +55,15 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -69,6 +78,7 @@ import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.transaction.Transactional;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.QueryInvocationException;
@@ -80,8 +90,6 @@ public class SessionsService {
 
     private static final Logger logger = LoggerFactory.getLogger(SessionsService.class);
 
-    private static final String BUSINESS_TYPE_NOT_FOUND = "Business Type not found";
-    private static final String COURTROOM_NOT_FOUND = "Court Room not found";
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
     @Inject
@@ -119,19 +127,44 @@ public class SessionsService {
         return courtSchedules;
     }
 
-    public Result update(UpdateCourtSchedule updateCourtSchedule, Requester requester) {
+    public Result update(final UpdateCourtSchedule updateCourtSchedule, Requester requester) {
         uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
-        if (Objects.isNull(persistedCourtSchedule)) {
+        if (isNull(persistedCourtSchedule)) {
             return new Result(ErrorMessages.SESSION_NOT_FOUND, false);
         }
+
         final String persistedBusinessType = persistedCourtSchedule.getBusinessType();
         if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType)) {
             return new Result(ErrorMessages.BUSINESS_TYPE_CHANGE_NOT_ALLOWED, false);
         }
         boolean isChanged = checkEditValuesModified(updateCourtSchedule, persistedCourtSchedule);
 
-        if(isChanged) {
+        if (isChanged) {
             return new Result(ErrorMessages.SESSION_EDIT_ANOTHER_USER, false);
+        }
+
+        if (nonNull(persistedCourtSchedule.getSupportAdSplit()) && persistedCourtSchedule.getSupportAdSplit() != updateCourtSchedule.isAllDaySplit()) {
+            return new Result(ErrorMessages.ALL_DAY_SPLIT_CHANGE_NOT_ALLOWED, false);
+        }
+
+        if (StringUtils.isNotEmpty(updateCourtSchedule.getSessionStartTime()) && StringUtils.isNotEmpty(updateCourtSchedule.getSessionEndTime())) {
+            final LocalTime sessionStartTime = toLocalTime(updateCourtSchedule.getSessionStartTime());
+            final LocalTime sessionEndTime = toLocalTime(updateCourtSchedule.getSessionEndTime());
+
+            if (sessionStartTime.isAfter(sessionEndTime)) {
+                return new Result(ErrorMessages.SESSION_START_TIME_CANNOT_BE_LATER_THAN_END_TIME, false);
+            }
+            if (AM_SESSION.equals(updateCourtSchedule.getSessionType()) && sessionEndTime.isAfter(LocalTime.of(13, 0))) {
+                return new Result(ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED, false);
+            } else if ((AM_SESSION.equals(updateCourtSchedule.getSessionType()) || ALL_DAY.equals(updateCourtSchedule.getSessionType())) &&
+                    sessionStartTime.isBefore(LocalTime.of(0, 1))) {
+                return new Result(format(ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER, updateCourtSchedule.getSessionType()), false);
+            } else if (PM_SESSION.equals(updateCourtSchedule.getSessionType()) && sessionStartTime.isBefore(LocalTime.of(14, 0))) {
+                    return new Result(ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER, false);
+            } else if ((PM_SESSION.equals(updateCourtSchedule.getSessionType()) || ALL_DAY.equals(updateCourtSchedule.getSessionType())) &&
+                    sessionEndTime.isAfter(LocalTime.of(23, 59))) {
+                    return new Result(format(ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER, updateCourtSchedule.getSessionType()), false);
+            }
         }
 
         updateAvailability(updateCourtSchedule, persistedCourtSchedule);
@@ -169,17 +202,28 @@ public class SessionsService {
             updateCourtSchedule.setMaxSlots(0);
             updateCourtSchedule.setAvailableSlots(0);
 
+            if (nonNull(persistedCourtSchedule.getSupportAdSplit()) && Boolean.TRUE.equals(persistedCourtSchedule.getSupportAdSplit())) {
+                updateCourtSchedule.setMaxDurationForMorning(updateCourtSchedule.getMaxDurationForMorning());
+                updateCourtSchedule.setMaxDurationForAfternoon(updateCourtSchedule.getMaxDurationForAfternoon());
+            }
         }
     }
 
     private boolean checkEditValuesModified(final UpdateCourtSchedule updateCourtSchedule,
                                             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
-        boolean isChanged = false;
-
-        if(persistedCourtSchedule.getHasHearingsBooked() && (!StringUtils.equals(updateCourtSchedule.getCourtRoomId(), persistedCourtSchedule.getCourtRoomId()) ||
+        if (!Boolean.TRUE.equals(persistedCourtSchedule.getHasHearingsBooked())) {
+            return false;
+        }
+        boolean isChanged = !StringUtils.equals(updateCourtSchedule.getCourtRoomId(), persistedCourtSchedule.getCourtRoomId()) ||
                 !StringUtils.equals(updateCourtSchedule.getSessionType(), persistedCourtSchedule.getCourtSession()) ||
-                !StringUtils.equals(updateCourtSchedule.getPanel(), persistedCourtSchedule.getPanel()))) {
-            isChanged = true;
+                !StringUtils.equals(updateCourtSchedule.getPanel(), persistedCourtSchedule.getPanel());
+
+        if (StringUtils.isNotEmpty(updateCourtSchedule.getSessionStartTime()) && StringUtils.isNotEmpty(updateCourtSchedule.getSessionEndTime())) {
+            final Date sessionStartTimeWithDate = DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionStartTime());
+            final Date sessionEndTimeWithDate = DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionEndTime());
+
+            isChanged = !sessionStartTimeWithDate.equals(persistedCourtSchedule.getSessionStartTime()) ||
+                    !sessionEndTimeWithDate.equals(persistedCourtSchedule.getSessionStartTime());
         }
 
         return isChanged;
@@ -200,12 +244,21 @@ public class SessionsService {
     }
 
     public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam, Requester requester) {
-        List<CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(sessionsParam.getSessions());
-        courtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester)));
-        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = courtScheduleToDeleteResponseConverter.convert(courtSchedules);
+        final List<String> sessions = isEmpty(sessionsParam.getSessions())  ? new ArrayList<>() : sessionsParam.getSessions();
+        final List<CourtSchedule> allocatedCourtSchedules = courtScheduleRepository.deleteCourtSchedule(sessions);
+        allocatedCourtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester)));
+        List<AllocatedListingEachBooked> allocatedListingEachBooked = new ArrayList<>();
+        if(!isEmpty(allocatedCourtSchedules)) {
+        allocatedListingEachBooked = allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(allocatedCourtSchedules.stream()
+                .map(CourtSchedule::getCourtScheduleId)
+                .toList())
+                .stream()
+                .toList();
+        }
+        final List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = courtScheduleToDeleteResponseConverter.convert(allocatedCourtSchedules, allocatedListingEachBooked);
         final ListToJsonArrayConverter<CourtScheduleDeleteResponse> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
-        JsonArray jsonArray = courtSchedules.isEmpty() ? JsonValue.EMPTY_JSON_ARRAY : listToJsonArrayConverter.convert(courtScheduleDeleteResponses);
-        if(jsonArray == JsonValue.EMPTY_JSON_ARRAY) {
+        final JsonArray jsonArray = allocatedCourtSchedules.isEmpty() ? JsonValue.EMPTY_JSON_ARRAY : listToJsonArrayConverter.convert(courtScheduleDeleteResponses);
+        if (jsonArray == JsonValue.EMPTY_JSON_ARRAY) {
             return Json.createObjectBuilder()
                     .add(RequestParameterConstant.SESSIONS.getLabel(), jsonArray)
                     .build();
@@ -318,11 +371,11 @@ public class SessionsService {
         }
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule");
-        final int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(slotAndScheduleInfo.newSlots(), slotAndScheduleInfo.newCourtScheduleJudiciaries(), courtScheduleIdsOfSavedSlots,false, ouCodes);
+        final int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(slotAndScheduleInfo.newSlots(), slotAndScheduleInfo.newCourtScheduleJudiciaries(), courtScheduleIdsOfSavedSlots, false, ouCodes);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedules: {}", numberOfSavedJudiciarySchedules);
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule for existing migrated slots");
-        final int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(slotsForMigrated, slotAndScheduleInfo.courtScheduleJudiciariesForMigratedExistingSlots(), emptyList(),true, ouCodes);
+        final int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(slotsForMigrated, slotAndScheduleInfo.courtScheduleJudiciariesForMigratedExistingSlots(), emptyList(), true, ouCodes);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedulesForMigratedExistingSlots: {}", numberOfSavedJudiciarySchedulesForMigratedExistingSlots);
 
         logger.info("DD-15703:CourtScheduleRepository: before updateSlots");
@@ -347,8 +400,8 @@ public class SessionsService {
     }
 
     private List<String> saveSlots(final Collection<CourtSchedule> slots,
-                          final Map<String, BusinessType> businessTypeMap,
-                          final List<CourtSchedule> existingCourtSchedules) {
+                                   final Map<String, BusinessType> businessTypeMap,
+                                   final List<CourtSchedule> existingCourtSchedules) {
         final List<String> courtScheduleIdsOfSavedSlots = new ArrayList<>();
         slots.forEach(slot -> {
 
@@ -529,7 +582,7 @@ public class SessionsService {
         for (Session session : sessionList) {
             for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
                 LocalDate sessionDateCandidate = startDate.with(TemporalAdjusters.nextOrSame(dayOfWeek));
-                CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, requester);
+                CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, requester, session.getSessionStartTime(), session.getSessionEndTime());
                 courtScheduleList.add(courtSchedule);
             }
         }
@@ -544,15 +597,17 @@ public class SessionsService {
                     if (sessionDateCandidate.isAfter(endDate)) {
                         continue;
                     }
-                    CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, requester);
+                    CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, requester, session.getSessionStartTime(), session.getSessionEndTime());
                     courtScheduleList.add(courtSchedule);
                 }
             }
         }
     }
 
-    private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate, Requester requester) {
+    private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate, Requester requester, String sessionStartTime, String sessionEndTime) {
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder();
+
+        final DateUtils.sessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(session.getSessionType(), sessionStartTime, sessionEndTime);
         courtScheduleBuilder.withCourtScheduleId(UUID.randomUUID().toString())
                 .withBusinessType(session.getBusinessType())
                 .withCourtHouseId(session.getCourtCentreId())
@@ -560,10 +615,17 @@ public class SessionsService {
                 .withActive(true)
                 .withSessionDate(sessionDateCandidate)
                 .withCourtSession(session.getSessionType())
-                .withPanel(session.getPanelType());
+                .withPanel(session.getPanelType())
+                .withAllDaySplit(!isNull(session.isAllDaySplit()) && session.isAllDaySplit())
+                .withMaxDurationForMorning(session.getMaxDurationForMorning())
+                .withMaxDurationForAfternoon(session.getMaxDurationForAfternoon())
+                .withSessionStartTime(combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionStartTime()))
+                .withSessionEndTime(combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionEndTime()))
+                .withIsOverbookingAllowed(!isNull(session.isOverbookingAllowed()));
         enrichSession(courtScheduleBuilder, session.getSlotsOrDuration(), requester);
         return courtScheduleBuilder.build();
     }
+
 
     private void saveCourtSchedules(List<CourtSchedule> courtScheduleList) {
         List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleList.stream()
@@ -578,21 +640,24 @@ public class SessionsService {
         });
     }
 
-    private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsorDuration, Requester requester) {
+    private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsOrDuration, Requester requester) {
         final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType(), requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
         final CourtRoom courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId(), requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
         if (businessType.isSlot()) {
             builder.withSlotBased(true);
-            builder.withMaxSlots(maxSlotsorDuration);
-            builder.withAvailableSlots(maxSlotsorDuration);
+            builder.withMaxSlots(maxSlotsOrDuration);
+            builder.withAvailableSlots(maxSlotsOrDuration);
             builder.withMaxDuration(0);
             builder.withAvailableDuration(0);
         } else {
             builder.withSlotBased(false);
-            builder.withMaxDuration(maxSlotsorDuration);
-            builder.withAvailableDuration(maxSlotsorDuration);
             builder.withMaxSlots(0);
             builder.withAvailableSlots(0);
+            builder.withAvailableDuration(0);
+            if (!builder.isAllDaySplit()) {
+                builder.withMaxDuration(maxSlotsOrDuration);
+                builder.withAvailableDuration(maxSlotsOrDuration);
+            }
         }
 
         if (nonNull(courtRoom)) {
@@ -639,6 +704,7 @@ public class SessionsService {
                     violated = session.getSessionType().equals(sessionToCompare.getCourtSession()) || session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
                 }
             }
+
         }
         return violated;
     }

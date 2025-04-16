@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -8,7 +9,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
@@ -27,17 +27,11 @@ import javax.ws.rs.core.Response;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 public class ProvisionalBookingIT extends AbstractIT {
 
     private final String RELATIVE_PATH = "/provisionalBooking";
-
-    @BeforeAll
-    static void setupSystemUser() {
-        setupUserAsSystemUser(USER_ID.toString());
-    }
 
     @Test
     void shouldCreateProvisionalHearingSlot() throws SQLException {
@@ -50,7 +44,7 @@ public class ProvisionalBookingIT extends AbstractIT {
         String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json");
         provisionalBookingPayload = provisionalBookingPayload.replace("COURTSCHEDULER_ID", courtScheduleId);
 
-        final Response response = postCommand(RELATIVE_PATH, "application/vnd.courtscheduler.create.provisional.booking+json", USER_ID, provisionalBookingPayload);
+        final Response response = postCommand(RELATIVE_PATH, "application/vnd.courtscheduler.create.provisional.booking+json", SYSTEM_USER_ID, provisionalBookingPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         String responseString = response.readEntity(String.class); // Ensure to read the entity as String
@@ -62,7 +56,6 @@ public class ProvisionalBookingIT extends AbstractIT {
     void shouldRetrieveProvisionalBooking() throws Exception {
         String courtScheduleId = UUID.randomUUID().toString();
         String bookingId = UUID.randomUUID().toString();
-        setupUserAsSystemUser(USER_ID.toString());
 
 
         CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
@@ -86,8 +79,8 @@ public class ProvisionalBookingIT extends AbstractIT {
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> map = mapper.readValue(provisionalBooking, new TypeReference<>() {});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_PATH, "application/vnd.courtscheduler.get.provisional.booking+json", USER_ID, map);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_PATH, "application/vnd.courtscheduler.get.provisional.booking+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
     }
