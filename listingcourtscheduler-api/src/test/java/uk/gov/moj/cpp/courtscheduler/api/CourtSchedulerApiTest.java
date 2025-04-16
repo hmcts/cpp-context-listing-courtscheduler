@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
@@ -14,10 +13,8 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.INVALID_PARAMETER_COMBINATION;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
-import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.IS_SLOT_BASED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
 
 import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
@@ -53,7 +50,6 @@ import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 
 import java.io.IOException;
@@ -294,26 +290,6 @@ class CourtSchedulerApiTest {
         verify(slotsSearchService, atLeastOnce()).search(hearingSlotRequestParamConverter.convert(jsonObject));
         verify(enveloper, atLeastOnce()).withMetadataFrom(getHearingSlotsEnvelope, requestName);
     }
-
-    @Test
-    void shouldRetrieveHearingSlotsInvalid() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.get.hearing.slots_invalid.json"));
-        final String requestName = "courtscheduler.get.hearing.slots";
-        final JsonEnvelope getHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
-
-        when(enveloper.withMetadataFrom(getHearingSlotsEnvelope, requestName)).thenReturn(function);
-        when(hearingSlotRequestParamConverter.convert(jsonObject)).thenReturn(new HearingSlotRequestParamConverter().convert(jsonObject));
-
-        JsonObject validationError = createObjectBuilder()
-                .add("errorMessage", format(INVALID_PARAMETER_COMBINATION, IS_SLOT_BASED.getLabel(), RequestParameterConstant.BUSINESS_TYPE.getLabel()))
-                .build();
-        when(hearingSlotsApiValidator.getHearingSlotsValidation(any())).thenReturn(validationError);
-
-        courtSchedulerApi.getHearingSlots(getHearingSlotsEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(getHearingSlotsEnvelope, requestName);
-    }
-
 
     @Test
     void shouldRetrieveHearingIds() throws IOException {

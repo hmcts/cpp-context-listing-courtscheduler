@@ -5,15 +5,12 @@ import static java.util.logging.Level.WARNING;
 import static java.util.logging.Logger.getGlobal;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
-import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.INVALID_PARAMETER_COMBINATION;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
-import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.IS_SLOT_BASED;
 
 import uk.gov.justice.services.common.converter.LocalDates;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -61,10 +58,6 @@ public class HearingSlotsApiValidator {
 
         if (isBlank(hearingSlotRequestParam.pageNumber())) {
             return getMessage(RequestParameterConstant.PAGE_NUMBER.getLabel());
-        }
-
-        if (!isBlank(hearingSlotRequestParam.businessType()) && isNotEmpty(hearingSlotRequestParam.isSlotBased())) {
-            return buildErrorResponse(INVALID_PARAMETER_COMBINATION + IS_SLOT_BASED.getLabel() + RequestParameterConstant.BUSINESS_TYPE.getLabel());
         }
 
         return EMPTY_JSON_OBJECT;

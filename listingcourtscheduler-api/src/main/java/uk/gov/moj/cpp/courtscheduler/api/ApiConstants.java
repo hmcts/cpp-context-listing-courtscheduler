@@ -13,5 +13,4 @@ public class ApiConstants {
     public static final String PAYLOAD_CANNOT_EMPTY = "Request body cannot be empty";
     public static final String BOOKING_IDS = "bookingIds";
     public static final String ERROR = "error";
-    public static final String INVALID_PARAMETER_COMBINATION = "%s and %s cannot be used together";
 }
