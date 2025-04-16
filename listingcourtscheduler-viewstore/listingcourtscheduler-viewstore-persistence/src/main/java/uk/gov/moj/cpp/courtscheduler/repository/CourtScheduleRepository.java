@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static java.lang.String.format;
+import static java.util.Objects.isNull;
 import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
@@ -18,8 +19,12 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
@@ -467,6 +472,53 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         }
     }
 
+    public List<Hearing> updateListHearingSlots(final RequestedSlots slots) {
+
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing> allocatedListings = new ArrayList<>();
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules = new ArrayList<>();
+
+        final List<Hearing> hearings = flattenHearingSlots(slots);
+
+        for(Hearing hearing: hearings ) {
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = this.findBy(hearing.getCourtScheduleId());
+
+            //check slot based /duration based for deducting the available slots
+            if (cs.isSlotBased()) {
+                if (isNull(hearing.getDuration())) hearing.setDuration(SLOT_DEFAULT);
+                cs.setAvailableSlots(cs.getAvailableSlots() - 1);
+            } else cs.setAvailableDuration(cs.getAvailableDuration() - hearing.getDuration());
+
+            // set sessions start time
+            validateAndSetHearingStartTime(hearing, cs);
+
+            //prepare allocated listing
+            uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedlisting = new AllocatedListing();
+            allocatedlisting.setHearingId(hearing.getHearingId());
+            allocatedlisting.setCourtScheduleId(hearing.getCourtScheduleId());
+            allocatedlisting.setCourtRoomId(cs.getCourtRoomNumber());
+            allocatedlisting.setOucode(cs.getOuCode());
+            allocatedlisting.setId(UUID.randomUUID().toString());
+            allocatedlisting.setHearingStartTime(cs.getSessionStartTime());
+            allocatedlisting.setDuration(hearing.getDuration());
+
+            courtSchedules.add(cs);
+            allocatedListings.add(allocatedlisting);
+        }
+
+        updateCourtScheduleWithRequestedList(courtSchedules);
+        saveAllocatedListingWithRequestedList(allocatedListings);
+
+        return hearings;
+    }
+
+    private void updateCourtScheduleWithRequestedList(List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> slots) {
+        slots.forEach(this::save);
+
+    }
+
+    private void saveAllocatedListingWithRequestedList(List<AllocatedListing> slots) {
+        slots.forEach(allocatedListing -> this.allocatedListingRepository.save(allocatedListing));
+    }
 
     @SuppressWarnings("unchecked")
     public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam requestParam) {
@@ -1049,5 +1101,32 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .createNativeQuery(DELETE_REDUNDANT_ROTA_DATA)
                 .setParameter("numberOfDays", numberOfDays)
                 .executeUpdate();
+    }
+
+    private List<Hearing> flattenHearingSlots(RequestedSlots requestedSlots) {
+        List<Hearing> result = new ArrayList<>();
+
+        for (HearingSlot hearingSlot : requestedSlots.getHearingSlots()) {
+            for (RequestedCourtSchedule requestedCourtSchedule : hearingSlot.getCourtScheduleIds()) {
+                Hearing hearing = new Hearing();
+                hearing.setHearingId(hearingSlot.getHearingId());
+                hearing.setCourtScheduleId(requestedCourtSchedule.getCourtScheduleId());
+                hearing.setSessionStartTime(requestedCourtSchedule.getSessionStartTime());
+                hearing.setDuration(requestedCourtSchedule.getDurationInMinutes());
+                result.add(hearing);
+            }
+        }
+        return result;
+    }
+
+    private static void validateAndSetHearingStartTime(Hearing hearing, uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs) {
+        if (isNull(hearing.getSessionStartTime())) {
+            hearing.setSessionStartTime(DateUtils.toResponseDateString(cs.getSessionStartTime()));
+        } else {
+            Date hearingStartTime = DateUtils.getDate(hearing.getSessionStartTime());
+            if ((hearingStartTime.before(cs.getSessionStartTime()) || hearingStartTime.after(cs.getSessionEndTime()))) {
+                hearing.setSessionStartTime(DateUtils.toResponseDateString(cs.getSessionStartTime()));
+            }
+        }
     }
 }
