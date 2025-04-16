@@ -25,6 +25,8 @@ import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_START_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_END_TIME;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
@@ -124,6 +126,18 @@ class SessionsServiceTest {
     private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
     private static final int NEW_MAX_DURATION = 40;
     private static final int NEW_MAX_SLOTS = 20;
+    public static final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+
+
+    static {
+        // Set the timezone for the SimpleDateFormat to London
+        sdf.setTimeZone(TimeZone.getTimeZone("Europe/London"));
+    }
+
+    @BeforeEach
+    void setUp() {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
 
     @BeforeEach
     void setUp() {
@@ -349,10 +363,9 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, times(1)).save(courtScheduleArgumentCaptor.capture());
         CourtSchedule capturedCourtSchedule = courtScheduleArgumentCaptor.getValue();
 
-        SimpleDateFormat formatter = new SimpleDateFormat("HH:mm");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-        assertEquals("09:00", formatter.format(capturedCourtSchedule.getSessionStartTime()));
-        assertEquals("12:00", formatter.format(capturedCourtSchedule.getSessionEndTime()));
+        assertThat(sdf.format(capturedCourtSchedule.getSessionStartTime()), is(DEFAULT_MORNING_START_TIME));
+        assertThat(sdf.format(capturedCourtSchedule.getSessionEndTime()), is(DEFAULT_MORNING_END_TIME));
+
     }
 
     @Test

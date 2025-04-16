@@ -5,7 +5,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listingcourtscheduler-parent</artifactId>
-        <version>17.0.44-SNAPSHOT</version>
+        <version>17.0.48-SNAPSHOT</version>
     </parent>
 
     <artifactId>listingcourtscheduler-integration-test</artifactId>
@@ -100,6 +100,13 @@
             <version>${gihub.benas.random-beans.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <version>1.9.2</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <profiles>
@@ -113,7 +120,7 @@
                     <plugin>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <skip>true</skip>
+                            <skip>false</skip>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -136,6 +143,14 @@
                                 <goals>
                                     <goal>integration-test</goal>
                                 </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <generate.test.report>true</generate.test.report>
+                                    </systemPropertyVariables>
+                                    <includes>
+                                        <include>**/*IT.java</include>
+                                    </includes>
+                                </configuration>
                             </execution>
                             <execution>
                                 <id>verify</id>
@@ -144,6 +159,34 @@
                                 </goals>
                             </execution>
                         </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>test-duration-tracking</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <enable.test.duration.tracking>true</enable.test.duration.tracking>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <enable.test.duration.tracking>true</enable.test.duration.tracking>
+                            </systemPropertyVariables>
+                            <includes>
+                                <include>**/*IT.java</include>
+                            </includes>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>

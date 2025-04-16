@@ -4,6 +4,7 @@ import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static io.smallrye.common.constraint.Assert.assertTrue;
 import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -14,7 +15,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_D
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
@@ -39,7 +39,6 @@ import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 
@@ -48,11 +47,6 @@ class HearingSlotIT extends AbstractIT {
     private static final String RELATIVE_URL = "/hearingslots";
 
     private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
-
-    @BeforeAll
-    static void setupSystemUser() {
-        setupUserAsSystemUser(USER_ID.toString());
-    }
 
     @Test
     void shouldUpdateHearingSlot() throws SQLException {
@@ -77,7 +71,7 @@ class HearingSlotIT extends AbstractIT {
         updateHearingSlotsPayload = updateHearingSlotsPayload.replace("HEARING_ID", hearingId);
         updateHearingSlotsPayload = updateHearingSlotsPayload.replace("COURT_SCHEDULE_ID", courtScheduleId);
 
-        final Response response = putCommand(RELATIVE_URL, "application/vnd.courtscheduler.update.hearing.slots+json", USER_ID, updateHearingSlotsPayload);
+        final Response response = putCommand(RELATIVE_URL, "application/vnd.courtscheduler.update.hearing.slots+json", SYSTEM_USER_ID, updateHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
     }
@@ -85,6 +79,7 @@ class HearingSlotIT extends AbstractIT {
     @Test
     void shouldRetrieveHearingSlot() throws Exception {
         final String courtSession = AM_SESSION;
+        final LocalDate sessionDate = LocalDate.of(2025, 1, 3);
         String courtScheduleId = randomUUID().toString();
         String bookingId = randomUUID().toString();
         String bookingId2 = randomUUID().toString();
@@ -99,8 +94,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setCourtSession(courtSession);
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionDate(LocalDate.of(2025, 1, 3));
         courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -108,10 +103,10 @@ class HearingSlotIT extends AbstractIT {
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtSchedule);
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
 
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId, bookingId, "10:00", 1);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId2, bookingId2, "10:00", 1);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId3, bookingId3, "11:00", 1);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId4, bookingId4, "12:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId, bookingId, "10:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId2, bookingId2, "10:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId3, bookingId3, "11:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId4, bookingId4, "12:00", 1);
 
         String hearingSlotsRequestParams = getPayload("courtscheduler.get.hearing.slots.json");
 
@@ -126,8 +121,8 @@ class HearingSlotIT extends AbstractIT {
 
         Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, map);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -183,8 +178,8 @@ class HearingSlotIT extends AbstractIT {
 
         Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, map);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -209,7 +204,7 @@ class HearingSlotIT extends AbstractIT {
         String hearingId2 = randomUUID().toString();
         String hearingId3 = randomUUID().toString();
         String hearingId4 = randomUUID().toString();
-        LocalDate sessionDate = LocalDate.now().plusDays(1);
+        LocalDate sessionDate = LocalDate.of(2025, 1, 3);
         final CourtSchedule courtScheduleWithSplit = RANDOM.nextObject(CourtSchedule.class);
         courtScheduleWithSplit.setCourtScheduleId(courtScheduleId);
         courtScheduleWithSplit.setSlotBased(false);
@@ -229,10 +224,10 @@ class HearingSlotIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(courtScheduleWithSplit);
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtScheduleWithSplit);
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId, bookingId, "10:00", 20);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId2, bookingId2, "11:00", 30);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId3, bookingId3, "14:00", 20);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId4, bookingId4, "15:00", 10);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId, bookingId, "10:00", 20);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId2, bookingId2, "11:00", 30);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId3, bookingId3, "14:00", 20);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId4, bookingId4, "15:00", 10);
 
         String courtScheduleId2 = randomUUID().toString();
         String bookingId5 = randomUUID().toString();
@@ -265,10 +260,10 @@ class HearingSlotIT extends AbstractIT {
         final CourtScheduleJudiciary courtScheduleJudiciaryWithoutSplit = createJudiciaryForSchedule(courtScheduleWithoutSplit);
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciaryWithoutSplit);
 
-        createAllocatedListingsAndInsert(courtScheduleId2, hearingId5, bookingId5, "10:00", 20);
-        createAllocatedListingsAndInsert(courtScheduleId2, hearingId6, bookingId6, "11:00", 30);
-        createAllocatedListingsAndInsert(courtScheduleId2, hearingId7, bookingId7, "14:00", 20);
-        createAllocatedListingsAndInsert(courtScheduleId2, hearingId8, bookingId8, "15:00", 10);
+        createAllocatedListingsAndInsert(courtScheduleId2, sessionDate, hearingId5, bookingId5, "10:00", 20);
+        createAllocatedListingsAndInsert(courtScheduleId2, sessionDate, hearingId6, bookingId6, "11:00", 30);
+        createAllocatedListingsAndInsert(courtScheduleId2, sessionDate, hearingId7, bookingId7, "14:00", 20);
+        createAllocatedListingsAndInsert(courtScheduleId2, sessionDate, hearingId8, bookingId8, "15:00", 10);
 
 
         String hearingSlotsRequestParams = getPayload("courtscheduler.get.hearing.slots.json");
@@ -285,8 +280,8 @@ class HearingSlotIT extends AbstractIT {
         Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {
         });
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, map);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -369,8 +364,8 @@ class HearingSlotIT extends AbstractIT {
 
         final Map<String, Object> requestParamMap = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, requestParamMap);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -444,8 +439,8 @@ class HearingSlotIT extends AbstractIT {
 
         final Map<String, Object> requestParamMap = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", USER_ID, requestParamMap);
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
@@ -460,13 +455,13 @@ class HearingSlotIT extends AbstractIT {
     }
 
 
-    private void createAllocatedListingsAndInsert(final String courtScheduleId, final String hearingId, final String bookingId, final String time, final Integer duration) throws SQLException {
+    private void createAllocatedListingsAndInsert(final String courtScheduleId,final LocalDate sessionDate, final String hearingId, final String bookingId, final String time, final Integer duration) throws SQLException {
         final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setBookingId(bookingId);
         allocatedListing.setDuration(duration);
-        allocatedListing.setHearingStartTime(DateUtils.combineDateAndTime(LocalDate.now().plusDays(1), time));
+        allocatedListing.setHearingStartTime(DateUtils.combineDateAndTime(sessionDate, time));
         databaseSeeder.insertAllocatedListing(allocatedListing);
     }
 
@@ -508,7 +503,7 @@ class HearingSlotIT extends AbstractIT {
         databaseSeeder.insertProvisionalBooking(provisionalBooking);
 
 
-        final Response response = deleteCommand(format("%s/%s", RELATIVE_URL, hearingId), "application/vnd.courtscheduler.remove.hearing.slots+json", USER_ID);
+        final Response response = deleteCommand(format("%s/%s", RELATIVE_URL, hearingId), "application/vnd.courtscheduler.remove.hearing.slots+json", SYSTEM_USER_ID);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }

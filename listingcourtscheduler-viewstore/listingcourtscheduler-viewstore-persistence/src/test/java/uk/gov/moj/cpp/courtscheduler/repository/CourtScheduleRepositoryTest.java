@@ -19,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -673,8 +674,8 @@ public class CourtScheduleRepositoryTest {
         );
     }
 
-    private CourtSchedule createCourtSchedule(String ouCode, String panel, LocalDate sessionDate, 
-                                            String courtRoomId, String businessType) {
+    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate, 
+                                            final String courtRoomId, final String businessType) {
         CourtSchedule schedule = new CourtSchedule();
         
         // Required fields (not null constraints)
@@ -719,6 +720,9 @@ public class CourtScheduleRepositoryTest {
         LocalDateTime endDateTime = LocalDateTime.of(sessionDate, LocalTime.of(13, 0));
         schedule.setSessionStartTime(Date.from(startDateTime.atZone(ZoneId.systemDefault()).toInstant()));
         schedule.setSessionEndTime(Date.from(endDateTime.atZone(ZoneId.systemDefault()).toInstant()));
+        
+        // Set national break time based on BST logic
+        schedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
         
         // Optional field
         schedule.setListingProfileId(random(String.class));                  // court_listing_profile_id
@@ -1202,7 +1206,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
-
+        courtSchedule1.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -1264,7 +1268,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
-
+        courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -1326,7 +1330,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
-
+        courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -1563,6 +1567,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
+        courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
 
         courtScheduleRepository.save(courtSchedule1);
 
@@ -1637,6 +1642,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
+        courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
 
         courtScheduleRepository.save(courtSchedule1);
 

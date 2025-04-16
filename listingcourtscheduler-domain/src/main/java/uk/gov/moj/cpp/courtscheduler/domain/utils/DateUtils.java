@@ -7,6 +7,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_D
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.MeridianHelper.getMeridian;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum;
 
@@ -127,7 +128,7 @@ public class DateUtils {
     }
 
     public static final java.util.Date localDateToDateWithTime(final LocalDate localDate, final int hour, final int minute) {
-        final ZonedDateTime zonedDateTime = localDate.atTime(hour, minute).atZone(ZoneId.of("UTC"));
+        final ZonedDateTime zonedDateTime = localDate.atTime(hour, minute).atZone(LONDON_ZONE);
         return java.util.Date.from(zonedDateTime.toInstant());
     }
 

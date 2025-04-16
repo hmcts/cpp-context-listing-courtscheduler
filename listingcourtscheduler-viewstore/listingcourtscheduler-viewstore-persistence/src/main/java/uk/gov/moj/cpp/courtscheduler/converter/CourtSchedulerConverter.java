@@ -8,7 +8,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAn
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;

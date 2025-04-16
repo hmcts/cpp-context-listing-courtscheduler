@@ -53,6 +53,7 @@
       "totalBookedForAfternoon": 0,
       "sessionStartTime": "2020-12-01T09:00:00.000+00:00",
       "sessionEndTime": "2020-12-01T12:00:00.000+00:00",
+      "nationalBreakTime": "2020-12-01T12:00:00.000+00:00",
       "overbookingAllowed": true
     }
   ]
