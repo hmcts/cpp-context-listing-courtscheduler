@@ -294,7 +294,7 @@ public class CourtScheduleRepositoryTest {
         slotsWrapper.setHearingSlots(hearingSlots);
 
         //when
-        List<Hearing> hearings = courtScheduleRepository.updateListHearingSlots(slotsWrapper);
+        courtScheduleRepository.updateListHearingSlots(slotsWrapper);
 
         //then
         List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
@@ -341,7 +341,7 @@ public class CourtScheduleRepositoryTest {
         slotsWrapper.setHearingSlots(hearingSlots);
 
         //when
-        List<Hearing> hearings = courtScheduleRepository.updateListHearingSlots(slotsWrapper);
+        courtScheduleRepository.updateListHearingSlots(slotsWrapper);
 
         //then
         List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
