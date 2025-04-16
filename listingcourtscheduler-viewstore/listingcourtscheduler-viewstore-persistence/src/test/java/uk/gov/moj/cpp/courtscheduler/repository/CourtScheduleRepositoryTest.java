@@ -38,13 +38,14 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -1728,6 +1729,42 @@ public class CourtScheduleRepositoryTest {
 
         assertNotNull(courtScheduleMatcherInfo);
         assertEquals(courtScheduleMatcherInfo.getCourtScheduleId(), courtSchedule1.getCourtScheduleId());
+    }
+
+    @Test
+    public void shouldSearchAndList_ForAllRequiredParams() {
+        final Date sessionDate = DateUtils.getDate(LocalDate.of(2024, 7, 15));
+        String hearingId = randomUUID().toString();
+        String bookingId = randomUUID().toString();
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(LocalDate.of(2024, 7, 15));
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("NGAP");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomId("1234");
+        courtScheduleRepository.save(courtSchedule);
+
+
+        ProvisionalBooking provisionalBooking = random(ProvisionalBooking.class);
+        provisionalBooking.setProvisionalBookingKey(new ProvisionalBookingKey(courtSchedule, bookingId));
+        provisionalBookingRepository.save(provisionalBooking);
+
+        AllocatedListing allocatedListing = random(AllocatedListing.class);
+        allocatedListing.setOucode("B01LY00");
+        allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
+        allocatedListing.setHearingStartTime(sessionDate);
+        allocatedListing.setHearingId(hearingId);
+        allocatedListing.setBookingId(bookingId);
+        allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing);
+
+        courtScheduleRepository.searchListHearingSlotFilterCriteria(courtSchedule.getOuCode(), courtSchedule.getSessionDate(), courtSchedule.getSessionDate().plusDays(5),
+                courtSchedule.getSessionStartTime().toInstant().atOffset(ZoneOffset.UTC)
+                .toLocalDateTime(), courtSchedule.getCourtRoomId());
+
+        List<CourtSchedule> courtSchedulesQueryList = courtScheduleRepository.findBy(courtSchedule);
+        assertFalse(courtSchedulesQueryList.isEmpty());
     }
 
     private HearingSlotRequestParam createHearingSlotRequest(CourtSchedule courtSchedule) {

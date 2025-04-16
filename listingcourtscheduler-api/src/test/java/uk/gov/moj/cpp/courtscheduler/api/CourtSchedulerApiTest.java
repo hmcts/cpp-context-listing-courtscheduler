@@ -29,6 +29,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
@@ -50,13 +51,20 @@ import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
@@ -106,6 +114,8 @@ class CourtSchedulerApiTest {
     private AllocatedSlotConverter allocatedSlotConverter;
     @Mock
     private HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
+    @Mock
+    private HearingSlotSearchRequestConverter hearingSlotSearchRequestConverter;
     @Mock
     private HearingSlotsApiValidator hearingSlotsApiValidator;
     @Mock
@@ -286,28 +296,6 @@ class CourtSchedulerApiTest {
     }
 
     @Test
-    void shouldSearchUpdateHearingSlots() throws IOException {
-        String payload = FileUtil.getPayload("courtscheduler.search.update.hearing.slots.json");
-        final JsonObject jsonObject = payloadToObject(payload);
-        final String requestName = "courtscheduler.search.update.hearing.slots";
-
-        final JsonEnvelope updateHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
-
-        when(enveloper.withMetadataFrom(updateHearingSlotsEnvelope, requestName)).thenReturn(function);
-        Result success = Result.SUCCESS();
-        when(slotsUpdateService.searchUpdate(any())).thenReturn(success);
-        when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
-                .add(RESULTS, "Success")
-                .build());
-        when(allocatedSlotConverter.convert(jsonObject.toString())).thenReturn(new AllocatedSlotConverter().convert(payload));
-
-        courtSchedulerApi.searchUpdateHearingSlots(updateHearingSlotsEnvelope);
-
-        verify(slotsUpdateService, atLeastOnce()).searchUpdate(new AllocatedSlotConverter().convert(payload).getHearingSlots());
-        verify(enveloper, atLeastOnce()).withMetadataFrom(updateHearingSlotsEnvelope, requestName);
-    }
-
-    @Test
     void shouldRetrieveHearingSlots() throws IOException {
         final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.get.hearing.slots.json"));
         final String requestName = "courtscheduler.get.hearing.slots";
@@ -354,6 +342,27 @@ class CourtSchedulerApiTest {
 
         verify(slotsRemoveService, atLeastOnce()).remove(hearingId);
         verify(enveloper, atLeastOnce()).withMetadataFrom(envelope, requestName);
+    }
+
+    @Test
+    void shouldSearchListHearingSlots() throws IOException {
+        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.search.book.hearing.slots.json"));
+        final String requestName = "courtscheduler.search.book.hearing.slots";
+        final JsonEnvelope getSearchListHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
+        final HearingSlotSearchResponse hearingSlotSearchResponse = createHearingSlotsResponse("432c067d-eaca-4ce5-ad90-a366ef3e4bb6");
+
+        when(enveloper.withMetadataFrom(getSearchListHearingSlotsEnvelope, requestName)).thenReturn(function);
+        when(hearingSlotSearchRequestConverter.convert(jsonObject)).thenReturn(new HearingSlotSearchRequestConverter().convert(jsonObject));
+        when(slotsUpdateService.searchAndBook(hearingSlotSearchRequestConverter.convert(jsonObject))).thenReturn(hearingSlotSearchResponse);
+        when(hearingSlotsApiValidator.searchAndBookRequestValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
+        when(objectToJsonObjectConverter.convert(hearingSlotSearchResponse)).thenReturn(createObjectBuilder()
+                .add(RequestParameterConstant.HEARING_SLOTS.getLabel(), "ok")
+                .build());
+
+        courtSchedulerApi.searchBookHearingSlots(getSearchListHearingSlotsEnvelope);
+
+        verify(slotsUpdateService, atLeastOnce()).searchAndBook(hearingSlotSearchRequestConverter.convert(jsonObject));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(getSearchListHearingSlotsEnvelope, requestName);
     }
 
     @Test
@@ -479,5 +488,9 @@ class CourtSchedulerApiTest {
                 .withUserId(userId.toString())
                 .build();
         return new DefaultJsonEnvelopeProvider().envelopeFrom(metadata, payload);
+    }
+    private HearingSlotSearchResponse createHearingSlotsResponse(String hearingId) {
+        Date sessionStartTime = Date.from(LocalTime.parse("09:00").atDate(LocalDate.of(2024, 7, 15)).atZone(ZoneId.of("UTC")).toInstant());
+        return new HearingSlotSearchResponse(hearingId, "432c067d-eaca-4ce5-ad90-a366ef3e4bb6", "001c067d-eaca-4ce5-ad90-a366ef3e4bb6", sessionStartTime.toString(), 20);
     }
 }

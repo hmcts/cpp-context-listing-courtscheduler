@@ -260,6 +260,52 @@ protocols: [ HTTP, HTTPS ]
       204:
         description: No Content
 
+/searchlist/hearingslots:
+  get:
+    description:  |
+      You can search and list the hearings in court sessions based on the input param combinations
+      Query via parameters
+      ...
+      (mapping):
+          responseType: application/vnd.courtscheduler.search.book.hearing.slots+json
+          name: courtscheduler.search.book.hearing.slots
+      ...
+    queryParameters:
+      hearingId:
+        description: HearingID
+        type: string
+        required: true
+      ouCode:
+        description: ouCode
+        type: string
+        required: true
+      courtRoomId:
+        description: courtRoomId
+        type: string
+        required: false
+      hearingSessionDate:
+        description: hearingSessionDate
+        type: string
+        required: true
+      hearingSessionDateSearchCutOff:
+        description: hearingSessionDateSearchCutOff
+        type: string
+        required: false
+      sessionStartTime:
+        description: sessionStartTime
+        type: string
+        required: false
+      durationInMinutes:
+        description: durationInMinutes
+        type: integer
+        required: false
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.search.book.hearing.slots+json:
+            example: !include json/courtscheduler.search.book.hearing.slots.json
+            schema: !include json/schema/courtscheduler.search.book.hearing.slots.json
+
 /provisionalBooking:
   post:
     description:  |

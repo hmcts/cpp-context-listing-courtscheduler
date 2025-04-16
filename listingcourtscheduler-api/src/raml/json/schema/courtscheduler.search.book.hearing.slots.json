@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "hearingId": {
+      "type": "string"
+    },
+    "ouCode": {
+      "type": "string"
+    },
+    "courtRoomId": {
+      "type": "string"
+    },
+    "hearingSessionDate": {
+      "type": "string"
+    },
+    "hearingSessionDateSearchCutOff": {
+      "type": "string"
+    },
+    "sessionStartTime": {
+      "type": "string"
+    },
+    "durationInMinutes": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "hearingId",
+    "ouCode",
+    "hearingSessionDate"
+  ]
+}
