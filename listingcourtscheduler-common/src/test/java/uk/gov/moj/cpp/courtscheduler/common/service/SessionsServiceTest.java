@@ -25,6 +25,8 @@ import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_START_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_END_TIME;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
@@ -72,6 +74,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -83,6 +86,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.common.constraint.Assert;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.QueryInvocationException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -122,6 +126,18 @@ class SessionsServiceTest {
     private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
     private static final int NEW_MAX_DURATION = 40;
     private static final int NEW_MAX_SLOTS = 20;
+    public static final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+
+
+    static {
+        // Set the timezone for the SimpleDateFormat to London
+        sdf.setTimeZone(TimeZone.getTimeZone("Europe/London"));
+    }
+
+    @BeforeEach
+    void setUp() {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingToday() {
@@ -342,9 +358,8 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, times(1)).save(courtScheduleArgumentCaptor.capture());
         CourtSchedule capturedCourtSchedule = courtScheduleArgumentCaptor.getValue();
 
-        SimpleDateFormat formatter = new SimpleDateFormat("HH:mm");
-        assertEquals("10:00", formatter.format(capturedCourtSchedule.getSessionStartTime()));
-        assertEquals("13:00", formatter.format(capturedCourtSchedule.getSessionEndTime()));
+        assertThat(sdf.format(capturedCourtSchedule.getSessionStartTime()), is(DEFAULT_MORNING_START_TIME));
+        assertThat(sdf.format(capturedCourtSchedule.getSessionEndTime()), is(DEFAULT_MORNING_END_TIME));
     }
 
     @Test
