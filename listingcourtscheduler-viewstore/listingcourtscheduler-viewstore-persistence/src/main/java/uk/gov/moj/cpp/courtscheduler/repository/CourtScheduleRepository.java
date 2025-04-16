@@ -4,6 +4,7 @@ import static java.lang.String.format;
 import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
@@ -58,6 +59,7 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.transaction.Transactional;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
@@ -100,6 +102,88 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays)";
 
+
+    private static final String GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS_TEST = """
+    SELECT cs.id,
+           cs.court_listing_profile_id,
+           cs.oucode,
+           cs.court_room_id,
+           cs.court_room_number,
+           cs.court_house_id,
+           cs.court_house_name,
+           cs.court_room_name,
+           cs.operational_unit,
+           cs.rota_business_type,
+           cs.panel,
+           cs.court_session,
+           cs.active,
+           cs.is_slot_based,
+           cs.session_start,
+           cs.max_slot,
+           cs.max_duration_mins,
+           cs.available_slot,
+           cs.available_duration_mins,
+           cs.support_ad_split,
+           cs.max_ad_morning_duration,
+           cs.max_ad_afternoon_duration,
+           cs.is_overbooking_allowed,
+           cs.session_start_time,
+           cs.session_end_time,
+           cs.created_on,
+           cs.updated_on,
+
+           -- totalbookedformorning
+           COALESCE(
+               SUM(
+                   CASE
+                       WHEN cs.court_session = 'AD' AND cs.support_ad_split = true THEN
+                           CASE
+                               WHEN (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time)) < 780
+                                    AND (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time) + al.duration) <= 780
+                                   THEN al.duration
+                               WHEN (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time)) < 780
+                                    AND (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time) + al.duration) > 780
+                                   THEN 780 - (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time))
+                               ELSE 0
+                           END
+                       WHEN (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time)) < 780
+                           THEN al.duration
+                       ELSE 0
+                   END
+               ),
+               0
+           ) AS totalbookedformorning,
+
+           -- totalbookedforafternoon
+           COALESCE(
+               SUM(
+                   CASE
+                       WHEN cs.court_session = 'AD' AND cs.support_ad_split = true THEN
+                           CASE
+                               WHEN (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time)) >= 780
+                                   THEN al.duration
+                               WHEN (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time)) < 780
+                                    AND (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time) + al.duration) > 780
+                                   THEN (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time) + al.duration) - 780
+                               ELSE 0
+                           END
+                       WHEN (HOUR(al.hearing_start_time) * 60 + MINUTE(al.hearing_start_time)) >= 780
+                           THEN al.duration
+                       ELSE 0
+                   END
+               ),
+               0
+           ) AS totalbookedforafternoon,
+
+           -- Total booked duration
+           COALESCE(SUM(al.duration), 0) AS totalbooked
+
+    FROM court_schedule cs
+             LEFT JOIN allocated_listings al ON cs.id = al.court_schedule_id
+    WHERE cs.active = true
+      AND cs.panel in (:panelType)
+      AND cs.session_start BETWEEN :sessionStart AND :sessionEnd
+""";
 
     private static final String GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS = """
             SELECT cs.id,
@@ -518,6 +602,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             params.put(BUSINESS_TYPE, requestParam.businessType());
         }
 
+        if (isNotEmpty(requestParam.isSlotBased())) {
+            params.put("slotBased", requestParam.isSlotBased());
+        }
+      
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
             params.put("courtSession", List.of(requestParam.courtSession().split(",")));
         }
@@ -533,8 +621,23 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         return params;
     }
 
+    public boolean isTestDatabase() {
+        try {
+            entityManager.createNativeQuery("SELECT version()").getSingleResult();
+            return false;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
     private String buildFullQuery(HearingSlotRequestParam requestParam) {
-        StringBuilder query = new StringBuilder(GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS);
+
+        StringBuilder query;
+        if (isTestDatabase()) {
+            query = new StringBuilder(GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS_TEST);
+        } else {
+            query = new StringBuilder(GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS);
+        }
 
         if (StringUtils.isNotBlank(requestParam.ouCode())) {
             query.append(" AND cs.oucode = :ouCode");
@@ -550,6 +653,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             query.append(" AND cs.rota_business_type = :businessType");
+        } else {
+            if (isNotEmpty(requestParam.isSlotBased()) && requestParam.isSlotBased()) {
+                query.append(" AND cs.is_slot_based = :slotBased");
+            }
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {

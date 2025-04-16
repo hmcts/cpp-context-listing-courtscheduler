@@ -12,7 +12,8 @@ public record HearingSlotRequestParam(String panel,
                                       String courtRoomId,
                                       String courtRoomNumber,
                                       String businessType,
-                                      String courtSession) {
+                                      String courtSession,
+                                      Boolean isSlotBased) {
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -28,13 +29,13 @@ public record HearingSlotRequestParam(String panel,
                 that.courtRoomId()) && Objects.equals(courtRoomNumber(),
                 that.courtRoomNumber()) && Objects.equals(businessType(),
                 that.businessType()) && Objects.equals(courtSession(),
-                that.courtSession());
+                that.courtSession()) && Objects.equals(isSlotBased(), that.isSlotBased());
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(panel(), sessionStartDate(), sessionEndDate(), oucodeL2Code(),
                 ouCode(), pageSize(), pageNumber(), courtRoomId(), courtRoomNumber(),
-                businessType(), courtSession());
+                businessType(), courtSession(), isSlotBased());
     }
 }

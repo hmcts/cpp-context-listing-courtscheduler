@@ -360,6 +360,7 @@ class SessionsServiceTest {
 
         assertThat(sdf.format(capturedCourtSchedule.getSessionStartTime()), is(DEFAULT_MORNING_START_TIME));
         assertThat(sdf.format(capturedCourtSchedule.getSessionEndTime()), is(DEFAULT_MORNING_END_TIME));
+
     }
 
     @Test
