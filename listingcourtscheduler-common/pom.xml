@@ -4,7 +4,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listingcourtscheduler-parent</artifactId>
-        <version>17.0.47-SPIPH1-SNAPSHOT</version>
+        <version>17.0.48-SPIPH1-SNAPSHOT</version>
     </parent>
 
     <artifactId>listingcourtscheduler-common</artifactId>
