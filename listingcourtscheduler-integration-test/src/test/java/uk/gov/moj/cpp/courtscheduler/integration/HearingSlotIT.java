@@ -144,6 +144,28 @@ class HearingSlotIT extends AbstractIT {
         final Response response = putCommand("/list/hearingslots", "application/vnd.courtscheduler.list.hearings-in-court-sessions+json", SYSTEM_USER_ID, updateHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(response.readEntity(String.class));
+        JsonArray jsonArray = jsonObject.getJsonArray("hearings");
+        assertThat(jsonArray.size(), is(3));
+        jsonArray.stream().forEach( hearing ->
+                {final JsonObject hearingJson = (JsonObject) hearing ;
+                    if (hearingJson.getString("courtScheduleId").equals("1771a96b-1c5a-45d1-b647-1bec5212cafc")) {
+                        assertThat(hearingJson.getString("hearingId"), is("5771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                        assertThat(hearingJson.getString("sessionStartTime"), is("2025-04-03T09:00:00Z"));
+                        assertThat(hearingJson.getInt("duration"), is(20));
+                    }
+                    if (hearingJson.getString("courtScheduleId").equals("5771a96b-1c5a-45d1-b647-1bec5212cafc")) {
+                        assertThat(hearingJson.getString("hearingId"), is("6771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                        assertThat(hearingJson.getString("sessionStartTime"), is("2025-04-03T09:00:00Z"));
+                        assertThat(hearingJson.getInt("duration"), is(1));
+                    }
+                    if (hearingJson.getString("courtScheduleId").equals("2771a96b-1c5a-45d1-b647-1bec5212cafc")) {
+                        assertThat(hearingJson.getString("hearingId"), is("6771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                        assertThat(hearingJson.getString("sessionStartTime"), is("2025-04-03T09:00:00Z"));
+                        assertThat(hearingJson.getInt("duration"), is(1));
+                    }
+                }
+        );
     }
 
     @Test
