@@ -60,7 +60,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import java.util.List;
 
 import javax.inject.Inject;
-import javax.json.JsonArray;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
@@ -254,14 +253,16 @@ public class CourtSchedulerApi {
                 .apply(objectToJsonObjectConverter.convert(listHearingSlotsResponse));
     }
 
+    /**
+     * @deprecated
+     */
     @Handles("courtscheduler.search.update.hearing.slots")
-    @Deprecated
+    @Deprecated(forRemoval)
     public JsonEnvelope searchUpdateHearingSlots(final JsonEnvelope envelope) {
         final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
         LOGGER.info("courtscheduler.search.update.hearing.slots:{}", payloadAsJsonString);
-        List<AllocatedSlot> allocatedSlots = converter.convert(payloadAsJsonString).getHearingSlots();
 
-        Result result = Result.FAILED("Deprecated Not to use");//slotsUpdateService.searchBook(allocatedSlots);
+        Result result = Result.FAILED("Deprecated Not to use");
 
         JsonObject responseObject = createObjectBuilder()
                 .add(RESULTS, objectToJsonObjectConverter.convert(result))
