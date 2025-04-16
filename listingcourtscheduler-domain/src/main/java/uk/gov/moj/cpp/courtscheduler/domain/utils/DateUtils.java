@@ -109,6 +109,16 @@ public class DateUtils {
         return utcZoned.format(ISO_8601_FORMATTER);
     }
 
+    public static final String toResponseDateString(final java.util.Date date) {
+        if (date == null) {
+            return null;
+        }
+        // Convert to response json format
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return sdf.format(date);
+    }
+
     public static final Date toSqlDate(String dateString) {
         if (dateString == null) {
             return null;

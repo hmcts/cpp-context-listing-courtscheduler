@@ -1142,11 +1142,11 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     private static void validateAndSetHearingStartTime(Hearing hearing, uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs) {
         if (isNull(hearing.getSessionStartTime())) {
-            hearing.setSessionStartTime(cs.getSessionStartTime().toString());
+            hearing.setSessionStartTime(DateUtils.toResponseDateString(cs.getSessionStartTime()));
         } else {
             Date hearingStartTime = DateUtils.getDate(hearing.getSessionStartTime());
             if ((hearingStartTime.before(cs.getSessionStartTime()) || hearingStartTime.after(cs.getSessionEndTime()))) {
-                hearing.setSessionStartTime(cs.getSessionStartTime().toString());
+                hearing.setSessionStartTime(DateUtils.toResponseDateString(cs.getSessionStartTime()));
             }
         }
     }
