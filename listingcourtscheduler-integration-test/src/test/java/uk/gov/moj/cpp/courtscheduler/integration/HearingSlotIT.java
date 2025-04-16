@@ -539,8 +539,8 @@ class HearingSlotIT extends AbstractIT {
         final JsonArray hearingSlotsJsonArray = jsonObject.getJsonArray("hearingSlots");
         assertThat(hearingSlotsJsonArray.size(), is(3));
         final List<String> courtScheduleIdsInResponsePayload = hearingSlotsJsonArray.stream()
-                        .map(hearingSlot -> ((JsonObject) hearingSlot).getString("courtScheduleId"))
-                                .toList();
+                .map(hearingSlot -> ((JsonObject) hearingSlot).getString("courtScheduleId"))
+                .toList();
         assertTrue(courtScheduleIdsInResponsePayload.contains(courtScheduleIdForAM));
         assertTrue(courtScheduleIdsInResponsePayload.contains(courtScheduleIdForPM));
         assertTrue(courtScheduleIdsInResponsePayload.contains(courtScheduleIdForAD));

@@ -81,6 +81,8 @@ import org.slf4j.LoggerFactory;
 public abstract class CourtScheduleRepository extends AbstractEntityRepository<CourtSchedule, String> implements EntityRepository<CourtSchedule, String> {
 
     public static final String BUSINESS_TYPE = "businessType";
+    public static final String COURT_ROOM_ID = "courtRoomId";
+    public static final String OU_CODE = "ouCode";
     @Inject
     EntityManager entityManager;
     @Inject
@@ -393,7 +395,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         }
         if (StringUtils.isNotBlank(courtScheduleRequestParam.courtRoomId())) {
             queryString.append("AND s.court_room_id = :courtRoomId ");
-            params.put("courtRoomId", courtScheduleRequestParam.courtRoomId());
+            params.put(COURT_ROOM_ID, courtScheduleRequestParam.courtRoomId());
         }
         if (courtScheduleRequestParam.businessType() != null) {
             queryString.append("AND s.rota_business_type = :businessType ");
@@ -430,6 +432,19 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             return bookSlotsWithoutCourtScheduleId(slots, isProvisionalSlot);
         } else {
             return bookSlotsWithCourtScheduleId(slots, isProvisionalSlot);
+        }
+    }
+
+    public void searchBookHearingSlots(final List<AllocatedSlot> slots) {
+        releaseOldAllocatedListings(slots.get(0).getHearingId());
+
+        final List<AllocatedSlot> updateAllocatedSlots = searchBookSlots(slots);
+
+        if (isNotEmpty(updateAllocatedSlots)) {
+            LOGGER.info("bookSlotsWithoutCourtScheduleId updateAllocatedSlots {}", updateAllocatedSlots);
+            persistHearingSlots(slots, false, updateAllocatedSlots);
+            slots.clear();
+            slots.addAll(updateAllocatedSlots.stream().toList());
         }
     }
 
@@ -554,7 +569,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         params.put("sessionEnd", LocalDate.parse(requestParam.sessionEndDate()));
 
         if (StringUtils.isNotBlank(requestParam.ouCode())) {
-            params.put("ouCode", requestParam.ouCode());
+            params.put(OU_CODE, requestParam.ouCode());
         }
 
         if (StringUtils.isNotBlank(requestParam.oucodeL2Code())) {
@@ -563,7 +578,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         // Add optional parameters only if they are present
         if (StringUtils.isNotBlank(requestParam.courtRoomId())) {
-            params.put("courtRoomId", requestParam.courtRoomId());
+            params.put(COURT_ROOM_ID, requestParam.courtRoomId());
         }
 
         if (StringUtils.isNotBlank(requestParam.businessType())) {
@@ -771,6 +786,31 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         allocatedListings.forEach(allocatedListing -> this.allocatedListingRepository.remove(allocatedListing));
     }
 
+    private List<AllocatedSlot> searchBookSlots(final List<AllocatedSlot> allocatedSlots) {
+
+        final List<AllocatedSlot> matchedSlots = new ArrayList<>();
+        for (final AllocatedSlot allocatedSlot : allocatedSlots) {
+            final String sessionFromHearingStartTime = toMeridian(allocatedSlot.getHearingStartTime());
+            final CourtSchedule slotsFound = searchListHearingSlotFilterCriteria(allocatedSlot.getOuCode(), LocalDate.parse(
+                    allocatedSlot.getSessionDate()), LocalDate.parse(allocatedSlot.getHearingSessionDateSearchCutOff()),LocalDateTime.parse(sessionFromHearingStartTime), allocatedSlot.getCourtRoomId());
+
+            if (slotsFound != null) {
+                allocatedSlot.setCourtRoomId(String.valueOf(slotsFound.getCourtRoomNumber()));
+                allocatedSlot.setCourtRoomUUId(String.valueOf(slotsFound.getCourtRoomId()));
+                allocatedSlot.setCourtScheduleId(slotsFound.getCourtScheduleId());
+                allocatedSlot.setCourtRoom(slotsFound.getCourtRoomName());
+                allocatedSlot.setHearingStartTime(toIsoString(slotsFound.getSessionStartTime()));
+                allocatedSlot.setDuration(slotsFound.getAvailableDuration());
+                matchedSlots.add(allocatedSlot);
+            } else {
+                LOGGER.error(format("Could not update slot as court schedule id not found for combination %s, %s, %s, %s",
+                        allocatedSlot.getOuCode(), allocatedSlot.getSessionDate(), allocatedSlot.getSession(), allocatedSlot.getCourtRoomId()));
+            }
+        }
+
+        return matchedSlots;
+    }
+
     private List<AllocatedSlot> getUpdatedAllocatedSlots(final List<AllocatedSlot> allocatedSlots, final boolean isSearchUpdate) {
 
         final List<AllocatedSlot> matchedSlots = new ArrayList<>();
@@ -781,7 +821,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 allocatedSlot.setCourtScheduleId(null);
             }
             final String sessionFromHearingStartTime = allocatedSlot.getHearingStartTime() == null ? allocatedSlot.getSession() : toMeridian(allocatedSlot.getHearingStartTime());
-            final CourtSchedule slotsFound = getCourtScheduleIdAndSlotBased(allocatedSlot.getOuCode(), LocalDate.parse(allocatedSlot.getSessionDate()), sessionFromHearingStartTime, allocatedSlot.getCourtRoomId(), allocatedSlot.getCourtScheduleId(), isSearchUpdate);
+            final CourtSchedule slotsFound = getCourtScheduleIdAndSlotBased(allocatedSlot.getOuCode(), LocalDate.parse(allocatedSlot.getSessionDate()),
+                    sessionFromHearingStartTime, allocatedSlot.getCourtRoomId(), allocatedSlot.getCourtScheduleId(), isSearchUpdate);
 
             if (slotsFound != null) {
                 final Pair<Optional<String>, Boolean> pair = Pair.of(of(slotsFound.getCourtScheduleId()), slotsFound.isSlotBased());
@@ -792,7 +833,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 updateCourtScheduleAndSlotBased(allocatedSlot, pair);
                 matchedSlots.add(allocatedSlot);
             } else {
-                LOGGER.error(format("Could not update slot as court schedule id not found for combination %s, %s, %s, %s", allocatedSlot.getOuCode(), allocatedSlot.getSessionDate(), allocatedSlot.getSession(), allocatedSlot.getCourtRoomId()));
+                LOGGER.error(format("Could not update slot as court schedule id not found for combination %s, %s, %s, %s",
+                        allocatedSlot.getOuCode(), allocatedSlot.getSessionDate(), allocatedSlot.getSession(), allocatedSlot.getCourtRoomId()));
             }
         }
 
@@ -854,7 +896,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         Map<String, Object> params = new HashMap<>();
 
         queryString.append("AND s.oucode = :ouCode ");
-        params.put("ouCode", ouCode);
+        params.put(OU_CODE, ouCode);
         queryString.append("AND s.session_start = :sessionDate ");
         params.put("sessionDate", sessionDate);
         queryString.append("AND s.court_session IN (:courtSession) ");
@@ -877,6 +919,70 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         });
 
         return selectQuery.getResultList();
+    }
+
+
+    public CourtSchedule searchListHearingSlotFilterCriteria(String ouCode,
+                                                                              LocalDate sessionDate,
+                                                                              LocalDate sessionEndDate,
+                                                                              LocalDateTime sessionStartTime,
+                                                                              String courtRoomId) {
+        LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria ouCode: {}, sessionDate: {}, sessionEndDate: {}, sessionStartTime: {}, courtRoomId: {}",
+                ouCode, sessionDate, sessionEndDate, sessionStartTime, courtRoomId);
+
+        List<CourtSchedule> resultList;
+        do {
+            LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria First Call with All params for ouCode: {} and sessionDate: {}", ouCode, sessionDate);
+            resultList = searchListQueryFilterCriteria(ouCode, sessionDate, sessionStartTime, courtRoomId);
+            if(resultList == null || resultList.isEmpty()) {
+                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria Second Call with All params except courtRoom for ouCode: {} and sessionDate: {}", ouCode, sessionDate);
+                resultList = searchListQueryFilterCriteria(ouCode, sessionDate, sessionStartTime, null);
+            }
+            if(resultList == null || resultList.isEmpty()) {
+                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria Third Call with All params except courtRoom and sessionStartTime for ouCode: {} and sessionDate: {}", ouCode, sessionDate);
+                resultList = searchListQueryFilterCriteria(ouCode, sessionDate, null, null);
+            }
+            sessionDate = sessionDate.plusDays(1);
+        } while ((resultList == null || resultList.isEmpty()) && (sessionDate.isBefore(sessionEndDate) || sessionDate.isEqual(sessionEndDate)));
+
+        return (resultList != null && !resultList.isEmpty()) ? resultList.get(0) : null;
+    }
+
+    private List<CourtSchedule> searchListQueryFilterCriteria(String ouCode,
+                                                                   LocalDate sessionDate,
+                                                                   LocalDateTime sessionStartTime,
+                                                                   String courtRoomId) {
+            LOGGER.info("Criteria Query Params: ouCode {} sessionDate {} sessionStartTime {} courtRoomId {}", ouCode, sessionDate, sessionStartTime, courtRoomId);
+            final List<String> businessType = List.of("REM", "GAP", "NGAP", "TRF", "ENF");
+
+            StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM " +
+                    "court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
+            Map<String, Object> params = new HashMap<>();
+
+            queryString.append("AND s.rota_business_type IN (:businessType) ");
+            params.put(BUSINESS_TYPE, businessType);
+            queryString.append("AND s.oucode = :ouCode ");
+            params.put(OU_CODE, ouCode);
+            queryString.append("AND s.session_start = :sessionDate ");
+            params.put("sessionDate", sessionDate);
+            if(sessionStartTime != null) {
+                queryString.append("AND s.session_start_time IN (:sessionStartTime) ");
+                params.put("sessionStartTime", sessionStartTime);
+            }
+            if(courtRoomId != null) {
+                queryString.append("AND s.court_room_id = :courtRoomId ");
+                params.put(COURT_ROOM_ID, courtRoomId);
+            }
+
+            queryString.append("order by s.rota_business_type desc, s.court_room_number asc");
+            LOGGER.info("Criteria Query Params: queryString {}", queryString);
+            final javax.persistence.Query selectQuery = entityManager.createNativeQuery(queryString.toString(), NATIVE_QUERY_COURT_SCHEDULE_MAPPING_VIEW);
+            params.forEach((key, value) -> {
+                if (value != null) {
+                    selectQuery.setParameter(key, value);
+                }
+            });
+            return selectQuery.getResultList();
     }
 
     protected void updateCourtSchedule(final List<AllocatedSlot> allocatedSlots) {
