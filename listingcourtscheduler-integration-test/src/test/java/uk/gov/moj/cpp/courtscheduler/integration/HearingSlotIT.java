@@ -79,6 +79,7 @@ class HearingSlotIT extends AbstractIT {
     @Test
     void shouldRetrieveHearingSlot() throws Exception {
         final String courtSession = AM_SESSION;
+        final LocalDate sessionDate = LocalDate.of(2025, 1, 3);
         String courtScheduleId = randomUUID().toString();
         String bookingId = randomUUID().toString();
         String bookingId2 = randomUUID().toString();
@@ -93,8 +94,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setCourtSession(courtSession);
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionDate(LocalDate.of(2025, 1, 3));
         courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -102,10 +103,10 @@ class HearingSlotIT extends AbstractIT {
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtSchedule);
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
 
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId, bookingId, "10:00", 1);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId2, bookingId2, "10:00", 1);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId3, bookingId3, "11:00", 1);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId4, bookingId4, "12:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId, bookingId, "10:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId2, bookingId2, "10:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId3, bookingId3, "11:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId4, bookingId4, "12:00", 1);
 
         String hearingSlotsRequestParams = getPayload("courtscheduler.get.hearing.slots.json");
 
@@ -203,7 +204,7 @@ class HearingSlotIT extends AbstractIT {
         String hearingId2 = randomUUID().toString();
         String hearingId3 = randomUUID().toString();
         String hearingId4 = randomUUID().toString();
-        LocalDate sessionDate = LocalDate.now().plusDays(1);
+        LocalDate sessionDate = LocalDate.of(2025, 1, 3);
         final CourtSchedule courtScheduleWithSplit = RANDOM.nextObject(CourtSchedule.class);
         courtScheduleWithSplit.setCourtScheduleId(courtScheduleId);
         courtScheduleWithSplit.setSlotBased(false);
@@ -223,10 +224,10 @@ class HearingSlotIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(courtScheduleWithSplit);
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtScheduleWithSplit);
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId, bookingId, "10:00", 20);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId2, bookingId2, "11:00", 30);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId3, bookingId3, "14:00", 20);
-        createAllocatedListingsAndInsert(courtScheduleId, hearingId4, bookingId4, "15:00", 10);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId, bookingId, "10:00", 20);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId2, bookingId2, "11:00", 30);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId3, bookingId3, "14:00", 20);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId4, bookingId4, "15:00", 10);
 
         String courtScheduleId2 = randomUUID().toString();
         String bookingId5 = randomUUID().toString();
@@ -259,10 +260,10 @@ class HearingSlotIT extends AbstractIT {
         final CourtScheduleJudiciary courtScheduleJudiciaryWithoutSplit = createJudiciaryForSchedule(courtScheduleWithoutSplit);
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciaryWithoutSplit);
 
-        createAllocatedListingsAndInsert(courtScheduleId2, hearingId5, bookingId5, "10:00", 20);
-        createAllocatedListingsAndInsert(courtScheduleId2, hearingId6, bookingId6, "11:00", 30);
-        createAllocatedListingsAndInsert(courtScheduleId2, hearingId7, bookingId7, "14:00", 20);
-        createAllocatedListingsAndInsert(courtScheduleId2, hearingId8, bookingId8, "15:00", 10);
+        createAllocatedListingsAndInsert(courtScheduleId2, sessionDate, hearingId5, bookingId5, "10:00", 20);
+        createAllocatedListingsAndInsert(courtScheduleId2, sessionDate, hearingId6, bookingId6, "11:00", 30);
+        createAllocatedListingsAndInsert(courtScheduleId2, sessionDate, hearingId7, bookingId7, "14:00", 20);
+        createAllocatedListingsAndInsert(courtScheduleId2, sessionDate, hearingId8, bookingId8, "15:00", 10);
 
 
         String hearingSlotsRequestParams = getPayload("courtscheduler.get.hearing.slots.json");
@@ -454,13 +455,13 @@ class HearingSlotIT extends AbstractIT {
     }
 
 
-    private void createAllocatedListingsAndInsert(final String courtScheduleId, final String hearingId, final String bookingId, final String time, final Integer duration) throws SQLException {
+    private void createAllocatedListingsAndInsert(final String courtScheduleId,final LocalDate sessionDate, final String hearingId, final String bookingId, final String time, final Integer duration) throws SQLException {
         final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setBookingId(bookingId);
         allocatedListing.setDuration(duration);
-        allocatedListing.setHearingStartTime(DateUtils.combineDateAndTime(LocalDate.now().plusDays(1), time));
+        allocatedListing.setHearingStartTime(DateUtils.combineDateAndTime(sessionDate, time));
         databaseSeeder.insertAllocatedListing(allocatedListing);
     }
 

@@ -9,7 +9,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
@@ -131,7 +131,7 @@ class HearingIdIT extends AbstractIT {
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setCourtRoomId(1);
-        allocatedListing.setHearingStartTime(Date.from(hearingStartTime.atZone(LONDON_ZONE).toInstant()));
+        allocatedListing.setHearingStartTime(Date.from(hearingStartTime.atZone(UTC_ZONE).toInstant()));
         allocatedListing.setDuration(120);
         allocatedListing.setOucode("BA124");
         allocatedListing.setRotaBusinessType("BUSS");

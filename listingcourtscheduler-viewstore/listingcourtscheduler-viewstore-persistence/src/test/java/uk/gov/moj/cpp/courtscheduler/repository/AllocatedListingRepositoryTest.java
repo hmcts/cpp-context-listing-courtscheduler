@@ -7,7 +7,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -295,7 +295,7 @@ public class AllocatedListingRepositoryTest {
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setCourtRoomId(1);
-        allocatedListing.setHearingStartTime(Date.from(hearingStartTime.atZone(LONDON_ZONE).toInstant()));
+        allocatedListing.setHearingStartTime(Date.from(hearingStartTime.atZone(UTC_ZONE).toInstant()));
         allocatedListing.setDuration(120);
         allocatedListing.setOucode("BA124");
         allocatedListing.setRotaBusinessType("BUSS");

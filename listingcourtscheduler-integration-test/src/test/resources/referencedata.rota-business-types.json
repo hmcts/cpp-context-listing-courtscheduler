@@ -121,7 +121,7 @@
       "slot": false,
       "duration": true,
       "validFrom": "2019-01-01",
-      "validTo": "2019-12-31"
+      "validTo": "2029-12-31"
     },
     {
       "id": "e9be1fff-4ff3-32ba-aa8a-ce6dfb9b2c3d",
