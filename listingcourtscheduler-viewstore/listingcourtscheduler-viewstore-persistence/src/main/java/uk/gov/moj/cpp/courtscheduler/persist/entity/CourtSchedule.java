@@ -58,8 +58,7 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "updated_on", type = Timestamp.class),
                                 @ColumnResult(name = "totalbookedformorning", type = Integer.class),
                                 @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
-                                @ColumnResult(name = "totalbooked", type = Integer.class),
-                                @ColumnResult(name = "national_break_time", type = Date.class)
+                                @ColumnResult(name = "totalbooked", type = Integer.class)
                         }
                 )
         ),
@@ -95,7 +94,8 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "max_ad_afternoon_duration", type = Integer.class),
                                 @ColumnResult(name = "session_start_time", type = Date.class),
                                 @ColumnResult(name = "session_end_time", type = Date.class),
-                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class)
+                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class),
+                                @ColumnResult(name = "national_break_time" , type = Date.class)
                         }
                 )
         )
@@ -183,7 +183,7 @@ public class CourtSchedule {
     @Transient
     private Integer totalBooked;
 
-    @Column(name = "national_break_time", nullable = false)
+    @Column(name = "national_break_time", nullable = true)
     @Temporal(TemporalType.TIMESTAMP)
     private Date nationalBreakTime;
 
@@ -218,7 +218,8 @@ public class CourtSchedule {
                          final Integer maxAdAfternoonDuration,
                          final Date sessionStartTime,
                          final Date sessionEndTime,
-                         final Boolean isOverbookingAllowed) {
+                         final Boolean isOverbookingAllowed,
+                         final Date nationalBreakTime) {
         this.courtRoomNumber = courtRoomNumber;
         this.courtScheduleId = courtScheduleId;
         this.listingProfileId = listingProfileId;
@@ -247,6 +248,7 @@ public class CourtSchedule {
         this.sessionStartTime = sessionStartTime;
         this.sessionEndTime = sessionEndTime;
         this.isOverbookingAllowed = isOverbookingAllowed;
+        this.nationalBreakTime = nationalBreakTime;
     }
 
     //this constructor is used in the SqlResultSetMapping. columnn order is significant!
@@ -279,8 +281,7 @@ public class CourtSchedule {
                          final Date updatedOn,
                          final Integer totalBookedMorning,
                          final Integer totalBookedAfternoon,
-                         final Integer totalBooked,
-                         final Date nationalBreakTime) {
+                         final Integer totalBooked) {
         this.courtScheduleId = id;
         this.listingProfileId = courtListingProfileId;
         this.ouCode = ouCode;
@@ -311,7 +312,6 @@ public class CourtSchedule {
         this.sessionStartTime = sessionStartTime;
         this.sessionEndTime = sessionEndTime;
         this.totalBooked = totalBooked;
-        this.nationalBreakTime = nationalBreakTime;
     }
 
 
