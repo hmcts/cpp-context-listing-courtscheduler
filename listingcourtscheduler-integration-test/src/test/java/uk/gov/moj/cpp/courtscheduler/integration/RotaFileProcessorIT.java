@@ -21,7 +21,7 @@ import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
@@ -449,7 +449,7 @@ class RotaFileProcessorIT extends AbstractIT {
         allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
         allocatedListing.setOucode(courtSchedule.getOuCode());
-        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0 ).atZone(LONDON_ZONE).toInstant()));
+        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0 ).atZone(UTC_ZONE).toInstant()));
 
         return allocatedListing;
     }

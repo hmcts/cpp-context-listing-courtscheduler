@@ -47,6 +47,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
@@ -607,6 +608,8 @@ public class SessionsService {
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder();
 
         final DateUtils.sessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(session.getSessionType(), sessionStartTime, sessionEndTime);
+        final Date sessionStartDate = combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionStartTime());
+        
         courtScheduleBuilder.withCourtScheduleId(UUID.randomUUID().toString())
                 .withBusinessType(session.getBusinessType())
                 .withCourtHouseId(session.getCourtCentreId())
@@ -618,9 +621,10 @@ public class SessionsService {
                 .withAllDaySplit(!isNull(session.isAllDaySplit()) && session.isAllDaySplit())
                 .withMaxDurationForMorning(session.getMaxDurationForMorning())
                 .withMaxDurationForAfternoon(session.getMaxDurationForAfternoon())
-                .withSessionStartTime(combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionStartTime()))
+                .withSessionStartTime(sessionStartDate)
                 .withSessionEndTime(combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionEndTime()))
-                .withIsOverbookingAllowed(!isNull(session.isOverbookingAllowed()));
+                .withIsOverbookingAllowed(!isNull(session.isOverbookingAllowed()))
+                .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate));
         enrichSession(courtScheduleBuilder, session.getSlotsOrDuration(), requester);
         return courtScheduleBuilder.build();
     }
