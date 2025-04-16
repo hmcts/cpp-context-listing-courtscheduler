@@ -133,7 +133,8 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "max_ad_afternoon_duration", type = Integer.class),
                                 @ColumnResult(name = "session_start_time", type = Date.class),
                                 @ColumnResult(name = "session_end_time", type = Date.class),
-                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class)
+                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class),
+                                @ColumnResult(name = "national_break_time" , type = Date.class)
                         }
                 )
         )
@@ -221,6 +222,10 @@ public class CourtSchedule {
     @Transient
     private Integer totalBooked;
 
+    @Column(name = "national_break_time", nullable = true)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date nationalBreakTime;
+
     public CourtSchedule() {
         //For JPA
     }
@@ -252,7 +257,8 @@ public class CourtSchedule {
                          final Integer maxAdAfternoonDuration,
                          final Date sessionStartTime,
                          final Date sessionEndTime,
-                         final Boolean isOverbookingAllowed) {
+                         final Boolean isOverbookingAllowed,
+                         final Date nationalBreakTime) {
         this.courtRoomNumber = courtRoomNumber;
         this.courtScheduleId = courtScheduleId;
         this.listingProfileId = listingProfileId;
@@ -281,6 +287,7 @@ public class CourtSchedule {
         this.sessionStartTime = sessionStartTime;
         this.sessionEndTime = sessionEndTime;
         this.isOverbookingAllowed = isOverbookingAllowed;
+        this.nationalBreakTime = nationalBreakTime;
     }
 
     //this constructor is used in the SqlResultSetMapping. columnn order is significant!
@@ -661,6 +668,14 @@ public class CourtSchedule {
         this.totalBooked = totalBooked;
     }
 
+    public Date getNationalBreakTime() {
+        return nationalBreakTime;
+    }
+
+    public void setNationalBreakTime(Date nationalBreakTime) {
+        this.nationalBreakTime = nationalBreakTime;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -695,7 +710,8 @@ public class CourtSchedule {
                 && Objects.equals(getIsOverbookingAllowed(), that.getIsOverbookingAllowed())
                 && Objects.equals(getTotalBookedMorning(), that.getTotalBookedMorning())
                 && Objects.equals(getTotalBookedAfternoon(), that.getTotalBookedAfternoon())
-                && Objects.equals(getTotalBooked(), that.getTotalBooked());
+                && Objects.equals(getTotalBooked(), that.getTotalBooked())
+                && Objects.equals(getNationalBreakTime(), that.getNationalBreakTime());
     }
 
     @Override
@@ -705,7 +721,7 @@ public class CourtSchedule {
                 getCourtRoomName(), getOperationalUnit(), getBusinessType(), getPanel(), getCourtSession(),
                 isActive(), isSlotBased(), getSessionDate(), getMaxSlots(), getMaxDuration(), getAvailableSlots(),
                 getAvailableDuration(), getCreatedOn(), getUpdatedOn(), getSupportAdSplit(), getMaxAdMorningDuration(), getMaxAdAfternoonDuration(),
-                getSessionStartTime(), getSessionEndTime(), getIsOverbookingAllowed(), getTotalBookedMorning(), getTotalBookedAfternoon(), getTotalBooked());
+                getSessionStartTime(), getSessionEndTime(), getIsOverbookingAllowed(), getTotalBookedMorning(), getTotalBookedAfternoon(), getTotalBooked(), getNationalBreakTime());
     }
 
     @Override
@@ -741,6 +757,7 @@ public class CourtSchedule {
                 ", totalBookedMorning=" + totalBookedMorning +
                 ", totalBookedAfternoon=" + totalBookedAfternoon +
                 ", totalBooked=" + totalBooked +
+                ", nationalBreakTime=" + nationalBreakTime +
                 '}';
     }
 }

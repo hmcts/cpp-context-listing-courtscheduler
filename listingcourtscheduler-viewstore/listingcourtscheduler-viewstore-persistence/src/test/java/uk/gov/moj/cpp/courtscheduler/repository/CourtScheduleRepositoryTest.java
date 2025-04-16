@@ -15,10 +15,15 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -256,6 +261,99 @@ public class CourtScheduleRepositoryTest {
 
         // then
         assertEquals(3, results.size());
+    }
+
+    @Test
+    public void shouldUpdateListHearingSlotsForSlotBased() {
+        // given
+        CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
+        matchingCourtSchedule1.setSessionDate(LocalDate.of(2025,4,14));
+        matchingCourtSchedule1.setSessionStartTime(DateUtils.combineDateAndTime(matchingCourtSchedule1.getSessionDate(), "10:00"));
+        matchingCourtSchedule1.setSlotBased(true);
+        matchingCourtSchedule1.setMaxSlots(2);
+        matchingCourtSchedule1.setAvailableSlots(2);
+        courtScheduleRepository.save(matchingCourtSchedule1);
+
+        String courtScheduleId1 = matchingCourtSchedule1.getCourtScheduleId();
+
+        RequestedSlots slotsWrapper = new RequestedSlots();
+        HearingSlot hearingSlot = new HearingSlot();
+        String hearingId = randomUUID().toString();
+        String courtScheduleId =  courtScheduleId1;
+        RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
+        requestedCourtSchedule.setCourtScheduleId(courtScheduleId);
+        requestedCourtSchedule.setSessionStartTime("2025-04-14T10:00:00Z");
+        requestedCourtSchedule.setDurationInMinutes(180);
+        List<RequestedCourtSchedule> courtScheduleIds = new ArrayList<>();
+        courtScheduleIds.add(requestedCourtSchedule);
+
+        hearingSlot.setHearingId(hearingId);
+        hearingSlot.setCourtScheduleIds(courtScheduleIds);
+        List<HearingSlot> hearingSlots = new ArrayList<>();
+        hearingSlots.add(hearingSlot);
+        slotsWrapper.setHearingSlots(hearingSlots);
+
+        //when
+        courtScheduleRepository.updateListHearingSlots(slotsWrapper);
+
+        //then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
+        uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedListing = allocatedListings.get(0);
+
+        List<CourtSchedule> updatedSchedules = courtScheduleRepository.findBy(matchingCourtSchedule1);
+        assertFalse(updatedSchedules.isEmpty());
+        CourtSchedule updatedSchedule = updatedSchedules.get(0);
+        assertThat(1, is(updatedSchedule.getAvailableSlots())); //available slots deducted
+
+        assertEquals(allocatedListing.getHearingId(), hearingId);
+        assertEquals(allocatedListing.getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
+    }
+
+    @Test
+    public void shouldUpdateListHearingSlotsForDurationBased() {
+        // given
+        CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
+        matchingCourtSchedule1.setSessionDate(LocalDate.of(2025,4,16));
+        matchingCourtSchedule1.setSessionStartTime(DateUtils.combineDateAndTime(matchingCourtSchedule1.getSessionDate(), "10:00"));
+        matchingCourtSchedule1.setSlotBased(false);
+        matchingCourtSchedule1.setMaxSlots(2);
+        matchingCourtSchedule1.setAvailableSlots(2);
+        matchingCourtSchedule1.setAvailableDuration(180);
+        courtScheduleRepository.save(matchingCourtSchedule1);
+
+        String courtScheduleId1 = matchingCourtSchedule1.getCourtScheduleId();
+
+        RequestedSlots slotsWrapper = new RequestedSlots();
+        HearingSlot hearingSlot = new HearingSlot();
+        String hearingId = randomUUID().toString();
+        String courtScheduleId =  courtScheduleId1;
+        RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
+        requestedCourtSchedule.setCourtScheduleId(courtScheduleId);
+        requestedCourtSchedule.setSessionStartTime("2025-04-16T10:00:00Z");
+        requestedCourtSchedule.setDurationInMinutes(120);
+        List<RequestedCourtSchedule> courtScheduleIds = new ArrayList<>();
+        courtScheduleIds.add(requestedCourtSchedule);
+
+        hearingSlot.setHearingId(hearingId);
+        hearingSlot.setCourtScheduleIds(courtScheduleIds);
+        List<HearingSlot> hearingSlots = new ArrayList<>();
+        hearingSlots.add(hearingSlot);
+        slotsWrapper.setHearingSlots(hearingSlots);
+
+        //when
+        courtScheduleRepository.updateListHearingSlots(slotsWrapper);
+
+        //then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
+        uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedListing = allocatedListings.get(0);
+
+        List<CourtSchedule> updatedSchedules = courtScheduleRepository.findBy(matchingCourtSchedule1);
+        assertFalse(updatedSchedules.isEmpty());
+        CourtSchedule updatedSchedule = updatedSchedules.get(0);
+        assertThat(60, is(updatedSchedule.getAvailableDuration())); //available duration deducted
+
+        assertEquals(allocatedListing.getHearingId(), hearingId);
+        assertEquals(allocatedListing.getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
     }
 
     @Test
@@ -707,8 +805,8 @@ public class CourtScheduleRepositoryTest {
         );
     }
 
-    private CourtSchedule createCourtSchedule(String ouCode, String panel, LocalDate sessionDate, 
-                                            String courtRoomId, String businessType) {
+    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
+                                            final String courtRoomId, final String businessType) {
         CourtSchedule schedule = new CourtSchedule();
         
         // Required fields (not null constraints)
@@ -754,6 +852,9 @@ public class CourtScheduleRepositoryTest {
         schedule.setSessionStartTime(Date.from(startDateTime.atZone(ZoneId.systemDefault()).toInstant()));
         schedule.setSessionEndTime(Date.from(endDateTime.atZone(ZoneId.systemDefault()).toInstant()));
         
+        // Set national break time based on BST logic
+        schedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+
         // Optional field
         schedule.setListingProfileId(random(String.class));                  // court_listing_profile_id
         
@@ -1183,7 +1284,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
-
+        courtSchedule1.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -1245,7 +1346,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
-
+        courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -1307,7 +1408,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
-
+        courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -1544,6 +1645,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
+        courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
 
         courtScheduleRepository.save(courtSchedule1);
 
@@ -1618,6 +1720,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
+        courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
 
         courtScheduleRepository.save(courtSchedule1);
 

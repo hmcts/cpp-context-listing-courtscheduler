@@ -10,7 +10,7 @@
 
     <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
     <artifactId>listingcourtscheduler-parent</artifactId>
-    <version>17.0.44-SNAPSHOT</version>
+    <version>17.0.49-SPIPH1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>CourtScheduler Service - Parent Module</name>
@@ -48,7 +48,7 @@
         </sonar.cpd.exclusions>
         <usersgroups.version>8.0.37</usersgroups.version>
         <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
-        <referencedata.version>17.0.64</referencedata.version>
+        <referencedata.version>17.0.84</referencedata.version>
         <lettuce.core.version>5.2.1.RELEASE</lettuce.core.version>
         <azure.storage.version>8.6.6</azure.storage.version>
         <azure.core.version>1.53.0</azure.core.version>

@@ -3,6 +3,9 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.lang.String.format;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
+import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
@@ -67,6 +70,17 @@ public class SlotsUpdateService {
         } else {
             courtScheduleRepository.saveBookedSlots(slots, false, false);
         }
+    }
+
+    public ListHearingSlotsResponse updateListHearingSlots(final RequestedSlots hearingSlots) {
+
+        ListHearingSlotsResponse response = new ListHearingSlotsResponse();
+
+        List<Hearing> listHearingSlots = courtScheduleRepository.updateListHearingSlots(hearingSlots);
+
+        response.setHearings(listHearingSlots);
+
+        return response;
     }
 
     public Result searchUpdate(final List<AllocatedSlot> slots) {

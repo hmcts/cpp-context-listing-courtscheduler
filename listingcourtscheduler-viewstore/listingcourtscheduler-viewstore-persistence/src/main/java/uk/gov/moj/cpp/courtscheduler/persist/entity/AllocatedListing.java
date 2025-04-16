@@ -23,7 +23,7 @@ public class AllocatedListing {
     @Column(name = "court_schedule_id", nullable = false)
     private String courtScheduleId;
 
-    @Column(name = "booking_id", nullable = false)
+    @Column(name = "booking_id")
     private String bookingId;
 
     @Column(name = "hearing_id", nullable = false)
