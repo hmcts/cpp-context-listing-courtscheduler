@@ -253,24 +253,6 @@ public class CourtSchedulerApi {
                 .apply(objectToJsonObjectConverter.convert(listHearingSlotsResponse));
     }
 
-    /**
-     * @deprecated
-     */
-    @Handles("courtscheduler.search.update.hearing.slots")
-    @Deprecated(forRemoval)
-    public JsonEnvelope searchUpdateHearingSlots(final JsonEnvelope envelope) {
-        final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
-        LOGGER.info("courtscheduler.search.update.hearing.slots:{}", payloadAsJsonString);
-
-        Result result = Result.FAILED("Deprecated Not to use");
-
-        JsonObject responseObject = createObjectBuilder()
-                .add(RESULTS, objectToJsonObjectConverter.convert(result))
-                .build();
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.search.update.hearing.slots").apply(responseObject);
-    }
-
     @Handles("courtscheduler.search.book.hearing.slots")
     public JsonEnvelope searchBookHearingSlots(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
