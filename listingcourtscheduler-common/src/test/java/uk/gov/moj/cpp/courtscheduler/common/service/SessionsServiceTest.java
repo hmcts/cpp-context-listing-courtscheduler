@@ -139,11 +139,6 @@ class SessionsServiceTest {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
     }
 
-    @BeforeEach
-    void setUp() {
-        TimeZone.setDefault(TimeZone.getTimeZone("Europe/London"));
-    }
-
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingToday() {
         final List<Session> sessions = Arrays.asList(
