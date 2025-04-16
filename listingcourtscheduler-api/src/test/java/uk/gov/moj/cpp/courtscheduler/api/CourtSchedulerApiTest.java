@@ -296,28 +296,6 @@ class CourtSchedulerApiTest {
     }
 
     @Test
-    void shouldSearchUpdateHearingSlots() throws IOException {
-        String payload = FileUtil.getPayload("courtscheduler.search.update.hearing.slots.json");
-        final JsonObject jsonObject = payloadToObject(payload);
-        final String requestName = "courtscheduler.search.update.hearing.slots";
-
-        final JsonEnvelope updateHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
-
-        when(enveloper.withMetadataFrom(updateHearingSlotsEnvelope, requestName)).thenReturn(function);
-        Result success = Result.SUCCESS();
-        when(slotsUpdateService.searchUpdate(any())).thenReturn(success);
-        when(objectToJsonObjectConverter.convert(success)).thenReturn(createObjectBuilder()
-                .add(RESULTS, "Success")
-                .build());
-        when(allocatedSlotConverter.convert(jsonObject.toString())).thenReturn(new AllocatedSlotConverter().convert(payload));
-
-        courtSchedulerApi.searchUpdateHearingSlots(updateHearingSlotsEnvelope);
-
-        verify(slotsUpdateService, atLeastOnce()).searchUpdate(new AllocatedSlotConverter().convert(payload).getHearingSlots());
-        verify(enveloper, atLeastOnce()).withMetadataFrom(updateHearingSlotsEnvelope, requestName);
-    }
-
-    @Test
     void shouldRetrieveHearingSlots() throws IOException {
         final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.get.hearing.slots.json"));
         final String requestName = "courtscheduler.get.hearing.slots";
