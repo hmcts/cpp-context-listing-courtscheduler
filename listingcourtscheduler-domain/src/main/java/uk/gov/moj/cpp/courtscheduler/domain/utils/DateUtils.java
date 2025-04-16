@@ -7,6 +7,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_D
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.MeridianHelper.getMeridian;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum;
 
@@ -22,8 +23,14 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.TimeZone;
 
 
+/**
+ * Utility class for handling date and time operations.
+ * This class is designed to store all dates in UTC format.
+ * Timezone conversions should be handled by the UI.
+ */
 public class DateUtils {
     protected static final DateTimeFormatter ISO_8601_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
@@ -97,6 +104,16 @@ public class DateUtils {
         return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(date);
     }
 
+    public static final String toResponseDateString(final java.util.Date date) {
+        if (date == null) {
+            return null;
+        }
+        // Convert to response json format
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return sdf.format(date);
+    }
+
     public static final Date toSqlDate(String dateString) {
         if (dateString == null) {
             return null;
@@ -126,8 +143,18 @@ public class DateUtils {
         }
     }
 
+    public static final java.util.Date getDate(String dateString) {
+        try {
+            SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+            isoFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+            return isoFormat.parse(dateString);
+        } catch (ParseException e) {
+            throw new IllegalArgumentException(String.format("Passed date string:%s cannot be parsed with format:yyyy-MM-dd'T'HH:mm:ss'Z'", dateString));
+        }
+    }
+
     public static final java.util.Date localDateToDateWithTime(final LocalDate localDate, final int hour, final int minute) {
-        final ZonedDateTime zonedDateTime = localDate.atTime(hour, minute).atZone(ZoneId.of("UTC"));
+        final ZonedDateTime zonedDateTime = localDate.atTime(hour, minute).atZone(LONDON_ZONE);
         return java.util.Date.from(zonedDateTime.toInstant());
     }
 

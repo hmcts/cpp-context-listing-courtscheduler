@@ -114,6 +114,16 @@
       "duration": false
     },
     {
+      "id": "c9bb572b-2769-4da6-a41b-c8d7f15fc4a8",
+      "seqNum": 10,
+      "typeCode": "TRL",
+      "typeDescription": "TRL",
+      "slot": false,
+      "duration": true,
+      "validFrom": "2019-01-01",
+      "validTo": "2029-12-31"
+    },
+    {
       "id": "e9be1fff-4ff3-32ba-aa8a-ce6dfb9b2c3d",
       "seqNum": 130,
       "typeCode": "DVP",
@@ -376,14 +386,6 @@
       "typeDescription": "Traffic",
       "slot": true,
       "duration": false
-    },
-    {
-      "id": "0e9c19a2-6dda-3297-b2ac-0223e8c593dd",
-      "seqNum": 470,
-      "typeCode": "TRL",
-      "typeDescription": "Trial",
-      "slot": false,
-      "duration": true
     },
     {
       "id": "153bad39-9d4a-3c4e-8831-07eecdcafa02",

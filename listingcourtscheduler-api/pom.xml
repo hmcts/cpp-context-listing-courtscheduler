@@ -5,7 +5,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listingcourtscheduler-parent</artifactId>
-        <version>17.0.48-SPIPH1-SNAPSHOT</version>
+        <version>17.0.49-SPIPH1-SNAPSHOT</version>
     </parent>
 
     <artifactId>listingcourtscheduler-api</artifactId>
@@ -164,6 +164,11 @@
             <plugin>
                 <groupId>uk.gov.justice.framework-generators</groupId>
                 <artifactId>rest-client-generator-plugin</artifactId>
+                <version>${cpp.framework.version}</version>
+                <configuration>
+                    <ramlDirectory>${project.basedir}/src/raml</ramlDirectory>
+                    <outputDirectory>${project.build.directory}/generated-sources/raml</outputDirectory>
+                </configuration>
                 <dependencies>
                     <dependency>
                         <groupId>uk.gov.moj.cpp.usersgroups</groupId>
@@ -192,7 +197,7 @@
                     <dependency>
                         <groupId>javax</groupId>
                         <artifactId>javaee-api</artifactId>
-                        <version>8.0.1</version>
+                        <version>${javaee-api.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>

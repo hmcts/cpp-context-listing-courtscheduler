@@ -79,7 +79,7 @@ class CourtSchedulerIT extends AbstractIT {
         // Set the timezone for the SimpleDateFormat to London
         sdf.setTimeZone(TimeZone.getTimeZone("Europe/London"));
     }
-
+    
     @Test
     void shouldCreateSlotBasedSchedule() {
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based.json");
@@ -110,11 +110,10 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
-
+        
         // Convert the UTC times from the database to local time for comparison
         java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
         java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
-
         assertThat(sdf.format(localStartTime), is(DEFAULT_MORNING_START_TIME));
         assertThat(sdf.format(localEndTime), is(DEFAULT_MORNING_END_TIME));
     }
