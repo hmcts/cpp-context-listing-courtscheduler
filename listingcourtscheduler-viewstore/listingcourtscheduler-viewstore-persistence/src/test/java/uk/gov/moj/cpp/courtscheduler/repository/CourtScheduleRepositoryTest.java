@@ -264,7 +264,7 @@ public class CourtScheduleRepositoryTest {
     }
 
     @Test
-    public void shouldUpdateListHearingSlots() {
+    public void shouldUpdateListHearingSlotsForSlotBased() {
         // given
         CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
         matchingCourtSchedule1.setSessionDate(LocalDate.of(2025,4,14));
@@ -299,6 +299,11 @@ public class CourtScheduleRepositoryTest {
         //then
         List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
         uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedListing = allocatedListings.get(0);
+
+        List<CourtSchedule> updatedSchedules = courtScheduleRepository.findBy(matchingCourtSchedule1);
+        assertFalse(updatedSchedules.isEmpty());
+        CourtSchedule updatedSchedule = updatedSchedules.get(0);
+        assertThat(1, is(updatedSchedule.getAvailableSlots())); //available slots deducted
 
         assertEquals(allocatedListing.getHearingId(), hearingId);
         assertEquals(allocatedListing.getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());

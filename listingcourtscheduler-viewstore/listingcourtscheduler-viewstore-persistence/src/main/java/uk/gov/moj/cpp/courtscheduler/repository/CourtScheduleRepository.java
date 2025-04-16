@@ -514,15 +514,12 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     private void updateCourtScheduleWithRequestedList(List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> slots) {
-        slots.forEach(courtSchedule -> {
-            this.save(courtSchedule);
-        });
+        slots.forEach(this::save);
+
     }
 
     private void saveAllocatedListingWithRequestedList(List<AllocatedListing> slots) {
-        slots.forEach(allocatedListing -> {
-            this.allocatedListingRepository.save(allocatedListing);
-        });
+        slots.forEach(allocatedListing -> this.allocatedListingRepository.save(allocatedListing));
     }
 
     @SuppressWarnings("unchecked")
