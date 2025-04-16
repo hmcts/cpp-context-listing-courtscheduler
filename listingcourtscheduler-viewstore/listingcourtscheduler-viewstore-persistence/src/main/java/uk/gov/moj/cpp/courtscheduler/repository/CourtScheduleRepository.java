@@ -486,7 +486,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             if (cs.isSlotBased()) {
                 if (isNull(hearing.getDuration())) hearing.setDuration(SLOT_DEFAULT);
                 cs.setAvailableSlots(cs.getAvailableSlots() - 1);
+            } else {
+                if (!isNull(hearing.getDuration())) cs.setAvailableDuration(cs.getAvailableDuration() - hearing.getDuration());
             }
+
             // set sessions start time
             validateAndSetHearingStartTime(hearing, cs);
 

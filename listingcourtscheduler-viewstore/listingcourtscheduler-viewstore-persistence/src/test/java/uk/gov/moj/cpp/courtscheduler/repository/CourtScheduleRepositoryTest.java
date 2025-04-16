@@ -305,6 +305,53 @@ public class CourtScheduleRepositoryTest {
     }
 
     @Test
+    public void shouldUpdateListHearingSlotsForDurationBased() {
+        // given
+        CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
+        matchingCourtSchedule1.setSessionDate(LocalDate.of(2025,4,16));
+        matchingCourtSchedule1.setSessionStartTime(DateUtils.combineDateAndTime(matchingCourtSchedule1.getSessionDate(), "10:00"));
+        matchingCourtSchedule1.setSlotBased(false);
+        matchingCourtSchedule1.setMaxSlots(2);
+        matchingCourtSchedule1.setAvailableSlots(2);
+        matchingCourtSchedule1.setAvailableDuration(180);
+        courtScheduleRepository.save(matchingCourtSchedule1);
+
+        String courtScheduleId1 = matchingCourtSchedule1.getCourtScheduleId();
+
+        RequestedSlots slotsWrapper = new RequestedSlots();
+        HearingSlot hearingSlot = new HearingSlot();
+        String hearingId = randomUUID().toString();
+        String courtScheduleId =  courtScheduleId1;
+        RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
+        requestedCourtSchedule.setCourtScheduleId(courtScheduleId);
+        requestedCourtSchedule.setSessionStartTime("2025-04-16T10:00:00Z");
+        requestedCourtSchedule.setDurationInMinutes(120);
+        List<RequestedCourtSchedule> courtScheduleIds = new ArrayList<>();
+        courtScheduleIds.add(requestedCourtSchedule);
+
+        hearingSlot.setHearingId(hearingId);
+        hearingSlot.setCourtScheduleIds(courtScheduleIds);
+        List<HearingSlot> hearingSlots = new ArrayList<>();
+        hearingSlots.add(hearingSlot);
+        slotsWrapper.setHearingSlots(hearingSlots);
+
+        //when
+        List<Hearing> hearings = courtScheduleRepository.updateListHearingSlots(slotsWrapper);
+
+        //then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
+        uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedListing = allocatedListings.get(0);
+
+        List<CourtSchedule> updatedSchedules = courtScheduleRepository.findBy(matchingCourtSchedule1);
+        assertFalse(updatedSchedules.isEmpty());
+        CourtSchedule updatedSchedule = updatedSchedules.get(0);
+        assertThat(60, is(updatedSchedule.getAvailableDuration())); //available duration deducted
+
+        assertEquals(allocatedListing.getHearingId(), hearingId);
+        assertEquals(allocatedListing.getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
+    }
+
+    @Test
     public void shouldFindCourtSchedulesByAllParameters() {
         // given
         String hearingId = randomUUID().toString();
