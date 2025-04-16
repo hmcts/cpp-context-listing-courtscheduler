@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
-import static java.time.ZoneOffset.UTC;
-import static java.util.Date.from;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -19,15 +18,13 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SE
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SPLIT_ONLY_APPLIES_DURATION_BASED_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.localDateToDateWithTime;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
@@ -36,18 +33,13 @@ import java.io.StringReader;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.UUID;
+import java.util.TimeZone;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -56,7 +48,6 @@ import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -66,7 +57,6 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String BASE_RESOURCE_URL = "/courtschedule";
     private static final String UPDATE_URL = "/edit";
     private static final String DELETE_URL = "/delete";
-    private static final String SEARCH_BY_ID_URL = "/search.court-schedules-by-id";
     private static final String VALIDATE_URL = "/validate";
     private static final String OUCODE_MIGRATE_URL = "/oucode/migrate";
 
@@ -74,7 +64,6 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
     private static final String COURT_SCHEDULE_UPDATE_CONTENT_TYPE = "application/vnd.courtscheduler.update+json";
     private static final String COURT_SCHEDULE_GET_CONTENT_TYPE = "application/vnd.courtscheduler.get+json";
-    private static final String COURT_SCHEDULE_SEARCH_COURTSCHEDULES_BY_ID_CONTENT_TYPE = "application/vnd.courtscheduler.search.courtschedules.by.id+json";
     private static final String COURT_SCHEDULE_DELETE_CONTENT_TYPE = "application/vnd.courtscheduler.delete+json";
     private static final String COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE = "application/vnd.courtscheduler.oucode.migrate+json";
 
@@ -86,18 +75,13 @@ class CourtSchedulerIT extends AbstractIT {
     public static final String DEFAULT_ALL_DAY_END_TIME = "17:00";
     public static final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
 
-    @BeforeAll
-    public static void setUp() {
-        TimeZone.setDefault(TimeZone.getTimeZone("Europe/London"));
+    static {
+        // Set the timezone for the SimpleDateFormat to London
         sdf.setTimeZone(TimeZone.getTimeZone("Europe/London"));
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
     }
 
     @Test
     void shouldCreateSlotBasedSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -106,9 +90,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithSessionTimes() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -122,9 +103,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithDefaultSessionTimesAM() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based-default-times-am.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -132,15 +110,17 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
-        assertThat(sdf.format(courtSchedule.getSessionStartTime()), is(DEFAULT_MORNING_START_TIME));
-        assertThat(sdf.format(courtSchedule.getSessionEndTime()), is(DEFAULT_MORNING_END_TIME));
+
+        // Convert the UTC times from the database to local time for comparison
+        java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+        java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+
+        assertThat(sdf.format(localStartTime), is(DEFAULT_MORNING_START_TIME));
+        assertThat(sdf.format(localEndTime), is(DEFAULT_MORNING_END_TIME));
     }
 
     @Test
     void shouldCreateCourtScheduleWithDefaultSessionTimesPM() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based-default-times-pm.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -148,15 +128,17 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
-        assertThat(sdf.format(courtSchedule.getSessionStartTime()), is(DEFAULT_AFTERNOON_START_TIME));
-        assertThat(sdf.format(courtSchedule.getSessionEndTime()), is(DEFAULT_AFTERNOON_END_TIME));
+
+        // Convert the UTC times from the database to local time for comparison
+        java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+        java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+
+        assertThat(sdf.format(localStartTime), is(DEFAULT_AFTERNOON_START_TIME));
+        assertThat(sdf.format(localEndTime), is(DEFAULT_AFTERNOON_END_TIME));
     }
 
     @Test
     void shouldCreateCourtScheduleWithDefaultSessionTimesAD() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based-default-times-ad.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -164,15 +146,17 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
-        assertThat(sdf.format(courtSchedule.getSessionStartTime()), is(DEFAULT_ALL_DAY_START_TIME));
-        assertThat(sdf.format(courtSchedule.getSessionEndTime()), is(DEFAULT_ALL_DAY_END_TIME));
+
+        // Convert the UTC times from the database to local time for comparison
+        java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+        java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+
+        assertThat(sdf.format(localStartTime), is(DEFAULT_ALL_DAY_START_TIME));
+        assertThat(sdf.format(localEndTime), is(DEFAULT_ALL_DAY_END_TIME));
     }
 
     @Test
     void shouldReturnErrorWhenAMSessionEndTimeIsLate() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-invalid-end-time.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
 
@@ -183,9 +167,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldReturnErrorWhenSessionEndTimeIsEarlierThanSessionStartTime() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-invalid-prior-session-end-time.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
 
@@ -196,9 +177,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldReturnErrorWhenPMSessionStartTimeIsEarly() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-invalid-start-time-pm.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
 
@@ -213,8 +191,6 @@ class CourtSchedulerIT extends AbstractIT {
         final Integer maxDurationForAfternoonSlot1 = 60;
         final Integer maxDurationForMorningSlot2 = 240;
         final Integer maxDurationForAfternoonSlot2 = 120;
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
 
         final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         final LocalDate endDate = startDate.plusDays(28);
@@ -247,9 +223,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet200IfAllDaySplitTrueWithZeroMaxDurationValuesToCreateDurationBasedSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-duration-based-with-all-day-split-Zero-max-durations.json");
         final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
 
@@ -258,9 +231,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet400IfAllDaySplitTrueForSlotBasedAllDaySessionToValidateCreateSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-slot-based-having-all-day-split-true.json");
         final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
 
@@ -271,9 +241,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet400IfAllDaySplitTrueForAMSession() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-AM-session-having-all-day-split-true.json");
         final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
 
@@ -284,8 +251,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet200IfAllDaySplitTrueButMissingMaxDurationValuesToCreateDurationBasedSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-duration-based-with-all-day-split.json");
         final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(OK.getStatusCode()));
@@ -293,8 +258,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet200IfAllDaySplitFalseToCreateDurationBasedSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-duration-based.json");
         final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(OK.getStatusCode()));
@@ -302,9 +265,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet400IfAllDaySplitFlagMissingToCreateDurationBasedSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-duration-based-missing-all-day-split-param.json");
         final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         final String errorResponseMessage = response.readEntity(String.class);
@@ -314,8 +274,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateDurationBasedSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-
         final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         final LocalDate endDate = startDate.plusDays(28);
         final String createCourtSchedulePayload = getPayload("create-court-schedule-duration-based.json")
@@ -327,7 +285,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateOrUpdateCourtSchedule() {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
 
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-multiple-session.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
@@ -336,7 +293,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldUpdateCourtSchedule() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -362,7 +318,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldUpdateCourtScheduleAllDaySplit() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -396,16 +351,12 @@ class CourtSchedulerIT extends AbstractIT {
 
         final Date expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 30);
         final Date expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 30);
-        SimpleDateFormat utcSdf = new SimpleDateFormat("HH:mm");
-        utcSdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-        assertThat(sdf.format(courtScheduleAfterUpdate.getSessionStartTime()), is(utcSdf.format(expectedStartTime)));
-        assertThat(sdf.format(courtScheduleAfterUpdate.getSessionEndTime()), is(utcSdf.format(expectedEndTime)));
+        assertThat(courtScheduleAfterUpdate.getSessionStartTime(), is(expectedStartTime));
+        assertThat(courtScheduleAfterUpdate.getSessionEndTime(), is(expectedEndTime));
     }
 
     @Test
     void shouldUpdateCourtScheduleIsOverbookingAllowed() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
         UUID courtScheduleId = UUID.randomUUID();
         final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -440,16 +391,12 @@ class CourtSchedulerIT extends AbstractIT {
 
         final Date expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 30);
         final Date expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 30);
-        SimpleDateFormat utcSdf = new SimpleDateFormat("HH:mm");
-        utcSdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-        assertThat(sdf.format(courtScheduleAfterUpdate.getSessionStartTime()), is(utcSdf.format(expectedStartTime)));
-        assertThat(sdf.format(courtScheduleAfterUpdate.getSessionEndTime()), is(utcSdf.format(expectedEndTime)));
+        assertThat(courtScheduleAfterUpdate.getSessionStartTime(), is(expectedStartTime));
+        assertThat(courtScheduleAfterUpdate.getSessionEndTime(), is(expectedEndTime));
     }
 
     @Test
     void shouldUpdateCourtScheduleAllDaySplitWithoutGivenSessionStartAndEndTime() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
         UUID courtScheduleId = UUID.randomUUID();
         final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -480,15 +427,12 @@ class CourtSchedulerIT extends AbstractIT {
 
         final Date expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 0);
         final Date expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 00);
-        SimpleDateFormat utcSdf = new SimpleDateFormat("HH:mm");
-        utcSdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-        assertThat(sdf.format(courtScheduleAfterUpdate.getSessionStartTime()), is(utcSdf.format(expectedStartTime)));
-        assertThat(sdf.format(courtScheduleAfterUpdate.getSessionEndTime()), is(utcSdf.format(expectedEndTime)));
+        assertThat(courtScheduleAfterUpdate.getSessionStartTime(), is(expectedStartTime));
+        assertThat(courtScheduleAfterUpdate.getSessionEndTime(), is(expectedEndTime));
     }
 
     @Test
     void shouldGet400WhenUpdatingCourtScheduleWithInvalidMaxDurationValues() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -517,7 +461,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet400WhenUpdatingCourtScheduleWithNonDurationBasedBusinessType() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -545,7 +488,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGet400WhenUpdatingCourtScheduleADSplit() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -574,9 +516,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldUpdateCourtScheduleWithValidDurationBasedBusinessType() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -607,7 +546,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldNotUpdateCourtScheduleIfTotalBookedExceedsMaxDurationOrSlot() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -633,9 +571,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldNotUpdateCourtScheduleIfTotalBookedExceedsMaxDurationForMorning() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         final UUID courtScheduleId = UUID.randomUUID();
         final UUID hearingIdForMorning = UUID.randomUUID();
@@ -655,8 +590,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 90, "10:00");
@@ -686,9 +621,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldNotUpdateCourtScheduleIfTotalBookedExceedsMaxDurationForAfternoon() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-        stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
-
         final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         final UUID courtScheduleId = UUID.randomUUID();
         final UUID hearingIdForMorning = UUID.randomUUID();
@@ -708,8 +640,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 90, "10:00");
@@ -740,7 +672,6 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     @Disabled
     void shouldNotAllowUpdateCourtScheduleForDifferentBusinessType() throws SQLException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-slot-based.json");
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId.toString());
@@ -765,8 +696,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGetCourtSchedules() throws SQLException, JsonProcessingException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-
         UUID courtScheduleId = UUID.randomUUID();
         UUID hearingId = UUID.randomUUID();
         UUID bookingId = UUID.randomUUID();
@@ -776,8 +705,6 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setBusinessType("TRL");
 
         expected.setSlotBased(false);
-        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
-        expected.setSessionEndTime(from(expected.getSessionDate().atTime(15, 0).atZone(UTC).toInstant()));
         expected.setMaxDuration(5);
         expected.setAvailableDuration(5);
         expected.setSupportAdSplit(false);
@@ -786,20 +713,11 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtScheduleId(courtScheduleId.toString());
         databaseSeeder.insertCourtSchedule(expected);
 
-        AllocatedListing allocatedListing1 = RANDOM.nextObject(AllocatedListing.class);
-        allocatedListing1.setCourtScheduleId(expected.getCourtScheduleId());
-        allocatedListing1.setHearingId(hearingId.toString());
-        allocatedListing1.setBookingId(bookingId.toString());
-        allocatedListing1.setHearingStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
-        databaseSeeder.insertAllocatedListing(allocatedListing1);
-
-        AllocatedListing allocatedListing2 = RANDOM.nextObject(AllocatedListing.class);
-        allocatedListing2.setCourtScheduleId(expected.getCourtScheduleId());
-        allocatedListing2.setHearingId(UUID.randomUUID().toString());
-        allocatedListing2.setBookingId(UUID.randomUUID().toString());
-        allocatedListing2.setHearingStartTime(from(expected.getSessionDate().atTime(15, 0).atZone(UTC).toInstant()));
-        databaseSeeder.insertAllocatedListing(allocatedListing2);
-
+        AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setCourtScheduleId(expected.getCourtScheduleId());
+        allocatedListing.setHearingId(hearingId.toString());
+        allocatedListing.setBookingId(bookingId.toString());
+        databaseSeeder.insertAllocatedListing(allocatedListing);
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_CENTRE_ID", expected.getCourtHouseId());
@@ -816,7 +734,7 @@ class CourtSchedulerIT extends AbstractIT {
         final RequestParams requestParams = getRequestParams(BASE_RESOURCE_URL, COURT_SCHEDULE_GET_CONTENT_TYPE, USER_ID, map);
 
 
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
@@ -836,8 +754,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldGetCourtSchedulesForAllDaySplitSlot() throws SQLException, JsonProcessingException {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-
         final UUID courtScheduleId = UUID.randomUUID();
         final UUID hearingIdForMorning = UUID.randomUUID();
         final UUID bookingIdForMorning = UUID.randomUUID();
@@ -849,8 +765,6 @@ class CourtSchedulerIT extends AbstractIT {
 
         courtSchedule.setBusinessType("TRL");
         courtSchedule.setSlotBased(false);
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         courtSchedule.setMaxDuration(0);
         courtSchedule.setAvailableDuration(0);
         courtSchedule.setSupportAdSplit(true);
@@ -859,8 +773,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final AllocatedListing allocatedListingForMorning = createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 60, "10:00");
@@ -884,7 +798,7 @@ class CourtSchedulerIT extends AbstractIT {
         final RequestParams requestParams = getRequestParams(BASE_RESOURCE_URL, COURT_SCHEDULE_GET_CONTENT_TYPE, USER_ID, map);
 
 
-        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
@@ -906,8 +820,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldRemoveCourtSchedule() throws Exception {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-
         final Integer maxDurationForMorning = 120;
         final Integer maxDurationForAfternoon = 60;
         final UUID hearingIdForMorning = UUID.randomUUID();
@@ -926,8 +838,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
 
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -954,8 +866,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldTryToRemoveCourtScheduleWhenNoSuchCourtScheduleWithoutException() throws Exception {
-        stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types-duration-based.json");
-
         final Integer maxDurationForMorning = 120;
         final Integer maxDurationForAfternoon = 60;
         String courtScheduleId = UUID.randomUUID().toString();
@@ -971,8 +881,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
 
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -986,9 +896,6 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldMigrateOuCodes() throws Exception {
-        setupUserAsSystemUser(USER_ID.toString());
-        cleanTheDatabase();
-
         CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
         courtSchedulerMigrationStatus.setOuCode("B12345");
         courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
@@ -1003,7 +910,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         String migrateOuCodePayload = getPayload("oucode-migrate-courtscheduler.json");
 
-        final Response response = postCommand(OUCODE_MIGRATE_URL, COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE, USER_ID, migrateOuCodePayload);
+        final Response response = postCommand(OUCODE_MIGRATE_URL, COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE, SYSTEM_USER_ID, migrateOuCodePayload);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
@@ -1023,7 +930,7 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListingForMorning.setHearingId(hearingIdForMorning.toString());
         allocatedListingForMorning.setBookingId(bookingIdForMorning.toString());
         allocatedListingForMorning.setDuration(duration);
-        allocatedListingForMorning.setHearingStartTime(combineDateAndTime(courtSchedule.getSessionDate(), time));
+        allocatedListingForMorning.setHearingStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), time));
         databaseSeeder.insertAllocatedListing(allocatedListingForMorning);
         return allocatedListingForMorning;
     }
