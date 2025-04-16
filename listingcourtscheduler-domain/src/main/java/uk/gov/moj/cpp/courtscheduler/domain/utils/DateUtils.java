@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -66,9 +67,7 @@ public class DateUtils {
         if (localDateTime == null) {
             return null;
         }
-        // Convert to UTC for storage
-        ZonedDateTime utcZoned = localDateTime.atZone(ZoneOffset.UTC);
-        return utcZoned.format(ISO_8601_FORMATTER);
+        return localDateTime.format(ISO_8601_FORMATTER);
     }
 
     public static final ZonedDateTime toZonedDateTime(final String isoDate) {
@@ -87,7 +86,6 @@ public class DateUtils {
         if (dateTimeOffset == null) {
             return null;
         }
-        // Keep in UTC for storage
         return dateTimeOffset.format(ISO_8601_FORMATTER);
     }
 
@@ -95,9 +93,7 @@ public class DateUtils {
         if (timestamp == null) {
             return null;
         }
-        // Convert to UTC for storage
-        ZonedDateTime utcZoned = timestamp.toLocalDateTime().atZone(ZoneOffset.UTC);
-        return utcZoned.format(ISO_8601_FORMATTER);
+        return timestamp.toLocalDateTime().atOffset(ZoneOffset.UTC).format(ISO_8601_FORMATTER);
     }
 
     public static final String toIsoString(final java.util.Date date) {
@@ -159,8 +155,8 @@ public class DateUtils {
     }
 
     public static final java.util.Date localDateToDateWithTime(final LocalDate localDate, final int hour, final int minute) {
-        // Use TimezoneUtils to convert local time to UTC
-        return TimezoneUtils.combineLocalDateAndTimeToUtc(localDate, LocalTime.of(hour, minute));
+        final ZonedDateTime zonedDateTime = localDate.atTime(hour, minute).atZone(LONDON_ZONE);
+        return java.util.Date.from(zonedDateTime.toInstant());
     }
 
     public static String createDefaultHearingStartTime(final String session, final String sessionDate) {
@@ -176,8 +172,7 @@ public class DateUtils {
         final int month = Integer.parseInt(dateParts[1]);
         final int day = Integer.parseInt(dateParts[2]);
 
-        // Create in local time and convert to UTC
-        final ZonedDateTime localDate = ZonedDateTime.of(year, month, day, time, 0, 0, 0, LONDON_ZONE).withZoneSameInstant(ZoneOffset.UTC);
+        final ZonedDateTime localDate = ZonedDateTime.of(year, month, day, time, 0, 0, 0, ZoneId.of("Europe/London")).withZoneSameInstant(ZoneOffset.UTC);
         return localDate.format(ISO_8601_FORMATTER);
     }
 
@@ -186,9 +181,10 @@ public class DateUtils {
     }
 
     public static java.util.Date combineDateAndTime(final LocalDate date, final String time) {
-        // Use TimezoneUtils to convert local time to UTC
         LocalTime localTime = LocalTime.parse(time, TIME_FORMATTER);
-        return TimezoneUtils.combineLocalDateAndTimeToUtc(date, localTime);
+        LocalDateTime localDateTime = LocalDateTime.of(date, localTime);
+        ZonedDateTime zonedDateTime = localDateTime.atZone(ZoneId.of("Europe/London")).withZoneSameInstant(ZoneOffset.UTC);
+        return java.util.Date.from(zonedDateTime.toInstant());
     }
 
     public static LocalTime toLocalTime(final String time) {
