@@ -228,12 +228,8 @@ public class CourtSchedulerApi {
 
         final ListHearingSlotsResponse listHearingSlotsResponse = slotsUpdateService.updateListHearingSlots(requestedSlots);
 
-        JsonObject responseObject =  Json.createObjectBuilder()
-                .add(RequestParameterConstant.HEARINGS.getLabel(),
-                        objectToJsonObjectConverter.convert(listHearingSlotsResponse))
-                .build();
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.list.hearings-in-court-sessions.response").apply(responseObject);
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.list.hearings-in-court-sessions.response")
+                .apply(objectToJsonObjectConverter.convert(listHearingSlotsResponse));
     }
 
     @Handles("courtscheduler.search.update.hearing.slots")
