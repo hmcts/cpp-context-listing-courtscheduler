@@ -23,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.SearchCourtSchedulesByIdRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
@@ -52,6 +53,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 
@@ -122,6 +124,8 @@ public class CourtSchedulerApi {
     private OuCodeMigrateConverter ouCodeMigrateConverter;
     @Inject
     private AllocatedListingService allocatedListingService;
+    @Inject
+    private SearchCourtSchedulesByIdRequestParamConverter searchCourtSchedulesByIdRequestParamConverter;
 
 
     @Handles("courtscheduler.create")
@@ -185,6 +189,19 @@ public class CourtSchedulerApi {
         return envelopeFor(envelope, new ListToJsonArrayConverter<CourtSessionsView>().convert(courtSessionsViewList), COURT_SCHEDULES);
     }
 
+    @Handles("courtscheduler.search.court-schedules-by-id")
+    public JsonEnvelope searchCourtSchedulesById(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.search.court-schedules-by-id : {}", requestFromApiJsonObject);
+
+        final SearchCourtSchedulesByIdRequestParam requestParam = searchCourtSchedulesByIdRequestParamConverter.convert(requestFromApiJsonObject);
+
+        List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedulesById(requestParam, requester);
+
+        final ListToJsonArrayConverter<CourtSchedule> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
+        return envelopeFor(envelope, listToJsonArrayConverter.convert(courtSchedules), COURT_SCHEDULES);
+    }
+
     @Handles("courtscheduler.update")
     public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
         final JsonObject payload = envelope.payloadAsJsonObject();
@@ -234,22 +251,6 @@ public class CourtSchedulerApi {
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.list.hearings-in-court-sessions.response")
                 .apply(objectToJsonObjectConverter.convert(listHearingSlotsResponse));
-    }
-
-    @Handles("courtscheduler.search.update.hearing.slots")
-    @Deprecated
-    public JsonEnvelope searchUpdateHearingSlots(final JsonEnvelope envelope) {
-        final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
-        LOGGER.info("courtscheduler.search.update.hearing.slots:{}", payloadAsJsonString);
-        List<AllocatedSlot> allocatedSlots = converter.convert(payloadAsJsonString).getHearingSlots();
-
-        Result result = Result.FAILED("Deprecated Not to use");//slotsUpdateService.searchBook(allocatedSlots);
-
-        JsonObject responseObject = createObjectBuilder()
-                .add(RESULTS, objectToJsonObjectConverter.convert(result))
-                .build();
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.search.update.hearing.slots").apply(responseObject);
     }
 
     @Handles("courtscheduler.search.book.hearing.slots")

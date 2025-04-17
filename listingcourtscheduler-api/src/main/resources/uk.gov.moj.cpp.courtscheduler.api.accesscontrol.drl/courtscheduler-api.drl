@@ -204,3 +204,12 @@ rule "API - Action - courtscheduler.rotasl.clean_redundant_rota_data"
   then
     $outcome.setSuccess(true);
 end
+
+rule "API - Action - courtscheduler.search.court-schedules-by-id"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.search.court-schedules-by-id");
+        eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end

@@ -46,7 +46,9 @@ public enum RequestParameterConstant {
     HEARING_SESSION_DATE_CUT_OFF("hearingSessionDateSearchCutOff"),
     DURATION_MINUTES("durationInMinutes"),
     COURT_SCHEDULES("courtSchedules"),
-    HEARINGS("hearings")
+    HEARINGS("hearings"),
+    COURT_SCHEDULE_ID_LIST("courtScheduleIdList"),
+
     ;
 
     private final String name;

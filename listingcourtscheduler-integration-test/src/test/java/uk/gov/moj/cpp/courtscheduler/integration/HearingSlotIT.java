@@ -29,7 +29,13 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -287,6 +293,10 @@ class HearingSlotIT extends AbstractIT {
 
     @Test
     void shouldRetrieveAllDaySplitWithBookings() throws Exception {
+
+
+        ZoneId zoneId = ZoneId.of("Europe/London");
+
         String courtScheduleId = randomUUID().toString();
         String bookingId = randomUUID().toString();
         String bookingId2 = randomUUID().toString();
