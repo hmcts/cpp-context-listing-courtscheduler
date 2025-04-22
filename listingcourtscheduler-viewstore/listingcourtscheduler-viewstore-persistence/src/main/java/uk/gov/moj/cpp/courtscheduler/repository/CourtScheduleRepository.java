@@ -654,8 +654,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             query.append(" AND cs.rota_business_type = :businessType");
         } else {
-            if (isNotEmpty(requestParam.isSlotBased()) && requestParam.isSlotBased()) {
-                query.append(" AND cs.is_slot_based = :slotBased");
+            if (isNotEmpty(requestParam.isSlotBased())) {
+                query.append(" AND cs.is_slot_based = ").append(requestParam.isSlotBased());
             }
         }
 
