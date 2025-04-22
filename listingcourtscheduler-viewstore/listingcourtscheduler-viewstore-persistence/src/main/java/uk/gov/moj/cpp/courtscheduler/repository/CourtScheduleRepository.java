@@ -600,10 +600,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             params.put(BUSINESS_TYPE, requestParam.businessType());
-        }
-
-        if (isNotEmpty(requestParam.isSlotBased())) {
-            params.put("slotBased", requestParam.isSlotBased());
+        } else {
+            if (isNotEmpty(requestParam.isSlotBased())) {
+                params.put("slotBased", requestParam.isSlotBased());
+            }
         }
       
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
