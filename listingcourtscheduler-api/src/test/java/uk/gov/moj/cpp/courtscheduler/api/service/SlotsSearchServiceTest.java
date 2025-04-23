@@ -175,8 +175,8 @@ class SlotsSearchServiceTest {
                 .withMaxSlots(125)
                 .withJudiciaries(courtScheduleJudiciary)
                 .withActive(true)
-                .withSessionStartTime(Date.from(LocalTime.parse("09:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
-                .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionEndTime(Date.from(LocalTime.parse("13:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1)))
                 .withIsOverbookingAllowed(true)
                 .build();
