@@ -13,6 +13,7 @@
       "courtRoomName": "Courtroom 01",
       "operationalUnit": "1",
       "businessType": "TRT",
+      "isSlotBased": "true",
       "panel": "ADULT",
       "courtSession": "AD",
       "slotBased": true,
