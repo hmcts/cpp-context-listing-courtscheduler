@@ -178,6 +178,10 @@ protocols: [ HTTP, HTTPS ]
         description: AM/PM/AD or comma separeted --> AM,PM,AD
         type: string
         required: false
+      isSlotBased:
+        description: slot based or not
+        type: string
+        required: false
       pageSize:
         description: Number of records to be displayed per page
         type: string
@@ -186,10 +190,6 @@ protocols: [ HTTP, HTTPS ]
         description: currentPageNumber details
         type: string
         required: true
-      isSlotBased:
-        description: slot based or not
-        type: string
-        required: false
     responses:
       200:
         body:
