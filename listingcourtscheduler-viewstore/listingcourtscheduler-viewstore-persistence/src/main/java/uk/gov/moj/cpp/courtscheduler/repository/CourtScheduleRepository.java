@@ -1259,17 +1259,25 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Transactional
     protected void saveAllocatedListing(final List<AllocatedSlot> allocatedSlots) {
         allocatedSlots.forEach(allocatedSlot -> {
-            AllocatedListing allocatedListing = new AllocatedListing();
-            allocatedListing.setId(UUID.randomUUID().toString());
-            allocatedListing.setCourtScheduleId(allocatedSlot.getCourtScheduleId());
-            allocatedListing.setBookingId(allocatedSlot.getBookingId());
-            allocatedListing.setHearingId(allocatedSlot.getHearingId());
-            allocatedListing.setOucode(allocatedSlot.getOuCode());
-            allocatedListing.setCourtRoomId(Integer.parseInt(allocatedSlot.getCourtRoomId()));
-            allocatedListing.setDuration(allocatedSlot.isSlotBased() ? SLOT_DEFAULT : allocatedSlot.getDuration());
-            allocatedListing.setHearingStartTime(toRoundedTimestamp(allocatedSlot.getHearingStartTime()));
-            LOGGER.info("bookSlotsWithoutCourtScheduleId saveAllocatedListing {}", allocatedListing);
-            this.allocatedListingRepository.save(allocatedListing);
+            // Check if record already exists
+            List<AllocatedListing> existingListings = allocatedListingRepository.findByCourtScheduleIdAndHearingId(allocatedSlot.getCourtScheduleId(), allocatedSlot.getHearingId());
+            if (existingListings.isEmpty()) {
+                AllocatedListing allocatedListing = new AllocatedListing();
+                allocatedListing.setId(UUID.randomUUID().toString());
+                allocatedListing.setCourtScheduleId(allocatedSlot.getCourtScheduleId());
+                allocatedListing.setBookingId(allocatedSlot.getBookingId());
+                allocatedListing.setHearingId(allocatedSlot.getHearingId());
+                allocatedListing.setOucode(allocatedSlot.getOuCode());
+                allocatedListing.setCourtRoomId(Integer.parseInt(allocatedSlot.getCourtRoomId()));
+                allocatedListing.setDuration(allocatedSlot.isSlotBased() ? SLOT_DEFAULT : allocatedSlot.getDuration());
+                allocatedListing.setHearingStartTime(toRoundedTimestamp(allocatedSlot.getHearingStartTime()));
+                LOGGER.info("bookSlotsWithoutCourtScheduleId saveAllocatedListing {}", allocatedListing);
+                this.allocatedListingRepository.save(allocatedListing);
+            } else {
+                LOGGER.info("Record already exists for courtScheduleId {} and hearingId {}",
+                        allocatedSlot.getCourtScheduleId(),
+                        allocatedSlot.getHearingId());
+            }
         });
     }
 
