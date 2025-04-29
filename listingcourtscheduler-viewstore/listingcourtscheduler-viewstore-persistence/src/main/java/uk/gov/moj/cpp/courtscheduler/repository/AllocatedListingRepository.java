@@ -145,4 +145,8 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
         return queryBuilder;
     }
 
+    @Query("SELECT al FROM AllocatedListing al WHERE al.courtScheduleId = :courtScheduleId AND al.hearingId = :hearingId")
+    abstract List<AllocatedListing> findByCourtScheduleIdAndHearingId(
+            @QueryParam("courtScheduleId") String courtScheduleId, @QueryParam("hearingId") String hearingId);
+
 }
