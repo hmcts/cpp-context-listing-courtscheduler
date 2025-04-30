@@ -27,6 +27,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -106,6 +108,8 @@ public class CourtScheduleEnricher {
             builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_START_TIME))
                     .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_END_TIME));
         }
+            builder.withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+
     }
 
     private void populateSessionAllocation(final CourtSchedule.CourtScheduleBuilder builder,

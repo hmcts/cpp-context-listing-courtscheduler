@@ -47,6 +47,7 @@ public class CourtSchedule {
 
     private Date sessionStartTime;
     private Date sessionEndTime;
+    private Date nationalBreakTime;
 
     protected CourtSchedule(final CourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -84,6 +85,7 @@ public class CourtSchedule {
         this.sessionStartTime = builder.sessionStartTime;
         this.sessionEndTime = builder.sessionEndTime;
         this.isOverbookingAllowed = builder.isOverbookingAllowed;
+        this.nationalBreakTime = builder.nationalBreakTime;
     }
 
     public CourtSchedule() {
@@ -373,6 +375,14 @@ public class CourtSchedule {
         this.isOverbookingAllowed = isOverbookingAllowed;
     }
 
+    public Date getNationalBreakTime() {
+        return nationalBreakTime;
+    }
+
+    public void setNationalBreakTime(Date nationalBreakTime) {
+        this.nationalBreakTime = nationalBreakTime;
+    }
+
     public static final class CourtScheduleBuilder {
 
         private String courtScheduleId;
@@ -413,6 +423,7 @@ public class CourtSchedule {
 
         private Date sessionStartTime;
         private Date sessionEndTime;
+        private Date nationalBreakTime;
 
         public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
             return new CourtSchedule.CourtScheduleBuilder();
@@ -577,6 +588,7 @@ public class CourtSchedule {
             this.availableDurationForMorning = courtSchedule.availableDurationForMorning;
             this.availableDurationForAfternoon = courtSchedule.availableDurationForAfternoon;
             this.isOverbookingAllowed = courtSchedule.isOverbookingAllowed;
+            this.nationalBreakTime = courtSchedule.nationalBreakTime;
             return this;
         }
 
@@ -762,6 +774,11 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withIsOverbookingAllowed(final boolean isOverbookingAllowed) {
             this.isOverbookingAllowed = isOverbookingAllowed;
+            return this;
+        }
+
+        public CourtScheduleBuilder withNationalBreakTime(final Date nationalBreakTime) {
+            this.nationalBreakTime = nationalBreakTime;
             return this;
         }
 
