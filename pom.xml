@@ -31,6 +31,7 @@
         <test-utils-enveloper-provider.version>5.1.2</test-utils-enveloper-provider.version>
         <cpp-platform-test-utils.version>8.0.17</cpp-platform-test-utils.version>
         <jackson.databind.version>2.10.0</jackson.databind.version>
+        <h2.db.version>2.2.224</h2.db.version>
         <sonar.coverage.exclusions>
             **/uk/gov/moj/cpp/courtscheduler/persist/entity/**/*,
             **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
@@ -118,6 +119,11 @@
                 <groupId>io.netty</groupId>
                 <artifactId>netty-common</artifactId>
                 <version>${netty.common.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>${h2.db.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
