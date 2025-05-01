@@ -10,7 +10,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefa
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;

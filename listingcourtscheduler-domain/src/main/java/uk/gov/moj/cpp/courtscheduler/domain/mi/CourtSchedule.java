@@ -258,10 +258,7 @@ public class CourtSchedule {
 
     @JsonProperty("created_on")
     public String getCreatedOn() {
-        if (created_on == null) {
-            return null;
-        }
-        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(created_on);
+        return created_on == null ? null : DateUtils.toIsoString(created_on);
     }
 
     public void setCreatedOn(Date createdOn) {
@@ -270,10 +267,7 @@ public class CourtSchedule {
 
     @JsonProperty("updated_on")
     public String getUpdatedOn() {
-        if (updated_on == null) {
-            return null;
-        }
-        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(updated_on);
+        return updated_on == null ? null : DateUtils.toIsoString(updated_on);
     }
 
     public void setUpdatedOn(Date updatedOn) {

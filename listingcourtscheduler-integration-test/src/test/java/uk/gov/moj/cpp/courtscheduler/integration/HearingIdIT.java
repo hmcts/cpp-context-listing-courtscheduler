@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static java.lang.String.valueOf;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
