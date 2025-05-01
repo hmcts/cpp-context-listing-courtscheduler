@@ -135,12 +135,12 @@ public class TimezoneUtils {
         // Convert to Date
         return Date.from(utcZoned.toInstant());
     }
-    
+
     /**
      * Calculates the national break time for the given date.
      * During British Summer (British Summer Time), the break time is 12:00 UTC.
      * During British Winter (Greenwich Mean Time), the break time is 13:00 UTC.
-     * 
+     *
      * @param sessionDate The session date to check
      * @return The national break time as a Date object
      */
@@ -148,13 +148,13 @@ public class TimezoneUtils {
         if (sessionDate == null) {
             return null;
         }
-        
+
         // Create a LocalDateTime at noon on the session date
         LocalDateTime noonTime = sessionDate.atTime(12, 0);
-        
+
         // Convert to ZonedDateTime in London time
         ZonedDateTime londonZoned = noonTime.atZone(LONDON_ZONE);
-        
+
         // Convert to UTC
         ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
 
@@ -171,4 +171,4 @@ public class TimezoneUtils {
 
         return Date.from(breakZoned.toInstant());
     }
-} 
+}
