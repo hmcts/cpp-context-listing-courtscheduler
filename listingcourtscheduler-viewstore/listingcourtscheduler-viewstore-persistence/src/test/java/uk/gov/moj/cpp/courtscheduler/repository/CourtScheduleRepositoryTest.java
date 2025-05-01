@@ -458,11 +458,11 @@ public class CourtScheduleRepositoryTest {
         // given
         LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         setupTestDataForMandatoryParams(sessionDate);
-
+        
         // when
-        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result =
+        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result = 
             whenSearchingWithMandatoryParams(sessionDate);
-
+        
         // then
         thenOnlyMatchingMandatoryParamsAreReturned(result);
     }
@@ -473,11 +473,11 @@ public class CourtScheduleRepositoryTest {
         // given
         LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         setupTestDataForOptionalParams(sessionDate);
-
+        
         // when
-        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result =
+        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result = 
             whenSearchingWithOptionalParams(sessionDate);
-
+        
         // then
         thenOnlyMatchingOptionalParamsAreReturned(result);
     }
@@ -488,11 +488,11 @@ public class CourtScheduleRepositoryTest {
         // given
         LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         setupTestDataForPagination(sessionDate);
-
+        
         // when
-        List<Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>>> results =
+        List<Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>>> results = 
             whenFetchingMultiplePages(sessionDate);
-
+        
         // then
         thenPaginationWorksCorrectly(results);
     }
@@ -503,18 +503,18 @@ public class CourtScheduleRepositoryTest {
         CourtSchedule differentOuCode = createCourtSchedule("B02LY00", "ADULT", sessionDate, "CR02", "TRF");
         CourtSchedule differentPanel = createCourtSchedule("B01LY00", "YOUTH", sessionDate, "CR03", "TRF");
         CourtSchedule differentDate = createCourtSchedule("B01LY00", "ADULT", sessionDate.plusDays(10), "CR04", "TRF");
-
+        
         saveSchedules(List.of(matchingSchedule, differentOuCode, differentPanel, differentDate));
     }
 
     private void setupTestDataForOptionalParams(LocalDate sessionDate) {
         String ouCode = "B01LY00";
         String panel = "ADULT";
-
+        
         CourtSchedule matchingSchedule = createCourtSchedule(ouCode, panel, sessionDate, "CR01", "TRF");
         CourtSchedule differentCourtRoom = createCourtSchedule(ouCode, panel, sessionDate, "CR02", "TRF");
         CourtSchedule differentBusinessType = createCourtSchedule(ouCode, panel, sessionDate, "CR01", "GAP");
-
+        
         saveSchedules(List.of(matchingSchedule, differentCourtRoom, differentBusinessType));
     }
 
@@ -597,7 +597,7 @@ public class CourtScheduleRepositoryTest {
 
         // Verify total count consistency
         results.forEach(result -> assertEquals(Integer.valueOf(25), result.getLeft()));
-
+        
         // Verify no duplicates
         Set<String> allIds = results.stream()
             .flatMap(result -> result.getRight().stream())
@@ -611,8 +611,8 @@ public class CourtScheduleRepositoryTest {
         schedules.forEach(courtScheduleRepository::save);
     }
 
-    private HearingSlotRequestParam createRequestParam(String panel, LocalDate sessionDate, String ouCode,
-                                                     String pageNumber, String pageSize,
+    private HearingSlotRequestParam createRequestParam(String panel, LocalDate sessionDate, String ouCode, 
+                                                     String pageNumber, String pageSize, 
                                                      String courtRoomId, String businessType) {
         return new HearingSlotRequestParam(
             panel,
@@ -629,14 +629,14 @@ public class CourtScheduleRepositoryTest {
         );
     }
 
-    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
+    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate, 
                                             final String courtRoomId, final String businessType) {
         CourtSchedule schedule = new CourtSchedule();
-
+        
         // Required fields (not null constraints)
         schedule.setCourtScheduleId(UUID.randomUUID().toString());  // id
         schedule.setSlotBased(false);                            // is_slot_based
-
+        
         // Fields used in unique indexes
         schedule.setOuCode(ouCode);                                // oucode
         schedule.setCourtRoomId(courtRoomId);                     // court_room_id
@@ -644,7 +644,7 @@ public class CourtScheduleRepositoryTest {
         schedule.setSessionDate(sessionDate);                      // session_start
         schedule.setCourtSession("AM");                           // court_session
         schedule.setActive(true);                                 // active
-
+        
         // Other fields with specific types
         schedule.setCourtRoomNumber(1);                           // court_room_number (numeric)
         schedule.setCourtHouseName("Test Court House");           // court_house_name
@@ -656,32 +656,32 @@ public class CourtScheduleRepositoryTest {
         schedule.setAvailableSlots(10);                          // available_slot (numeric)
         schedule.setAvailableDuration(240);                       // available_duration_mins (numeric)
         schedule.setCourtHouseId("CH" + ouCode);                 // court_house_id
-
+        
         // Boolean fields with defaults
         schedule.setSupportAdSplit(false);                        // support_ad_split
         schedule.setIsOverbookingAllowed(false);                  // is_overbooking_allowed
-
+        
         // Numeric fields with defaults
         schedule.setMaxAdMorningDuration(0);                      // max_ad_morning_duration
         schedule.setMaxAdAfternoonDuration(0);                    // max_ad_afternoon_duration
-
+        
         // Timestamp fields
         LocalDateTime now = LocalDateTime.now();
         schedule.setCreatedOn(Timestamp.valueOf(now));            // created_on
         schedule.setUpdatedOn(Timestamp.valueOf(now));            // updated_on
-
+        
         // Session time fields (with time zone)
         LocalDateTime startDateTime = LocalDateTime.of(sessionDate, LocalTime.of(9, 0));
         LocalDateTime endDateTime = LocalDateTime.of(sessionDate, LocalTime.of(13, 0));
         schedule.setSessionStartTime(Date.from(startDateTime.atZone(ZoneId.systemDefault()).toInstant()));
         schedule.setSessionEndTime(Date.from(endDateTime.atZone(ZoneId.systemDefault()).toInstant()));
-
+        
         // Set national break time based on BST logic
         schedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
-
+        
         // Optional field
         schedule.setListingProfileId(random(String.class));                  // court_listing_profile_id
-
+        
         return schedule;
     }
 
