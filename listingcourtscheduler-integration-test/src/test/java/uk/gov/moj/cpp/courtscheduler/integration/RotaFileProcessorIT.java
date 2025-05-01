@@ -22,10 +22,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_D
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;

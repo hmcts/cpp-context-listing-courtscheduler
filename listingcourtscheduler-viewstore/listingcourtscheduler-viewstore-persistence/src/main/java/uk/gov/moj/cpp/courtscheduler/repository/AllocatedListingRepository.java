@@ -10,8 +10,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-
 import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -31,6 +29,7 @@ import org.apache.deltaspike.data.api.Repository;
 public abstract class AllocatedListingRepository extends AbstractFullEntityRepository<AllocatedListing, String> {
 
     private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM allocated_listings WHERE court_schedule_id IN (SELECT cs.id FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays))";
+
     @Inject
     private EntityManager entityManager;
 

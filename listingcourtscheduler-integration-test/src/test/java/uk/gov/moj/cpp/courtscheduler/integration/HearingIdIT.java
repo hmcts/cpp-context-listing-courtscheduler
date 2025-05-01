@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
-import static java.lang.String.valueOf;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -11,7 +10,6 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
@@ -39,7 +37,7 @@ class HearingIdIT extends AbstractIT {
     private static final String RELATIVE_URL = "/hearingslots";
 
     @Test
-    void testSinglePageHearingIdsRetrieval() throws Exception {
+    void shouldRetrieveSinglePageHearingIds() throws Exception {
         final LocalDate today = LocalDate.now();
         final LocalDate sessionDate = today.minusDays(5);
         final CourtSchedule courtSchedule1 = createCourtSchedule(sessionDate, "COURT-SCHEDULE-1", "HOUSE-1");
@@ -109,7 +107,7 @@ class HearingIdIT extends AbstractIT {
 
 
     @Test
-    void testMultiPageHearingIdsRetrieval() throws Exception {
+    void shouldRetrieveMultiPageHearingIds() throws Exception {
         List<String> expHearingIds = new ArrayList<>();
         LocalDate today = LocalDate.now();
         int numOfHearings = 18;
