@@ -1,0 +1,662 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <!-- 001-court-room-mapping.xml -->
+    <changeSet id="001" author="sshetty" logicalFilePath="001-court-room-mapping.xml">
+        <createTable tableName="court_room_mapping">
+            <column name="id" type="VARCHAR(100)"/>
+            <column name="location_id" type="NUMERIC">
+                <constraints nullable="false"/>
+            </column>
+            <column name="venue_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_house_name" type="VARCHAR(255)"/>
+            <column name="court_room_name" type="VARCHAR(255)"/>
+            <column name="operational_unit" type="VARCHAR(255)"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_court_room_mapping"
+                     tableName="court_room_mapping">
+            <column name="location_id"/>
+            <column name="venue_name"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 002-court-room-session-allocation.xml -->
+    <changeSet id="002" author="sshetty" logicalFilePath="002-court-room-session-allocation.xml">
+        <createTable tableName="court_room_session_allocation">
+            <column name="court_room_session_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="court_session" type="VARCHAR(10)"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="max_slot" type="NUMERIC"/>
+            <column name="max_duration_mins" type="NUMERIC"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_court_room_session_allocation"
+                     tableName="court_room_session_allocation">
+            <column name="oucode"/>
+            <column name="court_room_id"/>
+            <column name="court_session"/>
+            <column name="rota_business_type"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 003-allocated_listings.xml -->
+    <changeSet id="003" author="sshetty" logicalFilePath="003-allocated-listings.xml">
+        <createTable tableName="allocated_listings">
+            <column name="id" type="VARCHAR(100)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="court_schedule_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="booking_id" type="VARCHAR(100)"/>
+            <column name="hearing_id" type="VARCHAR(100)"/>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="duration" type="NUMERIC"/>
+            <column name="created_on" type="DATETIME"/>
+            <column name="updated_on" type="DATETIME"/>
+        </createTable>
+    </changeSet>
+
+    <!-- 004-court-schedule.xml -->
+    <changeSet id="004" author="sshetty" logicalFilePath="004-court-schedule.xml">
+        <createTable tableName="court_schedule">
+            <column name="id" type="VARCHAR(100)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="court_listing_profile_id" type="VARCHAR(100)"/>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="court_house_name" type="VARCHAR(255)"/>
+            <column name="court_room_name" type="VARCHAR(255)"/>
+            <column name="operational_unit" type="VARCHAR(255)"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="court_session" type="VARCHAR(10)"/>
+            <column name="session_start" type="DATE"/>
+            <column name="panel" type="VARCHAR(10)"/>
+            <column name="max_slot" type="NUMERIC"/>
+            <column name="max_duration_mins" type="NUMERIC"/>
+            <column name="available_slot" type="NUMERIC"/>
+            <column name="available_duration_mins" type="NUMERIC"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_on" type="DATETIME"/>
+            <column name="updated_on" type="DATETIME"/>
+        </createTable>
+    </changeSet>
+
+    <!-- 005-court-schedule-judiciary.xml -->
+    <changeSet id="005" author="sshetty" logicalFilePath="005-court-schedule-judiciary.xml">
+        <createTable tableName="court_schedule_judiciary">
+            <column name="court_schedule_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="court_listing_profile_id" type="VARCHAR(100)"/>
+            <column name="judiciary_id" type="VARCHAR(100)"/>
+            <column name="rota_judiciary_id" type="VARCHAR(100)"/>
+            <column name="title" type="VARCHAR(100)"/>
+            <column name="forenames" type="VARCHAR(100)"/>
+            <column name="surname" type="VARCHAR(100)"/>
+            <column name="email" type="VARCHAR(100)"/>
+            <column name="judiciary_type" type="VARCHAR(100)"/>
+            <column name="is_bench_chairman" type="BOOLEAN"/>
+            <column name="is_deputy" type="BOOLEAN"/>
+            <column name="position" type="VARCHAR(100)"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_on" type="DATETIME"/>
+            <column name="updated_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_court_schedule_judiciary"
+                     tableName="court_schedule_judiciary">
+            <column name="court_schedule_id"/>
+            <column name="court_listing_profile_id"/>
+            <column name="active"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 006-add-comp-index-to-court_schedule.xml -->
+    <changeSet id="006" author="rajesh.narasimha" logicalFilePath="006-add-comp-index-to-court_schedule.xml">
+        <createIndex tableName="court_schedule" indexName="compo_panel_idx">
+            <column name="panel"/>
+            <column name="session_start"/>
+            <column name="oucode"/>
+            <column name="rota_business_type"/>
+            <column name="court_session"/>
+            <column name="court_house_name"/>
+            <column name="court_room_name"/>
+            <column name="available_duration_mins"/>
+            <column name="active"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 007-judiciary-mapping.xml -->
+    <changeSet id="007" author="sshetty" logicalFilePath="007-judiciary-mapping.xml">
+        <createTable tableName="judiciary_mapping">
+            <column name="judiciary_id" type="VARCHAR(100)"/>
+            <column name="title" type="VARCHAR(100)"/>
+            <column name="forenames" type="VARCHAR(100)"/>
+            <column name="surname" type="VARCHAR(100)"/>
+            <column name="email" type="VARCHAR(100)"/>
+            <column name="judiciary_type" type="VARCHAR(100)"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_judiciary_mapping" tableName="judiciary_mapping">
+            <column name="email"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 008-add-rename-column-court-room-mapping.xml -->
+    <changeSet id="008" author="samialpak" logicalFilePath="008-add-rename-column-court-room-mapping.xml">
+        <renameColumn tableName="court_room_mapping" oldColumnName="court_room_id" newColumnName="court_room_number" />
+    </changeSet>
+
+    <!-- 009-add-rename-column-court-schedule.xml -->
+    <changeSet id="009" author="samialpak" logicalFilePath="009-add-rename-column-court-schedule.xml">
+        <renameColumn tableName="court_schedule" oldColumnName="court_room_id" newColumnName="court_room_number" />
+        <addColumn tableName="court_schedule">
+            <column name="court_room_id" type="VARCHAR(100)" />
+        </addColumn>
+    </changeSet>
+
+    <!-- 010-additional-court-schedule-indice.xml -->
+    <changeSet id="010.1" author="arcadius" logicalFilePath="010-additional-court-schedule-indice.xml">
+        <sql>
+            CREATE INDEX idx_court_schedule_act_sst ON court_schedule (active ASC, session_start ASC);
+        </sql>
+    </changeSet>
+
+    <changeSet id="010.2" author="arcadius" logicalFilePath="010-additional-court-schedule-indice.xml">
+        <sql>
+            CREATE INDEX idx_court_schedule_cr_ss_ms ON court_schedule (court_room_number, session_start, max_slot);
+        </sql>
+    </changeSet>
+
+    <!-- 011-provisional-booking.xml -->
+    <changeSet id="011" author="samialpak" logicalFilePath="011-provisional-booking.xml">
+        <createTable tableName="provisional_booking">
+            <column name="booking_id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_provisional_booking"/>
+            </column>
+            <column name="court_schedule_id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_provisional_booking"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="updated_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="created_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createIndex indexName="idx_provisional_booking" tableName="provisional_booking">
+            <column name="booking_id" />
+            <column name="court_schedule_id"/>
+            <column name="active"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 012-add-default-value-to-updated-and-created-for-IFD-349.xml -->
+    <changeSet id="012.01" author="arcadius" logicalFilePath="012-add-default-value-to-updated-and-created-for-IFD-349.xml">
+        <addDefaultValue tableName="court_schedule" columnName="created_on" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        <addDefaultValue tableName="court_schedule" columnName="updated_on" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="012.02" author="arcadius" logicalFilePath="012-add-default-value-to-updated-and-created-for-IFD-349.xml">
+        <addDefaultValue tableName="court_schedule_judiciary" columnName="created_on" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        <addDefaultValue tableName="court_schedule_judiciary" columnName="updated_on" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="012.03" author="arcadius" logicalFilePath="012-add-default-value-to-updated-and-created-for-IFD-349.xml">
+        <addDefaultValue tableName="allocated_listings" columnName="created_on" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        <addDefaultValue tableName="allocated_listings" columnName="updated_on" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </changeSet>
+
+    <!-- 013-add-index-on-updated-for-for-IFD-349.xml -->
+    <changeSet id="013.01" author="arcadius" logicalFilePath="013-add-index-on-updated-for-for-IFD-349.xml">
+        <createIndex indexName="idx_court_schedule_updated_on" tableName="court_schedule">
+            <column name="updated_on"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="013.02" author="arcadius" logicalFilePath="013-add-index-on-updated-for-for-IFD-349.xml">
+        <createIndex indexName="idx_court_schedule_judiciary_updated_on" tableName="court_schedule_judiciary">
+            <column name="updated_on"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="013.03" author="arcadius" logicalFilePath="013-add-index-on-updated-for-for-IFD-349.xml">
+        <createIndex indexName="idx_allocated_listing_updated_on" tableName="allocated_listings">
+            <column name="updated_on"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 014-add-index-on-active-oucode-sessionstart-for-for-IFD-404.xml -->
+    <changeSet id="014" author="bnzewi" logicalFilePath="014-add-index-on-oucode-active-session_start-for-IFD-404.xml">
+        <createIndex indexName="idx_court_schedule_active_oucode_session_start" tableName="court_schedule">
+            <column name="oucode"/>
+            <column name="active"/>
+            <column name="session_start"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 015-add-primary-key-to-court-schedule-judiciary.xml -->
+    <changeSet id="015" author="mohamed" logicalFilePath="015-add-primary-key-to-court-schedule-judiciary.xml">
+        <addNotNullConstraint tableName="court_schedule_judiciary" columnName="judiciary_id" columnDataType="VARCHAR(100)"/>
+        <addPrimaryKey columnNames="court_schedule_id,judiciary_id" constraintName="combination_primary_key" tableName="court_schedule_judiciary"/>
+    </changeSet>
+
+    <!-- 016-add-hearing-start-time-to-provisional-booking.xml -->
+    <changeSet id="016" author="samialpak" logicalFilePath="016-add-hearing-start-time-to-provisional-booking.xml">
+        <addColumn tableName="provisional_booking">
+            <column name="hearing_start_time" type="timestamp with timezone"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="allocated_listings" columnName="hearing_start_time"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 017-add-hearing-start-time-to-allocated-listings.xml -->
+    <changeSet id="017-01" author="arcadius" logicalFilePath="017-add-hearing-start-time-to-allocated-listings.xml">
+        <addColumn tableName="allocated_listings">
+            <column name="hearing_start_time" type="timestamp with timezone"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="allocated_listings" columnName="hearing_start_time"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="017-02" author="arcadius" logicalFilePath="017-add-hearing-start-time-to-allocated-listings.xml">
+        <createIndex tableName="allocated_listings" indexName="idx_allocated_listings_court_schedule_id">
+            <column name="court_schedule_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="allocated_listings" indexName="idx_allocated_listings_court_schedule_id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 018-business-type.xml -->
+    <changeSet id="018" author="samialpak" logicalFilePath="018-business-type.xml">
+        <createTable tableName="business_type">
+            <column name="id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_business_type"/>
+            </column>
+            <column name="seq_num" type="NUMERIC"/>
+            <column name="type_code" type="VARCHAR(10)"/>
+            <column name="type_description" type="VARCHAR(100)"/>
+            <column name="slot" type="BOOLEAN"/>
+            <column name="duration" type="BOOLEAN"/>
+            <column name="active" type="BOOLEAN" defaultValue="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_business_type"/>
+            </column>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_business_type" tableName="business_type">
+            <column name="type_code"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 019-add-slotbased-to-court-schedule.xml -->
+    <changeSet id="019" author="samialpak" logicalFilePath="019-add-slotbased-to-court-schedule.xml">
+        <addColumn tableName="court_schedule">
+            <column name="is_slot_based" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="court_schedule" columnName="slot" />
+        </rollback>
+    </changeSet>
+
+    <!-- 020-add-court-house-id-to-court-schedule.xml -->
+    <changeSet id="020" author="arcadius" logicalFilePath="020-add-court-house-id-to-court-schedule.xml">
+        <addColumn tableName="court_schedule">
+            <column name="court_house_id" type="VARCHAR(100)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="court_schedule" columnName="court_house_id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 021-add-court-house-id-to-court-room-mapping.xml -->
+    <changeSet id="021" author="arcadius" logicalFilePath="021-add-court-house-id-to-court-room-mapping.xml">
+        <addColumn tableName="court_room_mapping">
+            <column name="court_house_id" type="VARCHAR(100)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="court_room_mapping" columnName="court_house_id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 022-rota-file-process-history.xml -->
+    <changeSet id="022" author="samialpak" logicalFilePath="022-rota-file-process-history.xml">
+        <createTable tableName="rota_file_process_history">
+            <column name="file_name_prefix" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_rota_file_process_history"/>
+            </column>
+            <column name="file_date" type="DATETIME">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_rota_file_process_history"/>
+            </column>
+            <column name="processed_on" type="DATETIME"/>
+        </createTable>
+    </changeSet>
+
+    <!-- 023-add-venue-id-to-court-room-mapping.xml -->
+    <changeSet id="023" author="samialpak" logicalFilePath="023-add-venue-id-to-court-room-mapping.xml">
+        <sql>
+            TRUNCATE TABLE court_room_mapping;
+        </sql>
+
+        <addColumn tableName="court_room_mapping">
+            <column name="venue_id" type="NUMERIC">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <createIndex indexName="idx_court_room_mapping_venue_id_location_id" tableName="court_room_mapping">
+            <column name="location_id"/>
+            <column name="venue_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropColumn tableName="court_room_mapping" columnName="venue_id"/>
+            <dropIndex tableName="court_room_mapping" indexName="idx_court_room_mapping_venue_id_location_id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 024-add-index-on-court_room_id-for-table-court_room_session_allocation.xml -->
+    <changeSet id="024" author="arcadius.ahouansou" logicalFilePath="024-add-index-on-court_room_id-for-table-court_room_session_allocation.xml">
+        <createIndex indexName="idx_court_room_session_allocation_court_room_id" tableName="court_room_session_allocation">
+            <column name="court_room_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 025-add-index-on-active-court_schedule_id-for-table-provisional_booking.xml -->
+    <changeSet id="025" author="arcadius.ahouansou" logicalFilePath="025-add-index-on-active-court_schedule_id-for-table-provisional_booking.xml">
+        <createIndex indexName="idx_provisional_booking_active_court_schedule_id" tableName="provisional_booking">
+            <column name="active"/>
+            <column name="court_schedule_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 026-create-organisation-unit-hmi-status.xml -->
+    <changeSet id="026" author="erol.kureli" logicalFilePath="026-create-organisation-unit-hmi-status.xml">
+        <createTable tableName="organisation_unit_hmi_status">
+            <column name="oucode" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_hmi_listing_enabled" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_hmi_scheduling_enabled" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_hmi_pubhub_enabled" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_on" type="DATETIME"/>
+            <column name="court_centre_id" type="VARCHAR(36)" />
+            <column name="court_id" type="VARCHAR(10)"/>
+        </createTable>
+
+        <createIndex tableName="organisation_unit_hmi_status" indexName="organisation_unit_hmi_status_oucode_idx">
+            <column name="oucode"/>
+        </createIndex>
+
+        <loadData tableName="organisation_unit_hmi_status" file="liquibase/courtscheduler-view-store-db-changesets/csv/organisationUnitHMIStatus.csv"/>
+
+        <rollback>
+            <dropIndex tableName="organisation_unit_hmi_status" indexName="organisation_unit_hmi_status_oucode_idx"/>
+            <dropTable tableName="organisation_unit_hmi_status"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 027-add-index-on-judiciary-mapping-lowercase-email.xml -->
+    <changeSet id="027" author="baris.ozturkmen" logicalFilePath="027-add-index-on-judiciary-mapping-lowercase-email.xml">
+        <sql>
+            CREATE INDEX IF NOT EXISTS idx_judiciary_mapping_lowercase ON judiciary_mapping (lower (email));
+        </sql>
+    </changeSet>
+
+    <!-- 028-create-courtscheduler_migration_status.xml -->
+    <changeSet id="028" author="baris.ozturkmen" logicalFilePath="028-create-courtscheduler_migration_status.xml">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="courtscheduler_migration_status"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="courtscheduler_migration_status">
+            <column name="oucode" type="VARCHAR(10)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="court_centre_id" type="VARCHAR(36)" />
+            <column name="migrated" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_on" type="DATETIME"/>
+        </createTable>
+
+        <loadData tableName="courtscheduler_migration_status" file="liquibase/courtscheduler-view-store-db-changesets/csv/courtschedulerMigrationStatus.csv"/>
+    </changeSet>
+
+    <!-- 029-rename-primary-keys.xml -->
+    <changeSet id="029" author="baris.ozturkmen" logicalFilePath="029-rename-primary-keys.xml">
+        <dropPrimaryKey tableName="court_schedule"></dropPrimaryKey>
+        <addPrimaryKey columnNames="id" tableName="court_schedule" constraintName="pk_court_schedule"/>
+        <dropPrimaryKey tableName="allocated_listings"></dropPrimaryKey>
+        <addPrimaryKey columnNames="id" tableName="allocated_listings" constraintName="pk_allocated_listings"/>
+        <dropPrimaryKey tableName="courtscheduler_migration_status"></dropPrimaryKey>
+        <addPrimaryKey columnNames="oucode" tableName="courtscheduler_migration_status" constraintName="pk_courtscheduler_migration_status"/>
+    </changeSet>
+
+    <!-- 030-add_index_court_schedule_ampm_ad.xml -->
+    <changeSet id="030" author="baris.ozturkmen" logicalFilePath="030-add_index_court_schedule_ampm_ad.xml">
+        <sql>
+            CREATE UNIQUE INDEX IF NOT EXISTS court_act_business_date_session_idx_am ON
+            court_schedule(oucode,court_room_id,  rota_business_type,
+            session_start, (REPLACE(court_session,'AD'::text,'AM'::text))
+            text_ops) where  active is TRUE;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS court_act_business_date_session_idx_pm ON
+            court_schedule(oucode,court_room_id,  rota_business_type,
+            session_start, (REPLACE(court_session,'AD'::text,'PM'::text))
+            text_ops) where  active is TRUE;
+        </sql>
+    </changeSet>
+
+    <!-- 031-add_index_court_schedule_allocated_listings.xml -->
+    <changeSet id="031" author="baris.ozturkmen" logicalFilePath="031-add_index_court_schedule_allocated_listings.xml">
+        <sql>
+            CREATE UNIQUE INDEX IF NOT EXISTS court_schedule_hearing_id_idx ON
+            allocated_listings(court_schedule_id, hearing_id);
+        </sql>
+    </changeSet>
+
+    <!-- 032-drop_index_provisional_booking.xml -->
+    <changeSet id="032" author="baris.ozturkmen" logicalFilePath="032-drop_index_provisional_booking.xml">
+        <sql>
+            DROP INDEX IF EXISTS idx_provisional_booking CASCADE;
+            DROP INDEX IF EXISTS idx_provisional_booking_active_court_schedule_id CASCADE;
+        </sql>
+    </changeSet>
+
+    <!-- 033-create_fk_for_courtschedule.xml -->
+    <changeSet id="033" author="baris.ozturkmen" logicalFilePath="033-create_fk_for_courtschedule.xml">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyTableName="allocated_listings" foreignKeyName="allocated_listings_court_schedule_id_fk"/>
+            </not>
+            <not>
+                <foreignKeyConstraintExists foreignKeyTableName="court_schedule_judiciary" foreignKeyName="court_schedule_judiciary_court_schedule_id_fk"/>
+            </not>
+        </preConditions>
+
+        <sql>
+            delete from allocated_listings where court_schedule_id in ( SELECT distinct al.court_schedule_id  FROM
+            allocated_listings al LEFT OUTER JOIN court_schedule cs
+            ON al.court_schedule_id = cs.id  where  cs.id is null);
+
+            delete from court_schedule_judiciary where court_schedule_id in ( SELECT distinct al.court_schedule_id  FROM
+            court_schedule_judiciary al LEFT OUTER JOIN court_schedule cs
+            ON al.court_schedule_id = cs.id  where  cs.id is null);
+
+            ALTER TABLE allocated_listings ADD CONSTRAINT allocated_listings_court_schedule_id_fk FOREIGN KEY (court_schedule_id) REFERENCES court_schedule(id);
+            ALTER TABLE court_schedule_judiciary
+            ADD CONSTRAINT court_schedule_judiciary_court_schedule_id_fk FOREIGN KEY (
+            court_schedule_id) REFERENCES court_schedule(id) ON DELETE CASCADE;
+        </sql>
+    </changeSet>
+
+    <!-- 034-insert-oucodes-to-courtscheduler_migration_status.xml -->
+    <changeSet id="034" author="samialpak" logicalFilePath="034-insert-oucodes-to-courtscheduler_migration_status.xml">
+        <loadData tableName="courtscheduler_migration_status" file="liquibase/courtscheduler-view-store-db-changesets/csv/courtschedulerMigrationStatus-additional1.csv"/>
+    </changeSet>
+
+    <!-- 035-drop_unused_indexes.xml -->
+    <changeSet id="035" author="baris.ozturkmen" logicalFilePath="035-drop_unused_indexes.xml">
+        <sql>
+            DROP INDEX IF EXISTS compo_panel_idx CASCADE;
+            DROP INDEX IF EXISTS idx_court_schedule_act_sst CASCADE;
+        </sql>
+    </changeSet>
+
+    <!-- 036-drop_recreate_indexes_courtschedule.xml -->
+    <changeSet id="036" author="baris.ozturkmen" logicalFilePath="036-drop_recreate_indexes_courtschedule.xml">
+        <sql>
+            DROP INDEX IF EXISTS idx_court_schedule_active_oucode_session_start CASCADE;
+            CREATE INDEX IF NOT EXISTS court_schedule_oucode_session_start_idx ON court_schedule (oucode, session_start);
+        </sql>
+    </changeSet>
+
+    <!-- 037-drop_unused_tables.xml -->
+    <changeSet id="037" author="samialpak" logicalFilePath="037-drop_unused_tables.xml">
+        <sql>
+            DROP TABLE IF EXISTS court_room_mapping;
+            DROP TABLE IF EXISTS court_room_session_allocation;
+            DROP TABLE IF EXISTS organisation_unit_hmi_status;
+            DROP TABLE IF EXISTS business_type;
+            DROP TABLE IF EXISTS judiciary_mapping;
+        </sql>
+    </changeSet>
+
+    <!-- 038-add-ad-split-max-morning-afternoon-column-court-schedule.xml -->
+    <changeSet id="038" author="koray.kaya" logicalFilePath="038-add-ad-split-max-morning-afternoon-column-court-schedule.xml">
+        <addColumn tableName="court_schedule">
+            <column name="support_ad_split" type="BOOLEAN" defaultValue="false"/>
+        </addColumn>
+        <addColumn tableName="court_schedule">
+            <column name="max_ad_morning_duration" type="NUMERIC" defaultValue="0"/>
+        </addColumn>
+        <addColumn tableName="court_schedule">
+            <column name="max_ad_afternoon_duration" type="NUMERIC" defaultValue="0"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 039-add-session_start_time-session_end_time-columns-court-schedule.xml -->
+    <changeSet id="039" author="koray.kaya" logicalFilePath="039-add-session_start_time-session_end_time-columns-court-schedule.xml">
+        <addColumn tableName="court_schedule">
+            <column name="session_start_time" type="timestamp with timezone"/>
+        </addColumn>
+        <addColumn tableName="court_schedule">
+            <column name="session_end_time" type="timestamp with timezone"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="040" author="koray.kaya" logicalFilePath="039-add-session_start_time-session_end_time-columns-court-schedule.xml">
+        <update tableName="court_schedule">
+            <column name="session_start_time" valueComputed="CASE
+        WHEN court_session = 'AM' THEN (session_start || ' 10:00:00')::timestamp
+        WHEN court_session = 'PM' THEN (session_start || ' 14:00:00')::timestamp
+        WHEN court_session = 'AD' THEN (session_start || ' 00:01:00')::timestamp
+        ELSE NULL
+    END"/>
+            <column name="session_end_time" valueComputed="CASE
+        WHEN court_session = 'AM' THEN (session_start || ' 13:00:00')::timestamp
+        WHEN court_session = 'PM' THEN (session_start || ' 18:00:00')::timestamp
+        WHEN court_session = 'AD' THEN (session_start || ' 23:59:00')::timestamp
+        ELSE NULL
+    END"/>
+        </update>
+    </changeSet>
+
+    <!-- 040-add-is-overbooking-allowed-column-court-schedule.xml -->
+    <changeSet id="040.1" author="koray.kaya" logicalFilePath="040-add-is-overbooking-allowed-column-court-schedule.xml">
+        <addColumn tableName="court_schedule">
+            <column name="is_overbooking_allowed" type="BOOLEAN" defaultValue="false" />
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="040.2" author="koray.kaya" logicalFilePath="040-add-is-overbooking-allowed-column-court-schedule.xml">
+        <update tableName="court_schedule">
+            <column name="session_start_time" valueComputed="CASE
+        WHEN court_session = 'AM' THEN (session_start || ' 10:00:00')::timestamp
+        WHEN court_session = 'PM' THEN (session_start || ' 14:00:00')::timestamp
+        WHEN court_session = 'AD' THEN (session_start || ' 10:00:00')::timestamp
+        ELSE NULL
+    END"/>
+            <column name="session_end_time" valueComputed="CASE
+        WHEN court_session = 'AM' THEN (session_start || ' 13:00:00')::timestamp
+        WHEN court_session = 'PM' THEN (session_start || ' 17:00:00')::timestamp
+        WHEN court_session = 'AD' THEN (session_start || ' 17:00:00')::timestamp
+        ELSE NULL
+    END"/>
+        </update>
+    </changeSet>
+
+    <!-- 041-update_session_start_end_times_remove_bst.xml -->
+    <changeSet id="041" author="baris.ozturkmen" logicalFilePath="041-update_session_start_end_times_remove_bst.xml">
+        <sql>
+            UPDATE court_schedule
+            SET
+            session_start_time = session_start_time - INTERVAL '1 hour',
+            session_end_time = session_end_time - INTERVAL '1 hour'
+            WHERE
+            session_start_time AT TIME ZONE 'Europe/London' != session_start_time AT TIME ZONE 'UTC';
+        </sql>
+    </changeSet>
+
+    <!-- 042-add_national_break_time_column.xml -->
+    <changeSet id="042" author="baris.ozturkmen" logicalFilePath="042-add_national_break_time_column.xml">
+        <addColumn tableName="court_schedule">
+            <column name="national_break_time" type="timestamp with time zone">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <sql>
+            UPDATE court_schedule
+            SET national_break_time = 
+                CASE 
+                    WHEN session_start_time AT TIME ZONE 'Europe/London' != session_start_time AT TIME ZONE 'UTC'
+                    THEN (DATE_TRUNC('day', session_start_time) + INTERVAL '12:00:00')::timestamp with time zone
+                    ELSE (DATE_TRUNC('day', session_start_time) + INTERVAL '13:00:00')::timestamp with time zone
+                END;
+        </sql>
+
+        <addNotNullConstraint tableName="court_schedule" columnName="national_break_time"/>
+    </changeSet>
+
+</databaseChangeLog> 

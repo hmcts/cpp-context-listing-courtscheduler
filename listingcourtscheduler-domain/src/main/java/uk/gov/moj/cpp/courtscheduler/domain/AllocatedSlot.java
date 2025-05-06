@@ -16,6 +16,7 @@ public class AllocatedSlot {
     private String bookingId;
     private String prosecutor;
     private String courtRoom;
+    private String hearingSessionDateSearchCutOff;
 
     @SuppressWarnings("squid:S1186")
     public AllocatedSlot() {
@@ -124,6 +125,10 @@ public class AllocatedSlot {
     public void setCourtRoomUUId(final String courtRoomUUId) {
         this.courtRoomUUId = courtRoomUUId;
     }
+    public String getHearingSessionDateSearchCutOff() { return hearingSessionDateSearchCutOff; }
+
+    public void setHearingSessionDateSearchCutOff(final String hearingSessionDateSearchCutOff) {
+        this.hearingSessionDateSearchCutOff = hearingSessionDateSearchCutOff; }
 
     @SuppressWarnings("squid:S1067")
     @Override
@@ -147,12 +152,14 @@ public class AllocatedSlot {
                 Objects.equals(bookingId, that.bookingId) &&
                 Objects.equals(prosecutor, that.prosecutor) &&
                 Objects.equals(courtRoom, that.courtRoom) &&
-                Objects.equals(courtRoomUUId, that.courtRoomUUId);
+                Objects.equals(courtRoomUUId, that.courtRoomUUId) &&
+                Objects.equals(hearingSessionDateSearchCutOff, that.hearingSessionDateSearchCutOff);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(duration, sessionDate, hearingStartTime, session, courtRoomId, ouCode, hearingId, courtScheduleId, isSlotBased, bookingId, prosecutor, courtRoom, courtRoomUUId);
+        return Objects.hash(duration, sessionDate, hearingStartTime, session,
+                courtRoomId, ouCode, hearingId, courtScheduleId, isSlotBased, bookingId, prosecutor, courtRoom, courtRoomUUId, hearingSessionDateSearchCutOff);
     }
 
     @Override
@@ -171,6 +178,7 @@ public class AllocatedSlot {
                 ", prosecutor='" + prosecutor + '\'' +
                 ", courtRoom='" + courtRoom + '\'' +
                 ", courtRoomUUId='" + courtRoomUUId + '\'' +
+                ", hearingSessionDateSearchCutOff='" + hearingSessionDateSearchCutOff + '\'' +
                 '}';
     }
 }

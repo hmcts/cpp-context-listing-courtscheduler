@@ -16,10 +16,13 @@ import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -126,7 +129,6 @@ class SlotsSearchServiceTest {
         verify(courtScheduleRepository, times(0)).getCourtScheduleJudiciaries(any());
     }
 
-
     private CourtSchedule createCourtScheduleWithoutListingProfileId() {
         return new CourtSchedule.CourtScheduleBuilder()
                 .withCourtScheduleId(randomUUID().toString())
@@ -175,8 +177,8 @@ class SlotsSearchServiceTest {
                 .withMaxSlots(125)
                 .withJudiciaries(courtScheduleJudiciary)
                 .withActive(true)
-                .withSessionStartTime(Date.from(LocalTime.parse("09:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
-                .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionEndTime(Date.from(LocalTime.parse("13:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1)))
                 .withIsOverbookingAllowed(true)
                 .build();
@@ -185,6 +187,18 @@ class SlotsSearchServiceTest {
     private HearingSlotRequestParam createRequestParam(String pageSize) {
         return new HearingSlotRequestParam("ADULT", LocalDate.now().toString(), LocalDate.now().toString(),
                 null, "BA124", pageSize, "1", null, null, null, null, null);
+    }
+
+    private HearingSlotSearchRequest createHearingSlotsRequest() {
+        String hearingId = randomUUID().toString();
+        LocalDateTime sessionStartTime = LocalDateTime.parse("2024-07-15T10:15:30");
+        return new HearingSlotSearchRequest(hearingId, "B01LY00", "2024-07-15",
+                "001c067d-eaca-4ce5-ad90-a366ef3e4bb6", "2024-07-20", sessionStartTime.toString(),20);
+    }
+
+    private HearingSlotSearchResponse createHearingSlotsResponse(String hearingId) {
+        Date sessionStartTime = Date.from(LocalTime.parse("09:00").atDate(LocalDate.of(2024, 7, 15)).atZone(ZoneId.of("UTC")).toInstant());
+        return new HearingSlotSearchResponse(hearingId, "432c067d-eaca-4ce5-ad90-a366ef3e4bb6", "001c067d-eaca-4ce5-ad90-a366ef3e4bb6", sessionStartTime.toString(), 20);
     }
 
     private JsonObject toJsonObject(UUID judiciaryId1, UUID judiciaryId2, UUID judiciaryId3) {

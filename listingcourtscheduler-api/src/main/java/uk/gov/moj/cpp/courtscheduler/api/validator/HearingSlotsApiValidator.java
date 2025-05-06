@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
 import static java.lang.String.format;
+import static java.util.Objects.isNull;
 import static java.util.logging.Level.WARNING;
 import static java.util.logging.Logger.getGlobal;
 import static javax.json.Json.createObjectBuilder;
@@ -13,18 +14,27 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CR
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
 
 import uk.gov.justice.services.common.converter.LocalDates;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
+import javax.inject.Inject;
 import javax.json.JsonObject;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 public class HearingSlotsApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
+    @Inject
+    private CourtScheduleRepository courtScheduleRepository;
 
     @SuppressWarnings("squid:MethodCyclomaticComplexity")
     public JsonObject getHearingSlotsValidation(final HearingSlotRequestParam hearingSlotRequestParam) {
@@ -63,6 +73,54 @@ public class HearingSlotsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
+    public JsonObject searchAndBookRequestValidation(final HearingSlotSearchRequest hearingSlotSearchRequest) {
+
+        LOGGER.info("Validating Search and Book Hearing Slot request : {}", hearingSlotSearchRequest);
+
+        if (StringUtils.isBlank(hearingSlotSearchRequest.hearingId())) {
+            return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
+        }
+
+        if (StringUtils.isBlank(hearingSlotSearchRequest.ouCode())) {
+            return getMessage(RequestParameterConstant.OU_CODE.getLabel() + " should be entered");
+        }
+
+        if (StringUtils.isBlank(hearingSlotSearchRequest.hearingSessionDate())) {
+            return getMessage(RequestParameterConstant.HEARING_SESSION_DATE.getLabel());
+        } else if (isInvalidDateFormat(hearingSlotSearchRequest.hearingSessionDate())) {
+            return getMessage(format(START_DATE_IS_IN_BAD_FORMAT, hearingSlotSearchRequest.hearingSessionDate()));
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+  
+    public JsonObject listHearingSlotsValidation(final List<HearingSlot> hearingSlots) {
+
+        LOGGER.info("Validating list Hearing Slots input : {}", hearingSlots);
+
+        for (HearingSlot hearingSlot : hearingSlots) {
+            List<RequestedCourtSchedule> schedules = hearingSlot.getCourtScheduleIds();
+
+            for (RequestedCourtSchedule requestedCourtSchedule : schedules) {
+                uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = courtScheduleRepository.findBy(requestedCourtSchedule.getCourtScheduleId());
+
+                if (isNull(cs)) {
+                    return buildErrorResponse("Requested CourSchedule not found. Id: " + requestedCourtSchedule.getCourtScheduleId());
+                }
+
+                if (invalidDuration(requestedCourtSchedule, cs))
+                    return buildErrorResponse("No duration supplied for requested CourtSchedule: " + requestedCourtSchedule.getCourtScheduleId());
+            }
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+
+    private boolean invalidDuration(RequestedCourtSchedule schedule, CourtSchedule cs) {
+        return !cs.isSlotBased() && isNull(schedule.getDurationInMinutes());
+    }
+  
     private boolean isInvalidDateFormat(final String date) {
         try {
             LocalDates.from(date);
