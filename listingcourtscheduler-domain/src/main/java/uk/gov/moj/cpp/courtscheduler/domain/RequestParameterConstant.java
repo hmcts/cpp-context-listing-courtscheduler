@@ -2,18 +2,14 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 
 public enum RequestParameterConstant {
 
-
     PANEL("panel"),
     COURT_SESSION("courtSession"),
-
     COURT_SCHEDULE_ID("courtScheduleId"),
     COURT_CENTRE_ID("courtCentreId"),
     OU_LEVEL2("oucodeL2Code"),
     OU_CODE("ouCode"),
     COURT_ROOM("courtRoomId"),
-
     COURT_CENTRE("courtCentreId"),
-
     COURT_ROOM_NUMBER("courtRoomNumber"),
     SESSION_START_DATE("sessionStartDate"),
     SESSION_END_DATE("sessionEndDate"),
@@ -27,9 +23,7 @@ public enum RequestParameterConstant {
     PAGE_NUMBER("pageNumber"),
     SLOT_DETAILS("slotDetails"),
     BOOKING_IDS("bookingIds"),
-
     FROM_DATE("fromDate"),
-
     TO_DATE("toDate"),
     SESSION_TYPE("sessionType"),
     DURATION("duration"),
@@ -47,6 +41,13 @@ public enum RequestParameterConstant {
     SESSION_START_TIME("sessionStartTime"),
     SESSION_END_TIME("sessionEndTime"),
     IS_OVERBOOKING_ALLOWED("isOverbookingAllowed"),
+    HEARING_ID("hearingId"),
+    HEARING_SESSION_DATE("hearingSessionDate"),
+    HEARING_SESSION_DATE_CUT_OFF("hearingSessionDateSearchCutOff"),
+    DURATION_MINUTES("durationInMinutes"),
+    COURT_SCHEDULES("courtSchedules"),
+    HEARINGS("hearings"),
+    COURT_SCHEDULE_ID_LIST("courtScheduleIdList"),
     IS_SLOT_BASED("isSlotBased"),
     ;
 

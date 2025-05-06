@@ -15,8 +15,12 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
@@ -34,6 +38,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -257,6 +262,178 @@ public class CourtScheduleRepositoryTest {
 
         // then
         assertEquals(3, results.size());
+    }
+
+    @Test
+    public void shouldUpdateListHearingSlotsForSlotBased() {
+        // given
+        CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
+        matchingCourtSchedule1.setSessionDate(LocalDate.of(2025,4,14));
+        matchingCourtSchedule1.setSessionStartTime(DateUtils.combineDateAndTime(matchingCourtSchedule1.getSessionDate(), "10:00"));
+        matchingCourtSchedule1.setSlotBased(true);
+        matchingCourtSchedule1.setMaxSlots(2);
+        matchingCourtSchedule1.setAvailableSlots(2);
+        courtScheduleRepository.save(matchingCourtSchedule1);
+
+        String courtScheduleId1 = matchingCourtSchedule1.getCourtScheduleId();
+
+        RequestedSlots slotsWrapper = new RequestedSlots();
+        HearingSlot hearingSlot = new HearingSlot();
+        String hearingId = randomUUID().toString();
+        String courtScheduleId =  courtScheduleId1;
+        RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
+        requestedCourtSchedule.setCourtScheduleId(courtScheduleId);
+        requestedCourtSchedule.setSessionStartTime("2025-04-14T10:00:00Z");
+        requestedCourtSchedule.setDurationInMinutes(180);
+        List<RequestedCourtSchedule> courtScheduleIds = new ArrayList<>();
+        courtScheduleIds.add(requestedCourtSchedule);
+
+        hearingSlot.setHearingId(hearingId);
+        hearingSlot.setCourtScheduleIds(courtScheduleIds);
+        List<HearingSlot> hearingSlots = new ArrayList<>();
+        hearingSlots.add(hearingSlot);
+        slotsWrapper.setHearingSlots(hearingSlots);
+
+        //when
+        courtScheduleRepository.updateListHearingSlots(slotsWrapper);
+
+        //then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
+        uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedListing = allocatedListings.get(0);
+
+        List<CourtSchedule> updatedSchedules = courtScheduleRepository.findBy(matchingCourtSchedule1);
+        assertFalse(updatedSchedules.isEmpty());
+        CourtSchedule updatedSchedule = updatedSchedules.get(0);
+        assertThat(1, is(updatedSchedule.getAvailableSlots())); //available slots deducted
+
+        assertEquals(allocatedListing.getHearingId(), hearingId);
+        assertEquals(allocatedListing.getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
+    }
+
+    @Test
+    public void shouldUpdateListHearingSlotsForDurationBased() {
+        // given
+        CourtSchedule matchingCourtSchedule1 = random(CourtSchedule.class);
+        matchingCourtSchedule1.setSessionDate(LocalDate.of(2025,4,16));
+        matchingCourtSchedule1.setSessionStartTime(DateUtils.combineDateAndTime(matchingCourtSchedule1.getSessionDate(), "10:00"));
+        matchingCourtSchedule1.setSlotBased(false);
+        matchingCourtSchedule1.setMaxSlots(2);
+        matchingCourtSchedule1.setAvailableSlots(2);
+        matchingCourtSchedule1.setAvailableDuration(180);
+        courtScheduleRepository.save(matchingCourtSchedule1);
+
+        String courtScheduleId1 = matchingCourtSchedule1.getCourtScheduleId();
+
+        RequestedSlots slotsWrapper = new RequestedSlots();
+        HearingSlot hearingSlot = new HearingSlot();
+        String hearingId = randomUUID().toString();
+        String courtScheduleId =  courtScheduleId1;
+        RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
+        requestedCourtSchedule.setCourtScheduleId(courtScheduleId);
+        requestedCourtSchedule.setSessionStartTime("2025-04-16T10:00:00Z");
+        requestedCourtSchedule.setDurationInMinutes(120);
+        List<RequestedCourtSchedule> courtScheduleIds = new ArrayList<>();
+        courtScheduleIds.add(requestedCourtSchedule);
+
+        hearingSlot.setHearingId(hearingId);
+        hearingSlot.setCourtScheduleIds(courtScheduleIds);
+        List<HearingSlot> hearingSlots = new ArrayList<>();
+        hearingSlots.add(hearingSlot);
+        slotsWrapper.setHearingSlots(hearingSlots);
+
+        //when
+        courtScheduleRepository.updateListHearingSlots(slotsWrapper);
+
+        //then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
+        uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedListing = allocatedListings.get(0);
+
+        List<CourtSchedule> updatedSchedules = courtScheduleRepository.findBy(matchingCourtSchedule1);
+        assertFalse(updatedSchedules.isEmpty());
+        CourtSchedule updatedSchedule = updatedSchedules.get(0);
+        assertThat(60, is(updatedSchedule.getAvailableDuration())); //available duration deducted
+
+        assertEquals(allocatedListing.getHearingId(), hearingId);
+        assertEquals(allocatedListing.getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
+    }
+
+    @Test
+    public void shouldReturnCourtSchedulesByIdListWithAllFields() {
+        // given
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setActive(true);
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setIsOverbookingAllowed(true);
+        courtSchedule.setMaxAdMorningDuration(120);
+        courtSchedule.setMaxAdAfternoonDuration(180);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setMaxDuration(240);
+        courtSchedule.setAvailableSlots(8);
+        courtSchedule.setAvailableDuration(200);
+        courtSchedule.setSessionDate(LocalDate.of(2024, 10, 1));
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(9, 0)));
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(13, 0)));
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setPanel("ADULT");
+        courtSchedule.setBusinessType("TRF");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setOperationalUnit("UNIT123");
+        courtSchedule.setCourtHouseId("CH001");
+        courtSchedule.setCourtHouseName("Test Court");
+        courtSchedule.setCourtRoomId("CR001");
+        courtSchedule.setCourtRoomName("Courtroom 1");
+        courtSchedule.setCourtRoomNumber(123);
+        courtSchedule.setListingProfileId("LIST-001");
+
+        courtScheduleRepository.save(courtSchedule);
+
+        AllocatedListing allocatedListing = new AllocatedListing();
+        allocatedListing.setId(randomUUID().toString());
+        allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
+        allocatedListing.setHearingId(randomUUID().toString());
+        allocatedListing.setBookingId(randomUUID().toString());
+        allocatedListing.setOucode(courtSchedule.getOuCode());
+        allocatedListing.setDuration(30);
+        allocatedListing.setHearingStartTime(new Date());
+        allocatedListing.setCreatedOn(new Date());
+        allocatedListing.setUpdatedOn(new Date());
+
+        allocatedListingRepository.save(allocatedListing);
+
+        // when
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> results =
+                courtScheduleRepository.getCourtSchedulesByIdList(List.of(courtSchedule.getCourtScheduleId()));
+
+        // then
+        assertEquals(1, results.size());
+        uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule result = results.get(0);
+
+        assertEquals(courtSchedule.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals(courtSchedule.getOuCode(), result.getOuCode());
+        assertEquals(courtSchedule.getCourtRoomId(), result.getCourtRoomId());
+        assertEquals(courtSchedule.getCourtRoomNumber(), result.getCourtRoomNumber());
+        assertEquals(courtSchedule.getCourtHouseId(), result.getCourtHouseId());
+        assertEquals(courtSchedule.getCourtHouseName(), result.getCourtHouseName());
+        assertEquals(courtSchedule.getCourtRoomName(), result.getCourtRoomName());
+        assertEquals(courtSchedule.getOperationalUnit(), result.getOperationalUnit());
+        assertEquals(courtSchedule.getBusinessType(), result.getBusinessType());
+        assertEquals(courtSchedule.getPanel(), result.getPanel());
+        assertEquals(courtSchedule.getCourtSession(), result.getCourtSession());
+        assertEquals(courtSchedule.getSessionDate(), result.getSessionDate());
+        assertEquals(courtSchedule.getAvailableSlots(), result.getAvailableSlots());
+        assertEquals(courtSchedule.getAvailableDuration(), result.getAvailableDuration());
+        assertEquals(courtSchedule.getMaxSlots(), result.getMaxSlots());
+        assertEquals(courtSchedule.getMaxDuration(), result.getMaxDuration());
+        assertEquals(courtSchedule.getMaxAdMorningDuration(), result.getMaxDurationForMorning());
+        assertEquals(courtSchedule.getMaxAdAfternoonDuration(), result.getMaxDurationForAfternoon());
+        assertEquals(courtSchedule.getSupportAdSplit(), result.isAllDaySplit());
+        assertEquals(courtSchedule.isSlotBased(), result.isSlotBased());
+        assertEquals(courtSchedule.getSessionStartTime(), result.getSessionStartTime());
+        assertEquals(courtSchedule.getSessionEndTime(), result.getSessionEndTime());
+        assertEquals(courtSchedule.getListingProfileId(), result.getListingProfileId());
+        assertEquals(30, result.getTotalBooked().intValue());
     }
 
     @Test
@@ -674,7 +851,7 @@ public class CourtScheduleRepositoryTest {
         );
     }
 
-    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate, 
+    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
                                             final String courtRoomId, final String businessType) {
         CourtSchedule schedule = new CourtSchedule();
         
@@ -723,7 +900,7 @@ public class CourtScheduleRepositoryTest {
         
         // Set national break time based on BST logic
         schedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
-        
+
         // Optional field
         schedule.setListingProfileId(random(String.class));                  // court_listing_profile_id
         
@@ -1650,6 +1827,42 @@ public class CourtScheduleRepositoryTest {
 
         assertNotNull(courtScheduleMatcherInfo);
         assertEquals(courtScheduleMatcherInfo.getCourtScheduleId(), courtSchedule1.getCourtScheduleId());
+    }
+
+    @Test
+    public void shouldSearchAndList_ForAllRequiredParams() {
+        final Date sessionDate = DateUtils.getDate(LocalDate.of(2024, 7, 15));
+        String hearingId = randomUUID().toString();
+        String bookingId = randomUUID().toString();
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(LocalDate.of(2024, 7, 15));
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("NGAP");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomId("1234");
+        courtScheduleRepository.save(courtSchedule);
+
+
+        ProvisionalBooking provisionalBooking = random(ProvisionalBooking.class);
+        provisionalBooking.setProvisionalBookingKey(new ProvisionalBookingKey(courtSchedule, bookingId));
+        provisionalBookingRepository.save(provisionalBooking);
+
+        AllocatedListing allocatedListing = random(AllocatedListing.class);
+        allocatedListing.setOucode("B01LY00");
+        allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
+        allocatedListing.setHearingStartTime(sessionDate);
+        allocatedListing.setHearingId(hearingId);
+        allocatedListing.setBookingId(bookingId);
+        allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        allocatedListingRepository.save(allocatedListing);
+
+        courtScheduleRepository.searchListHearingSlotFilterCriteria(courtSchedule.getOuCode(), courtSchedule.getSessionDate(), courtSchedule.getSessionDate().plusDays(5),
+                courtSchedule.getSessionStartTime().toInstant().atOffset(ZoneOffset.UTC)
+                .toLocalDateTime(), courtSchedule.getCourtRoomId());
+
+        List<CourtSchedule> courtSchedulesQueryList = courtScheduleRepository.findBy(courtSchedule);
+        assertFalse(courtSchedulesQueryList.isEmpty());
     }
 
     private HearingSlotRequestParam createHearingSlotRequest(CourtSchedule courtSchedule) {

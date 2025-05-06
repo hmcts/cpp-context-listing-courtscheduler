@@ -115,6 +115,23 @@ rule "API - Action - courtscheduler.get.hearing.ids"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.search.book.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.search.book.hearing.slots");
+      eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.list.hearings-in-court-sessions"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.list.hearings-in-court-sessions");
+        eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
 
 rule "API - Action - courtscheduler.create.provisional.booking"
   when
@@ -183,6 +200,15 @@ rule "API - Action - courtscheduler.rotasl.clean_redundant_rota_data"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.rotasl.clean_redundant_rota_data");
+        eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.search.court-schedules-by-id"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.search.court-schedules-by-id");
         eval(userAndGroupProvider.isSystemUser($action));
   then
     $outcome.setSuccess(true);
