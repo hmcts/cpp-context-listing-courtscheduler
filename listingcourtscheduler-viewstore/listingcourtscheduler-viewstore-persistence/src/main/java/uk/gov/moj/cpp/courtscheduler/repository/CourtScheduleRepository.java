@@ -64,7 +64,6 @@ import javax.transaction.Transactional;
 
 import jakarta.persistence.PersistenceException;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
@@ -295,6 +294,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
       AND cs.panel in (:panelType)
       AND cs.session_start BETWEEN :sessionStart AND :sessionEnd
 """;
+
 
     private static final String GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS = """
             SELECT cs.id,
@@ -853,7 +853,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         return params;
     }
-
 
     private String buildFullQuery(HearingSlotRequestParam requestParam) {
         StringBuilder query;

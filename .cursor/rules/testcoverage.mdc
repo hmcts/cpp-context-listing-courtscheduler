@@ -1,7 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: false
----
-Rule Name: testing_guidelines
-Description: Project testing guidelines require 80% code coverage, use of specific test naming conventions, and mock external services.
