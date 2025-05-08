@@ -69,7 +69,6 @@ public class HearingSlotsApiValidator {
         if (isBlank(hearingSlotRequestParam.pageNumber())) {
             return getMessage(RequestParameterConstant.PAGE_NUMBER.getLabel());
         }
-
         return EMPTY_JSON_OBJECT;
     }
 
