@@ -6,6 +6,7 @@ import static java.util.logging.Level.WARNING;
 import static java.util.logging.Logger.getGlobal;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
@@ -40,32 +41,32 @@ public class HearingSlotsApiValidator {
 
         LOGGER.info("Validating GET Hearing Slot input : {}", hearingSlotRequestParam);
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.panel())) {
+        if (isBlank(hearingSlotRequestParam.panel())) {
             return getMessage(RequestParameterConstant.PANEL.getLabel());
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.sessionStartDate())) {
+        if (isBlank(hearingSlotRequestParam.sessionStartDate())) {
             return getMessage(RequestParameterConstant.SESSION_START_DATE.getLabel());
         } else if (isInvalidDateFormat(hearingSlotRequestParam.sessionStartDate())) {
             return getMessage(format(START_DATE_IS_IN_BAD_FORMAT, hearingSlotRequestParam.sessionStartDate()));
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.sessionEndDate())) {
+        if (isBlank(hearingSlotRequestParam.sessionEndDate())) {
             return getMessage(RequestParameterConstant.SESSION_END_DATE.getLabel());
         } else if (isInvalidDateFormat(hearingSlotRequestParam.sessionEndDate())) {
             return getMessage(format(END_DATE_IS_IN_BAD_FORMAT, hearingSlotRequestParam.sessionEndDate()));
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.oucodeL2Code()) && StringUtils.isBlank(hearingSlotRequestParam.ouCode())) {
+        if (isBlank(hearingSlotRequestParam.oucodeL2Code()) && isBlank(hearingSlotRequestParam.ouCode())) {
             return getMessage("Either " + RequestParameterConstant.OU_LEVEL2.getLabel() + " or " +
                     RequestParameterConstant.OU_CODE.getLabel() + " should be entered");
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.pageSize())) {
+        if (isBlank(hearingSlotRequestParam.pageSize())) {
             return getMessage(RequestParameterConstant.PAGE_SIZE.getLabel());
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.pageNumber())) {
+        if (isBlank(hearingSlotRequestParam.pageNumber())) {
             return getMessage(RequestParameterConstant.PAGE_NUMBER.getLabel());
         }
         return EMPTY_JSON_OBJECT;

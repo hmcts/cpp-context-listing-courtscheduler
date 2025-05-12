@@ -186,7 +186,7 @@ class SlotsSearchServiceTest {
 
     private HearingSlotRequestParam createRequestParam(String pageSize) {
         return new HearingSlotRequestParam("ADULT", LocalDate.now().toString(), LocalDate.now().toString(),
-                null, "BA124", pageSize, "1", null, null, null, null);
+                null, "BA124", pageSize, "1", null, null, null, null, null);
     }
 
     private HearingSlotSearchRequest createHearingSlotsRequest() {

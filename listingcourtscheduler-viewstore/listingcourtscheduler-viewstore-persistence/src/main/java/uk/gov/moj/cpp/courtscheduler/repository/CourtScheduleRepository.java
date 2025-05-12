@@ -5,6 +5,7 @@ import static java.util.Objects.isNull;
 import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
@@ -832,6 +833,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             params.put(BUSINESS_TYPE, requestParam.businessType());
+        } else {
+            if (isNotEmpty(requestParam.isSlotBased())) {
+                params.put("slotBased", requestParam.isSlotBased());
+            }
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
@@ -871,6 +876,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             query.append(" AND cs.rota_business_type = :businessType");
+        } else {
+            if (isNotEmpty(requestParam.isSlotBased())) {
+                query.append(" AND cs.is_slot_based = :slotBased");
+            }
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
