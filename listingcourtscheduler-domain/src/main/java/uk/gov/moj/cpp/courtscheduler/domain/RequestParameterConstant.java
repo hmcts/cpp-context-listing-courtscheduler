@@ -48,7 +48,7 @@ public enum RequestParameterConstant {
     COURT_SCHEDULES("courtSchedules"),
     HEARINGS("hearings"),
     COURT_SCHEDULE_ID_LIST("courtScheduleIdList"),
-
+    IS_SLOT_BASED("isSlotBased"),
     ;
 
     private final String name;
