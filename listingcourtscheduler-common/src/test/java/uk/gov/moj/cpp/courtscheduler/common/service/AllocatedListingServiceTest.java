@@ -94,7 +94,7 @@ class AllocatedListingServiceTest {
                         "Court-Room-Id-1",
                         "Court-Room-Num-1",
                         "buss",
-                        "Court-Session-1");
+                        "Court-Session-1",null);
         Set<String> hearingIds = new LinkedHashSet<>();
         hearingIds.add(randomUUID().toString());
         hearingIds.add(randomUUID().toString());

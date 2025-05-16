@@ -2,10 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.lang.Integer.parseInt;
 import static java.util.stream.Collectors.groupingBy;
-import static java.lang.Integer.parseInt;
-import static java.util.stream.Collectors.groupingBy;
-import static java.lang.Integer.parseInt;
-import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;

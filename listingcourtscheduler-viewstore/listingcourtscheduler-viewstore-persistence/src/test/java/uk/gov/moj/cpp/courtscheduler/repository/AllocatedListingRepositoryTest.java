@@ -8,7 +8,6 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -216,7 +215,8 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         "",
-                        "");
+                        "",
+                        null);
         Pair<Integer, Set<String>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(5, hearingIdsResult.getKey().longValue());
         List<String> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
@@ -267,7 +267,8 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         "",
-                        "");
+                        "",
+                        null);
         Pair<Integer, Set<String>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(2, hearingIdsResult.getKey().longValue());
         List<String> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());

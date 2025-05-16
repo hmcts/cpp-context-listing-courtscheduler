@@ -1,10 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
 import static java.lang.String.format;
+import static java.util.Objects.isNull;
 import static java.util.logging.Level.WARNING;
 import static java.util.logging.Logger.getGlobal;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
@@ -12,56 +14,112 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CR
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
 
 import uk.gov.justice.services.common.converter.LocalDates;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
+import javax.inject.Inject;
 import javax.json.JsonObject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 public class HearingSlotsApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
+    @Inject
+    private CourtScheduleRepository courtScheduleRepository;
 
     @SuppressWarnings("squid:MethodCyclomaticComplexity")
     public JsonObject getHearingSlotsValidation(final HearingSlotRequestParam hearingSlotRequestParam) {
 
         LOGGER.info("Validating GET Hearing Slot input : {}", hearingSlotRequestParam);
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.panel())) {
+        if (isBlank(hearingSlotRequestParam.panel())) {
             return getMessage(RequestParameterConstant.PANEL.getLabel());
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.sessionStartDate())) {
+        if (isBlank(hearingSlotRequestParam.sessionStartDate())) {
             return getMessage(RequestParameterConstant.SESSION_START_DATE.getLabel());
         } else if (isInvalidDateFormat(hearingSlotRequestParam.sessionStartDate())) {
             return getMessage(format(START_DATE_IS_IN_BAD_FORMAT, hearingSlotRequestParam.sessionStartDate()));
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.sessionEndDate())) {
+        if (isBlank(hearingSlotRequestParam.sessionEndDate())) {
             return getMessage(RequestParameterConstant.SESSION_END_DATE.getLabel());
         } else if (isInvalidDateFormat(hearingSlotRequestParam.sessionEndDate())) {
             return getMessage(format(END_DATE_IS_IN_BAD_FORMAT, hearingSlotRequestParam.sessionEndDate()));
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.oucodeL2Code()) && StringUtils.isBlank(hearingSlotRequestParam.ouCode())) {
+        if (isBlank(hearingSlotRequestParam.oucodeL2Code()) && isBlank(hearingSlotRequestParam.ouCode())) {
             return getMessage("Either " + RequestParameterConstant.OU_LEVEL2.getLabel() + " or " +
                     RequestParameterConstant.OU_CODE.getLabel() + " should be entered");
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.pageSize())) {
+        if (isBlank(hearingSlotRequestParam.pageSize())) {
             return getMessage(RequestParameterConstant.PAGE_SIZE.getLabel());
         }
 
-        if (StringUtils.isBlank(hearingSlotRequestParam.pageNumber())) {
+        if (isBlank(hearingSlotRequestParam.pageNumber())) {
             return getMessage(RequestParameterConstant.PAGE_NUMBER.getLabel());
         }
         return EMPTY_JSON_OBJECT;
     }
 
+    public JsonObject searchAndBookRequestValidation(final HearingSlotSearchRequest hearingSlotSearchRequest) {
+
+        LOGGER.info("Validating Search and Book Hearing Slot request : {}", hearingSlotSearchRequest);
+
+        if (StringUtils.isBlank(hearingSlotSearchRequest.hearingId())) {
+            return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
+        }
+
+        if (StringUtils.isBlank(hearingSlotSearchRequest.ouCode())) {
+            return getMessage(RequestParameterConstant.OU_CODE.getLabel() + " should be entered");
+        }
+
+        if (StringUtils.isBlank(hearingSlotSearchRequest.hearingSessionDate())) {
+            return getMessage(RequestParameterConstant.HEARING_SESSION_DATE.getLabel());
+        } else if (isInvalidDateFormat(hearingSlotSearchRequest.hearingSessionDate())) {
+            return getMessage(format(START_DATE_IS_IN_BAD_FORMAT, hearingSlotSearchRequest.hearingSessionDate()));
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+  
+    public JsonObject listHearingSlotsValidation(final List<HearingSlot> hearingSlots) {
+
+        LOGGER.info("Validating list Hearing Slots input : {}", hearingSlots);
+
+        for (HearingSlot hearingSlot : hearingSlots) {
+            List<RequestedCourtSchedule> schedules = hearingSlot.getCourtScheduleIds();
+
+            for (RequestedCourtSchedule requestedCourtSchedule : schedules) {
+                uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = courtScheduleRepository.findBy(requestedCourtSchedule.getCourtScheduleId());
+
+                if (isNull(cs)) {
+                    return buildErrorResponse("Requested CourSchedule not found. Id: " + requestedCourtSchedule.getCourtScheduleId());
+                }
+
+                if (invalidDuration(requestedCourtSchedule, cs))
+                    return buildErrorResponse("No duration supplied for requested CourtSchedule: " + requestedCourtSchedule.getCourtScheduleId());
+            }
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+
+    private boolean invalidDuration(RequestedCourtSchedule schedule, CourtSchedule cs) {
+        return !cs.isSlotBased() && isNull(schedule.getDurationInMinutes());
+    }
+  
     private boolean isInvalidDateFormat(final String date) {
         try {
             LocalDates.from(date);

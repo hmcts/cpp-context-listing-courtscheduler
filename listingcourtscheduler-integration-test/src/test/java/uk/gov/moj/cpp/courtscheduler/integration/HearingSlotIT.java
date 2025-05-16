@@ -6,6 +6,7 @@ import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static javax.json.Json.createReader;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -28,8 +29,15 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
+import java.io.StringReader;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -74,6 +82,101 @@ class HearingSlotIT extends AbstractIT {
         final Response response = putCommand(RELATIVE_URL, "application/vnd.courtscheduler.update.hearing.slots+json", SYSTEM_USER_ID, updateHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
+        String respPayload = response.readEntity(String.class);
+        JsonObject jsonObject = createReader(new StringReader(respPayload)).readObject();
+        assertThat(jsonObject.getJsonArray("schedules").size(), is(0));
+    }
+
+    @Test
+    void shouldUpdateRequestedListHearingSlots() throws SQLException {
+
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setSlotBased(false);
+        courtSchedule.setMaxSlots(0);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setMaxAdMorningDuration(180);
+        courtSchedule.setMaxAdAfternoonDuration(180);
+        courtSchedule.setMaxDuration(0);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 4, 3));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule2.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule2.setOuCode("B40IM00");
+        courtSchedule2.setCourtRoomNumber(1501);
+        courtSchedule2.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule2.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule2.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule2.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule2.setSlotBased(true);
+        courtSchedule2.setMaxSlots(2);
+        courtSchedule2.setSupportAdSplit(true);
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setMaxAdMorningDuration(180);
+        courtSchedule2.setMaxAdAfternoonDuration(180);
+        courtSchedule2.setMaxDuration(0);
+        courtSchedule2.setSessionDate(LocalDate.of(2025, 4, 5));
+        courtSchedule2.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule2);
+
+        CourtSchedule courtSchedule3 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule3.setCourtScheduleId("2771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule3.setOuCode("B40IM00");
+        courtSchedule3.setCourtRoomNumber(1501);
+        courtSchedule3.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule3.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule3.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule3.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule3.setSlotBased(true);
+        courtSchedule3.setMaxSlots(0);
+        courtSchedule3.setSupportAdSplit(true);
+        courtSchedule3.setCourtSession("AD");
+        courtSchedule3.setMaxAdMorningDuration(180);
+        courtSchedule3.setMaxAdAfternoonDuration(180);
+        courtSchedule3.setMaxDuration(360);
+        courtSchedule3.setSessionDate(LocalDate.of(2025, 5, 5));
+        courtSchedule3.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule3.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule3);
+
+        String updateHearingSlotsPayload = getPayload("courtscheduler.list.hearings-in-court-sessions.json");
+
+        final Response response = putCommand("/list/hearingslots", "application/vnd.courtscheduler.list.hearings-in-court-sessions+json", SYSTEM_USER_ID, updateHearingSlotsPayload);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(response.readEntity(String.class));
+        JsonArray jsonArray = jsonObject.getJsonArray("hearings");
+        assertThat(jsonArray.size(), is(3));
+        jsonArray.stream().forEach( hearing ->
+                {final JsonObject hearingJson = (JsonObject) hearing ;
+                    if (hearingJson.getString("courtScheduleId").equals("1771a96b-1c5a-45d1-b647-1bec5212cafc")) {
+                        assertThat(hearingJson.getString("hearingId"), is("5771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                        assertThat(hearingJson.getString("sessionStartTime"), is("2025-04-03T09:00:00Z"));
+                        assertThat(hearingJson.getInt("duration"), is(20));
+                    }
+                    if (hearingJson.getString("courtScheduleId").equals("5771a96b-1c5a-45d1-b647-1bec5212cafc")) {
+                        assertThat(hearingJson.getString("hearingId"), is("6771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                        assertThat(hearingJson.getString("sessionStartTime"), is("2025-04-03T09:00:00Z"));
+                        assertThat(hearingJson.getInt("duration"), is(1));
+                    }
+                    if (hearingJson.getString("courtScheduleId").equals("2771a96b-1c5a-45d1-b647-1bec5212cafc")) {
+                        assertThat(hearingJson.getString("hearingId"), is("6771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                        assertThat(hearingJson.getString("sessionStartTime"), is("2025-04-03T09:00:00Z"));
+                        assertThat(hearingJson.getInt("duration"), is(1));
+                    }
+                }
+        );
     }
 
     @Test
@@ -195,6 +298,10 @@ class HearingSlotIT extends AbstractIT {
 
     @Test
     void shouldRetrieveAllDaySplitWithBookings() throws Exception {
+
+
+        ZoneId zoneId = ZoneId.of("Europe/London");
+
         String courtScheduleId = randomUUID().toString();
         String bookingId = randomUUID().toString();
         String bookingId2 = randomUUID().toString();
@@ -447,8 +554,8 @@ class HearingSlotIT extends AbstractIT {
         final JsonArray hearingSlotsJsonArray = jsonObject.getJsonArray("hearingSlots");
         assertThat(hearingSlotsJsonArray.size(), is(3));
         final List<String> courtScheduleIdsInResponsePayload = hearingSlotsJsonArray.stream()
-                        .map(hearingSlot -> ((JsonObject) hearingSlot).getString("courtScheduleId"))
-                                .toList();
+                .map(hearingSlot -> ((JsonObject) hearingSlot).getString("courtScheduleId"))
+                .toList();
         assertTrue(courtScheduleIdsInResponsePayload.contains(courtScheduleIdForAM));
         assertTrue(courtScheduleIdsInResponsePayload.contains(courtScheduleIdForPM));
         assertTrue(courtScheduleIdsInResponsePayload.contains(courtScheduleIdForAD));

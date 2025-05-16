@@ -44,6 +44,9 @@
             "businessType": {
               "type": "string"
             },
+            "isSlotBased": {
+              "type": "string"
+            },
             "panel": {
               "type": "string"
             },

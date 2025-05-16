@@ -96,6 +96,28 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.delete.response.json
             example: !include json/courtscheduler.delete.response.json
 
+/courtschedule/search.court-schedules-by-id:
+  description: |
+    Search Court Schedules by id
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.search.courtschedules.by.id+json
+          name: courtscheduler.search.court-schedules-by-id
+      ...
+    body:
+      application/vnd.courtscheduler.search.courtschedules.by.id+json:
+        schema: !include json/schema/courtscheduler.search.courtschedules.by.id.json
+        example: !include json/courtscheduler.search.courtschedules.by.id.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.search.court-schedules-by-id+json:
+            schema: !include json/schema/courtscheduler.search.courtschedules.by.id.json
+            example: !include json/courtscheduler.search.courtschedules.by.id.json
+
+
 /hearingslots/{hearingId}:
   delete:
     description:  |
@@ -127,8 +149,11 @@ protocols: [ HTTP, HTTPS ]
         schema:
           !include json/schema/courtscheduler.update.hearing.slots.json
     responses:
-      204:
-        description: No Content
+      200:
+        body:
+          application/vnd.courtscheduler.update.hearing.slots.response+json:
+            schema: !include json/schema/courtscheduler.update.hearing.slots.response.json
+            example: !include json/courtscheduler.update.hearing.slots.response.json
 
   get:
     description: |
@@ -178,6 +203,10 @@ protocols: [ HTTP, HTTPS ]
         description: AM/PM/AD or comma separeted --> AM,PM,AD
         type: string
         required: false
+      isSlotBased:
+        description: slot based or not
+        type: string
+        required: false
       pageSize:
         description: Number of records to be displayed per page
         type: string
@@ -195,6 +224,29 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.get.hearing.ids+json:
             example: !include json/courtscheduler.get.hearing.ids.json
             schema: !include json/schema/courtscheduler.get.hearing.ids.json
+
+/list/hearingslots:
+  put:
+    description:  |
+      You can allocate hearing slots through this PUT
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.list.hearings-in-court-sessions+json
+          name: courtscheduler.list.hearings-in-court-sessions
+      ...
+    body:
+      application/vnd.courtscheduler.list.hearings-in-court-sessions+json:
+        example:
+          !include json/courtscheduler.list.hearings-in-court-sessions.json
+        schema:
+          !include json/schema/courtscheduler.list.hearings-in-court-sessions.json
+    responses:
+      200:
+        description: OK
+        body:
+          application/vnd.courtscheduler.list.hearings-in-court-sessions.response+json:
+            schema: !include json/schema/courtscheduler.list.hearings-in-court-sessions.response.json
+            example: !include json/courtscheduler.list.hearings-in-court-sessions.response.json
 
 /searchupdate/hearingslots:
   put:
@@ -214,6 +266,52 @@ protocols: [ HTTP, HTTPS ]
     responses:
       204:
         description: No Content
+
+/searchlist/hearingslots:
+  get:
+    description:  |
+      You can search and list the hearings in court sessions based on the input param combinations
+      Query via parameters
+      ...
+      (mapping):
+          responseType: application/vnd.courtscheduler.search.book.hearing.slots+json
+          name: courtscheduler.search.book.hearing.slots
+      ...
+    queryParameters:
+      hearingId:
+        description: HearingID
+        type: string
+        required: true
+      ouCode:
+        description: ouCode
+        type: string
+        required: true
+      courtRoomId:
+        description: courtRoomId
+        type: string
+        required: false
+      hearingSessionDate:
+        description: hearingSessionDate
+        type: string
+        required: true
+      hearingSessionDateSearchCutOff:
+        description: hearingSessionDateSearchCutOff
+        type: string
+        required: false
+      sessionStartTime:
+        description: sessionStartTime
+        type: string
+        required: false
+      durationInMinutes:
+        description: durationInMinutes
+        type: integer
+        required: false
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.search.book.hearing.slots+json:
+            example: !include json/courtscheduler.search.book.hearing.slots.json
+            schema: !include json/schema/courtscheduler.search.book.hearing.slots.json
 
 /provisionalBooking:
   post:
