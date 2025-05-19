@@ -421,11 +421,11 @@ class RotaFileProcessorIT extends AbstractIT {
         }
 
         final List<AllocatedListing> allocatedListings = new ArrayList<>();
-
+        
         // Use a single connection for all database operations
         try (Connection connection = databaseSeeder.getNewConnection()) {
             connection.setAutoCommit(false);
-
+            
             for(final CourtSchedule courtSchedule180DaysOlderOrMore : courtSchedules180DaysOlderOrMore) {
                 final CourtSchedule courtSchedule = databaseReader.courtScheduleById(courtSchedule180DaysOlderOrMore.getCourtScheduleId(), connection);
                 if (nonNull(courtSchedule)) {
@@ -434,11 +434,11 @@ class RotaFileProcessorIT extends AbstractIT {
                     logger.info("courtScheduleId not found to be inserted to allocated_listings: {}", courtSchedule180DaysOlderOrMore.getCourtScheduleId());
                 }
             }
-
+            
             if (!allocatedListings.isEmpty()) {
                 databaseSeeder.insertAllocatedListingsBatch(allocatedListings, connection);
             }
-
+            
             connection.commit();
         }
     }

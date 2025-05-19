@@ -213,13 +213,13 @@ public class DatabaseSeeder {
             if (!isExternalConnection) {
                 connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
             }
-
+            
             preparedStatement = connection.prepareStatement(ALLOCATED_LISTING_INSERT_SQL);
-
+            
             if (!isExternalConnection) {
                 connection.setAutoCommit(false);
             }
-
+            
             for (AllocatedListing allocatedListing : allocatedListings) {
                 preparedStatement.setObject(1, allocatedListing.getId());
                 preparedStatement.setString(2, allocatedListing.getCourtScheduleId());
@@ -239,9 +239,9 @@ public class DatabaseSeeder {
                 preparedStatement.setTimestamp(11, new Timestamp(System.currentTimeMillis()));
                 preparedStatement.addBatch();
             }
-
+            
             preparedStatement.executeBatch();
-
+            
             if (!isExternalConnection) {
                 connection.commit();
             }
