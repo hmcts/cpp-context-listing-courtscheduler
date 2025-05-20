@@ -48,7 +48,7 @@ public class SlotsUpdateService {
     private ProvisionalBookingRepository provisionalBookingRepository;
 
     public JsonObject update(final List<AllocatedSlot> slots) {
-        final boolean containsMissingCourtScheduleId = slots.stream().anyMatch( slot -> StringUtils.isBlank(slot.getCourtScheduleId()));
+        final boolean containsMissingCourtScheduleId = false; //slots.stream().anyMatch( slot -> StringUtils.isBlank(slot.getCourtScheduleId()));
         final Result slotUpdateResult;
         if (isBookingBasedSlot(slots)) {
             final AllocatedSlot singleBookingSlot = slots.get(0);
