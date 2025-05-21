@@ -48,7 +48,6 @@ public class SlotsUpdateService {
     private ProvisionalBookingRepository provisionalBookingRepository;
 
     public JsonObject update(final List<AllocatedSlot> slots) {
-        final boolean containsMissingCourtScheduleId = false; //slots.stream().anyMatch( slot -> StringUtils.isBlank(slot.getCourtScheduleId()));
         final Result slotUpdateResult;
         if (isBookingBasedSlot(slots)) {
             final AllocatedSlot singleBookingSlot = slots.get(0);
@@ -77,9 +76,9 @@ public class SlotsUpdateService {
                 allocatedSlot.setHearingStartTime(isoString);
             });
 
-            slotUpdateResult = courtScheduleRepository.saveBookedSlots(slots, true, containsMissingCourtScheduleId);
+            slotUpdateResult = courtScheduleRepository.saveBookedSlots(slots, true, false);
         } else {
-            slotUpdateResult = courtScheduleRepository.saveBookedSlots(slots, false, containsMissingCourtScheduleId);
+            slotUpdateResult = courtScheduleRepository.saveBookedSlots(slots, false, false);
         }
         final JsonArrayBuilder hearingDaysJsonArrBuilder = createArrayBuilder();
         slotUpdateResult.getHearingDayCourtSchedules().forEach( (day, schedule) -> {
