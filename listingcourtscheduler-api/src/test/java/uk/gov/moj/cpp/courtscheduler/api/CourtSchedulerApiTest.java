@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.UUID.randomUUID;
+import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,7 +56,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 
@@ -79,6 +79,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import javax.json.JsonArray;
+import javax.json.JsonArrayBuilder;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 class CourtSchedulerApiTest {
@@ -260,11 +263,29 @@ class CourtSchedulerApiTest {
 
         final JsonEnvelope updateHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
 
+        String hearingDateJsonName = "hearingDate";
+        String courtScheduleIdJsonName = "courtScheduleId";
+        JsonObject schedule1 = createObjectBuilder().add(courtScheduleIdJsonName, "Court-Schedule-Id1")
+                                                    .add(hearingDateJsonName, "2025-04-25")
+                                                    .build();
+        JsonObject schedule2 = createObjectBuilder().add(courtScheduleIdJsonName, "Court-Schedule-Id2")
+                                                    .add(hearingDateJsonName, "2025-04-26")
+                                                    .build();
+        JsonArrayBuilder schedulesJsonArrayBuilder = createArrayBuilder().add(schedule1).add(schedule2);
+        when(slotsUpdateService.update(any())).thenReturn(createObjectBuilder().add("schedules", schedulesJsonArrayBuilder).build());
         when(enveloper.withMetadataFrom(updateHearingSlotsEnvelope, requestName)).thenReturn(function);
         when(allocatedSlotConverter.convert(jsonObject.toString())).thenReturn(new AllocatedSlotConverter().convert(payload));
 
         courtSchedulerApi.updateHearingSlots(updateHearingSlotsEnvelope);
-
+        ArgumentCaptor<JsonObject> hearingDaysArgCaptor = ArgumentCaptor.forClass(JsonObject.class);
+        verify(function).apply(hearingDaysArgCaptor.capture());
+        JsonArray schedulesResponseJsonArr = hearingDaysArgCaptor.getValue().getJsonArray("schedules");
+        JsonObject scheduleRespJsonObj1 = schedulesResponseJsonArr.getJsonObject(0);
+        JsonObject scheduleRespJsonObj2 = schedulesResponseJsonArr.getJsonObject(1);
+        assertEquals("Court-Schedule-Id1", scheduleRespJsonObj1.getString(courtScheduleIdJsonName));
+        assertEquals("2025-04-25", scheduleRespJsonObj1.getString(hearingDateJsonName));
+        assertEquals("Court-Schedule-Id2", scheduleRespJsonObj2.getString(courtScheduleIdJsonName));
+        assertEquals("2025-04-26", scheduleRespJsonObj2.getString(hearingDateJsonName));
         verify(slotsUpdateService, atLeastOnce()).update(new AllocatedSlotConverter().convert(payload).getHearingSlots());
         verify(enveloper, atLeastOnce()).withMetadataFrom(updateHearingSlotsEnvelope, requestName);
     }

@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -110,6 +111,7 @@ public class CourtScheduleRepositoryTest {
 
         Result result = courtScheduleRepository.update(courtScheduleEntity, updatedCourtSchedule, Optional.of(courtRoom));
         assertTrue(result.isSuccess());
+        assertThat(result.getHearingDayCourtSchedules().size(), is(0));
     }
 
     @Test
@@ -635,11 +637,11 @@ public class CourtScheduleRepositoryTest {
         // given
         LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         setupTestDataForMandatoryParams(sessionDate);
-        
+
         // when
-        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result = 
+        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result =
             whenSearchingWithMandatoryParams(sessionDate);
-        
+
         // then
         thenOnlyMatchingMandatoryParamsAreReturned(result);
     }
@@ -650,11 +652,11 @@ public class CourtScheduleRepositoryTest {
         // given
         LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         setupTestDataForOptionalParams(sessionDate, false);
-        
+
         // when
-        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result = 
+        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result =
             whenSearchingWithOptionalParams(sessionDate);
-        
+
         // then
         thenOnlyMatchingOptionalParamsAreReturned(result);
     }
@@ -665,11 +667,11 @@ public class CourtScheduleRepositoryTest {
         // given
         LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         setupTestDataForPagination(sessionDate);
-        
+
         // when
-        List<Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>>> results = 
+        List<Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>>> results =
             whenFetchingMultiplePages(sessionDate);
-        
+
         // then
         thenPaginationWorksCorrectly(results);
     }
@@ -694,7 +696,7 @@ public class CourtScheduleRepositoryTest {
         CourtSchedule differentOuCode = createCourtSchedule("B02LY00", "ADULT", sessionDate, "CR02", "TRF");
         CourtSchedule differentPanel = createCourtSchedule("B01LY00", "YOUTH", sessionDate, "CR03", "TRF");
         CourtSchedule differentDate = createCourtSchedule("B01LY00", "ADULT", sessionDate.plusDays(10), "CR04", "TRF");
-        
+
         saveSchedules(List.of(matchingSchedule, differentOuCode, differentPanel, differentDate));
     }
 
@@ -818,7 +820,7 @@ public class CourtScheduleRepositoryTest {
 
         // Verify total count consistency
         results.forEach(result -> assertEquals(Integer.valueOf(25), result.getLeft()));
-        
+
         // Verify no duplicates
         Set<String> allIds = results.stream()
             .flatMap(result -> result.getRight().stream())
@@ -995,10 +997,12 @@ public class CourtScheduleRepositoryTest {
         List<AllocatedSlot> slots = Lists.newArrayList(allocatedSlot1);
         boolean isProvisionalSlot = false;
 
-        courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot, false);
+        final Result result = courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot, false);
 
         List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtSchedule);
         assertFalse(courtSchedules.isEmpty());
+
+        checkSlotUpdateResult(result);
     }
 
     @Test
@@ -1045,11 +1049,21 @@ public class CourtScheduleRepositoryTest {
         List<AllocatedSlot> slots = Lists.newArrayList(allocatedSlot1);
         boolean isProvisionalSlot = true;
 
-        courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot, false);
+        final Result result = courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot, false);
 
         List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtSchedule);
         assertFalse(courtSchedules.isEmpty());
+        checkSlotUpdateResult(result);
     }
+
+    private static void checkSlotUpdateResult(final Result result) {
+        assertThat(result, is(notNullValue()));
+        assertThat(result.isSuccess(), is(true));
+        assertThat(result.getMsg(), is("Success"));
+        assertThat(result.getHearingDayCourtSchedules().size(), is(1));
+        assertThat(result.getHearingDayCourtSchedules().get("2024-07-15"), is(notNullValue()));
+    }
+
     private static AllocatedSlot getAllocatedSlot(AllocatedListing allocatedListing) {
         AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
         allocatedSlot.setHearingId(allocatedListing.getHearingId());

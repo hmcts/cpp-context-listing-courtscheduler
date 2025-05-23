@@ -149,8 +149,11 @@ protocols: [ HTTP, HTTPS ]
         schema:
           !include json/schema/courtscheduler.update.hearing.slots.json
     responses:
-      204:
-        description: No Content
+      200:
+        body:
+          application/vnd.courtscheduler.update.hearing.slots.response+json:
+            schema: !include json/schema/courtscheduler.update.hearing.slots.response.json
+            example: !include json/courtscheduler.update.hearing.slots.response.json
 
   get:
     description: |

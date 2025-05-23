@@ -230,9 +230,9 @@ public class CourtSchedulerApi {
         LOGGER.info("courtscheduler.update.hearing.slots:{}", payloadAsJsonString);
         List<AllocatedSlot> allocatedSlots = converter.convert(payloadAsJsonString).getHearingSlots();
 
-        slotsUpdateService.update(allocatedSlots);
+        final JsonObject schedulesJsonObj = slotsUpdateService.update(allocatedSlots);
 
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.update.hearing.slots").apply(createObjectBuilder().build());
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.update.hearing.slots").apply(schedulesJsonObj);
     }
 
     @Handles("courtscheduler.list.hearings-in-court-sessions")

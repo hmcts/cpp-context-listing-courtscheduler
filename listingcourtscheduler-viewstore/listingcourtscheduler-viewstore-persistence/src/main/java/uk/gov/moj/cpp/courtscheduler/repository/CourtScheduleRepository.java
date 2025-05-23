@@ -706,7 +706,9 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         if (isNotEmpty(updateAllocatedSlots)) {
             persistHearingSlots(slots, isProvisionalSlot, updateAllocatedSlots);
-            return Result.SUCCESS();
+            final Result success = Result.SUCCESS();
+            updateAllocatedSlots.forEach(slot -> success.addHearingDaySchedule(slot.getSessionDate(), slot.getCourtScheduleId()));
+            return success;
         } else {
             return Result.FAILED(format("courtScheduleId matching for non-provisional slot(s) has been failed,please check the logs. hearingId : %s", slots.get(0).getHearingId()));
         }
@@ -726,7 +728,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         } else {
             return Result.FAILED("Not able to allocate hearing slots");
         }
-        return Result.SUCCESS();
+
+        final Result success = Result.SUCCESS();
+        updateAllocatedSlots.forEach(slot -> success.addHearingDaySchedule(slot.getSessionDate(), slot.getCourtScheduleId()));
+        return success;
     }
 
     private void persistHearingSlots(final List<AllocatedSlot> slots, final boolean isProvisionalSlot, final List<AllocatedSlot> updateAllocatedSlots) {

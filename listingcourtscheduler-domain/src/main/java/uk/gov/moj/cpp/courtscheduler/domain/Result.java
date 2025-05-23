@@ -1,10 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class Result {
     final String msg;
     final boolean success;
     String courtRoomId;
     String courtRoomName;
+    final Map<String, String> hearingDayCourtSchedules = new HashMap<>();
 
     public Result(String msg, boolean isSuccess, String courtRoomId) {
         this.msg = msg;
@@ -45,5 +49,13 @@ public class Result {
 
     public void setCourtRoomName(final String courtRoomName) {
         this.courtRoomName = courtRoomName;
+    }
+
+    public Map<String, String> getHearingDayCourtSchedules() {
+        return hearingDayCourtSchedules;
+    }
+
+    public void addHearingDaySchedule(String hearingDay, String courtScheduleId) {
+        hearingDayCourtSchedules.put(hearingDay, courtScheduleId);
     }
 }
