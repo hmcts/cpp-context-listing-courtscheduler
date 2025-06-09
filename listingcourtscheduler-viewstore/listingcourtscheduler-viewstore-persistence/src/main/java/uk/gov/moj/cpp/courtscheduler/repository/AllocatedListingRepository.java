@@ -6,10 +6,13 @@ import static java.util.Arrays.stream;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_;
+
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -77,18 +80,30 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
                 .executeUpdate();
     }
 
-    public Pair<Integer, Set<String>> findHearingIdsBy(HearingSlotRequestParam hearingIdsReq) {
+    public Pair<Integer, Set<IdResponse>> findHearingIdsBy(HearingSlotRequestParam hearingIdsReq) {
         final AllocatedHearingsQueryBuilder allocatedHearingsQueryCtx = new AllocatedHearingsQueryBuilder(hearingIdsReq);
         final javax.persistence.Query pageQuery =
                 entityManager.createNativeQuery(allocatedHearingsQueryCtx.getAllocatedHearingsQuery());
         allocatedHearingsQueryCtx.getPagedQueryParamMap().forEach(pageQuery::setParameter);
         List<Object[]> resultList = pageQuery.getResultList();
-        final Set<String> pageResultSet = resultList.stream()
-                .map(row -> (String) row[0])
+        final Set<IdResponse> pageResultSet = resultList.stream()
+                .map(row -> toIdResponse(row))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        final int totalCount = resultList.isEmpty() ? 0 : ((Number) resultList.get(0)[1]).intValue();
+        final int totalCount = resultList.isEmpty() ? 0 : ((Number) resultList.get(0)[5]).intValue();
 
         return Pair.of(totalCount, pageResultSet);
+    }
+
+    private static IdResponse toIdResponse(final Object[] row) {
+        return new IdResponse((String) row[0], (String) row[1], getLocalDate(row[2]), getLong(row[3]), getLong(row[4]));
+    }
+
+    private static Long getLong(final Object item) {
+        return item == null ? null : ((Number) item).longValue();
+    }
+
+    private static LocalDate getLocalDate(final Object item) {
+        return item == null ? null : ((java.sql.Date) item).toLocalDate();
     }
 
     @Query("SELECT al FROM AllocatedListing al WHERE al.courtScheduleId = :courtScheduleId AND al.hearingId = :hearingId")

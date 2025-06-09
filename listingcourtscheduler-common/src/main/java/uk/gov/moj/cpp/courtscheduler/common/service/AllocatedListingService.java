@@ -5,8 +5,11 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
+import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
@@ -31,6 +34,9 @@ public class AllocatedListingService {
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
 
+    @Inject
+    private ObjectToJsonObjectConverter objectToJsonObjectConverter;
+
     @Transactional
     public Map<String, Integer> getAllocatedListingsByCourtScheduleId(final List<String> courtScheduleIdList) {
         final List<AllocatedListingTotalBooked> allocatedListingTotalBookeds = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(courtScheduleIdList);
@@ -46,7 +52,7 @@ public class AllocatedListingService {
 
 
     public JsonObject getHearingIds(HearingSlotRequestParam hearingIdsRequest) {
-        final Pair<Integer, Set<String>> hearingIdsResult =
+        final Pair<Integer, Set<IdResponse>> hearingIdsResult =
                 allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         final long resultsCount = hearingIdsResult.getKey();
         int pageSize = parseInt(hearingIdsRequest.pageSize());
@@ -55,7 +61,11 @@ public class AllocatedListingService {
         }
 
         final JsonArrayBuilder jsonHearingIdsArrayBuilder = Json.createArrayBuilder();
-        hearingIdsResult.getValue().forEach(jsonHearingIdsArrayBuilder::add);
+        hearingIdsResult.getValue().forEach(idResults ->
+                jsonHearingIdsArrayBuilder.
+                        add(objectToJsonObjectConverter.
+                                convert(idResults)));
+
         final JsonArray hearingIdsJsonArray = jsonHearingIdsArrayBuilder.build();
         final long pageCount = (long) Math.ceil((double) resultsCount / (double) pageSize);
 

@@ -610,7 +610,7 @@ public class SessionsService {
 
         final DateUtils.sessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(session.getSessionType(), sessionStartTime, sessionEndTime);
         final Date sessionStartDate = combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionStartTime());
-        
+
         courtScheduleBuilder.withCourtScheduleId(UUID.randomUUID().toString())
                 .withBusinessType(session.getBusinessType())
                 .withCourtHouseId(session.getCourtCentreId())

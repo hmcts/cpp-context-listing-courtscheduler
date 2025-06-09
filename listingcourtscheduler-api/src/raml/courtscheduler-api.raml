@@ -519,3 +519,37 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.validate.delete.response+json:
             schema: !include json/schema/courtscheduler.validate.response.json
             example: !include json/courtscheduler.validate.response.json
+
+/organisation-units/hmi-status:
+  get:
+    description: |
+      Returns a list of organisation units HMI status from RotaSL
+      ...
+      (mapping):
+          responseType: application/vnd.listingcourtscheduler.query.organisation-units-hmi-status+json
+          name: listingcourtscheduler.query.organisation-units-hmi-status
+      ...
+    responses:
+      200:
+        description: OK
+        body:
+          application/vnd.listingcourtscheduler.query.organisation-units-hmi-status+json:
+            schema: !include json/schema/listingcourtscheduler.query.organisation-units-hmi-status.json
+            example: !include json/listingcourtscheduler.query.organisation-units-hmi-status.json
+
+/organisation-units/hmi-status/{oucode}:
+  get:
+    description: |
+      Returns an organisation unit's HMI status for the given oucode from RotaSL
+      ...
+      (mapping):
+          responseType: application/vnd.listingcourtscheduler.query.organisation-unit-hmi-status+json
+          name: listingcourtscheduler.query.organisation-unit-hmi-status
+      ...
+    responses:
+      200:
+        description: OK
+        body:
+          application/vnd.listingcourtscheduler.query.organisation-unit-hmi-status+json:
+            schema: !include json/schema/listingcourtscheduler.query.organisation-unit-hmi-status.json
+            example: !include json/listingcourtscheduler.query.organisation-unit-hmi-status.json

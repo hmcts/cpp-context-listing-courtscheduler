@@ -10,11 +10,15 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
+import uk.gov.justice.services.test.utils.framework.api.JsonObjectConvertersFactory;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
+import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +44,10 @@ class AllocatedListingServiceTest {
 
     @Mock
     private AllocatedListingRepository allocatedListingRepository;
+
+    @Spy
+    private ObjectToJsonObjectConverter objectToJsonObjectConverter = new JsonObjectConvertersFactory().objectToJsonObjectConverter();
+
 
     private final Long totalBooked = 100L;
 
@@ -90,10 +99,10 @@ class AllocatedListingServiceTest {
                         "Court-Room-Num-1",
                         "buss",
                         "Court-Session-1",null);
-        Set<String> hearingIds = new LinkedHashSet<>();
-        hearingIds.add(randomUUID().toString());
-        hearingIds.add(randomUUID().toString());
-        hearingIds.add(randomUUID().toString());
+        Set<IdResponse> hearingIds = new LinkedHashSet<>();
+        hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1,1));
+        hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1,1));
+        hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1,1));
         Pair pair = Pair.of(3, hearingIds);
         when(allocatedListingRepository.findHearingIdsBy(eq(hearingIdsReq))).thenReturn(pair);
         JsonObject hearingIdsJsonObj = allocatedListingService.getHearingIds(hearingIdsReq);
@@ -106,7 +115,10 @@ class AllocatedListingServiceTest {
 
         JsonArray hearingIdsJsonArr = hearingIdsJsonObj.getJsonArray(RequestParameterConstant.HEARING_IDS.getLabel());
         assertEquals(3, hearingIdsJsonArr.size());
-        hearingIdsJsonArr.forEach(e -> assertTrue(hearingIds.contains(((JsonString) e).getString())));
+        hearingIdsJsonArr.forEach(e ->
+        {assertTrue(hearingIds.stream().map(IdResponse::hearingId).toList().contains(((e.asJsonObject().getString("hearingId")))));
+         assertTrue(hearingIds.stream().map(IdResponse::courtScheduleId).toList().contains(((e.asJsonObject().getString("courtScheduleId")))));
+        });
 
     }
 

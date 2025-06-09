@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "oucode": {
+      "type": "string"
+    },
+    "isHMIListingEnabled": {
+      "type": "boolean"
+    },
+    "isHMISchedulingEnabled": {
+      "type": "boolean"
+    },
+    "isHMIPubHubEnabled": {
+      "type": "boolean"
+    },
+    "updatedOn": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "courtCentreId": {
+      "type": "string"
+    },
+    "courtId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

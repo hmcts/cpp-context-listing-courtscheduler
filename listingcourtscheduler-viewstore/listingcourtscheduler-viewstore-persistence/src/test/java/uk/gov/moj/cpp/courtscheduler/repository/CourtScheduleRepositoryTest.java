@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -110,6 +111,7 @@ public class CourtScheduleRepositoryTest {
 
         Result result = courtScheduleRepository.update(courtScheduleEntity, updatedCourtSchedule, Optional.of(courtRoom));
         assertTrue(result.isSuccess());
+        assertThat(result.getHearingDayCourtSchedules().size(), is(0));
     }
 
     @Test
@@ -995,10 +997,12 @@ public class CourtScheduleRepositoryTest {
         List<AllocatedSlot> slots = Lists.newArrayList(allocatedSlot1);
         boolean isProvisionalSlot = false;
 
-        courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot, false);
+        final Result result = courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot, false);
 
         List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtSchedule);
         assertFalse(courtSchedules.isEmpty());
+
+        checkSlotUpdateResult(result);
     }
 
     @Test
@@ -1045,11 +1049,21 @@ public class CourtScheduleRepositoryTest {
         List<AllocatedSlot> slots = Lists.newArrayList(allocatedSlot1);
         boolean isProvisionalSlot = true;
 
-        courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot, false);
+        final Result result = courtScheduleRepository.saveBookedSlots(slots, isProvisionalSlot, false);
 
         List<CourtSchedule> courtSchedules = courtScheduleRepository.findBy(courtSchedule);
         assertFalse(courtSchedules.isEmpty());
+        checkSlotUpdateResult(result);
     }
+
+    private static void checkSlotUpdateResult(final Result result) {
+        assertThat(result, is(notNullValue()));
+        assertThat(result.isSuccess(), is(true));
+        assertThat(result.getMsg(), is("Success"));
+        assertThat(result.getHearingDayCourtSchedules().size(), is(1));
+        assertThat(result.getHearingDayCourtSchedules().get("2024-07-15"), is(notNullValue()));
+    }
+
     private static AllocatedSlot getAllocatedSlot(AllocatedListing allocatedListing) {
         AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
         allocatedSlot.setHearingId(allocatedListing.getHearingId());

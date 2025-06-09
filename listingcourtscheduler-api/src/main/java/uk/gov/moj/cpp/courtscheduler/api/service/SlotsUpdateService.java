@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.lang.String.format;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
-
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotToHearingSlotSearchResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestToAllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
@@ -33,7 +32,6 @@ import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 
 @ApplicationScoped
 public class SlotsUpdateService {
@@ -80,11 +78,13 @@ public class SlotsUpdateService {
         } else {
             slotUpdateResult = courtScheduleRepository.saveBookedSlots(slots, false, false);
         }
+
         final JsonArrayBuilder hearingDaysJsonArrBuilder = createArrayBuilder();
         slotUpdateResult.getHearingDayCourtSchedules().forEach( (day, schedule) -> {
             JsonObject hearingDaySchedule = createObjectBuilder().add(HEARING_DATE, day).add(COURT_SCHEDULE_ID, schedule).build();
             hearingDaysJsonArrBuilder.add(hearingDaySchedule);
         });
+
         return createObjectBuilder().add(SCHEDULES, hearingDaysJsonArrBuilder).build();
     }
 

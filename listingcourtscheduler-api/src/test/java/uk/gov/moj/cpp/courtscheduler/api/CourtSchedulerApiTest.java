@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
+import static java.util.Optional.of;
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
@@ -15,11 +16,15 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
+import static uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService.getJsonObject;
+import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
 
 import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
+import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
 import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
+import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.Envelope;
@@ -38,6 +43,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
+import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
@@ -53,17 +59,20 @@ import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
+import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatusList;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -82,16 +91,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-
-import com.google.common.collect.Lists;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class CourtSchedulerApiTest {
@@ -138,6 +138,8 @@ class CourtSchedulerApiTest {
     private Function<Object, JsonEnvelope> function;
     @Mock
     private SessionsApiValidator sessionsApiValidator;
+    @Mock
+    private OrganisationUnitHMIStatusService organisationUnitHMIStatusService;
     @InjectMocks
     private CourtSchedulerApi courtSchedulerApi;
     @Mock
@@ -158,7 +160,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldCreateCourtSchedule() throws IOException {
-        final JsonObject jsonPayloadObject = payloadToObject(FileUtil.getPayload("create-court-schedule.json"));
+        final JsonObject jsonPayloadObject = payloadToObject(getPayload("create-court-schedule.json"));
         final String requestName = "courtscheduler.create";
 
         final JsonEnvelope createCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
@@ -174,7 +176,7 @@ class CourtSchedulerApiTest {
     @Test
     void shouldReturnBadRequestWhenValidationFails() throws IOException {
         // Arrange
-        final JsonObject jsonPayloadObject = payloadToObject(FileUtil.getPayload("create-court-schedule.json"));
+        final JsonObject jsonPayloadObject = payloadToObject(getPayload("create-court-schedule.json"));
         final String requestName = "courtscheduler.create";
         final JsonEnvelope createCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
@@ -198,7 +200,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldDeleteCourtSchedule() throws IOException {
-        String payload = FileUtil.getPayload("delete-courtscheduler-sessions.json");
+        String payload = getPayload("delete-courtscheduler-sessions.json");
         final JsonObject jsonObject = payloadToObject(payload);
         final String requestName = "courtscheduler.delete";
 
@@ -213,7 +215,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldUpdateCourtSchedule() throws IOException {
-        final JsonObject jsonPayloadObject = payloadToObject(FileUtil.getPayload("update-court-schedule.json"));
+        final JsonObject jsonPayloadObject = payloadToObject(getPayload("update-court-schedule.json"));
         final String requestName = "courtscheduler.update.court_schedule";
 
         final JsonEnvelope updateCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
@@ -233,7 +235,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void updateCourtSchedule_ShouldReturnError_CourtScheduleIdNotFound() throws IOException {
-        final JsonObject jsonPayloadObject = payloadToObject(FileUtil.getPayload("update-court-schedule.json"));
+        final JsonObject jsonPayloadObject = payloadToObject(getPayload("update-court-schedule.json"));
         final String requestName = "courtscheduler.update.court_schedule";
 
         final JsonEnvelope updateCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
@@ -249,7 +251,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldGetCourtSchedules() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("get-court-schedule.json"));
+        final JsonObject jsonObject = payloadToObject(getPayload("get-court-schedule.json"));
         final String requestName = "courtscheduler.get.court_schedule";
         final JsonEnvelope exportCourtScheduleEnvelope = createEnvelope(requestName, jsonObject);
         when(enveloper.withMetadataFrom(exportCourtScheduleEnvelope, requestName)).thenReturn(function);
@@ -267,7 +269,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldUpdateHearingSlots() throws IOException {
-        String payload = FileUtil.getPayload("courtscheduler.update.hearing.slots.json");
+        String payload = getPayload("courtscheduler.update.hearing.slots.json");
         final JsonObject jsonObject = payloadToObject(payload);
         final String requestName = "courtscheduler.update.hearing.slots";
 
@@ -302,7 +304,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldUpdateRequestedListHearingSlots() throws IOException {
-        final String payload = FileUtil.getPayload("courtscheduler.list.hearings-in-court-sessions.json");
+        final String payload = getPayload("courtscheduler.list.hearings-in-court-sessions.json");
         final JsonObject jsonObject = payloadToObject(payload);
         final String requestName = "courtscheduler.list.hearings-in-court-sessions";
         final String responseName = "courtscheduler.list.hearings-in-court-sessions.response";
@@ -328,7 +330,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldRetrieveHearingSlots() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.get.hearing.slots.json"));
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.get.hearing.slots.json"));
         final String requestName = "courtscheduler.get.hearing.slots";
         final JsonEnvelope getHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
 
@@ -345,7 +347,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldRetrieveHearingIds() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.get.hearing.slots.json"));
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.get.hearing.slots.json"));
         final String requestName = "courtscheduler.get.hearing.ids";
         final JsonEnvelope hearingIdsEnvelope = createEnvelope(requestName, jsonObject);
 
@@ -358,6 +360,69 @@ class CourtSchedulerApiTest {
 
         verify(allocatedListingService, atLeastOnce()).getHearingIds(hearingSlotRequestParamConverter.convert(jsonObject));
         verify(enveloper, atLeastOnce()).withMetadataFrom(hearingIdsEnvelope, requestName);
+    }
+
+    @Test
+    void shouldRetrieveOrganisationUnitsHmiStatus() {
+        JsonObject jsonObj = createObjectBuilder().build();
+        String requestName = "listingcourtscheduler.query.organisation-units-hmi-status";
+        JsonEnvelope orgUnitsHmiStatusEnvelope = createEnvelope(requestName, jsonObj);
+
+        List<OrganisationUnitHMIStatus> statusList = new ArrayList<>();
+        String payload = getPayload("test-data/listingcourtscheduler.query.organisation-units-hmi-status.json");
+        JsonObject payloadJsonObj = getJsonObject(payload);
+        JsonArray jsonArr = payloadJsonObj.getJsonArray("organisationUnitHMIStatus");
+        JsonObjectToObjectConverter jsonObjectToObjectConverter = new JsonObjectToObjectConverter(new ObjectMapperProducer().objectMapper());
+        for (int i = 0; i < jsonArr.size(); i++) {
+            final JsonObject json = jsonArr.getJsonObject(i);
+            final OrganisationUnitHMIStatus organisationUnitHmiStatus = jsonObjectToObjectConverter.convert(json, OrganisationUnitHMIStatus.class);
+            statusList.add(organisationUnitHmiStatus);
+        }
+        when(organisationUnitHMIStatusService.getAllOrganisationUnitsHMIStatus()).thenReturn(new OrganisationUnitHMIStatusList(statusList));
+        when(enveloper.withMetadataFrom(orgUnitsHmiStatusEnvelope, requestName)).thenReturn(function);
+        courtSchedulerApi.getOrganisationUnitsHmiStatus(orgUnitsHmiStatusEnvelope);
+
+        ArgumentCaptor<JsonObject> orgUnitsHmiStatusRespArgCaptor = ArgumentCaptor.forClass(JsonObject.class);
+        verify(function).apply(orgUnitsHmiStatusRespArgCaptor.capture());
+
+        JsonObject respJsonObj = orgUnitsHmiStatusRespArgCaptor.getValue();
+        JsonArray orgUnitsHMIStatusJsonArr = respJsonObj.getJsonArray("organisationUnitHMIStatus");
+        assertEquals(3, orgUnitsHMIStatusJsonArr.size());
+        assertEquals("A01AF00", orgUnitsHMIStatusJsonArr.getJsonObject(0).getString("oucode"));
+        assertEquals("42f44290-c183-3cab-9fbe-e22fc25a5fe4", orgUnitsHMIStatusJsonArr.getJsonObject(0).getString("courtCentreId"));
+
+        assertEquals("A01BE00", orgUnitsHMIStatusJsonArr.getJsonObject(1).getString("oucode"));
+        assertEquals("5907faec-be0c-37dc-8513-4685b74ae9ae", orgUnitsHMIStatusJsonArr.getJsonObject(1).getString("courtCentreId"));
+
+        assertEquals("A01CT00", orgUnitsHMIStatusJsonArr.getJsonObject(2).getString("oucode"));
+        assertEquals("05cf1c11-c18d-3b05-ae56-0c8f6d7264bf", orgUnitsHMIStatusJsonArr.getJsonObject(2).getString("courtCentreId"));
+    }
+
+    @Test
+    void shouldRetrieveOrganisationUnitHmiStatusByOucode() {
+        String oucode = "A01AF00";
+        JsonObject jsonObj = createObjectBuilder().add("oucode", oucode).build();
+        String requestName = "listingcourtscheduler.query.organisation-unit-hmi-status";
+        JsonEnvelope orgUnitsHmiStatusEnvelope = createEnvelope(requestName, jsonObj);
+        UUID courtCentreId = randomUUID();
+        OrganisationUnitHMIStatus orgUnitHMIStatus = new OrganisationUnitHMIStatus.Builder()
+                                                        .withOucode(oucode)
+                                                        .withIsHMIListingEnabled(true)
+                                                        .withIsHMISchedulingEnabled(true)
+                                                        .withIsHMIPubHubEnabled(true)
+                                                        .withUpdatedOn(new Timestamp(System.currentTimeMillis()))
+                                                        .withCourtCentreId(courtCentreId.toString())
+                                                        .withCourtId("Court-1").build();
+
+        when(organisationUnitHMIStatusService.getOrganisationUnitHMIStatus(anyString())).thenReturn(of(orgUnitHMIStatus));
+        when(enveloper.withMetadataFrom(orgUnitsHmiStatusEnvelope, requestName)).thenReturn(function);
+        courtSchedulerApi.getOrganisationUnitHmiStatus(orgUnitsHmiStatusEnvelope);
+        ArgumentCaptor<JsonObject> orgUnitsHmiStatusRespArgCaptor = ArgumentCaptor.forClass(JsonObject.class);
+        verify(function).apply(orgUnitsHmiStatusRespArgCaptor.capture());
+
+        JsonObject respJsonObj = orgUnitsHmiStatusRespArgCaptor.getValue().getJsonObject("organisationUnitHMIStatus");
+        assertEquals(oucode, respJsonObj.getString("oucode"));
+        assertEquals(courtCentreId.toString(), respJsonObj.getString("courtCentreId"));
     }
 
     @Test
@@ -377,7 +442,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldSearchListHearingSlots() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.search.book.hearing.slots.json"));
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.search.book.hearing.slots.json"));
         final String requestName = "courtscheduler.search.book.hearing.slots";
         final JsonEnvelope getSearchListHearingSlotsEnvelope = createEnvelope(requestName, jsonObject);
         final HearingSlotSearchResponse hearingSlotSearchResponse = createHearingSlotsResponse("432c067d-eaca-4ce5-ad90-a366ef3e4bb6");
@@ -398,7 +463,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldExportCourtSchedules() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.export.court_schedule.json"));
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.export.court_schedule.json"));
         final String requestName = "courtscheduler.export.court_schedule.json";
         final JsonEnvelope exportCourtScheduleEnvelope = createEnvelope(requestName, jsonObject);
 
@@ -414,7 +479,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldCourtScheduleJudiciaries() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.export.court_schedule_judiciary.json"));
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.export.court_schedule_judiciary.json"));
         final String requestName = "courtscheduler.export.court_schedule_judiciary";
         final JsonEnvelope exportAllocatedListingsEnvelope = createEnvelope(requestName, jsonObject);
 
@@ -430,7 +495,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldExportAllocatedListings() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.export.allocated_listings.json"));
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.export.allocated_listings.json"));
         final String requestName = "courtscheduler.export.allocated_listings";
         final JsonEnvelope exportAllocatedListingsEnvelope = createEnvelope(requestName, jsonObject);
 
@@ -445,7 +510,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldCreateProvisionalBooking() throws IOException {
-        String payload = FileUtil.getPayload("create.provisional.booking.json");
+        String payload = getPayload("create.provisional.booking.json");
         final String requestName = "courtscheduler.create.provisional.booking";
         final JsonEnvelope createCourtScheduleJsonEnvelope = createEnvelope(requestName, payloadToObject(payload));
 
@@ -461,7 +526,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldRetrieveProvisionalBookingSlots() throws IOException {
-        final JsonObject jsonObject = payloadToObject(FileUtil.getPayload("courtscheduler.get.provisional.booking.json"));
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.get.provisional.booking.json"));
         final String requestName = "courtscheduler.get.provisional.booking";
         final JsonEnvelope getProvisionalBookingEnvelope = createEnvelope(requestName, jsonObject);
 
@@ -477,7 +542,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldMigrateOuCodes() throws IOException {
-        String payload = FileUtil.getPayload("oucode-migrate-courtscheduler.json");
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
         final JsonObject jsonObject = payloadToObject(payload);
         final String requestName = "courtscheduler.oucode.migrate";
 
@@ -493,7 +558,7 @@ class CourtSchedulerApiTest {
 
     @Test
     void shouldReturnFailureWhenValidationFails() throws IOException {
-        String payload = FileUtil.getPayload("courtscheduler.validate.create.json");
+        String payload = getPayload("courtscheduler.validate.create.json");
         final JsonObject jsonObject = payloadToObject(payload);
         final String requestName = "courtscheduler.validate.create";
 
