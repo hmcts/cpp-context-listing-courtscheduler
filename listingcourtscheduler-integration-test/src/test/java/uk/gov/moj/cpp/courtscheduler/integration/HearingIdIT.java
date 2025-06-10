@@ -8,6 +8,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
@@ -85,7 +86,8 @@ class HearingIdIT extends AbstractIT {
         hearingIdsReq = hearingIdsReq.replace("PANEL", "ADULT");
         hearingIdsReq = hearingIdsReq.replace("OU_CODE", "BA123");
         hearingIdsReq = hearingIdsReq.replace("COURT_SESSION", "AM");
-        hearingIdsReq = hearingIdsReq.replace("SESSION_START_DATE", today.minusDays(10).toString());
+        final LocalDate startDate = today.minusDays(10);
+        hearingIdsReq = hearingIdsReq.replace("SESSION_START_DATE", startDate.toString());
         hearingIdsReq = hearingIdsReq.replace("SESSION_END_DATE", today.minusDays(1).toString());
         hearingIdsReq = hearingIdsReq.replace("\"pageSize\": \"1\"", "\"pageSize\": \"10\"");
 
@@ -106,7 +108,12 @@ class HearingIdIT extends AbstractIT {
         assertThat(hearingIds.getJsonObject(2).getString("hearingId"), is(expHearingIds.get(2)));
         assertThat(hearingIds.getJsonObject(3).getString("hearingId"), is(expHearingIds.get(3)));
 
-        hearingIds.forEach(each -> assertThat(each.asJsonObject().getString("courtScheduleId"), startsWith("COURT-SCHEDULE-")));
+        hearingIds.forEach(each -> {
+            assertThat(each.asJsonObject().getString("courtScheduleId"), startsWith("COURT-SCHEDULE-"));
+            assertThat(each.asJsonObject().getString("hearingDate"), is(notNullValue()));
+            assertThat(each.asJsonObject().getInt("hearingDayCount"), is(1));
+            assertThat(each.asJsonObject().getInt("hearingDayPosition"), is(1));
+        });
     }
 
 
@@ -151,6 +158,9 @@ class HearingIdIT extends AbstractIT {
         for (int idx = 0; idx < defaultPageSize; idx++) {
             assertThat(hearingIds.getJsonObject(idx).getString("hearingId"), is(expHearingIds.get(idx)));
             assertThat(hearingIds.getJsonObject(idx).getString("courtScheduleId"), startsWith("COURT-SCHEDULE-"));
+            assertThat(hearingIds.getJsonObject(idx).getString("hearingDate"), is(notNullValue()));
+            assertThat(hearingIds.getJsonObject(idx).getInt("hearingDayCount"), is(1));
+            assertThat(hearingIds.getJsonObject(idx).getInt("hearingDayPosition"), is(1));
 
         }
 
@@ -166,7 +176,7 @@ class HearingIdIT extends AbstractIT {
 
         hearingIds = jsonObject.getJsonArray("hearingIds");
         for (int idx = numOfHearings; idx < numOfHearings - defaultPageSize; idx++) {
-            assertThat(hearingIds.getString(idx), is(expHearingIds.get(idx)));
+            assertThat(hearingIds.getString(idx), is(expHearingIds.get(idx))); // we never hit here. To be fixed
         }
     }
 
