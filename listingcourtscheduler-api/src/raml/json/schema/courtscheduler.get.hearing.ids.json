@@ -11,7 +11,32 @@
     "hearingIds": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "object",
+        "properties": {
+          "hearingId": {
+            "type": "string"
+          },
+          "courtScheduleId": {
+            "type": "string"
+          },
+          "hearingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "hearingDayCount": {
+            "type": "integer"
+          },
+          "hearingDayPosition": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hearingId",
+          "courtScheduleId",
+          "hearingDate",
+          "hearingDayCount",
+          "hearingDayPosition"
+        ]
       }
     }
   },

@@ -1,0 +1,20 @@
+{
+  "organisationUnitHMIStatus": [
+    {
+      "oucode": "BAC1010123",
+      "isHMIListingEnabled": true,
+      "isHMISchedulingEnabled": true,
+      "hmipubHubEnabled": true,
+      "updatedOn": "2021-08-09T10:48:48.500Z",
+      "courtCentreId": "e8821a38-546d-4b56-9992-ebdd772a561f"
+    },
+    {
+      "oucode": "CAB3210101",
+      "isHMIListingEnabled": false,
+      "isHMISchedulingEnabled": false,
+      "isHMIPubHubEnabled": false,
+      "updatedOn": null,
+      "courtCentreId": "9689207b-a9d2-4c2e-bd38-269b78a132a8"
+    }
+  ]
+}
