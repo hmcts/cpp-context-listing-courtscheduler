@@ -40,9 +40,10 @@ public class AllocatedHearingsQueryBuilder {
     }
 
     private void generateAllocatedHearingsQuery() {
-        final StringBuilder queryStrBuilder =
-                new StringBuilder("select al.hearing_id, count(*) over() as totalCount " +
-                                  "from allocated_listings al, court_schedule cs ");
+        final StringBuilder queryStrBuilder = new StringBuilder("select al.hearing_id, al.court_schedule_id, cast(al.hearing_start_time as date), ");
+        queryStrBuilder.append("(select count(1) from allocated_listings al2 where al2.hearing_id =al.hearing_id) as hearing_day_count, ");
+        queryStrBuilder.append("DENSE_RANK() OVER (  PARTITION BY al.hearing_id ORDER BY cast(al.hearing_start_time as date)) AS hearing_day_position, ");
+        queryStrBuilder.append(" count(*) over() as totalCount from allocated_listings al, court_schedule cs ");
         queryStrBuilder.append("where al.court_schedule_id = cs.id and cs.active = true ");
         queryStrBuilder.append("and cs.panel in (:panel) ");
         queryStrBuilder.append("and cs.session_start >= :sessionStartDate ");

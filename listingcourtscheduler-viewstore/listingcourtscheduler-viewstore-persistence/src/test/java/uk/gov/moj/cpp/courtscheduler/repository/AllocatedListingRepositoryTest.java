@@ -1,9 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
+import static java.util.Arrays.asList;
 import static java.util.UUID.randomUUID;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -11,6 +14,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
@@ -32,6 +36,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(CdiTestRunner.class)
 public class AllocatedListingRepositoryTest {
+    public static final LocalDate DEFAULT_SESSION_DATE = LocalDate.parse("2024-12-09");
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
     @Inject
@@ -217,14 +222,24 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         null);
-        Pair<Integer, Set<String>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
+        Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(5, hearingIdsResult.getKey().longValue());
-        List<String> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
-        assertEquals(expHearingIds.get(0), actHearingIds.get(0));
-        assertEquals(expHearingIds.get(1), actHearingIds.get(1));
-        assertEquals(expHearingIds.get(2), actHearingIds.get(2));
-        assertEquals(expHearingIds.get(3), actHearingIds.get(3));
-        assertEquals(expHearingIds.get(4), actHearingIds.get(4));
+        List<IdResponse> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
+        assertEquals(expHearingIds.get(0), actHearingIds.get(0).hearingId());
+        assertEquals(expHearingIds.get(1), actHearingIds.get(1).hearingId());
+        assertEquals(expHearingIds.get(2), actHearingIds.get(2).hearingId());
+        assertEquals(expHearingIds.get(3), actHearingIds.get(3).hearingId());
+        assertEquals(expHearingIds.get(4), actHearingIds.get(4).hearingId());
+
+        final List<LocalDate> sessionDays = asList(sessionDate,sessionDate1, DEFAULT_SESSION_DATE);
+        actHearingIds.forEach(each->{
+            assertThat(each.hearingDayPosition(), is(1L));
+            assertThat(each.hearingDayCount(), is(1L));
+            assertThat(sessionDays, hasItem(each.hearingDate()));
+            assertThat(each.courtScheduleId(), startsWith("COURT-SCHEDULE-"));
+        });
+
+
     }
 
 
@@ -269,11 +284,20 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         null);
-        Pair<Integer, Set<String>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
+        Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(2, hearingIdsResult.getKey().longValue());
-        List<String> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
-        assertEquals(hearingId1, actHearingIds.get(0));
-        assertEquals(hearingId2, actHearingIds.get(1));
+        List<IdResponse> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
+        assertThat(actHearingIds.get(0).hearingId(), is(hearingId1));
+        assertThat(actHearingIds.get(0).hearingDayCount(), is(1L));
+        assertThat(actHearingIds.get(0).hearingDayPosition(), is(1L));
+        assertThat(actHearingIds.get(0).hearingDate(), is(sessionDate));
+        assertThat(actHearingIds.get(0).courtScheduleId(), is("COURT-SCHEDULE-1"));
+
+        assertThat(actHearingIds.get(1).hearingId(), is(hearingId2));
+        assertThat(actHearingIds.get(1).hearingDayCount(), is(1L));
+        assertThat(actHearingIds.get(1).hearingDayPosition(), is(1L));
+        assertThat(actHearingIds.get(1).hearingDate(), is(sessionDate));
+        assertThat(actHearingIds.get(1).courtScheduleId(), is("COURT-SCHEDULE-2"));
     }
 
     private AllocatedListing createAllocateListing(String id,
@@ -284,7 +308,7 @@ public class AllocatedListingRepositoryTest {
                 bookingId,
                 courtScheduleId,
                 hearingId,
-                LocalDate.parse("2024-12-09").atTime(14, 0));
+                DEFAULT_SESSION_DATE.atTime(14, 0));
     }
 
     private AllocatedListing createAllocateListing(String id,
