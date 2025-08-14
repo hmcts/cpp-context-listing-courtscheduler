@@ -8,9 +8,12 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.json.Json.createReader;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
@@ -31,13 +34,8 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
 import java.io.StringReader;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -45,10 +43,10 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-
 
 class HearingSlotIT extends AbstractIT {
 
@@ -88,7 +86,7 @@ class HearingSlotIT extends AbstractIT {
     }
 
     @Test
-    void shouldUpdateRequestedListHearingSlots() throws SQLException {
+    void shouldUpdateRequestedListHearingSlots() throws Exception {
 
         CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
@@ -109,6 +107,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
+        databaseSeeder.saveJudiciarySchedule(createJudiciaryForSchedule(courtSchedule));
 
         CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule2.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
@@ -129,6 +128,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule2.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule2);
+        databaseSeeder.saveJudiciarySchedule(createJudiciaryForSchedule(courtSchedule2));
 
         CourtSchedule courtSchedule3 = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule3.setCourtScheduleId("2771a96b-1c5a-45d1-b647-1bec5212cafc");
@@ -149,6 +149,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule3.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule3.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule3);
+        databaseSeeder.saveJudiciarySchedule(createJudiciaryForSchedule(courtSchedule3));
 
         String updateHearingSlotsPayload = getPayload("courtscheduler.list.hearings-in-court-sessions.json");
 
@@ -158,22 +159,47 @@ class HearingSlotIT extends AbstractIT {
         JsonObject jsonObject = stringToJsonObjectConverter.convert(response.readEntity(String.class));
         JsonArray jsonArray = jsonObject.getJsonArray("hearings");
         assertThat(jsonArray.size(), is(3));
-        jsonArray.stream().forEach( hearing ->
-                {final JsonObject hearingJson = (JsonObject) hearing ;
+        jsonArray.forEach(hearing ->
+                {
+                    final JsonObject hearingJson = (JsonObject) hearing;
                     if (hearingJson.getString("courtScheduleId").equals("1771a96b-1c5a-45d1-b647-1bec5212cafc")) {
                         assertThat(hearingJson.getString("hearingId"), is("5771a96b-1c5a-45d1-b647-1bec5212cafc"));
-                        assertThat(hearingJson.getString("sessionStartTime"), is("2025-04-03T09:00:00Z"));
+                        assertThat(hearingJson.getString("hearingStartTime"), is("2025-04-03T09:00:00Z"));
                         assertThat(hearingJson.getInt("duration"), is(20));
+                        JsonArray judiciaries = hearingJson.getJsonArray("judiciaries");
+                        assertThat(judiciaries.size(), is(1));
+                        judiciaries.forEach(courtScheduleJudiciary ->
+                                {
+                                    final JsonObject scheduleJudiciary = (JsonObject) courtScheduleJudiciary;
+                                    assertThat(scheduleJudiciary.getString("judiciaryId"), is("1771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                                }
+                        );
                     }
                     if (hearingJson.getString("courtScheduleId").equals("5771a96b-1c5a-45d1-b647-1bec5212cafc")) {
                         assertThat(hearingJson.getString("hearingId"), is("6771a96b-1c5a-45d1-b647-1bec5212cafc"));
-                        assertThat(hearingJson.getString("sessionStartTime"), is("2025-04-03T09:00:00Z"));
-                        assertThat(hearingJson.getInt("duration"), is(1));
+                        assertThat(hearingJson.getString("hearingStartTime"), is("2025-04-03T10:00:00Z"));
+                        assertThat(hearingJson.getInt("duration"), is(20));
+                        JsonArray judiciaries = hearingJson.getJsonArray("judiciaries");
+                        assertThat(judiciaries.size(), is(1));
+                        judiciaries.forEach(courtScheduleJudiciary ->
+                                {
+                                    final JsonObject scheduleJudiciary = (JsonObject) courtScheduleJudiciary;
+                                    assertThat(scheduleJudiciary.getString("judiciaryId"), is("5771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                                }
+                        );
                     }
                     if (hearingJson.getString("courtScheduleId").equals("2771a96b-1c5a-45d1-b647-1bec5212cafc")) {
                         assertThat(hearingJson.getString("hearingId"), is("6771a96b-1c5a-45d1-b647-1bec5212cafc"));
-                        assertThat(hearingJson.getString("sessionStartTime"), is("2025-04-03T09:00:00Z"));
-                        assertThat(hearingJson.getInt("duration"), is(1));
+                        assertThat(hearingJson.getString("hearingStartTime"), is("2025-04-03T09:00:00Z"));
+                        assertThat(hearingJson.getInt("duration"), is(30));
+                        JsonArray judiciaries = hearingJson.getJsonArray("judiciaries");
+                        assertThat(judiciaries.size(), is(1));
+                        judiciaries.forEach(courtScheduleJudiciary ->
+                                {
+                                    final JsonObject scheduleJudiciary = (JsonObject) courtScheduleJudiciary;
+                                    assertThat(scheduleJudiciary.getString("judiciaryId"), is("2771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                                }
+                        );
                     }
                 }
         );
@@ -222,34 +248,147 @@ class HearingSlotIT extends AbstractIT {
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_END_DATE", toDate.toString());
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("COURT_SESSION", courtSession);
 
-        Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
+        Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {
+        });
 
         final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
-        final JsonObject hearingSlotJsonObject = (JsonObject)jsonObject.getJsonArray("hearingSlots").get(0);
+        final JsonObject hearingSlotJsonObject = (JsonObject) jsonObject.getJsonArray("hearingSlots").get(0);
         assertThat(hearingSlotJsonObject.getString("courtScheduleId"), is(courtSchedule.getCourtScheduleId()));
         final JsonArray slotStartTimesJsonArray = hearingSlotJsonObject.getJsonArray("slotStartTimes");
         assertThat(slotStartTimesJsonArray.size(), is(4));
-        slotStartTimesJsonArray.stream().forEach(slotStartTime -> {
+        slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
             if (slotStartTimeJsonObject.getString("sessionStartTime").equals("2025-01-03T09:30:00.000Z")) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
                 assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is("2025-01-03T10:00:00.000Z"));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals("2025-01-03T10:00:00.000Z")) {
+            } else if
+            (slotStartTimeJsonObject.getString("sessionStartTime").equals("2025-01-03T10:00:00.000Z")) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(2));
                 assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is("2025-01-03T11:00:00.000Z"));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals("2025-01-03T11:00:00.000Z")) {
+            } else if
+            (slotStartTimeJsonObject.getString("sessionStartTime").equals("2025-01-03T11:00:00.000Z")) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
                 assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is("2025-01-03T12:00:00.000Z"));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals("2025-01-03T12:00:00.000Z")) {
+            } else if
+            (slotStartTimeJsonObject.getString("sessionStartTime").equals("2025-01-03T12:00:00.000Z")) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
                 assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is("2025-01-03T12:30:00.000Z"));
             }
         });
     }
+
+    @Test
+    void shouldRetrieveHearingSlotMatchingHearingStartTimeInRequest() throws Exception {
+        final String courtSession = AM_SESSION;
+        final LocalDate sessionDate = LocalDate.of(2025, 1, 3);
+        String courtScheduleId = randomUUID().toString();
+        String bookingId = randomUUID().toString();
+        String bookingId2 = randomUUID().toString();
+        String bookingId3 = randomUUID().toString();
+        String bookingId4 = randomUUID().toString();
+        String hearingId = randomUUID().toString();
+        String hearingId2 = randomUUID().toString();
+        String hearingId3 = randomUUID().toString();
+        String hearingId4 = randomUUID().toString();
+
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setCourtSession(courtSession);
+        courtSchedule.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtSchedule);
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId, bookingId, "10:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId2, bookingId2, "10:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId3, bookingId3, "11:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId4, bookingId4, "12:00", 1);
+
+        String hearingSlotsRequestParams = getPayload("courtscheduler.get.hearing.slots.with-hearingstarttime.json");
+
+        LocalDate fromDate = courtSchedule.getSessionDate().minusDays(1);
+        LocalDate toDate = courtSchedule.getSessionDate().plusDays(1);
+        String hearingStartTime = "2025-01-03T09:30:00.000Z";
+
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("PANEL", courtSchedule.getPanel());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("OU_CODE", courtSchedule.getOuCode());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_START_DATE", fromDate.toString());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_END_DATE", toDate.toString());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("COURT_SESSION", courtSession);
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("HEARING_START_TIME", hearingStartTime);
+
+        Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturnBadRequestForRetrieveHearingSlotWithInvalidHearingStartTime() throws Exception {
+        final String courtSession = AM_SESSION;
+        final LocalDate sessionDate = LocalDate.of(2025, 1, 3);
+        String courtScheduleId = randomUUID().toString();
+        String bookingId = randomUUID().toString();
+        String bookingId2 = randomUUID().toString();
+        String bookingId3 = randomUUID().toString();
+        String bookingId4 = randomUUID().toString();
+        String hearingId = randomUUID().toString();
+        String hearingId2 = randomUUID().toString();
+        String hearingId3 = randomUUID().toString();
+        String hearingId4 = randomUUID().toString();
+
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setCourtSession(courtSession);
+        courtSchedule.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtSchedule);
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId, bookingId, "10:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId2, bookingId2, "10:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId3, bookingId3, "11:00", 1);
+        createAllocatedListingsAndInsert(courtScheduleId, sessionDate, hearingId4, bookingId4, "12:00", 1);
+
+        String hearingSlotsRequestParams = getPayload("courtscheduler.get.hearing.slots.with-hearingstarttime.json");
+
+        LocalDate fromDate = courtSchedule.getSessionDate().minusDays(1);
+        LocalDate toDate = courtSchedule.getSessionDate().plusDays(1);
+        String hearingStartTime = "2025-01-03 09:30:00";
+
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("PANEL", courtSchedule.getPanel());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("OU_CODE", courtSchedule.getOuCode());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_START_DATE", fromDate.toString());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_END_DATE", toDate.toString());
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("COURT_SESSION", courtSession);
+        hearingSlotsRequestParams = hearingSlotsRequestParams.replace("HEARING_START_TIME", hearingStartTime);
+
+        Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(tempResponseData.getStatus().getStatusCode(), is(BAD_REQUEST.getStatusCode()));
+    }
+
 
     @Test
     void shouldRetrieveHearingSlotsForNonAllocated() throws Exception {
@@ -279,14 +418,15 @@ class HearingSlotIT extends AbstractIT {
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_END_DATE", toDate.toString());
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("COURT_SESSION", courtSession);
 
-        Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
+        Map<String, Object> map = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {
+        });
 
         final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, map);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
-        final JsonObject hearingSlotJsonObject = (JsonObject)jsonObject.getJsonArray("hearingSlots").get(0);
+        final JsonObject hearingSlotJsonObject = (JsonObject) jsonObject.getJsonArray("hearingSlots").get(0);
         assertThat(hearingSlotJsonObject.getString("courtScheduleId"), is(courtSchedule.getCourtScheduleId()));
         final JsonArray slotStartTimesJsonArray = hearingSlotJsonObject.getJsonArray("slotStartTimes");
         assertThat(slotStartTimesJsonArray.size(), is(8));
@@ -440,6 +580,9 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleYouth.setPanel(PanelTypes.YOUTH.name());
         courtScheduleYouth.setSessionDate(sessionDateForYouthPanelSession);
         courtScheduleYouth.setOuCode(ouCode);
+        courtScheduleYouth.setMaxSlots(RANDOM.nextInt(100));
+        courtScheduleYouth.setAvailableSlots(RANDOM.nextInt(100));
+        courtScheduleYouth.setSlotBased(true);
         databaseSeeder.insertCourtSchedule(courtScheduleYouth);
 
         final CourtSchedule courtScheduleAdult = RANDOM.nextObject(CourtSchedule.class);
@@ -448,6 +591,9 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleAdult.setPanel(PanelTypes.ADULT.name());
         courtScheduleAdult.setSessionDate(sessionDateForAdultPanelSession);
         courtScheduleAdult.setOuCode(ouCode);
+        courtScheduleAdult.setMaxSlots(RANDOM.nextInt(100));
+        courtScheduleAdult.setAvailableSlots(RANDOM.nextInt(100));
+        courtScheduleAdult.setSlotBased(true);
         databaseSeeder.insertCourtSchedule(courtScheduleAdult);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryForYouth = createJudiciaryForSchedule(courtScheduleYouth);
@@ -469,7 +615,8 @@ class HearingSlotIT extends AbstractIT {
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_END_DATE", toDate.toString());
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("COURT_SESSION", courtSession);
 
-        final Map<String, Object> requestParamMap = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
+        final Map<String, Object> requestParamMap = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {
+        });
 
         final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
@@ -544,7 +691,8 @@ class HearingSlotIT extends AbstractIT {
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_START_DATE", fromDate.toString());
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("SESSION_END_DATE", toDate.toString());
 
-        final Map<String, Object> requestParamMap = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
+        final Map<String, Object> requestParamMap = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {
+        });
 
         final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
@@ -559,35 +707,6 @@ class HearingSlotIT extends AbstractIT {
         assertTrue(courtScheduleIdsInResponsePayload.contains(courtScheduleIdForAM));
         assertTrue(courtScheduleIdsInResponsePayload.contains(courtScheduleIdForPM));
         assertTrue(courtScheduleIdsInResponsePayload.contains(courtScheduleIdForAD));
-    }
-
-
-    private void createAllocatedListingsAndInsert(final String courtScheduleId,final LocalDate sessionDate, final String hearingId, final String bookingId, final String time, final Integer duration) throws SQLException {
-        final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
-        allocatedListing.setCourtScheduleId(courtScheduleId);
-        allocatedListing.setHearingId(hearingId);
-        allocatedListing.setBookingId(bookingId);
-        allocatedListing.setDuration(duration);
-        allocatedListing.setHearingStartTime(DateUtils.combineDateAndTime(sessionDate, time));
-        databaseSeeder.insertAllocatedListing(allocatedListing);
-    }
-
-    private void createAllocatedListingsAndInsert(final String courtScheduleIdForAM, final String hearingId, final String bookingId) throws SQLException {
-        final AllocatedListing allocatedListingForAMSession = RANDOM.nextObject(AllocatedListing.class);
-        allocatedListingForAMSession.setCourtScheduleId(courtScheduleIdForAM);
-        allocatedListingForAMSession.setHearingId(hearingId);
-        allocatedListingForAMSession.setBookingId(bookingId);
-        databaseSeeder.insertAllocatedListing(allocatedListingForAMSession);
-    }
-
-    private static CourtScheduleJudiciary createJudiciaryForSchedule(final CourtSchedule courtSchedule) {
-        final CourtScheduleJudiciary courtScheduleJudiciaryForYouth = random(CourtScheduleJudiciary.class);
-        final CourtScheduleJudiciaryKey courtScheduleJudiciaryKey = random(CourtScheduleJudiciaryKey.class);
-        courtScheduleJudiciaryKey.setCourtScheduleId(courtSchedule.getCourtScheduleId());
-        courtScheduleJudiciaryKey.setJudiciaryId(courtSchedule.getCourtScheduleId());
-        courtScheduleJudiciaryForYouth.setId(courtScheduleJudiciaryKey);
-        courtScheduleJudiciaryForYouth.setCourtListingProfileId(courtScheduleJudiciaryForYouth.getCourtListingProfileId());
-        return courtScheduleJudiciaryForYouth;
     }
 
     @Test
@@ -613,5 +732,645 @@ class HearingSlotIT extends AbstractIT {
         final Response response = deleteCommand(format("%s/%s", RELATIVE_URL, hearingId), "application/vnd.courtscheduler.remove.hearing.slots+json", SYSTEM_USER_ID);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    @Test
+    void shouldSearchAndBookHearingSlotForPolice() throws Exception {
+
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setBusinessType("YFL");
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setMaxAdMorningDuration(180);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        courtSchedule.setMaxDuration(120);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 5, 13));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+        databaseSeeder.saveJudiciarySchedule(createJudiciaryForSchedule(courtSchedule));
+
+        CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule2.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule2.setOuCode("B40IM00");
+        courtSchedule2.setCourtRoomNumber(1501);
+        courtSchedule2.setBusinessType("NGAP");
+        courtSchedule2.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule2.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule2.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule2.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule2.setSlotBased(true);
+        courtSchedule2.setMaxSlots(2);
+        courtSchedule2.setSupportAdSplit(true);
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setMaxAdMorningDuration(180);
+        courtSchedule2.setMaxAdAfternoonDuration(180);
+        courtSchedule2.setMaxDuration(360);
+        courtSchedule2.setSessionDate(LocalDate.of(2025, 4, 5));
+        courtSchedule2.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "10:00"));
+        courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule2);
+        databaseSeeder.saveJudiciarySchedule(createJudiciaryForSchedule(courtSchedule2));
+
+        CourtSchedule courtSchedule3 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule3.setCourtScheduleId("2771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule3.setOuCode("B40IM00");
+        courtSchedule3.setCourtRoomNumber(1501);
+        courtSchedule3.setBusinessType("GAP");
+        courtSchedule3.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule3.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule3.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule3.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule3.setSlotBased(true);
+        courtSchedule3.setMaxSlots(0);
+        courtSchedule3.setSupportAdSplit(true);
+        courtSchedule3.setCourtSession("PM");
+        courtSchedule3.setMaxAdMorningDuration(180);
+        courtSchedule3.setMaxAdAfternoonDuration(180);
+        courtSchedule3.setMaxDuration(360);
+        courtSchedule3.setSessionDate(LocalDate.of(2025, 5, 5));
+        courtSchedule3.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "14:00"));
+        courtSchedule3.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule3);
+        databaseSeeder.saveJudiciarySchedule(createJudiciaryForSchedule(courtSchedule3));
+
+        String searchAndBookHearingSlotsRequestParams = getPayload("courtscheduler.search.book.hearing.slots_For_Police.json");
+
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_CENTRE_ID", "785339c1-af71-3322-a55b-ba255e0db1c2");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_ROOM_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_DATE", "2025-05-13");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_SESSION-DATE-SEARCH-CUT-OFF", "2025-05-18");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_START_TIME", "2025-05-13T11:00:00Z");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("DURATION_IN_MINUTES", "20");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("IS_POLICE", "true");
+
+        final Map<String, Object> requestParamMap = objectMapper.readValue(searchAndBookHearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams("/searchlist/hearingslots", "application/vnd.courtscheduler.search.book.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(response.getStatus(), is(OK));
+        assertThat(response.getStatus().getStatusCode(), is(OK.getStatusCode()));
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(response.getPayload());
+        final JsonObject hearingSlots = jsonObject.getJsonObject("hearingSlots");
+        assertThat(hearingSlots.get("hearingId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafc"));
+        assertThat(hearingSlots.get("courtScheduleId").toString().replaceAll("^\"|\"$", ""), is("1771a96b-1c5a-45d1-b647-1bec5212cafc"));
+        assertThat(hearingSlots.get("courtRoomId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafb"));
+        assertThat(hearingSlots.get("hearingStartTime").toString().replaceAll("^\"|\"$", ""), is("2025-05-13T11:00:00Z"));
+        assertThat(hearingSlots.get("duration").toString().replaceAll("^\"|\"$", ""), is("20"));
+        assertThat(hearingSlots.get("duration").toString().replaceAll("^\"|\"$", ""), is("20"));
+        JsonArray jsonArray = hearingSlots.getJsonArray("judiciaries");
+        assertThat(jsonArray.size(), is(1));
+        jsonArray.forEach(courtScheduleJudiciary ->
+                {
+                    final JsonObject scheduleJudiciary = (JsonObject) courtScheduleJudiciary;
+                    assertThat(scheduleJudiciary.getString("judiciaryId"), is("1771a96b-1c5a-45d1-b647-1bec5212cafc"));
+                }
+        );
+    }
+
+    @Test
+    void shouldReturnBadRequestWithMissingDurationInSearchAndBookHearingSlot() throws SQLException, JsonProcessingException {
+
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setBusinessType("ENF");
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setMaxAdMorningDuration(120);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        courtSchedule.setMaxDuration(120);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 5, 13));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        String searchAndBookHearingSlotsRequestParams = getPayload("courtscheduler.search.book.hearing.slots.json");
+
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_CENTRE_ID", "785339c1-af71-3322-a55b-ba255e0db1c2");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_ROOM_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_DATE", "2025-05-13");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_SESSION-DATE-SEARCH-CUT-OFF", "2025-05-18");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_START_TIME", "2025-05-13T10:00:00Z");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("DURATION_IN_MINUTES", "");
+
+        final Map<String, Object> requestParamMap = objectMapper.readValue(searchAndBookHearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams("/searchlist/hearingslots", "application/vnd.courtscheduler.search.book.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(response.getStatus().getStatusCode(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldSearchAndBookHearingSlotForNonPolice() throws SQLException, JsonProcessingException {
+
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setBusinessType("ENF");
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setMaxAdMorningDuration(120);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        courtSchedule.setMaxDuration(120);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 5, 14));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule2.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule2.setOuCode("B40IM00");
+        courtSchedule2.setCourtRoomNumber(1501);
+        courtSchedule2.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule2.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule2.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule2.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule2.setSlotBased(true);
+        courtSchedule2.setMaxSlots(2);
+        courtSchedule2.setSupportAdSplit(true);
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setMaxAdMorningDuration(180);
+        courtSchedule2.setMaxAdAfternoonDuration(180);
+        courtSchedule2.setMaxDuration(0);
+        courtSchedule2.setSessionDate(LocalDate.of(2025, 4, 5));
+        courtSchedule2.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "10:00"));
+        courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule2);
+
+        CourtSchedule courtSchedule3 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule3.setCourtScheduleId("2771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule3.setOuCode("B01LY00");
+        courtSchedule3.setCourtRoomNumber(1501);
+        courtSchedule3.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule3.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule3.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule3.setPanel(PanelTypes.ADULT.name());
+        courtSchedule3.setSlotBased(true);
+        courtSchedule3.setMaxSlots(0);
+        courtSchedule3.setBusinessType("NCFL");
+        courtSchedule3.setSupportAdSplit(true);
+        courtSchedule3.setCourtSession("PM");
+        courtSchedule3.setMaxAdMorningDuration(180);
+        courtSchedule3.setMaxAdAfternoonDuration(180);
+        courtSchedule3.setMaxDuration(360);
+        courtSchedule3.setSessionDate(LocalDate.of(2025, 5, 13));
+        courtSchedule3.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "14:00"));
+        courtSchedule3.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule3);
+
+        String searchAndBookHearingSlotsRequestParams = getPayload("courtscheduler.search.book.hearing.slots.json");
+
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_CENTRE_ID", "785339c1-af71-3322-a55b-ba255e0db1c2");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_ROOM_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_DATE", "2025-05-13");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_SESSION-DATE-SEARCH-CUT-OFF", "2025-05-18");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_START_TIME", "2025-05-13T15:00:00Z");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("DURATION_IN_MINUTES", "20");
+
+        final Map<String, Object> requestParamMap = objectMapper.readValue(searchAndBookHearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams("/searchlist/hearingslots", "application/vnd.courtscheduler.search.book.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(response.getStatus(), is(OK));
+        assertThat(response.getStatus().getStatusCode(), is(OK.getStatusCode()));
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(response.getPayload());
+        final JsonObject hearingSlots = jsonObject.getJsonObject("hearingSlots");
+        assertThat(hearingSlots.get("hearingId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafc"));
+        assertThat(hearingSlots.get("courtScheduleId").toString().replaceAll("^\"|\"$", ""), is("2771a96b-1c5a-45d1-b647-1bec5212cafc"));
+        assertThat(hearingSlots.get("courtRoomId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafb"));
+        assertThat(hearingSlots.get("hearingStartTime").toString().replaceAll("^\"|\"$", ""), is("2025-05-13T15:00:00Z"));
+        assertThat(hearingSlots.get("duration").toString().replaceAll("^\"|\"$", ""), is("20"));
+    }
+
+    @Test
+    void shouldNotReturnCourtScheduleForNonPoliceIfCourtRoomNotAvailable() throws SQLException, JsonProcessingException {
+
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomNumber(1601);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("6771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setBusinessType("ENF");
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setMaxAdMorningDuration(120);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        courtSchedule.setMaxDuration(120);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 5, 13));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        String searchAndBookHearingSlotsRequestParams = getPayload("courtscheduler.search.book.hearing.slots.json");
+
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_CENTRE_ID", "785339c1-af71-3322-a55b-ba255e0db1c2");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_ROOM_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_DATE", "2025-05-13");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_SESSION-DATE-SEARCH-CUT-OFF", "2025-05-18");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_START_TIME", "2025-05-13T09:00:00Z");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("DURATION_IN_MINUTES", "20");
+
+        final Map<String, Object> requestParamMap = objectMapper.readValue(searchAndBookHearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams("/searchlist/hearingslots", "application/vnd.courtscheduler.search.book.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(response.getStatus(), is(OK));
+        assertThat(response.getStatus().getStatusCode(), is(OK.getStatusCode()));
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(response.getPayload());
+        final JsonObject hearingSlots = jsonObject.getJsonObject("hearingSlots");
+        assertEquals("{\"hearingSlots\":{}}", jsonObject.toString());
+        assertFalse(hearingSlots.containsKey("CourtScheduleId"));
+    }
+
+    @Test
+    void shouldSearchAndBookHearingSlotForNonPolice_WithoutAdjustingHearingStarttime_ShouldReturnEmptyResponse() throws SQLException, JsonProcessingException {
+
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setBusinessType("ENF");
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setMaxAdMorningDuration(120);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        courtSchedule.setMaxDuration(120);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 5, 14));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule2.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule2.setOuCode("B40IM00");
+        courtSchedule2.setCourtRoomNumber(1501);
+        courtSchedule2.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule2.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule2.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule2.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule2.setSlotBased(true);
+        courtSchedule2.setMaxSlots(2);
+        courtSchedule2.setSupportAdSplit(true);
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setMaxAdMorningDuration(180);
+        courtSchedule2.setMaxAdAfternoonDuration(180);
+        courtSchedule2.setMaxDuration(0);
+        courtSchedule2.setSessionDate(LocalDate.of(2025, 4, 5));
+        courtSchedule2.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "10:00"));
+        courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule2);
+
+        CourtSchedule courtSchedule3 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule3.setCourtScheduleId("2771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule3.setOuCode("B01LY00");
+        courtSchedule3.setCourtRoomNumber(1501);
+        courtSchedule3.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule3.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule3.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule3.setPanel(PanelTypes.ADULT.name());
+        courtSchedule3.setSlotBased(true);
+        courtSchedule3.setBusinessType("NCFL");
+        courtSchedule3.setMaxSlots(0);
+        courtSchedule3.setSupportAdSplit(true);
+        courtSchedule3.setCourtSession("PM");
+        courtSchedule3.setMaxAdMorningDuration(180);
+        courtSchedule3.setMaxAdAfternoonDuration(180);
+        courtSchedule3.setMaxDuration(360);
+        courtSchedule3.setSessionDate(LocalDate.of(2025, 5, 13));
+        courtSchedule3.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "14:00"));
+        courtSchedule3.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule3);
+
+        String searchAndBookHearingSlotsRequestParams = getPayload("courtscheduler.search.book.hearing.slots.json");
+
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_CENTRE_ID", "785339c1-af71-3322-a55b-ba255e0db1c2");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_ROOM_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_DATE", "2025-05-13");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_SESSION-DATE-SEARCH-CUT-OFF", "2025-05-18");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_START_TIME", "2025-05-13T09:00:00Z");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("DURATION_IN_MINUTES", "20");
+
+        final Map<String, Object> requestParamMap = objectMapper.readValue(searchAndBookHearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams("/searchlist/hearingslots", "application/vnd.courtscheduler.search.book.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(response.getStatus(), is(OK));
+        assertThat(response.getStatus().getStatusCode(), is(OK.getStatusCode()));
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(response.getPayload());
+        final JsonObject hearingSlots = jsonObject.getJsonObject("hearingSlots");
+        assertEquals("{\"hearingSlots\":{}}", jsonObject.toString());
+        assertTrue(hearingSlots.isEmpty());
+    }
+
+    @Test
+    void shouldSearchAndBookHearingSlotForNonPolice_WithNoNCFLBusinessType_ShouldReturnEmptyResponse() throws SQLException, JsonProcessingException {
+
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setBusinessType("REM");
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setMaxAdMorningDuration(120);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        courtSchedule.setMaxDuration(120);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 5, 14));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        String searchAndBookHearingSlotsRequestParams = getPayload("courtscheduler.search.book.hearing.slots.json");
+
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_CENTRE_ID", "785339c1-af71-3322-a55b-ba255e0db1c2");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_ROOM_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_DATE", "2025-05-13");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_SESSION-DATE-SEARCH-CUT-OFF", "2025-05-18");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_START_TIME", "2025-05-13T09:00:00Z");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("DURATION_IN_MINUTES", "20");
+
+        final Map<String, Object> requestParamMap = objectMapper.readValue(searchAndBookHearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams("/searchlist/hearingslots", "application/vnd.courtscheduler.search.book.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(response.getStatus(), is(OK));
+        assertThat(response.getStatus().getStatusCode(), is(OK.getStatusCode()));
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(response.getPayload());
+        final JsonObject hearingSlots = jsonObject.getJsonObject("hearingSlots");
+        assertTrue(hearingSlots.isEmpty());
+    }
+
+    @Test
+    void shouldSearchAndBookHearingSlotDurationBasedForNonPolice() throws SQLException, JsonProcessingException {
+
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setBusinessType("NCFL");
+        courtSchedule.setSlotBased(false);
+        courtSchedule.setMaxSlots(0);
+        courtSchedule.setSupportAdSplit(false);
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setMaxAdMorningDuration(120);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        courtSchedule.setMaxDuration(120);
+        courtSchedule.setAvailableDuration(0);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 5, 14));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule2.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule2.setOuCode("B40IM00");
+        courtSchedule2.setCourtRoomNumber(1501);
+        courtSchedule2.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule2.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule2.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule2.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule2.setSlotBased(true);
+        courtSchedule2.setMaxSlots(2);
+        courtSchedule2.setSupportAdSplit(true);
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setMaxAdMorningDuration(180);
+        courtSchedule2.setMaxAdAfternoonDuration(180);
+        courtSchedule2.setMaxDuration(0);
+        courtSchedule2.setSessionDate(LocalDate.of(2025, 4, 5));
+        courtSchedule2.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "10:00"));
+        courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule2);
+
+        CourtSchedule courtSchedule3 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule3.setCourtScheduleId("2771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule3.setOuCode("B01LY00");
+        courtSchedule3.setCourtRoomNumber(1501);
+        courtSchedule3.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule3.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule3.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule3.setPanel(PanelTypes.ADULT.name());
+        courtSchedule3.setSlotBased(true);
+        courtSchedule3.setMaxSlots(0);
+        courtSchedule3.setSupportAdSplit(true);
+        courtSchedule3.setCourtSession("PM");
+        courtSchedule3.setMaxAdMorningDuration(180);
+        courtSchedule3.setMaxAdAfternoonDuration(180);
+        courtSchedule3.setMaxDuration(360);
+        courtSchedule3.setSessionDate(LocalDate.of(2025, 5, 13));
+        courtSchedule3.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "14:00"));
+        courtSchedule3.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "17:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule3);
+
+        String searchAndBookHearingSlotsRequestParams = getPayload("courtscheduler.search.book.hearing.slots.json");
+
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_CENTRE_ID", "785339c1-af71-3322-a55b-ba255e0db1c2");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_ROOM_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_DATE", "2025-05-14");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_SESSION-DATE-SEARCH-CUT-OFF", "2025-05-18");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_START_TIME", "2025-05-14T10:00:00Z");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("DURATION_IN_MINUTES", "20");
+
+        final Map<String, Object> requestParamMap = objectMapper.readValue(searchAndBookHearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams("/searchlist/hearingslots", "application/vnd.courtscheduler.search.book.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(response.getStatus(), is(OK));
+        assertThat(response.getStatus().getStatusCode(), is(OK.getStatusCode()));
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(response.getPayload());
+        final JsonObject hearingSlots = jsonObject.getJsonObject("hearingSlots");
+        assertThat(hearingSlots.get("hearingId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafc"));
+        assertThat(hearingSlots.get("courtScheduleId").toString().replaceAll("^\"|\"$", ""), is("1771a96b-1c5a-45d1-b647-1bec5212cafc"));
+        assertThat(hearingSlots.get("courtRoomId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafb"));
+        assertThat(hearingSlots.get("hearingStartTime").toString().replaceAll("^\"|\"$", ""), is("2025-05-14T10:00:00Z"));
+        assertThat(hearingSlots.get("duration").toString().replaceAll("^\"|\"$", ""), is("20"));
+    }
+
+    @Test
+    void shouldSearchAndBookHearingSlotByBusinessTypePreferenceOrderForPolice() throws SQLException, JsonProcessingException {
+
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId("1771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule.setOuCode("B01LY00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setBusinessType("DAFL");
+        courtSchedule.setSlotBased(false);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setSupportAdSplit(false);
+        courtSchedule.setCourtSession("AM");
+        courtSchedule.setMaxAdMorningDuration(180);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        courtSchedule.setMaxDuration(180);
+        courtSchedule.setSessionDate(LocalDate.of(2025, 5, 13));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule2.setCourtScheduleId("2771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule2.setOuCode("B01LY00");
+        courtSchedule2.setCourtRoomNumber(1501);
+        courtSchedule2.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule2.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule2.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule2.setPanel(PanelTypes.ADULT.name());
+        courtSchedule2.setBusinessType("REM");
+        courtSchedule2.setSlotBased(false);
+        courtSchedule2.setMaxSlots(2);
+        courtSchedule2.setSupportAdSplit(false);
+        courtSchedule2.setCourtSession("AM");
+        courtSchedule2.setMaxAdMorningDuration(180);
+        courtSchedule2.setMaxAdAfternoonDuration(0);
+        courtSchedule2.setMaxDuration(180);
+        courtSchedule2.setSessionDate(LocalDate.of(2025, 5, 13));
+        courtSchedule2.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "10:00"));
+        courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "13:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule2);
+
+        CourtSchedule courtSchedule3 = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule3.setCourtScheduleId("3771a96b-1c5a-45d1-b647-1bec5212cafc");
+        courtSchedule3.setOuCode("B01LY00");
+        courtSchedule3.setCourtRoomNumber(1501);
+        courtSchedule3.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule3.setCourtRoomId("5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        courtSchedule3.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule3.setPanel(PanelTypes.YOUTH.name());
+        courtSchedule3.setBusinessType("NGAP");
+        courtSchedule3.setSlotBased(false);
+        courtSchedule3.setMaxSlots(0);
+        courtSchedule3.setSupportAdSplit(false);
+        courtSchedule3.setCourtSession("AM");
+        courtSchedule3.setMaxAdMorningDuration(180);
+        courtSchedule3.setMaxAdAfternoonDuration(0);
+        courtSchedule3.setMaxDuration(180);
+        courtSchedule3.setSessionDate(LocalDate.of(2025, 5, 13));
+        courtSchedule3.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "10:00"));
+        courtSchedule3.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule3.getSessionDate(), "13:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule3);
+
+        String searchAndBookHearingSlotsRequestParams = getPayload("courtscheduler.search.book.hearing.slots_For_Police.json");
+
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_CENTRE_ID", "785339c1-af71-3322-a55b-ba255e0db1c2");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("COURT_ROOM_ID", "5771a96b-1c5a-45d1-b647-1bec5212cafb");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_DATE", "2025-05-13");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_SESSION-DATE-SEARCH-CUT-OFF", "2025-05-18");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("HEARING_START_TIME", "2025-05-13T10:00:00Z");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("DURATION_IN_MINUTES", "20");
+        searchAndBookHearingSlotsRequestParams = searchAndBookHearingSlotsRequestParams.replace("IS_POLICE", "true");
+
+        final Map<String, Object> requestParamMap = objectMapper.readValue(searchAndBookHearingSlotsRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams("/searchlist/hearingslots", "application/vnd.courtscheduler.search.book.hearing.slots+json", SYSTEM_USER_ID, requestParamMap);
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(response.getStatus(), is(OK));
+        assertThat(response.getStatus().getStatusCode(), is(OK.getStatusCode()));
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(response.getPayload());
+        final JsonObject hearingSlots = jsonObject.getJsonObject("hearingSlots");
+        assertThat(hearingSlots.get("hearingId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafc"));
+        assertThat(hearingSlots.get("courtScheduleId").toString().replaceAll("^\"|\"$", ""), is("1771a96b-1c5a-45d1-b647-1bec5212cafc"));
+        assertThat(hearingSlots.get("courtRoomId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafb"));
+        assertThat(hearingSlots.get("hearingStartTime").toString().replaceAll("^\"|\"$", ""), is("2025-05-13T10:00:00Z"));
+        assertThat(hearingSlots.get("duration").toString().replaceAll("^\"|\"$", ""), is("20"));
+    }
+
+    private void createAllocatedListingsAndInsert(final String courtScheduleId, final LocalDate sessionDate, final String hearingId, final
+    String bookingId, final String time, final Integer duration) throws SQLException {
+        final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setCourtScheduleId(courtScheduleId);
+        allocatedListing.setHearingId(hearingId);
+        allocatedListing.setBookingId(bookingId);
+        allocatedListing.setDuration(duration);
+        allocatedListing.setHearingStartTime(DateUtils.combineDateAndTime(sessionDate, time));
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+    }
+
+    private void createAllocatedListingsAndInsert(final String courtScheduleIdForAM, final String hearingId, final String bookingId) throws SQLException {
+        final AllocatedListing allocatedListingForAMSession = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListingForAMSession.setCourtScheduleId(courtScheduleIdForAM);
+        allocatedListingForAMSession.setHearingId(hearingId);
+        allocatedListingForAMSession.setBookingId(bookingId);
+        databaseSeeder.insertAllocatedListing(allocatedListingForAMSession);
+    }
+
+    private static CourtScheduleJudiciary createJudiciaryForSchedule(final CourtSchedule courtSchedule) {
+        final CourtScheduleJudiciary courtScheduleJudiciaryForYouth = random(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciaryKey courtScheduleJudiciaryKey = random(CourtScheduleJudiciaryKey.class);
+        courtScheduleJudiciaryKey.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        courtScheduleJudiciaryKey.setJudiciaryId(courtSchedule.getCourtScheduleId());
+        courtScheduleJudiciaryForYouth.setId(courtScheduleJudiciaryKey);
+        courtScheduleJudiciaryForYouth.setCourtListingProfileId(courtScheduleJudiciaryForYouth.getCourtListingProfileId());
+        return courtScheduleJudiciaryForYouth;
     }
 }

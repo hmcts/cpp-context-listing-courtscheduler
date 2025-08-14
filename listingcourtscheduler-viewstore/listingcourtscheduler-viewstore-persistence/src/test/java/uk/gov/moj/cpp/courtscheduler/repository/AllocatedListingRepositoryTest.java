@@ -221,6 +221,7 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         "",
+                        null,
                         null);
         Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(5, hearingIdsResult.getKey().longValue());
@@ -231,8 +232,8 @@ public class AllocatedListingRepositoryTest {
         assertEquals(expHearingIds.get(3), actHearingIds.get(3).hearingId());
         assertEquals(expHearingIds.get(4), actHearingIds.get(4).hearingId());
 
-        final List<LocalDate> sessionDays = asList(sessionDate,sessionDate1, DEFAULT_SESSION_DATE);
-        actHearingIds.forEach(each->{
+        final List<LocalDate> sessionDays = asList(sessionDate, sessionDate1, DEFAULT_SESSION_DATE);
+        actHearingIds.forEach(each -> {
             assertThat(each.hearingDayPosition(), is(1L));
             assertThat(each.hearingDayCount(), is(1L));
             assertThat(sessionDays, hasItem(each.hearingDate()));
@@ -283,6 +284,7 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         "",
+                        null,
                         null);
         Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(2, hearingIdsResult.getKey().longValue());
@@ -325,6 +327,7 @@ public class AllocatedListingRepositoryTest {
         allocatedListing.setDuration(120);
         allocatedListing.setOucode("BA124");
         allocatedListing.setRotaBusinessType("BUSS");
+        allocatedListing.setOverbookingExempt(false);
 
         return allocatedListing;
     }

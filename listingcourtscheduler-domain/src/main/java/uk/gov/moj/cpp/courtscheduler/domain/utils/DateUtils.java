@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
+import static java.util.Date.from;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum.fromName;
@@ -15,6 +16,7 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -54,6 +56,15 @@ public class DateUtils {
                 .withMinute(0)
                 .withSecond(0)
                 .withNano(0).toLocalDateTime());
+    }
+
+    public static final Timestamp toExactTimestamp(final String isoDate) {
+        final OffsetDateTime offsetDateTime = toOffsetDateTime(isoDate);
+        if (offsetDateTime == null) {
+            return null;
+        }
+
+        return Timestamp.valueOf(offsetDateTime.toLocalDateTime());
     }
 
     public static final OffsetDateTime toOffsetDateTime(final String isoDate) {
@@ -104,6 +115,14 @@ public class DateUtils {
         return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(date);
     }
 
+    public static final String toIsoStringExtended(final java.util.Date date) {
+        if (date == null) {
+            return null;
+        }
+
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(date);
+    }
+
     public static final String toResponseDateString(final java.util.Date date) {
         if (date == null) {
             return null;
@@ -112,6 +131,16 @@ public class DateUtils {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
         return sdf.format(date);
+    }
+
+    public static final String toResponseDateStringWithoutMillis(final String isoDate) {
+        if (isoDate == null) {
+            return null;
+        }
+        OffsetDateTime dateTime = OffsetDateTime.parse(isoDate);
+        DateTimeFormatter formatterWithoutMillis = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX");
+
+       return dateTime.format(formatterWithoutMillis);
     }
 
     public static final Date toSqlDate(String dateString) {
@@ -143,19 +172,17 @@ public class DateUtils {
         }
     }
 
-    public static final java.util.Date getDate(String dateString) {
+    public static final java.util.Date getDate(String isoDateString) {
         try {
-            SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-            isoFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-            return isoFormat.parse(dateString);
-        } catch (ParseException e) {
-            throw new IllegalArgumentException(String.format("Passed date string:%s cannot be parsed with format:yyyy-MM-dd'T'HH:mm:ss'Z'", dateString));
+           return from(Instant.parse(isoDateString));
+        } catch (Exception e) {
+            throw new IllegalArgumentException(String.format("Passed date string:%s cannot be parsed with format:yyyy-MM-dd'T'HH:mm:ss'Z'", isoDateString));
         }
     }
 
     public static final java.util.Date localDateToDateWithTime(final LocalDate localDate, final int hour, final int minute) {
         final ZonedDateTime zonedDateTime = localDate.atTime(hour, minute).atZone(LONDON_ZONE);
-        return java.util.Date.from(zonedDateTime.toInstant());
+        return from(zonedDateTime.toInstant());
     }
 
     public static String createDefaultHearingStartTime(final String session, final String sessionDate) {
@@ -183,14 +210,14 @@ public class DateUtils {
         LocalTime localTime = LocalTime.parse(time, TIME_FORMATTER);
         LocalDateTime localDateTime = LocalDateTime.of(date, localTime);
         ZonedDateTime zonedDateTime = localDateTime.atZone(ZoneId.of("Europe/London")).withZoneSameInstant(ZoneOffset.UTC);
-        return java.util.Date.from(zonedDateTime.toInstant());
+        return from(zonedDateTime.toInstant());
     }
 
     public static LocalTime toLocalTime(final String time) {
         return LocalTime.parse(time, TIME_FORMATTER);
     }
 
-    public static sessionStartAndEndTime getOrElseDefaultSessionStartAndEndTimeIfEmpty(final String sessionType, String sessionStartTime, String sessionEndTime) {
+    public static SessionStartAndEndTime getOrElseDefaultSessionStartAndEndTimeIfEmpty(final String sessionType, String sessionStartTime, String sessionEndTime) {
         if (isEmpty(sessionStartTime)) {
             switch (sessionType) {
                 case AM_SESSION:
@@ -221,9 +248,9 @@ public class DateUtils {
                     break;
             }
         }
-        return new sessionStartAndEndTime(sessionStartTime, sessionEndTime);
+        return new SessionStartAndEndTime(sessionStartTime, sessionEndTime);
     }
 
-    public record sessionStartAndEndTime(String sessionStartTime, String sessionEndTime) {
+    public record SessionStartAndEndTime(String sessionStartTime, String sessionEndTime) {
     }
 }

@@ -1,0 +1,9 @@
+{
+  "hearingId": "HEARING_ID",
+  "courtCentreId": "COURT_CENTRE_ID",
+  "courtRoomId": "COURT_ROOM_ID",
+  "hearingDate": "HEARING_DATE",
+  "hearingSessionDateSearchCutOff": "HEARING_SESSION-DATE-SEARCH-CUT-OFF",
+  "hearingStartTime": "HEARING_START_TIME",
+  "durationInMinutes": "DURATION_IN_MINUTES"
+}

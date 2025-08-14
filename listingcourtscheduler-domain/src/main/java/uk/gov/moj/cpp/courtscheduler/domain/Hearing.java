@@ -1,12 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class Hearing {
     private String hearingId;
     private String courtScheduleId;
-    private String sessionStartTime;
+    private String hearingStartTime;
     private Integer duration;
+    private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
 
     public String getHearingId() {
         return hearingId;
@@ -24,12 +27,12 @@ public class Hearing {
         this.courtScheduleId = courtScheduleId;
     }
 
-    public String getSessionStartTime() {
-        return sessionStartTime;
+    public String getHearingStartTime() {
+        return hearingStartTime;
     }
 
-    public void setSessionStartTime(String sessionStartTime) {
-        this.sessionStartTime = sessionStartTime;
+    public void setHearingStartTime(String hearingStartTime) {
+        this.hearingStartTime = hearingStartTime;
     }
 
     public Integer getDuration() {
@@ -40,19 +43,28 @@ public class Hearing {
         this.duration = duration;
     }
 
+    public List<CourtScheduleJudiciary> getJudiciaries() {
+        return judiciaries;
+    }
+
+    public void setJudiciaries(final List<CourtScheduleJudiciary> judiciaries) {
+        this.judiciaries = judiciaries;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Hearing that)) return false;
         return Objects.equals(hearingId, that.hearingId) &&
                 Objects.equals(courtScheduleId, that.courtScheduleId) &&
-                Objects.equals(sessionStartTime, that.sessionStartTime) &&
-                Objects.equals(duration, that.duration);
+                Objects.equals(hearingStartTime, that.hearingStartTime) &&
+                Objects.equals(duration, that.duration) &&
+                Objects.equals(judiciaries, that.judiciaries);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(hearingId, courtScheduleId, sessionStartTime, duration);
+        return Objects.hash(hearingId, courtScheduleId, hearingStartTime, duration, judiciaries);
     }
 
     @Override
@@ -60,8 +72,9 @@ public class Hearing {
         return "HearingSlot{" +
                 "hearingId='" + hearingId + '\'' +
                 ", courtScheduleId='" + courtScheduleId + '\'' +
-                ", sessionStartTime='" + sessionStartTime + '\'' +
+                ", hearingStartTime='" + hearingStartTime + '\'' +
                 ", duration=" + duration +
+                ", judiciaries=" + judiciaries +
                 '}';
     }
 }

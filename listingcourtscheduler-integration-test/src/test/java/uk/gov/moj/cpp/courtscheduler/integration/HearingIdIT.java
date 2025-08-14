@@ -91,7 +91,8 @@ class HearingIdIT extends AbstractIT {
         hearingIdsReq = hearingIdsReq.replace("SESSION_END_DATE", today.minusDays(1).toString());
         hearingIdsReq = hearingIdsReq.replace("\"pageSize\": \"1\"", "\"pageSize\": \"10\"");
 
-        Map<String, Object> map = new ObjectMapper().readValue(hearingIdsReq, new TypeReference<>(){});
+        Map<String, Object> map = new ObjectMapper().readValue(hearingIdsReq, new TypeReference<>() {
+        });
 
         final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, map);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
@@ -143,7 +144,8 @@ class HearingIdIT extends AbstractIT {
         hearingIdsReq = hearingIdsReq.replace("SESSION_END_DATE", today.toString());
 
         final ObjectMapper objMapper = new ObjectMapper();
-        Map<String, Object> paramsMap = objMapper.readValue(hearingIdsReq, new TypeReference<>(){});
+        Map<String, Object> paramsMap = objMapper.readValue(hearingIdsReq, new TypeReference<>() {
+        });
         RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, paramsMap);
         ResponseData responseData = poll(requestParams).with().timeout(30L, SECONDS).until();
 

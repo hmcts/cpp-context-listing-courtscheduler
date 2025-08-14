@@ -66,7 +66,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private final String azureBlobInputContainerName = "schedulelistinginput";
     private final String azureBlobOutputContainerName = "schedulelistingoutput";
-    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=+p3GXQguT4npJqxd6gAPfDgLu0YuJ3n1+hpTQYg1BQn0UL5Ut+bDDE7l2qrRNTt/yW5jNyf5mRUmM11F8dnkpA==;EndpointSuffix=core.windows.net;";
+    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=C5l7paX+ELY0X3aDMTrOyXxBE69CMS1pqkYX9XTGdHI7x1jP15VM1FUizCoEmwOo9ML3Bgz0IYA4+AStJIs0kQ==;EndpointSuffix=core.windows.net;";
 
     public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
     public static final int DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC = 50;
@@ -229,13 +229,13 @@ class RotaFileProcessorIT extends AbstractIT {
         final LocalDate snapshotFileStartDate = LocalDate.of(2024, 8, 1);
         final String snapshotFileBaseNamePart1 = "IT_Test_lja_bedfordshire";
         final String snapshotFileBaseNamePart2 = "_snapshot_20240403T180039Z";
-        processSnapshotFile(snapshotFileBaseNamePart1, snapshotFileBaseNamePart2, snapshotFileStartDate, 66, 0,209);
+        processSnapshotFile(snapshotFileBaseNamePart1, snapshotFileBaseNamePart2, snapshotFileStartDate, 66, 0, 209);
 
         final LocalDate secondSnapshotFileStartDate = LocalDate.of(2024, 8, 2);
         final String secondSnapshotFileBaseNamePart1 = "IT_Test_lja_bedfordshire";
         final String secondSnapshotFileBaseNamePart2 = "_snapshot_20240802T180039Z";
 
-        processSnapshotFile(secondSnapshotFileBaseNamePart1, secondSnapshotFileBaseNamePart2, secondSnapshotFileStartDate, 66, 5,204);
+        processSnapshotFile(secondSnapshotFileBaseNamePart1, secondSnapshotFileBaseNamePart2, secondSnapshotFileStartDate, 66, 5, 204);
     }
 
     private void processSnapshotFile(final String snapshotFileBaseNamePart1,
@@ -406,7 +406,7 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     private void insertCourtSchedulerMigrationStatus(final List<String> ouCodes, final boolean migrated) throws SQLException {
-        for (final String ouCode: ouCodes) {
+        for (final String ouCode : ouCodes) {
             final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
             courtSchedulerMigrationStatus.setOuCode(ouCode);
             courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
@@ -421,12 +421,12 @@ class RotaFileProcessorIT extends AbstractIT {
         }
 
         final List<AllocatedListing> allocatedListings = new ArrayList<>();
-        
+
         // Use a single connection for all database operations
         try (Connection connection = databaseSeeder.getNewConnection()) {
             connection.setAutoCommit(false);
-            
-            for(final CourtSchedule courtSchedule180DaysOlderOrMore : courtSchedules180DaysOlderOrMore) {
+
+            for (final CourtSchedule courtSchedule180DaysOlderOrMore : courtSchedules180DaysOlderOrMore) {
                 final CourtSchedule courtSchedule = databaseReader.courtScheduleById(courtSchedule180DaysOlderOrMore.getCourtScheduleId(), connection);
                 if (nonNull(courtSchedule)) {
                     allocatedListings.add(getAllocatedListing(courtSchedule180DaysOlderOrMore));
@@ -434,11 +434,11 @@ class RotaFileProcessorIT extends AbstractIT {
                     logger.info("courtScheduleId not found to be inserted to allocated_listings: {}", courtSchedule180DaysOlderOrMore.getCourtScheduleId());
                 }
             }
-            
+
             if (!allocatedListings.isEmpty()) {
                 databaseSeeder.insertAllocatedListingsBatch(allocatedListings, connection);
             }
-            
+
             connection.commit();
         }
     }
@@ -449,7 +449,7 @@ class RotaFileProcessorIT extends AbstractIT {
         allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
         allocatedListing.setOucode(courtSchedule.getOuCode());
-        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0 ).atZone(UTC_ZONE).toInstant()));
+        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0).atZone(UTC_ZONE).toInstant()));
 
         return allocatedListing;
     }

@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class AllocatedSlot {
@@ -9,6 +11,7 @@ public class AllocatedSlot {
     private String session;
     private String courtRoomId;
     private String courtRoomUUId;
+    private String courtCentreId;
     private String ouCode;
     private String hearingId;
     private String courtScheduleId;
@@ -17,6 +20,9 @@ public class AllocatedSlot {
     private String prosecutor;
     private String courtRoom;
     private String hearingSessionDateSearchCutOff;
+    private boolean isPolice;
+    private Boolean isOverbookingExempt;
+    private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
 
     @SuppressWarnings("squid:S1186")
     public AllocatedSlot() {
@@ -125,10 +131,45 @@ public class AllocatedSlot {
     public void setCourtRoomUUId(final String courtRoomUUId) {
         this.courtRoomUUId = courtRoomUUId;
     }
+
     public String getHearingSessionDateSearchCutOff() { return hearingSessionDateSearchCutOff; }
 
     public void setHearingSessionDateSearchCutOff(final String hearingSessionDateSearchCutOff) {
         this.hearingSessionDateSearchCutOff = hearingSessionDateSearchCutOff; }
+
+    public boolean isPolice() {
+        return isPolice;
+    }
+
+    public void setPolice(boolean police) {
+        isPolice = police;
+    }
+
+
+    public Boolean getOverbookingExempt() {
+        return isOverbookingExempt;
+    }
+
+    public void setOverbookingExempt(Boolean overbookingExempt) {
+        isOverbookingExempt = overbookingExempt;
+    }
+
+    public List<CourtScheduleJudiciary> getJudiciaries() {
+        return judiciaries;
+    }
+
+    public void setJudiciaries(final List<CourtScheduleJudiciary> judiciaries) {
+        this.judiciaries = judiciaries;
+    }
+
+    public String getCourtCentreId() {
+        return courtCentreId;
+    }
+
+    public AllocatedSlot setCourtCentreId(final String courtCentreId) {
+        this.courtCentreId = courtCentreId;
+        return this;
+    }
 
     @SuppressWarnings("squid:S1067")
     @Override
@@ -147,19 +188,24 @@ public class AllocatedSlot {
                 Objects.equals(session, that.session) &&
                 Objects.equals(courtRoomId, that.courtRoomId) &&
                 Objects.equals(ouCode, that.ouCode) &&
+                Objects.equals(courtCentreId, that.courtCentreId) &&
                 Objects.equals(hearingId, that.hearingId) &&
                 Objects.equals(courtScheduleId, that.courtScheduleId) &&
                 Objects.equals(bookingId, that.bookingId) &&
                 Objects.equals(prosecutor, that.prosecutor) &&
                 Objects.equals(courtRoom, that.courtRoom) &&
                 Objects.equals(courtRoomUUId, that.courtRoomUUId) &&
-                Objects.equals(hearingSessionDateSearchCutOff, that.hearingSessionDateSearchCutOff);
+                Objects.equals(hearingSessionDateSearchCutOff, that.hearingSessionDateSearchCutOff) &&
+                Objects.equals(isPolice, that.isPolice) &&
+                Objects.equals(isOverbookingExempt, that.isOverbookingExempt) &&
+                Objects.equals(judiciaries, that.judiciaries);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(duration, sessionDate, hearingStartTime, session,
-                courtRoomId, ouCode, hearingId, courtScheduleId, isSlotBased, bookingId, prosecutor, courtRoom, courtRoomUUId, hearingSessionDateSearchCutOff);
+                courtRoomId, ouCode,courtCentreId, hearingId, courtScheduleId, isSlotBased, bookingId, prosecutor, courtRoom,
+                courtRoomUUId, hearingSessionDateSearchCutOff, isPolice, isOverbookingExempt, judiciaries);
     }
 
     @Override
@@ -171,6 +217,7 @@ public class AllocatedSlot {
                 ", session='" + session + '\'' +
                 ", courtRoomId='" + courtRoomId + '\'' +
                 ", ouCode='" + ouCode + '\'' +
+                ", courtCentreId='" + courtCentreId + '\'' +
                 ", hearingId='" + hearingId + '\'' +
                 ", courtScheduleId='" + courtScheduleId + '\'' +
                 ", isSlotBased=" + isSlotBased +
@@ -179,6 +226,9 @@ public class AllocatedSlot {
                 ", courtRoom='" + courtRoom + '\'' +
                 ", courtRoomUUId='" + courtRoomUUId + '\'' +
                 ", hearingSessionDateSearchCutOff='" + hearingSessionDateSearchCutOff + '\'' +
+                ", isPolice='" + isPolice + '\'' +
+                ", isOverbookingExempt='" + isOverbookingExempt + '\'' +
+                ", judiciaries=" + judiciaries +
                 '}';
     }
 }

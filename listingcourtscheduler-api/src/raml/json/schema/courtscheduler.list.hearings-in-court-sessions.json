@@ -20,7 +20,7 @@
                 "courtScheduleId": {
                   "type": "string"
                 },
-                "sessionStartTime": {
+                "hearingStartTime": {
                   "type": "string",
                   "format": "date-time"
                 },

@@ -10,12 +10,14 @@ public class HearingSlotSearchRequestToAllocatedSlotConverter {
     public static AllocatedSlot convert(final HearingSlotSearchRequest hearingSlotSearchRequest) {
         AllocatedSlot allocatedSlot = new AllocatedSlot();
         allocatedSlot.setHearingId(hearingSlotSearchRequest.hearingId());
-        allocatedSlot.setOuCode(hearingSlotSearchRequest.ouCode());
+        allocatedSlot.setCourtCentreId(hearingSlotSearchRequest.courtCentreId());
         allocatedSlot.setCourtRoomUUId(hearingSlotSearchRequest.courtRoomId());
         allocatedSlot.setSessionDate(hearingSlotSearchRequest.hearingSessionDate());
         allocatedSlot.setHearingStartTime(hearingSlotSearchRequest.sessionStartTime());
-        allocatedSlot.setDuration(hearingSlotSearchRequest.durationInMinutes());
+        allocatedSlot.setDuration(hearingSlotSearchRequest.durationInMinutes() != null ?
+                hearingSlotSearchRequest.durationInMinutes() : 0);
         allocatedSlot.setHearingSessionDateSearchCutOff(hearingSlotSearchRequest.hearingSessionDateSearchCutOff());
+        allocatedSlot.setPolice(hearingSlotSearchRequest.isPolice());
 
         return allocatedSlot;
     }

@@ -38,6 +38,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -308,6 +309,13 @@ public class SessionsService {
         });
 
         return Result.SUCCESS();
+    }
+
+    @Transactional
+    public Result ouCodesRecalculateAvailability(OuCodeRecalculateAvailabilityRequest request) {
+
+        final int rowsAffected = courtScheduleRepository.getInconsistentCourtSchedulersByOucode(request.getOuCode());
+        return new Result(format("Recalculate availability for %s ouCode(s) affected %d rows", request.getOuCode(), rowsAffected), true);
     }
 
     public CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(final String courtRoomId,
@@ -608,7 +616,7 @@ public class SessionsService {
     private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate, Requester requester, String sessionStartTime, String sessionEndTime) {
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder();
 
-        final DateUtils.sessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(session.getSessionType(), sessionStartTime, sessionEndTime);
+        final DateUtils.SessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(session.getSessionType(), sessionStartTime, sessionEndTime);
         final Date sessionStartDate = combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionStartTime());
         
         courtScheduleBuilder.withCourtScheduleId(UUID.randomUUID().toString())

@@ -1,8 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
 
-import static java.util.Arrays.stream;
-
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -36,7 +34,7 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
     @Inject
     private EntityManager entityManager;
 
-    abstract List<AllocatedListing> findByHearingId(final String hearingId);
+    public abstract List<AllocatedListing> findByHearingId(final String hearingId);
 
     abstract List<AllocatedListing> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
 
@@ -63,6 +61,7 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
             allocatedListing.setDuration(allocatedListingEntity.getDuration());
             allocatedListing.setHearingStartTime(allocatedListingEntity.getHearingStartTime());
             allocatedListing.setRotaBusinessType(allocatedListingEntity.getRotaBusinessType());
+            allocatedListing.setIs_overbooking_exempt(allocatedListingEntity.getOverbookingExempt());
             return allocatedListing;
         }).toList();
     }

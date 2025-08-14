@@ -3,12 +3,13 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.lang.String.format;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
+
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotToHearingSlotSearchResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestToAllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
@@ -113,14 +114,14 @@ public class SlotsUpdateService {
         return result;
     }
 
-    public HearingSlotSearchResponse searchAndBook(final HearingSlotSearchRequest hearingSlotSearchRequest) {
-        HearingSlotSearchResponse hearingSlotSearchResponse = null;
+    public HearingSlotSearchAndBookResponse searchAndBook(final HearingSlotSearchRequest hearingSlotSearchRequest) {
+        HearingSlotSearchAndBookResponse hearingSlotSearchAndBookResponse = new HearingSlotSearchAndBookResponse();
         AllocatedSlot allocatedSlot = HearingSlotSearchRequestToAllocatedSlotConverter.convert(hearingSlotSearchRequest);
-        List<AllocatedSlot> allocatedSlots = List.of(allocatedSlot);
-        courtScheduleRepository.searchBookHearingSlots(allocatedSlots);
-        if(CollectionUtils.isNotEmpty(allocatedSlots))
-            hearingSlotSearchResponse = AllocatedSlotToHearingSlotSearchResponseConverter.convert(allocatedSlots.get(0), hearingSlotSearchRequest.hearingId());
-        return hearingSlotSearchResponse;
+        List<AllocatedSlot> allocatedSlots = new ArrayList<>(List.of(allocatedSlot));
+        boolean isSearchSuccessful = courtScheduleRepository.searchBookHearingSlots(allocatedSlots);
+        if(isSearchSuccessful && CollectionUtils.isNotEmpty(allocatedSlots))
+            hearingSlotSearchAndBookResponse = AllocatedSlotToHearingSlotSearchResponseConverter.convert(allocatedSlots.get(0), hearingSlotSearchRequest.hearingId());
+        return hearingSlotSearchAndBookResponse;
     }
 
     private boolean isCourtScheduleIdsMatching(final List<String> slotsCourtScheduleIdList, final List<String> provisionalBookingCourtScheduleIdList) {

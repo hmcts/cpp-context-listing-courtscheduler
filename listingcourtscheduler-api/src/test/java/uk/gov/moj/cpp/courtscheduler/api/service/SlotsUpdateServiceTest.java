@@ -42,7 +42,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-public class SlotsUpdateServiceTest {
+class SlotsUpdateServiceTest {
 
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
@@ -57,13 +57,13 @@ public class SlotsUpdateServiceTest {
     private SlotsUpdateService service;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         setField(service, "courtScheduleRepository", courtScheduleRepository);
         setField(service, "provisionalBookingRepository", provisionalBookingRepository);
     }
 
     @Test
-    public void shouldUpdateAllocatedSlots() {
+    void shouldUpdateAllocatedSlots() {
 
         final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots.json");
         final List<AllocatedSlot> allocatedSlots = new AllocatedSlotConverter().convert(payload).getHearingSlots();
@@ -74,7 +74,7 @@ public class SlotsUpdateServiceTest {
     }
 
     @Test
-    public void shouldUpdateAllocatedSlotsWithBookingId() throws JsonProcessingException {
+    void shouldUpdateAllocatedSlotsWithBookingId() throws JsonProcessingException {
 
         final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots-with-bookingid.json");
         final List<AllocatedSlot> allocatedSlots = new AllocatedSlotConverter().convert(payload).getHearingSlots();
@@ -95,7 +95,7 @@ public class SlotsUpdateServiceTest {
     }
 
     @Test
-    public void shouldThrowProvisionalSlotNotFoundExceptionWhenUpdateAllocatedSlotsWithBookingId() {
+    void shouldThrowProvisionalSlotNotFoundExceptionWhenUpdateAllocatedSlotsWithBookingId() {
 
         Assertions.assertThrows(uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException.class, () -> {
             final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots-with-bookingid.json");
@@ -108,7 +108,7 @@ public class SlotsUpdateServiceTest {
     }
 
     @Test
-    public void shouldThrowCourtScheduleIdNotMatchingExceptionWhenUpdateAllocatedSlotsWithBookingId() {
+    void shouldThrowCourtScheduleIdNotMatchingExceptionWhenUpdateAllocatedSlotsWithBookingId() {
 
         Assertions.assertThrows(uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException.class, () -> {
             final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots-with-bookingid-wrong-csId.json");
@@ -130,7 +130,7 @@ public class SlotsUpdateServiceTest {
     }
 
     @Test
-    public void shouldSearchUpdateAllocatedSlots() {
+    void shouldSearchUpdateAllocatedSlots() {
 
         final String payload = fileToString("/test-data/courtscheduler.search.update.available.hearing.slots-police.json");
         final List<AllocatedSlot> allocatedSlots = new AllocatedSlotConverter().convert(payload).getHearingSlots();
@@ -143,7 +143,7 @@ public class SlotsUpdateServiceTest {
     }
 
     @Test
-    public void shouldSearchUpdateAllocatedSlots_NonPolice() {
+    void shouldSearchUpdateAllocatedSlots_NonPolice() {
 
         final String payload = fileToString("/test-data/courtscheduler.search.update.available.hearing.slots-non-police.json");
         final List<AllocatedSlot> allocatedSlots = new AllocatedSlotConverter().convert(payload).getHearingSlots();

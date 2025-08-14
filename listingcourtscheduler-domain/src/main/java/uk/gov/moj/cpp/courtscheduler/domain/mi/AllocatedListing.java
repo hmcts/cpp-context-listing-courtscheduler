@@ -20,7 +20,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
         "duration",
         "created_on",
         "updated_on",
-        "hearing_start_time"
+        "hearing_start_time",
+        "is_overbooking_exempt"
 })
 
 public class AllocatedListing {
@@ -47,6 +48,8 @@ public class AllocatedListing {
     private Date updated_on;
 
     private Date created_on;
+
+    private Boolean is_overbooking_exempt;
 
     public AllocatedListing() {
         //For JPA
@@ -149,5 +152,14 @@ public class AllocatedListing {
 
     public void setHearingStartTime(Date hearingStartTime) {
         this.hearing_start_time = hearingStartTime;
+    }
+
+    @JsonProperty("is_overbooking_exempt")
+    public Boolean getIs_overbooking_exempt() {
+        return is_overbooking_exempt;
+    }
+
+    public void setIs_overbooking_exempt(Boolean is_overbooking_exempt) {
+        this.is_overbooking_exempt = is_overbooking_exempt;
     }
 }

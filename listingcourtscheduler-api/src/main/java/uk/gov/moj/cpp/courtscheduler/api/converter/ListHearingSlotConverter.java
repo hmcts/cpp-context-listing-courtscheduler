@@ -1,12 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static java.lang.String.format;
+
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 
 import java.io.IOException;
 
-import static java.lang.String.format;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ListHearingSlotConverter implements Converter<String, RequestedSlots> {
 

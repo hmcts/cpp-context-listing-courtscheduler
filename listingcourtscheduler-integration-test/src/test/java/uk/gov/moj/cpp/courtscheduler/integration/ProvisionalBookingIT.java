@@ -77,7 +77,8 @@ public class ProvisionalBookingIT extends AbstractIT {
         String provisionalBooking = getPayload("courtscheduler.get.provisional.booking.json");
         provisionalBooking = provisionalBooking.replace("BOOKING_ID", bookingId);
         ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> map = mapper.readValue(provisionalBooking, new TypeReference<>() {});
+        Map<String, Object> map = mapper.readValue(provisionalBooking, new TypeReference<>() {
+        });
 
         final RequestParams requestParams = getRequestParams(RELATIVE_PATH, "application/vnd.courtscheduler.get.provisional.booking+json", SYSTEM_USER_ID, map);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();

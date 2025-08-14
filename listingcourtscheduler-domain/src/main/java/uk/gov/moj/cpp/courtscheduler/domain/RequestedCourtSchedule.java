@@ -5,7 +5,7 @@ import java.util.Objects;
 public class RequestedCourtSchedule {
 
         private String courtScheduleId;
-        private String sessionStartTime;
+        private String hearingStartTime;
         private Integer durationInMinutes;
 
     public String getCourtScheduleId() {
@@ -16,12 +16,12 @@ public class RequestedCourtSchedule {
         this.courtScheduleId = courtScheduleId;
     }
 
-    public String getSessionStartTime() {
-        return sessionStartTime;
+    public String getHearingStartTime() {
+        return hearingStartTime;
     }
 
-    public void setSessionStartTime(String sessionStartTime) {
-        this.sessionStartTime = sessionStartTime;
+    public void setHearingStartTime(String hearingStartTime) {
+        this.hearingStartTime = hearingStartTime;
     }
 
     public Integer getDurationInMinutes() {
@@ -37,20 +37,20 @@ public class RequestedCourtSchedule {
         if (this == o) return true;
         if (!(o instanceof RequestedCourtSchedule that)) return false;
         return Objects.equals(courtScheduleId, that.courtScheduleId) &&
-                Objects.equals(sessionStartTime, that.sessionStartTime) &&
+                Objects.equals(hearingStartTime, that.hearingStartTime) &&
                 Objects.equals(durationInMinutes, that.durationInMinutes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(courtScheduleId, sessionStartTime, durationInMinutes);
+        return Objects.hash(courtScheduleId, hearingStartTime, durationInMinutes);
     }
 
     @Override
     public String toString() {
         return "CourtScheduleId{" +
                 "CourtScheduleId='" + courtScheduleId + '\'' +
-                ", sessionStartTime='" + sessionStartTime + '\'' +
+                ", hearingStartTime='" + hearingStartTime + '\'' +
                 ", duration=" + durationInMinutes +
                 '}';
     }

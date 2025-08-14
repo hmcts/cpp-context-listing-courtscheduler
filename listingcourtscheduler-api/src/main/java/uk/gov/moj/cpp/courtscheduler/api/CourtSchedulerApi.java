@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
+import static java.util.Arrays.stream;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
@@ -24,8 +25,8 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeRecalculateAvailabilityConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.SearchCourtSchedulesByIdRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
@@ -47,13 +48,14 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatusList;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
@@ -132,10 +134,9 @@ public class CourtSchedulerApi {
     @Inject
     private OuCodeMigrateConverter ouCodeMigrateConverter;
     @Inject
-    private AllocatedListingService allocatedListingService;
+    private OuCodeRecalculateAvailabilityConverter ouCodeRecalculateAvailabilityConverter;
     @Inject
-    private SearchCourtSchedulesByIdRequestParamConverter searchCourtSchedulesByIdRequestParamConverter;
-
+    private AllocatedListingService allocatedListingService;
 
     @Handles("courtscheduler.create")
     public JsonEnvelope createCourtSchedule(final JsonEnvelope envelope) {
@@ -200,16 +201,30 @@ public class CourtSchedulerApi {
 
     @Handles("courtscheduler.search.court-schedules-by-id")
     public JsonEnvelope searchCourtSchedulesById(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.search.court-schedules-by-id : {}", requestFromApiJsonObject);
+        final JsonObject queryParams = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.search.court-schedules-by-id  : {}", queryParams);
 
-        final SearchCourtSchedulesByIdRequestParam requestParam = searchCourtSchedulesByIdRequestParamConverter.convert(requestFromApiJsonObject);
+        final String idsParam = queryParams.getString("courtScheduleIds", "");
+        final List<String> courtScheduleIds = stream(idsParam.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
 
-        List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedulesById(requestParam, requester);
+        final SearchCourtSchedulesByIdRequestParam param =
+                SearchCourtSchedulesByIdRequestParam.SearchCourtSchedulesByIdRequestParamBuilder
+                        .searchCourtSchedulesByIdRequestParamBuilder()
+                        .withCourtScheduleIds(courtScheduleIds)
+                        .build();
 
-        final ListToJsonArrayConverter<CourtSchedule> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
-        return envelopeFor(envelope, listToJsonArrayConverter.convert(courtSchedules), COURT_SCHEDULES);
+        List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedulesById(param, requester);
+
+        final JsonValue result = new ListToJsonArrayConverter<CourtSchedule>().convert(courtSchedules);
+
+        return enveloper
+                .withMetadataFrom(envelope, "courtscheduler.search.court-schedules-by-id")
+                .apply(createObjectBuilder().add(COURT_SCHEDULES, result).build());
     }
+
 
     @Handles("courtscheduler.update")
     public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
@@ -278,11 +293,11 @@ public class CourtSchedulerApi {
             return envelopeFor(envelope, validate, ERROR);
         }
 
-        final HearingSlotSearchResponse hearingSlotSearchResponse = slotsUpdateService.searchAndBook(hearingSlotSearchRequest);
+        final HearingSlotSearchAndBookResponse hearingSlotSearchAndBookResponse = slotsUpdateService.searchAndBook(hearingSlotSearchRequest);
 
         JsonObject responseObject =  Json.createObjectBuilder()
                 .add(RequestParameterConstant.HEARING_SLOTS.getLabel(),
-                        objectToJsonObjectConverter.convert(hearingSlotSearchResponse))
+                        objectToJsonObjectConverter.convert(hearingSlotSearchAndBookResponse))
                 .build();
 
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
@@ -428,6 +443,23 @@ public class CourtSchedulerApi {
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
     }
 
+    @Handles("courtscheduler.oucode.recalculate.availability")
+    public JsonEnvelope ouCodeRecalculateAvailability(final JsonEnvelope envelope) {
+
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.oucode.recalculate.availability requested : {}", payload);
+
+        OuCodeRecalculateAvailabilityRequest ouCodeRequest = ouCodeRecalculateAvailabilityConverter.convert(payload.toString());
+
+        Result result = sessionsService.ouCodesRecalculateAvailability(ouCodeRequest);
+
+        if (!result.isSuccess()) {
+            throw new BadRequestException(result.getMsg());
+        }
+
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
+    }
+
     @Handles("listingcourtscheduler.query.organisation-units-hmi-status")
     public JsonEnvelope getOrganisationUnitsHmiStatus(final JsonEnvelope envelope) {
         final JsonObject reqJsonObject = envelope.payloadAsJsonObject();
@@ -447,13 +479,13 @@ public class CourtSchedulerApi {
         final String oucode = reqJsonObject.getString(OUCODE, "");
         final Optional<OrganisationUnitHMIStatus> orgUnitHMIStatusOpt = organisationUnitHMIStatusService.getOrganisationUnitHMIStatus(oucode);
         final JsonObject resJsonObj = !orgUnitHMIStatusOpt.isEmpty() ? createObjectBuilder().add("oucode", orgUnitHMIStatusOpt.get().getOucode())
-                                            .add("isHMIListingEnabled", orgUnitHMIStatusOpt.get().getIsHMIListingEnabled())
-                                            .add("isHMISchedulingEnabled", orgUnitHMIStatusOpt.get().getIsHMISchedulingEnabled())
-                                            .add("isHMIPubHubEnabled", orgUnitHMIStatusOpt.get().getIsHMIPubHubEnabled())
-                                            .add("courtCentreId", orgUnitHMIStatusOpt.get().getCourtCentreId())
-                                            .add("courtId", orgUnitHMIStatusOpt.get().getCourtId())
-                                            .build()
-                                       : EMPTY_JSON_OBJECT;
+                .add("isHMIListingEnabled", orgUnitHMIStatusOpt.get().getIsHMIListingEnabled())
+                .add("isHMISchedulingEnabled", orgUnitHMIStatusOpt.get().getIsHMISchedulingEnabled())
+                .add("isHMIPubHubEnabled", orgUnitHMIStatusOpt.get().getIsHMIPubHubEnabled())
+                .add("courtCentreId", orgUnitHMIStatusOpt.get().getCourtCentreId())
+                .add("courtId", orgUnitHMIStatusOpt.get().getCourtId())
+                .build()
+                : EMPTY_JSON_OBJECT;
         return envelopeFor(envelope, resJsonObj, ORGANISATION_UNIT_HMI_STATUS);
     }
 

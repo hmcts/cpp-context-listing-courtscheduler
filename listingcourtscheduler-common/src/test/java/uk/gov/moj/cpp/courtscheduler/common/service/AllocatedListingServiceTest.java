@@ -26,7 +26,6 @@ import java.util.Set;
 
 import javax.json.JsonArray;
 import javax.json.JsonObject;
-import javax.json.JsonString;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
@@ -98,11 +97,11 @@ class AllocatedListingServiceTest {
                         "Court-Room-Id-1",
                         "Court-Room-Num-1",
                         "buss",
-                        "Court-Session-1",null);
+                        "Court-Session-1",null, null);
         Set<IdResponse> hearingIds = new LinkedHashSet<>();
-        hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1,1));
-        hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1,1));
-        hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1,1));
+        hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
+        hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
+        hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
         Pair pair = Pair.of(3, hearingIds);
         when(allocatedListingRepository.findHearingIdsBy(eq(hearingIdsReq))).thenReturn(pair);
         JsonObject hearingIdsJsonObj = allocatedListingService.getHearingIds(hearingIdsReq);
@@ -116,8 +115,9 @@ class AllocatedListingServiceTest {
         JsonArray hearingIdsJsonArr = hearingIdsJsonObj.getJsonArray(RequestParameterConstant.HEARING_IDS.getLabel());
         assertEquals(3, hearingIdsJsonArr.size());
         hearingIdsJsonArr.forEach(e ->
-        {assertTrue(hearingIds.stream().map(IdResponse::hearingId).toList().contains(((e.asJsonObject().getString("hearingId")))));
-         assertTrue(hearingIds.stream().map(IdResponse::courtScheduleId).toList().contains(((e.asJsonObject().getString("courtScheduleId")))));
+        {
+            assertTrue(hearingIds.stream().map(IdResponse::hearingId).toList().contains(((e.asJsonObject().getString("hearingId")))));
+            assertTrue(hearingIds.stream().map(IdResponse::courtScheduleId).toList().contains(((e.asJsonObject().getString("courtScheduleId")))));
         });
 
     }

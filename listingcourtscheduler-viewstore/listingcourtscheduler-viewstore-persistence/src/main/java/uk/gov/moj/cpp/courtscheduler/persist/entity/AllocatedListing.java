@@ -55,6 +55,9 @@ public class AllocatedListing {
     @Column(name = "created_on", nullable = false)
     private java.util.Date createdOn;
 
+    @Column(name = "is_overbooking_exempt", nullable = false)
+    private Boolean isOverbookingExempt;
+
     public AllocatedListing() {
         //For JPA
     }
@@ -147,6 +150,14 @@ public class AllocatedListing {
         this.hearingStartTime = hearingStartTime;
     }
 
+    public Boolean getOverbookingExempt() {
+        return isOverbookingExempt;
+    }
+
+    public void setOverbookingExempt(Boolean overbookingExempt) {
+        isOverbookingExempt = overbookingExempt;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -178,6 +189,7 @@ public class AllocatedListing {
                 ", hearingStartTime=" + hearingStartTime +
                 ", updatedOn=" + updatedOn +
                 ", createdOn=" + createdOn +
+                ", isOverBookingExempt=" + isOverbookingExempt +
                 '}';
     }
 }

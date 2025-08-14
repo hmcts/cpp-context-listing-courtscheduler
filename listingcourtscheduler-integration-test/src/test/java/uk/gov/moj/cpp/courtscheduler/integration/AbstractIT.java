@@ -23,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Random;
 import java.util.TimeZone;
 import java.util.UUID;
 
@@ -34,6 +35,7 @@ import javax.ws.rs.core.Response;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.benas.randombeans.EnhancedRandomBuilder;
 import io.github.benas.randombeans.api.EnhancedRandom;
+import io.github.benas.randombeans.api.Randomizer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,8 +45,12 @@ public abstract class AbstractIT extends RestClient {
     protected final String BASE_URL = "http://" + getHost() + ":8080/listingcourtscheduler-api/rest/courtscheduler";
     protected static final UUID USER_ID = fromString("bb593957-08a8-4d41-a5c1-7674d38d4f43");
     protected static final UUID SYSTEM_USER_ID = fromString("8e035a94-437d-4f7f-af63-150ccb549bde");
+    protected static final Random random = new Random();
     protected static final EnhancedRandom RANDOM = new EnhancedRandomBuilder()
             .maxStringLength(5)
+            .randomize(int.class, (Randomizer<Integer>) () -> random.nextInt(500))
+            .randomize(Integer.class, (Randomizer<Integer>) () -> random.nextInt(500))
+            .randomize(long.class, (Randomizer<Long>) () -> (long) random.nextInt(500))
             .build();
     protected final DatabaseSeeder databaseSeeder = new DatabaseSeeder();
     protected final DatabaseReader databaseReader = new DatabaseReader();

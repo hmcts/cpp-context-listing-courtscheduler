@@ -11,22 +11,26 @@
     "courtRoomId": {
       "type": "string"
     },
-    "hearingSessionDate": {
+    "hearingDate": {
       "type": "string"
     },
     "hearingSessionDateSearchCutOff": {
       "type": "string"
     },
-    "sessionStartTime": {
+    "hearingStartTime": {
       "type": "string"
     },
     "durationInMinutes": {
       "type": "integer"
+    },
+    "isPolice": {
+      "type": "boolean"
     }
   },
   "required": [
     "hearingId",
     "ouCode",
-    "hearingSessionDate"
+    "hearingDate",
+    "durationInMinutes"
   ]
 }

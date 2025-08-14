@@ -11,17 +11,15 @@ import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import javax.json.Json;
 import javax.json.JsonObject;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
-public class CreateSessionsRequestParamConverterTest {
+class CreateSessionsRequestParamConverterTest {
 
-    private CreateSessionsRequestParamConverter converter = new CreateSessionsRequestParamConverter();
+    private final CreateSessionsRequestParamConverter converter = new CreateSessionsRequestParamConverter();
 
     @Test
-    @Disabled("will be handled separately")
     public void shouldConvertJsonObjectToCreateSessionRequestParam() {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("sessions", Json.createArrayBuilder()

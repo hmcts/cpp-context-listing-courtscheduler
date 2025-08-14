@@ -11,6 +11,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
@@ -68,7 +69,7 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
     private static final String COURT_SCHEDULE_UPDATE_CONTENT_TYPE = "application/vnd.courtscheduler.update+json";
     private static final String COURT_SCHEDULE_GET_CONTENT_TYPE = "application/vnd.courtscheduler.get+json";
-    private static final String COURT_SCHEDULE_SEARCH_COURTSCHEDULES_BY_ID_CONTENT_TYPE = "application/vnd.courtscheduler.search.courtschedules.by.id+json";
+    private static final String COURT_SCHEDULE_SEARCH_COURTSCHEDULES_BY_ID_CONTENT_TYPE = "application/vnd.courtscheduler.search.court-schedules-by-id+json";
     private static final String COURT_SCHEDULE_DELETE_CONTENT_TYPE = "application/vnd.courtscheduler.delete+json";
     private static final String COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE = "application/vnd.courtscheduler.oucode.migrate+json";
 
@@ -675,7 +676,6 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
-    @Disabled
     void shouldNotAllowUpdateCourtScheduleForDifferentBusinessType() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
@@ -772,6 +772,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(60);
         courtSchedule.setMaxDuration(0);
         courtSchedule.setAvailableDuration(0);
+        courtSchedule.setMaxSlots(0);
+        courtSchedule.setAvailableSlots(0);
         courtSchedule.setSessionDate(LocalDate.of(2025, 4, 7));
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
@@ -785,22 +787,23 @@ class CourtSchedulerIT extends AbstractIT {
         final UUID bookingId = UUID.randomUUID();
         createAllocatedListing(courtSchedule, hearingId, bookingId, 60, "10:00");
 
-        // Prepare payload
-        final String searchPayload = getPayload("courtscheduler.search.courtschedules.by.id.json")
-                .replace("COURT_SCHEDULE_ID", courtScheduleId.toString());
+        String getCourtScheduleRequestParams = getPayload("courtscheduler.search.courtschedules.by.id.json");
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_SCHEDULE_ID", courtScheduleId.toString());
+        Map<String, Object> map = mapper.readValue(getCourtScheduleRequestParams, new TypeReference<>() {
+        });
 
-        // POST request
-        final Response response = postCommand(
+        final RequestParams requestParams = getRequestParams(
                 BASE_RESOURCE_URL + SEARCH_BY_ID_URL,
                 COURT_SCHEDULE_SEARCH_COURTSCHEDULES_BY_ID_CONTENT_TYPE,
                 SYSTEM_USER_ID,
-                searchPayload
+                map
         );
 
-        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
-        final String responseBody = response.readEntity(String.class);
-        JsonObject json = Json.createReader(new StringReader(responseBody)).readObject();
+        assertEquals(OK.getStatusCode(), response.getStatus().getStatusCode());
+
+        JsonObject json = stringToJsonObjectConverter.convert(response.getPayload());
 
         final JsonObject courtSessionJson = json.getJsonArray("courtSchedules").getJsonObject(0);
 
@@ -1021,7 +1024,7 @@ class CourtSchedulerIT extends AbstractIT {
             assertTrue(jsonResponse.containsKey("sessions"), "Response should contain 'sessions' key");
             final JsonObject sessionJSONObj = jsonResponse.getJsonArray("sessions").getJsonObject(0);
             assertThat(sessionJSONObj.getString("courtScheduleId"), is(courtSchedule.getCourtScheduleId()));
-            assertThat( sessionJSONObj.getInt("totalBooked"), is(allocatedListingForMorning.getDuration() + allocatedListingForAfternoon.getDuration()));
+            assertThat(sessionJSONObj.getInt("totalBooked"), is(allocatedListingForMorning.getDuration() + allocatedListingForAfternoon.getDuration()));
         }
     }
 

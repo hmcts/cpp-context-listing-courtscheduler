@@ -7,7 +7,7 @@
       [
         {
           "courtScheduleId": "1771a96b-1c5a-45d1-b647-1bec5212cafc",
-          "sessionStartTime": "2020-05-13T03:00:00Z",
+          "hearingStartTime": "2025-04-03T03:00:00Z",
           "durationInMinutes": 20
         }
       ]
@@ -18,10 +18,11 @@
       [
         {
           "courtScheduleId": "5771a96b-1c5a-45d1-b647-1bec5212cafc",
-          "sessionStartTime": "2020-05-13T10:00:00Z"
+          "hearingStartTime": "2025-04-03T10:00:00Z"
         },
         {
-          "courtScheduleId": "2771a96b-1c5a-45d1-b647-1bec5212cafc"
+          "courtScheduleId": "2771a96b-1c5a-45d1-b647-1bec5212cafc",
+          "durationInMinutes": 30
         }
       ]
     }
