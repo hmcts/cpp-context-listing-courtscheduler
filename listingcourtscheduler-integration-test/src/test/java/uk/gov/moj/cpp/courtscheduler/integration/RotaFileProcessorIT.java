@@ -66,7 +66,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private final String azureBlobInputContainerName = "schedulelistinginput";
     private final String azureBlobOutputContainerName = "schedulelistingoutput";
-    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=C5l7paX+ELY0X3aDMTrOyXxBE69CMS1pqkYX9XTGdHI7x1jP15VM1FUizCoEmwOo9ML3Bgz0IYA4+AStJIs0kQ==;EndpointSuffix=core.windows.net;";
+    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=C5l7paX+ELY0X3aDMTrOyXxBE69CMS1pqkYX9XTGdHI7x1jP15VM1FUizCoEmwOo9ML3Bgz0IYA4+AStJIs0kQ==;EndpointSuffix=core.windows.net";
 
     public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
     public static final int DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC = 50;

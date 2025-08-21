@@ -13,6 +13,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.time.Instant;
 import java.util.List;
 
 import javax.json.JsonObject;
@@ -95,6 +96,7 @@ class HearingSlotsApiValidatorTest {
                 "YOUTH",
                 "2025-07-28",
                 "2025-07-29",
+                Instant.now().toString(),
                 "L2",
                 "OU",
                 "10",

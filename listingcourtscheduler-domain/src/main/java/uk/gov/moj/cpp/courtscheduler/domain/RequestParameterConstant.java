@@ -13,6 +13,7 @@ public enum RequestParameterConstant {
     COURT_ROOM_NUMBER("courtRoomNumber"),
     SESSION_START_DATE("sessionStartDate"),
     SESSION_END_DATE("sessionEndDate"),
+    EXACT_HEARING_START_DATETIME("exactHearingStartDateTime"),
     BUSINESS_TYPE("businessType"),
     PAGE_SIZE("pageSize"),
     RESULTS("results"),
