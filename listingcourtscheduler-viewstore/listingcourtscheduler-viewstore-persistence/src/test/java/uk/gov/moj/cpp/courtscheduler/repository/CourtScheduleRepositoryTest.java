@@ -2145,6 +2145,206 @@ public class CourtScheduleRepositoryTest {
         assertFalse(courtSchedulesQueryList.isEmpty());
     }
 
+    // Tests for getCourtSchedulesForPolice method (via searchListHearingSlotFilterCriteria with isPolice=true)
+    @Test
+    public void shouldFindCourtScheduleForPolice_WithAllParameters() {
+        // given
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("YFL"); // Police business type
+        courtSchedule.setOuCode(courtCentreId);
+        courtSchedule.setCourtHouseId(courtCentreId); // Set court house ID to match the query filter
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setActive(true);
+        courtScheduleRepository.save(courtSchedule);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then
+        assertNotNull(result);
+        assertEquals(courtSchedule.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals("YFL", result.getBusinessType());
+    }
+
+    @Test
+    public void shouldFindCourtScheduleForPolice_OnNextDayWhenNoResultsOnFirstDay() {
+        // given
+        String courtCentreId = "B01LY00";
+        LocalDate firstDay = LocalDate.of(2024, 7, 15);
+        LocalDate secondDay = LocalDate.of(2024, 7, 16);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        // No court schedule on first day
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(secondDay); // Schedule on second day
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("GAP"); // Police business type
+        courtSchedule.setOuCode(courtCentreId);
+        courtSchedule.setCourtHouseId(courtCentreId); // Set court house ID to match the query filter
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setActive(true);
+        courtScheduleRepository.save(courtSchedule);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, firstDay, secondDay, sessionStartTime, courtRoomId, true);
+
+        // then
+        assertNotNull(result);
+        assertEquals(courtSchedule.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals("GAP", result.getBusinessType());
+        assertEquals(secondDay, result.getSessionDate());
+    }
+
+    @Test
+    public void shouldReturnNullForPolice_WhenNoCourtScheduleFound() {
+        // given
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        // No court schedule exists
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then
+        assertNull(result);
+    }
+
+    @Test
+    public void shouldReturnNullForPolice_WhenCourtScheduleIsInactive() {
+        // given
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("REM"); // Police business type
+        courtSchedule.setOuCode(courtCentreId);
+        courtSchedule.setCourtHouseId(courtCentreId); // Set court house ID to match the query filter
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setActive(false); // Inactive schedule
+        courtScheduleRepository.save(courtSchedule);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then
+        assertNull(result);
+    }
+
+    @Test
+    public void shouldReturnNullForPolice_WhenBusinessTypeIsNotPolice() {
+        // given
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("NCFL"); // Non-police business type
+        courtSchedule.setOuCode(courtCentreId);
+        courtSchedule.setCourtHouseId(courtCentreId); // Set court house ID to match the query filter
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setActive(true);
+        courtScheduleRepository.save(courtSchedule);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then
+        assertNull(result);
+    }
+
+    @Test
+    public void shouldFindCourtScheduleForPolice_WithSessionStartTimeWithinRange() {
+        // given
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 15, 0); // Within session time
+        String courtRoomId = "1234";
+
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0))); // Session 14:00-16:00
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("YFL"); // Police business type
+        courtSchedule.setOuCode(courtCentreId);
+        courtSchedule.setCourtHouseId(courtCentreId); // Set court house ID to match the query filter
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setActive(true);
+        courtScheduleRepository.save(courtSchedule);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then
+        assertNotNull(result);
+        assertEquals(courtSchedule.getCourtScheduleId(), result.getCourtScheduleId());
+    }
+
+    @Test
+    public void shouldFindCourtScheduleForPolice_WithAllPoliceBusinessTypes() {
+        // given
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        String[] policeBusinessTypes = {"YFL", "TRFL", "DAFL", "NGAP", "GAP", "REM"};
+
+        for (String businessType : policeBusinessTypes) {
+            CourtSchedule courtSchedule = random(CourtSchedule.class);
+            courtSchedule.setSessionDate(sessionDate);
+            courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
+            courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
+            courtSchedule.setCourtSession("AD");
+            courtSchedule.setBusinessType(businessType);
+            courtSchedule.setOuCode(courtCentreId);
+            courtSchedule.setCourtHouseId(courtCentreId); // Set court house ID to match the query filter
+            courtSchedule.setCourtRoomId(courtRoomId);
+            courtSchedule.setActive(true);
+            courtScheduleRepository.save(courtSchedule);
+        }
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then
+        assertNotNull(result);
+        assertTrue(List.of(policeBusinessTypes).contains(result.getBusinessType()));
+    }
+
     private HearingSlotRequestParam createHearingSlotRequest(CourtSchedule courtSchedule) {
         LocalDate startDate = courtSchedule.getSessionDate().minusDays(1);
         LocalDate endDate = courtSchedule.getSessionDate().plusDays(1);
