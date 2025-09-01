@@ -49,7 +49,7 @@
             **/uk/gov/moj/cpp/courtscheduler/domain/**/*,
             **uk/gov/moj/cpp/courtscheduler/repository/CourtScheduleRepository.java
         </sonar.cpd.exclusions>
-        <usersgroups.version>8.0.37</usersgroups.version>
+        <usersgroups.version>17.0.37</usersgroups.version>
         <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
         <referencedata.version>17.0.111</referencedata.version>
         <lettuce.core.version>5.2.1.RELEASE</lettuce.core.version>

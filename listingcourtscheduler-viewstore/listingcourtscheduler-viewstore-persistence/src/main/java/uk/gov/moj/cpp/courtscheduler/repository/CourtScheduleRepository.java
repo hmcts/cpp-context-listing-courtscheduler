@@ -1232,14 +1232,18 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     private List<CourtSchedule> getCourtSchedulesForPolice(String courtCentreId, LocalDate sessionDate, LocalDate sessionEndDate, LocalDateTime sessionStartTime, String courtRoomId) {
         List<CourtSchedule> resultList;
         do {
-            LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria First Call with All params for courtCentreId: {} and sessionDate: {}", courtCentreId, sessionDate);
+            LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria 1st Call with All params. courtCentreId: {}, sessionDate: {}, sessionStartTime: {}, courtRoomId: {}", courtCentreId, sessionDate, sessionStartTime, courtRoomId);
             resultList = searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId);
             if(resultList == null || resultList.isEmpty()) {
-                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria Second Call with All params except courtRoom for courtCentreId: {} and sessionDate: {}", courtCentreId, sessionDate);
+                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria 2nd Call with All params except sessionStartTime. courtCentreId: {}, sessionDate: {}, courtRoomId: {}", courtCentreId, sessionDate, courtRoomId);
+                resultList = searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, courtRoomId);
+            }
+            if(resultList == null || resultList.isEmpty()) {
+                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria 3rd Call with All params except courtRoom. courtCentreId: {}, sessionDate: {}, sessionStartTime: {}", courtCentreId, sessionDate, sessionStartTime);
                 resultList = searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, null);
             }
             if(resultList == null || resultList.isEmpty()) {
-                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria Third Call with All params except courtRoom and hearingStartTime for courtCentreId: {} and sessionDate: {}", courtCentreId, sessionDate);
+                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria 4th Call with All params except courtRoom and hearingStartTime. courtCentreId: {}, sessionDate: {}", courtCentreId, sessionDate);
                 resultList = searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, null);
             }
             sessionDate = sessionDate.plusDays(1);
