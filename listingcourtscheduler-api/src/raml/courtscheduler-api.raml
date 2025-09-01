@@ -180,6 +180,10 @@ protocols: [ HTTP, HTTPS ]
         description: endDate
         type: string
         required: true
+      exactHearingStartDateTime:
+        description: Optional parameter to perform an exact match on start_time. Must be in ISO date-time format in UTC. Used by court calendar only
+        type: string
+        required: false
       oucodeL2Code:
         description: Operational unit
         type: string

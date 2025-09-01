@@ -19,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -183,12 +184,12 @@ class SlotsSearchServiceTest {
 
     private HearingSlotRequestParam createRequestParam(String pageSize) {
         return new HearingSlotRequestParam("ADULT", LocalDate.now().toString(), LocalDate.now().toString(),
-                null, "BA124", pageSize, "1", null, null, null, null, null,null);
+                Instant.now().toString(), null, "BA124", pageSize, "1", null, null, null, null, null,null);
     }
 
     private HearingSlotRequestParam createRequestParam(String pageSize, String hearingStartTime) {
         return new HearingSlotRequestParam("ADULT", LocalDate.now().toString(), LocalDate.now().toString(),
-                null, "BA124", pageSize, "1", null, null, null, null, null,hearingStartTime);
+                Instant.now().toString(),null, "BA124", pageSize, "1", null, null, null, null, null,hearingStartTime);
     }
 
     private JsonObject toJsonObject(UUID judiciaryId1, UUID judiciaryId2, UUID judiciaryId3) {

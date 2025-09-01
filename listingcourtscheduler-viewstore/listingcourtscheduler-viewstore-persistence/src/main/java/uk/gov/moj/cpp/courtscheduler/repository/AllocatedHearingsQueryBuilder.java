@@ -5,6 +5,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.BUSI
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_ROOM;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_ROOM_NUMBER;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.EXACT_HEARING_START_DATETIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.OU_CODE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.OU_LEVEL2;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PAGE_NUMBER;
@@ -54,6 +55,7 @@ public class AllocatedHearingsQueryBuilder {
         addCondition(COURT_ROOM_NUMBER.getLabel(), "and cs.court_room_number = :courtRoomNumber ", queryStrBuilder);
         addCondition(BUSINESS_TYPE.getLabel(), "and cs.rota_business_type = :businessType ", queryStrBuilder);
         addCondition(COURT_SESSION.getLabel(), "and cs.court_session = :courtSession ", queryStrBuilder);
+        addCondition(EXACT_HEARING_START_DATETIME.getLabel(), "and al.hearing_start_time = :exactHearingStartDateTime ", queryStrBuilder);
 
         queryStrBuilder.append("order by cs.session_start, " +
                 "cs.court_house_name, " +
@@ -81,6 +83,7 @@ public class AllocatedHearingsQueryBuilder {
         addOptionalParam(COURT_ROOM_NUMBER.getLabel(), hearingIdsReq.courtRoomNumber());
         addOptionalParam(BUSINESS_TYPE.getLabel(), hearingIdsReq.businessType());
         addOptionalParam(COURT_SESSION.getLabel(), hearingIdsReq.courtSession());
+        addOptionalParam(EXACT_HEARING_START_DATETIME.getLabel(), hearingIdsReq.exactHearingStartDateTime());
     }
 
     private void addOptionalParam(String name, String val) {

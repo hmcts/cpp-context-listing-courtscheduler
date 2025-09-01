@@ -9,7 +9,7 @@ import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.*;
-
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.EXACT_HEARING_START_DATETIME_IS_IN_BAD_FORMAT;
 import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
 import uk.gov.justice.services.common.converter.LocalDates;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
@@ -20,6 +20,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -63,6 +64,10 @@ public class HearingSlotsApiValidator {
             } catch (final DateTimeParseException e) {
                 throw new BadRequestException(format("Invalid hearingStartTime: %s and exception %s ", hearingSlotRequestParam.hearingStartTime(),e.getMessage()));
             }
+        }
+
+        if (!isValidInstant(hearingSlotRequestParam.exactHearingStartDateTime())) {
+            return getMessage(format(EXACT_HEARING_START_DATETIME_IS_IN_BAD_FORMAT, hearingSlotRequestParam.exactHearingStartDateTime()));
         }
 
         if (isBlank(hearingSlotRequestParam.oucodeL2Code()) && isBlank(hearingSlotRequestParam.ouCode())) {
@@ -136,6 +141,19 @@ public class HearingSlotsApiValidator {
             return true;
         }
         return false;
+    }
+
+    private boolean isValidInstant(final String date) {
+        if(date == null){
+            return true;
+        }
+        try {
+            Instant.parse(date);
+        } catch (final DateTimeParseException e) {
+            getGlobal().log(WARNING, format("Invalid Date supplied: %s and exception", date), e);
+            return false;
+        }
+        return true;
     }
 
     private JsonObject getMessage(final String value) {

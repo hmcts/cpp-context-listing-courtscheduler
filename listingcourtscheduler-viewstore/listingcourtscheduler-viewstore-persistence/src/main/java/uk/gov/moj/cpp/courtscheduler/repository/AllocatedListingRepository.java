@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.EXACT_HEARING_START_DATETIME;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -10,6 +10,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.LinkedHashSet;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
+import javax.persistence.TemporalType;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.deltaspike.data.api.AbstractFullEntityRepository;
@@ -83,7 +86,14 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
         final AllocatedHearingsQueryBuilder allocatedHearingsQueryCtx = new AllocatedHearingsQueryBuilder(hearingIdsReq);
         final javax.persistence.Query pageQuery =
                 entityManager.createNativeQuery(allocatedHearingsQueryCtx.getAllocatedHearingsQuery());
-        allocatedHearingsQueryCtx.getPagedQueryParamMap().forEach(pageQuery::setParameter);
+        allocatedHearingsQueryCtx.getPagedQueryParamMap().forEach((k, v) -> {
+            if (EXACT_HEARING_START_DATETIME.getLabel().equals(k)) {
+                final Instant instant = Instant.parse((String) v);
+                pageQuery.setParameter(k, Timestamp.from(instant), TemporalType.TIMESTAMP);
+            } else {
+                pageQuery.setParameter(k, v);
+            }
+        });
         List<Object[]> resultList = pageQuery.getResultList();
         final Set<IdResponse> pageResultSet = resultList.stream()
                 .map(row -> toIdResponse(row))

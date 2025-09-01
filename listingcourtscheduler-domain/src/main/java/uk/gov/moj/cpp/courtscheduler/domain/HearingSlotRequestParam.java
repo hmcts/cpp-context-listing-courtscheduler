@@ -5,6 +5,7 @@ import java.util.Objects;
 public record HearingSlotRequestParam(String panel,
                                       String sessionStartDate,
                                       String sessionEndDate,
+                                      String exactHearingStartDateTime,
                                       String oucodeL2Code,
                                       String ouCode,
                                       String pageSize,
@@ -22,7 +23,10 @@ public record HearingSlotRequestParam(String panel,
         final HearingSlotRequestParam that = (HearingSlotRequestParam) o;
         return Objects.equals(panel(), that.panel()) && Objects.equals(sessionStartDate(),
                 that.sessionStartDate()) && Objects.equals(sessionEndDate(),
-                that.sessionEndDate()) && Objects.equals(oucodeL2Code(),
+                that.sessionEndDate())
+                && Objects.equals(exactHearingStartDateTime(),
+                that.exactHearingStartDateTime())
+                && Objects.equals(oucodeL2Code(),
                 that.oucodeL2Code()) && Objects.equals(ouCode(),
                 that.ouCode()) && Objects.equals(pageSize(),
                 that.pageSize()) && Objects.equals(pageNumber(),
@@ -36,7 +40,7 @@ public record HearingSlotRequestParam(String panel,
 
     @Override
     public int hashCode() {
-        return Objects.hash(panel(), sessionStartDate(), sessionEndDate(), oucodeL2Code(),
+        return Objects.hash(panel(), sessionStartDate(), sessionEndDate(), exactHearingStartDateTime(), oucodeL2Code(),
                 ouCode(), pageSize(), pageNumber(), courtRoomId(), courtRoomNumber(),
                 businessType(), courtSession(), isSlotBased(), hearingStartTime());
     }
