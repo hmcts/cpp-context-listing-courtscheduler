@@ -16,6 +16,8 @@ public class HearingSlotRequestParamConverter implements Converter<JsonObject, H
                 jsonObject.getString(RequestParameterConstant.SESSION_START_DATE.getLabel()) : null;
         final String endDate = jsonObject.containsKey(RequestParameterConstant.SESSION_END_DATE.getLabel()) ?
                 jsonObject.getString(RequestParameterConstant.SESSION_END_DATE.getLabel()) : null;
+        final String exactHearingStartDateTime = jsonObject.containsKey(RequestParameterConstant.EXACT_HEARING_START_DATETIME.getLabel()) ?
+                jsonObject.getString(RequestParameterConstant.EXACT_HEARING_START_DATETIME.getLabel()) : null;
         final String ouLevel = jsonObject.containsKey(RequestParameterConstant.OU_LEVEL2.getLabel()) ?
                 jsonObject.getString(RequestParameterConstant.OU_LEVEL2.getLabel()) : null;
         final String ouCode = jsonObject.containsKey(RequestParameterConstant.OU_CODE.getLabel()) ?
@@ -37,7 +39,7 @@ public class HearingSlotRequestParamConverter implements Converter<JsonObject, H
         final String hearingStartTime = jsonObject.containsKey(RequestParameterConstant.HEARING_START_TIME.getLabel()) ?
                 jsonObject.getString(RequestParameterConstant.HEARING_START_TIME.getLabel()) : null;
 
-        return new HearingSlotRequestParam(panel, startDate, endDate, ouLevel, ouCode, pageSize,
+        return new HearingSlotRequestParam(panel, startDate, endDate, exactHearingStartDateTime, ouLevel, ouCode, pageSize,
                 pageNumber, courtRoomId, courtRoomNumber, businessType, courtSession, isSlotBased, hearingStartTime);
     }
 }

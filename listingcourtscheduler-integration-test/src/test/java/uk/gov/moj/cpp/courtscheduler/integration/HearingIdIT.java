@@ -22,6 +22,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -94,7 +95,7 @@ class HearingIdIT extends AbstractIT {
         Map<String, Object> map = new ObjectMapper().readValue(hearingIdsReq, new TypeReference<>() {
         });
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, map);
+        final RequestParams requestParams = getRequestParams(map);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertEquals(OK.getStatusCode(), tempResponseData.getStatus().getStatusCode());
@@ -115,8 +116,19 @@ class HearingIdIT extends AbstractIT {
             assertThat(each.asJsonObject().getInt("hearingDayCount"), is(1));
             assertThat(each.asJsonObject().getInt("hearingDayPosition"), is(1));
         });
-    }
 
+        map.put("exactHearingStartDateTime", hearing3StartTime.toInstant(ZoneOffset.UTC).toString());
+        final RequestParams requestParamsWithStartDateTime = getRequestParams(map);
+        final ResponseData tempResponseDataWithStartDateTime = poll(requestParamsWithStartDateTime).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertEquals(OK.getStatusCode(), tempResponseDataWithStartDateTime.getStatus().getStatusCode());
+
+        JsonObject jsonObjectWithStartDateTime = stringToJsonObjectConverter.convert(tempResponseDataWithStartDateTime.getPayload());
+        assertThat(jsonObjectWithStartDateTime.getInt("results"), is(1));
+        assertThat(jsonObjectWithStartDateTime.getInt("pageCount"), is(1));
+        JsonArray hearingIdsWithStartDateTime = jsonObjectWithStartDateTime.getJsonArray("hearingIds");
+        assertThat(hearingIdsWithStartDateTime.getJsonObject(0).getString("hearingId"), is(hearingId3));
+    }
 
     @Test
     void shouldRetrieveMultiPageHearingIds() throws Exception {
@@ -146,7 +158,7 @@ class HearingIdIT extends AbstractIT {
         final ObjectMapper objMapper = new ObjectMapper();
         Map<String, Object> paramsMap = objMapper.readValue(hearingIdsReq, new TypeReference<>() {
         });
-        RequestParams requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, paramsMap);
+        RequestParams requestParams = getRequestParams(paramsMap);
         ResponseData responseData = poll(requestParams).with().timeout(30L, SECONDS).until();
 
         assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
@@ -167,7 +179,7 @@ class HearingIdIT extends AbstractIT {
         }
 
         paramsMap.put("pageNumber:", 2);
-        requestParams = getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, paramsMap);
+        requestParams = getRequestParams(paramsMap);
         responseData = poll(requestParams).with().timeout(30L, SECONDS).until();
 
         assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
@@ -214,5 +226,9 @@ class HearingIdIT extends AbstractIT {
         allocatedListing.setRotaBusinessType("BUSS");
 
         return allocatedListing;
+    }
+
+    private RequestParams getRequestParams(final Map<String, Object> map) {
+        return getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, map);
     }
 }

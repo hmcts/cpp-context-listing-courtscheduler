@@ -18,6 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -213,6 +214,7 @@ public class AllocatedListingRepositoryTest {
                 new HearingSlotRequestParam("ADULT",
                         today.minusDays(6).toString(),
                         today.toString(),
+                        null,
                         "",
                         "",
                         "10",
@@ -276,6 +278,7 @@ public class AllocatedListingRepositoryTest {
                 new HearingSlotRequestParam("ADULT, YOUTH",
                         today.minusDays(6).toString(),
                         today.toString(),
+                        null,
                         "",
                         "",
                         "10",
