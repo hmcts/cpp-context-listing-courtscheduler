@@ -1974,6 +1974,12 @@ public class CourtScheduleRepositoryTest {
                 .toInstant());
     }
 
+    private Date convertToDate(LocalTime localTime, int year, int month, int day) {
+        return Date.from(localTime.atDate(LocalDate.of(year, month, day))
+                .atZone(ZoneId.systemDefault())
+                .toInstant());
+    }
+
     @Test
     public void shouldFindByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession() {
         final String courtHouseId = randomUUID().toString();
@@ -2344,6 +2350,132 @@ public class CourtScheduleRepositoryTest {
         // then
         assertNotNull(result);
         assertTrue(List.of(policeBusinessTypes).contains(result.getBusinessType()));
+    }
+
+    @Test
+    public void shouldFindClosestAMCourtScheduleForPolice_WithSameBusinessType_WhenSessionStartTimeIsNull() {
+        // given
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime requestedTime = LocalDateTime.of(2024, 7, 15, 8, 0); // Requested time
+        String courtRoomId = "1234";
+
+        // Create multiple court schedules with different start times and business types
+        CourtSchedule schedule1 = random(CourtSchedule.class);
+        schedule1.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        schedule1.setSessionDate(sessionDate);
+        schedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0), 2024, 7, 15)); // 14:00 - closest to 15:30
+        schedule1.setSessionEndTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15));
+        schedule1.setCourtSession("AD");
+        schedule1.setBusinessType("TRFL"); // Same business type as schedule3
+        schedule1.setOuCode(courtCentreId);
+        schedule1.setCourtHouseId(courtCentreId);
+        schedule1.setCourtRoomId(courtRoomId);
+        schedule1.setActive(true);
+        courtScheduleRepository.save(schedule1);
+
+        CourtSchedule schedule2 = random(CourtSchedule.class);
+        schedule2.setCourtScheduleId("6771a96b-1c5a-45d1-b647-1bec5212cafc");
+        schedule2.setSessionDate(sessionDate);
+        schedule2.setSessionStartTime(convertToDate(LocalTime.of(10, 0), 2024, 7, 15)); // 10:00 - further from 15:30
+        schedule2.setSessionEndTime(convertToDate(LocalTime.of(12, 0), 2024, 7, 15));
+        schedule2.setCourtSession("AD");
+        schedule2.setBusinessType("TRFL"); // Different business type
+        schedule2.setOuCode(courtCentreId);
+        schedule2.setCourtHouseId(courtCentreId);
+        schedule2.setCourtRoomId(courtRoomId);
+        schedule2.setActive(true);
+        courtScheduleRepository.save(schedule2);
+
+        CourtSchedule schedule3 = random(CourtSchedule.class);
+        schedule3.setCourtScheduleId("7771a96b-1c5a-45d1-b647-1bec5212cafc");
+        schedule3.setSessionDate(sessionDate);
+        schedule3.setSessionStartTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15)); // 16:00 - closer to 15:30 than schedule1
+        schedule3.setSessionEndTime(convertToDate(LocalTime.of(18, 0), 2024, 7, 15));
+        schedule3.setCourtSession("AD");
+        schedule3.setBusinessType("GAP"); // Same business type as schedule1
+        schedule3.setOuCode(courtCentreId);
+        schedule3.setCourtHouseId(courtCentreId);
+        schedule3.setCourtRoomId(courtRoomId);
+        schedule3.setActive(true);
+        courtScheduleRepository.save(schedule3);
+
+        // when - First call with exact time should fail, then fallback to null sessionStartTime
+        // and find closest schedule within same business type
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), requestedTime, courtRoomId, true);
+
+        // then - Should return the closest schedule with same business type (schedule2 at 10:00, TRFL)
+        // even though schedule1 is also TRFL, schedule2 should be selected because it's closer
+        // and has the same business type as the first result
+        assertNotNull(result);
+        assertEquals("TRFL", result.getBusinessType());
+        // The result should be either schedule1 or schedule2 (both YFL), but schedule2 should be preferred
+        // as it's closer to the requested time (08:00)
+        assertEquals(result.getCourtScheduleId(), schedule2.getCourtScheduleId());
+    }
+
+    @Test
+    public void shouldFindClosestPMCourtScheduleForPolice_WithSameBusinessType_WhenSessionStartTimeIsNull() {
+        // given
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime requestedTime = LocalDateTime.of(2024, 7, 15, 18, 0); // Requested time
+        String courtRoomId = "1234";
+
+        // Create multiple court schedules with different start times and business types
+        CourtSchedule schedule1 = random(CourtSchedule.class);
+        schedule1.setCourtScheduleId("5771a96b-1c5a-45d1-b647-1bec5212cafc");
+        schedule1.setSessionDate(sessionDate);
+        schedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0), 2024, 7, 15)); // 14:00 - closest to 15:30
+        schedule1.setSessionEndTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15));
+        schedule1.setCourtSession("AD");
+        schedule1.setBusinessType("DAFL"); // Same business type as schedule3
+        schedule1.setOuCode(courtCentreId);
+        schedule1.setCourtHouseId(courtCentreId);
+        schedule1.setCourtRoomId(courtRoomId);
+        schedule1.setActive(true);
+        courtScheduleRepository.save(schedule1);
+
+        CourtSchedule schedule2 = random(CourtSchedule.class);
+        schedule2.setCourtScheduleId("6771a96b-1c5a-45d1-b647-1bec5212cafc");
+        schedule2.setSessionDate(sessionDate);
+        schedule2.setSessionStartTime(convertToDate(LocalTime.of(10, 0), 2024, 7, 15)); // 10:00 - further from 15:30
+        schedule2.setSessionEndTime(convertToDate(LocalTime.of(12, 0), 2024, 7, 15));
+        schedule2.setCourtSession("AD");
+        schedule2.setBusinessType("DAFL"); // Different business type
+        schedule2.setOuCode(courtCentreId);
+        schedule2.setCourtHouseId(courtCentreId);
+        schedule2.setCourtRoomId(courtRoomId);
+        schedule2.setActive(true);
+        courtScheduleRepository.save(schedule2);
+
+        CourtSchedule schedule3 = random(CourtSchedule.class);
+        schedule3.setCourtScheduleId("7771a96b-1c5a-45d1-b647-1bec5212cafc");
+        schedule3.setSessionDate(sessionDate);
+        schedule3.setSessionStartTime(convertToDate(LocalTime.of(15, 0), 2024, 7, 15)); // 16:00 - closer to 15:30 than schedule1
+        schedule3.setSessionEndTime(convertToDate(LocalTime.of(17, 0), 2024, 7, 15));
+        schedule3.setCourtSession("AD");
+        schedule3.setBusinessType("NGAP"); // Same business type as schedule1
+        schedule3.setOuCode(courtCentreId);
+        schedule3.setCourtHouseId(courtCentreId);
+        schedule3.setCourtRoomId(courtRoomId);
+        schedule3.setActive(true);
+        courtScheduleRepository.save(schedule3);
+
+        // when - First call with exact time should fail, then fallback to null sessionStartTime
+        // and find closest schedule within same business type
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), requestedTime, courtRoomId, true);
+
+        // then - Should return the closest schedule with same business type (schedule1 at 14:00, DAFL)
+        // even though schedule1 is also DAFL, schedule2 should be selected because it's closer
+        // and has the same business type as the first result
+        assertNotNull(result);
+        assertEquals("DAFL", result.getBusinessType());
+        // The result should be either schedule1 or schedule2 (both DAFL), but schedule1 should be preferred
+        // as it's closer to the requested time (18:00)
+        assertEquals(result.getCourtScheduleId(), schedule1.getCourtScheduleId());
     }
 
     private HearingSlotRequestParam createHearingSlotRequest(CourtSchedule courtSchedule) {
