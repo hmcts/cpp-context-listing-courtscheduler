@@ -2497,4 +2497,521 @@ public class CourtScheduleRepositoryTest {
                 courtSchedule.isSlotBased(),
                 null);
     }
+
+    // Tests for performFallbackSearchForPolice method - covering all 4 fallback conditions
+    @Test
+    public void shouldPerformFallbackSearchForPolice_Condition1_AllParametersSuccessful() {
+        // given - Test 1st condition: All parameters successful
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("YFL"); // Police business type
+        courtSchedule.setOuCode(courtCentreId);
+        courtSchedule.setCourtHouseId(courtCentreId);
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setActive(true);
+        courtScheduleRepository.save(courtSchedule);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then - Should find result on 1st attempt with all parameters
+        assertNotNull(result);
+        assertEquals(courtSchedule.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals("YFL", result.getBusinessType());
+        assertEquals(sessionDate, result.getSessionDate());
+    }
+
+    @Test
+    public void shouldPerformFallbackSearchForPolice_Condition2_RemoveSessionStartTime() {
+        // given - Test 2nd condition: Remove sessionStartTime when 1st attempt fails
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        // Create court schedule with different session start time (so 1st attempt fails)
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(10, 0))); // Different time
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(12, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("YFL"); // Police business type
+        courtSchedule.setOuCode(courtCentreId);
+        courtSchedule.setCourtHouseId(courtCentreId);
+        courtSchedule.setCourtRoomId(courtRoomId);
+        courtSchedule.setActive(true);
+        courtScheduleRepository.save(courtSchedule);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then - Should find result on 2nd attempt (without sessionStartTime) and apply closest time filter
+        assertNotNull(result);
+        assertEquals(courtSchedule.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals("YFL", result.getBusinessType());
+        assertEquals(sessionDate, result.getSessionDate());
+    }
+
+    @Test
+    public void shouldPerformFallbackSearchForPolice_Condition3_RemoveCourtRoomId() {
+        // given - Test 3rd condition: Remove courtRoomId when 1st and 2nd attempts fail
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        // Create court schedule with different court room ID (so 1st and 2nd attempts fail)
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("YFL"); // Police business type
+        courtSchedule.setOuCode(courtCentreId);
+        courtSchedule.setCourtHouseId(courtCentreId);
+        courtSchedule.setCourtRoomId("9999"); // Different court room ID
+        courtSchedule.setActive(true);
+        courtScheduleRepository.save(courtSchedule);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then - Should find result on 3rd attempt (without courtRoomId)
+        assertNotNull(result);
+        assertEquals(courtSchedule.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals("YFL", result.getBusinessType());
+        assertEquals(sessionDate, result.getSessionDate());
+        assertEquals("9999", result.getCourtRoomId());
+    }
+
+    @Test
+    public void shouldPerformFallbackSearchForPolice_Condition4_RemoveBothSessionStartTimeAndCourtRoomId() {
+        // given - Test 4th condition: Remove both sessionStartTime and courtRoomId when 1st, 2nd, 3rd attempts fail
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        // Create court schedule with different session start time AND different court room ID
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(10, 0))); // Different time
+        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(12, 0)));
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setBusinessType("YFL"); // Police business type
+        courtSchedule.setOuCode(courtCentreId);
+        courtSchedule.setCourtHouseId(courtCentreId);
+        courtSchedule.setCourtRoomId("9999"); // Different court room ID
+        courtSchedule.setActive(true);
+        courtScheduleRepository.save(courtSchedule);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then - Should find result on 4th attempt (without both sessionStartTime and courtRoomId) and apply closest time filter
+        assertNotNull(result);
+        assertEquals(courtSchedule.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals("YFL", result.getBusinessType());
+        assertEquals(sessionDate, result.getSessionDate());
+        assertEquals("9999", result.getCourtRoomId());
+    }
+
+    @Test
+    public void shouldPerformFallbackSearchForPolice_WithMultipleSchedules_ApplyClosestTimeFilter() {
+        // given - Test that closest time filter is applied when multiple schedules exist with same business type
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "9999";
+
+        // Create multiple court schedules with same business type but different times
+        CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(10, 0), 2024, 7, 15)); // 4 hours difference
+        courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(12, 0), 2024, 7, 15));
+        courtSchedule1.setCourtSession("AD");
+        courtSchedule1.setBusinessType("YFL"); // Same business type
+        courtSchedule1.setOuCode(courtCentreId);
+        courtSchedule1.setCourtHouseId(courtCentreId);
+        courtSchedule1.setCourtRoomId("9999"); // Different court room ID
+        courtSchedule1.setActive(true);
+        courtScheduleRepository.save(courtSchedule1);
+
+        CourtSchedule courtSchedule2 = random(CourtSchedule.class);
+        courtSchedule2.setSessionDate(sessionDate);
+        courtSchedule2.setSessionStartTime(convertToDate(LocalTime.of(13, 30), 2024, 7, 15)); // 30 minutes difference - closest
+        courtSchedule2.setSessionEndTime(convertToDate(LocalTime.of(15, 30), 2024, 7, 15));
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setBusinessType("YFL"); // Same business type
+        courtSchedule2.setOuCode(courtCentreId);
+        courtSchedule2.setCourtHouseId(courtCentreId);
+        courtSchedule2.setCourtRoomId("9999"); // Different court room ID
+        courtSchedule2.setActive(true);
+        courtScheduleRepository.save(courtSchedule2);
+
+        CourtSchedule courtSchedule3 = random(CourtSchedule.class);
+        courtSchedule3.setSessionDate(sessionDate);
+        courtSchedule3.setSessionStartTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15)); // 2 hours difference
+        courtSchedule3.setSessionEndTime(convertToDate(LocalTime.of(18, 0), 2024, 7, 15));
+        courtSchedule3.setCourtSession("AD");
+        courtSchedule3.setBusinessType("YFL"); // Same business type
+        courtSchedule3.setOuCode(courtCentreId);
+        courtSchedule3.setCourtHouseId(courtCentreId);
+        courtSchedule3.setCourtRoomId("9999"); // Different court room ID
+        courtSchedule3.setActive(true);
+        courtScheduleRepository.save(courtSchedule3);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then - Should find the schedule with closest time (13:30)
+        assertNotNull(result);
+        assertEquals(courtSchedule2.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals("YFL", result.getBusinessType());
+        assertEquals(sessionDate, result.getSessionDate());
+        assertEquals("9999", result.getCourtRoomId());
+    }
+
+    @Test
+    public void shouldPerformFallbackSearchForPolice_WithDifferentBusinessTypes_ReturnFirstSchedule() {
+        // given - Test that when business types differ, first schedule is returned without time comparison
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15);
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 14, 0);
+        String courtRoomId = "1234";
+
+        // Create court schedules with different business types
+        CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(16, 0))); // Further from requested time
+        courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
+        courtSchedule1.setCourtSession("AD");
+        courtSchedule1.setBusinessType("YFL"); // First business type
+        courtSchedule1.setOuCode(courtCentreId);
+        courtSchedule1.setCourtHouseId(courtCentreId);
+        courtSchedule1.setCourtRoomId("9999"); // Different court room ID
+        courtSchedule1.setActive(true);
+        courtScheduleRepository.save(courtSchedule1);
+
+        CourtSchedule courtSchedule2 = random(CourtSchedule.class);
+        courtSchedule2.setSessionDate(sessionDate);
+        courtSchedule2.setSessionStartTime(convertToDate(LocalTime.of(13, 30))); // Closer to requested time
+        courtSchedule2.setSessionEndTime(convertToDate(LocalTime.of(15, 30)));
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setBusinessType("GAP"); // Different business type
+        courtSchedule2.setOuCode(courtCentreId);
+        courtSchedule2.setCourtHouseId(courtCentreId);
+        courtSchedule2.setCourtRoomId("9999"); // Different court room ID
+        courtSchedule2.setActive(true);
+        courtScheduleRepository.save(courtSchedule2);
+
+        // when
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then - Should return first schedule (YFL) even though second (GAP) is closer in time
+        assertNotNull(result);
+        assertEquals(courtSchedule1.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals("YFL", result.getBusinessType());
+        assertEquals(sessionDate, result.getSessionDate());
+        assertEquals("9999", result.getCourtRoomId());
+    }
+
+    @Test
+    public void shouldFilterSchedulesIntoSeparateListsBasedOnNationalBreakoutTime() {
+        // given - Test filtering schedules into separate lists based on national breakout time
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15); // Summer time - national break at 12:00 UTC
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 10, 0); // Before national break
+        String courtRoomId = "9999";
+
+        // Create court schedules with same business type but different times relative to national break
+        // Schedule 1: Before national break (10:00)
+        CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(10, 0))); // Before national break
+        courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(12, 0)));
+        courtSchedule1.setCourtSession("AD");
+        courtSchedule1.setBusinessType("YFL"); // Same business type
+        courtSchedule1.setOuCode(courtCentreId);
+        courtSchedule1.setCourtHouseId(courtCentreId);
+        courtSchedule1.setCourtRoomId("9999");
+        courtSchedule1.setActive(true);
+        courtScheduleRepository.save(courtSchedule1);
+
+        // Schedule 2: Before national break (11:30)
+        CourtSchedule courtSchedule2 = random(CourtSchedule.class);
+        courtSchedule2.setSessionDate(sessionDate);
+        courtSchedule2.setSessionStartTime(convertToDate(LocalTime.of(11, 30))); // Before national break
+        courtSchedule2.setSessionEndTime(convertToDate(LocalTime.of(13, 30)));
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setBusinessType("YFL"); // Same business type
+        courtSchedule2.setOuCode(courtCentreId);
+        courtSchedule2.setCourtHouseId(courtCentreId);
+        courtSchedule2.setCourtRoomId("9999");
+        courtSchedule2.setActive(true);
+        courtScheduleRepository.save(courtSchedule2);
+
+        // Schedule 3: After national break (14:00)
+        CourtSchedule courtSchedule3 = random(CourtSchedule.class);
+        courtSchedule3.setSessionDate(sessionDate);
+        courtSchedule3.setSessionStartTime(convertToDate(LocalTime.of(14, 0))); // After national break
+        courtSchedule3.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
+        courtSchedule3.setCourtSession("AD");
+        courtSchedule3.setBusinessType("YFL"); // Same business type
+        courtSchedule3.setOuCode(courtCentreId);
+        courtSchedule3.setCourtHouseId(courtCentreId);
+        courtSchedule3.setCourtRoomId("9999");
+        courtSchedule3.setActive(true);
+        courtScheduleRepository.save(courtSchedule3);
+
+        // Schedule 4: After national break (15:30)
+        CourtSchedule courtSchedule4 = random(CourtSchedule.class);
+        courtSchedule4.setSessionDate(sessionDate);
+        courtSchedule4.setSessionStartTime(convertToDate(LocalTime.of(15, 30))); // After national break
+        courtSchedule4.setSessionEndTime(convertToDate(LocalTime.of(17, 30)));
+        courtSchedule4.setCourtSession("AD");
+        courtSchedule4.setBusinessType("YFL"); // Same business type
+        courtSchedule4.setOuCode(courtCentreId);
+        courtSchedule4.setCourtHouseId(courtCentreId);
+        courtSchedule4.setCourtRoomId("9999");
+        courtSchedule4.setActive(true);
+        courtScheduleRepository.save(courtSchedule4);
+
+        // when - Request time is before national break, should filter to schedules before break
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then - Should return a schedule from before national break (closest to 10:00)
+        assertNotNull(result);
+        assertEquals("YFL", result.getBusinessType());
+        assertEquals(sessionDate, result.getSessionDate());
+        assertEquals("9999", result.getCourtRoomId());
+        
+        // Verify the returned schedule is from before national break
+        LocalDateTime resultTime = convertToLocalDateTime(result.getSessionStartTime());
+        assertTrue("Result should be before national break time (12:00)", 
+                  resultTime.isBefore(LocalDateTime.of(2024, 7, 15, 12, 0)));
+    }
+
+    @Test
+    public void shouldFilterSchedulesIntoSeparateListsBasedOnNationalBreakoutTime_RequestAfterBreak() {
+        // given - Test filtering schedules when request time is after national break
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15); // Summer time - national break at 12:00 UTC
+        LocalDateTime sessionStartTime = LocalDateTime.of(2024, 7, 15, 15, 0); // After national break
+        String courtRoomId = "9999";
+
+        // Create court schedules with same business type but different times relative to national break
+        // Schedule 1: Before national break (10:00)
+        CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setSessionDate(sessionDate);
+        courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(10, 0), 2024, 7, 15)); // Before national break
+        courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(12, 0), 2024, 7, 15));
+        courtSchedule1.setCourtSession("AD");
+        courtSchedule1.setBusinessType("YFL"); // Same business type
+        courtSchedule1.setOuCode(courtCentreId);
+        courtSchedule1.setCourtHouseId(courtCentreId);
+        courtSchedule1.setCourtRoomId("9999");
+        courtSchedule1.setActive(true);
+        courtScheduleRepository.save(courtSchedule1);
+
+        // Schedule 2: After national break (14:00) - closest to request time
+        CourtSchedule courtSchedule2 = random(CourtSchedule.class);
+        courtSchedule2.setSessionDate(sessionDate);
+        courtSchedule2.setSessionStartTime(convertToDate(LocalTime.of(14, 0), 2024, 7, 15)); // After national break
+        courtSchedule2.setSessionEndTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15));
+        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setBusinessType("YFL"); // Same business type
+        courtSchedule2.setOuCode(courtCentreId);
+        courtSchedule2.setCourtHouseId(courtCentreId);
+        courtSchedule2.setCourtRoomId("9999");
+        courtSchedule2.setActive(true);
+        courtScheduleRepository.save(courtSchedule2);
+
+        // Schedule 3: After national break (16:30)
+        CourtSchedule courtSchedule3 = random(CourtSchedule.class);
+        courtSchedule3.setSessionDate(sessionDate);
+        courtSchedule3.setSessionStartTime(convertToDate(LocalTime.of(16, 30), 2024, 7, 15)); // After national break
+        courtSchedule3.setSessionEndTime(convertToDate(LocalTime.of(18, 30), 2024, 7, 15));
+        courtSchedule3.setCourtSession("AD");
+        courtSchedule3.setBusinessType("YFL"); // Same business type
+        courtSchedule3.setOuCode(courtCentreId);
+        courtSchedule3.setCourtHouseId(courtCentreId);
+        courtSchedule3.setCourtRoomId("9999");
+        courtSchedule3.setActive(true);
+        courtScheduleRepository.save(courtSchedule3);
+
+        // when - Request time is after national break, should use all schedules
+        CourtSchedule result = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), sessionStartTime, courtRoomId, true);
+
+        // then - Should return the closest schedule to request time (14:00)
+        assertNotNull(result);
+        assertEquals(courtSchedule2.getCourtScheduleId(), result.getCourtScheduleId());
+        assertEquals("YFL", result.getBusinessType());
+        assertEquals(sessionDate, result.getSessionDate());
+        assertEquals("9999", result.getCourtRoomId());
+        
+        // Verify the returned schedule is the closest to request time (15:00)
+        LocalDateTime resultTime = convertToLocalDateTime(result.getSessionStartTime());
+        assertEquals("Result should be 14:00 (closest to 15:00)", 
+                    LocalDateTime.of(2024, 7, 15, 14, 0), resultTime);
+    }
+
+    @Test
+    public void shouldDemonstrateNationalBreakoutTimeFilteringLogic() {
+        // given - Test that demonstrates how schedules are filtered into separate lists based on national breakout time
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15); // Summer time - national break at 12:00 UTC
+        String courtRoomId = "9999";
+
+        // Create multiple court schedules with same business type but different times
+        // Morning schedules (before national break)
+        createTestSchedule("MORNING_1", sessionDate, LocalTime.of(9, 0), LocalTime.of(11, 0), "YFL", courtCentreId, courtRoomId);
+        createTestSchedule("MORNING_2", sessionDate, LocalTime.of(11, 30), LocalTime.of(12, 0), "YFL", courtCentreId, courtRoomId);
+        
+        // Afternoon schedules (after national break)
+        createTestSchedule("AFTERNOON_1", sessionDate, LocalTime.of(13, 0), LocalTime.of(15, 0), "YFL", courtCentreId, courtRoomId);
+        createTestSchedule("AFTERNOON_2", sessionDate, LocalTime.of(15, 30), LocalTime.of(17, 30), "YFL", courtCentreId, courtRoomId);
+
+        // Test Case 1: Request time before national break (10:00) - should filter to morning schedules only
+        LocalDateTime requestTimeBeforeBreak = LocalDateTime.of(2024, 7, 15, 10, 0);
+        CourtSchedule resultBeforeBreak = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), requestTimeBeforeBreak, courtRoomId, true);
+
+        assertNotNull("Result should not be null for request before break", resultBeforeBreak);
+        LocalDateTime resultTimeBeforeBreak = convertToLocalDateTime(resultBeforeBreak.getSessionStartTime());
+        assertTrue("Result should be before national break time (12:00) when request is before break", 
+                  resultTimeBeforeBreak.isBefore(LocalDateTime.of(2024, 7, 15, 12, 0)));
+
+        // Test Case 2: Request time after national break (14:00) - should use all schedules
+        LocalDateTime requestTimeAfterBreak = LocalDateTime.of(2024, 7, 15, 14, 0);
+        CourtSchedule resultAfterBreak = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), requestTimeAfterBreak, courtRoomId, true);
+
+        assertNotNull("Result should not be null for request after break", resultAfterBreak);
+        LocalDateTime resultTimeAfterBreak = convertToLocalDateTime(resultAfterBreak.getSessionStartTime());
+        // Should return the closest schedule to 14:00, which would be 13:00 (afternoonSchedule1)
+        assertEquals("Result should be 13:00 (closest to 14:00)", 
+                    LocalDateTime.of(2024, 7, 15, 13, 0), resultTimeAfterBreak);
+
+        // Test Case 3: Request time exactly at national break (12:00) - should use all schedules
+        LocalDateTime requestTimeAtBreak = LocalDateTime.of(2024, 7, 15, 12, 0);
+        CourtSchedule resultAtBreak = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), requestTimeAtBreak, courtRoomId, true);
+
+        assertNotNull("Result should not be null for request at break", resultAtBreak);
+        LocalDateTime resultTimeAtBreak = convertToLocalDateTime(resultAtBreak.getSessionStartTime());
+        // Should return the closest schedule to 12:00, which would be 11:30 (morningSchedule2)
+        assertEquals("Result should be 11:30 (closest to 12:00)", 
+                    LocalDateTime.of(2024, 7, 15, 11, 30), resultTimeAtBreak);
+    }
+
+    @Test
+    public void shouldCreateTwoSeparateFilterListsBasedOnNationalBreakoutTime() {
+        // given - Test the new implementation with two separate filter lists
+        String courtCentreId = "B01LY00";
+        LocalDate sessionDate = LocalDate.of(2024, 7, 15); // Summer time - national break at 12:00 UTC
+        String courtRoomId = "9999";
+
+        // Create schedules with same business type but different times relative to national break
+        // Morning schedules (before national break)
+        createTestSchedule("MORNING_1", sessionDate, LocalTime.of(9, 0), LocalTime.of(11, 0), "YFL", courtCentreId, courtRoomId);
+        createTestSchedule("MORNING_2", sessionDate, LocalTime.of(11, 30), LocalTime.of(12, 0), "YFL", courtCentreId, courtRoomId);
+        
+        // Afternoon schedules (after national break)
+        createTestSchedule("AFTERNOON_1", sessionDate, LocalTime.of(13, 0), LocalTime.of(15, 0), "YFL", courtCentreId, courtRoomId);
+        createTestSchedule("AFTERNOON_2", sessionDate, LocalTime.of(15, 30), LocalTime.of(17, 30), "YFL", courtCentreId, courtRoomId);
+
+        // Test Case 1: Request time before national break (10:00) - should select schedulesBeforeBreak list
+        LocalDateTime requestTimeBeforeBreak = LocalDateTime.of(2024, 7, 15, 10, 0);
+        CourtSchedule resultBeforeBreak = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), requestTimeBeforeBreak, courtRoomId, true);
+
+        assertNotNull("Result should not be null for request before break", resultBeforeBreak);
+        LocalDateTime resultTimeBeforeBreak = convertToLocalDateTime(resultBeforeBreak.getSessionStartTime());
+        assertTrue("Result should be before national break time (12:00) when request is before break", 
+                  resultTimeBeforeBreak.isBefore(LocalDateTime.of(2024, 7, 15, 12, 0)));
+        
+        // Verify it's from the morning schedules (should be 11:30 as closest to 10:00)
+        assertTrue("Result should be from morning schedules", 
+                  resultTimeBeforeBreak.isEqual(LocalDateTime.of(2024, 7, 15, 11, 30)) ||
+                  resultTimeBeforeBreak.isEqual(LocalDateTime.of(2024, 7, 15, 9, 0)));
+
+        // Test Case 2: Request time after national break (14:00) - should select schedulesAfterBreak list
+        LocalDateTime requestTimeAfterBreak = LocalDateTime.of(2024, 7, 15, 14, 0);
+        CourtSchedule resultAfterBreak = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), requestTimeAfterBreak, courtRoomId, true);
+
+        assertNotNull("Result should not be null for request after break", resultAfterBreak);
+        LocalDateTime resultTimeAfterBreak = convertToLocalDateTime(resultAfterBreak.getSessionStartTime());
+        assertTrue("Result should be after or equal to national break time (12:00) when request is after break", 
+                  resultTimeAfterBreak.isAfter(LocalDateTime.of(2024, 7, 15, 12, 0)) ||
+                  resultTimeAfterBreak.isEqual(LocalDateTime.of(2024, 7, 15, 12, 0)));
+        
+        // Verify it's from the afternoon schedules (should be 13:00 as closest to 14:00)
+        assertTrue("Result should be from afternoon schedules", 
+                  resultTimeAfterBreak.isEqual(LocalDateTime.of(2024, 7, 15, 13, 0)) ||
+                  resultTimeAfterBreak.isEqual(LocalDateTime.of(2024, 7, 15, 15, 30)));
+
+        // Test Case 3: Request time exactly at national break (12:00) - should select schedulesAfterBreak list
+        LocalDateTime requestTimeAtBreak = LocalDateTime.of(2024, 7, 15, 12, 30);
+        CourtSchedule resultAtBreak = courtScheduleRepository.searchListHearingSlotFilterCriteria(
+                courtCentreId, sessionDate, sessionDate.plusDays(1), requestTimeAtBreak, courtRoomId, true);
+
+        assertNotNull("Result should not be null for request at break", resultAtBreak);
+        LocalDateTime resultTimeAtBreak = convertToLocalDateTime(resultAtBreak.getSessionStartTime());
+        assertTrue("Result should be after or equal to national break time (12:00) when request is at break", 
+                  resultTimeAtBreak.isAfter(LocalDateTime.of(2024, 7, 15, 12, 0)));
+        
+        // Should be 13:00 (closest afternoon schedule to 12:00)
+        assertEquals("Result should be 13:00 (closest afternoon schedule to 12:00)", 
+                    LocalDateTime.of(2024, 7, 15, 13, 0), resultTimeAtBreak);
+    }
+
+    /**
+     * Helper method to create test court schedules
+     */
+    private CourtSchedule createTestSchedule(String id, LocalDate sessionDate, LocalTime startTime, LocalTime endTime, 
+                                           String businessType, String courtCentreId, String courtRoomId) {
+        CourtSchedule schedule = random(CourtSchedule.class);
+        schedule.setCourtScheduleId(id);
+        schedule.setSessionDate(sessionDate);
+        schedule.setSessionStartTime(convertToDate(startTime, 2024, 7, 15));
+        schedule.setSessionEndTime(convertToDate(endTime, 2024, 7, 15));
+        schedule.setCourtSession("AD");
+        schedule.setBusinessType(businessType);
+        schedule.setOuCode(courtCentreId);
+        schedule.setCourtHouseId(courtCentreId);
+        schedule.setCourtRoomId(courtRoomId);
+        schedule.setActive(true);
+        courtScheduleRepository.save(schedule);
+        return schedule;
+    }
+
+    /**
+     * Helper method to convert Date to LocalDateTime for assertions
+     */
+    private LocalDateTime convertToLocalDateTime(Date date) {
+        if (date == null) {
+            return null;
+        }
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+    }
+
+
 }

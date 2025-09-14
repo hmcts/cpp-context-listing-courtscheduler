@@ -1354,34 +1354,50 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         
         LOGGER.info("National break out time calculated: {} for session date: {}", nationalBreakOutTime, sessionDate);
         
-        // Filter schedules based on national break time logic
-        List<CourtSchedule> filteredSchedules = sameBusinessTypeSchedules;
+        // Create two separate filter lists based on national break out time
+        List<CourtSchedule> schedulesBeforeBreak = sameBusinessTypeSchedules.stream()
+                .filter(schedule -> {
+                    if (schedule.getSessionStartTime() == null) {
+                        return false;
+                    }
+                    LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionStartTime());
+                    return scheduleTime.isBefore(nationalBreakOutTime);
+                })
+                .toList();
+        
+        List<CourtSchedule> schedulesAfterBreak = sameBusinessTypeSchedules.stream()
+                .filter(schedule -> {
+                    if (schedule.getSessionStartTime() == null) {
+                        return false;
+                    }
+                    LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionStartTime());
+                    return scheduleTime.isAfter(nationalBreakOutTime) || scheduleTime.isEqual(nationalBreakOutTime);
+                })
+                .toList();
+        
+        LOGGER.info("Created separate filter lists - Before break: {} schedules, After break: {} schedules", 
+                schedulesBeforeBreak.size(), schedulesAfterBreak.size());
+        
+        // Select the appropriate list based on requested time
+        List<CourtSchedule> selectedSchedules;
         if (requestedTime.isBefore(nationalBreakOutTime)) {
-            filteredSchedules = sameBusinessTypeSchedules.stream()
-                    .filter(schedule -> {
-                        if (schedule.getSessionStartTime() == null) {
-                            return false;
-                        }
-                        LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionStartTime());
-                        return scheduleTime.isBefore(nationalBreakOutTime);
-                    })
-                    .toList();
-            
-            LOGGER.info("Requested time {} is before national break out time {}, filtering to {} schedules before 13:00", 
-                    requestedTime, nationalBreakOutTime, filteredSchedules.size());
+            selectedSchedules = schedulesBeforeBreak;
+            LOGGER.info("Requested time {} is before national break out time {}, selecting {} schedules before break", 
+                    requestedTime, nationalBreakOutTime, selectedSchedules.size());
         } else {
-            LOGGER.info("Requested time {} is after or equal to national break out time {}, using all {} schedules", 
-                    requestedTime, nationalBreakOutTime, filteredSchedules.size());
+            selectedSchedules = schedulesAfterBreak;
+            LOGGER.info("Requested time {} is after or equal to national break out time {}, selecting {} schedules after break", 
+                    requestedTime, nationalBreakOutTime, selectedSchedules.size());
         }
         
-        // If no schedules remain after filtering, use original list
-        if (filteredSchedules.isEmpty()) {
-            LOGGER.info("No schedules remain after national break time filtering, using original list");
-            filteredSchedules = sameBusinessTypeSchedules;
+        // If no schedules in selected list, use all schedules as fallback
+        if (selectedSchedules.isEmpty()) {
+            LOGGER.info("No schedules in selected list, using all {} schedules as fallback", sameBusinessTypeSchedules.size());
+            selectedSchedules = sameBusinessTypeSchedules;
         }
         
-        // Find the schedule with the closest session start time from filtered schedules
-        CourtSchedule closestSchedule = filteredSchedules.stream()
+        // Find the schedule with the closest session start time from selected schedules
+        CourtSchedule closestSchedule = selectedSchedules.stream()
                 .filter(schedule -> schedule.getSessionStartTime() != null)
                 .min((schedule1, schedule2) -> {
                     LocalDateTime time1 = convertToLocalDateTime(schedule1.getSessionStartTime());
@@ -1390,7 +1406,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     long diff2 = Math.abs(Duration.between(requestedTime, time2).toMinutes());
                     return Long.compare(diff1, diff2);
                 })
-                .orElse(filteredSchedules.get(0));
+                .orElse(selectedSchedules.get(0));
         
         LOGGER.info("Found closest court schedule: {} with session start time: {} and business type: {}", 
                 closestSchedule.getCourtScheduleId(), closestSchedule.getSessionStartTime(), closestSchedule.getBusinessType());
