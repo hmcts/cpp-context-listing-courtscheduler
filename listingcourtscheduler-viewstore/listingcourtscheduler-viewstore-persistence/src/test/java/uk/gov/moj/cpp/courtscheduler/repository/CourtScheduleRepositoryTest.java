@@ -2366,7 +2366,7 @@ public class CourtScheduleRepositoryTest {
         schedule1.setSessionDate(sessionDate);
         schedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0), 2024, 7, 15)); // 14:00 - closest to 15:30
         schedule1.setSessionEndTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15));
-        schedule1.setCourtSession("AD");
+        schedule1.setCourtSession("PM");
         schedule1.setBusinessType("TRFL"); // Same business type as schedule3
         schedule1.setOuCode(courtCentreId);
         schedule1.setCourtHouseId(courtCentreId);
@@ -2379,7 +2379,7 @@ public class CourtScheduleRepositoryTest {
         schedule2.setSessionDate(sessionDate);
         schedule2.setSessionStartTime(convertToDate(LocalTime.of(10, 0), 2024, 7, 15)); // 10:00 - further from 15:30
         schedule2.setSessionEndTime(convertToDate(LocalTime.of(12, 0), 2024, 7, 15));
-        schedule2.setCourtSession("AD");
+        schedule2.setCourtSession("AM");
         schedule2.setBusinessType("TRFL"); // Different business type
         schedule2.setOuCode(courtCentreId);
         schedule2.setCourtHouseId(courtCentreId);
@@ -2392,7 +2392,7 @@ public class CourtScheduleRepositoryTest {
         schedule3.setSessionDate(sessionDate);
         schedule3.setSessionStartTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15)); // 16:00 - closer to 15:30 than schedule1
         schedule3.setSessionEndTime(convertToDate(LocalTime.of(18, 0), 2024, 7, 15));
-        schedule3.setCourtSession("AD");
+        schedule3.setCourtSession("PM");
         schedule3.setBusinessType("GAP"); // Same business type as schedule1
         schedule3.setOuCode(courtCentreId);
         schedule3.setCourtHouseId(courtCentreId);
@@ -2429,7 +2429,7 @@ public class CourtScheduleRepositoryTest {
         schedule1.setSessionDate(sessionDate);
         schedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0), 2024, 7, 15)); // 14:00 - closest to 15:30
         schedule1.setSessionEndTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15));
-        schedule1.setCourtSession("AD");
+        schedule1.setCourtSession("PM");
         schedule1.setBusinessType("DAFL"); // Same business type as schedule3
         schedule1.setOuCode(courtCentreId);
         schedule1.setCourtHouseId(courtCentreId);
@@ -2442,7 +2442,7 @@ public class CourtScheduleRepositoryTest {
         schedule2.setSessionDate(sessionDate);
         schedule2.setSessionStartTime(convertToDate(LocalTime.of(10, 0), 2024, 7, 15)); // 10:00 - further from 15:30
         schedule2.setSessionEndTime(convertToDate(LocalTime.of(12, 0), 2024, 7, 15));
-        schedule2.setCourtSession("AD");
+        schedule2.setCourtSession("AM");
         schedule2.setBusinessType("DAFL"); // Different business type
         schedule2.setOuCode(courtCentreId);
         schedule2.setCourtHouseId(courtCentreId);
@@ -2455,7 +2455,7 @@ public class CourtScheduleRepositoryTest {
         schedule3.setSessionDate(sessionDate);
         schedule3.setSessionStartTime(convertToDate(LocalTime.of(15, 0), 2024, 7, 15)); // 16:00 - closer to 15:30 than schedule1
         schedule3.setSessionEndTime(convertToDate(LocalTime.of(17, 0), 2024, 7, 15));
-        schedule3.setCourtSession("AD");
+        schedule3.setCourtSession("PM");
         schedule3.setBusinessType("NGAP"); // Same business type as schedule1
         schedule3.setOuCode(courtCentreId);
         schedule3.setCourtHouseId(courtCentreId);
@@ -2511,7 +2511,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
-        courtSchedule.setCourtSession("AD");
+        courtSchedule.setCourtSession("PM");
         courtSchedule.setBusinessType("YFL"); // Police business type
         courtSchedule.setOuCode(courtCentreId);
         courtSchedule.setCourtHouseId(courtCentreId);
@@ -2543,7 +2543,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(10, 0))); // Different time
         courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(12, 0)));
-        courtSchedule.setCourtSession("AD");
+        courtSchedule.setCourtSession("AM");
         courtSchedule.setBusinessType("YFL"); // Police business type
         courtSchedule.setOuCode(courtCentreId);
         courtSchedule.setCourtHouseId(courtCentreId);
@@ -2575,7 +2575,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
-        courtSchedule.setCourtSession("AD");
+        courtSchedule.setCourtSession("PM");
         courtSchedule.setBusinessType("YFL"); // Police business type
         courtSchedule.setOuCode(courtCentreId);
         courtSchedule.setCourtHouseId(courtCentreId);
@@ -2608,7 +2608,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(10, 0))); // Different time
         courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(12, 0)));
-        courtSchedule.setCourtSession("AD");
+        courtSchedule.setCourtSession("AM");
         courtSchedule.setBusinessType("YFL"); // Police business type
         courtSchedule.setOuCode(courtCentreId);
         courtSchedule.setCourtHouseId(courtCentreId);
@@ -2641,7 +2641,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionDate(sessionDate);
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(10, 0), 2024, 7, 15)); // 4 hours difference
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(12, 0), 2024, 7, 15));
-        courtSchedule1.setCourtSession("AD");
+        courtSchedule1.setCourtSession("AM");
         courtSchedule1.setBusinessType("YFL"); // Same business type
         courtSchedule1.setOuCode(courtCentreId);
         courtSchedule1.setCourtHouseId(courtCentreId);
@@ -2653,7 +2653,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule2.setSessionDate(sessionDate);
         courtSchedule2.setSessionStartTime(convertToDate(LocalTime.of(13, 30), 2024, 7, 15)); // 30 minutes difference - closest
         courtSchedule2.setSessionEndTime(convertToDate(LocalTime.of(15, 30), 2024, 7, 15));
-        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setCourtSession("PM");
         courtSchedule2.setBusinessType("YFL"); // Same business type
         courtSchedule2.setOuCode(courtCentreId);
         courtSchedule2.setCourtHouseId(courtCentreId);
@@ -2665,7 +2665,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule3.setSessionDate(sessionDate);
         courtSchedule3.setSessionStartTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15)); // 2 hours difference
         courtSchedule3.setSessionEndTime(convertToDate(LocalTime.of(18, 0), 2024, 7, 15));
-        courtSchedule3.setCourtSession("AD");
+        courtSchedule3.setCourtSession("PM");
         courtSchedule3.setBusinessType("YFL"); // Same business type
         courtSchedule3.setOuCode(courtCentreId);
         courtSchedule3.setCourtHouseId(courtCentreId);
@@ -2698,7 +2698,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionDate(sessionDate);
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(16, 0))); // Further from requested time
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
-        courtSchedule1.setCourtSession("AD");
+        courtSchedule1.setCourtSession("PM");
         courtSchedule1.setBusinessType("YFL"); // First business type
         courtSchedule1.setOuCode(courtCentreId);
         courtSchedule1.setCourtHouseId(courtCentreId);
@@ -2710,7 +2710,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule2.setSessionDate(sessionDate);
         courtSchedule2.setSessionStartTime(convertToDate(LocalTime.of(13, 30))); // Closer to requested time
         courtSchedule2.setSessionEndTime(convertToDate(LocalTime.of(15, 30)));
-        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setCourtSession("PM");
         courtSchedule2.setBusinessType("GAP"); // Different business type
         courtSchedule2.setOuCode(courtCentreId);
         courtSchedule2.setCourtHouseId(courtCentreId);
@@ -2744,7 +2744,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionDate(sessionDate);
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(10, 0))); // Before national break
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(12, 0)));
-        courtSchedule1.setCourtSession("AD");
+        courtSchedule1.setCourtSession("AM");
         courtSchedule1.setBusinessType("YFL"); // Same business type
         courtSchedule1.setOuCode(courtCentreId);
         courtSchedule1.setCourtHouseId(courtCentreId);
@@ -2757,7 +2757,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule2.setSessionDate(sessionDate);
         courtSchedule2.setSessionStartTime(convertToDate(LocalTime.of(11, 30))); // Before national break
         courtSchedule2.setSessionEndTime(convertToDate(LocalTime.of(13, 30)));
-        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setCourtSession("PM");
         courtSchedule2.setBusinessType("YFL"); // Same business type
         courtSchedule2.setOuCode(courtCentreId);
         courtSchedule2.setCourtHouseId(courtCentreId);
@@ -2770,7 +2770,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule3.setSessionDate(sessionDate);
         courtSchedule3.setSessionStartTime(convertToDate(LocalTime.of(14, 0))); // After national break
         courtSchedule3.setSessionEndTime(convertToDate(LocalTime.of(16, 0)));
-        courtSchedule3.setCourtSession("AD");
+        courtSchedule3.setCourtSession("PM");
         courtSchedule3.setBusinessType("YFL"); // Same business type
         courtSchedule3.setOuCode(courtCentreId);
         courtSchedule3.setCourtHouseId(courtCentreId);
@@ -2783,7 +2783,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule4.setSessionDate(sessionDate);
         courtSchedule4.setSessionStartTime(convertToDate(LocalTime.of(15, 30))); // After national break
         courtSchedule4.setSessionEndTime(convertToDate(LocalTime.of(17, 30)));
-        courtSchedule4.setCourtSession("AD");
+        courtSchedule4.setCourtSession("PM");
         courtSchedule4.setBusinessType("YFL"); // Same business type
         courtSchedule4.setOuCode(courtCentreId);
         courtSchedule4.setCourtHouseId(courtCentreId);
@@ -2821,7 +2821,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionDate(sessionDate);
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(10, 0), 2024, 7, 15)); // Before national break
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(12, 0), 2024, 7, 15));
-        courtSchedule1.setCourtSession("AD");
+        courtSchedule1.setCourtSession("AM");
         courtSchedule1.setBusinessType("YFL"); // Same business type
         courtSchedule1.setOuCode(courtCentreId);
         courtSchedule1.setCourtHouseId(courtCentreId);
@@ -2834,7 +2834,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule2.setSessionDate(sessionDate);
         courtSchedule2.setSessionStartTime(convertToDate(LocalTime.of(14, 0), 2024, 7, 15)); // After national break
         courtSchedule2.setSessionEndTime(convertToDate(LocalTime.of(16, 0), 2024, 7, 15));
-        courtSchedule2.setCourtSession("AD");
+        courtSchedule2.setCourtSession("PM");
         courtSchedule2.setBusinessType("YFL"); // Same business type
         courtSchedule2.setOuCode(courtCentreId);
         courtSchedule2.setCourtHouseId(courtCentreId);
@@ -2847,7 +2847,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule3.setSessionDate(sessionDate);
         courtSchedule3.setSessionStartTime(convertToDate(LocalTime.of(16, 30), 2024, 7, 15)); // After national break
         courtSchedule3.setSessionEndTime(convertToDate(LocalTime.of(18, 30), 2024, 7, 15));
-        courtSchedule3.setCourtSession("AD");
+        courtSchedule3.setCourtSession("PM");
         courtSchedule3.setBusinessType("YFL"); // Same business type
         courtSchedule3.setOuCode(courtCentreId);
         courtSchedule3.setCourtHouseId(courtCentreId);
@@ -2881,12 +2881,12 @@ public class CourtScheduleRepositoryTest {
 
         // Create multiple court schedules with same business type but different times
         // Morning schedules (before national break)
-        createTestSchedule("MORNING_1", sessionDate, LocalTime.of(9, 0), LocalTime.of(11, 0), "YFL", courtCentreId, courtRoomId);
-        createTestSchedule("MORNING_2", sessionDate, LocalTime.of(11, 30), LocalTime.of(12, 0), "YFL", courtCentreId, courtRoomId);
+        createTestSchedule("MORNING_1", sessionDate, LocalTime.of(9, 0), LocalTime.of(11, 0), "YFL", courtCentreId, courtRoomId, "AM");
+        createTestSchedule("MORNING_2", sessionDate, LocalTime.of(11, 30), LocalTime.of(12, 0), "YFL", courtCentreId, courtRoomId, "AM");
         
         // Afternoon schedules (after national break)
-        createTestSchedule("AFTERNOON_1", sessionDate, LocalTime.of(13, 0), LocalTime.of(15, 0), "YFL", courtCentreId, courtRoomId);
-        createTestSchedule("AFTERNOON_2", sessionDate, LocalTime.of(15, 30), LocalTime.of(17, 30), "YFL", courtCentreId, courtRoomId);
+        createTestSchedule("AFTERNOON_1", sessionDate, LocalTime.of(13, 0), LocalTime.of(15, 0), "YFL", courtCentreId, courtRoomId, "PM");
+        createTestSchedule("AFTERNOON_2", sessionDate, LocalTime.of(15, 30), LocalTime.of(17, 30), "YFL", courtCentreId, courtRoomId, "PM");
 
         // Test Case 1: Request time before national break (10:00) - should filter to morning schedules only
         LocalDateTime requestTimeBeforeBreak = LocalDateTime.of(2024, 7, 15, 10, 0);
@@ -2930,12 +2930,12 @@ public class CourtScheduleRepositoryTest {
 
         // Create schedules with same business type but different times relative to national break
         // Morning schedules (before national break)
-        createTestSchedule("MORNING_1", sessionDate, LocalTime.of(9, 0), LocalTime.of(11, 0), "YFL", courtCentreId, courtRoomId);
-        createTestSchedule("MORNING_2", sessionDate, LocalTime.of(11, 30), LocalTime.of(12, 0), "YFL", courtCentreId, courtRoomId);
+        createTestSchedule("MORNING_1", sessionDate, LocalTime.of(9, 0), LocalTime.of(11, 0), "YFL", courtCentreId, courtRoomId, "AM");
+        createTestSchedule("MORNING_2", sessionDate, LocalTime.of(11, 30), LocalTime.of(12, 0), "YFL", courtCentreId, courtRoomId, "AM");
         
         // Afternoon schedules (after national break)
-        createTestSchedule("AFTERNOON_1", sessionDate, LocalTime.of(13, 0), LocalTime.of(15, 0), "YFL", courtCentreId, courtRoomId);
-        createTestSchedule("AFTERNOON_2", sessionDate, LocalTime.of(15, 30), LocalTime.of(17, 30), "YFL", courtCentreId, courtRoomId);
+        createTestSchedule("AFTERNOON_1", sessionDate, LocalTime.of(13, 0), LocalTime.of(15, 0), "YFL", courtCentreId, courtRoomId, "PM");
+        createTestSchedule("AFTERNOON_2", sessionDate, LocalTime.of(15, 30), LocalTime.of(17, 30), "YFL", courtCentreId, courtRoomId, "PM");
 
         // Test Case 1: Request time before national break (10:00) - should select schedulesBeforeBreak list
         LocalDateTime requestTimeBeforeBreak = LocalDateTime.of(2024, 7, 15, 10, 0);
@@ -2986,14 +2986,14 @@ public class CourtScheduleRepositoryTest {
     /**
      * Helper method to create test court schedules
      */
-    private CourtSchedule createTestSchedule(String id, LocalDate sessionDate, LocalTime startTime, LocalTime endTime, 
-                                           String businessType, String courtCentreId, String courtRoomId) {
+    private CourtSchedule createTestSchedule(String id, LocalDate sessionDate, LocalTime startTime, LocalTime endTime,
+                                           String businessType, String courtCentreId, String courtRoomId, String courtSession) {
         CourtSchedule schedule = random(CourtSchedule.class);
         schedule.setCourtScheduleId(id);
         schedule.setSessionDate(sessionDate);
         schedule.setSessionStartTime(convertToDate(startTime, 2024, 7, 15));
         schedule.setSessionEndTime(convertToDate(endTime, 2024, 7, 15));
-        schedule.setCourtSession("AD");
+        schedule.setCourtSession(courtSession);
         schedule.setBusinessType(businessType);
         schedule.setOuCode(courtCentreId);
         schedule.setCourtHouseId(courtCentreId);
