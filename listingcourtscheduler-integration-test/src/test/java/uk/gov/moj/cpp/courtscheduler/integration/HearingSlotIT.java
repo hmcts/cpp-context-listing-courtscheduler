@@ -1486,7 +1486,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule2.setMaxDuration(120);
         courtSchedule2.setSessionDate(LocalDate.of(2025, 5, 13));
         courtSchedule2.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "10:00")); // 10:00 - closer to 08:00
-        courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "13:00"));
+        courtSchedule2.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule2.getSessionDate(), "12:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule2);
         databaseSeeder.saveJudiciarySchedule(createJudiciaryForSchedule(courtSchedule2));
 
@@ -1513,9 +1513,9 @@ class HearingSlotIT extends AbstractIT {
         final JsonObject hearingSlots = jsonObject.getJsonObject("hearingSlots");
         assertThat(hearingSlots.get("hearingId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafc"));
         // Should return courtSchedule1 (first in list) as business types are different, so no time comparison
-        assertThat(hearingSlots.get("courtScheduleId").toString().replaceAll("^\"|\"$", ""), is("1771a96b-1c5a-45d1-b647-1bec5212cafc"));
+        assertThat(hearingSlots.get("courtScheduleId").toString().replaceAll("^\"|\"$", ""), is("2771a96b-1c5a-45d1-b647-1bec5212cafc"));
         assertThat(hearingSlots.get("courtRoomId").toString().replaceAll("^\"|\"$", ""), is("5771a96b-1c5a-45d1-b647-1bec5212cafb"));
-        assertThat(hearingSlots.get("hearingStartTime").toString().replaceAll("^\"|\"$", ""), is("2025-05-13T13:00:00Z"));
+        assertThat(hearingSlots.get("hearingStartTime").toString().replaceAll("^\"|\"$", ""), is("2025-05-13T09:00:00Z"));
         assertThat(hearingSlots.get("duration").toString().replaceAll("^\"|\"$", ""), is("20"));
     }
 
