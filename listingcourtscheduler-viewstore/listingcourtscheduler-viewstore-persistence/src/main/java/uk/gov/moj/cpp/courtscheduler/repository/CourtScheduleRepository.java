@@ -40,7 +40,6 @@ import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -1330,32 +1329,15 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         LOGGER.info("Finding closest court schedule for requested time: {} comparing all schedules with same business type", requestedTime);
         
-        // Get the business type from the first schedule
-        String targetBusinessType = courtSchedules.get(0).getBusinessType();
-        LOGGER.info("Target business type: {}", targetBusinessType);
-        
-        // Filter schedules with the same business type
-        List<CourtSchedule> sameBusinessTypeSchedules = courtSchedules.stream()
-                .filter(schedule -> Objects.equals(schedule.getBusinessType(), targetBusinessType))
-                .toList();
-        
-        LOGGER.info("Found {} schedules with business type: {}", sameBusinessTypeSchedules.size(), targetBusinessType);
-        
-        // If no schedules with same business type, return the first one
-        if (sameBusinessTypeSchedules.isEmpty()) {
-            LOGGER.info("No schedules with same business type found, returning first schedule");
-            return List.of(courtSchedules.get(0));
-        }
-        
         // Calculate national break out time
-        LocalDate sessionDate = sameBusinessTypeSchedules.get(0).getSessionDate();
+        LocalDate sessionDate = courtSchedules.get(0).getSessionDate();
         Date nationalBreakTime = TimezoneUtils.calculateNationalBreakTime(sessionDate);
         LocalDateTime nationalBreakOutTime = convertToLocalDateTime(nationalBreakTime);
         
         LOGGER.info("National break out time calculated: {} for session date: {}", nationalBreakOutTime, sessionDate);
         
         // Create two separate filter lists based on national break out time
-        List<CourtSchedule> schedulesBeforeBreak = sameBusinessTypeSchedules.stream()
+        List<CourtSchedule> schedulesBeforeBreak = courtSchedules.stream()
                 .filter(schedule -> {
                     if (schedule.getSessionStartTime() == null) {
                         return false;
@@ -1365,13 +1347,13 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 })
                 .toList();
         
-        List<CourtSchedule> schedulesAfterBreak = sameBusinessTypeSchedules.stream()
+        List<CourtSchedule> schedulesAfterBreak = courtSchedules.stream()
                 .filter(schedule -> {
-                    if (schedule.getSessionStartTime() == null) {
+                    if (schedule.getSessionEndTime() == null) {
                         return false;
                     }
-                    LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionStartTime());
-                    return scheduleTime.isAfter(nationalBreakOutTime) || scheduleTime.isEqual(nationalBreakOutTime);
+                    LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionEndTime());
+                    return scheduleTime.isAfter(nationalBreakOutTime);
                 })
                 .toList();
         
@@ -1392,21 +1374,12 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         
         // If no schedules in selected list, use all schedules as fallback
         if (selectedSchedules.isEmpty()) {
-            LOGGER.info("No schedules in selected list, using all {} schedules as fallback", sameBusinessTypeSchedules.size());
-            selectedSchedules = sameBusinessTypeSchedules;
+            LOGGER.info("No schedules in selected list, using all {} schedules as fallback", courtSchedules.size());
+            selectedSchedules = courtSchedules;
         }
         
         // Find the schedule with the closest session start time from selected schedules
-        CourtSchedule closestSchedule = selectedSchedules.stream()
-                .filter(schedule -> schedule.getSessionStartTime() != null)
-                .min((schedule1, schedule2) -> {
-                    LocalDateTime time1 = convertToLocalDateTime(schedule1.getSessionStartTime());
-                    LocalDateTime time2 = convertToLocalDateTime(schedule2.getSessionStartTime());
-                    long diff1 = Math.abs(Duration.between(requestedTime, time1).toMinutes());
-                    long diff2 = Math.abs(Duration.between(requestedTime, time2).toMinutes());
-                    return Long.compare(diff1, diff2);
-                })
-                .orElse(selectedSchedules.get(0));
+        CourtSchedule closestSchedule = selectedSchedules.get(0);
         
         LOGGER.info("Found closest court schedule: {} with session start time: {} and business type: {}", 
                 closestSchedule.getCourtScheduleId(), closestSchedule.getSessionStartTime(), closestSchedule.getBusinessType());
