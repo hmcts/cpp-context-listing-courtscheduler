@@ -31,6 +31,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -1232,23 +1233,168 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     private List<CourtSchedule> getCourtSchedulesForPolice(String courtCentreId, LocalDate sessionDate, LocalDate sessionEndDate, LocalDateTime sessionStartTime, String courtRoomId) {
         List<CourtSchedule> resultList;
         do {
-            LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria 1st Call with All params. courtCentreId: {}, sessionDate: {}, sessionStartTime: {}, courtRoomId: {}", courtCentreId, sessionDate, sessionStartTime, courtRoomId);
-            resultList = searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId);
-            if(resultList == null || resultList.isEmpty()) {
-                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria 2nd Call with All params except sessionStartTime. courtCentreId: {}, sessionDate: {}, courtRoomId: {}", courtCentreId, sessionDate, courtRoomId);
-                resultList = searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, courtRoomId);
-            }
-            if(resultList == null || resultList.isEmpty()) {
-                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria 3rd Call with All params except courtRoom. courtCentreId: {}, sessionDate: {}, sessionStartTime: {}", courtCentreId, sessionDate, sessionStartTime);
-                resultList = searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, null);
-            }
-            if(resultList == null || resultList.isEmpty()) {
-                LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria 4th Call with All params except courtRoom and hearingStartTime. courtCentreId: {}, sessionDate: {}", courtCentreId, sessionDate);
-                resultList = searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, null);
-            }
+            resultList = performFallbackSearchForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId);
             sessionDate = sessionDate.plusDays(1);
-        } while ((resultList == null || resultList.isEmpty()) && (sessionEndDate != null && (sessionDate.isBefore(sessionEndDate) || sessionDate.isEqual(sessionEndDate))));
+        } while (isSearchResultEmpty(resultList) && shouldContinueSearch(sessionDate, sessionEndDate));
         return resultList;
+    }
+
+    /**
+     * Performs a fallback search strategy for police court schedules.
+     * Tries multiple search combinations with progressively relaxed criteria.
+     */
+    private List<CourtSchedule> performFallbackSearchForPolice(String courtCentreId, LocalDate sessionDate, LocalDateTime sessionStartTime, String courtRoomId) {
+        // 1st attempt: All parameters
+        List<CourtSchedule> resultList = searchWithLogging("1st Call with All params", 
+            () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId),
+            courtCentreId, sessionDate, sessionStartTime, courtRoomId);
+        
+        if (isSearchResultEmpty(resultList)) {
+            // 2nd attempt: Remove sessionStartTime
+            resultList = searchWithLogging("2nd Call with All params except sessionStartTime",
+                () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, courtRoomId),
+                courtCentreId, sessionDate, null, courtRoomId);
+            resultList = applyClosestTimeFilterIfNeeded(resultList, sessionStartTime);
+        }
+        
+        if (isSearchResultEmpty(resultList)) {
+            // 3rd attempt: Remove courtRoomId
+            resultList = searchWithLogging("3rd Call with All params except courtRoom",
+                () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, null),
+                courtCentreId, sessionDate, sessionStartTime, null);
+        }
+        
+        if (isSearchResultEmpty(resultList)) {
+            // 4th attempt: Remove both sessionStartTime and courtRoomId
+            resultList = searchWithLogging("4th Call with All params except courtRoom and hearingStartTime",
+                () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, null),
+                courtCentreId, sessionDate, null, null);
+            resultList = applyClosestTimeFilterIfNeeded(resultList, sessionStartTime);
+        }
+        
+        return resultList;
+    }
+
+    /**
+     * Executes a search with logging and returns the result.
+     */
+    private List<CourtSchedule> searchWithLogging(String attemptDescription, 
+                                                 java.util.function.Supplier<List<CourtSchedule>> searchFunction,
+                                                 String courtCentreId, LocalDate sessionDate, 
+                                                 LocalDateTime sessionStartTime, String courtRoomId) {
+        LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria {} courtCentreId: {}, sessionDate: {}, sessionStartTime: {}, courtRoomId: {}", 
+                   attemptDescription, courtCentreId, sessionDate, sessionStartTime, courtRoomId);
+        return searchFunction.get();
+    }
+
+    /**
+     * Applies the closest time filter if conditions are met.
+     */
+    private List<CourtSchedule> applyClosestTimeFilterIfNeeded(List<CourtSchedule> resultList, LocalDateTime sessionStartTime) {
+        if (sessionStartTime != null && !isSearchResultEmpty(resultList)) {
+            return findClosestCourtScheduleByTimeAndBusinessType(resultList, sessionStartTime);
+        }
+        return resultList;
+    }
+
+    /**
+     * Checks if the search result is empty or null.
+     */
+    private boolean isSearchResultEmpty(List<CourtSchedule> resultList) {
+        return resultList == null || resultList.isEmpty();
+    }
+
+    /**
+     * Determines if the search should continue based on date constraints.
+     */
+    private boolean shouldContinueSearch(LocalDate currentDate, LocalDate sessionEndDate) {
+        return sessionEndDate != null && (currentDate.isBefore(sessionEndDate) || currentDate.isEqual(sessionEndDate));
+    }
+
+    /**
+     * Finds the closest court schedule by comparing session start times between first and second schedules
+     * if they have the same business type. Returns a list containing the court schedule with the closest 
+     * session start time to the requested time.
+     */
+    private List<CourtSchedule> findClosestCourtScheduleByTimeAndBusinessType(List<CourtSchedule> courtSchedules, LocalDateTime requestedTime) {
+        if (courtSchedules == null || courtSchedules.isEmpty() || requestedTime == null) {
+            return courtSchedules;
+        }
+
+        // If there's only one schedule, return it
+        if (courtSchedules.size() == 1) {
+            LOGGER.info("Only one court schedule found, returning it");
+            return courtSchedules;
+        }
+
+        LOGGER.info("Finding closest court schedule for requested time: {} comparing all schedules with same business type", requestedTime);
+        
+        // Calculate national break out time
+        LocalDate sessionDate = courtSchedules.get(0).getSessionDate();
+        Date nationalBreakTime = TimezoneUtils.calculateNationalBreakTime(sessionDate);
+        LocalDateTime nationalBreakOutTime = convertToLocalDateTime(nationalBreakTime);
+        
+        LOGGER.info("National break out time calculated: {} for session date: {}", nationalBreakOutTime, sessionDate);
+        
+        // Create two separate filter lists based on national break out time
+        List<CourtSchedule> schedulesBeforeBreak = courtSchedules.stream()
+                .filter(schedule -> {
+                    if (schedule.getSessionStartTime() == null) {
+                        return false;
+                    }
+                    LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionStartTime());
+                    return scheduleTime.isBefore(nationalBreakOutTime);
+                })
+                .toList();
+        
+        List<CourtSchedule> schedulesAfterBreak = courtSchedules.stream()
+                .filter(schedule -> {
+                    if (schedule.getSessionEndTime() == null) {
+                        return false;
+                    }
+                    LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionEndTime());
+                    return scheduleTime.isAfter(nationalBreakOutTime);
+                })
+                .toList();
+        
+        LOGGER.info("Created separate filter lists - Before break: {} schedules, After break: {} schedules", 
+                schedulesBeforeBreak.size(), schedulesAfterBreak.size());
+        
+        // Select the appropriate list based on requested time
+        List<CourtSchedule> selectedSchedules;
+        if (requestedTime.isBefore(nationalBreakOutTime)) {
+            selectedSchedules = schedulesBeforeBreak;
+            LOGGER.info("Requested time {} is before national break out time {}, selecting {} schedules before break", 
+                    requestedTime, nationalBreakOutTime, selectedSchedules.size());
+        } else {
+            selectedSchedules = schedulesAfterBreak;
+            LOGGER.info("Requested time {} is after or equal to national break out time {}, selecting {} schedules after break", 
+                    requestedTime, nationalBreakOutTime, selectedSchedules.size());
+        }
+        
+        // If no schedules in selected list, use all schedules as fallback
+        if (selectedSchedules.isEmpty()) {
+            LOGGER.info("No schedules in selected list, using all {} schedules as fallback", courtSchedules.size());
+            selectedSchedules = courtSchedules;
+        }
+        
+        // Find the schedule with the closest session start time from selected schedules
+        CourtSchedule closestSchedule = selectedSchedules.get(0);
+        
+        LOGGER.info("Found closest court schedule: {} with session start time: {} and business type: {}", 
+                closestSchedule.getCourtScheduleId(), closestSchedule.getSessionStartTime(), closestSchedule.getBusinessType());
+            
+        return List.of(closestSchedule);
+    }
+
+    /**
+     * Converts Date to LocalDateTime for comparison
+     */
+    private LocalDateTime convertToLocalDateTime(Date date) {
+        if (date == null) {
+            return null;
+        }
+        return date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
     }
 
     private List<CourtSchedule> getCourtSchedulesForNonPolice(String courtCentreId, LocalDate sessionDate, LocalDateTime sessionStartTime, String courtRoomId) {
