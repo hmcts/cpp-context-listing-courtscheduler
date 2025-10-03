@@ -55,7 +55,7 @@ public class AllocatedHearingsQueryBuilder {
         addCondition(COURT_ROOM_NUMBER.getLabel(), "and cs.court_room_number = :courtRoomNumber ", queryStrBuilder);
         addCondition(BUSINESS_TYPE.getLabel(), "and cs.rota_business_type = :businessType ", queryStrBuilder);
         addCondition(COURT_SESSION.getLabel(), "and cs.court_session = :courtSession ", queryStrBuilder);
-        addCondition(EXACT_HEARING_START_DATETIME.getLabel(), "and al.hearing_start_time = :exactHearingStartDateTime ", queryStrBuilder);
+        addCondition(EXACT_HEARING_START_DATETIME.getLabel(), "and DATE_TRUNC('minute', al.hearing_start_time) = DATE_TRUNC('minute', CAST(:exactHearingStartDateTime as timestamptz)) ", queryStrBuilder);
 
         queryStrBuilder.append("order by cs.session_start, " +
                 "cs.court_house_name, " +
@@ -64,7 +64,7 @@ public class AllocatedHearingsQueryBuilder {
                 "al.hearing_start_time ");
 
         queryStrBuilder.append("LIMIT :pageSize ");
-        queryStrBuilder.append("OFFSET :pageNumber ");
+        queryStrBuilder.append("OFFSET :offset ");
 
         allocatedHearingsQuery = queryStrBuilder.toString();
     }
@@ -74,8 +74,9 @@ public class AllocatedHearingsQueryBuilder {
         pagedQueryParamMap.put(PANEL.getLabel(), stream(hearingIdsReq.panel().split(",")).map(String::trim).toList());
         pagedQueryParamMap.put(SESSION_START_DATE.getLabel(), LocalDate.parse(hearingIdsReq.sessionStartDate()));
         pagedQueryParamMap.put(SESSION_END_DATE.getLabel(), LocalDate.parse(hearingIdsReq.sessionEndDate()));
-        pagedQueryParamMap.put(PAGE_SIZE.getLabel(), Integer.parseInt(hearingIdsReq.pageSize()));
-        pagedQueryParamMap.put(PAGE_NUMBER.getLabel(), Integer.parseInt(hearingIdsReq.pageNumber()) - 1);
+        final int intPageSize = Integer.parseInt(hearingIdsReq.pageSize());
+        pagedQueryParamMap.put(PAGE_SIZE.getLabel(), intPageSize);
+        pagedQueryParamMap.put("offset", (Integer.parseInt(hearingIdsReq.pageNumber()) - 1)* intPageSize);
 
         addOptionalParam(OU_LEVEL2.getLabel(), hearingIdsReq.oucodeL2Code());
         addOptionalParam(OU_CODE.getLabel(), hearingIdsReq.ouCode());
