@@ -931,7 +931,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 addSlotStartTimes(slotStartTimeList, schedule));
 
         final long mappingEndTime = System.nanoTime();
-        LOGGER.info("BRS: Time taken for mapping : {}", (mappingEndTime - mappingStartTime) / 1000000);
+        LOGGER.info("PRF: Time taken for mapping : {}", (mappingEndTime - mappingStartTime) / 1000000);
 
         return domainSchedules;
     }
@@ -959,7 +959,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         query.setParameter("courtScheduleIdList", courtScheduleIdList);
         List<CourtScheduleJudiciary> courtScheduleJudiciaryList = query.getResultList();
         final long endjudiciaryquery = System.nanoTime();
-        LOGGER.info("BRS: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1000000);
+        LOGGER.info("PRF: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1000000);
         return courtScheduleJudiciaryList;
     }
 
@@ -970,7 +970,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .setParameter("courtListingProfileIdList", courtScheduleList.stream().map(CourtSchedule::getListingProfileId).toList())
                 .getResultList();
         final long endjudiciaryquery = System.nanoTime();
-        LOGGER.info("BRS: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1000000);
+        LOGGER.info("PRF: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1000000);
         return courtScheduleJudiciaryList;
     }
 
@@ -1572,7 +1572,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         final long allocatedListingsStartTime = System.nanoTime();
         List<Object[]> queryResultList = query.getResultList();
         final long allocatedListingsEndTime = System.nanoTime();
-        LOGGER.info("BRS: Time taken for allocatedListings : {} ", (allocatedListingsEndTime - allocatedListingsStartTime) / 1000000);
+        LOGGER.info("PRF: Time taken for allocatedListings : {} ", (allocatedListingsEndTime - allocatedListingsStartTime) / 1000000);
 
 
         final Map<String, List<Pair<Timestamp, Integer>>> hearingStartTimeMapByCourtSchedule = new HashMap<>();

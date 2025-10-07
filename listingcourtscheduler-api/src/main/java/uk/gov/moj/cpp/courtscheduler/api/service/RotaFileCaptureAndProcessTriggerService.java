@@ -14,6 +14,8 @@ import java.util.concurrent.Future;
 import javax.ejb.AsyncResult;
 import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
+import javax.ejb.TransactionAttribute;
+import javax.ejb.TransactionAttributeType;
 import javax.inject.Inject;
 
 import com.azure.storage.blob.models.BlobItem;
@@ -38,6 +40,7 @@ public class RotaFileCaptureAndProcessTriggerService {
     private static final String ORIGINAL_BLOB_PREFIX = "lja_";
 
     @Asynchronous
+    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
     public Future<String> captureRotaFilesAndProcessEach(final Requester requester, boolean isForItTest) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
@@ -62,7 +65,10 @@ public class RotaFileCaptureAndProcessTriggerService {
                         referenceDataLoaded = true;
                     }
 
+                    final long downloadStart = System.nanoTime();
                     final BlobContent blobContent = azureBlobClientService.downloadFiles(blobItem);
+                    final long downloadEnd = System.nanoTime();
+                    logger.info("PRF: Downloaded blob {} in {} ms", blobName, (downloadEnd - downloadStart) / 1_000_000);
                     rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);

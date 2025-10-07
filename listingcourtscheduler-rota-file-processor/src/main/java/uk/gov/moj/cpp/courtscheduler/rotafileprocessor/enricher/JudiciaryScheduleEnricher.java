@@ -102,7 +102,7 @@ public class JudiciaryScheduleEnricher {
             }
         }
         final long enrichmentEnd = System.nanoTime();
-        logger.info("BRS: Time taken for judiciary enrichment : {}", (enrichmentEnd - enrichmentStart) / 1000000);
+        logger.info("PRF: Time taken for judiciary enrichment : {}", (enrichmentEnd - enrichmentStart) / 1000000);
 
         if (!errors.isEmpty()) {
             missingMessageLogger.logJudiciaryMissingMessage(errors.values());
