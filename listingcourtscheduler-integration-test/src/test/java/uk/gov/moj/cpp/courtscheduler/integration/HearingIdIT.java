@@ -20,6 +20,7 @@ import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -117,17 +118,10 @@ class HearingIdIT extends AbstractIT {
             assertThat(each.asJsonObject().getInt("hearingDayPosition"), is(1));
         });
 
-        map.put("exactHearingStartDateTime", hearing3StartTime.toInstant(ZoneOffset.UTC).toString());
-        final RequestParams requestParamsWithStartDateTime = getRequestParams(map);
-        final ResponseData tempResponseDataWithStartDateTime = poll(requestParamsWithStartDateTime).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
-
-        assertEquals(OK.getStatusCode(), tempResponseDataWithStartDateTime.getStatus().getStatusCode());
-
-        JsonObject jsonObjectWithStartDateTime = stringToJsonObjectConverter.convert(tempResponseDataWithStartDateTime.getPayload());
-        assertThat(jsonObjectWithStartDateTime.getInt("results"), is(1));
-        assertThat(jsonObjectWithStartDateTime.getInt("pageCount"), is(1));
-        JsonArray hearingIdsWithStartDateTime = jsonObjectWithStartDateTime.getJsonArray("hearingIds");
-        assertThat(hearingIdsWithStartDateTime.getJsonObject(0).getString("hearingId"), is(hearingId3));
+        final Instant exactHearingInstant = hearing3StartTime.toInstant(ZoneOffset.UTC);
+        checkExactStartTimeQuery(map, exactHearingInstant, hearingId3);
+        final Instant exactHearingInstantWithMillis = hearing3StartTime.toInstant(ZoneOffset.UTC).plusSeconds(50).plusMillis(999);
+        checkExactStartTimeQuery(map, exactHearingInstantWithMillis, hearingId3);
     }
 
     @Test
@@ -230,5 +224,19 @@ class HearingIdIT extends AbstractIT {
 
     private RequestParams getRequestParams(final Map<String, Object> map) {
         return getRequestParams(RELATIVE_URL, "application/vnd.courtscheduler.get.hearing.ids+json", SYSTEM_USER_ID, map);
+    }
+
+    private void checkExactStartTimeQuery(final Map<String, Object> map, final Instant exactHearingInstant, final String hearingId3) {
+        map.put("exactHearingStartDateTime", exactHearingInstant.toString());
+        final RequestParams requestParamsWithStartDateTime = getRequestParams(map);
+        final ResponseData tempResponseDataWithStartDateTime = poll(requestParamsWithStartDateTime).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertEquals(OK.getStatusCode(), tempResponseDataWithStartDateTime.getStatus().getStatusCode());
+
+        JsonObject jsonObjectWithStartDateTime = stringToJsonObjectConverter.convert(tempResponseDataWithStartDateTime.getPayload());
+        assertThat(jsonObjectWithStartDateTime.getInt("results"), is(1));
+        assertThat(jsonObjectWithStartDateTime.getInt("pageCount"), is(1));
+        JsonArray hearingIdsWithStartDateTime = jsonObjectWithStartDateTime.getJsonArray("hearingIds");
+        assertThat(hearingIdsWithStartDateTime.getJsonObject(0).getString("hearingId"), is(hearingId3));
     }
 }

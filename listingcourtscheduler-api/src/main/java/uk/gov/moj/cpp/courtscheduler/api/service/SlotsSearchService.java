@@ -50,7 +50,7 @@ public class SlotsSearchService {
         final   long startcourtschedulequery = System.nanoTime();
         final Pair<Integer, List<CourtSchedule>> courtSchedules = courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam);
         final long endcourtschedulequery = System.nanoTime();
-        LOGGER.info("BRS: Time taken for validation : {}", (endcourtschedulequery - startcourtschedulequery) / 1000000);
+        LOGGER.info("PRF: Time taken for validation : {}", (endcourtschedulequery - startcourtschedulequery) / 1000000);
 
         final long startFiltering = System.nanoTime();
         final List<CourtSchedule> filteredCourtSchedules = new ArrayList<>();
@@ -70,7 +70,7 @@ public class SlotsSearchService {
             }
         }
         final long endFiltering = System.nanoTime();
-        LOGGER.info("BRS: Time taken for filtering : {}", (endFiltering - startFiltering) / 1000000);
+        LOGGER.info("PRF: Time taken for filtering : {}", (endFiltering - startFiltering) / 1000000);
         return Pair.of(courtSchedules.getKey(), filteredCourtSchedules);
     }
 
