@@ -55,7 +55,8 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
                     .withRepeatDays(DayOfWeekConverter.convert(jsonObject.getJsonArray(RequestParameterConstant.REPEAT_DAYS.getLabel())))
                     .withAllDaySplit(jsonObject.getBoolean(RequestParameterConstant.ALL_DAY_SPLIT.getLabel(), false))
                     .withMaxDurationForMorning(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_MORNING.getLabel(), 0))
-                    .withMaxDurationForAfternoon(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_AFTERNOON.getLabel(), 0));
+                    .withMaxDurationForAfternoon(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_AFTERNOON.getLabel(), 0))
+                    .withIsDraft(jsonObject.getBoolean(RequestParameterConstant.IS_DRAFT.getLabel(), false));
 
             if (!isNull(jsonObject.get(RequestParameterConstant.IS_OVERBOOKING_ALLOWED.getLabel()))) {
                 sessionBuilder.withIsOverbookingAllowed(jsonObject.getBoolean(RequestParameterConstant.IS_OVERBOOKING_ALLOWED.getLabel()));
@@ -81,7 +82,8 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
                 .withPanelType(jsonObject.getString(RequestParameterConstant.PANEL.getLabel()))
                 .withRepeatDays(DayOfWeekConverter.convert(jsonObject.getJsonArray(RequestParameterConstant.REPEAT_DAYS.getLabel())))
                 .withMaxDurationForMorning(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_MORNING.getLabel(), -1))
-                .withMaxDurationForAfternoon(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_AFTERNOON.getLabel(), -1));
+                .withMaxDurationForAfternoon(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_AFTERNOON.getLabel(), -1))
+                .withIsDraft(jsonObject.getBoolean(RequestParameterConstant.IS_DRAFT.getLabel(), false));
 
         if (!isNull(jsonObject.get(RequestParameterConstant.ALL_DAY_SPLIT.getLabel()))) {
             sessionBuilder.withAllDaySplit(jsonObject.getBoolean(RequestParameterConstant.ALL_DAY_SPLIT.getLabel()));

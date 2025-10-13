@@ -8,7 +8,8 @@
       "duration": 2,
       "panel": "YOUTH",
       "repeatDays": ["Monday", "Wednesday", "Friday"],
-      "isOverbookingAllowed": true
+      "isOverbookingAllowed": true,
+      "isDraft": false
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
@@ -18,7 +19,8 @@
       "duration": 2,
       "panel": "YOUTH",
       "repeatDays": ["Monday", "Wednesday", "Friday"],
-      "isOverbookingAllowed": true
+      "isOverbookingAllowed": true,
+      "isDraft": false
     }
   ],
   "repeatPattern": {

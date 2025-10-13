@@ -29,7 +29,8 @@
       ],
       "sessionStartTime": "14:00",
       "sessionEndTime": "17:00",
-      "isOverbookingAllowed": true
+      "isOverbookingAllowed": true,
+      "isDraft": false
     }
   ],
   "repeatPattern": {

@@ -633,7 +633,8 @@ public class SessionsService {
                 .withSessionStartTime(sessionStartDate)
                 .withSessionEndTime(combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionEndTime()))
                 .withIsOverbookingAllowed(!isNull(session.isOverbookingAllowed()))
-                .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate));
+                .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate))
+                .withIsDraft(!isNull(session.isDraft()) && session.isDraft());
         enrichSession(courtScheduleBuilder, session.getSlotsOrDuration(), requester);
         return courtScheduleBuilder.build();
     }

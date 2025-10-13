@@ -179,6 +179,7 @@ class SlotsSearchServiceTest {
                 .withSessionEndTime(Date.from(LocalTime.parse("13:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1)))
                 .withIsOverbookingAllowed(true)
+                .withIsDraft(false)
                 .build();
     }
 

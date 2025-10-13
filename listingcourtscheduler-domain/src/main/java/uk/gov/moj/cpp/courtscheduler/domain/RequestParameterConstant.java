@@ -53,6 +53,7 @@ public enum RequestParameterConstant {
     IS_POLICE("isPolice"),
     HEARING_DATE("hearingDate"),
     HEARING_START_TIME("hearingStartTime"),
+    IS_DRAFT("isDraft"),
 
     ;
 
