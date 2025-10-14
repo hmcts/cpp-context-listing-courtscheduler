@@ -45,6 +45,8 @@ public class CourtSchedule {
     private Integer totalBookedForAfternoon = 0;
     private boolean isOverbookingAllowed;
 
+    private boolean isDraft;
+
     private Date sessionStartTime;
     private Date sessionEndTime;
     private Date nationalBreakTime;
@@ -86,6 +88,7 @@ public class CourtSchedule {
         this.sessionEndTime = builder.sessionEndTime;
         this.isOverbookingAllowed = builder.isOverbookingAllowed;
         this.nationalBreakTime = builder.nationalBreakTime;
+        this.isDraft = builder.isDraft;
     }
 
     public CourtSchedule() {
@@ -383,6 +386,14 @@ public class CourtSchedule {
         this.nationalBreakTime = nationalBreakTime;
     }
 
+    public boolean isDraft() {
+        return isDraft;
+    }
+
+    public void setIsDraft(boolean isDraft) {
+        this.isDraft = isDraft;
+    }
+
     public static final class CourtScheduleBuilder {
 
         private String courtScheduleId;
@@ -420,6 +431,7 @@ public class CourtSchedule {
         private Integer availableDurationForMorning = 0;
         private Integer availableDurationForAfternoon = 0;
         private boolean isOverbookingAllowed;
+        private boolean isDraft;
 
         private Date sessionStartTime;
         private Date sessionEndTime;
@@ -553,6 +565,10 @@ public class CourtSchedule {
             return isOverbookingAllowed;
         }
 
+        public boolean isDraft() {
+            return isDraft;
+        }
+
         public CourtScheduleBuilder withCourtSchedule(final CourtSchedule courtSchedule) {
             this.courtScheduleId = courtSchedule.courtScheduleId;
             this.sessionDate = courtSchedule.sessionDate;
@@ -589,6 +605,7 @@ public class CourtSchedule {
             this.availableDurationForAfternoon = courtSchedule.availableDurationForAfternoon;
             this.isOverbookingAllowed = courtSchedule.isOverbookingAllowed;
             this.nationalBreakTime = courtSchedule.nationalBreakTime;
+            this.isDraft = courtSchedule.isDraft;
             return this;
         }
 
@@ -779,6 +796,11 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withNationalBreakTime(final Date nationalBreakTime) {
             this.nationalBreakTime = nationalBreakTime;
+            return this;
+        }
+
+        public CourtScheduleBuilder withIsDraft(final boolean isDraft) {
+            this.isDraft = isDraft;
             return this;
         }
 

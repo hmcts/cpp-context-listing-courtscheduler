@@ -44,6 +44,7 @@ public class CourtScheduleMapper {
         entity.setSessionEndTime(domain.getSessionEndTime());
         entity.setIsOverbookingAllowed(domain.isOverbookingAllowed());
         entity.setNationalBreakTime(domain.getNationalBreakTime());
+        entity.setIsDraft(domain.isDraft());
         return entity;
     }
 
@@ -74,6 +75,7 @@ public class CourtScheduleMapper {
                 .withActive(entity.isActive())
                 .withCreatedOn(entity.getCreatedOn())
                 .withNationalBreakTime(entity.getNationalBreakTime())
+                .withIsDraft(entity.getIsDraft())
                 .build();
     }
 }

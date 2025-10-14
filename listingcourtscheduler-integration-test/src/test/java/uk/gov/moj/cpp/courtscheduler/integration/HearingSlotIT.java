@@ -225,6 +225,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setIsDraft(false);
         courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -301,6 +302,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setIsDraft(false);
         courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -651,6 +653,7 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleAMSession.setPanel(PanelTypes.YOUTH.name());
         courtScheduleAMSession.setSessionDate(sessionDateForAMSession);
         courtScheduleAMSession.setOuCode(ouCode);
+        courtScheduleAMSession.setIsDraft(false);
         databaseSeeder.insertCourtSchedule(courtScheduleAMSession);
 
         final CourtSchedule courtSchedulePMSession = RANDOM.nextObject(CourtSchedule.class);
@@ -659,6 +662,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedulePMSession.setPanel(PanelTypes.ADULT.name());
         courtSchedulePMSession.setSessionDate(sessionDateForPMSession);
         courtSchedulePMSession.setOuCode(ouCode);
+        courtSchedulePMSession.setIsDraft(false);
         databaseSeeder.insertCourtSchedule(courtSchedulePMSession);
 
         final CourtSchedule courtScheduleADSession = RANDOM.nextObject(CourtSchedule.class);
@@ -667,6 +671,7 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleADSession.setPanel(PanelTypes.ADULT.name());
         courtScheduleADSession.setSessionDate(sessionDateForADSession);
         courtScheduleADSession.setOuCode(ouCode);
+        courtScheduleADSession.setIsDraft(false);
         databaseSeeder.insertCourtSchedule(courtScheduleADSession);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryForAM = createJudiciaryForSchedule(courtScheduleAMSession);
