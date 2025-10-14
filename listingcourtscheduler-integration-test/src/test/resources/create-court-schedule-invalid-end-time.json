@@ -13,7 +13,8 @@
         "Friday"
       ],
       "sessionStartTime": "10:00",
-      "sessionEndTime": "19:00"
+      "sessionEndTime": "19:00",
+      "jurisdiction": "MAGISTRATES"
     }
   ],
   "repeatPattern": {

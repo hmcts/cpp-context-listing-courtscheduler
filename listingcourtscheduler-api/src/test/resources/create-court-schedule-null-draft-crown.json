@@ -7,10 +7,10 @@
       "businessType": "Business Type 1",
       "duration": 2,
       "panel": "YOUTH",
-      "repeatDays": ["MON", "WED", "FRI"],
+      "repeatDays": ["Monday", "Tuesday", "Friday"],
       "sessionStartTime": "10:00",
       "sessionEndTime": "12:00",
-      "jurisdiction": "MAGISTRATES"
+      "jurisdiction": "CROWN"
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
@@ -19,17 +19,16 @@
       "businessType": "Business Type 2",
       "duration": 3,
       "panel": "ADULT",
-      "repeatDays": ["TUE", "THU"],
-      "sessionStartTime": "13:00",
-      "sessionEndTime": "15:00",
-      "draft": false,
-      "jurisdiction": "CROWN"
+      "repeatDays": ["Tuesday", "Thursday"],
+      "sessionStartTime": "14:00",
+      "sessionEndTime": "17:00",
+      "jurisdiction": "MAGISTRATES"
     }
   ],
   "repeatPattern": {
     "frequency": "EVERY_WEEK",
     "repeatFor": 4,
-    "startDate": "2024-01-01",
-    "endDate": "2024-01-29"
+    "startDate": "2025-01-01",
+    "endDate": "2025-01-29"
   }
 }

@@ -3,7 +3,7 @@
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
       "courtRoomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c",
-      "sessionType": "PM",
+      "sessionType": "AM",
       "businessType": "TRL",
       "duration": 20,
       "panel": "YOUTH",
@@ -12,9 +12,10 @@
         "Wednesday",
         "Friday"
       ],
-      "sessionStartTime": "13:00",
-      "sessionEndTime": "17:00",
-      "jurisdiction": "MAGISTRATES"
+      "sessionStartTime": "10:00",
+      "sessionEndTime": "12:00",
+      "isOverbookingAllowed": true,
+      "jurisdiction": "CROWN"
     }
   ],
   "repeatPattern": {
