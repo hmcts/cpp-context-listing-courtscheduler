@@ -9,7 +9,8 @@
       "panel": "YOUTH",
       "repeatDays": ["Monday", "Wednesday", "Friday"],
       "isOverbookingAllowed": true,
-      "isDraft": false
+      "isDraft": false,
+      "jurisdiction": "MAGISTRATES"
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
@@ -20,7 +21,8 @@
       "panel": "YOUTH",
       "repeatDays": ["Monday", "Wednesday", "Friday"],
       "isOverbookingAllowed": true,
-      "isDraft": false
+      "isDraft": false,
+      "jurisdiction": "MAGISTRATES"
     }
   ],
   "repeatPattern": {

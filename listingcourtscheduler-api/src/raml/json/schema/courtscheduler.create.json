@@ -31,9 +31,20 @@
           "maxDurationForAfternoon": {"type": "integer"},
           "sessionStartTime": {"type": "string"},
           "sessionEndTime": {"type": "string"},
-          "isOverbookingAllowed": {"type": "boolean"}
+          "isOverbookingAllowed": {"type": "boolean"},
+          "isDraft": {"type": "boolean"},
+          "jurisdiction": {"type": "string", "enum": ["CROWN", "MAGISTRATES"]}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "repeatDays"]
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "repeatDays", "jurisdiction" ],
+        "oneOf": [
+          {
+            "properties": { "jurisdiction": { "enum": ["CROWN"] } },
+            "required": ["isDraft"]
+          },
+          {
+            "properties": { "jurisdiction": { "enum": ["MAGISTRATES"] } }
+          }
+        ]
       }
     },
     "repeatPattern": {

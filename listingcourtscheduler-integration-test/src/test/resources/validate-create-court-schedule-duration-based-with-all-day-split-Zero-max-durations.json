@@ -8,7 +8,8 @@
       "duration": 20,
       "panel": "YOUTH",
       "allDaySplit": true,
-      "repeatDays": ["Monday", "Wednesday", "Friday"]
+      "repeatDays": ["Monday", "Wednesday", "Friday"],
+      "jurisdiction": "MAGISTRATES"
     }
   ],
   "sessionToBeAdded":
@@ -21,7 +22,8 @@
     "allDaySplit": true,
     "maxDurationForMorning": 60,
     "maxDurationForAfternoon": 60,
-    "repeatDays": ["Tuesday", "Thursday"]
+    "repeatDays": ["Tuesday", "Thursday"],
+    "jurisdiction": "MAGISTRATES"
   },
   "repeatPattern": {
     "frequency": "EVERY_WEEK",

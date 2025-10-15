@@ -16,7 +16,8 @@
       ],
       "sessionStartTime": "10:00",
       "sessionEndTime": "17:00",
-      "isOverbookingAllowed": true
+      "isOverbookingAllowed": true,
+      "jurisdiction": "MAGISTRATES"
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
@@ -34,7 +35,8 @@
       "sessionStartTime": "10:00",
       "sessionEndTime": "17:00",
       "isOverbookingAllowed": true,
-      "isDraft": false
+      "isDraft": false,
+      "jurisdiction": "MAGISTRATES"
     }
   ],
   "repeatPattern": {

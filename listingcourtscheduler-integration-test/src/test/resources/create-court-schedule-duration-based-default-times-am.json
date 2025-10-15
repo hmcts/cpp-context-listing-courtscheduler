@@ -12,7 +12,8 @@
         "Wednesday",
         "Friday"
       ],
-      "isOverbookingAllowed": true
+      "isOverbookingAllowed": true,
+      "jurisdiction": "MAGISTRATES"
     }
   ],
   "repeatPattern": {
