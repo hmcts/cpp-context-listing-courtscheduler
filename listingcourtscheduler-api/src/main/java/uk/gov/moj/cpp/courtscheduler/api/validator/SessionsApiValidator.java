@@ -83,15 +83,9 @@ public class SessionsApiValidator {
 
         LOGGER.info("Validating CREATE Sessions input : {}", createSessionRequestParam);
 
-        if (repeatFrequency == EVERY_MONTH) {
-            for (Session s : createSessionRequestParam.getSessionList()) {
-                JsonObject err = validateMonthlyCrownIndex(s);
-                if (err != EMPTY_JSON_OBJECT) return err;
-            }
-            if (createSessionRequestParam.getSessionToBeAdded() != null) {
-                JsonObject err = validateMonthlyCrownIndex(createSessionRequestParam.getSessionToBeAdded());
-                if (err != EMPTY_JSON_OBJECT) return err;
-            }
+        if (repeatFrequency == RepeatFrequency.EVERY_MONTH) {
+            JsonObject err = validateMonthlyCrownIndexForRequest(createSessionRequestParam);
+            if (err != EMPTY_JSON_OBJECT) return err;
         }
 
         if (patternStartDate.isBefore(ChronoLocalDate.from(LocalDateTime.now()))) {
@@ -122,10 +116,24 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
+    private JsonObject validateMonthlyCrownIndexForRequest(CreateSessionRequestParam requestParam) {
+        for (Session s : requestParam.getSessionList()) {
+            JsonObject err = validateMonthlyCrownIndex(s);
+            if (!err.isEmpty()) return err;
+        }
+        Session sessionToBeAdded = requestParam.getSessionToBeAdded();
+        if (sessionToBeAdded != null) {
+            JsonObject err = validateMonthlyCrownIndex(sessionToBeAdded);
+            if (!err.isEmpty()) return err;
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
     private JsonObject validateMonthlyCrownIndex(Session session) {
         if (session == null) return EMPTY_JSON_OBJECT;
-        if (!"CROWN".equalsIgnoreCase(session.getJurisdiction())) return EMPTY_JSON_OBJECT;
-
+        if (!"CROWN".equalsIgnoreCase(session.getJurisdiction())) {
+            return EMPTY_JSON_OBJECT;
+        }
         Integer index = session.getIndex();
         if (index == null) {
             return buildErrorResponse("For CROWN jurisdiction with EVERY_MONTH frequency, 'index' is required and must be between 1 and 5.");
