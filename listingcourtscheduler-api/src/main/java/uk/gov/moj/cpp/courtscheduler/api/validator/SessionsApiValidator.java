@@ -11,6 +11,8 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SE
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_LATER_THAN_END_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency.EVERY_MONTH;
+import static uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency.EVERY_WEEK;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
@@ -81,14 +83,19 @@ public class SessionsApiValidator {
 
         LOGGER.info("Validating CREATE Sessions input : {}", createSessionRequestParam);
 
+        if (repeatFrequency == RepeatFrequency.EVERY_MONTH) {
+            JsonObject err = validateMonthlyCrownIndexForRequest(createSessionRequestParam);
+            if (err != EMPTY_JSON_OBJECT) return err;
+        }
+
         if (patternStartDate.isBefore(ChronoLocalDate.from(LocalDateTime.now()))) {
             LOGGER.debug("getSessionsCreateValidation patternStartDate isBefore");
             return getMessageForInvalidDate(patternStartDate.toString());
         }
 
-        if(repeatFrequency == RepeatFrequency.EVERY_WEEK && patternEndDate == null) {
+        if(repeatFrequency == EVERY_WEEK && patternEndDate == null) {
             LOGGER.debug("getSessionsCreateValidation repeatFrequency EVERY_WEEK and patternEndDate null");
-            return getMessageForInvalidParameterCombination(RepeatFrequency.EVERY_WEEK);
+            return getMessageForInvalidParameterCombination(EVERY_WEEK);
         }
 
         final JsonObject result = validateSessionStartEndTime(createSessionRequestParam.getSessionList());
@@ -105,6 +112,34 @@ public class SessionsApiValidator {
             }
             LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
             return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor());
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateMonthlyCrownIndexForRequest(CreateSessionRequestParam requestParam) {
+        for (Session s : requestParam.getSessionList()) {
+            JsonObject err = validateMonthlyCrownIndex(s);
+            if (!err.isEmpty()) return err;
+        }
+        Session sessionToBeAdded = requestParam.getSessionToBeAdded();
+        if (sessionToBeAdded != null) {
+            JsonObject err = validateMonthlyCrownIndex(sessionToBeAdded);
+            if (!err.isEmpty()) return err;
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateMonthlyCrownIndex(Session session) {
+        if (session == null) return EMPTY_JSON_OBJECT;
+        if (!"CROWN".equalsIgnoreCase(session.getJurisdiction())) {
+            return EMPTY_JSON_OBJECT;
+        }
+        Integer index = session.getIndex();
+        if (index == null) {
+            return buildErrorResponse("For CROWN jurisdiction with EVERY_MONTH frequency, 'index' is required and must be between 1 and 5.");
+        }
+        if (index < 1 || index > 5) {
+            return buildErrorResponse("For CROWN jurisdiction with EVERY_MONTH frequency, 'index' must be between 1 and 5.");
         }
         return EMPTY_JSON_OBJECT;
     }
@@ -256,7 +291,7 @@ public class SessionsApiValidator {
 
     private JsonObject getMessageForInvalidParameterCombination(final RepeatFrequency repeatFrequency) {
         String errorMessage = "Invalid combination of parameters: ";
-        if (repeatFrequency == RepeatFrequency.EVERY_WEEK) {
+        if (repeatFrequency == EVERY_WEEK) {
             errorMessage += "For More Than once, you should supply a repeat-for and end date ";
         } else if (repeatFrequency == RepeatFrequency.ONCE) {
             errorMessage += "For Once, you should not supply a repeat-for and end date ";
