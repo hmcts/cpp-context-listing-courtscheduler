@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.util.Date;
+
 public class SessionValidationParams {
     private String courtScheduleId;
     private Integer maxDurationForMorning;
@@ -8,6 +10,8 @@ public class SessionValidationParams {
     private String sessionType;
     private String businessType;
     private Integer slotsOrDuration;
+    private String sessionStartTime;
+    private String sessionEndTime;
 
     public SessionValidationParams(Integer maxDurationForMorning,
                                    Integer maxDurationForAfternoon,
@@ -15,7 +19,9 @@ public class SessionValidationParams {
                                    String sessionType,
                                    String businessType,
                                    final Integer slotsOrDuration,
-                                   final String courtScheduleId) {
+                                   final String courtScheduleId,
+                                   final String sessionStartTime,
+                                   final String sessionEndTime) {
         this.maxDurationForMorning = maxDurationForMorning;
         this.maxDurationForAfternoon = maxDurationForAfternoon;
         this.isAllDaySplit = isAllDaySplit;
@@ -23,6 +29,8 @@ public class SessionValidationParams {
         this.businessType = businessType;
         this.slotsOrDuration = slotsOrDuration;
         this.courtScheduleId = courtScheduleId;
+        this.sessionStartTime = sessionStartTime;
+        this.sessionEndTime = sessionEndTime;
     }
 
     // Getters and setters
@@ -80,5 +88,21 @@ public class SessionValidationParams {
 
     public void setCourtScheduleId(final String courtScheduleId) {
         this.courtScheduleId = courtScheduleId;
+    }
+
+    public String getSessionStartTime() {
+        return sessionStartTime;
+    }
+
+    public void setSessionStartTime(final String sessionStartTime) {
+        this.sessionStartTime = sessionStartTime;
+    }
+
+    public String getSessionEndTime() {
+        return sessionEndTime;
+    }
+
+    public void setSessionEndTime(final String sessionEndTime) {
+        this.sessionEndTime = sessionEndTime;
     }
 }

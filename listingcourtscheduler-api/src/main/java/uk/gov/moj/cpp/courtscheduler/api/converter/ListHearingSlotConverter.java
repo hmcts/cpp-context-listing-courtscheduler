@@ -17,10 +17,8 @@ public class ListHearingSlotConverter implements Converter<String, RequestedSlot
     public RequestedSlots convert(final String payload) {
 
         try {
-            final RequestedSlots transformed = mapper.readValue(payload, new TypeReference<>() {
+            return mapper.readValue(payload, new TypeReference<>() {
             });
-
-            return transformed;
 
         } catch (IOException iox) {
             throw new ConverterException(format("Error while converting list item %s to hearings", payload), iox);

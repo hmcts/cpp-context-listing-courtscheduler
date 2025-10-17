@@ -10,6 +10,7 @@ public class Hearing {
     private String hearingStartTime;
     private Integer duration;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
+    private String source;
 
     public String getHearingId() {
         return hearingId;
@@ -51,6 +52,14 @@ public class Hearing {
         this.judiciaries = judiciaries;
     }
 
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -59,12 +68,13 @@ public class Hearing {
                 Objects.equals(courtScheduleId, that.courtScheduleId) &&
                 Objects.equals(hearingStartTime, that.hearingStartTime) &&
                 Objects.equals(duration, that.duration) &&
-                Objects.equals(judiciaries, that.judiciaries);
+                Objects.equals(judiciaries, that.judiciaries) &&
+                Objects.equals(source, that.source);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(hearingId, courtScheduleId, hearingStartTime, duration, judiciaries);
+        return Objects.hash(hearingId, courtScheduleId, hearingStartTime, duration, judiciaries, source);
     }
 
     @Override
@@ -75,6 +85,7 @@ public class Hearing {
                 ", hearingStartTime='" + hearingStartTime + '\'' +
                 ", duration=" + duration +
                 ", judiciaries=" + judiciaries +
+                ", source='" + source + '\'' +
                 '}';
     }
 }

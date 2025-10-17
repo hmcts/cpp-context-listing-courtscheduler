@@ -20,6 +20,7 @@ import java.util.List;
 
 import javax.inject.Inject;
 
+import jakarta.transaction.Transactional;
 import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
 import org.junit.After;
 import org.junit.Ignore;
@@ -142,6 +143,7 @@ public class CourtScheduleJudiciaryRepositoryTest {
 
     @Ignore("when removing transactional ut not working, otherwise it receives an exception whilst runtime")
     @Test
+    @Transactional
     public void shouldDeleteSchedules() {
         final String courtScheduleId1 = randomUUID().toString();
         final CourtScheduleJudiciary courtScheduleJudiciary1 = random(CourtScheduleJudiciary.class);
@@ -166,9 +168,9 @@ public class CourtScheduleJudiciaryRepositoryTest {
         assertTrue(isEmpty(expectedCourtScheduleJudiciary2));
     }
 
-
     @Ignore("when we remove transactional annotation, then it is causing the assertion to fail - will fix later")
     @Test
+    @Transactional
     public void shouldDeleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod() {
         final String courtScheduleId1 = randomUUID().toString();
         final String ouCode1 = "B53DT00";

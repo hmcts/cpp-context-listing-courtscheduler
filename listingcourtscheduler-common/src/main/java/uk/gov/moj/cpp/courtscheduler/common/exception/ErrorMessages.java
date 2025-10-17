@@ -18,11 +18,15 @@ public class ErrorMessages {
     public static final String BUSINESS_TYPE_NOT_FOUND = "Business Type not found";
     public static final String COURTROOM_NOT_FOUND = "Court Room not found";
     public static final String AM_SESSION_END_TIME_CANNOT_EXCEED = "AM Session End Time cannot exceed 13:00";
-    public static final String SESSION_START_TIME_CANNOT_BE_EARLIER = "%s Session Start Time cannot be earlier than 00:01";
+    public static final String SESSION_START_TIME_CANNOT_BE_EARLIER = "%s Session Start Time cannot be earlier than 01:00";
     public static final String PM_SESSION_START_TIME_CANNOT_BE_EARLIER = "PM Session Start Time cannot be earlier than 14:00";
-    public static final String SESSION_END_TIME_CANNOT_BE_LATER = "%s Session End Time cannot be later than 23:59";
+    public static final String SESSION_END_TIME_CANNOT_BE_LATER = "%s Session End Time cannot be later than 23:00";
     public static final String SESSION_START_TIME_CANNOT_BE_LATER_THAN_END_TIME = "Session Start Time cannot be later than Session End Time";
     public static final String MAX_DURATION_LESS_THAN_TOTAL_BOOKED = "Maximum duration cannot be less than total booked duration";
     public static final String MAX_DURATION_FOR_MORNING_LESS_THAN_TOTAL_BOOKED_FOR_MORNING = "Maximum duration for morning cannot be less than total booked duration for morning";
     public static final String MAX_DURATION_FOR_AFTERNOON_LESS_THAN_TOTAL_BOOKED_FOR_AFTERNOON = "Maximum duration for afternoon cannot be less than total booked duration for afternoon";
+    public static final String MIN_HEARING_TIME_AFTER_SESSION_START_TIME = "Session Start Time can not be updated to a time that is later than the minimum hearing time";
+    public static final String MAX_HEARING_TIME_BEFORE_SESSION_END_TIME = "Session Start Time can not be updated to a time that is before than the maximum hearing time";
+    public static final String SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME = "Session Start Time can not be updated to a time that is after hearing time";
+    public static final String SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME = "Session Start Time can not be updated to a time that is before than the maximum hearing time";
 }

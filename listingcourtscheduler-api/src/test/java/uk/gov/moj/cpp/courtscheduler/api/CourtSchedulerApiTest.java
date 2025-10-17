@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
@@ -42,6 +43,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -63,10 +65,12 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatusList;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -134,6 +138,8 @@ class CourtSchedulerApiTest {
     private HearingSlotsApiValidator hearingSlotsApiValidator;
     @Mock
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
+    @Mock
+    private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
 
     @Mock
     private Function<Object, JsonEnvelope> function;
@@ -208,6 +214,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope deleteCourtScheduleJsonEnvelope = createEnvelope(requestName, jsonObject);
 
         when(enveloper.withMetadataFrom(deleteCourtScheduleJsonEnvelope, requestName)).thenReturn(function);
+        when(sessionsConverter.convert(anyString())).thenReturn(new SessionsConverter().convert(payload));
 
         courtSchedulerApi.deleteCourtSchedule(deleteCourtScheduleJsonEnvelope);
 
@@ -318,14 +325,14 @@ class CourtSchedulerApiTest {
         when(listHearingSlotConverter.convert(anyString())).thenReturn(wrapper);
 
         when(hearingSlotsApiValidator.listHearingSlotsValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
-        when(slotsUpdateService.updateListHearingSlots(any())).thenReturn(new ListHearingSlotsResponse());
+        when(slotsUpdateService.listHearingSlots(any())).thenReturn(new ListHearingSlotsResponse());
 
         JsonObject jsonResponse = Json.createObjectBuilder().add("any", "any").build();
         when(objectToJsonObjectConverter.convert(any())).thenReturn(jsonResponse);
 
         courtSchedulerApi.listHearingSlotsInCourtSchedules(updateRequestedListHearingSlotsEnvelope);
 
-        verify(slotsUpdateService, atLeastOnce()).updateListHearingSlots(wrapper);
+        verify(slotsUpdateService, atLeastOnce()).listHearingSlots(wrapper);
         verify(enveloper, atLeastOnce()).withMetadataFrom(updateRequestedListHearingSlotsEnvelope, responseName);
     }
 
@@ -548,10 +555,9 @@ class CourtSchedulerApiTest {
         final String requestName = "courtscheduler.oucode.migrate";
 
         final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
-
+        when(ouCodeMigrateConverter.convert(anyString())).thenReturn(new OuCodeMigrateRequest());
         when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
         when(sessionsService.migrateOuCodes(any())).thenReturn(Result.SUCCESS());
-
         courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(migrateOuCodeEnvelope, requestName);
@@ -572,6 +578,124 @@ class CourtSchedulerApiTest {
 
         //verify it returns bad request with error message
         assertThrows(ValidationException.class, () -> courtSchedulerApi.validateCreateCourtSchedule(validationEnvelope));
+    }
+
+    @Test
+    void shouldReturnFailureWhenSessionAvailabilityValidationFails() throws IOException {
+        // Load JSON payload for session availability validation
+        String payload = FileUtil.getPayload("courtscheduler.validate.session.availability-id-not-found.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.validate.session.availability";
+
+        // Create a JsonEnvelope using the request payload
+        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonObject);
+
+        // Define expected validation failure response
+        final JsonObject validationResult = createObjectBuilder()
+                .add("errorMessage", "Court Schedule Ids not found")
+                .build();
+
+        // Mock the behavior of request param converter
+        ValidateSessionAvailabilityRequestParam convertedParam = mock(ValidateSessionAvailabilityRequestParam.class);
+        when(validateSessionAvailabilityRequestParamConverter.convert(any())).thenReturn(convertedParam);
+
+        // Mock the validator to return an error response
+        when(sessionsApiValidator.getSessionsAvailabilityValidation(any())).thenReturn(validationResult);
+
+        // Verify that the method throws a ValidationException when an error occurs
+        assertThrows(ValidationException.class, () ->
+                courtSchedulerApi.validateSessionAvailabilityCourtSchedule(validationEnvelope)
+        );
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenCourtScheduleIdsAreEmpty() throws IOException {
+        // Given a request with empty court schedule IDs
+        String payload = FileUtil.getPayload("courtscheduler.validate.session.availability-empty.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final JsonEnvelope validationEnvelope = createEnvelope("courtscheduler.validate.session.availability", jsonObject);
+
+        final JsonObject validationResult = createObjectBuilder()
+                .add("errorMessage", "Court Schedule Ids cannot be empty")
+                .build();
+
+        when(validateSessionAvailabilityRequestParamConverter.convert(any())).thenReturn(mock(ValidateSessionAvailabilityRequestParam.class));
+        when(sessionsApiValidator.getSessionsAvailabilityValidation(any())).thenReturn(validationResult);
+
+        assertThrows(ValidationException.class, () ->
+                courtSchedulerApi.validateSessionAvailabilityCourtSchedule(validationEnvelope));
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenSchedulesAreMixedSlotAndDurationBased() throws IOException {
+        // Given a request with mixed slot-based and duration-based schedules
+        String payload = FileUtil.getPayload("courtscheduler.validate.session.availability-mixed.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final JsonEnvelope validationEnvelope = createEnvelope("courtscheduler.validate.session.availability", jsonObject);
+
+        final JsonObject validationResult = createObjectBuilder()
+                .add("errorMessage", "All court schedules should be either slot-based or duration-based")
+                .build();
+
+        when(validateSessionAvailabilityRequestParamConverter.convert(any())).thenReturn(mock(ValidateSessionAvailabilityRequestParam.class));
+        when(sessionsApiValidator.getSessionsAvailabilityValidation(any())).thenReturn(validationResult);
+
+        assertThrows(ValidationException.class, () ->
+                courtSchedulerApi.validateSessionAvailabilityCourtSchedule(validationEnvelope));
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenSlotBasedScheduleIsFullyBooked() throws IOException {
+        // Given a request where slot-based court schedules are fully booked
+        String payload = FileUtil.getPayload("courtscheduler.validate.session.availability-fullybooked.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final JsonEnvelope validationEnvelope = createEnvelope("courtscheduler.validate.session.availability", jsonObject);
+
+        final JsonObject validationResult = createObjectBuilder()
+                .add("errorMessage", "Court Schedule Id: 12345678-90ab-cdef-0123-456789abcdef is fully booked")
+                .build();
+
+        when(validateSessionAvailabilityRequestParamConverter.convert(any())).thenReturn(mock(ValidateSessionAvailabilityRequestParam.class));
+        when(sessionsApiValidator.getSessionsAvailabilityValidation(any())).thenReturn(validationResult);
+
+        assertThrows(ValidationException.class, () ->
+                courtSchedulerApi.validateSessionAvailabilityCourtSchedule(validationEnvelope));
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenDurationBasedScheduleHasInsufficientAvailability() throws IOException {
+        // Given a request where duration-based schedules do not have enough available time
+        String payload = FileUtil.getPayload("courtscheduler.validate.session.availability-insufficient-duration.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final JsonEnvelope validationEnvelope = createEnvelope("courtscheduler.validate.session.availability", jsonObject);
+
+        final JsonObject validationResult = createObjectBuilder()
+                .add("errorMessage", "Not enough available durations for all court schedules")
+                .build();
+
+        when(validateSessionAvailabilityRequestParamConverter.convert(any())).thenReturn(mock(ValidateSessionAvailabilityRequestParam.class));
+        when(sessionsApiValidator.getSessionsAvailabilityValidation(any())).thenReturn(validationResult);
+
+        assertThrows(ValidationException.class, () ->
+                courtSchedulerApi.validateSessionAvailabilityCourtSchedule(validationEnvelope));
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenAllDaySplitHasInsufficientSessionDuration() throws IOException {
+        // Given a request where all-day split sessions do not have sufficient session duration
+        String payload = FileUtil.getPayload("courtscheduler.validate.session.availability-allday-insufficient.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final JsonEnvelope validationEnvelope = createEnvelope("courtscheduler.validate.session.availability", jsonObject);
+
+        final JsonObject validationResult = createObjectBuilder()
+                .add("errorMessage", "Requested duration must fit within either the morning or afternoon session for all-day split schedules.")
+                .build();
+
+        when(validateSessionAvailabilityRequestParamConverter.convert(any())).thenReturn(mock(ValidateSessionAvailabilityRequestParam.class));
+        when(sessionsApiValidator.getSessionsAvailabilityValidation(any())).thenReturn(validationResult);
+
+        assertThrows(ValidationException.class, () ->
+                courtSchedulerApi.validateSessionAvailabilityCourtSchedule(validationEnvelope));
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {

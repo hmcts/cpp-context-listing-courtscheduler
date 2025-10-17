@@ -17,16 +17,24 @@ import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_DURATION_FOR_AFTERNOON_LESS_THAN_TOTAL_BOOKED_FOR_AFTERNOON;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_DURATION_FOR_MORNING_LESS_THAN_TOTAL_BOOKED_FOR_MORNING;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_HEARING_TIME_BEFORE_SESSION_END_TIME;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MIN_HEARING_TIME_AFTER_SESSION_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SPLIT_ONLY_APPLIES_DURATION_BASED_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getRandomFutureDateWithinNextYear;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.localDateToDateWithTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.getUtcTimeStringForDate;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -38,6 +46,7 @@ import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Date;
 import java.util.List;
@@ -63,10 +72,12 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String DELETE_URL = "/delete";
     private static final String SEARCH_BY_ID_URL = "/search.court-schedules-by-id";
     private static final String VALIDATE_URL = "/validate";
+    private static final String VALIDATE_SESSION_AVAILABILITY_URL = "/validate-session-availability";
     private static final String OUCODE_MIGRATE_URL = "/oucode/migrate";
 
     private static final String COURT_SCHEDULE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
     private static final String COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
+    private static final String COURT_SCHEDULE_VALIDATE_SESSION_AVAILABILITY_CONTENT_TYPE = "application/vnd.courtscheduler.validate.session.availability+json";
     private static final String COURT_SCHEDULE_UPDATE_CONTENT_TYPE = "application/vnd.courtscheduler.update+json";
     private static final String COURT_SCHEDULE_GET_CONTENT_TYPE = "application/vnd.courtscheduler.get+json";
     private static final String COURT_SCHEDULE_SEARCH_COURTSCHEDULES_BY_ID_CONTENT_TYPE = "application/vnd.courtscheduler.search.court-schedules-by-id+json";
@@ -96,6 +107,9 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithSessionTimes() {
+        final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        final java.util.Date expectedStartTime = java.util.Date.from(startDate.atTime(9, 0).toInstant(ZoneOffset.UTC));
+        final java.util.Date expectedEndTime = java.util.Date.from(startDate.atTime(11, 0).toInstant(ZoneOffset.UTC));
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -105,6 +119,31 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
         assertThat(courtSchedule.getSessionStartTime(), is(notNullValue()));
         assertThat(courtSchedule.getSessionEndTime(), is(notNullValue()));
+        assertThat(courtSchedule.getSessionStartTime(), is(expectedStartTime));
+        assertThat(courtSchedule.getSessionEndTime(), is(expectedEndTime));
+    }
+
+    @Test
+    void shouldCreateCourtScheduleWithSessionTimes_AcrossSummerAndWinterTime() {
+        final LocalDate startDate = LocalDate.now().withMonth(10).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        final java.util.Date expectedStartTimeFirstWeek = java.util.Date.from(startDate.atTime(9, 0).toInstant(ZoneOffset.UTC));
+        final java.util.Date expectedEndTimeFirstWeek = java.util.Date.from(startDate.atTime(11, 0).toInstant(ZoneOffset.UTC));
+        final java.util.Date expectedStartTimeLastWeek = java.util.Date.from(startDate.plusDays(56).atTime(10, 0).toInstant(ZoneOffset.UTC));
+        final java.util.Date expectedEndTimeLastWeek = java.util.Date.from(startDate.plusDays(56).atTime(12, 0).toInstant(ZoneOffset.UTC));
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload_testBSTToUTC("create-court-schedule-duration-based-bst-timings.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+        CourtSchedule courtScheduleFirst = courtSchedules.get(0);
+        CourtSchedule courtScheduleLast = courtSchedules.get(courtSchedules.size() - 1);
+        assertThat(courtScheduleFirst.getCourtScheduleId(), is(notNullValue()));
+        assertThat(courtScheduleFirst.getSessionStartTime(), is(notNullValue()));
+        assertThat(courtScheduleFirst.getSessionEndTime(), is(notNullValue()));
+        assertThat(courtScheduleFirst.getSessionStartTime(), is(expectedStartTimeFirstWeek));
+        assertThat(courtScheduleFirst.getSessionEndTime(), is(expectedEndTimeFirstWeek));
+        assertThat(courtScheduleLast.getSessionStartTime(), is(expectedStartTimeLastWeek));
+        assertThat(courtScheduleLast.getSessionEndTime(), is(expectedEndTimeLastWeek));
     }
 
     @Test
@@ -192,6 +231,36 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldReturnErrorWhenAMSessionStartTimeIsMidnight() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-invalid-start-time-am.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString(SESSION_START_TIME_CANNOT_BE_EARLIER.formatted(AM_SESSION)));
+    }
+
+    @Test
+    void shouldReturnErrorWhenADSessionStartTimeIsMidnight() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-invalid-start-time-ad.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString(SESSION_START_TIME_CANNOT_BE_EARLIER.formatted(ALL_DAY)));
+    }
+
+    @Test
+    void shouldReturnErrorWhenADSessionEndTimeIsAfter23() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-invalid-end-time-ad.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString(SESSION_END_TIME_CANNOT_BE_LATER.formatted(ALL_DAY)));
+    }
+
+    @Test
     void shouldCreateDurationBasedScheduleForAllDaySplitSlot() {
         final Integer maxDurationForMorningSlot1 = 120;
         final Integer maxDurationForAfternoonSlot1 = 60;
@@ -276,6 +345,151 @@ class CourtSchedulerIT extends AbstractIT {
         final String errorResponseMessage = response.readEntity(String.class);
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         assertThat(errorResponseMessage, is("{\"error\":\"All day split flag should be sent for All Day(AD) session\"}"));
+    }
+
+    @Test
+    void shouldReturn400WhenAllDaySplitHasInsufficientSessionDuration() throws SQLException {
+        final CourtSchedule courtScheduleDuration = RANDOM.nextObject(CourtSchedule.class);
+        final Integer maxDurationForMorning = 120;
+        final Integer maxDurationForAfternoon = 60;
+        final UUID hearingIdForMorning = UUID.randomUUID();
+        final UUID bookingIdForMorning = UUID.randomUUID();
+        final UUID hearingIdForAfternoon = UUID.randomUUID();
+        final UUID bookingIdForAfternoon = UUID.randomUUID();
+        courtScheduleDuration.setBusinessType("TRL");
+        courtScheduleDuration.setSlotBased(false);
+        courtScheduleDuration.setMaxDuration(0);
+        courtScheduleDuration.setAvailableDuration(200);
+        courtScheduleDuration.setSupportAdSplit(true);
+        courtScheduleDuration.setCourtSession(ALL_DAY);
+        courtScheduleDuration.setMaxAdMorningDuration(maxDurationForMorning);
+        courtScheduleDuration.setTotalBookedMorning(120);
+        courtScheduleDuration.setTotalBookedAfternoon(60);
+        courtScheduleDuration.setMaxAdAfternoonDuration(maxDurationForAfternoon);
+        courtScheduleDuration.setCourtScheduleId("abcdef12-3456-7890-abcd-ef1234567890");
+        courtScheduleDuration.setSessionDate(getRandomFutureDateWithinNextYear());
+        courtScheduleDuration.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "10:00"));
+        courtScheduleDuration.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "16:00"));
+        databaseSeeder.insertCourtSchedule(courtScheduleDuration);
+
+        createAllocatedListing(courtScheduleDuration, hearingIdForMorning, bookingIdForMorning, 120, "10:00");
+        createAllocatedListing(courtScheduleDuration, hearingIdForAfternoon, bookingIdForAfternoon, 60, "15:00");
+
+        final String validateCourtSchedulePayload = getPayload("courtscheduler.validate.session.availability-allday-insufficient.json");
+        final Response response = postCommand(VALIDATE_SESSION_AVAILABILITY_URL, COURT_SCHEDULE_VALIDATE_SESSION_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, validateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString("Requested duration must fit within either the morning or afternoon session"));
+    }
+
+    @Test
+    void shouldReturn400WhenDurationBasedScheduleHasInsufficientAvailability() throws SQLException {
+        final CourtSchedule courtScheduleDuration = RANDOM.nextObject(CourtSchedule.class);
+        final Integer maxDurationForMorning = 120;
+        final Integer maxDurationForAfternoon = 60;
+        courtScheduleDuration.setBusinessType("TRL");
+        courtScheduleDuration.setSlotBased(false);
+        courtScheduleDuration.setMaxDuration(0);
+        courtScheduleDuration.setAvailableDuration(0);
+        courtScheduleDuration.setSupportAdSplit(true);
+        courtScheduleDuration.setCourtSession(ALL_DAY);
+        courtScheduleDuration.setMaxAdMorningDuration(maxDurationForMorning);
+        courtScheduleDuration.setMaxAdAfternoonDuration(maxDurationForAfternoon);
+        courtScheduleDuration.setCourtScheduleId("abcdef12-3456-7890-abcd-ef1234567890");
+        courtScheduleDuration.setSessionDate(getRandomFutureDateWithinNextYear());
+        courtScheduleDuration.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "10:00"));
+        courtScheduleDuration.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "16:00"));
+        databaseSeeder.insertCourtSchedule(courtScheduleDuration);
+
+        final String validateCourtSchedulePayload = getPayload("courtscheduler.validate.session.availability-insufficient-duration.json");
+        final Response response = postCommand(VALIDATE_SESSION_AVAILABILITY_URL, COURT_SCHEDULE_VALIDATE_SESSION_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, validateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString("Not enough available durations for all court schedules"));
+    }
+
+    @Test
+    void shouldReturn400WhenSchedulesAreMixedSlotAndDurationBased() throws SQLException {
+        final CourtSchedule courtScheduleSlot = RANDOM.nextObject(CourtSchedule.class);
+        final CourtSchedule courtScheduleDuration = RANDOM.nextObject(CourtSchedule.class);
+        final Integer maxDurationForMorning = 120;
+        final Integer maxDurationForAfternoon = 60;
+
+        courtScheduleSlot.setBusinessType("DVLA");
+        courtScheduleSlot.setSlotBased(true);
+        courtScheduleSlot.setMaxDuration(0);
+        courtScheduleSlot.setAvailableDuration(0);
+        courtScheduleSlot.setSupportAdSplit(true);
+        courtScheduleSlot.setCourtSession(ALL_DAY);
+        courtScheduleSlot.setMaxAdMorningDuration(maxDurationForMorning);
+        courtScheduleSlot.setMaxAdAfternoonDuration(maxDurationForAfternoon);
+        courtScheduleSlot.setCourtScheduleId("12345678-90ab-cdef-0123-456789abcdef");
+        courtScheduleSlot.setSessionDate(getRandomFutureDateWithinNextYear());
+        courtScheduleSlot.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleSlot.getSessionDate(), "10:00"));
+        courtScheduleSlot.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleSlot.getSessionDate(), "16:00"));
+        databaseSeeder.insertCourtSchedule(courtScheduleSlot);
+
+        courtScheduleDuration.setBusinessType("TRL");
+        courtScheduleDuration.setSlotBased(false);
+        courtScheduleDuration.setMaxDuration(0);
+        courtScheduleDuration.setAvailableDuration(0);
+        courtScheduleDuration.setSupportAdSplit(true);
+        courtScheduleDuration.setCourtSession(ALL_DAY);
+        courtScheduleDuration.setMaxAdMorningDuration(maxDurationForMorning);
+        courtScheduleDuration.setMaxAdAfternoonDuration(maxDurationForAfternoon);
+        courtScheduleDuration.setCourtScheduleId("abcdef12-3456-7890-abcd-ef1234567890");
+        courtScheduleDuration.setSessionDate(getRandomFutureDateWithinNextYear());
+        courtScheduleDuration.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "10:00"));
+        courtScheduleDuration.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "16:00"));
+        databaseSeeder.insertCourtSchedule(courtScheduleDuration);
+
+        final String validateCourtSchedulePayload = getPayload("courtscheduler.validate.session.availability-mixed.json");
+        final Response response = postCommand(VALIDATE_SESSION_AVAILABILITY_URL, COURT_SCHEDULE_VALIDATE_SESSION_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, validateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString("All court schedules should be either slot-based or duration-based"));
+    }
+
+    @Test
+    void shouldReturn400WhenCourtScheduleIdsAreEmpty() {
+
+        final String validateCourtSchedulePayload = getPayload("courtscheduler.validate.session.availability-empty.json");
+        final Response response = postCommand(VALIDATE_SESSION_AVAILABILITY_URL, COURT_SCHEDULE_VALIDATE_SESSION_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, validateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString("Court Schedule Ids cannot be empty"));
+    }
+
+    @Test
+    void shouldReturn200ForValidSlotBasedRequest() throws SQLException {
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        final Integer maxDurationForMorning = 120;
+        final Integer maxDurationForAfternoon = 60;
+
+        courtSchedule.setBusinessType("TRL");
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxDuration(0);
+        courtSchedule.setAvailableDuration(0);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setAvailableSlots(10);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession(ALL_DAY);
+        courtSchedule.setMaxAdMorningDuration(maxDurationForMorning);
+        courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
+        courtSchedule.setCourtScheduleId("a1234567-89ab-cdef-0123-456789abcdef");
+        courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final String validateCourtSchedulePayload = getPayload("courtscheduler.validate.session.availability-slot.json");
+        final Response response = postCommand(VALIDATE_SESSION_AVAILABILITY_URL, COURT_SCHEDULE_VALIDATE_SESSION_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, validateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
     }
 
     @Test
@@ -432,7 +646,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleAfterUpdate.getMaxAdAfternoonDuration(), is(60));
 
         final Date expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 0);
-        final Date expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 00);
+        final Date expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 0);
         assertThat(courtScheduleAfterUpdate.getSessionStartTime(), is(expectedStartTime));
         assertThat(courtScheduleAfterUpdate.getSessionEndTime(), is(expectedEndTime));
     }
@@ -463,6 +677,74 @@ class CourtSchedulerIT extends AbstractIT {
         final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldGet400WhenUpdatingCourtScheduleWithInvalidMinHearingTime() throws SQLException {
+        UUID courtScheduleId = UUID.randomUUID();
+        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setBusinessType("TRL");
+        expected.setSupportAdSplit(true);
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(LocalDate.now(), 10, 0));
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(LocalDate.now(), 17, 0));
+        databaseSeeder.insertCourtSchedule(expected);
+
+        String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split-invalid-session-start-time.json");
+        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedBusinessType = "TRL";
+        String changedSessionType = "AD";
+        String changedPanel = "YOUTH";
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", changedSessionType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", changedPanel);
+
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_START_TIME", "11:00");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_END_TIME", "17:01");
+
+        createAllocatedListing(expected, UUID.randomUUID(), UUID.randomUUID(), 90, "10:00");
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString(MIN_HEARING_TIME_AFTER_SESSION_START_TIME));
+    }
+
+    @Test
+    void shouldGet400WhenUpdatingCourtScheduleWithInvalidMaxHearingTime() throws SQLException {
+        UUID courtScheduleId = UUID.randomUUID();
+        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setBusinessType("TRL");
+        expected.setSupportAdSplit(true);
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(LocalDate.now(), 10, 0));
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(LocalDate.now(), 17, 0));
+        databaseSeeder.insertCourtSchedule(expected);
+
+        String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split-invalid-session-start-time.json");
+        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedBusinessType = "TRL";
+        String changedSessionType = "AD";
+        String changedPanel = "YOUTH";
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", changedSessionType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", changedPanel);
+
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_START_TIME", "10:00");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_END_TIME", "13:01");
+
+        createAllocatedListing(expected, UUID.randomUUID(), UUID.randomUUID(), 90, "15:00");
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString(MAX_HEARING_TIME_BEFORE_SESSION_END_TIME));
     }
 
     @Test
@@ -595,13 +877,13 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdMorningDuration(maxDurationForMorning);
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
-        courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
+        courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 90, "10:00");
-        createAllocatedListing(courtSchedule, hearingIdForAfternoon, bookingIdForAfternoon, 60, "15:00");
+        createAllocatedListing(courtSchedule, hearingIdForAfternoon, bookingIdForAfternoon, 60, "14:00");
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split.json");
         String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
@@ -645,13 +927,13 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdMorningDuration(maxDurationForMorning);
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
-        courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
+        courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 90, "10:00");
-        createAllocatedListing(courtSchedule, hearingIdForAfternoon, bookingIdForAfternoon, 60, "15:00");
+        createAllocatedListing(courtSchedule, hearingIdForAfternoon, bookingIdForAfternoon, 60, "14:00");
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split.json");
         String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
@@ -716,6 +998,9 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setMaxAdMorningDuration(0);
         expected.setMaxAdAfternoonDuration(0);
         expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
+        expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
+        expected.setIsOverbookingAllowed(false);
         databaseSeeder.insertCourtSchedule(expected);
 
         AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
@@ -760,7 +1045,6 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldSearchCourtSchedulesById() throws Exception {
 
-        final Date now = new Date();
         final String courtScheduleId = "abcdef12-3456-7890-abcd-ef1234567890";
         final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
@@ -774,7 +1058,7 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setAvailableDuration(0);
         courtSchedule.setMaxSlots(0);
         courtSchedule.setAvailableSlots(0);
-        courtSchedule.setSessionDate(LocalDate.of(2025, 4, 7));
+        courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         courtSchedule.setOuCode("B12345");
@@ -844,15 +1128,15 @@ class CourtSchedulerIT extends AbstractIT {
 
         expected.setSlotBased(false);
         expected.setMaxDuration(5);
-        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
-        expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant())
-        );
         expected.setAvailableDuration(5);
         expected.setSupportAdSplit(true);
         expected.setMaxAdMorningDuration(0);
         expected.setCourtSession(ALL_DAY);
         expected.setMaxAdAfternoonDuration(0);
         expected.setCourtScheduleId(UUID.randomUUID().toString());
+        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
+        expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
+        expected.setIsOverbookingAllowed(true);
         databaseSeeder.insertCourtSchedule(expected);
 
         AllocatedListing allocatedListing1 = RANDOM.nextObject(AllocatedListing.class);
@@ -914,6 +1198,70 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getBoolean("allDaySplit"), is(true));
         assertThat(courtScheduleJsonObject.getInt("maxDurationForMorning"), is(0));
         assertThat(courtScheduleJsonObject.getInt("maxDurationForAfternoon"), is(0));
+        assertThat(courtScheduleJsonObject.getString("minHearingTime"), is("09:00"));
+        assertThat(courtScheduleJsonObject.getString("maxHearingTime"), is("15:00"));
+        assertThat(courtScheduleJsonObject.getBoolean("isOverbookingAllowed"), is(true));
+        assertThat(courtScheduleJsonObject.getString("sessionStartTime"), is("10:00"));
+        assertThat(courtScheduleJsonObject.getString("sessionEndTime"), is("17:00"));
+    }
+
+    @Test
+    void shouldGetCourtSchedulesWithMinMaxSessionTimesNoAllocatedListings() throws SQLException, JsonProcessingException {
+
+        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        LocalDate fromDate = expected.getSessionDate().minusDays(1);
+        LocalDate toDate = expected.getSessionDate().plusDays(1);
+        expected.setBusinessType("TRL");
+
+        expected.setSlotBased(false);
+        expected.setMaxDuration(5);
+        expected.setAvailableDuration(5);
+        expected.setSupportAdSplit(true);
+        expected.setMaxAdMorningDuration(0);
+        expected.setCourtSession(ALL_DAY);
+        expected.setMaxAdAfternoonDuration(0);
+        expected.setCourtScheduleId(UUID.randomUUID().toString());
+        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
+        expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
+        expected.setIsOverbookingAllowed(true);
+        databaseSeeder.insertCourtSchedule(expected);
+
+        String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_CENTRE_ID", expected.getCourtHouseId());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_ROOM_ID", expected.getCourtRoomId());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("BUSINESS_TYPE", expected.getBusinessType());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("SESSION_START_DATE", fromDate.toString());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("SESSION_END_DATE", toDate.toString());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_SIZE", "10");
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_NUMBER", "1");
+
+        Map<String, Object> map = mapper.readValue(getCourtScheduleRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams(BASE_RESOURCE_URL, COURT_SCHEDULE_GET_CONTENT_TYPE, USER_ID, map);
+
+
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).until();
+
+        assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
+
+        JsonObject courtScheduleJsonObject = jsonObject.getJsonArray("courtSchedules").getJsonObject(0).getJsonArray("sessions").getJsonObject(0);
+        assertThat(courtScheduleJsonObject.getString("courtScheduleId"), is(expected.getCourtScheduleId()));
+        assertThat(courtScheduleJsonObject.getString("panel"), is(expected.getPanel()));
+        assertThat(courtScheduleJsonObject.getBoolean("slotBased"), is(false));
+        assertThat(courtScheduleJsonObject.getBoolean("active"), is(true));
+        assertThat(courtScheduleJsonObject.getString("courtRoomId"), is(expected.getCourtRoomId()));
+        assertThat(courtScheduleJsonObject.getString("courtRoomName"), is(expected.getCourtRoomName()));
+        assertThat(courtScheduleJsonObject.getBoolean("allDaySplit"), is(true));
+        assertThat(courtScheduleJsonObject.getInt("maxDurationForMorning"), is(0));
+        assertThat(courtScheduleJsonObject.getInt("maxDurationForAfternoon"), is(0));
+        assertThat(courtScheduleJsonObject.getString("minHearingTime"), is("10:00"));
+        assertThat(courtScheduleJsonObject.getString("maxHearingTime"), is("17:00"));
+        assertThat(courtScheduleJsonObject.getBoolean("isOverbookingAllowed"), is(true));
+        assertThat(courtScheduleJsonObject.getString("sessionStartTime"), is("10:00"));
+        assertThat(courtScheduleJsonObject.getString("sessionEndTime"), is("17:00"));
     }
 
     @Test
@@ -936,9 +1284,10 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdMorningDuration(maxDurationForMorning);
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
-        courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
+        courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setIsOverbookingAllowed(false);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final AllocatedListing allocatedListingForMorning = createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 60, "10:00");
@@ -980,6 +1329,11 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getInt("maxDurationForAfternoon"), is(maxDurationForAfternoon));
         assertThat(courtScheduleJsonObject.getInt("availableDurationForMorning"), is(maxDurationForMorning - allocatedListingForMorning.getDuration()));
         assertThat(courtScheduleJsonObject.getInt("availableDurationForAfternoon"), is(maxDurationForAfternoon - allocatedListingForAfternoon.getDuration()));
+        assertThat(courtScheduleJsonObject.getString("minHearingTime"), is(getUtcTimeStringForDate(courtSchedule.getSessionDate(),10,0)));
+        assertThat(courtScheduleJsonObject.getString("maxHearingTime"), is(getUtcTimeStringForDate(courtSchedule.getSessionDate(),15,0)));
+        assertThat(courtScheduleJsonObject.getBoolean("isOverbookingAllowed"), is(false));
+        assertThat(courtScheduleJsonObject.getString("sessionStartTime"), is(getUtcTimeStringForDate(courtSchedule.getSessionDate(),10,0)));
+        assertThat(courtScheduleJsonObject.getString("sessionEndTime"), is(getUtcTimeStringForDate(courtSchedule.getSessionDate(),16,0)));
     }
 
     @Test
@@ -1001,7 +1355,7 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdMorningDuration(maxDurationForMorning);
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId);
-        courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
+        courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
 
@@ -1044,7 +1398,7 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdMorningDuration(maxDurationForMorning);
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId);
-        courtSchedule.setSessionDate(LocalDate.of(2025, 3, 18));
+        courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
 
@@ -1079,9 +1433,95 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
+    @Test
+    void shouldGetCourtScheduleById() throws SQLException, JsonProcessingException {
+        final UUID courtScheduleId = UUID.randomUUID();
+        final UUID hearingIdForMorning = UUID.randomUUID();
+        final UUID bookingIdForMorning = UUID.randomUUID();
+        final UUID hearingIdForAfternoon = UUID.randomUUID();
+        final UUID bookingIdForAfternoon = UUID.randomUUID();
+        final Integer maxDurationForMorning = 120;
+        final Integer maxDurationForAfternoon = 60;
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+
+        courtSchedule.setBusinessType("TRL");
+        courtSchedule.setSlotBased(false);
+        courtSchedule.setMaxDuration(0);
+        courtSchedule.setAvailableDuration(0);
+        courtSchedule.setSupportAdSplit(true);
+        courtSchedule.setCourtSession(ALL_DAY);
+        courtSchedule.setMaxAdMorningDuration(maxDurationForMorning);
+        courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
+        courtSchedule.setCourtScheduleId(courtScheduleId.toString());
+        courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setIsOverbookingAllowed(false);
+        courtSchedule.setActive(true);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final AllocatedListing allocatedListingForMorning = createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 60, "10:00");
+        final AllocatedListing allocatedListingForAfternoon = createAllocatedListing(courtSchedule, hearingIdForAfternoon, bookingIdForAfternoon, 30, "15:00");
+
+        String getCourtScheduleRequestParams = getPayload("courtscheduler.search.courtschedules.by.id_dynamic.json");
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_SCHEDULE_ID", courtScheduleId.toString());
+        Map<String, Object> map = mapper.readValue(getCourtScheduleRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams(
+                BASE_RESOURCE_URL + SEARCH_BY_ID_URL,
+                COURT_SCHEDULE_SEARCH_COURTSCHEDULES_BY_ID_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                map
+        );
+
+        final ResponseData response = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(response.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(response.getPayload());
+
+        JsonObject courtScheduleJsonObject = jsonObject.getJsonArray("courtSchedules").getJsonObject(0);
+        assertThat(courtScheduleJsonObject.getString("courtScheduleId"), is(courtSchedule.getCourtScheduleId()));
+        assertThat(courtScheduleJsonObject.getString("panel"), is(courtSchedule.getPanel()));
+        assertThat(courtScheduleJsonObject.getBoolean("slotBased"), is(false));
+        assertThat(courtScheduleJsonObject.getBoolean("active"), is(true));
+        assertThat(courtScheduleJsonObject.getString("courtRoomId"), is(courtSchedule.getCourtRoomId()));
+        assertThat(courtScheduleJsonObject.getString("courtRoomName"), is(courtSchedule.getCourtRoomName()));
+        assertThat(courtScheduleJsonObject.getBoolean("allDaySplit"), is(true));
+        assertThat(courtScheduleJsonObject.getInt("maxDurationForMorning"), is(maxDurationForMorning));
+        assertThat(courtScheduleJsonObject.getInt("maxDurationForAfternoon"), is(maxDurationForAfternoon));
+        assertThat(courtScheduleJsonObject.getInt("availableDurationForMorning"), is(maxDurationForMorning - allocatedListingForMorning.getDuration()));
+        assertThat(courtScheduleJsonObject.getInt("availableDurationForAfternoon"), is(maxDurationForAfternoon - allocatedListingForAfternoon.getDuration()));
+        assertThat(courtScheduleJsonObject.getString("businessType"), is(courtSchedule.getBusinessType()));
+        assertThat(courtScheduleJsonObject.getString("courtHouseId"), is(courtSchedule.getCourtHouseId()));
+        assertThat(courtScheduleJsonObject.getString("courtHouseName"), is(courtSchedule.getCourtHouseName()));
+        assertThat(courtScheduleJsonObject.getString("operationalUnit"), is(courtSchedule.getOperationalUnit()));
+        assertThat(courtScheduleJsonObject.getString("ouCode"), is(courtSchedule.getOuCode()));
+        assertThat(courtScheduleJsonObject.getString("courtSession"), is(courtSchedule.getCourtSession()));
+        assertThat(courtScheduleJsonObject.getInt("maxDuration"), is(courtSchedule.getMaxDuration()));
+        assertThat(courtScheduleJsonObject.getInt("availableDuration"), is(courtSchedule.getAvailableDuration()));
+        assertThat(courtScheduleJsonObject.getInt("maxSlots"), is(courtSchedule.getMaxSlots()));
+        assertThat(courtScheduleJsonObject.getString("listingProfileId"), is(courtSchedule.getListingProfileId()));
+
+        final OffsetDateTime actualStartTime = OffsetDateTime.parse(courtScheduleJsonObject.getString("sessionStartTime"));
+        final OffsetDateTime actualEndTime = OffsetDateTime.parse(courtScheduleJsonObject.getString("sessionEndTime"));
+        assertThat(actualStartTime.toInstant(), is(courtSchedule.getSessionStartTime().toInstant()));
+        assertThat(actualEndTime.toInstant(), is(courtSchedule.getSessionEndTime().toInstant()));
+    }
+
     public String prepareCreateCourtSchedulePayload(final String jsonFilePath) {
         final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         final LocalDate endDate = startDate.plusDays(28);
+
+        return getPayload(jsonFilePath)
+                .replaceAll("START_DATE", startDate.toString())
+                .replaceAll("END_DATE", endDate.toString());
+    }
+
+    public String prepareCreateCourtSchedulePayload_testBSTToUTC(final String jsonFilePath) {
+        final LocalDate startDate = LocalDate.now().withMonth(10).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        final LocalDate endDate = startDate.plusDays(56);
 
         return getPayload(jsonFilePath)
                 .replaceAll("START_DATE", startDate.toString())

@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
+
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
@@ -45,6 +47,11 @@ public class CourtScheduleToViewConverter {
                     .withTotalBookedForAfternoon(courtSchedule.getTotalBookedForAfternoon())
                     .withAvailableDurationForMorning(courtSchedule.getAvailableDurationForMorning())
                     .withAvailableDurationForAfternoon(courtSchedule.getAvailableDurationForAfternoon())
+                    .withMinHearingTime(courtSchedule.getMinHearingTime())
+                    .withMaxHearingTime(courtSchedule.getMaxHearingTime())
+                    .withSessionStartTime(sessionTimeFormatter(courtSchedule.getSessionStartTime()))
+                    .withSessionEndTime(sessionTimeFormatter(courtSchedule.getSessionEndTime()))
+                    .withIsOverbookingAllowed(courtSchedule.isOverbookingAllowed())
                     .build();
             CourtSessionsView courtSessionsView;
             if (courtSessionsViews.containsKey(courtRoomName)) {

@@ -26,6 +26,10 @@
                 },
                 "durationInMinutes": {
                   "type": "integer"
+                },
+                "source": {
+                  "type": "string",
+                  "default": "DEFAULT"
                 }
               },
               "required": [

@@ -89,7 +89,7 @@ public class SlotsUpdateService {
         return createObjectBuilder().add(SCHEDULES, hearingDaysJsonArrBuilder).build();
     }
 
-    public ListHearingSlotsResponse updateListHearingSlots(final RequestedSlots hearingSlots) {
+    public ListHearingSlotsResponse listHearingSlots(final RequestedSlots hearingSlots) {
 
         ListHearingSlotsResponse response = new ListHearingSlotsResponse();
 

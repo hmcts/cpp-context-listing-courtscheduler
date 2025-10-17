@@ -7,7 +7,9 @@
       "businessType": "c66d90c8-8ef2-36d8-b033-e24a6ee09c8c",
       "duration": 1,
       "panel": "ADULT",
-      "repeatDays": ["MON", "TUE", "WED"]
+      "repeatDays": ["MON", "TUE", "WED"],
+      "sessionStartTime": "09:00",
+      "sessionEndTime": "16:00"
     }
   ],
 
@@ -25,6 +27,8 @@
     "businessType": "c66d90c8-8ef2-36d8-b033-e24a6ee09c8c",
     "duration": 10,
     "panel": "YOUTH",
-    "repeatDays": ["MON", "TUE", "WED"]
+    "repeatDays": ["MON", "TUE", "WED"],
+    "sessionStartTime": "10:00",
+    "sessionEndTime": "15:00"
   }
 }

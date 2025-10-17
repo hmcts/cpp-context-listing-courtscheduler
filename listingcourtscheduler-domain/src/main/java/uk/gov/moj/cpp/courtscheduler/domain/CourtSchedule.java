@@ -49,6 +49,9 @@ public class CourtSchedule {
     private Date sessionEndTime;
     private Date nationalBreakTime;
 
+    private String minHearingTime;
+    private String maxHearingTime;
+
     protected CourtSchedule(final CourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
         this.listingProfileId = builder.listingProfileId;
@@ -86,6 +89,8 @@ public class CourtSchedule {
         this.sessionEndTime = builder.sessionEndTime;
         this.isOverbookingAllowed = builder.isOverbookingAllowed;
         this.nationalBreakTime = builder.nationalBreakTime;
+        this.minHearingTime = builder.minHearingTime;
+        this.maxHearingTime = builder.maxHearingTime;
     }
 
     public CourtSchedule() {
@@ -383,6 +388,22 @@ public class CourtSchedule {
         this.nationalBreakTime = nationalBreakTime;
     }
 
+    public String getMinHearingTime() {
+        return minHearingTime;
+    }
+
+    public void setMinHearingTime(String minHearingTime) {
+        this.minHearingTime = minHearingTime;
+    }
+
+    public String getMaxHearingTime() {
+        return maxHearingTime;
+    }
+
+    public void setMaxHearingTime(String maxHearingTime) {
+        this.maxHearingTime = maxHearingTime;
+    }
+
     public static final class CourtScheduleBuilder {
 
         private String courtScheduleId;
@@ -424,6 +445,8 @@ public class CourtSchedule {
         private Date sessionStartTime;
         private Date sessionEndTime;
         private Date nationalBreakTime;
+        private String minHearingTime;
+        private String maxHearingTime;
 
         public static CourtSchedule.CourtScheduleBuilder courtSchedule() {
             return new CourtSchedule.CourtScheduleBuilder();
@@ -553,6 +576,14 @@ public class CourtSchedule {
             return isOverbookingAllowed;
         }
 
+        public String getMinHearingTime() {
+            return minHearingTime;
+        }
+
+        public String getMaxHearingTime() {
+            return maxHearingTime;
+        }
+
         public CourtScheduleBuilder withCourtSchedule(final CourtSchedule courtSchedule) {
             this.courtScheduleId = courtSchedule.courtScheduleId;
             this.sessionDate = courtSchedule.sessionDate;
@@ -589,6 +620,8 @@ public class CourtSchedule {
             this.availableDurationForAfternoon = courtSchedule.availableDurationForAfternoon;
             this.isOverbookingAllowed = courtSchedule.isOverbookingAllowed;
             this.nationalBreakTime = courtSchedule.nationalBreakTime;
+            this.minHearingTime = courtSchedule.minHearingTime;
+            this.maxHearingTime = courtSchedule.maxHearingTime;
             return this;
         }
 
@@ -779,6 +812,16 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withNationalBreakTime(final Date nationalBreakTime) {
             this.nationalBreakTime = nationalBreakTime;
+            return this;
+        }
+
+        public CourtScheduleBuilder withMinHearingTime(final String minHearingTime) {
+            this.minHearingTime = minHearingTime;
+            return this;
+        }
+
+        public CourtScheduleBuilder withMaxHearingTime(final String maxHearingTime) {
+            this.maxHearingTime = maxHearingTime;
             return this;
         }
 

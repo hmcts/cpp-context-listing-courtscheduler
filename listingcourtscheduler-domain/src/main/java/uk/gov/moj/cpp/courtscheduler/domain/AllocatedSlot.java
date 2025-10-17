@@ -21,8 +21,8 @@ public class AllocatedSlot {
     private String courtRoom;
     private String hearingSessionDateSearchCutOff;
     private boolean isPolice;
-    private Boolean isOverbookingExempt;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
+    private String source;
 
     @SuppressWarnings("squid:S1186")
     public AllocatedSlot() {
@@ -145,15 +145,6 @@ public class AllocatedSlot {
         isPolice = police;
     }
 
-
-    public Boolean getOverbookingExempt() {
-        return isOverbookingExempt;
-    }
-
-    public void setOverbookingExempt(Boolean overbookingExempt) {
-        isOverbookingExempt = overbookingExempt;
-    }
-
     public List<CourtScheduleJudiciary> getJudiciaries() {
         return judiciaries;
     }
@@ -169,6 +160,14 @@ public class AllocatedSlot {
     public AllocatedSlot setCourtCentreId(final String courtCentreId) {
         this.courtCentreId = courtCentreId;
         return this;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
     }
 
     @SuppressWarnings("squid:S1067")
@@ -197,15 +196,15 @@ public class AllocatedSlot {
                 Objects.equals(courtRoomUUId, that.courtRoomUUId) &&
                 Objects.equals(hearingSessionDateSearchCutOff, that.hearingSessionDateSearchCutOff) &&
                 Objects.equals(isPolice, that.isPolice) &&
-                Objects.equals(isOverbookingExempt, that.isOverbookingExempt) &&
-                Objects.equals(judiciaries, that.judiciaries);
+                Objects.equals(judiciaries, that.judiciaries) &&
+                Objects.equals(source, that.source);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(duration, sessionDate, hearingStartTime, session,
                 courtRoomId, ouCode,courtCentreId, hearingId, courtScheduleId, isSlotBased, bookingId, prosecutor, courtRoom,
-                courtRoomUUId, hearingSessionDateSearchCutOff, isPolice, isOverbookingExempt, judiciaries);
+                courtRoomUUId, hearingSessionDateSearchCutOff, isPolice, judiciaries, source);
     }
 
     @Override
@@ -227,8 +226,8 @@ public class AllocatedSlot {
                 ", courtRoomUUId='" + courtRoomUUId + '\'' +
                 ", hearingSessionDateSearchCutOff='" + hearingSessionDateSearchCutOff + '\'' +
                 ", isPolice='" + isPolice + '\'' +
-                ", isOverbookingExempt='" + isOverbookingExempt + '\'' +
                 ", judiciaries=" + judiciaries +
+                ", source='" + source + '\'' +
                 '}';
     }
 }

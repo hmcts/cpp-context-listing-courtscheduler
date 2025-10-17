@@ -64,13 +64,31 @@ public abstract class AllocatedListingRepository extends AbstractFullEntityRepos
             allocatedListing.setDuration(allocatedListingEntity.getDuration());
             allocatedListing.setHearingStartTime(allocatedListingEntity.getHearingStartTime());
             allocatedListing.setRotaBusinessType(allocatedListingEntity.getRotaBusinessType());
-            allocatedListing.setIs_overbooking_exempt(allocatedListingEntity.getOverbookingExempt());
             return allocatedListing;
         }).toList();
     }
 
-    @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked(al.courtScheduleId, sum(duration) AS totalbooked) FROM AllocatedListing al WHERE al.courtScheduleId IN :courtScheduleIds group by al.courtScheduleId")
-    public abstract List<AllocatedListingTotalBooked> getAllocatedListingsByCourtScheduleId(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);
+    public List<AllocatedListingTotalBooked> getAllocatedListingsByCourtScheduleId(List<String> courtScheduleIds) {
+        String sql = """
+        SELECT al.court_schedule_id,
+               CASE 
+                   WHEN cs.is_slot_based = true THEN CAST(COUNT(*) AS BIGINT)
+                   ELSE CAST(SUM(al.duration) AS BIGINT)
+               END AS total_booked
+        FROM allocated_listings al
+        JOIN court_schedule cs ON al.court_schedule_id = cs.id
+        WHERE al.court_schedule_id IN :csIds
+        GROUP BY al.court_schedule_id, cs.is_slot_based
+    """;
+
+        List<Object[]> results = entityManager.createNativeQuery(sql)
+                .setParameter("csIds", courtScheduleIds)
+                .getResultList();
+
+        return results.stream()
+                .map(row -> new AllocatedListingTotalBooked((String) row[0], ((Number) row[1]).longValue()))
+                .toList();
+    }
 
     @Query(value = "SELECT new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked(al.courtScheduleId, al.duration, al.hearingStartTime) FROM AllocatedListing al WHERE al.courtScheduleId IN :courtScheduleIds")
     public abstract List<AllocatedListingEachBooked> getAllocatedListingsEachBookedByCourtScheduleId(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);

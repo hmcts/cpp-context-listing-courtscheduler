@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.common.converter;
 
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
+
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleDeleteResponse;
@@ -71,6 +73,12 @@ public class CourtScheduleToDeleteResponseConverter implements Converter<List<Co
                     .withPanel(courtSchedule.getPanel())
                     .withSessionDate(courtSchedule.getSessionDate())
                     .withTotalBooked(totalBooked)
+                    .withSlotStartTimes(courtSchedule.getSlotStartTimes())
+                    .withMinHearingTime(courtSchedule.getMinHearingTime())
+                    .withMaxHearingTime(courtSchedule.getMaxHearingTime())
+                    .withSessionStartTime(sessionTimeFormatter(courtSchedule.getSessionStartTime()))
+                    .withSessionEndTime(sessionTimeFormatter(courtSchedule.getSessionEndTime()))
+                    .withIsOverbookingAllowed(courtSchedule.isOverbookingAllowed())
                     .build();
             courtScheduleDeleteResponses.add(courtScheduleView);
         });
