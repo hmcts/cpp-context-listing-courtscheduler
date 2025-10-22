@@ -118,6 +118,8 @@ public class SessionsService {
             processOnceFrequency(sessionList, startDate, courtScheduleList, requester);
         } else if (repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
             processWeeklyFrequency(sessionList, startDate, endDate, repeatPattern.getRepeatFor(), courtScheduleList, requester);
+        } else if (repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_MONTH)) {
+            processMonthlyFrequency(sessionList, startDate, endDate, repeatPattern.getRepeatFor(), courtScheduleList, requester);
         }
 
         saveCourtSchedules(courtScheduleList);
@@ -611,6 +613,62 @@ public class SessionsService {
                 }
             }
         }
+    }
+
+    private void processMonthlyFrequency(List<Session> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList, Requester requester) {
+        LocalDate currentDate = startDate;
+        
+        while (!currentDate.isAfter(endDate)) {
+            for (Session session : sessionList) {
+                populateCourtScheduleListForMonth(session, currentDate, endDate, courtScheduleList, requester);
+            }
+            currentDate = currentDate.plusMonths(repeatFor).withDayOfMonth(1);
+        }
+    }
+
+    private void populateCourtScheduleListForMonth(Session session, LocalDate monthStart, LocalDate endDate, List<CourtSchedule> courtScheduleList, Requester requester) {
+        LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+        if (monthEnd.isAfter(endDate)) {
+            monthEnd = endDate;
+        }
+        
+        for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
+            LocalDate sessionDateCandidate = findNthOccurrenceOfDayInMonth(dayOfWeek, monthStart, session.getIndex());
+            
+            if (sessionDateCandidate != null && !sessionDateCandidate.isAfter(endDate) &&
+                !sessionDateCandidate.isAfter(monthEnd) && 
+                !sessionDateCandidate.isBefore(monthStart)) {
+                
+                CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, requester, session.getSessionStartTime(), session.getSessionEndTime());
+                courtScheduleList.add(courtSchedule);
+            }
+        }
+    }
+
+    private LocalDate findNthOccurrenceOfDayInMonth(DayOfWeek dayOfWeek, LocalDate monthStart, Integer index) {
+        LocalDate firstDayOfMonth = monthStart.withDayOfMonth(1);
+        LocalDate firstOccurrence = firstDayOfMonth.with(TemporalAdjusters.nextOrSame(dayOfWeek));
+        
+        if (index == 1) {
+            return firstOccurrence;
+        }
+        
+        LocalDate nthOccurrence = firstOccurrence.plusWeeks( (long) index - 1);
+        
+        // Check if the nth occurrence is still within the same month
+        if (nthOccurrence.getMonth() == firstDayOfMonth.getMonth()) {
+            return nthOccurrence;
+        }
+        
+        // If index is 5 and the month doesn't have 5 occurrences, fallback to index 4
+        if (index == 5) {
+            LocalDate fourthOccurrence = firstOccurrence.plusWeeks(3);
+            if (fourthOccurrence.getMonth() == firstDayOfMonth.getMonth()) {
+                return fourthOccurrence;
+            }
+        }
+        
+        return null;
     }
 
     private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate, Requester requester, String sessionStartTime, String sessionEndTime) {
