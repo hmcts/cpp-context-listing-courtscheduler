@@ -313,10 +313,10 @@ public class SessionsApiValidator {
             return buildErrorResponse(ErrorMessages.MIN_HEARING_TIME_AFTER_SESSION_START_TIME);
         }
         LocalTime maxHearingTime = getMaxHearingTime(allocatedListings);
-        if (maxHearingTime != null && !sessionEndTime.isAfter(maxHearingTime)) {
+        if (maxHearingTime != null && sessionEndTime.isBefore(maxHearingTime)) {
             return buildErrorResponse(ErrorMessages.MAX_HEARING_TIME_BEFORE_SESSION_END_TIME);
         }
-        return EMPTY_JSON_OBJECT;
+         return EMPTY_JSON_OBJECT;
     }
 
     private LocalTime getMinHearingTime(List<AllocatedListingEachBooked> allocatedListings) {
