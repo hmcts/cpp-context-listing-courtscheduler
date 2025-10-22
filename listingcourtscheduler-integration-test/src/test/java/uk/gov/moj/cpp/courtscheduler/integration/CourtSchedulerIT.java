@@ -107,9 +107,10 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithSessionTimes() {
+        //We send localtime
         final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-        final java.util.Date expectedStartTime = java.util.Date.from(startDate.atTime(9, 0).toInstant(ZoneOffset.UTC));
-        final java.util.Date expectedEndTime = java.util.Date.from(startDate.atTime(11, 0).toInstant(ZoneOffset.UTC));
+        final java.util.Date expectedStartTime = java.util.Date.from(startDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
+        final java.util.Date expectedEndTime = java.util.Date.from(startDate.atTime(12, 0).toInstant(ZoneOffset.UTC));
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -126,8 +127,8 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldCreateCourtScheduleWithSessionTimes_AcrossSummerAndWinterTime() {
         final LocalDate startDate = LocalDate.now().withMonth(10).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-        final java.util.Date expectedStartTimeFirstWeek = java.util.Date.from(startDate.atTime(9, 0).toInstant(ZoneOffset.UTC));
-        final java.util.Date expectedEndTimeFirstWeek = java.util.Date.from(startDate.atTime(11, 0).toInstant(ZoneOffset.UTC));
+        final java.util.Date expectedStartTimeFirstWeek = java.util.Date.from(startDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
+        final java.util.Date expectedEndTimeFirstWeek = java.util.Date.from(startDate.atTime(12, 0).toInstant(ZoneOffset.UTC));
         final java.util.Date expectedStartTimeLastWeek = java.util.Date.from(startDate.plusDays(56).atTime(10, 0).toInstant(ZoneOffset.UTC));
         final java.util.Date expectedEndTimeLastWeek = java.util.Date.from(startDate.plusDays(56).atTime(12, 0).toInstant(ZoneOffset.UTC));
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload_testBSTToUTC("create-court-schedule-duration-based-bst-timings.json");

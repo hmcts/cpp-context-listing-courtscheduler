@@ -314,9 +314,9 @@ class SessionsApiValidatorTest {
     }
 
     @Test
-    void shouldReturnErrorWhenIsAllDaySplitIsTrueAndMaxSessionTimeIsEqualToSessionEndTime() {
+    void shouldReturnErrorWhenIsAllDaySplitIsTrueAndMaxSessionTimeBeforeSessionEndTime() {
         final String courtScheduleId = randomUUID().toString();
-        SessionValidationParams params = new SessionValidationParams(null, 60, true, ALL_DAY, "BUSINESS_TYPE", null, courtScheduleId, "10:00", "15:00");
+        SessionValidationParams params = new SessionValidationParams(0, 60, true, ALL_DAY, "BUSINESS_TYPE", null, courtScheduleId, "10:00", "14:29");
 
         LocalDate day = LocalDate.now().plusDays(3);
         Date maxHearingStart = Date.from(

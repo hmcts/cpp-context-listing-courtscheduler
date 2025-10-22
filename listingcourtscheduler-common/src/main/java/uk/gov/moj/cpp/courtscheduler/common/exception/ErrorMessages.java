@@ -26,7 +26,7 @@ public class ErrorMessages {
     public static final String MAX_DURATION_FOR_MORNING_LESS_THAN_TOTAL_BOOKED_FOR_MORNING = "Maximum duration for morning cannot be less than total booked duration for morning";
     public static final String MAX_DURATION_FOR_AFTERNOON_LESS_THAN_TOTAL_BOOKED_FOR_AFTERNOON = "Maximum duration for afternoon cannot be less than total booked duration for afternoon";
     public static final String MIN_HEARING_TIME_AFTER_SESSION_START_TIME = "Session Start Time can not be updated to a time that is later than the minimum hearing time";
-    public static final String MAX_HEARING_TIME_BEFORE_SESSION_END_TIME = "Session Start Time can not be updated to a time that is before than the maximum hearing time";
+    public static final String MAX_HEARING_TIME_BEFORE_SESSION_END_TIME = "Session End Time can not be updated to a time that is before than the maximum hearing time";
     public static final String SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME = "Session Start Time can not be updated to a time that is after hearing time";
-    public static final String SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME = "Session Start Time can not be updated to a time that is before than the maximum hearing time";
+    public static final String SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME = "Session End Time can not be updated to a time that is before than the maximum hearing time";
 }
