@@ -634,7 +634,8 @@ public class SessionsService {
                 .withSessionEndTime(combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionEndTime()))
                 .withIsOverbookingAllowed(!isNull(session.isOverbookingAllowed()))
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate))
-                .withIsDraft(!isNull(session.isDraft()) && session.isDraft());
+                .withIsDraft(!isNull(session.isDraft()) && session.isDraft())
+                .withJurisdiction(!isNull(session.getJurisdiction()) ? session.getJurisdiction() : "MAGISTRATES");
         enrichSession(courtScheduleBuilder, session.getSlotsOrDuration(), requester);
         return courtScheduleBuilder.build();
     }

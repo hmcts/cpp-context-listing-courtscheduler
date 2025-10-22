@@ -55,7 +55,8 @@
       "sessionEndTime": "2020-12-01T13:00:00.000+00:00",
       "nationalBreakTime": "2020-12-01T13:00:00.000+00:00",
       "overbookingAllowed": true,
-      "draft": false
+      "draft": false,
+      "jurisdiction": "MAGISTRATES"
     }
   ]
 }

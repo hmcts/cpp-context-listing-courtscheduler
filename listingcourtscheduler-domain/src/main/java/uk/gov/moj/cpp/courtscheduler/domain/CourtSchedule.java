@@ -47,6 +47,8 @@ public class CourtSchedule {
 
     private boolean isDraft;
 
+    private String jurisdiction;
+
     private Date sessionStartTime;
     private Date sessionEndTime;
     private Date nationalBreakTime;
@@ -89,6 +91,7 @@ public class CourtSchedule {
         this.isOverbookingAllowed = builder.isOverbookingAllowed;
         this.nationalBreakTime = builder.nationalBreakTime;
         this.isDraft = builder.isDraft;
+        this.jurisdiction = builder.jurisdiction;
     }
 
     public CourtSchedule() {
@@ -394,6 +397,14 @@ public class CourtSchedule {
         this.isDraft = isDraft;
     }
 
+    public String getJurisdiction() {
+        return jurisdiction;
+    }
+
+    public void setJurisdiction(String jurisdiction) {
+        this.jurisdiction = jurisdiction;
+    }
+
     public static final class CourtScheduleBuilder {
 
         private String courtScheduleId;
@@ -432,6 +443,7 @@ public class CourtSchedule {
         private Integer availableDurationForAfternoon = 0;
         private boolean isOverbookingAllowed;
         private boolean isDraft;
+        private String jurisdiction;
 
         private Date sessionStartTime;
         private Date sessionEndTime;
@@ -569,6 +581,10 @@ public class CourtSchedule {
             return isDraft;
         }
 
+        public String getJurisdiction() {
+            return jurisdiction;
+        }
+
         public CourtScheduleBuilder withCourtSchedule(final CourtSchedule courtSchedule) {
             this.courtScheduleId = courtSchedule.courtScheduleId;
             this.sessionDate = courtSchedule.sessionDate;
@@ -606,6 +622,7 @@ public class CourtSchedule {
             this.isOverbookingAllowed = courtSchedule.isOverbookingAllowed;
             this.nationalBreakTime = courtSchedule.nationalBreakTime;
             this.isDraft = courtSchedule.isDraft;
+            this.jurisdiction = courtSchedule.jurisdiction;
             return this;
         }
 
@@ -801,6 +818,11 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withIsDraft(final boolean isDraft) {
             this.isDraft = isDraft;
+            return this;
+        }
+
+        public CourtScheduleBuilder withJurisdiction(final String jurisdiction) {
+            this.jurisdiction = jurisdiction;
             return this;
         }
 
