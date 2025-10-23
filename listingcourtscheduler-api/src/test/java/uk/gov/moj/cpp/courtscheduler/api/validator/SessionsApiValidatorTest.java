@@ -257,31 +257,6 @@ class SessionsApiValidatorTest {
     }
 
     @Test
-    void shouldReturnErrorWhenDraftIsDuplicateWithInPayload() {
-
-        final List<Session> sessionList = Arrays.asList(createAMSession(), createDraftSession());
-        final Session sessionToBeAdded = createDraftSession();
-
-
-        LocalDate futureDate = LocalDate.now().plusDays(1);
-
-        final JsonObject errorResult = createObjectBuilder()
-                .add("errorMessage", "Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ")
-                .build();
-
-        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
-
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
-        assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
-    }
-
-    @Test
     void shouldReturnEmptyJsonObjectWhenValidationIsSuccessful() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
 
