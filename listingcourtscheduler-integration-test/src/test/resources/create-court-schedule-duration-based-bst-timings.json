@@ -7,6 +7,7 @@
       "businessType": "TRL",
       "duration": 20,
       "panel": "ADULT",
+      "jurisdiction": "MAGISTRATES",
       "repeatDays": [
         "Monday",
         "Wednesday",
@@ -23,6 +24,7 @@
       "businessType": "TRL",
       "duration": 20,
       "panel": "ADULT",
+      "jurisdiction": "MAGISTRATES",
       "repeatDays": [
         "Tuesday",
         "Thursday"

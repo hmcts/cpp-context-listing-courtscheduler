@@ -12,10 +12,11 @@
         "Wednesday",
         "Friday"
       ],
-      "sessionStartTime": "10:00",
+      "sessionStartTime": "00:59",
       "sessionEndTime": "12:00",
       "isOverbookingAllowed": true,
-      "jurisdiction": "CROWN"
+      "jurisdiction": "CROWN",
+      "isDraft": false
     }
   ],
   "repeatPattern": {

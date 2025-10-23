@@ -258,6 +258,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             cs.session_end_time,
             cs.created_on,
             cs.updated_on,
+            cs.national_break_time,
             cs.is_draft,
             -- Adjusted calculation for morning bookings
             COALESCE(
