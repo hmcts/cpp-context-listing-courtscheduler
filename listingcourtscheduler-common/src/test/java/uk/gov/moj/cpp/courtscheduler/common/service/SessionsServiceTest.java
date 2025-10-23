@@ -5,6 +5,7 @@ import static java.time.LocalDate.parse;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -15,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeastOnce;
@@ -79,6 +81,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
@@ -383,7 +386,7 @@ class SessionsServiceTest {
     void shouldCreateMultipleCourtSchedulesForOnceFrequency() {
         final LocalDate startDate = LocalDate.of(2024, 06, 20);
         final Session session = singleSession(WEEK_DAYS_FIRST_HALF, true);
-        final CreateSessionRequestParam createSessionRequest = createSessionRequest(Collections.singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(3), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(3), RepeatFrequency.ONCE, 1));
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
         sessionsService.create(createSessionRequest,requester);
@@ -1029,7 +1032,7 @@ class SessionsServiceTest {
                 .withPanelType("Adult")
                 .build();
 
-        return Collections.singletonList(session);
+        return singletonList(session);
     }
 
     private Session singleSession(Set<DayOfWeek> daysOfWeek, boolean slotBased) {
@@ -1309,43 +1312,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
-    }
-
-    @Test
-    void shouldCreateCourtSchedulesForMonthlyFrequencyWithDifferentRepeatInterval() {
-        // Given
-        final LocalDate startDate = LocalDate.of(2024, 1, 1); // January 1st
-        final LocalDate endDate = LocalDate.of(2024, 6, 30); // June 30th
-        final int repeatFor = 2; // Every 2 months
-        
-        final Set<DayOfWeek> fridayOnly = new HashSet<>(Arrays.asList(DayOfWeek.FRIDAY));
-        final List<Session> sessions = Arrays.asList(
-                Session.SessionBuilder.session()
-                        .withRepeatDays(fridayOnly)
-                        .withSlotsOrDuration(30)
-                        .withBusinessType("DVLA")
-                        .withCourtCentreId("court-centre-2")
-                        .withCourtRoomId("court-room-2")
-                        .withSessionType("PM")
-                        .withPanelType("Youth")
-                        .withIndex(2) // Second occurrence of Friday
-                        .build()
-        );
-        
-        // Mock the reference data cache
-        final BusinessType businessType = new BusinessType();
-        businessType.setSlot(true);
-        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).willReturn(Optional.of(businessType));
-        
-        final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-2", requester)).willReturn(Optional.of(courtRoom));
-        
-        // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
-        
-        // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1354,10 +1321,10 @@ class SessionsServiceTest {
         final LocalDate startDate = LocalDate.of(2024, 2, 1); // February 1st
         final LocalDate endDate = LocalDate.of(2024, 4, 30); // April 30th
         final int repeatFor = 1; // Every month
-        
+
         final Set<DayOfWeek> tuesdayAndThursday = new HashSet<>(Arrays.asList(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY));
         final Set<DayOfWeek> mondayAndFriday = new HashSet<>(Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.FRIDAY));
-        
+
         final List<Session> sessions = Arrays.asList(
                 Session.SessionBuilder.session()
                         .withRepeatDays(tuesdayAndThursday)
@@ -1380,26 +1347,63 @@ class SessionsServiceTest {
                         .withIndex(3)
                         .build()
         );
-        
+
         // Mock the reference data cache
         final BusinessType trlBusinessType = new BusinessType();
         trlBusinessType.setSlot(false);
         given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(trlBusinessType));
-        
+
         final BusinessType dvlaBusinessType = new BusinessType();
         dvlaBusinessType.setSlot(true);
         given(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).willReturn(Optional.of(dvlaBusinessType));
-        
+
         final CourtRoom courtRoom1 = new CourtRoom();
         final CourtRoom courtRoom2 = new CourtRoom();
         given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-3", requester)).willReturn(Optional.of(courtRoom1));
         given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-4", requester)).willReturn(Optional.of(courtRoom2));
-        
+
         // When
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
-        
+
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1))
+                .saveCourtSchedules(argThat(list -> list != null && list.size() == 12));
+    }
+
+    @Test
+    void shouldCreateCourtSchedulesForMonthlyFrequencyWithDifferentRepeatInterval() {
+        // Given
+        final LocalDate startDate = LocalDate.of(2024, 1, 1); // January 1st
+        final LocalDate endDate = LocalDate.of(2024, 6, 30); // June 30th
+        final int repeatFor = 2; // Every 2 months
+
+        final Set<DayOfWeek> fridayOnly = new HashSet<>(Arrays.asList(DayOfWeek.FRIDAY));
+        final List<Session> sessions = Arrays.asList(
+                Session.SessionBuilder.session()
+                        .withRepeatDays(fridayOnly)
+                        .withSlotsOrDuration(30)
+                        .withBusinessType("DVLA")
+                        .withCourtCentreId("court-centre-2")
+                        .withCourtRoomId("court-room-2")
+                        .withSessionType("PM")
+                        .withPanelType("Youth")
+                        .withIndex(2) // Second occurrence of Friday
+                        .build()
+        );
+
+        // Mock the reference data cache
+        final BusinessType businessType = new BusinessType();
+        businessType.setSlot(true);
+        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).willReturn(Optional.of(businessType));
+
+        final CourtRoom courtRoom = new CourtRoom();
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-2", requester)).willReturn(Optional.of(courtRoom));
+
+        // When
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+
+        // Then
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1435,7 +1439,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1471,7 +1475,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1507,7 +1511,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1543,7 +1547,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1579,7 +1583,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1615,7 +1619,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1651,7 +1655,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1687,7 +1691,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
     @Test
@@ -1741,6 +1745,6 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
         
         // Then
-        verify(courtScheduleRepository, atLeastOnce()).save(any(CourtSchedule.class));
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 }
