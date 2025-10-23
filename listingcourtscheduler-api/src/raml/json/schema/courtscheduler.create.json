@@ -32,6 +32,7 @@
           "sessionStartTime": {"type": "string"},
           "sessionEndTime": {"type": "string"},
           "isOverbookingAllowed": {"type": "boolean"},
+          "index": {"type": "integer"},
           "isDraft": {"type": "boolean"},
           "jurisdiction": {"type": "string", "enum": ["CROWN", "MAGISTRATES"]}
         },
@@ -50,7 +51,7 @@
     "repeatPattern": {
       "type": "object",
       "properties": {
-        "frequency": {"type": "string",  "enum": ["ONCE", "EVERY_WEEK"]},
+        "frequency": {"type": "string",  "enum": ["ONCE", "EVERY_WEEK", "EVERY_MONTH"]},
         "repeatFor" : {"type": "integer"},
         "startDate": {"type": "string", "format": "date"},
         "endDate": {"type": "string", "format": "date"}
@@ -58,7 +59,7 @@
       "required": ["startDate", "repeatFor"]
     }
   },
-  "required": ["sessions"],
+  "required": ["sessions", "repeatPattern"],
   "definitions": {
     "uuid": {
       "type": "string",
