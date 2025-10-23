@@ -717,6 +717,7 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setMaxAdAfternoonDuration(0);
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setIsDraft(false);
+        expected.setJurisdiction("MAGISTRATES");
         databaseSeeder.insertCourtSchedule(expected);
 
         AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
@@ -780,6 +781,7 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         courtSchedule.setOuCode("B12345");
         courtSchedule.setIsDraft(false);
+        courtSchedule.setJurisdiction("MAGISTRATES");
         courtSchedule.setActive(true);
 
         databaseSeeder.insertCourtSchedule(courtSchedule);

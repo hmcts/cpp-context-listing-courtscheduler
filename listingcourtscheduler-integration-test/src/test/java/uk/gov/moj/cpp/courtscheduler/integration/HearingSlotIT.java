@@ -226,6 +226,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
         courtSchedule.setIsDraft(false);
+        courtSchedule.setJurisdiction("MAGISTRATES");
         courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -303,6 +304,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
         courtSchedule.setIsDraft(false);
+        courtSchedule.setJurisdiction("MAGISTRATES");
         courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -654,6 +656,7 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleAMSession.setSessionDate(sessionDateForAMSession);
         courtScheduleAMSession.setOuCode(ouCode);
         courtScheduleAMSession.setIsDraft(false);
+        courtScheduleAMSession.setJurisdiction("MAGISTRATES");
         databaseSeeder.insertCourtSchedule(courtScheduleAMSession);
 
         final CourtSchedule courtSchedulePMSession = RANDOM.nextObject(CourtSchedule.class);
@@ -663,6 +666,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedulePMSession.setSessionDate(sessionDateForPMSession);
         courtSchedulePMSession.setOuCode(ouCode);
         courtSchedulePMSession.setIsDraft(false);
+        courtSchedulePMSession.setJurisdiction("MAGISTRATES");
         databaseSeeder.insertCourtSchedule(courtSchedulePMSession);
 
         final CourtSchedule courtScheduleADSession = RANDOM.nextObject(CourtSchedule.class);
@@ -672,6 +676,7 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleADSession.setSessionDate(sessionDateForADSession);
         courtScheduleADSession.setOuCode(ouCode);
         courtScheduleADSession.setIsDraft(false);
+        courtScheduleADSession.setJurisdiction("MAGISTRATES");
         databaseSeeder.insertCourtSchedule(courtScheduleADSession);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryForAM = createJudiciaryForSchedule(courtScheduleAMSession);

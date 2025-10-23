@@ -21,7 +21,8 @@
     "courtRoomId": "f1ead1d2-4b26-3230-b781-508d6aaafd26",
     "slotBased": true,
     "courtHouseId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
-    "isDraft": false
+    "isDraft": false,
+    "jurisdiction": "MAGISTRATES"
   },
   {
     "courtScheduleId": "28b2520b-7679-3430-987d-b7be360ef858",
@@ -45,7 +46,8 @@
     "courtRoomId": "f1ead1d2-4b26-3230-b781-508d6aaafd26",
     "slotBased": true,
     "courtHouseId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
-    "isDraft": false
+    "isDraft": false,
+    "jurisdiction": "MAGISTRATES"
   },
   {
     "courtScheduleId": "5d4b0471-b1d6-3a46-92eb-7195a165284c",
@@ -69,7 +71,8 @@
     "courtRoomId": "b4562684-9209-3ec4-a544-7f80dabd94d8",
     "slotBased": true,
     "courtHouseId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
-    "isDraft": false
+    "isDraft": false,
+    "jurisdiction": "MAGISTRATES"
   },
   {
     "courtScheduleId": "88990877-cebf-31e3-afb7-beb0ae910ad6",
@@ -93,7 +96,8 @@
     "courtRoomId": "b4562684-9209-3ec4-a544-7f80dabd94d8",
     "slotBased": true,
     "courtHouseId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
-    "isDraft": false
+    "isDraft": false,
+    "jurisdiction": "MAGISTRATES"
   },
   {
     "courtScheduleId": "144ae38f-21aa-34fe-a7dc-9886724e643b",
@@ -117,7 +121,8 @@
     "courtRoomId": "9e4932f7-97b2-3010-b942-ddd2624e4dd8",
     "slotBased": true,
     "courtHouseId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
-    "isDraft": false
+    "isDraft": false,
+    "jurisdiction": "MAGISTRATES"
   },
   {
     "courtScheduleId": "dbe683ab-3acb-3fd7-beac-1d3865c14589",
@@ -141,6 +146,7 @@
     "courtRoomId": "9e4932f7-97b2-3010-b942-ddd2624e4dd8",
     "slotBased": true,
     "courtHouseId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
-    "isDraft": false
+    "isDraft": false,
+    "jurisdiction": "MAGISTRATES"
   }
 ]
