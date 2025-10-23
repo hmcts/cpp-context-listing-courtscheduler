@@ -1064,6 +1064,7 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         courtSchedule.setOuCode("B12345");
+        courtSchedule.setIsDraft(false);
         courtSchedule.setActive(true);
 
         databaseSeeder.insertCourtSchedule(courtSchedule);

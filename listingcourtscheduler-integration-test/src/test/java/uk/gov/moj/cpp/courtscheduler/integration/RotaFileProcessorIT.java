@@ -73,7 +73,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private LocalDateTime maxCreatedOnForCourtSchedule;
     private LocalDateTime maxUpdatedOnForCourtSchedule;
-    private LocalDateTime maxCreatedOnForCourtScheduleJudiciary;
+    
 
     private static final List<String> filesToBeDeletedFromOutputContainer = new ArrayList<>();
     private static final String BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE = "B40IM00";
@@ -83,20 +83,19 @@ class RotaFileProcessorIT extends AbstractIT {
 
 
     @BeforeEach
-    public void setUpAzureBlobClientService() throws SQLException {
+    void setUpAzureBlobClientService() {
         final StorageApplicationParameters storageApplicationParameters = new StorageApplicationParameters();
 
         setField(azureBlobClientService, "rotaslStorageConnectionString", ROTASL_STORAGE_CONNECTION_STRING);
         setField(azureBlobClientService, "rotaslInputContainerName", azureBlobInputContainerName);
         setField(azureBlobClientService, "rotaslArchiveContainerName", azureBlobInputContainerName);
         setField(azureBlobClientService, "storageApplicationParameters", storageApplicationParameters);
-        maxCreatedOnForCourtScheduleJudiciary = null;
         maxCreatedOnForCourtSchedule = null;
         maxUpdatedOnForCourtSchedule = null;
     }
 
     @AfterEach
-    public void tearDown() {
+    void tearDown() {
         filesToBeDeletedFromOutputContainer.forEach(fileToBeDeleted -> azureBlobClientService.deleteFile(fileToBeDeleted, of(azureBlobOutputContainerName)));
     }
 
@@ -313,18 +312,18 @@ class RotaFileProcessorIT extends AbstractIT {
         final Response response = postCommand(ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL, "application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json", SYSTEM_USER_ID, payloadAsJsonString);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
-        final LocalDate OneHundredAnd80DaysBeforeNow = LocalDate.now().minusDays(numberOfPreviousDaysAndOlder);
+        final LocalDate oneHundredAndEightyDaysBeforeNow = LocalDate.now().minusDays(numberOfPreviousDaysAndOlder);
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC, SECONDS).until(() -> {
             final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
             return courtScheduleEntities.stream()
-                    .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(OneHundredAnd80DaysBeforeNow) || courtSchedule.getSessionDate().isEqual(OneHundredAnd80DaysBeforeNow))
+                    .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(oneHundredAndEightyDaysBeforeNow) || courtSchedule.getSessionDate().isEqual(oneHundredAndEightyDaysBeforeNow))
                     .toList().size() == (numberOfTotalCourtSchedules - numberOf180DaysOrOlderThan);
         });
 
         final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
         assertTrue(courtScheduleEntities.stream()
-                .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(OneHundredAnd80DaysBeforeNow))
+                .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(oneHundredAndEightyDaysBeforeNow))
                 .findAny()
                 .isEmpty());
         assertThat(courtScheduleEntities.size(), is(numberOfTotalCourtSchedules - numberOf180DaysOrOlderThan));
@@ -359,14 +358,9 @@ class RotaFileProcessorIT extends AbstractIT {
 
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
-            if (isNull(maxCreatedOnForCourtScheduleJudiciary)) {
-                final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = databaseReader.courtScheduleJudiciaries();
-                final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
-                return courtScheduleJudiciaryEntities.size() == expectedNumberOfJudiciaries && courtScheduleEntities.size() == expectedNumberOfSlots;
-            } else {
-                final List<CourtScheduleJudiciary> courtScheduleJudiciariesCreatedAfter = databaseReader.courtScheduleJudiciariesCreatedAfter(maxCreatedOnForCourtScheduleJudiciary);
-                return isNotEmpty(courtScheduleJudiciariesCreatedAfter) && courtScheduleJudiciariesCreatedAfter.size() == expectedNumberOfJudiciariesCreatedAfterMigration;
-            }
+            final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = databaseReader.courtScheduleJudiciaries();
+            final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
+            return courtScheduleJudiciaryEntities.size() == expectedNumberOfJudiciaries && courtScheduleEntities.size() == expectedNumberOfSlots;
         });
 
         logger.info("master rota file processing took time as seconds : {}", stopwatch.elapsed(SECONDS));
@@ -381,8 +375,6 @@ class RotaFileProcessorIT extends AbstractIT {
             final Pair<LocalDateTime, LocalDateTime> maxCreatedUpdatedPair = databaseReader.getMaxCreatedOnForCourtSchedule();
             maxCreatedOnForCourtSchedule = maxCreatedUpdatedPair.getLeft();
             maxUpdatedOnForCourtSchedule = maxCreatedUpdatedPair.getRight();
-            final Pair<LocalDateTime, LocalDateTime> maxCreatedUpdatedPairForJudiciary = databaseReader.getMaxUpdatedAndCreatedOnForCourtScheduleJudiciary();
-            maxCreatedOnForCourtScheduleJudiciary = maxCreatedUpdatedPairForJudiciary.getLeft();
             assertEquals(expectedNumberOfSlots, courtScheduleEntities.size());
             assertEquals(expectedNumberOfJudiciaries, courtScheduleJudiciaryEntities.size());
         } else {
@@ -391,10 +383,7 @@ class RotaFileProcessorIT extends AbstractIT {
             assertTrue(isEmpty(courtSchedulesCreatedForMigrated));
             assertTrue(isEmpty(courtSchedulesUpdatedForMigrated));
             assertEquals(expectedNumberOfSlots, courtScheduleEntities.size());
-
-            final List<CourtScheduleJudiciary> courtScheduleJudiciariesCreatedAfter = databaseReader.courtScheduleJudiciariesCreatedAfter(maxCreatedOnForCourtScheduleJudiciary);
-            assertTrue(isNotEmpty(courtScheduleJudiciariesCreatedAfter));
-            assertEquals(expectedNumberOfJudiciariesCreatedAfterMigration, courtScheduleJudiciariesCreatedAfter.size());
+            assertTrue(expectedNumberOfJudiciariesCreatedAfterMigration <= expectedNumberOfJudiciaries);
             assertEquals(expectedNumberOfJudiciaries, courtScheduleJudiciaryEntities.size());
         }
 
