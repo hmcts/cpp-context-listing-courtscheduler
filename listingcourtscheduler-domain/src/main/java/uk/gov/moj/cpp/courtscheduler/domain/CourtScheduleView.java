@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 public class CourtScheduleView {
 
@@ -31,13 +33,18 @@ public class CourtScheduleView {
     private boolean allDaySplit;
     private Integer maxDurationForMorning;
     private Integer maxDurationForAfternoon;
-
+    private String minHearingTime;
+    private String maxHearingTime;
     private Integer totalBookedForMorning;
     private Integer totalBookedForAfternoon;
     private Integer availableDurationForMorning;
     private Integer availableDurationForAfternoon;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
+    private String sessionStartTime;
+    private String sessionEndTime;
+    @JsonProperty("isOverbookingAllowed")
+    private boolean overbookingAllowed;
 
     protected CourtScheduleView(final CourtScheduleViewBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -70,6 +77,11 @@ public class CourtScheduleView {
         this.totalBookedForAfternoon = builder.totalBookedForAfternoon;
         this.availableDurationForMorning = builder.availableDurationForMorning;
         this.availableDurationForAfternoon = builder.availableDurationForAfternoon;
+        this.minHearingTime = builder.minHearingTime;
+        this.maxHearingTime = builder.maxHearingTime;
+        this.sessionStartTime = builder.sessionStartTime;
+        this.sessionEndTime = builder.sessionEndTime;
+        this.overbookingAllowed = builder.isOverbookingAllowed;
     }
 
     public CourtScheduleView() {
@@ -287,6 +299,46 @@ public class CourtScheduleView {
         return availableDurationForAfternoon;
     }
 
+    public String getMinHearingTime() {
+        return minHearingTime;
+    }
+
+    public String getMaxHearingTime() {
+        return maxHearingTime;
+    }
+
+    public void setMinHearingTime(final String minHearingTime) {
+        this.minHearingTime = minHearingTime;
+    }
+
+    public void setMaxHearingTime(final String maxHearingTime) {
+        this.maxHearingTime = maxHearingTime;
+    }
+
+    public String getSessionStartTime() {
+        return sessionStartTime;
+    }
+
+    public void setSessionStartTime(final String sessionStartTime) {
+        this.sessionStartTime = sessionStartTime;
+    }
+
+    public String getSessionEndTime() {
+        return sessionEndTime;
+    }
+
+    public void setSessionEndTime(final String sessionEndTime) {
+        this.sessionEndTime = sessionEndTime;
+    }
+
+    public boolean isOverbookingAllowed() {
+        return overbookingAllowed;
+    }
+
+    public void setOverbookingAllowed(final boolean isOverbookingAllowed) {
+        this.overbookingAllowed = isOverbookingAllowed;
+    }
+
     public static final class CourtScheduleViewBuilder {
 
         private String courtScheduleId;
@@ -321,6 +373,11 @@ public class CourtScheduleView {
         private Integer availableDurationForAfternoon;
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
+        private String minHearingTime;
+        private String maxHearingTime;
+        private String sessionStartTime;
+        private String sessionEndTime;
+        private boolean isOverbookingAllowed;
 
         public static CourtScheduleViewBuilder courtSchedule() {
             return new CourtScheduleViewBuilder();
@@ -485,6 +542,31 @@ public class CourtScheduleView {
 
         public CourtScheduleViewBuilder withAvailableDurationForAfternoon(final Integer availableDurationForAfternoon) {
             this.availableDurationForAfternoon = availableDurationForAfternoon;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withMinHearingTime(final String minHearingTime) {
+            this.minHearingTime = minHearingTime;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withMaxHearingTime(final String maxHearingTime) {
+            this.maxHearingTime = maxHearingTime;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withSessionStartTime(final String sessionStartTime) {
+            this.sessionStartTime = sessionStartTime;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withSessionEndTime(final String sessionEndTime) {
+            this.sessionEndTime = sessionEndTime;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withIsOverbookingAllowed(final boolean isOverbookingAllowed) {
+            this.isOverbookingAllowed = isOverbookingAllowed;
             return this;
         }
 

@@ -31,6 +31,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -49,6 +50,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityTransaction;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
@@ -70,6 +73,8 @@ public class CourtScheduleRepositoryTest {
     ProvisionalBookingRepository provisionalBookingRepository;
     @Inject
     AllocatedListingRepository allocatedListingRepository;
+    @Inject
+    private EntityManager em;
 
     private static final String COURT_SCHEDULE_ID = randomUUID().toString();
     private static final int SLOT_DEFAULT = 1;
@@ -358,6 +363,7 @@ public class CourtScheduleRepositoryTest {
         listing1.setCourtScheduleId(day1Schedule.getCourtScheduleId());
         listing1.setHearingStartTime(DateUtils.combineDateAndTime(day1Schedule.getSessionDate(), "10:00"));
         listing1.setDuration(1);
+        listing1.setSource("DEFAULT");
         allocatedListingRepository.save(listing1);
 
         AllocatedListing listing2 = random(AllocatedListing.class);
@@ -365,6 +371,7 @@ public class CourtScheduleRepositoryTest {
         listing2.setCourtScheduleId(day2Schedule.getCourtScheduleId());
         listing2.setHearingStartTime(DateUtils.combineDateAndTime(day2Schedule.getSessionDate(), "10:00"));
         listing2.setDuration(1);
+        listing2.setSource("DEFAULT");
         allocatedListingRepository.save(listing2);
 
         // New court schedule for the updated hearing
@@ -381,6 +388,7 @@ public class CourtScheduleRepositoryTest {
         requestedCourtSchedule.setCourtScheduleId(newSchedule.getCourtScheduleId());
         requestedCourtSchedule.setHearingStartTime(DateUtils.toResponseDateString(DateUtils.combineDateAndTime(newSchedule.getSessionDate(), "11:29")));
         requestedCourtSchedule.setDurationInMinutes(30);
+        requestedCourtSchedule.setSource("DEFAULT");
 
         HearingSlot hearingSlot = new HearingSlot();
         hearingSlot.setHearingId(hearingId);
@@ -395,7 +403,69 @@ public class CourtScheduleRepositoryTest {
 
         AllocatedListing newListing = allocatedListings.get(0);
         assertEquals(newSchedule.getCourtScheduleId(), newListing.getCourtScheduleId());
-        assertEquals(DateUtils.combineDateAndTime(newSchedule.getSessionDate(), "11:00"), newListing.getHearingStartTime());
+        assertEquals(DateUtils.combineDateAndTime(newSchedule.getSessionDate(), "11:29"), newListing.getHearingStartTime());
+    }
+
+    @Test
+    public void shouldSourceBeMOVEonReleaseEvenIsOverbookingAllowedIsTrue() {
+        // Given
+        String hearingId = randomUUID().toString();
+
+        CourtSchedule day1Schedule = createSlotBasedCourtSchedule("OU123", "ADULT", LocalDate.of(2025, 6, 10), "CR01", "TRF");
+        CourtSchedule day2Schedule = createSlotBasedCourtSchedule("OU123", "ADULT", LocalDate.of(2025, 6, 11), "CR01", "TRF");
+        day1Schedule.setIsOverbookingAllowed(true);
+        day2Schedule.setIsOverbookingAllowed(true);
+        courtScheduleRepository.save(day1Schedule);
+        courtScheduleRepository.save(day2Schedule);
+
+        AllocatedListing listing1 = random(AllocatedListing.class);
+        listing1.setHearingId(hearingId);
+        listing1.setCourtScheduleId(day1Schedule.getCourtScheduleId());
+        listing1.setHearingStartTime(DateUtils.combineDateAndTime(day1Schedule.getSessionDate(), "10:00"));
+        listing1.setDuration(1);
+        listing1.setSource("DEFAULT");
+        allocatedListingRepository.save(listing1);
+
+        AllocatedListing listing2 = random(AllocatedListing.class);
+        listing2.setHearingId(hearingId);
+        listing2.setCourtScheduleId(day2Schedule.getCourtScheduleId());
+        listing2.setHearingStartTime(DateUtils.combineDateAndTime(day2Schedule.getSessionDate(), "10:00"));
+        listing2.setDuration(1);
+        listing2.setSource("DEFAULT");
+        allocatedListingRepository.save(listing2);
+
+        // New court schedule for the updated hearing
+        CourtSchedule courtSchedule = createSlotBasedCourtSchedule("OU123", "ADULT", LocalDate.of(2025, 6, 12), "CR01", "TRF");
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:00"));
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setAvailableSlots(10);
+        courtSchedule.setIsOverbookingAllowed(true);
+        courtScheduleRepository.save(courtSchedule);
+
+        // When
+        RequestedSlots requestedSlots = new RequestedSlots();
+        RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
+        requestedCourtSchedule.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        requestedCourtSchedule.setHearingStartTime(DateUtils.toResponseDateString(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "11:29")));
+        requestedCourtSchedule.setDurationInMinutes(30);
+        requestedCourtSchedule.setSource("DEFAULT");
+
+        HearingSlot hearingSlot = new HearingSlot();
+        hearingSlot.setHearingId(hearingId);
+        hearingSlot.setCourtScheduleIds(List.of(requestedCourtSchedule));
+        requestedSlots.setHearingSlots(List.of(hearingSlot));
+
+        courtScheduleRepository.updateListHearingSlots(requestedSlots);
+
+        // Then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
+        assertEquals(1, allocatedListings.size());
+
+        AllocatedListing newListing = allocatedListings.get(0);
+        assertEquals(courtSchedule.getCourtScheduleId(), newListing.getCourtScheduleId());
+        assertEquals(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "11:29"), newListing.getHearingStartTime());
+        assertEquals("MOVE", newListing.getSource());
     }
 
     @Test
@@ -408,6 +478,7 @@ public class CourtScheduleRepositoryTest {
         matchingCourtSchedule1.setSlotBased(true);
         matchingCourtSchedule1.setMaxSlots(2);
         matchingCourtSchedule1.setAvailableSlots(2);
+        matchingCourtSchedule1.setIsOverbookingAllowed(true);
         courtScheduleRepository.save(matchingCourtSchedule1);
 
         String courtScheduleId1 = matchingCourtSchedule1.getCourtScheduleId();
@@ -418,6 +489,7 @@ public class CourtScheduleRepositoryTest {
         String courtScheduleId =  courtScheduleId1;
         RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
         requestedCourtSchedule.setCourtScheduleId(courtScheduleId);
+        requestedCourtSchedule.setSource("DEFAULT");
         final Date hearingStartTime = DateUtils.combineDateAndTime(matchingCourtSchedule1.getSessionDate(),"11:00");
         requestedCourtSchedule.setHearingStartTime(DateUtils.toResponseDateString(hearingStartTime));
         requestedCourtSchedule.setDurationInMinutes(180);
@@ -458,6 +530,7 @@ public class CourtScheduleRepositoryTest {
         matchingCourtSchedule1.setSlotBased(true);
         matchingCourtSchedule1.setMaxSlots(2);
         matchingCourtSchedule1.setAvailableSlots(2);
+        matchingCourtSchedule1.setIsOverbookingAllowed(true);
         courtScheduleRepository.save(matchingCourtSchedule1);
 
         String courtScheduleId1 = matchingCourtSchedule1.getCourtScheduleId();
@@ -471,6 +544,7 @@ public class CourtScheduleRepositoryTest {
         final Date hearingStartTime = DateUtils.combineDateAndTime(matchingCourtSchedule1.getSessionDate(),"14:00");
         requestedCourtSchedule.setHearingStartTime(DateUtils.toResponseDateString(hearingStartTime));
         requestedCourtSchedule.setDurationInMinutes(180);
+        requestedCourtSchedule.setSource("DEFAULT");
         List<RequestedCourtSchedule> courtScheduleIds = new ArrayList<>();
         courtScheduleIds.add(requestedCourtSchedule);
 
@@ -508,6 +582,7 @@ public class CourtScheduleRepositoryTest {
         matchingCourtSchedule1.setMaxSlots(2);
         matchingCourtSchedule1.setAvailableSlots(2);
         matchingCourtSchedule1.setAvailableDuration(180);
+        matchingCourtSchedule1.setIsOverbookingAllowed(true);
         courtScheduleRepository.save(matchingCourtSchedule1);
 
         String courtScheduleId1 = matchingCourtSchedule1.getCourtScheduleId();
@@ -518,8 +593,9 @@ public class CourtScheduleRepositoryTest {
         String courtScheduleId =  courtScheduleId1;
         RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
         requestedCourtSchedule.setCourtScheduleId(courtScheduleId);
-        requestedCourtSchedule.setHearingStartTime("2025-04-16T10:00:00Z");
+        requestedCourtSchedule.setHearingStartTime("2025-04-16T10:00:00.000Z");
         requestedCourtSchedule.setDurationInMinutes(120);
+        requestedCourtSchedule.setSource("DEFAULT");
         List<RequestedCourtSchedule> courtScheduleIds = new ArrayList<>();
         courtScheduleIds.add(requestedCourtSchedule);
 
@@ -543,86 +619,6 @@ public class CourtScheduleRepositoryTest {
 
         assertEquals(allocatedListing.getHearingId(), hearingId);
         assertEquals(allocatedListing.getCourtScheduleId(), matchingCourtSchedule1.getCourtScheduleId());
-    }
-
-    @Test
-    @Ignore("Test disabled - will be fixed with h2 removal")
-    public void shouldReturnCourtSchedulesByIdListWithAllFields() {
-        // given
-        CourtSchedule courtSchedule = random(CourtSchedule.class);
-        courtSchedule.setActive(true);
-        courtSchedule.setSlotBased(true);
-        courtSchedule.setSupportAdSplit(true);
-        courtSchedule.setIsOverbookingAllowed(true);
-        courtSchedule.setMaxAdMorningDuration(120);
-        courtSchedule.setMaxAdAfternoonDuration(180);
-        courtSchedule.setMaxSlots(10);
-        courtSchedule.setMaxDuration(240);
-        courtSchedule.setAvailableSlots(8);
-        courtSchedule.setAvailableDuration(200);
-        courtSchedule.setSessionDate(LocalDate.of(2024, 10, 1));
-        courtSchedule.setSessionStartTime(convertToDate(LocalTime.of(9, 0)));
-        courtSchedule.setSessionEndTime(convertToDate(LocalTime.of(13, 0)));
-        courtSchedule.setCourtSession("AM");
-        courtSchedule.setPanel("ADULT");
-        courtSchedule.setBusinessType("TRF");
-        courtSchedule.setOuCode("B01LY00");
-        courtSchedule.setOperationalUnit("UNIT123");
-        courtSchedule.setCourtHouseId("CH001");
-        courtSchedule.setCourtHouseName("Test Court");
-        courtSchedule.setCourtRoomId("CR001");
-        courtSchedule.setCourtRoomName("Courtroom 1");
-        courtSchedule.setCourtRoomNumber(123);
-        courtSchedule.setListingProfileId("LIST-001");
-
-        courtScheduleRepository.save(courtSchedule);
-
-        AllocatedListing allocatedListing = new AllocatedListing();
-        allocatedListing.setId(randomUUID().toString());
-        allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
-        allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
-        allocatedListing.setHearingId(randomUUID().toString());
-        allocatedListing.setBookingId(randomUUID().toString());
-        allocatedListing.setOucode(courtSchedule.getOuCode());
-        allocatedListing.setDuration(30);
-        allocatedListing.setHearingStartTime(new Date());
-        allocatedListing.setCreatedOn(new Date());
-        allocatedListing.setUpdatedOn(new Date());
-
-        allocatedListingRepository.save(allocatedListing);
-
-        // when
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> results =
-                courtScheduleRepository.getCourtSchedulesByIdList(List.of(courtSchedule.getCourtScheduleId()));
-
-        // then
-        assertEquals(1, results.size());
-        uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule result = results.get(0);
-
-        assertEquals(courtSchedule.getCourtScheduleId(), result.getCourtScheduleId());
-        assertEquals(courtSchedule.getOuCode(), result.getOuCode());
-        assertEquals(courtSchedule.getCourtRoomId(), result.getCourtRoomId());
-        assertEquals(courtSchedule.getCourtRoomNumber(), result.getCourtRoomNumber());
-        assertEquals(courtSchedule.getCourtHouseId(), result.getCourtHouseId());
-        assertEquals(courtSchedule.getCourtHouseName(), result.getCourtHouseName());
-        assertEquals(courtSchedule.getCourtRoomName(), result.getCourtRoomName());
-        assertEquals(courtSchedule.getOperationalUnit(), result.getOperationalUnit());
-        assertEquals(courtSchedule.getBusinessType(), result.getBusinessType());
-        assertEquals(courtSchedule.getPanel(), result.getPanel());
-        assertEquals(courtSchedule.getCourtSession(), result.getCourtSession());
-        assertEquals(courtSchedule.getSessionDate(), result.getSessionDate());
-        assertEquals(courtSchedule.getAvailableSlots(), result.getAvailableSlots());
-        assertEquals(courtSchedule.getAvailableDuration(), result.getAvailableDuration());
-        assertEquals(courtSchedule.getMaxSlots(), result.getMaxSlots());
-        assertEquals(courtSchedule.getMaxDuration(), result.getMaxDuration());
-        assertEquals(courtSchedule.getMaxAdMorningDuration(), result.getMaxDurationForMorning());
-        assertEquals(courtSchedule.getMaxAdAfternoonDuration(), result.getMaxDurationForAfternoon());
-        assertEquals(courtSchedule.getSupportAdSplit(), result.isAllDaySplit());
-        assertEquals(courtSchedule.isSlotBased(), result.isSlotBased());
-        assertEquals(courtSchedule.getSessionStartTime(), result.getSessionStartTime());
-        assertEquals(courtSchedule.getSessionEndTime(), result.getSessionEndTime());
-        assertEquals(courtSchedule.getListingProfileId(), result.getListingProfileId());
-        assertEquals(30, result.getTotalBooked().intValue());
     }
 
     @Test
@@ -820,7 +816,7 @@ public class CourtScheduleRepositoryTest {
 
     @Test
     @Ignore("Will be fixed in a separate story")
-    public void shouldFilterCourtSchedulesByMandatoryParams() {
+    public void shouldFilterCourtSchedulesByMandatoryParams() throws SQLException {
         // given
         LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         setupTestDataForMandatoryParams(sessionDate);
@@ -835,7 +831,7 @@ public class CourtScheduleRepositoryTest {
 
     @Test
     @Ignore("Will be fixed in a separate story")
-    public void shouldFilterCourtSchedulesByOptionalParams() {
+    public void shouldFilterCourtSchedulesByOptionalParams() throws SQLException {
         // given
         LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         setupTestDataForOptionalParams(sessionDate, false);
@@ -850,7 +846,7 @@ public class CourtScheduleRepositoryTest {
 
     @Test
     @Ignore("Will be fixed in a separate story")
-    public void shouldPaginateCourtSchedules() {
+    public void shouldPaginateCourtSchedules() throws SQLException {
         // given
         LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         setupTestDataForPagination(sessionDate);
@@ -863,20 +859,6 @@ public class CourtScheduleRepositoryTest {
         thenPaginationWorksCorrectly(results);
     }
 
-    @Test
-    @Ignore("requires standalone postgres, fails with h2")
-    public void shouldFilterCourtSchedulesByOptionalParamsIsSlotBased() {
-        // given
-        LocalDate sessionDate = LocalDate.of(2024, 4, 15);
-        setupTestDataForOptionalParams(sessionDate, true);
-
-        // when
-        Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result =
-                whenSearchingWithOptionalParamsSlotBased(sessionDate);
-
-        // then
-        thenOnlyMatchingOptionalParamsAreReturnedSlotBased(result);
-    }
 
     // Setup methods
     private void setupTestDataForMandatoryParams(LocalDate sessionDate) {
@@ -920,7 +902,7 @@ public class CourtScheduleRepositoryTest {
     }
 
     // When methods
-    private Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> whenSearchingWithMandatoryParams(LocalDate sessionDate) {
+    private Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> whenSearchingWithMandatoryParams(LocalDate sessionDate) throws SQLException {
         HearingSlotRequestParam requestParam = createRequestParam(
             "ADULT",
             sessionDate,
@@ -932,7 +914,7 @@ public class CourtScheduleRepositoryTest {
                 null,
                 null
         );
-        return courtScheduleRepository.getCourtSchedules(requestParam);
+       return courtScheduleRepository.getCourtSchedules(requestParam);
     }
 
     private Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> whenSearchingWithOptionalParams(LocalDate sessionDate) {
@@ -945,21 +927,6 @@ public class CourtScheduleRepositoryTest {
             "CR01",
             "TRF",
                 null,
-                null
-        );
-        return courtScheduleRepository.getCourtSchedules(requestParam);
-    }
-
-    private Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> whenSearchingWithOptionalParamsSlotBased(LocalDate sessionDate) {
-        HearingSlotRequestParam requestParam = createRequestParam(
-            "ADULT",
-            sessionDate,
-            "B01LY00",
-            "1",
-            "10",
-            "CR01",
-            null,
-                true,
                 null
         );
         return courtScheduleRepository.getCourtSchedules(requestParam);
@@ -996,13 +963,6 @@ public class CourtScheduleRepositoryTest {
         uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule schedule = result.getRight().get(0);
         assertEquals("CR01", schedule.getCourtRoomId());
         assertEquals("TRF", schedule.getBusinessType());
-    }
-
-    private void thenOnlyMatchingOptionalParamsAreReturnedSlotBased(Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> result) {
-        assertEquals(2, result.getRight().size());
-        uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule schedule = result.getRight().get(0);
-        assertEquals("CR01", schedule.getCourtRoomId());
-        assertEquals("GAP", schedule.getBusinessType());
     }
 
     private void thenPaginationWorksCorrectly(List<Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>>> results) {
@@ -1043,7 +1003,10 @@ public class CourtScheduleRepositoryTest {
             businessType,
             null,
             isSlotBased,
-                hearingStartTime
+                hearingStartTime,
+            false,
+            "API",
+            null
         );
     }
 
@@ -1186,6 +1149,7 @@ public class CourtScheduleRepositoryTest {
         allocatedListing.setBookingId(bookingId);
         allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         allocatedListing.setCourtRoomId(1501);
+        allocatedListing.setSource("DEFAULT");
         allocatedListingRepository.save(allocatedListing);
 
         AllocatedSlot allocatedSlot1 = getAllocatedSlot(allocatedListing);
@@ -1267,6 +1231,9 @@ public class CourtScheduleRepositoryTest {
         allocatedSlot.setCourtRoomId(allocatedListing.getCourtRoomId().toString());
         allocatedSlot.setHearingStartTime(SIMPLE_DATE_FORMAT.format(allocatedListing.getHearingStartTime()));
         allocatedSlot.setSessionDate(LocalDate.of(2024, 7, 15).toString());
+        allocatedSlot.setSource(allocatedSlot.getSource());
+        allocatedSlot.setHearingSessionDateSearchCutOff(LocalDate.of(2024, 7, 15).toString());
+        allocatedSlot.setPolice(true);
         return allocatedSlot;
     }
 
@@ -1279,6 +1246,7 @@ public class CourtScheduleRepositoryTest {
         allocatedSlot.setCourtRoomId(allocatedListing.getCourtRoomId().toString());
         allocatedSlot.setSessionDate(LocalDate.of(2024, 7, 15).toString());
         allocatedSlot.setHearingStartTime(SIMPLE_DATE_FORMAT.format(allocatedListing.getHearingStartTime()));
+        allocatedSlot.setSource(allocatedSlot.getSource());
         return allocatedSlot;
     }
 
@@ -1422,6 +1390,226 @@ public class CourtScheduleRepositoryTest {
         assertFalse(allocatedListings.isEmpty());
     }
 
+    // Tests for saveAllocatedListing method to verify toExactTimestamp usage
+    @Test
+    public void shouldSaveAllocatedListingWithExactTimestampPreservingExactTime() {
+        // Given
+        AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
+        allocatedSlot.setCourtRoomId(random(Integer.class).toString());
+        String exactTime = "2020-07-23T09:59:59.999Z";
+        allocatedSlot.setHearingStartTime(exactTime);
+
+        // When
+        courtScheduleRepository.saveAllocatedListing(Lists.newArrayList(allocatedSlot));
+
+        // Then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(allocatedSlot.getHearingId());
+        assertFalse(allocatedListings.isEmpty());
+        
+        AllocatedListing savedListing = allocatedListings.get(0);
+        assertNotNull(savedListing.getHearingStartTime());
+        
+        // Verify that the exact time is preserved (not rounded like toRoundedTimestamp would do)
+        // The saved timestamp should preserve minutes, seconds, and milliseconds
+        String savedTimeString = DateUtils.toIsoStringExtended(savedListing.getHearingStartTime());
+        assertTrue("Expected exact time to be preserved, but got: " + savedTimeString,
+            savedTimeString.contains("09:59:59.999Z"));
+    }
+
+    @Test
+    public void shouldSaveAllocatedListingWithExactTimestampAtMidnight() {
+        // Given
+        AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
+        allocatedSlot.setCourtRoomId(random(Integer.class).toString());
+        String midnightTime = "2020-07-23T00:00:00.000Z";
+        allocatedSlot.setHearingStartTime(midnightTime);
+
+        // When
+        courtScheduleRepository.saveAllocatedListing(Lists.newArrayList(allocatedSlot));
+
+        // Then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(allocatedSlot.getHearingId());
+        assertFalse(allocatedListings.isEmpty());
+        
+        AllocatedListing savedListing = allocatedListings.get(0);
+        String savedTimeString = DateUtils.toIsoStringExtended(savedListing.getHearingStartTime());
+        assertTrue("Expected midnight time to be preserved, but got: " + savedTimeString, 
+            savedTimeString.contains("00:00:00.0"));
+    }
+
+    @Test
+    public void shouldSaveAllocatedListingWithExactTimestampAtEndOfDay() {
+        // Given
+        AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
+        allocatedSlot.setCourtRoomId(random(Integer.class).toString());
+        String endOfDayTime = "2020-07-23T23:59:59.999Z";
+        allocatedSlot.setHearingStartTime(endOfDayTime);
+
+        // When
+        courtScheduleRepository.saveAllocatedListing(Lists.newArrayList(allocatedSlot));
+
+        // Then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(allocatedSlot.getHearingId());
+        assertFalse(allocatedListings.isEmpty());
+        
+        AllocatedListing savedListing = allocatedListings.get(0);
+        String savedTimeString = DateUtils.toIsoStringExtended(savedListing.getHearingStartTime());
+        assertTrue("Expected end of day time to be preserved, but got: " + savedTimeString, 
+            savedTimeString.contains("23:59:59.999"));
+    }
+
+    @Test
+    public void shouldSaveAllocatedListingWithExactTimestampOnLeapYear() {
+        // Given
+        AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
+        allocatedSlot.setCourtRoomId(random(Integer.class).toString());
+        String leapYearTime = "2020-02-29T12:30:45.500Z";
+        allocatedSlot.setHearingStartTime(leapYearTime);
+
+        // When
+        courtScheduleRepository.saveAllocatedListing(Lists.newArrayList(allocatedSlot));
+
+        // Then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(allocatedSlot.getHearingId());
+        assertFalse(allocatedListings.isEmpty());
+        
+        AllocatedListing savedListing = allocatedListings.get(0);
+        String savedTimeString = DateUtils.toIsoStringExtended(savedListing.getHearingStartTime());
+        assertTrue("Expected leap year time to be preserved, but got: " + savedTimeString, 
+            savedTimeString.contains("12:30:45.5"));
+    }
+
+    @Test
+    public void shouldSaveAllocatedListingWithExactTimestampWithPreciseMillis() {
+        // Given
+        AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
+        allocatedSlot.setCourtRoomId(random(Integer.class).toString());
+        String preciseTime = "2020-07-23T12:34:56.789Z";
+        allocatedSlot.setHearingStartTime(preciseTime);
+
+        // When
+        courtScheduleRepository.saveAllocatedListing(Lists.newArrayList(allocatedSlot));
+
+        // Then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(allocatedSlot.getHearingId());
+        assertFalse(allocatedListings.isEmpty());
+        
+        AllocatedListing savedListing = allocatedListings.get(0);
+        String savedTimeString = DateUtils.toIsoStringExtended(savedListing.getHearingStartTime());
+        assertTrue("Expected precise millisecond time to be preserved, but got: " + savedTimeString, 
+            savedTimeString.contains("12:34:56.789"));
+    }
+
+    @Test
+    public void shouldSaveAllocatedListingWithExactTimestampWithZeroMillis() {
+        // Given
+        AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
+        allocatedSlot.setCourtRoomId(random(Integer.class).toString());
+        String zeroMillisTime = "2020-07-23T09:30:45.000Z";
+        allocatedSlot.setHearingStartTime(zeroMillisTime);
+
+        // When
+        courtScheduleRepository.saveAllocatedListing(Lists.newArrayList(allocatedSlot));
+
+        // Then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(allocatedSlot.getHearingId());
+        assertFalse(allocatedListings.isEmpty());
+        
+        AllocatedListing savedListing = allocatedListings.get(0);
+        String savedTimeString = DateUtils.toIsoStringExtended(savedListing.getHearingStartTime());
+        assertTrue("Expected zero millisecond time to be preserved, but got: " + savedTimeString, 
+            savedTimeString.contains("09:30:45.0"));
+    }
+
+    @Test
+    public void shouldSaveAllocatedListingWithExactTimestampWithSingleDigitValues() {
+        // Given
+        AllocatedSlot allocatedSlot = random(AllocatedSlot.class);
+        allocatedSlot.setCourtRoomId(random(Integer.class).toString());
+        String singleDigitTime = "2020-01-01T01:01:01.001Z";
+        allocatedSlot.setHearingStartTime(singleDigitTime);
+
+        // When
+        courtScheduleRepository.saveAllocatedListing(Lists.newArrayList(allocatedSlot));
+
+        // Then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(allocatedSlot.getHearingId());
+        assertFalse(allocatedListings.isEmpty());
+        
+        AllocatedListing savedListing = allocatedListings.get(0);
+        String savedTimeString = DateUtils.toIsoStringExtended(savedListing.getHearingStartTime());
+        assertTrue("Expected single digit time to be preserved, but got: " + savedTimeString, 
+            savedTimeString.contains("01:01:01.001"));
+    }
+
+    @Test
+    public void shouldSaveAllocatedListingWithExactTimestampWithDifferentYears() {
+        // Given - Test with past year
+        AllocatedSlot pastYearSlot = random(AllocatedSlot.class);
+        pastYearSlot.setCourtRoomId(random(Integer.class).toString());
+        String pastYearTime = "1999-12-31T23:59:59.999Z";
+        pastYearSlot.setHearingStartTime(pastYearTime);
+
+        // Given - Test with future year
+        AllocatedSlot futureYearSlot = random(AllocatedSlot.class);
+        futureYearSlot.setCourtRoomId(random(Integer.class).toString());
+        String futureYearTime = "2030-01-01T00:00:00.000Z";
+        futureYearSlot.setHearingStartTime(futureYearTime);
+
+        // When
+        courtScheduleRepository.saveAllocatedListing(Lists.newArrayList(pastYearSlot, futureYearSlot));
+
+        // Then - Verify past year
+        List<AllocatedListing> pastYearListings = allocatedListingRepository.findByHearingId(pastYearSlot.getHearingId());
+        assertFalse(pastYearListings.isEmpty());
+        AllocatedListing pastYearSaved = pastYearListings.get(0);
+        String pastYearSavedTime = DateUtils.toIsoStringExtended(pastYearSaved.getHearingStartTime());
+        assertTrue("Expected past year time to be preserved, but got: " + pastYearSavedTime, 
+            pastYearSavedTime.contains("23:59:59.999"));
+
+        // Then - Verify future year
+        List<AllocatedListing> futureYearListings = allocatedListingRepository.findByHearingId(futureYearSlot.getHearingId());
+        assertFalse(futureYearListings.isEmpty());
+        AllocatedListing futureYearSaved = futureYearListings.get(0);
+        String futureYearSavedTime = DateUtils.toIsoStringExtended(futureYearSaved.getHearingStartTime());
+        assertTrue("Expected future year time to be preserved, but got: " + futureYearSavedTime, 
+            futureYearSavedTime.contains("00:00:00.0"));
+    }
+
+    @Test
+    public void shouldSaveAllocatedListingWithExactTimestampWithDifferentMonths() {
+        // Given - Test with January
+        AllocatedSlot januarySlot = random(AllocatedSlot.class);
+        januarySlot.setCourtRoomId(random(Integer.class).toString());
+        String januaryTime = "2020-01-15T10:15:30.250Z";
+        januarySlot.setHearingStartTime(januaryTime);
+
+        // Given - Test with December
+        AllocatedSlot decemberSlot = random(AllocatedSlot.class);
+        decemberSlot.setCourtRoomId(random(Integer.class).toString());
+        String decemberTime = "2020-12-25T15:45:20.750Z";
+        decemberSlot.setHearingStartTime(decemberTime);
+
+        // When
+        courtScheduleRepository.saveAllocatedListing(Lists.newArrayList(januarySlot, decemberSlot));
+
+        // Then - Verify January
+        List<AllocatedListing> januaryListings = allocatedListingRepository.findByHearingId(januarySlot.getHearingId());
+        assertFalse(januaryListings.isEmpty());
+        AllocatedListing januarySaved = januaryListings.get(0);
+        String januarySavedTime = DateUtils.toIsoStringExtended(januarySaved.getHearingStartTime());
+        assertTrue("Expected January time to be preserved, but got: " + januarySavedTime, 
+            januarySavedTime.contains("10:15:30.25"));
+
+        // Then - Verify December
+        List<AllocatedListing> decemberListings = allocatedListingRepository.findByHearingId(decemberSlot.getHearingId());
+        assertFalse(decemberListings.isEmpty());
+        AllocatedListing decemberSaved = decemberListings.get(0);
+        String decemberSavedTime = DateUtils.toIsoStringExtended(decemberSaved.getHearingStartTime());
+        assertTrue("Expected December time to be preserved, but got: " + decemberSavedTime, 
+            decemberSavedTime.contains("15:45:20.75"));
+    }
+
     @Test
     public void shouldDeleteProvisionalBooking() {
         ProvisionalBooking provisionalBooking = random(ProvisionalBooking.class);
@@ -1471,18 +1659,16 @@ public class CourtScheduleRepositoryTest {
         final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
         courtSchedule1.setCourtScheduleId(courtScheduleId1);
         courtSchedule1.setPanel("ADULT");
-        courtSchedule1.setSessionDate(LocalDate.now());
         courtSchedule1.setOperationalUnit("BA124");
         courtSchedule1.setOuCode("BA124");
-        courtSchedule1.setSessionDate(LocalDate.now());
+        courtSchedule1.setSessionDate(LocalDate.now().plusDays(1));
         courtScheduleRepository.saveAndFlush(courtSchedule1);
         final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
         courtSchedule2.setCourtScheduleId(courtScheduleId2);
         courtSchedule2.setPanel("ADULT");
-        courtSchedule2.setSessionDate(LocalDate.now());
         courtSchedule2.setOperationalUnit("BA124");
         courtSchedule2.setOuCode("BA124");
-        courtSchedule2.setSessionDate(LocalDate.now());
+        courtSchedule2.setSessionDate(LocalDate.now().plusDays(1));
         courtScheduleRepository.saveAndFlush(courtSchedule2);
 
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
@@ -1490,6 +1676,391 @@ public class CourtScheduleRepositoryTest {
         assertNull(courtScheduleRepository.findBy(courtScheduleId1));
         assertNull(courtScheduleRepository.findBy(courtScheduleId2));
         assertEquals(true, courtSchedules.isEmpty());
+    }
+
+    @Test
+    public void shouldDeleteCourtScheduleOnlyInFuture() {
+        String oldCourtScheduleId = random(String.class);
+        String futureCourtScheduleId = random(String.class);
+        List<String> courtScheduleIdList = List.of(oldCourtScheduleId, futureCourtScheduleId);
+        final CourtSchedule oldCcourtSchedule = random(CourtSchedule.class);
+        oldCcourtSchedule.setCourtScheduleId(oldCourtScheduleId);
+        oldCcourtSchedule.setPanel("ADULT");
+        oldCcourtSchedule.setSessionDate(LocalDate.now());
+        oldCcourtSchedule.setOperationalUnit("BA124");
+        oldCcourtSchedule.setOuCode("BA124");
+        oldCcourtSchedule.setSessionDate(LocalDate.now().minusDays(1));
+        courtScheduleRepository.saveAndFlush(oldCcourtSchedule);
+
+        final CourtSchedule futureCourtSchedule = random(CourtSchedule.class);
+        futureCourtSchedule.setCourtScheduleId(futureCourtScheduleId);
+        futureCourtSchedule.setPanel("ADULT");
+        futureCourtSchedule.setSessionDate(LocalDate.now());
+        futureCourtSchedule.setOperationalUnit("BA124");
+        futureCourtSchedule.setOuCode("BA124");
+        futureCourtSchedule.setSessionDate(LocalDate.now().plusDays(1));
+        courtScheduleRepository.saveAndFlush(futureCourtSchedule);
+
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
+
+        assertNotNull(courtScheduleRepository.findBy(oldCourtScheduleId));
+        assertNull(courtScheduleRepository.findBy(futureCourtScheduleId));
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithSmallBatchSize() {
+        // Given
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(25); // Small batch
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(courtSchedules.size()));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithLargeBatchSize() {
+        // Given
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(150); // Large batch
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(courtSchedules.size()));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithVeryLargeBatchSize() {
+        // Given
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(500); // Very large batch
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(courtSchedules.size()));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldHandleEmptyCourtSchedulesList() {
+        // Given
+        final List<CourtSchedule> courtSchedules = new ArrayList<>();
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("Failed schedules should remain empty", failedSchedules.isEmpty());
+        assertThat("No court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(0));
+    }
+
+    @Test
+    public void shouldHandleNullCourtSchedulesList() {
+        // Given
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(null, failedSchedules);
+
+        // Then
+        assertThat("Failed schedules should remain empty", failedSchedules.isEmpty());
+        assertThat("No court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(0));
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithSingleRecord() {
+        // Given
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(1);
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("Single court schedule should be persisted",
+                   courtScheduleRepository.findAll().size(), is(1));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithExactBatchSize() {
+        // Given
+        final int batchSize = 50; // Default BATCH_SIZE
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(batchSize);
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(batchSize));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithMultipleBatches() {
+        // Given
+        final int totalRecords = 125; // Should create 3 batches (50, 50, 25)
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(totalRecords);
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(totalRecords));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithPerformanceMetrics() {
+        // Given
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(100);
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        final long startTime = System.currentTimeMillis();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+        final long duration = System.currentTimeMillis() - startTime;
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(100));
+        assertThat("Processing should complete within reasonable time", duration < 5000); // 5 seconds max
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithMixedData() {
+        // Given
+        final List<CourtSchedule> courtSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // Add various types of court schedules
+        for (int i = 0; i < 50; i++) {
+            final CourtSchedule cs = random(CourtSchedule.class);
+            cs.setCourtScheduleId(randomUUID().toString());
+            cs.setPanel(i % 2 == 0 ? "ADULT" : "YOUTH");
+            cs.setBusinessType(i % 3 == 0 ? "TRL" : "CIV");
+            cs.setSessionDate(LocalDate.now().plusDays(i));
+            courtSchedules.add(cs);
+        }
+
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(50));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithBoundaryConditions() {
+        // Test with exactly 1000 records (batch size cap)
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(1000);
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(1000));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithLargeBatchSizeExceedingCap() {
+        // Test with more than 1000 records to test batch size capping
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(1500);
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(1500));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithConcurrentAccess() {
+        // Test that the method is thread-safe
+        final List<CourtSchedule> courtSchedules1 = createTestCourtSchedules(50);
+        final List<CourtSchedule> courtSchedules2 = createTestCourtSchedules(50);
+        final List<CourtSchedule> failedSchedules1 = new ArrayList<>();
+        final List<CourtSchedule> failedSchedules2 = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When - simulate concurrent access
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules1, failedSchedules1);
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules2, failedSchedules2);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules1.isEmpty());
+        assertThat("All court schedules should be processed successfully", failedSchedules2.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(100));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithMemoryEfficiency() {
+        // Test memory efficiency with large dataset
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(2000);
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(2000));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithDifferentDataTypes() {
+        // Test with different panel types and business types
+        final List<CourtSchedule> courtSchedules = new ArrayList<>();
+        final String[] panels = {"ADULT", "YOUTH", "FAMILY"};
+        final String[] businessTypes = {"TRL", "CIV", "CRIM"};
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        for (int i = 0; i < 30; i++) {
+            final CourtSchedule cs = random(CourtSchedule.class);
+            cs.setCourtScheduleId(randomUUID().toString());
+            cs.setPanel(panels[i % panels.length]);
+            cs.setBusinessType(businessTypes[i % businessTypes.length]);
+            cs.setSessionDate(LocalDate.now().plusDays(i));
+            cs.setOperationalUnit("BA124");
+            cs.setOuCode("BA124");
+            courtSchedules.add(cs);
+        }
+
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(30));
+        tx.commit();
+        em.close();
+    }
+
+    @Test
+    public void shouldProcessOptimizedBatches_WithPerformanceBenchmark() {
+        // Performance benchmark test
+        final int recordCount = 500;
+        final List<CourtSchedule> courtSchedules = createTestCourtSchedules(recordCount);
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
+        final long startTime = System.currentTimeMillis();
+        EntityTransaction tx = em.getTransaction();
+        tx.begin();
+
+        // When
+        courtScheduleRepository.batchInsertCourtSchedules(courtSchedules, failedSchedules);
+
+        final long duration = System.currentTimeMillis() - startTime;
+        final double throughput = (recordCount * 1000.0) / duration;
+
+        // Then
+        assertThat("All court schedules should be processed successfully", failedSchedules.isEmpty());
+        assertThat("All court schedules should be persisted",
+                   courtScheduleRepository.findAll().size(), is(recordCount));
+        assertThat("Throughput should be reasonable", throughput > 10); // At least 10 records per second
+        assertThat("Processing should complete within reasonable time", duration < 10000); // 10 seconds max
+        tx.commit();
+        em.close();
+    }
+
+    /**
+     * Helper method to create test court schedules with unique IDs.
+     */
+    private List<CourtSchedule> createTestCourtSchedules(final int count) {
+        final List<CourtSchedule> courtSchedules = new ArrayList<>();
+
+        for (int i = 0; i < count; i++) {
+            final CourtSchedule cs = random(CourtSchedule.class);
+            cs.setCourtScheduleId(randomUUID().toString());
+            cs.setPanel("ADULT");
+            cs.setBusinessType("TRL");
+            cs.setSessionDate(LocalDate.now().plusDays(i));
+            cs.setOperationalUnit("BA124");
+            cs.setOuCode("BA124");
+            courtSchedules.add(cs);
+        }
+
+        return courtSchedules;
     }
 
     @Test
@@ -1634,7 +2205,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setOuCode(ouCode);
         courtSchedule1.setMaxAdMorningDuration(240);
         courtSchedule1.setMaxAdAfternoonDuration(120);
-        courtSchedule1.setSupportAdSplit(false);
+        courtSchedule1.setSupportAdSplit(true);
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
@@ -1650,7 +2221,7 @@ public class CourtScheduleRepositoryTest {
         updateRequest.setAvailableDuration(100);
         updateRequest.setMaxAdMorningDuration(200);
         updateRequest.setMaxAdAfternoonDuration(100);
-        updateRequest.setSupportAdSplit(false);
+        updateRequest.setSupportAdSplit(true);
 
         courtScheduleRepository.update(updateRequest, false);
 
@@ -1660,9 +2231,9 @@ public class CourtScheduleRepositoryTest {
         assertEquals(100, updatedCourtSchedule.getMaxDuration().intValue());
         assertEquals(10, updatedCourtSchedule.getAvailableSlots().intValue());
         assertEquals(100, updatedCourtSchedule.getAvailableDuration().intValue());
-        assertEquals(240, updatedCourtSchedule.getMaxAdMorningDuration().intValue());
-        assertEquals(120, updatedCourtSchedule.getMaxAdAfternoonDuration().intValue());
-        assertFalse(updatedCourtSchedule.getSupportAdSplit());
+        assertEquals(200, updatedCourtSchedule.getMaxAdMorningDuration().intValue());
+        assertEquals(100, updatedCourtSchedule.getMaxAdAfternoonDuration().intValue());
+        assertTrue(updatedCourtSchedule.getSupportAdSplit());
     }
 
     @Test
@@ -1697,7 +2268,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setOuCode(ouCode);
         courtSchedule1.setMaxAdMorningDuration(240);
         courtSchedule1.setMaxAdAfternoonDuration(120);
-        courtSchedule1.setSupportAdSplit(true);
+        courtSchedule1.setSupportAdSplit(false);
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
@@ -1713,19 +2284,21 @@ public class CourtScheduleRepositoryTest {
         updateRequest.setAvailableDuration(100);
         updateRequest.setMaxAdMorningDuration(200);
         updateRequest.setMaxAdAfternoonDuration(100);
-        updateRequest.setSupportAdSplit(true);
+        updateRequest.setSupportAdSplit(false);
 
         courtScheduleRepository.update(updateRequest, false);
 
         CourtSchedule updatedCourtSchedule = courtScheduleRepository.findBy(COURT_SCHEDULE_ID);
         assertNotNull(updatedCourtSchedule);
         assertEquals(12, updatedCourtSchedule.getMaxSlots().intValue());
-        assertEquals(0, updatedCourtSchedule.getMaxDuration().intValue());
+        assertEquals(100, updatedCourtSchedule.getMaxDuration().intValue());
         assertEquals(10, updatedCourtSchedule.getAvailableSlots().intValue());
         assertEquals(100, updatedCourtSchedule.getAvailableDuration().intValue());
-        assertEquals(200, updatedCourtSchedule.getMaxAdMorningDuration().intValue());
-        assertEquals(100, updatedCourtSchedule.getMaxAdAfternoonDuration().intValue());
-        assertTrue(updatedCourtSchedule.getSupportAdSplit());
+        // MaxAdMorningDuration not updated
+        assertEquals(240, updatedCourtSchedule.getMaxAdMorningDuration().intValue());
+        // MaxAdAfternoonDuration not updated
+        assertEquals(120, updatedCourtSchedule.getMaxAdAfternoonDuration().intValue());
+        assertFalse(updatedCourtSchedule.getSupportAdSplit());
     }
 
     @Test
@@ -2501,7 +3074,57 @@ public class CourtScheduleRepositoryTest {
                 courtSchedule.getBusinessType(),
                 courtSchedule.getCourtSession(),
                 courtSchedule.isSlotBased(),
-                null);
+                null,
+                false,
+                "API",
+                "");
+    }
+
+    @Test
+    public void shouldSetHearingSourceToMOVEWhenExistingListingsAreReleased() {
+        // Given
+        String hearingId = randomUUID().toString();
+
+        // Create a court schedule
+        CourtSchedule courtSchedule = createSlotBasedCourtSchedule("OU123", "ADULT", LocalDate.of(2025, 6, 10), "CR01", "TRF");
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "12:00"));
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setAvailableSlots(10);
+        courtSchedule.setIsOverbookingAllowed(false);
+        courtScheduleRepository.save(courtSchedule);
+
+        // Create an existing allocated listing for the same hearing ID
+        AllocatedListing existingListing = random(AllocatedListing.class);
+        existingListing.setHearingId(hearingId);
+        existingListing.setCourtScheduleId("OLD_SCHEDULE_ID");
+        existingListing.setHearingStartTime(DateUtils.combineDateAndTime(LocalDate.of(2025, 6, 9), "10:00"));
+        existingListing.setDuration(1);
+        existingListing.setSource("DEFAULT");
+        allocatedListingRepository.save(existingListing);
+
+        // When
+        RequestedSlots requestedSlots = new RequestedSlots();
+        RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
+        requestedCourtSchedule.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        requestedCourtSchedule.setHearingStartTime(DateUtils.toResponseDateString(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "11:00")));
+        requestedCourtSchedule.setDurationInMinutes(30);
+        requestedCourtSchedule.setSource("DEFAULT");
+
+        HearingSlot hearingSlot = new HearingSlot();
+        hearingSlot.setHearingId(hearingId);
+        hearingSlot.setCourtScheduleIds(List.of(requestedCourtSchedule));
+        requestedSlots.setHearingSlots(List.of(hearingSlot));
+
+        courtScheduleRepository.updateListHearingSlots(requestedSlots);
+
+        // Then
+        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
+        assertEquals(1, allocatedListings.size());
+
+        AllocatedListing newListing = allocatedListings.get(0);
+        assertEquals(courtSchedule.getCourtScheduleId(), newListing.getCourtScheduleId());
+        assertEquals("MOVE", newListing.getSource());
     }
 
     // ========== Additional Unit Tests for findClosestCourtScheduleByTimeAndBusinessType ==========

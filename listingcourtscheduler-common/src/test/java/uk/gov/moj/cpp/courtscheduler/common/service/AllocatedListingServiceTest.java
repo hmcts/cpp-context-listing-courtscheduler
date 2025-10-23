@@ -98,7 +98,12 @@ class AllocatedListingServiceTest {
                         "Court-Room-Id-1",
                         "Court-Room-Num-1",
                         "buss",
-                        "Court-Session-1",null, null);
+                        "Court-Session-1",
+                        false,
+                        null,
+                        false,
+                        "API",
+                        null);
         Set<IdResponse> hearingIds = new LinkedHashSet<>();
         hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
         hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));

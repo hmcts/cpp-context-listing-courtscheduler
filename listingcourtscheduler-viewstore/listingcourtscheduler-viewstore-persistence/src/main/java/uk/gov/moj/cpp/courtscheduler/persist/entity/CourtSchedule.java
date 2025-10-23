@@ -96,6 +96,7 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "session_end_time", type = Date.class),
                                 @ColumnResult(name = "created_on", type = Timestamp.class),
                                 @ColumnResult(name = "updated_on", type = Timestamp.class),
+                                @ColumnResult(name = "national_break_time", type = Date.class),
                                 @ColumnResult(name = "totalbookedformorning", type = Integer.class),
                                 @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
                                 @ColumnResult(name = "totalbooked", type = Integer.class),
@@ -326,6 +327,7 @@ public class CourtSchedule {
                          final Date sessionEndTime,
                          final Date createdOn,
                          final Date updatedOn,
+                         final Date nationalBreakTime,
                          final Integer totalBookedMorning,
                          final Integer totalBookedAfternoon,
                          final Integer totalBooked,
@@ -354,6 +356,7 @@ public class CourtSchedule {
         this.isOverbookingAllowed = isOverbookingAllowed;
         this.createdOn = createdOn;
         this.updatedOn = updatedOn;
+        this.nationalBreakTime = nationalBreakTime;
         this.supportAdSplit = supportAdSplit;
         this.totalBookedMorning = totalBookedMorning;
         this.totalBookedAfternoon = totalBookedAfternoon;

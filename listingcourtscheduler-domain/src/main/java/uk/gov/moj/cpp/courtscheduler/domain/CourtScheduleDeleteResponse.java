@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 public class CourtScheduleDeleteResponse {
 
@@ -33,6 +35,12 @@ public class CourtScheduleDeleteResponse {
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
     private Date createdOn;
     private Date updatedOn;
+    private String sessionStartTime;
+    private String sessionEndTime;
+    @JsonProperty("isOverbookingAllowed")
+    private boolean overbookingAllowed;
+    private String minHearingTime;
+    private String maxHearingTime;
 
     protected CourtScheduleDeleteResponse(final CourtScheduleDeleteResponseBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -60,6 +68,11 @@ public class CourtScheduleDeleteResponse {
         this.createdOn = builder.createdOn;
         this.updatedOn = builder.updatedOn;
         this.totalBooked = builder.totalBooked;
+        this.sessionStartTime = builder.sessionStartTime;
+        this.sessionEndTime = builder.sessionEndTime;
+        this.overbookingAllowed = builder.overbookingAllowed;
+        this.minHearingTime = builder.minHearingTime;
+        this.maxHearingTime = builder.maxHearingTime;
     }
 
     public CourtScheduleDeleteResponse() {
@@ -266,6 +279,38 @@ public class CourtScheduleDeleteResponse {
         this.totalBooked = totalBooked;
     }
 
+    public String getSessionStartTime() {
+        return sessionStartTime;
+    }
+
+    public void setSessionStartTime(final String sessionStartTime) {
+        this.sessionStartTime = sessionStartTime;
+    }
+
+    public String getSessionEndTime() {
+        return sessionEndTime;
+    }
+
+    public void setSessionEndTime(final String sessionEndTime) {
+        this.sessionEndTime = sessionEndTime;
+    }
+
+    public boolean isOverbookingAllowed() {
+        return overbookingAllowed;
+    }
+
+    public void setOverbookingAllowed(final boolean overbookingAllowed) {
+        this.overbookingAllowed = overbookingAllowed;
+    }
+
+    public String getMinHearingTime() {
+        return minHearingTime;
+    }
+
+    public void setMinHearingTime(final String minHearingTime) {
+        this.minHearingTime = minHearingTime;
+    }
+
     public static final class CourtScheduleDeleteResponseBuilder {
 
         private String courtScheduleId;
@@ -295,6 +340,12 @@ public class CourtScheduleDeleteResponse {
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
         private Date createdOn;
         private Date updatedOn;
+        private String sessionStartTime;
+        private String sessionEndTime;
+        @JsonProperty("isOverbookingAllowed")
+        private boolean overbookingAllowed;
+        private String minHearingTime;
+        private String maxHearingTime;
 
         public static CourtScheduleDeleteResponseBuilder courtSchedule() {
             return new CourtScheduleDeleteResponseBuilder();
@@ -433,6 +484,31 @@ public class CourtScheduleDeleteResponse {
 
         public CourtScheduleDeleteResponseBuilder withTotalBooked(final Integer totalBooked){
             this.totalBooked = totalBooked;
+            return this;
+        }
+
+        public CourtScheduleDeleteResponseBuilder withSessionStartTime(final String sessionStartTime) {
+            this.sessionStartTime = sessionStartTime;
+            return this;
+        }
+
+        public CourtScheduleDeleteResponseBuilder withSessionEndTime(final String sessionEndTime) {
+            this.sessionEndTime = sessionEndTime;
+            return this;
+        }
+
+        public CourtScheduleDeleteResponseBuilder withIsOverbookingAllowed(final boolean overbookingAllowed) {
+            this.overbookingAllowed = overbookingAllowed;
+            return this;
+        }
+
+        public CourtScheduleDeleteResponseBuilder withMinHearingTime(final String minHearingTime) {
+            this.minHearingTime = minHearingTime;
+            return this;
+        }
+
+        public CourtScheduleDeleteResponseBuilder withMaxHearingTime(final String maxHearingTime) {
+            this.maxHearingTime = maxHearingTime;
             return this;
         }
 

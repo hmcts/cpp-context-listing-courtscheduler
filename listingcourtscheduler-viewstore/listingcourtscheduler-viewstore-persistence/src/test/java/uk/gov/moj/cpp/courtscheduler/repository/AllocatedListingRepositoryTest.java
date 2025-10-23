@@ -119,6 +119,18 @@ public class AllocatedListingRepositoryTest {
         final String courtScheduleId1 = randomUUID().toString();
         final String courtScheduleId2 = randomUUID().toString();
 
+        final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
+        courtSchedule1.setPanel("ADULT");
+        courtSchedule1.setCourtScheduleId(courtScheduleId1);
+        courtSchedule1.setSlotBased(true);
+        courtScheduleRepository.saveAndFlush(courtSchedule1);
+
+        final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
+        courtSchedule2.setPanel("ADULT");
+        courtSchedule2.setCourtScheduleId(courtScheduleId2);
+        courtSchedule2.setSlotBased(true);
+        courtScheduleRepository.saveAndFlush(courtSchedule2);
+
         final AllocatedListing allocatedListing1 = random(AllocatedListing.class);
         allocatedListing1.setHearingId(hearingId);
         allocatedListing1.setCourtScheduleId(courtScheduleId1);
@@ -146,10 +158,10 @@ public class AllocatedListingRepositoryTest {
             assertThat(allocatedListingTotalBookeds.get(0).getTotalBooked(), is(2));
 
             assertEquals(allocatedListingTotalBookeds.get(1).getCourtScheduleId(), courtScheduleId2);
-            assertThat(allocatedListingTotalBookeds.get(1).getTotalBooked(), is(30));
+            assertThat(allocatedListingTotalBookeds.get(1).getTotalBooked(), is(1));
         } else {
             assertEquals(allocatedListingTotalBookeds.get(0).getCourtScheduleId(), courtScheduleId2);
-            assertThat(allocatedListingTotalBookeds.get(0).getTotalBooked(), is(30));
+            assertThat(allocatedListingTotalBookeds.get(0).getTotalBooked(), is(1));
 
             assertEquals(allocatedListingTotalBookeds.get(1).getCourtScheduleId(), courtScheduleId1);
             assertThat(allocatedListingTotalBookeds.get(1).getTotalBooked(), is(2));
@@ -223,7 +235,10 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         "",
+                        false,
                         null,
+                        false,
+                        "API",
                         null);
         Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(5, hearingIdsResult.getKey().longValue());
@@ -288,6 +303,9 @@ public class AllocatedListingRepositoryTest {
                         "",
                         "",
                         null,
+                        null,
+                        false,
+                        "API",
                         null);
         Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(2, hearingIdsResult.getKey().longValue());
@@ -330,7 +348,7 @@ public class AllocatedListingRepositoryTest {
         allocatedListing.setDuration(120);
         allocatedListing.setOucode("BA124");
         allocatedListing.setRotaBusinessType("BUSS");
-        allocatedListing.setOverbookingExempt(false);
+        allocatedListing.setSource("DEFAULT");
 
         return allocatedListing;
     }

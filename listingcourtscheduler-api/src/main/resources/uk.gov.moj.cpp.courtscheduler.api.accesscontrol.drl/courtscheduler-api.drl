@@ -70,6 +70,15 @@ rule "API - Action - courtscheduler.validate.delete"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.validate.session.availability"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.validate.session.availability");
+        eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.update.hearing.slots"
   when
     $outcome: Outcome();

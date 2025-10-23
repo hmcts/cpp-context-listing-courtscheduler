@@ -1,19 +1,20 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static java.lang.Boolean.TRUE;
 import static java.lang.String.format;
+import static java.time.LocalDate.now;
 import static java.util.Objects.nonNull;
 import static java.util.Optional.of;
+import static java.util.Optional.ofNullable;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toExactTimestamp;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoStringExtended;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
@@ -29,7 +30,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.SlotProcessingContext;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
+import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -37,12 +40,14 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
+import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleRetryService;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -51,7 +56,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -66,7 +70,6 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.transaction.Transactional;
 
-import jakarta.persistence.PersistenceException;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -206,6 +209,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Inject
     CourtScheduleCriteria courtScheduleCriteria;
     @Inject
+    CourtScheduleRetryService courtScheduleRetryService;
+    @Inject
     private AllocatedListingRepository allocatedListingRepository;
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
@@ -253,6 +258,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             cs.session_end_time,
             cs.created_on,
             cs.updated_on,
+            cs.national_break_time,
             cs.is_draft,
             -- Adjusted calculation for morning bookings
             COALESCE(
@@ -339,25 +345,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     private static final int DEFAULT_DURATION_TO_BE_RETURNED = 20;
     private static final String HEARING_START_TIME = "hearingStartTime";
 
-    private void logMultiplePersistedSchedules(List<CourtSchedule> persistedCourtSchedules, CourtSchedule courtSchedule) {
-        if (persistedCourtSchedules.size() > 1) {
-            LOGGER.info("having more than one persisted court schedule: {}", courtSchedule);
-        }
-    }
-
-    private boolean hasMaxSlotsChanged(CourtSchedule persistedCourtSchedule, CourtSchedule courtSchedule) {
-        return persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue();
-    }
-
-    private boolean hasMaxDurationChanged(CourtSchedule persistedCourtSchedule, CourtSchedule courtSchedule) {
-        return persistedCourtSchedule.getMaxDuration() > 0
-                && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue();
-    }
-
-    private boolean hasNewMaxSlotsOrDuration(CourtSchedule courtSchedule) {
-        return courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0;
-    }
-
     public void saveCourtSchedules(List<CourtSchedule> courtSchedules) {
         List<CourtSchedule> failedSchedules = new ArrayList<>();
 
@@ -369,75 +356,118 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     protected void batchInsertCourtSchedules(List<CourtSchedule> courtSchedules, List<CourtSchedule> failedSchedules) {
-        boolean hasPersistedRecords = false;
-        for (int i = 0; i < courtSchedules.size(); i++) {
-            try {
-                entityManager.persist(courtSchedules.get(i));
-                hasPersistedRecords = true;
-                if ((i + 1) % BATCH_SIZE == 0) {
-                    LOGGER.debug("Flushing batch at index {}", i);
-                    entityManager.flush();
-                    entityManager.clear();
-                    hasPersistedRecords = false;
-                }
-            } catch (PersistenceException e) {
-                LOGGER.warn("Failed to persist schedule at index {}: {}", i, e.getMessage(), e);
-                failedSchedules.add(courtSchedules.get(i));
-                if ((i + 1) % BATCH_SIZE == 0) {
-                    entityManager.clear();
+        if (courtSchedules == null || courtSchedules.isEmpty()) {
+            LOGGER.debug("No court schedules to process");
+            return;
+        }
+
+        final long startTime = System.currentTimeMillis();
+        LOGGER.info("Starting optimized batch insert of {} court schedules with batch size {}", courtSchedules.size(), BATCH_SIZE);
+        
+        // Use optimized processing for all batch sizes
+        processOptimizedBatches(courtSchedules, failedSchedules);
+        
+        final long duration = System.currentTimeMillis() - startTime;
+        final int processed = courtSchedules.size() - failedSchedules.size();
+        final double throughput = processed > 0 ? (processed * 1000.0 / duration) : 0;
+        
+        LOGGER.info("Batch insert completed in {}ms. Processed: {}, Failed: {}, Throughput: {} records/sec",
+                   duration, processed, failedSchedules.size(), throughput);
+    }
+
+    /**
+     * Highly optimized batch processing for maximum performance.
+     * Uses bulk operations, reduced entity manager operations, and optimized memory usage.
+     */
+    private void processOptimizedBatches(List<CourtSchedule> courtSchedules, List<CourtSchedule> failedSchedules) {
+        final int totalRecords = courtSchedules.size();
+        final int batchSize = Math.min(BATCH_SIZE, 1000); // Cap batch size for optimal performance
+        final int numBatches = (totalRecords + batchSize - 1) / batchSize;
+        
+        LOGGER.debug("Processing {} records in {} batches of size {}", totalRecords, numBatches, batchSize);
+        
+        // Pre-allocate collections for better performance
+        final List<CourtSchedule> currentBatch = new ArrayList<>(batchSize);
+        int processedCount = 0;
+        
+        try {
+            for (int i = 0; i < totalRecords; i++) {
+                final CourtSchedule cs = courtSchedules.get(i);
+                currentBatch.add(cs);
+                
+                // Persist immediately to reduce memory footprint
+                entityManager.persist(cs);
+                
+                // Process batch when it reaches the configured size or is the last batch
+                if (currentBatch.size() >= batchSize || i == totalRecords - 1) {
+                    if (flushBatchOptimized(currentBatch, failedSchedules)) {
+                        processedCount += currentBatch.size();
+                        LOGGER.debug("Successfully processed batch {}/{} with {} records", 
+                                   (processedCount / batchSize) + 1, numBatches, currentBatch.size());
+                    } else {
+                        LOGGER.warn("Batch failed, processing {} records individually", currentBatch.size());
+                        processIndividualRecordsFast(currentBatch, failedSchedules);
+                        processedCount += currentBatch.size();
+                    }
+                    currentBatch.clear();
                 }
             }
-        }
-        if (hasPersistedRecords) {
-            entityManager.flush();
-            entityManager.clear();
+            
+        } catch (Exception e) {
+            LOGGER.error("Critical error during optimized batch processing: {}", e.getMessage(), e);
+            // Process remaining records individually
+            if (!currentBatch.isEmpty()) {
+                processIndividualRecordsFast(currentBatch, failedSchedules);
+            }
         }
     }
+
+    /**
+     * Optimized batch flush with minimal overhead and fast execution.
+     */
+    private boolean flushBatchOptimized(List<CourtSchedule> batch, List<CourtSchedule> failedSchedules) {
+        try {
+            // Single flush operation for maximum speed
+            entityManager.flush();
+            entityManager.clear();
+            return true;
+        } catch (Exception e) {
+            LOGGER.warn("Batch flush failed for {} records: {}", batch.size(), e.getMessage());
+            // Add failed records to failedSchedules list
+            failedSchedules.addAll(batch);
+            return false;
+        }
+    }
+
+
+    /**
+     * Fast individual record processing with optimized entity manager usage.
+     */
+    private void processIndividualRecordsFast(List<CourtSchedule> records, List<CourtSchedule> failedSchedules) {
+        LOGGER.debug("Processing {} records individually with fast method", records.size());
+        
+        for (CourtSchedule cs : records) {
+            try {
+                // Minimal entity manager operations for speed
+                entityManager.persist(cs);
+                entityManager.flush();
+                LOGGER.debug("Successfully processed individual record: {}", cs.getCourtScheduleId());
+            } catch (Exception ex) {
+                LOGGER.warn("Failed to persist individual record {}: {}", cs.getCourtScheduleId(), ex.getMessage());
+                failedSchedules.add(cs);
+                entityManager.clear();
+            }
+        }
+    }
+
 
     //update on Create when needed
     public CourtSchedule update(final CourtSchedule courtSchedule, final boolean isForRotaFile) {
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
-        courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
-        final List<CourtSchedule> persistedCourtSchedules = entityManager.createQuery(criteriaQuery).getResultList();
 
-        logMultiplePersistedSchedules(persistedCourtSchedules, courtSchedule);
-
-        if (isNotEmpty(persistedCourtSchedules)) {
-            final CourtSchedule persistedCourtSchedule = getCourtScheduleToBeUpdated(courtSchedule, isForRotaFile, persistedCourtSchedules);
-
-            boolean hasMaxSlotsChanged = hasMaxSlotsChanged(persistedCourtSchedule, courtSchedule);
-            boolean hasMaxDurationChanged = hasMaxDurationChanged(persistedCourtSchedule, courtSchedule);
-            boolean hasNewMaxSlotsOrDuration = hasNewMaxSlotsOrDuration(courtSchedule);
-            boolean hasSupportAdSplitChanged = courtSchedule.getSupportAdSplit()
-                    && (persistedCourtSchedule.getMaxAdMorningDuration().intValue() != courtSchedule.getMaxAdMorningDuration().intValue()
-                    || persistedCourtSchedule.getMaxAdAfternoonDuration().intValue() != courtSchedule.getMaxAdAfternoonDuration().intValue());
-            boolean hasSameADSplit = Objects.equals(persistedCourtSchedule.getSupportAdSplit(), courtSchedule.getSupportAdSplit());
-
-            if ((isForRotaFile || hasMaxSlotsChanged || hasMaxDurationChanged || hasNewMaxSlotsOrDuration || hasSupportAdSplitChanged) && hasSameADSplit) {
-                if (TRUE.equals(persistedCourtSchedule.getSupportAdSplit())) {
-                    persistedCourtSchedule.setMaxAdMorningDuration(courtSchedule.getMaxAdMorningDuration());
-                    persistedCourtSchedule.setMaxAdAfternoonDuration(courtSchedule.getMaxAdAfternoonDuration());
-                } else {
-                    persistedCourtSchedule.setMaxDuration(courtSchedule.getMaxDuration());
-                }
-                persistedCourtSchedule.setMaxSlots(courtSchedule.getMaxSlots());
-                persistedCourtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots());
-                persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
-                persistedCourtSchedule.setCreatedOn(persistedCourtSchedule.getCreatedOn());
-                persistedCourtSchedule.setUpdatedOn(new Date());
-                if (isForRotaFile) {
-                    persistedCourtSchedule.setActive(true);
-                }
-
-                this.save(persistedCourtSchedule);
-            }
-            return courtSchedule;
-        }
-        return null;
+        return courtScheduleRetryService.retryAndSave(courtSchedule, isForRotaFile);
     }
 
-    private static CourtSchedule getCourtScheduleToBeUpdated(final CourtSchedule courtSchedule, final boolean isForRotaFile, final List<CourtSchedule> persistedCourtSchedules) {
+    public static CourtSchedule getCourtScheduleToBeUpdated(final CourtSchedule courtSchedule, final boolean isForRotaFile, final List<CourtSchedule> persistedCourtSchedules) {
         CourtSchedule persistedCourtSchedule = persistedCourtSchedules.get(0);
         if (persistedCourtSchedules.size() > 1 && isForRotaFile) {
             persistedCourtSchedule = persistedCourtSchedules.stream()
@@ -451,7 +481,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     }
 
     public Result update(CourtSchedule persistedCourtSchedule,
-                         uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updateCourtSchedule,
+                         UpdateCourtSchedule updateCourtSchedule,
                          Optional<CourtRoom> courtRoom) {
         //SessionDate and CourtHouseId should not be updated
         persistedCourtSchedule.setCourtRoomId(updateCourtSchedule.getCourtRoomId());
@@ -462,7 +492,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         persistedCourtSchedule.setAvailableSlots(updateCourtSchedule.getAvailableSlots());
         persistedCourtSchedule.setMaxDuration(updateCourtSchedule.getMaxDuration());
         persistedCourtSchedule.setAvailableDuration(updateCourtSchedule.getAvailableDuration());
-        persistedCourtSchedule.setSupportAdSplit(updateCourtSchedule.isAllDaySplit());
         persistedCourtSchedule.setMaxAdMorningDuration(updateCourtSchedule.getMaxDurationForMorning());
         persistedCourtSchedule.setMaxAdAfternoonDuration(updateCourtSchedule.getMaxDurationForAfternoon());
         final DateUtils.SessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(updateCourtSchedule.getSessionType(), updateCourtSchedule.getSessionStartTime(), updateCourtSchedule.getSessionEndTime());
@@ -720,6 +749,13 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         }
     }
 
+    public Optional<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findCourtScheduleById(final String courtScheduleId) {
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule entity = findBy(courtScheduleId);
+        return ofNullable(entity)
+                .filter(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule::isActive)
+                .map(CourtSchedulerConverter::convertForOverbooking);
+    }
+
     public List<Hearing> updateListHearingSlots(final RequestedSlots slots) {
 
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing> allocatedListings = new ArrayList<>();
@@ -736,8 +772,13 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     cs.setAvailableSlots(cs.getAvailableSlots() - 1);
                 } else cs.setAvailableDuration(cs.getAvailableDuration() - hearing.getDuration());
 
-                releaseOldListingsFromAllocatedListings(hearing.getHearingId());
+                boolean isCourtScheduleReleased = releaseOldListingsFromAllocatedListings(hearing.getHearingId());
 
+                final boolean isOverbookingAllowed = findCourtScheduleById(hearing.getCourtScheduleId()).stream().findFirst()
+                        .map(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isOverbookingAllowed)
+                        .orElse(false);
+
+                String hearingSource = resolveAllocatedListingSource(hearing.getSource(), isCourtScheduleReleased, isOverbookingAllowed);
                 //prepare allocated listing
                 uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedlisting = new AllocatedListing();
                 allocatedlisting.setHearingId(hearing.getHearingId());
@@ -747,8 +788,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 allocatedlisting.setId(UUID.randomUUID().toString());
                 allocatedlisting.setHearingStartTime(getAdjustedHearingStartTime(hearing.getHearingStartTime(), cs));
                 allocatedlisting.setDuration(getAdjustedDuration(hearing, cs));
-                allocatedlisting.setOverbookingExempt(false);
-
+                allocatedlisting.setSource(hearingSource);
                 courtSchedules.add(cs);
                 allocatedListings.add(allocatedlisting);
                 hearing.setHearingStartTime(DateUtils.toResponseDateString(getAdjustedHearingStartTime(hearing.getHearingStartTime(), cs)));
@@ -789,7 +829,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         slots.forEach(
                 allocatedListing -> {
                     allocatedListing.setHearingStartTime(
-                            DateUtils.toRoundedTimestamp(toIsoStringExtended(allocatedListing.getHearingStartTime())));
+                            DateUtils.toExactTimestamp(toIsoStringExtended(allocatedListing.getHearingStartTime())));
                     this.allocatedListingRepository.save(allocatedListing);
                 }
         );
@@ -820,6 +860,21 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 processScheduleEntities(paginatedSchedules);
 
         return Pair.of(totalCount, domainSchedules);
+    }
+
+    private String resolveAllocatedListingSource(final String rawHearingSource,
+                                                 final boolean isCourtScheduleReleased,
+                                                 final boolean isOverbookingAllowed) {
+        String source = isNotEmpty(rawHearingSource) ? rawHearingSource : "DEFAULT";
+
+        if (isCourtScheduleReleased) {
+            return "MOVE";
+        }
+
+        if (isOverbookingAllowed) {
+            return "ALLOWED";
+        }
+        return source;
     }
 
     private Map<String, Object> buildQueryParams(HearingSlotRequestParam requestParam, boolean isCountQuery) {
@@ -990,9 +1045,11 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                             modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class);
                     errorDeleteCourtSchedules.add(domainCourtSchedule);
                 } else {
-                    List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId);
-                    courtScheduleJudiciaries.forEach(courtScheduleJudiciary -> courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary));
-                    remove(courtSchedule);
+                    if (courtSchedule.getSessionDate().isAfter(now())) {
+                        List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId);
+                        courtScheduleJudiciaries.forEach(courtScheduleJudiciary -> courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary));
+                        remove(courtSchedule);
+                    }
                 }
             }
         });
@@ -1062,12 +1119,13 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         });
     }
 
-    protected void releaseOldListingsFromAllocatedListings(final String hearingId) {
+    protected boolean releaseOldListingsFromAllocatedListings(final String hearingId) {
         List<AllocatedListing> allocatedListings = this.allocatedListingRepository.findByHearingId(hearingId);
         allocatedListings.forEach(allocatedListing -> this.allocatedListingRepository.remove(allocatedListing));
+        return !allocatedListings.isEmpty();
     }
 
-    private List<AllocatedSlot> searchBookSlots(final List<AllocatedSlot> allocatedSlots) {
+    List<AllocatedSlot> searchBookSlots(final List<AllocatedSlot> allocatedSlots) {
 
         final List<AllocatedSlot> matchedSlots = new ArrayList<>();
         for (final AllocatedSlot allocatedSlot : allocatedSlots) {
@@ -1087,11 +1145,11 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 allocatedSlot.setOuCode(courtScheduleFound.getOuCode());
                 allocatedSlot.setHearingStartTime(toIsoStringExtended(getAdjustedHearingStartTime(allocatedSlot.getHearingStartTime(),courtScheduleFound)));
                 allocatedSlot.setSlotBased(courtScheduleFound.isSlotBased());
-                allocatedSlot.setOverbookingExempt(false);//this needs to be changed with 1984 phase 2
                 allocatedSlot.setJudiciaries(
                         judiciaryList.stream()
                                 .map(j -> modelMapper.map(j, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class))
                                 .toList());
+                allocatedSlot.setSource(allocatedSlot.isPolice() ? "POLICE" : "NONPOLICE");
                 matchedSlots.add(allocatedSlot);
             } else {
                 LOGGER.error(format("Could not update slot as court schedule id not found for combination %s, %s, %s, %s",
@@ -1121,7 +1179,6 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 allocatedSlot.setCourtRoomUUId(String.valueOf(slotsFound.getCourtRoomId()));
                 allocatedSlot.setCourtScheduleId(slotsFound.getCourtScheduleId());
                 allocatedSlot.setCourtRoom(slotsFound.getCourtRoomName());
-                allocatedSlot.setOverbookingExempt(isSearchUpdate);
                 updateCourtScheduleAndSlotBased(allocatedSlot, pair);
                 matchedSlots.add(allocatedSlot);
             } else {
@@ -1519,8 +1576,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 allocatedListing.setOucode(allocatedSlot.getOuCode());
                 allocatedListing.setCourtRoomId(Integer.parseInt(allocatedSlot.getCourtRoomId()));
                 allocatedListing.setDuration(allocatedSlot.isSlotBased() ? SLOT_DEFAULT : allocatedSlot.getDuration());
-                allocatedListing.setHearingStartTime(toRoundedTimestamp(allocatedSlot.getHearingStartTime()));
-                allocatedListing.setOverbookingExempt(allocatedSlot.getOverbookingExempt());
+                allocatedListing.setHearingStartTime(toExactTimestamp(allocatedSlot.getHearingStartTime()));
+                allocatedListing.setSource(allocatedSlot.getSource());
                 LOGGER.info("bookSlotsWithoutCourtScheduleId saveAllocatedListing {}", allocatedListing);
                 this.allocatedListingRepository.save(allocatedListing);
             } else {
@@ -1612,59 +1669,194 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         final Map<String, List<SlotStartTime>> resultStringListMap = new HashMap<>();
         courtScheduleMap.keySet().forEach(courtScheduleId -> {
             final CourtSchedule courtSchedule = courtScheduleMap.get(courtScheduleId);
-            final Date sessionStartTime = courtSchedule.getSessionStartTime();
-            final Date sessionEndTime = courtSchedule.getSessionEndTime();
-            final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair = hearingStartTimeMapByCourtSchedule.get(courtScheduleId);
-            final LocalDateTime sessionStartDateTime = sessionStartTime.toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime();
-            final LocalDateTime sessionEndDateTime = sessionEndTime.toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime();
-            final int sessionStartHour = sessionStartDateTime.getHour();
-            final int sessionStartMinute = sessionStartDateTime.getMinute();
-            final int sessionEndHour = sessionEndDateTime.getHour();
-            final int sessionEndMinute = sessionEndDateTime.getMinute();
-            final AtomicInteger nextMinutePart = new AtomicInteger(sessionStartMinute);
-            final boolean slotBased = courtSchedule.isSlotBased();
-            final List<SlotStartTime> slotStartTimes = processSlotStartTimes(sessionStartHour, sessionEndHour, sessionEndMinute, nextMinutePart, courtScheduleAllocatedPair, sessionStartDateTime, slotBased);
-            resultStringListMap.put(courtScheduleId, slotStartTimes);
-            LOGGER.info("courtScheduleId : {} slotStartTimes :  {}", courtScheduleId, slotStartTimes );
+            final SlotProcessingContext ctx = getSlotProcessingContext(courtSchedule,hearingStartTimeMapByCourtSchedule);
 
+            final List<SlotStartTime> slotStartTimes;
+            if ("AD".equals(ctx.courtSession()) && Boolean.TRUE.equals(courtSchedule.getSupportAdSplit())) {
+                slotStartTimes = processSlotStartTimesWithADSplitSupport(ctx.courtScheduleAllocatedPair(), ctx.sessionStartDateTime(), ctx.sessionEndDateTime(), getNationalBreakTime(courtSchedule));
+            } else if (ctx.sessionStartDateTime().toLocalDate().equals(ctx.sessionEndDateTime().toLocalDate().minusDays(1))) {
+                slotStartTimes = processSlotStartTimesMultiDay(ctx); //special handling for sessionStartTime(UTC) falling in previous day
+            } else {
+                slotStartTimes = processSlotStartTimes(ctx);//normal AM, PM sessions
+            }
+
+            resultStringListMap.put(courtScheduleId, slotStartTimes);
+            LOGGER.info("courtScheduleId : {} slotStartTimes : {}", courtScheduleId, slotStartTimes);
         });
         return resultStringListMap;
     }
+    private static SlotProcessingContext getSlotProcessingContext(final CourtSchedule courtSchedule, final Map<String, List<Pair<Timestamp, Integer>>> hearingStartTimeMapByCourtSchedule) {
+        final Date sessionStartTime = courtSchedule.getSessionStartTime();
+        final Date sessionEndTime = courtSchedule.getSessionEndTime();
+        final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair = hearingStartTimeMapByCourtSchedule.get(courtSchedule.getCourtScheduleId());
+        final LocalDateTime sessionStartDateTime = sessionStartTime.toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime();
+        final LocalDateTime sessionEndDateTime = sessionEndTime.toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime();
+        final int sessionStartHour = sessionStartDateTime.getHour();
+        final int sessionStartMinute = sessionStartDateTime.getMinute();
+        final int sessionEndHour = sessionEndDateTime.getHour();
+        final int sessionEndMinute = sessionEndDateTime.getMinute();
+        final AtomicInteger nextMinutePart = new AtomicInteger(sessionStartMinute);
+        final boolean slotBased = courtSchedule.isSlotBased();
+        final String courtSession  = courtSchedule.getCourtSession();
 
-    private static List<SlotStartTime> processSlotStartTimes(final int sessionStartHour,
-                                                             final int sessionEndHour,
-                                                             final int sessionEndMinute,
-                                                             final AtomicInteger nextMinutePart,
-                                                             final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair,
-                                                             final LocalDateTime sessionStartDateTime, final boolean slotBased) {
+        final int nationalBreakTimeStartHour = "AD".equals(courtSession) ? getNationalBreakTime(courtSchedule).getHour() : 0;
+
+        return new SlotProcessingContext(sessionStartHour,
+               sessionEndHour,
+               sessionEndMinute,
+               nextMinutePart,
+               courtScheduleAllocatedPair,
+               sessionStartDateTime,
+               sessionEndDateTime,
+               slotBased,
+               nationalBreakTimeStartHour,
+                courtSession) ;
+    }
+
+    private static LocalDateTime getNationalBreakTime(CourtSchedule courtSchedule) {
+        return courtSchedule.getNationalBreakTime().toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
+    }
+
+    private static List<SlotStartTime> processSlotStartTimesWithADSplitSupport(List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair, LocalDateTime sessionStartDateTime, LocalDateTime sessionEndDateTime, LocalDateTime nationalBreakTime) {
+        // if support AD split then return only two slots with skipping NATIONAL BREAK
         final List<SlotStartTime> slotStartTimes = new ArrayList<>();
-        for (int currentHour = sessionStartHour; currentHour <= sessionEndHour; currentHour++) {
-            if ((currentHour == sessionEndHour && sessionEndMinute > 0) || currentHour < sessionEndHour) {
-                decideNextMinutePart(currentHour, sessionStartHour, sessionEndHour, nextMinutePart, sessionEndMinute);
-                final List<Pair<Timestamp, Integer>> filteredList = getCourtScheduleAllocatedPairForHourlyPart(courtScheduleAllocatedPair, currentHour, sessionEndHour, nextMinutePart);
-                final Pair<Integer, Integer> startAndEndTimeForHourlyPart = getStartAndEndTimeForHourlyPart(currentHour, sessionStartHour, sessionEndHour, sessionEndMinute, nextMinutePart);
-                final int slotEndHour = (currentHour == sessionEndHour && sessionEndMinute > 0) ? sessionEndHour : currentHour + 1;
-                final LocalDateTime slotStartTime = LocalDateTime.of(sessionStartDateTime.toLocalDate(), LocalTime.of(currentHour, startAndEndTimeForHourlyPart.getLeft()));
-                final LocalDateTime slotEndTime = LocalDateTime.of(sessionStartDateTime.toLocalDate(), LocalTime.of(slotEndHour, startAndEndTimeForHourlyPart.getRight()));
+        final LocalDateTime nationalBreakEnd = nationalBreakTime.plusHours(1);
+
+        // Morning slot
+        if (!sessionStartDateTime.isAfter(nationalBreakTime)) {
+            SlotStartTime morningSlot = new SlotStartTime();
+            morningSlot.setSessionStartTime(toIsoString(sessionStartDateTime));
+            morningSlot.setSessionEndTime(toIsoString(nationalBreakTime));
+            morningSlot.setCount(sumAllocatedDuration(courtScheduleAllocatedPair, sessionStartDateTime, nationalBreakTime));
+            slotStartTimes.add(morningSlot);
+        }
+
+        // Afternoon slot
+        if (!sessionEndDateTime.isBefore(nationalBreakEnd)) {
+            SlotStartTime afternoonSlot = new SlotStartTime();
+            afternoonSlot.setSessionStartTime(toIsoString(nationalBreakEnd));
+            afternoonSlot.setSessionEndTime(toIsoString(sessionEndDateTime));
+            afternoonSlot.setCount(sumAllocatedDuration(courtScheduleAllocatedPair, nationalBreakEnd, sessionEndDateTime));
+            slotStartTimes.add(afternoonSlot);
+        }
+
+        return slotStartTimes;
+
+    }
+
+    private static int sumAllocatedDuration(List<Pair<Timestamp, Integer>> allocations, LocalDateTime sessionStartTime, LocalDateTime sessionEndTime) {
+        if (allocations == null) return 0;
+        return allocations.stream()
+                .filter(pair -> {
+                    LocalDateTime ts = pair.getLeft().toLocalDateTime();
+                    return !ts.isBefore(sessionStartTime) && ts.isBefore(sessionEndTime);
+                })
+                .mapToInt(Pair::getRight)
+                .sum();
+    }
+
+    private static List<SlotStartTime> processSlotStartTimes(SlotProcessingContext ctx) {
+        final List<SlotStartTime> slotStartTimes = new ArrayList<>();
+
+        return getSlotStartTimes(ctx, ctx.sessionStartHour(), slotStartTimes);
+    }
+
+    private static List<SlotStartTime> processSlotStartTimesMultiDay(SlotProcessingContext ctx) {
+        final List<SlotStartTime> slotStartTimes = new ArrayList<>();
+
+            getSlotBeforeMidnight(ctx, slotStartTimes);
+        return getSlotStartTimes(ctx, 0, slotStartTimes);
+    }
+
+    private static List<Pair<Timestamp, Integer>> filterBySlotWindow(
+            final List<Pair<Timestamp, Integer>> allocations,
+            final LocalDateTime slotStart,
+            final LocalDateTime slotEnd,
+            final LocalDateTime sessionEnd,
+            final boolean isFinalBucket,
+            final int sessionEndMinute) {
+
+        if (allocations == null || allocations.isEmpty()) return Collections.emptyList();
+
+        final boolean includeSessionEndInThisBucket =
+                isFinalBucket && sessionEndMinute == 0; // only when the last bucket ends exactly at :00
+
+        return allocations.stream()
+                .filter(p -> {
+                    LocalDateTime ts = p.getLeft().toLocalDateTime();
+                    // normal case: [start, end)
+                    boolean in = !ts.isBefore(slotStart) && ts.isBefore(slotEnd);
+                    // special rule: if this is the last bucket and the session ends on the hour,
+                    // pull in a booking exactly at the session end (== slotEnd) into the previous bucket
+                    if (!in && includeSessionEndInThisBucket) {
+                        in = ts.equals(sessionEnd);
+                    }
+                    return in;
+                })
+                .toList();
+    }
+
+    private static List<SlotStartTime> getSlotStartTimes(SlotProcessingContext ctx, int sessionStartHour, List<SlotStartTime> slotStartTimes) {
+        for (int currentHour = sessionStartHour; currentHour <= ctx.sessionEndHour(); currentHour++) {
+            if ((currentHour == ctx.sessionEndHour() && ctx.sessionEndMinute() > 0) || currentHour < ctx.sessionEndHour()) {
+                if ((ctx.nationalBreakTimeStartHour() != 0) && (currentHour == ctx.nationalBreakTimeStartHour())) {
+                    LOGGER.info("Skipping national break slot at {}", currentHour);
+                    continue;
+                }
+
+                decideNextMinutePart(currentHour, ctx.sessionStartHour(), ctx.sessionEndHour(), ctx.nextMinutePart(), ctx.sessionEndMinute());
+                final List<Pair<Timestamp, Integer>> filteredList = getCourtScheduleAllocatedPairForHourlyPart(
+                        ctx.courtScheduleAllocatedPair(), currentHour, ctx.sessionEndHour(), ctx.sessionEndMinute(), ctx.nextMinutePart());
+                final Pair<Integer, Integer> startAndEndTime = getStartAndEndTimeForHourlyPart(
+                        currentHour, ctx.sessionStartHour(), ctx.sessionEndHour(), ctx.sessionEndMinute(), ctx.nextMinutePart());
+                final int slotEndHour = (currentHour == ctx.sessionEndHour()) ? ctx.sessionEndHour() : currentHour + 1;
+
+                final LocalDateTime slotStartTime = LocalDateTime.of(ctx.sessionEndDateTime().toLocalDate(), LocalTime.of(currentHour, startAndEndTime.getLeft()));
+                final LocalDateTime slotEndTime = LocalDateTime.of(ctx.sessionEndDateTime().toLocalDate(), LocalTime.of(slotEndHour, startAndEndTime.getRight()));
+
                 final AtomicInteger count = new AtomicInteger(0);
                 filteredList.forEach(pair -> count.set(count.get() + pair.getRight()));
-                SlotStartTime responseSlotStartTime = new SlotStartTime();
-                responseSlotStartTime.setSessionStartTime(toIsoString(slotStartTime));
-                responseSlotStartTime.setSessionEndTime(toIsoString(slotEndTime));
-                responseSlotStartTime.setCount(count.get());
-                setHearingTimestamp(slotBased, currentHour, filteredList, slotEndHour, responseSlotStartTime);
-                slotStartTimes.add(responseSlotStartTime);
+
+                SlotStartTime slot = new SlotStartTime();
+                slot.setSessionStartTime(toIsoString(slotStartTime));
+                slot.setSessionEndTime(toIsoString(slotEndTime));
+                slot.setCount(count.get());
+                setHearingTimestamp(ctx.slotBased(), currentHour, filteredList, slotEndHour, slot);
+
+                slotStartTimes.add(slot);
             }
         }
+
         return slotStartTimes;
+    }
+
+    private static void getSlotBeforeMidnight(SlotProcessingContext ctx, List<SlotStartTime> slotStartTimes) {
+        decideNextMinutePart(ctx.sessionStartHour(), ctx.sessionStartHour(), ctx.sessionEndHour(), ctx.nextMinutePart(), ctx.sessionEndMinute());
+        final List<Pair<Timestamp, Integer>> filteredList = getCourtScheduleAllocatedPairForHourlyPart(
+                ctx.courtScheduleAllocatedPair(), ctx.sessionStartHour(), ctx.sessionEndHour(), ctx.sessionEndMinute(), ctx.nextMinutePart());
+        final Pair<Integer, Integer> startAndEndTime = getStartAndEndTimeForHourlyPart(
+                ctx.sessionStartHour(), ctx.sessionStartHour(), ctx.sessionEndHour(), ctx.sessionEndMinute(), ctx.nextMinutePart());
+
+        final LocalDateTime slotStartTime = LocalDateTime.of(ctx.sessionStartDateTime().toLocalDate(), LocalTime.of(ctx.sessionStartHour(), startAndEndTime.getLeft()));
+        final LocalDateTime slotEndTime = LocalDateTime.of(ctx.sessionEndDateTime().toLocalDate(), LocalTime.of(0, startAndEndTime.getRight()));
+
+        final AtomicInteger count = new AtomicInteger(0);
+        filteredList.forEach(pair -> count.set(count.get() + pair.getRight()));
+
+        SlotStartTime slot = new SlotStartTime();
+        slot.setSessionStartTime(toIsoString(slotStartTime));
+        slot.setSessionEndTime(toIsoString(slotEndTime));
+        slot.setCount(count.get());
+        setHearingTimestamp(ctx.slotBased(), ctx.sessionStartHour(), filteredList, 0, slot);
+
+        slotStartTimes.add(slot);
     }
 
     private static void setHearingTimestamp(final boolean slotBased, final int currentHour, final List<Pair<Timestamp, Integer>> filteredList, final int slotEndHour, final SlotStartTime responseSlotStartTime) {
         if (slotBased) {
-            final int slotStartHour = currentHour;
             filteredList.forEach(timestampIntegerPair -> {
                 final int hearingHour = timestampIntegerPair.getLeft().toLocalDateTime().getHour();
-                if (hearingHour >= slotStartHour && hearingHour < slotEndHour)
+                if (hearingHour >= currentHour && hearingHour < slotEndHour)
                     responseSlotStartTime.setHearingStartTime(toIsoString(timestampIntegerPair.getLeft().toLocalDateTime()));
             });
         }
@@ -1676,12 +1868,17 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                                                                           final int sessionEndMinute,
                                                                           final AtomicInteger nextMinutePart) {
         final int startTimeMinute = currentHour != sessionStartHour ? 0 : nextMinutePart.get();
-        final int endTimeMinute = currentHour == sessionEndHour ? sessionEndMinute : 0;
+        final int endTimeMinute = (currentHour > sessionEndHour) ? 0 : getEndTimeMinute(currentHour, sessionEndHour, sessionEndMinute);
+
 
         return Pair.of(startTimeMinute, endTimeMinute);
     }
 
-    private static List<Pair<Timestamp, Integer>> getCourtScheduleAllocatedPairForHourlyPart(final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair, final int currentHourPart, final int sessionEndHour, final AtomicInteger nextMinutePart) {
+    private static int getEndTimeMinute(int currentHour, int sessionEndHour, int sessionEndMinute) {
+        return (currentHour == sessionEndHour) ? sessionEndMinute : 0;
+    }
+
+    private static List<Pair<Timestamp, Integer>> getCourtScheduleAllocatedPairForHourlyPart(final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair, final int currentHourPart, final int sessionEndHour, final int sessionEndMinute, final AtomicInteger nextMinutePart) {
         if (isEmpty(courtScheduleAllocatedPair)) {
             return Collections.emptyList();
         }
@@ -1689,9 +1886,21 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 .filter(pair -> {
                     final int pairHour = pair.getLeft().toLocalDateTime().getHour();
                     final int pairMinute = pair.getLeft().toLocalDateTime().getMinute();
-                    return pairHour == currentHourPart &&
-                            ((currentHourPart < sessionEndHour && pairMinute >= nextMinutePart.get())
-                                    || currentHourPart == sessionEndHour && pairMinute <= nextMinutePart.get());
+
+                    boolean inSameHourWindow = pairHour == currentHourPart &&
+                            (
+                                    (currentHourPart < sessionEndHour && pairMinute >= nextMinutePart.get())
+                                    || (currentHourPart == sessionEndHour && pairMinute <= nextMinutePart.get())
+                                    || (currentHourPart == 23 && sessionEndHour == 22 && pairMinute <= nextMinutePart.get())
+                            );
+
+                    boolean includeExactEndOnBoundary =
+                            (sessionEndMinute == 0)
+                                    && (currentHourPart == sessionEndHour - 1)
+                                    && (pairHour == sessionEndHour)
+                                    && (pairMinute == 0);
+
+                    return inSameHourWindow || includeExactEndOnBoundary;
                 })
                 .toList();
     }
@@ -1708,7 +1917,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
                                 final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
-        Optional.of(courtScheduleJudiciaries.stream()
+        of(courtScheduleJudiciaries.stream()
                         .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
                         .toList())
                 .ifPresent(courtSchedule.getJudiciaries()::addAll);
@@ -1716,7 +1925,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
     private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
                                 final Hearing hearing) {
-        Optional.of(courtScheduleJudiciaries.stream()
+        of(courtScheduleJudiciaries.stream()
                         .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtScheduleId().equals(hearing.getCourtScheduleId()))
                         .toList())
                 .ifPresent(hearing.getJudiciaries()::addAll);
@@ -1755,6 +1964,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 hearing.setCourtScheduleId(requestedCourtSchedule.getCourtScheduleId());
                 hearing.setHearingStartTime(requestedCourtSchedule.getHearingStartTime());
                 hearing.setDuration(requestedCourtSchedule.getDurationInMinutes());
+                hearing.setSource(requestedCourtSchedule.getSource());
                 result.add(hearing);
             }
         }

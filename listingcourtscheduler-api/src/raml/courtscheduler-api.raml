@@ -216,6 +216,10 @@ protocols: [ HTTP, HTTPS ]
         description: hearingStartTime
         type: string
         required: false
+      duration:
+        description: to filter court schedules on
+        type: string
+        required: false
       pageSize:
         description: Number of records to be displayed per page
         type: string
@@ -224,6 +228,14 @@ protocols: [ HTTP, HTTPS ]
         description: currentPageNumber details
         type: string
         required: true
+      showOverbookedSlots:
+        description: Value which holds whether to showOverbookedSlots
+        type: boolean
+        required: false
+      caseIdentifier:
+        description: The channel from which the search happens (SPI, Online, API)
+        type: string
+        required: false
     responses:
       200:
         body:
@@ -583,3 +595,27 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.listingcourtscheduler.query.organisation-unit-hmi-status+json:
             schema: !include json/schema/listingcourtscheduler.query.organisation-unit-hmi-status.json
             example: !include json/listingcourtscheduler.query.organisation-unit-hmi-status.json
+
+/validate-session-availability:
+  description: |
+    validate session availability before you call the actual endpoint
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.validate.session.availability+json
+          name: courtscheduler.validate.session.availability
+      ...
+    body:
+      application/vnd.courtscheduler.validate.session.availability+json:
+        schema: !include json/schema/courtscheduler.validate.session.availability.json
+        example: !include json/courtscheduler.validate.session.availability.json
+
+    responses:
+      200:
+        description: OK
+      400:
+        body:
+          application/vnd.courtscheduler.validate.session.availability.response+json:
+            schema: !include json/schema/courtscheduler.validate.session.availability.response.json
+            example: !include json/courtscheduler.validate.session.availability.response.json

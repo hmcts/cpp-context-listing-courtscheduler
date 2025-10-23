@@ -6,6 +6,8 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Calendar;
 import java.util.Date;
 
 /**
@@ -17,7 +19,9 @@ public class TimezoneUtils {
     
     public static final ZoneId LONDON_ZONE = ZoneId.of("Europe/London");
     public static final ZoneOffset UTC_ZONE = ZoneOffset.UTC;
-    
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
+
     private TimezoneUtils() {
         // Private constructor to prevent instantiation
     }
@@ -81,15 +85,20 @@ public class TimezoneUtils {
         
         // Create a LocalDateTime in London time
         LocalDateTime localDateTime = LocalDateTime.of(date, time);
-        
+
         // Convert to ZonedDateTime in London time
-        ZonedDateTime londonZoned = localDateTime.atZone(LONDON_ZONE);
-        
+        ZonedDateTime londonZoned = localDateTime.atZone(LONDON_ZONE).withZoneSameInstant(UTC_ZONE);
+
         // Convert to UTC
         ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
-        
+
+        Calendar calendar = new Calendar.Builder()
+                .setDate(utcZoned.getYear(), utcZoned.getMonthValue() - 1, utcZoned.getDayOfMonth())
+                .setTimeOfDay(utcZoned.getHour(), utcZoned.getMinute(), utcZoned.getSecond())
+                .build();
+
         // Convert to Date
-        return Date.from(utcZoned.toInstant());
+        return calendar.getTime();
     }
     
     /**
@@ -158,6 +167,29 @@ public class TimezoneUtils {
         // Convert to UTC
         ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
 
+        final ZonedDateTime breakZoned = getZonedDateTime(sessionDate, londonZoned, utcZoned);
+
+        return Date.from(breakZoned.toInstant());
+    }
+
+    /**
+     * Converts the given local date and time to a UTC time string ("HH:mm"), handling DST correctly.
+     *
+     * @param date   the local date
+     * @param hour   the local hour
+     * @param minute the local minute
+     * @return the UTC time as a formatted string "HH:mm"
+     */
+    public static String getUtcTimeStringForDate(LocalDate date, int hour, int minute) {
+        LocalTime localTime = LocalTime.of(hour, minute);
+
+        ZonedDateTime localZdt = ZonedDateTime.of(date, localTime, LONDON_ZONE);
+        ZonedDateTime utcZdt = localZdt.withZoneSameInstant(ZoneOffset.UTC);
+
+        return utcZdt.format(TIME_FORMATTER); // format as "HH:mm"
+    }
+
+    private static ZonedDateTime getZonedDateTime(final LocalDate sessionDate, final ZonedDateTime londonZoned, final ZonedDateTime utcZoned) {
         LocalTime britishSummerNationalBreakTime = LocalTime.of(12, 0);
         LocalTime britishWinterNationalBreakTime = LocalTime.of(13, 0);
 
@@ -167,8 +199,6 @@ public class TimezoneUtils {
                 britishSummerNationalBreakTime : britishWinterNationalBreakTime;
 
         LocalDateTime breakDateTime = sessionDate.atTime(nationalBreakTime);
-        ZonedDateTime breakZoned = breakDateTime.atZone(UTC_ZONE);
-
-        return Date.from(breakZoned.toInstant());
+        return breakDateTime.atZone(UTC_ZONE);
     }
 }
