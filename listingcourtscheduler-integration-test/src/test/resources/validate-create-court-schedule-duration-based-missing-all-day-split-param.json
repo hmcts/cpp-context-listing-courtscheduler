@@ -7,7 +7,8 @@
       "businessType": "TRL",
       "duration": 20,
       "panel": "YOUTH",
-      "repeatDays": ["Monday", "Wednesday", "Friday"]
+      "repeatDays": ["Monday", "Wednesday", "Friday"],
+      "jurisdiction": "MAGISTRATES"
     }
   ],
   "sessionToBeAdded":
@@ -18,7 +19,8 @@
     "businessType": "TRL",
     "duration": 360,
     "panel": "ADULT",
-    "repeatDays": ["Tuesday", "Thursday"]
+    "repeatDays": ["Tuesday", "Thursday"],
+    "jurisdiction": "MAGISTRATES"
   },
   "repeatPattern": {
     "frequency": "EVERY_WEEK",

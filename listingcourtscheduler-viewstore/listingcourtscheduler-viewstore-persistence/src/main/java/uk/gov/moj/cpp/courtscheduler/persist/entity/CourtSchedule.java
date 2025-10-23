@@ -59,7 +59,8 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "hasHearingsBooked", type = Boolean.class),
                                 @ColumnResult(name = "totalbookedformorning", type = Integer.class),
                                 @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
-                                @ColumnResult(name = "totalbooked", type = Integer.class)
+                                @ColumnResult(name = "totalbooked", type = Integer.class),
+                                @ColumnResult(name = "is_draft", type = Boolean.class),
                         }
                 )
         ),
@@ -98,7 +99,8 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "national_break_time", type = Date.class),
                                 @ColumnResult(name = "totalbookedformorning", type = Integer.class),
                                 @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
-                                @ColumnResult(name = "totalbooked", type = Integer.class)
+                                @ColumnResult(name = "totalbooked", type = Integer.class),
+                                @ColumnResult(name = "is_draft", type = Boolean.class)
                         }
                 )
         ),
@@ -135,7 +137,8 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "session_start_time", type = Date.class),
                                 @ColumnResult(name = "session_end_time", type = Date.class),
                                 @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class),
-                                @ColumnResult(name = "national_break_time" , type = Date.class)
+                                @ColumnResult(name = "national_break_time" , type = Date.class),
+                                @ColumnResult(name = "is_draft", type = Boolean.class)
                         }
                 )
         )
@@ -204,6 +207,9 @@ public class CourtSchedule {
     @Column(name = "is_overbooking_allowed", nullable = false)
     private Boolean isOverbookingAllowed;
 
+    @Column(name = "is_draft", nullable = false)
+    private Boolean isDraft;
+
     @CreationTimestamp
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
@@ -259,7 +265,8 @@ public class CourtSchedule {
                          final Date sessionStartTime,
                          final Date sessionEndTime,
                          final Boolean isOverbookingAllowed,
-                         final Date nationalBreakTime) {
+                         final Date nationalBreakTime,
+                         final Boolean isDraft) {
         this.courtRoomNumber = courtRoomNumber;
         this.courtScheduleId = courtScheduleId;
         this.listingProfileId = listingProfileId;
@@ -289,6 +296,7 @@ public class CourtSchedule {
         this.sessionEndTime = sessionEndTime;
         this.isOverbookingAllowed = isOverbookingAllowed;
         this.nationalBreakTime = nationalBreakTime;
+        this.isDraft = isDraft;
     }
 
     //this constructor is used in the SqlResultSetMapping. columnn order is significant!
@@ -322,7 +330,8 @@ public class CourtSchedule {
                          final Date nationalBreakTime,
                          final Integer totalBookedMorning,
                          final Integer totalBookedAfternoon,
-                         final Integer totalBooked) {
+                         final Integer totalBooked,
+                         final Boolean isDraft) {
         this.courtScheduleId = id;
         this.listingProfileId = courtListingProfileId;
         this.ouCode = ouCode;
@@ -354,6 +363,7 @@ public class CourtSchedule {
         this.sessionStartTime = sessionStartTime;
         this.sessionEndTime = sessionEndTime;
         this.totalBooked = totalBooked;
+        this.isDraft = isDraft;
     }
 
     public CourtSchedule(
@@ -387,7 +397,8 @@ public class CourtSchedule {
             Boolean hasHearingsBooked,
             Integer totalBookedMorning,
             Integer totalBookedAfternoon,
-            Integer totalBooked
+            Integer totalBooked,
+            Boolean isDraft
     ) {
         this.courtScheduleId = id;
         this.listingProfileId = courtListingProfileId;
@@ -420,6 +431,7 @@ public class CourtSchedule {
         this.totalBookedMorning = totalBookedMorning;
         this.totalBookedAfternoon = totalBookedAfternoon;
         this.totalBooked = totalBooked;
+        this.isDraft = isDraft;
     }
 
     public String getCourtScheduleId() {
@@ -679,6 +691,14 @@ public class CourtSchedule {
         this.nationalBreakTime = nationalBreakTime;
     }
 
+    public Boolean getIsDraft() {
+        return isDraft;
+    }
+
+    public void setIsDraft(Boolean isDraft) {
+        this.isDraft = isDraft;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -714,7 +734,8 @@ public class CourtSchedule {
                 && Objects.equals(getTotalBookedMorning(), that.getTotalBookedMorning())
                 && Objects.equals(getTotalBookedAfternoon(), that.getTotalBookedAfternoon())
                 && Objects.equals(getTotalBooked(), that.getTotalBooked())
-                && Objects.equals(getNationalBreakTime(), that.getNationalBreakTime());
+                && Objects.equals(getNationalBreakTime(), that.getNationalBreakTime())
+                && Objects.equals(getIsDraft(), that.getIsDraft());
     }
 
     @Override
@@ -724,7 +745,7 @@ public class CourtSchedule {
                 getCourtRoomName(), getOperationalUnit(), getBusinessType(), getPanel(), getCourtSession(),
                 isActive(), isSlotBased(), getSessionDate(), getMaxSlots(), getMaxDuration(), getAvailableSlots(),
                 getAvailableDuration(), getCreatedOn(), getUpdatedOn(), getSupportAdSplit(), getMaxAdMorningDuration(), getMaxAdAfternoonDuration(),
-                getSessionStartTime(), getSessionEndTime(), getIsOverbookingAllowed(), getTotalBookedMorning(), getTotalBookedAfternoon(), getTotalBooked(), getNationalBreakTime());
+                getSessionStartTime(), getSessionEndTime(), getIsOverbookingAllowed(), getTotalBookedMorning(), getTotalBookedAfternoon(), getTotalBooked(), getNationalBreakTime(), getIsDraft());
     }
 
     @Override
@@ -761,6 +782,7 @@ public class CourtSchedule {
                 ", totalBookedAfternoon=" + totalBookedAfternoon +
                 ", totalBooked=" + totalBooked +
                 ", nationalBreakTime=" + nationalBreakTime +
+                ", isDraft=" + isDraft +
                 '}';
     }
 }

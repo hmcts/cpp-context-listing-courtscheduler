@@ -31,15 +31,27 @@
           "maxDurationForAfternoon": {"type": "number"},
           "sessionStartTime": {"type": "string"},
           "sessionEndTime": {"type": "string"},
-          "isOverbookingAllowed": {"type": "boolean"}
+          "isOverbookingAllowed": {"type": "boolean"},
+          "index": {"type": "number"},
+          "isDraft": {"type": "boolean"},
+          "jurisdiction": {"type": "string", "enum": ["CROWN", "MAGISTRATES"]}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "repeatDays"]
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "repeatDays", "jurisdiction" ],
+        "oneOf": [
+          {
+            "properties": { "jurisdiction": { "enum": ["CROWN"] } },
+            "required": ["isDraft"]
+          },
+          {
+            "properties": { "jurisdiction": { "enum": ["MAGISTRATES"] } }
+          }
+        ]
       }
     },
     "repeatPattern": {
       "type": "object",
       "properties": {
-        "frequency": {"type": "string",  "enum": ["ONCE", "EVERY_WEEK"]},
+        "frequency": {"type": "string",  "enum": ["ONCE", "EVERY_WEEK", "EVERY_MONTH"]},
         "repeatFor" : {"type": "integer"},
         "startDate": {"type": "string", "format": "date"},
         "endDate": {"type": "string", "format": "date"}
@@ -65,9 +77,21 @@
           "maxDurationForMorning": {"type": "number"},
           "maxDurationForAfternoon": {"type": "number"},
           "sessionStartTime": {"type": "string"},
-          "sessionEndTime": {"type": "string"}
+          "sessionEndTime": {"type": "string"},
+          "index": {"type": "number"},
+          "isDraft": {"type": "boolean"},
+          "jurisdiction": {"type": "string", "enum": ["CROWN", "MAGISTRATES"]}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel"]
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "jurisdiction"],
+        "oneOf": [
+          {
+            "properties": { "jurisdiction": { "enum": ["CROWN"] } },
+            "required": ["isDraft"]
+          },
+          {
+            "properties": { "jurisdiction": { "enum": ["MAGISTRATES"] } }
+          }
+        ]
     }
   },
   "required": ["repeatPattern", "sessionToBeAdded"],

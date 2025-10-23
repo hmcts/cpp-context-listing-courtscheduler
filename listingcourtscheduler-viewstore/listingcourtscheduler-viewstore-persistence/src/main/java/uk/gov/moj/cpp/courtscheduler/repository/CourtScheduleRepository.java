@@ -119,6 +119,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     s.session_start_time,
                     s.session_end_time,
                     s.is_overbooking_allowed,
+                    s.is_draft,
             
                     -- Total booked duration
                     CAST(COALESCE(SUM(al.duration), 0) AS INTEGER) AS totalbooked,
@@ -189,6 +190,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     s.session_start_time,
                     s.session_end_time,
                     s.is_overbooking_allowed,
+                    s.is_draft,
                     al.id
             """);
 
@@ -256,8 +258,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             cs.session_end_time,
             cs.created_on,
             cs.updated_on,
-            cs.national_break_time,
-
+            cs.is_draft,
             -- Adjusted calculation for morning bookings
             COALESCE(
                     SUM(
@@ -327,7 +328,8 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     cs.support_ad_split,
                     cs.max_ad_morning_duration,
                     cs.max_ad_afternoon_duration,
-                    cs.is_overbooking_allowed
+                    cs.is_overbooking_allowed,
+                    cs.is_draft
                 ORDER BY cs.session_start, cs.court_house_name, cs.court_room_name, cs.court_session, cs.rota_business_type
             """;
 

@@ -999,6 +999,7 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setMaxAdMorningDuration(0);
         expected.setMaxAdAfternoonDuration(0);
         expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setIsDraft(false);
         expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
         expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
         expected.setIsOverbookingAllowed(false);

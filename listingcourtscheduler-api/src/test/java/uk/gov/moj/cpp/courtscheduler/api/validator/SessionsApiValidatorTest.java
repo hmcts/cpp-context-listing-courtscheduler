@@ -227,7 +227,30 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-//        when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenDraftIsDuplicateWithInPayload() {
+
+        final List<Session> sessionList = Arrays.asList(createAMSession(), createDraftSession());
+        final Session sessionToBeAdded = createDraftSession();
+
+
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+
+        final JsonObject errorResult = createObjectBuilder()
+                .add("errorMessage", "Invalid combination of parameters: For Once, you should not supply a repeat-for and end date ")
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
@@ -240,7 +263,6 @@ class SessionsApiValidatorTest {
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
-//        when(repeatPattern.getRepeatFor()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
@@ -248,6 +270,9 @@ class SessionsApiValidatorTest {
         assertEquals(0, result.size());
     }
 
+    private Session createDraftSession() {
+        return createDraftSession("AM", "DVLA", "ADULT", true);
+    }
 
     private Session createAMSession() {
         return createSession("AM", "DVLA", "ADULT");
@@ -265,6 +290,18 @@ class SessionsApiValidatorTest {
                 .withBusinessType(businessType)
                 .withPanelType(panelType)
                 .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .build();
+    }
+
+    private Session createDraftSession(String sessionType, String businessType, String panelType, boolean isDraft) {
+        return session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType(sessionType)
+                .withBusinessType(businessType)
+                .withPanelType(panelType)
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIsDraft(isDraft)
                 .build();
     }
 

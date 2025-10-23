@@ -45,6 +45,8 @@ public class CourtSchedule {
     private Integer totalBookedForAfternoon = 0;
     private boolean isOverbookingAllowed;
 
+    private boolean isDraft;
+
     private Date sessionStartTime;
     private Date sessionEndTime;
     private Date nationalBreakTime;
@@ -89,8 +91,10 @@ public class CourtSchedule {
         this.sessionEndTime = builder.sessionEndTime;
         this.isOverbookingAllowed = builder.isOverbookingAllowed;
         this.nationalBreakTime = builder.nationalBreakTime;
+        this.isDraft = builder.isDraft;
         this.minHearingTime = builder.minHearingTime;
         this.maxHearingTime = builder.maxHearingTime;
+
     }
 
     public CourtSchedule() {
@@ -388,6 +392,14 @@ public class CourtSchedule {
         this.nationalBreakTime = nationalBreakTime;
     }
 
+    public boolean isDraft() {
+        return isDraft;
+    }
+
+    public void setIsDraft(boolean isDraft) {
+        this.isDraft = isDraft;
+    }
+
     public String getMinHearingTime() {
         return minHearingTime;
     }
@@ -441,6 +453,7 @@ public class CourtSchedule {
         private Integer availableDurationForMorning = 0;
         private Integer availableDurationForAfternoon = 0;
         private boolean isOverbookingAllowed;
+        private boolean isDraft;
 
         private Date sessionStartTime;
         private Date sessionEndTime;
@@ -576,6 +589,10 @@ public class CourtSchedule {
             return isOverbookingAllowed;
         }
 
+        public boolean isDraft() {
+            return isDraft;
+        }
+
         public String getMinHearingTime() {
             return minHearingTime;
         }
@@ -620,6 +637,7 @@ public class CourtSchedule {
             this.availableDurationForAfternoon = courtSchedule.availableDurationForAfternoon;
             this.isOverbookingAllowed = courtSchedule.isOverbookingAllowed;
             this.nationalBreakTime = courtSchedule.nationalBreakTime;
+            this.isDraft = courtSchedule.isDraft;
             this.minHearingTime = courtSchedule.minHearingTime;
             this.maxHearingTime = courtSchedule.maxHearingTime;
             return this;
@@ -812,6 +830,11 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withNationalBreakTime(final Date nationalBreakTime) {
             this.nationalBreakTime = nationalBreakTime;
+            return this;
+        }
+
+        public CourtScheduleBuilder withIsDraft(final boolean isDraft) {
+            this.isDraft = isDraft;
             return this;
         }
 

@@ -2,6 +2,22 @@ package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.ALL_DAY_SPLIT;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.BUSINESS_TYPE;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_CENTRE_ID;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_ROOM;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.DURATION;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.INDEX;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.IS_DRAFT;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.IS_OVERBOOKING_ALLOWED;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.JURISDICTION;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.MAX_DURATION_FOR_AFTERNOON;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.MAX_DURATION_FOR_MORNING;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PANEL;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.REPEAT_DAYS;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.SESSION_END_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.SESSION_START_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.SESSION_TYPE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
@@ -42,29 +58,32 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
         List<Session> sessions = new ArrayList<>();
         for (JsonValue jsonValue : jsonArray) {
             JsonObject jsonObject = (JsonObject) jsonValue;
-            if (jsonObject.getJsonArray(RequestParameterConstant.REPEAT_DAYS.getLabel()).isEmpty()) {
+            if (jsonObject.getJsonArray(REPEAT_DAYS.getLabel()).isEmpty()) {
                 throw new IllegalArgumentException("Repeat days cannot be empty");
             }
             final Session.SessionBuilder sessionBuilder = Session.SessionBuilder.session()
-                    .withCourtCentreId(jsonObject.getString(RequestParameterConstant.COURT_CENTRE_ID.getLabel()))
-                    .withCourtRoomId(jsonObject.getString(RequestParameterConstant.COURT_ROOM.getLabel()))
-                    .withSessionType(jsonObject.getString(RequestParameterConstant.SESSION_TYPE.getLabel()))
-                    .withBusinessType(jsonObject.getString(RequestParameterConstant.BUSINESS_TYPE.getLabel()))
-                    .withSlotsOrDuration(jsonObject.getInt(RequestParameterConstant.DURATION.getLabel(), 0))
-                    .withPanelType(jsonObject.getString(RequestParameterConstant.PANEL.getLabel()))
-                    .withRepeatDays(DayOfWeekConverter.convert(jsonObject.getJsonArray(RequestParameterConstant.REPEAT_DAYS.getLabel())))
-                    .withAllDaySplit(jsonObject.getBoolean(RequestParameterConstant.ALL_DAY_SPLIT.getLabel(), false))
-                    .withMaxDurationForMorning(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_MORNING.getLabel(), 0))
-                    .withMaxDurationForAfternoon(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_AFTERNOON.getLabel(), 0));
+                    .withCourtCentreId(jsonObject.getString(COURT_CENTRE_ID.getLabel()))
+                    .withCourtRoomId(jsonObject.getString(COURT_ROOM.getLabel()))
+                    .withSessionType(jsonObject.getString(SESSION_TYPE.getLabel()))
+                    .withBusinessType(jsonObject.getString(BUSINESS_TYPE.getLabel()))
+                    .withSlotsOrDuration(jsonObject.getInt(DURATION.getLabel(), 0))
+                    .withPanelType(jsonObject.getString(PANEL.getLabel()))
+                    .withRepeatDays(DayOfWeekConverter.convert(jsonObject.getJsonArray(REPEAT_DAYS.getLabel())))
+                    .withAllDaySplit(jsonObject.getBoolean(ALL_DAY_SPLIT.getLabel(), false))
+                    .withMaxDurationForMorning(jsonObject.getInt(MAX_DURATION_FOR_MORNING.getLabel(), 0))
+                    .withMaxDurationForAfternoon(jsonObject.getInt(MAX_DURATION_FOR_AFTERNOON.getLabel(), 0))
+                    .withJurisdiction(jsonObject.getString(JURISDICTION.getLabel()))
+                    .withIsDraft(jsonObject.getBoolean(IS_DRAFT.getLabel(), false))
+                    .withIndex(jsonObject.containsKey(INDEX.getLabel()) ? jsonObject.getInt(INDEX.getLabel()) : null);
 
-            if (!isNull(jsonObject.get(RequestParameterConstant.IS_OVERBOOKING_ALLOWED.getLabel()))) {
-                sessionBuilder.withIsOverbookingAllowed(jsonObject.getBoolean(RequestParameterConstant.IS_OVERBOOKING_ALLOWED.getLabel()));
+            if (!isNull(jsonObject.get(IS_OVERBOOKING_ALLOWED.getLabel()))) {
+                sessionBuilder.withIsOverbookingAllowed(jsonObject.getBoolean(IS_OVERBOOKING_ALLOWED.getLabel()));
             }
 
-            if (!isNull(jsonObject.get(RequestParameterConstant.SESSION_START_TIME.getLabel())) && !isNull(jsonObject.get(RequestParameterConstant.SESSION_END_TIME.getLabel()))) {
+            if (!isNull(jsonObject.get(SESSION_START_TIME.getLabel())) && !isNull(jsonObject.get(SESSION_END_TIME.getLabel()))) {
                 sessionBuilder
-                        .withSessionStartTime(jsonObject.getString(RequestParameterConstant.SESSION_START_TIME.getLabel()))
-                        .withSessionEndTime(jsonObject.getString(RequestParameterConstant.SESSION_END_TIME.getLabel()));
+                        .withSessionStartTime(jsonObject.getString(SESSION_START_TIME.getLabel()))
+                        .withSessionEndTime(jsonObject.getString(SESSION_END_TIME.getLabel()));
             }
             sessions.add(sessionBuilder.build());
         }
@@ -73,28 +92,30 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
 
     private Session convertSession(JsonObject jsonObject) {
         final Session.SessionBuilder sessionBuilder = Session.SessionBuilder.session()
-                .withCourtCentreId(jsonObject.getString(RequestParameterConstant.COURT_CENTRE_ID.getLabel()))
-                .withCourtRoomId(jsonObject.getString(RequestParameterConstant.COURT_ROOM.getLabel()))
-                .withSessionType(jsonObject.getString(RequestParameterConstant.SESSION_TYPE.getLabel()))
-                .withBusinessType(jsonObject.getString(RequestParameterConstant.BUSINESS_TYPE.getLabel()))
-                .withSlotsOrDuration(jsonObject.getInt(RequestParameterConstant.DURATION.getLabel(), 0))
-                .withPanelType(jsonObject.getString(RequestParameterConstant.PANEL.getLabel()))
-                .withRepeatDays(DayOfWeekConverter.convert(jsonObject.getJsonArray(RequestParameterConstant.REPEAT_DAYS.getLabel())))
-                .withMaxDurationForMorning(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_MORNING.getLabel(), -1))
-                .withMaxDurationForAfternoon(jsonObject.getInt(RequestParameterConstant.MAX_DURATION_FOR_AFTERNOON.getLabel(), -1));
+                .withCourtCentreId(jsonObject.getString(COURT_CENTRE_ID.getLabel()))
+                .withCourtRoomId(jsonObject.getString(COURT_ROOM.getLabel()))
+                .withSessionType(jsonObject.getString(SESSION_TYPE.getLabel()))
+                .withBusinessType(jsonObject.getString(BUSINESS_TYPE.getLabel()))
+                .withSlotsOrDuration(jsonObject.getInt(DURATION.getLabel(), 0))
+                .withPanelType(jsonObject.getString(PANEL.getLabel()))
+                .withRepeatDays(DayOfWeekConverter.convert(jsonObject.getJsonArray(REPEAT_DAYS.getLabel())))
+                .withMaxDurationForMorning(jsonObject.getInt(MAX_DURATION_FOR_MORNING.getLabel(), -1))
+                .withMaxDurationForAfternoon(jsonObject.getInt(MAX_DURATION_FOR_AFTERNOON.getLabel(), -1))
+                .withIsDraft(jsonObject.getBoolean(IS_DRAFT.getLabel(), false))
+                .withIndex(jsonObject.containsKey(INDEX.getLabel()) ? jsonObject.getInt(INDEX.getLabel()) : null);
 
-        if (!isNull(jsonObject.get(RequestParameterConstant.ALL_DAY_SPLIT.getLabel()))) {
-            sessionBuilder.withAllDaySplit(jsonObject.getBoolean(RequestParameterConstant.ALL_DAY_SPLIT.getLabel()));
+        if (!isNull(jsonObject.get(ALL_DAY_SPLIT.getLabel()))) {
+            sessionBuilder.withAllDaySplit(jsonObject.getBoolean(ALL_DAY_SPLIT.getLabel()));
         }
 
-        if (!isNull(jsonObject.get(RequestParameterConstant.SESSION_START_TIME.getLabel())) && !isNull(jsonObject.get(RequestParameterConstant.SESSION_END_TIME.getLabel()))) {
+        if (!isNull(jsonObject.get(SESSION_START_TIME.getLabel())) && !isNull(jsonObject.get(SESSION_END_TIME.getLabel()))) {
             sessionBuilder
-                    .withSessionStartTime(jsonObject.getString(RequestParameterConstant.SESSION_START_TIME.getLabel()))
-                    .withSessionEndTime(jsonObject.getString(RequestParameterConstant.SESSION_END_TIME.getLabel()));
+                    .withSessionStartTime(jsonObject.getString(SESSION_START_TIME.getLabel()))
+                    .withSessionEndTime(jsonObject.getString(SESSION_END_TIME.getLabel()));
         }
 
-        if (!isNull(jsonObject.get(RequestParameterConstant.IS_OVERBOOKING_ALLOWED.getLabel()))) {
-            sessionBuilder.withIsOverbookingAllowed(jsonObject.getBoolean(RequestParameterConstant.IS_OVERBOOKING_ALLOWED.getLabel()));
+        if (!isNull(jsonObject.get(IS_OVERBOOKING_ALLOWED.getLabel()))) {
+            sessionBuilder.withIsOverbookingAllowed(jsonObject.getBoolean(IS_OVERBOOKING_ALLOWED.getLabel()));
         }
 
         return sessionBuilder.build();

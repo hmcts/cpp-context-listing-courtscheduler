@@ -239,6 +239,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setIsDraft(false);
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
         courtSchedule.setIsOverbookingAllowed(false);
@@ -427,6 +428,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setIsDraft(false);
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
         databaseSeeder.insertCourtSchedule(courtSchedule);

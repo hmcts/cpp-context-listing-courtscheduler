@@ -253,6 +253,7 @@ public class DatabaseReader {
         }
 
         courtSchedule.setIsOverbookingAllowed(resultSet.getBoolean("is_overbooking_allowed"));
+        courtSchedule.setIsDraft(resultSet.getBoolean("is_draft"));
 
         return courtSchedule;
     }

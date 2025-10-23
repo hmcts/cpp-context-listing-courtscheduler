@@ -1077,6 +1077,7 @@ public class CourtScheduleRepositoryTest {
         schedule.setAvailableSlots(10);
         schedule.setAvailableDuration(240);
         schedule.setCourtHouseId("CH" + ouCode);
+        schedule.setIsDraft(false);
 
         // Boolean fields with defaults
         schedule.setSupportAdSplit(false);
@@ -2146,6 +2147,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
         courtSchedule1.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtSchedule1.setIsDraft(false);
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -2208,6 +2210,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
         courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
+        courtSchedule1.setIsDraft(false);
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -2270,6 +2273,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
         courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
+        courtSchedule1.setIsDraft(false);
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -2508,6 +2512,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
+        courtSchedule1.setIsDraft(false);
         courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
 
         courtScheduleRepository.save(courtSchedule1);
@@ -2590,6 +2595,7 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
         courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
+        courtSchedule1.setIsDraft(false);
 
         courtScheduleRepository.save(courtSchedule1);
 
