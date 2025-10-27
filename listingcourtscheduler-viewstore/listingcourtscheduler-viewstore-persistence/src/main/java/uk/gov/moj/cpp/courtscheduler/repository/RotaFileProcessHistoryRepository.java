@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistoryKey;
 
 import java.sql.Timestamp;
 import java.util.List;
@@ -13,7 +12,7 @@ import org.apache.deltaspike.data.api.QueryParam;
 import org.apache.deltaspike.data.api.Repository;
 
 @Repository(forEntity = RotaFileProcessHistory.class)
-public interface RotaFileProcessHistoryRepository extends EntityRepository<RotaFileProcessHistory, RotaFileProcessHistoryKey> {
+public interface RotaFileProcessHistoryRepository extends EntityRepository<RotaFileProcessHistory, Integer> {
 
     RotaFileProcessHistory findByFileDateGreaterThan(Timestamp fileDate);
 
