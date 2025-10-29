@@ -5,7 +5,6 @@ import static java.sql.Timestamp.valueOf;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
@@ -22,11 +21,10 @@ public class RotaFileProcessHistoryService {
     @Inject
     private RotaFileProcessHistoryRepository rotaFileProcessHistoryRepository;
 
-    private String computeFileHash(final String fileNamePrefix, final OffsetDateTime fileDate) {
+    private String computeFileHash(final byte[] content) {
         try {
-            final String input = fileNamePrefix + fileDate.toString();
             final MessageDigest digest = MessageDigest.getInstance("MD5");
-            final byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            final byte[] hashBytes = digest.digest(content);
 
             final StringBuilder hexString = new StringBuilder();
             for (final byte b : hashBytes) {
@@ -43,9 +41,8 @@ public class RotaFileProcessHistoryService {
     }
 
     @Transactional
-    public void update(final String fileNamePrefix, final OffsetDateTime fileDate) {
+    public RotaFileProcessHistory save(final String fileNamePrefix, final OffsetDateTime fileDate, final byte[] content) {
         final Timestamp fileDateAsTimestamp = Timestamp.from(fileDate.toInstant());
-        rotaFileProcessHistoryRepository.deleteByFileNamePrefixAndFileDate(fileNamePrefix, fileDateAsTimestamp);
 
         final RotaFileProcessHistory rotaFileProcessHistory = new RotaFileProcessHistory();
         rotaFileProcessHistory.setProcessedOn(valueOf(LocalDateTime.now()));
@@ -56,7 +53,14 @@ public class RotaFileProcessHistoryService {
                 + String.format("%02d", fileDate.getMonthValue())
                 + String.format("%02d", fileDate.getDayOfMonth())
                 + ".xml");
-        rotaFileProcessHistory.setFileHash(computeFileHash(fileNamePrefix, fileDate));
-        rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
+        rotaFileProcessHistory.setFileHash(computeFileHash(content));
+        rotaFileProcessHistory.setProcessStartDate(Timestamp.valueOf(LocalDateTime.now()));
+        return rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
+    }
+
+    @Transactional
+    public RotaFileProcessHistory update(final RotaFileProcessHistory rotaFileProcessHistory) {
+        rotaFileProcessHistory.setProcessEndDate(Timestamp.valueOf(LocalDateTime.now()));
+        return rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
     }
 }

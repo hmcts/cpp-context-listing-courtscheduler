@@ -376,7 +376,7 @@ class RotaFileProcessorServiceTest {
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), eq(requester))).thenReturn(slotsMock);
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), eq(requester))).thenReturn(schedules);
         when(referenceDataMapperService.getCourtRoomsMap(eq(requester))).thenReturn(getCourtRoomsMap());
-        doNothing().when(rotaFileProcessHistoryService).update(anyString(), any());
+        when(rotaFileProcessHistoryService.save(anyString(), any(), any(byte[].class))).thenReturn(new RotaFileProcessHistory());
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class))).thenReturn(emptyList());
         doNothing().when(rotaFilePartialProcessor).processSnapshotRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyList(), anyList(), anyMap(), anyMap());
 
@@ -397,6 +397,8 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataMapperService, atLeastOnce()).getCourtRoomsMap(eq(requester));
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
+        verify(rotaFileProcessHistoryService, atLeastOnce()).save(anyString(), any(), any(byte[].class));
+        verify(rotaFileProcessHistoryService, atLeastOnce()).update(any(RotaFileProcessHistory.class));
     }
 
     @Test
@@ -430,7 +432,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileParser, never()).parse(any(), any());
         verify(referenceDataMapperService, never()).getCourtRoomsMap(eq(requester));
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
-        verify(rotaFileProcessHistoryService, never()).update(anyString(), any());
+        verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(byte[].class));
     }
 
     @Test
@@ -462,7 +464,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaFileParser, never()).parse(any(), any());
         verify(referenceDataMapperService, never()).getCourtRoomsMap(eq(requester));
         verify(rotaFileProcessHistoryRepository, never()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
-        verify(rotaFileProcessHistoryService, never()).update(anyString(), any());
+        verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(byte[].class));
     }
 
     @Test
