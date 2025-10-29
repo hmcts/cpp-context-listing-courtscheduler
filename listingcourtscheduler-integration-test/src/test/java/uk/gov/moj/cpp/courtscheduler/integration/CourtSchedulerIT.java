@@ -1005,6 +1005,7 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
         expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
         expected.setIsOverbookingAllowed(false);
+        expected.setJurisdiction("MAGISTRATES");
         databaseSeeder.insertCourtSchedule(expected);
 
         AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
@@ -1067,6 +1068,7 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         courtSchedule.setOuCode("B12345");
         courtSchedule.setIsDraft(false);
+        courtSchedule.setJurisdiction("MAGISTRATES");
         courtSchedule.setActive(true);
 
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -1551,24 +1553,24 @@ class CourtSchedulerIT extends AbstractIT {
         // Given
         final LocalDate startDate = now().plusDays(1);
         final LocalDate endDate = startDate.plusMonths(3);
-        
+
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
-            "create-court-schedule-monthly-frequency.json", 
-            startDate, 
+            "create-court-schedule-monthly-frequency.json",
+            startDate,
             endDate
         );
-        
+
         // When
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
-        
+
         // Then
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
-        
+
         // Wait for processing and verify court schedules are created
         // Verify court schedules are created by checking database
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         assertThat("Court schedules should be created", courtSchedules.size(), is(greaterThan(0)));
-        
+
         // Verify at least one court schedule exists
         final CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
@@ -1581,23 +1583,23 @@ class CourtSchedulerIT extends AbstractIT {
         // Given
         final LocalDate startDate = now().plusDays(1);
         final LocalDate endDate = startDate.plusMonths(2);
-        
+
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
-            "create-court-schedule-monthly-frequency-multiple-sessions.json", 
-            startDate, 
+            "create-court-schedule-monthly-frequency-multiple-sessions.json",
+            startDate,
             endDate
         );
-        
+
         // When
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
-        
+
         // Then
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
-        
+
         // Wait for processing and verify court schedules are created
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         assertThat("Court schedules should be created", courtSchedules.size(), is(greaterThan(0)));
-        
+
         // Verify we have multiple court schedules (one for each session type)
         assertTrue(courtSchedules.size() >= 2, "Should have at least 2 court schedules for multiple sessions");
     }
@@ -1607,23 +1609,23 @@ class CourtSchedulerIT extends AbstractIT {
         // Given
         final LocalDate startDate = now().plusDays(1);
         final LocalDate endDate = startDate.plusMonths(6); // 6 months to allow for every 2 months
-        
+
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
-            "create-court-schedule-monthly-frequency-every-2-months.json", 
-            startDate, 
+            "create-court-schedule-monthly-frequency-every-2-months.json",
+            startDate,
             endDate
         );
-        
+
         // When
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
-        
+
         // Then
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
-        
+
         // Wait for processing and verify court schedules are created
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         assertThat("Court schedules should be created", courtSchedules.size(), is(greaterThan(0)));
-        
+
         // Verify court schedules are created for every 2 months
         final CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
@@ -1634,23 +1636,23 @@ class CourtSchedulerIT extends AbstractIT {
         // Given
         final LocalDate startDate = now().plusDays(1);
         final LocalDate endDate = startDate.plusMonths(2);
-        
+
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
-            "create-court-schedule-monthly-frequency-different-index.json", 
-            startDate, 
+            "create-court-schedule-monthly-frequency-different-index.json",
+            startDate,
             endDate
         );
-        
+
         // When
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
-        
+
         // Then
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
-        
+
         // Wait for processing and verify court schedules are created
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         assertThat("Court schedules should be created", courtSchedules.size(), is(greaterThan(0)));
-        
+
         // Verify court schedule is created with index 5 (should fallback to 4 if 5th doesn't exist)
         final CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
@@ -1661,23 +1663,23 @@ class CourtSchedulerIT extends AbstractIT {
         // Given - Random start date in middle of month
         final LocalDate startDate = now().withDayOfMonth(15).plusMonths(1);
         final LocalDate endDate = startDate.plusMonths(3);
-        
+
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
-            "create-court-schedule-monthly-frequency.json", 
-            startDate, 
+            "create-court-schedule-monthly-frequency.json",
+            startDate,
             endDate
         );
-        
+
         // When
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
-        
+
         // Then
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
-        
+
         // Wait for processing and verify court schedules are created
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         assertThat("Court schedules should be created", courtSchedules.size(), is(greaterThan(0)));
-        
+
         // Verify court schedules are created for the random start date
         final CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
@@ -1688,23 +1690,23 @@ class CourtSchedulerIT extends AbstractIT {
         // Given - Start date in December, end date in March next year
         final LocalDate startDate = LocalDate.now().withMonth(12).withDayOfMonth(15);
         final LocalDate endDate = LocalDate.now().withYear(startDate.getYear() + 1).withMonth(3).withDayOfMonth(15);
-        
+
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
-            "create-court-schedule-monthly-frequency.json", 
-            startDate, 
+            "create-court-schedule-monthly-frequency.json",
+            startDate,
             endDate
         );
-        
+
         // When
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
-        
+
         // Then
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
-        
+
         // Wait for processing and verify court schedules are created
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         assertThat("Court schedules should be created", courtSchedules.size(), is(greaterThan(0)));
-        
+
         // Verify court schedules are created across year boundary
         final CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));

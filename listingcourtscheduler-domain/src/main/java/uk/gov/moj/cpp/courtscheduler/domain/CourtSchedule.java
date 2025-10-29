@@ -47,6 +47,8 @@ public class CourtSchedule {
 
     private boolean isDraft;
 
+    private String jurisdiction;
+
     private Date sessionStartTime;
     private Date sessionEndTime;
     private Date nationalBreakTime;
@@ -95,6 +97,7 @@ public class CourtSchedule {
         this.minHearingTime = builder.minHearingTime;
         this.maxHearingTime = builder.maxHearingTime;
 
+        this.jurisdiction = builder.jurisdiction;
     }
 
     public CourtSchedule() {
@@ -416,6 +419,14 @@ public class CourtSchedule {
         this.maxHearingTime = maxHearingTime;
     }
 
+    public String getJurisdiction() {
+        return jurisdiction;
+    }
+
+    public void setJurisdiction(String jurisdiction) {
+        this.jurisdiction = jurisdiction;
+    }
+
     public static final class CourtScheduleBuilder {
 
         private String courtScheduleId;
@@ -454,6 +465,7 @@ public class CourtSchedule {
         private Integer availableDurationForAfternoon = 0;
         private boolean isOverbookingAllowed;
         private boolean isDraft;
+        private String jurisdiction;
 
         private Date sessionStartTime;
         private Date sessionEndTime;
@@ -601,6 +613,10 @@ public class CourtSchedule {
             return maxHearingTime;
         }
 
+        public String getJurisdiction() {
+            return jurisdiction;
+        }
+
         public CourtScheduleBuilder withCourtSchedule(final CourtSchedule courtSchedule) {
             this.courtScheduleId = courtSchedule.courtScheduleId;
             this.sessionDate = courtSchedule.sessionDate;
@@ -640,6 +656,7 @@ public class CourtSchedule {
             this.isDraft = courtSchedule.isDraft;
             this.minHearingTime = courtSchedule.minHearingTime;
             this.maxHearingTime = courtSchedule.maxHearingTime;
+            this.jurisdiction = courtSchedule.jurisdiction;
             return this;
         }
 
@@ -845,6 +862,11 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withMaxHearingTime(final String maxHearingTime) {
             this.maxHearingTime = maxHearingTime;
+            return this;
+        }
+
+        public CourtScheduleBuilder withJurisdiction(final String jurisdiction) {
+            this.jurisdiction = jurisdiction;
             return this;
         }
 

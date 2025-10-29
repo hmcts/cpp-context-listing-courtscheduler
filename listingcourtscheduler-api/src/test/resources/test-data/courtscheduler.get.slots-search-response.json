@@ -58,7 +58,8 @@
       "maxHearingTime": null,
 
       "overbookingAllowed": true,
-      "draft": false
+      "draft": false,
+      "jurisdiction": "MAGISTRATES"
     }
   ]
 }

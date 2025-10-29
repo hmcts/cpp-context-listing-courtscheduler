@@ -259,6 +259,7 @@ class SlotsSearchServiceTest {
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1)))
                 .withIsOverbookingAllowed(true)
                 .withIsDraft(false)
+                .withJurisdiction("MAGISTRATES")
                 .withMinHearingTime("09:00")
                 .withMaxHearingTime("12:00")
                 .build();
@@ -319,6 +320,7 @@ class SlotsSearchServiceTest {
                 .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
                 .withIsOverbookingAllowed(true)
                 .withIsDraft(false)
+                .withJurisdiction("MAGISTRATES")
                 .build();
     }
 
@@ -547,7 +549,7 @@ class SlotsSearchServiceTest {
     }
 
     // Helper methods to create test CourtSchedule objects
-    private CourtSchedule createCourtScheduleWithOverbookingAllowed(boolean isOverbookingAllowed, boolean slotBased, 
+    private CourtSchedule createCourtScheduleWithOverbookingAllowed(boolean isOverbookingAllowed, boolean slotBased,
             int maxDurationForMorning, int maxDurationForAfternoon, int totalBookedForMorning, int totalBookedForAfternoon,
             int maxDuration, int totalBooked) {
         return new CourtSchedule.CourtScheduleBuilder()

@@ -302,6 +302,7 @@ class SessionsApiValidatorTest {
                 .withPanelType(panelType)
                 .withRepeatDays(Set.of(DayOfWeek.MONDAY))
                 .withIsDraft(isDraft)
+                .withJurisdiction("MAGISTRATES")
                 .build();
     }
 
