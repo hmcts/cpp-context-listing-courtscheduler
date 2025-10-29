@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "validationResult": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string", "enum": ["SUCCESS", "FAILURE"]},
+          "conflictingCourtScheduleId" : {"$ref": "#/definitions/uuid"},
+          "validationError": {"type": "string"}
+          },
+      "required": ["status"]
+        }
+    },
+  "definitions": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+    }
+  }
+}

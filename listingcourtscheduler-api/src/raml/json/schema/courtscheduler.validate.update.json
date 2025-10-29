@@ -32,7 +32,15 @@
     "maxDuration": {
       "type": "integer"
     },
-    "isOverbookingAllowed": {"type": "boolean"}
+    "isOverbookingAllowed": {"type": "boolean"},
+    "sessionStartTime": {
+      "type": "string",
+      "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "sessionEndTime": {
+      "type": "string",
+      "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+    }
   },
   "oneOf": [
     {

@@ -29,6 +29,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeRecalculateAvailability
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -63,6 +64,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 
 import java.util.List;
 import java.util.Optional;
@@ -137,6 +139,9 @@ public class CourtSchedulerApi {
     private OuCodeRecalculateAvailabilityConverter ouCodeRecalculateAvailabilityConverter;
     @Inject
     private AllocatedListingService allocatedListingService;
+    @Inject
+    private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
+
 
     @Handles("courtscheduler.create")
     public JsonEnvelope createCourtSchedule(final JsonEnvelope envelope) {
@@ -166,6 +171,20 @@ public class CourtSchedulerApi {
         }
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.validate.create").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.validate.session.availability")
+    public JsonEnvelope validateSessionAvailabilityCourtSchedule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.validate.session.availability requested : {}", requestFromApiJsonObject);
+        ValidateSessionAvailabilityRequestParam validateSessionAvailabilityRequestParam = validateSessionAvailabilityRequestParamConverter.convert(requestFromApiJsonObject);
+        JsonObject validate = sessionsApiValidator.getSessionsAvailabilityValidation(validateSessionAvailabilityRequestParam);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.validate.session.availability").apply(createObjectBuilder().build());
     }
 
     @Handles("courtscheduler.delete")
@@ -216,7 +235,7 @@ public class CourtSchedulerApi {
                         .withCourtScheduleIds(courtScheduleIds)
                         .build();
 
-        List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedulesById(param, requester);
+        List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedulesById(param);
 
         final JsonValue result = new ListToJsonArrayConverter<CourtSchedule>().convert(courtSchedules);
 
@@ -271,7 +290,7 @@ public class CourtSchedulerApi {
             return envelopeFor(envelope, validate, ERROR);
         }
 
-        final ListHearingSlotsResponse listHearingSlotsResponse = slotsUpdateService.updateListHearingSlots(requestedSlots);
+        final ListHearingSlotsResponse listHearingSlotsResponse = slotsUpdateService.listHearingSlots(requestedSlots);
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.list.hearings-in-court-sessions.response")
                 .apply(objectToJsonObjectConverter.convert(listHearingSlotsResponse));

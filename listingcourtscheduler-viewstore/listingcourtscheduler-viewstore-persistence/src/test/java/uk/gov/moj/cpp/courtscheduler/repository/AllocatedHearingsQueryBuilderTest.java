@@ -35,7 +35,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 null, // businessType
                 null, // courtSession
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -64,7 +67,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 "CRIMINAL", // businessType
                 "AD", // courtSession
                 true, // isSlotBased
-                "2024-01-15T10:00:00Z" // hearingStartTime
+                "2024-01-15T10:00:00Z", // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -129,7 +135,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 "CRIMINAL", // businessType
                 "AD", // courtSession
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -163,7 +172,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 null, // businessType
                 null, // courtSession
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -197,7 +209,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 "", // businessType (empty string)
                 "", // courtSession (empty string)
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -231,7 +246,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 "   ", // businessType (whitespace only)
                 "   ", // courtSession (whitespace only)
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -283,7 +301,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 "CRIMINAL", // businessType
                 "AD", // courtSession
                 true, // isSlotBased
-                "2024-01-15T10:00:00Z" // hearingStartTime
+                "2024-01-15T10:00:00Z", // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -323,7 +344,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 "", // businessType (empty string)
                 "", // courtSession (empty string)
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -365,7 +389,11 @@ public class AllocatedHearingsQueryBuilderTest {
                 "   ", // businessType (whitespace only)
                 "   ", // courtSession (whitespace only)
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
+
         );
 
         // When
@@ -407,7 +435,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 null, // businessType
                 null, // courtSession
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -435,7 +466,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 null, // businessType
                 null, // courtSession
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -471,7 +505,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 null, // businessType
                 null, // courtSession
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
 
         // When
@@ -567,7 +604,10 @@ public class AllocatedHearingsQueryBuilderTest {
                 null, // businessType
                 null, // courtSession
                 null, // isSlotBased
-                null // hearingStartTime
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // caseIdentifier
+                null // duration
         );
     }
 }

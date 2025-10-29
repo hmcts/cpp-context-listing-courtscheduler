@@ -16,6 +16,8 @@ public enum RequestParameterConstant {
     EXACT_HEARING_START_DATETIME("exactHearingStartDateTime"),
     BUSINESS_TYPE("businessType"),
     PAGE_SIZE("pageSize"),
+    SHOW_OVERBOOKING_SLOTS("showOverbookedSlots"),
+    CASE_IDENTIFIER("caseIdentifier"),
     RESULTS("results"),
     PAGE_COUNT("pageCount"),
     HEARING_SLOTS("hearingSlots"),

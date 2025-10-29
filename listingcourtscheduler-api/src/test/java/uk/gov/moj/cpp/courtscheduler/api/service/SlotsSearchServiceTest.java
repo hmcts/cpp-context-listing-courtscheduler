@@ -3,7 +3,9 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.time.LocalDate.parse;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -45,12 +47,12 @@ class SlotsSearchServiceTest {
     private CourtScheduleRepository courtScheduleRepository;
     @InjectMocks
     private SlotsSearchService slotsSearchService;
-    private UUID rightWingerId = randomUUID();
-    private UUID leftWingerId = randomUUID();
-    private UUID chairId = randomUUID();
+    private final UUID rightWingerId = randomUUID();
+    private final UUID leftWingerId = randomUUID();
+    private final UUID chairId = randomUUID();
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         setField(slotsSearchService, "courtScheduleRepository", courtScheduleRepository);
     }
 
@@ -64,6 +66,33 @@ class SlotsSearchServiceTest {
 
         final JsonObject jsonObject = slotsSearchService.search(hearingSlotRequestParam);
         assertThat(jsonObject, is(toJsonObject(rightWingerId, leftWingerId, chairId)));
+    }
+
+    @Test
+    void shouldReturnAvailableSlotsByDuration() {
+        final List<CourtSchedule> courtSchedules = List.of(getCourtScheduleWithRegularSessions());
+        final Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(1, courtSchedules);
+        final HearingSlotRequestParam hearingSlotRequestParam = createRequestParamWithDuration();
+        when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
+
+        final Pair<Integer, List<CourtSchedule>> availableCourtSchedules = slotsSearchService.getCourtSchedules(hearingSlotRequestParam);
+        final CourtSchedule courtSchedule = availableCourtSchedules.getValue().get(0);
+        assertThat(courtSchedule.getOuCode(),is("B12JR00"));
+        assertThat(courtSchedule.getAvailableDuration(), is(120));
+    }
+
+    @Test
+    void shouldReturnAvailableSlotBasedCourtSchedules() {
+        final List<CourtSchedule> courtSchedules = List.of(getCourtScheduleWithSlotBasedSessions(),
+                getCourtScheduleWithSlotBasedSessions());
+        final Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(1, courtSchedules);
+        final HearingSlotRequestParam hearingSlotRequestParam = createRequestParamWithDuration();
+        when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
+
+        final Pair<Integer, List<CourtSchedule>> availableCourtSchedules = slotsSearchService.getCourtSchedules(hearingSlotRequestParam);
+        final CourtSchedule courtSchedule = availableCourtSchedules.getValue().get(0);
+        assertThat(courtSchedule.getOuCode(),is("B12JR00"));
+        assertThat(courtSchedule.getAvailableSlots(), is(2));
     }
 
     @Test
@@ -127,10 +156,60 @@ class SlotsSearchServiceTest {
         verify(courtScheduleRepository, times(0)).getCourtScheduleJudiciaries(any());
     }
 
+    @Test
+    void shouldSetMinHearingTimeAndMaxHearingTimeToNullInGetCourtSchedules() {
+        // Given
+        CourtSchedule courtScheduleWithHearingTimes = createCourtScheduleWithHearingTimes();
+        List<CourtSchedule> courtScheduleList = List.of(courtScheduleWithHearingTimes);
+        HearingSlotRequestParam hearingSlotRequestParam = createRequestParam("10");
+        Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(1, courtScheduleList);
+
+        when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
+
+        // When
+        Pair<Integer, List<CourtSchedule>> result = slotsSearchService.getCourtSchedules(hearingSlotRequestParam);
+
+        // Then
+        assertThat(result.getValue(), hasSize(1));
+        CourtSchedule returnedCourtSchedule = result.getValue().get(0);
+        assertThat(returnedCourtSchedule.getMinHearingTime(), is(nullValue()));
+        assertThat(returnedCourtSchedule.getMaxHearingTime(), is(nullValue()));
+    }
+
     private CourtSchedule createCourtScheduleWithoutListingProfileId() {
         return new CourtSchedule.CourtScheduleBuilder()
                 .withCourtScheduleId(randomUUID().toString())
                 .withListingProfileId(null)
+                .build();
+    }
+
+    private CourtSchedule createCourtScheduleWithHearingTimes() {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withListingProfileId(randomUUID().toString())
+                .withSessionDate(parse("2025-03-01"))
+                .withOuCode("B12JR00")
+                .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
+                .withCourtRoomNumber(1234)
+                .withCourtHouseName("Test Court House")
+                .withCourtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
+                .withCourtRoomName("Test Court Room")
+                .withOperationalUnit("UNN")
+                .withBusinessType("BYS")
+                .withBusinessDescription("Test Business")
+                .withPanel("PANEL")
+                .withCourtSession("AM")
+                .withMaxDuration(120)
+                .withAvailableSlots(2)
+                .withAvailableDuration(120)
+                .withMaxSlots(2)
+                .withJudiciaries(List.of(buildJudiciary(randomUUID(), "CHAIR")))
+                .withActive(true)
+                .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withIsOverbookingAllowed(true)
+                .withMinHearingTime("09:00")
+                .withMaxHearingTime("12:00")
                 .build();
     }
 
@@ -181,17 +260,78 @@ class SlotsSearchServiceTest {
                 .withIsOverbookingAllowed(true)
                 .withIsDraft(false)
                 .withJurisdiction("MAGISTRATES")
+                .withMinHearingTime("09:00")
+                .withMaxHearingTime("12:00")
+                .build();
+    }
+
+    private CourtSchedule getCourtScheduleWithRegularSessions() {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withListingProfileId(null)
+                .withSessionDate(parse("2025-03-01"))
+                .withOuCode("B12JR00")
+                .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
+                .withCourtRoomNumber(1234)
+                .withCourtHouseName("Liverpool Mags Court")
+                .withCourtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
+                .withCourtRoomName("Court name1")
+                .withOperationalUnit("UNN")
+                .withBusinessType("BYS")
+                .withBusinessDescription(null)
+                .withPanel("PANEL")
+                .withCourtSession("AM")
+                .withMaxDuration(120)
+                .withAvailableSlots(2)
+                .withAvailableDuration(120)
+                .withMaxSlots(2)
+                .withJudiciaries(List.of(buildJudiciary(randomUUID(),"CHAIR")))
+                .withActive(true)
+                .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withIsOverbookingAllowed(true)
+                .build();
+    }
+
+    private CourtSchedule getCourtScheduleWithSlotBasedSessions() {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withListingProfileId(null)
+                .withSessionDate(parse("2025-03-01"))
+                .withOuCode("B12JR00")
+                .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
+                .withCourtRoomNumber(1234)
+                .withCourtHouseName("Liverpool Mags Court")
+                .withCourtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
+                .withCourtRoomName("Court name1")
+                .withSlotBased(true)
+                .withOperationalUnit("UNN")
+                .withBusinessType("BYS")
+                .withBusinessDescription(null)
+                .withPanel("PANEL")
+                .withCourtSession("AM")
+                .withMaxDuration(120)
+                .withAvailableSlots(2)
+                .withAvailableDuration(120)
+                .withMaxSlots(2)
+                .withJudiciaries(List.of(buildJudiciary(randomUUID(),"CHAIR")))
+                .withActive(true)
+                .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withIsOverbookingAllowed(true)
+                .withIsDraft(false)
+                .withJurisdiction("MAGISTRATES")
                 .build();
     }
 
     private HearingSlotRequestParam createRequestParam(String pageSize) {
         return new HearingSlotRequestParam("ADULT", LocalDate.now().toString(), LocalDate.now().toString(),
-                Instant.now().toString(), null, "BA124", pageSize, "1", null, null, null, null, null,null);
+                Instant.now().toString(),  null, "BA124", pageSize, "1", null, null, null, null, false,null,false,"API","100");
     }
 
-    private HearingSlotRequestParam createRequestParam(String pageSize, String hearingStartTime) {
+    private HearingSlotRequestParam createRequestParamWithDuration() {
         return new HearingSlotRequestParam("ADULT", LocalDate.now().toString(), LocalDate.now().toString(),
-                Instant.now().toString(),null, "BA124", pageSize, "1", null, null, null, null, null,hearingStartTime);
+                Instant.now().toString(), null, "B12JR00", "10", "1", null, null, null, null, false, null, false,"API","20");
     }
 
     private JsonObject toJsonObject(UUID judiciaryId1, UUID judiciaryId2, UUID judiciaryId3) {
@@ -201,5 +341,268 @@ class SlotsSearchServiceTest {
         source = source.replace("JUDICIARY_ID_2", judiciaryId2.toString());
         source = source.replace("JUDICIARY_ID_3", judiciaryId3.toString());
         return stringToJsonObjectConverter.convert(source);
+    }
+
+    // Tests for overbookingFilter method
+    @Test
+    void shouldIncludeAllSchedulesWhenOverbookingAllowed() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createCourtScheduleWithOverbookingAllowed(true, false, 0, 0, 0, 0, 0, 0),
+            createCourtScheduleWithOverbookingAllowed(true, true, 5, 10, 0, 0, 0, 0)
+        );
+        boolean showOverbookedSlots = false;
+        String duration = "60";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(2));
+        assertThat(result, is(courtSchedules));
+    }
+
+    @Test
+    void shouldIncludeAllSchedulesWhenShowOverbookedSlotsIsTrue() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createCourtScheduleWithOverbookingAllowed(false, false, 0, 0, 0, 0, 0, 0),
+            createCourtScheduleWithOverbookingAllowed(false, true, 5, 10, 0, 0, 0, 0)
+        );
+        boolean showOverbookedSlots = true;
+        String duration = "60";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(2));
+        assertThat(result, is(courtSchedules));
+    }
+
+    @Test
+    void shouldIncludeSlotBasedScheduleWithAvailableSlots() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createSlotBasedCourtSchedule(false, false, 3, 5) // 3 booked out of 5 max slots
+        );
+        boolean showOverbookedSlots = false;
+        String duration = "60";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(1));
+        assertThat(result.get(0), is(courtSchedules.get(0)));
+    }
+
+    @Test
+    void shouldExcludeSlotBasedScheduleWithNoAvailableSlots() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createSlotBasedCourtSchedule(false, false, 5, 5) // 5 booked out of 5 max slots (full)
+        );
+        boolean showOverbookedSlots = false;
+        String duration = "60";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(0));
+    }
+
+    @Test
+    void shouldIncludeAllDaySplitScheduleWithSufficientMorningAfternoonDuration() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createAllDaySplitCourtSchedule(false, false, 100, 80, 20, 10, 0, 0) // 100+80-20-10=150 available, need 60
+        );
+        boolean showOverbookedSlots = false;
+        String duration = "60";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(1));
+        assertThat(result.get(0), is(courtSchedules.get(0)));
+    }
+
+    @Test
+    void shouldIncludeAllDaySplitScheduleWithSufficientTotalDuration() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createAllDaySplitCourtSchedule(false, false, 100, 100, 20, 30, 200, 50) // 200-50=150 available, need 60
+        );
+        boolean showOverbookedSlots = false;
+        String duration = "60";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(1));
+        assertThat(result.get(0), is(courtSchedules.get(0)));
+    }
+
+    @Test
+    void shouldExcludeAllDaySplitScheduleWithInsufficientDuration() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createAllDaySplitCourtSchedule(false, false, 50, 30, 20, 10, 0, 0) // 50+30-20-10=50 available, need 60
+        );
+        boolean showOverbookedSlots = false;
+        String duration = "60";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(0));
+    }
+
+    @Test
+    void shouldExcludeRegularScheduleWithInsufficientDuration() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createRegularCourtSchedule(false, false, 100, 50) // 100-50=50 available, need 60
+        );
+        boolean showOverbookedSlots = false;
+        String duration = "60";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(0));
+    }
+
+    @Test
+    void shouldHandleNullDuration() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createSlotBasedCourtSchedule(false, false, 3, 5)
+        );
+        boolean showOverbookedSlots = false;
+        String duration = null;
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(1));
+        assertThat(result.get(0), is(courtSchedules.get(0)));
+    }
+
+    @Test
+    void shouldHandleEmptyDuration() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createSlotBasedCourtSchedule(false, false, 3, 5)
+        );
+        boolean showOverbookedSlots = false;
+        String duration = "";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(1));
+        assertThat(result.get(0), is(courtSchedules.get(0)));
+    }
+
+    @Test
+    void shouldHandleMixedScheduleTypes() {
+        // Given
+        List<CourtSchedule> courtSchedules = List.of(
+            createCourtScheduleWithOverbookingAllowed(true, false, 0, 0, 0, 0, 0, 0), // Should be included (overbooking allowed)
+            createSlotBasedCourtSchedule(false, false, 3, 5), // Should be included (available slots)
+            createSlotBasedCourtSchedule(false, false, 5, 5), // Should be excluded (no available slots)
+            createAllDaySplitCourtSchedule(false, false, 100, 80, 20, 10, 0, 0), // Should be included (sufficient duration)
+            createAllDaySplitCourtSchedule(false, false, 50, 30, 20, 10, 0, 0)  // Should be excluded (insufficient duration)
+        );
+        boolean showOverbookedSlots = false;
+        String duration = "60";
+
+        // When
+        List<CourtSchedule> result = invokeOverbookingFilter(courtSchedules, showOverbookedSlots, duration);
+
+        // Then
+        assertThat(result.size(), is(3));
+        assertThat(result.get(0), is(courtSchedules.get(0))); // Overbooking allowed
+        assertThat(result.get(1), is(courtSchedules.get(1))); // Available slots
+        assertThat(result.get(2), is(courtSchedules.get(3))); // Sufficient duration
+    }
+
+    // Helper method to invoke the private overbookingFilter method using reflection
+    @SuppressWarnings("unchecked")
+    private List<CourtSchedule> invokeOverbookingFilter(List<CourtSchedule> courtSchedules, boolean showOverbookedSlots, String duration) {
+        try {
+            java.lang.reflect.Method method = SlotsSearchService.class.getDeclaredMethod("overbookingFilter", List.class, boolean.class, String.class);
+            method.setAccessible(true);
+            return (List<CourtSchedule>) method.invoke(slotsSearchService, courtSchedules, showOverbookedSlots, duration);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to invoke overbookingFilter method", e);
+        }
+    }
+
+    // Helper methods to create test CourtSchedule objects
+    private CourtSchedule createCourtScheduleWithOverbookingAllowed(boolean isOverbookingAllowed, boolean slotBased,
+            int maxDurationForMorning, int maxDurationForAfternoon, int totalBookedForMorning, int totalBookedForAfternoon,
+            int maxDuration, int totalBooked) {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withIsOverbookingAllowed(isOverbookingAllowed)
+                .withSlotBased(slotBased)
+                .withAllDaySplit(!slotBased)
+                .withMaxDurationForMorning(maxDurationForMorning)
+                .withMaxDurationForAfternoon(maxDurationForAfternoon)
+                .withTotalBookedForMorning(totalBookedForMorning)
+                .withTotalBookedForAfternoon(totalBookedForAfternoon)
+                .withMaxDuration(maxDuration)
+                .withTotalBooked(totalBooked)
+                .withMaxSlots(5)
+                .build();
+    }
+
+    private CourtSchedule createSlotBasedCourtSchedule(boolean isOverbookingAllowed, boolean allDaySplit, int totalBooked, int maxSlots) {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withIsOverbookingAllowed(isOverbookingAllowed)
+                .withSlotBased(true)
+                .withAllDaySplit(allDaySplit)
+                .withTotalBooked(totalBooked)
+                .withMaxSlots(maxSlots)
+                .build();
+    }
+
+    private CourtSchedule createAllDaySplitCourtSchedule(boolean isOverbookingAllowed, boolean slotBased,
+            int maxDurationForMorning, int maxDurationForAfternoon, int totalBookedForMorning, int totalBookedForAfternoon,
+            int maxDuration, int totalBooked) {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withIsOverbookingAllowed(isOverbookingAllowed)
+                .withSlotBased(slotBased)
+                .withAllDaySplit(true)
+                .withMaxDurationForMorning(maxDurationForMorning)
+                .withMaxDurationForAfternoon(maxDurationForAfternoon)
+                .withTotalBookedForMorning(totalBookedForMorning)
+                .withTotalBookedForAfternoon(totalBookedForAfternoon)
+                .withMaxDuration(maxDuration)
+                .withTotalBooked(totalBooked)
+                .build();
+    }
+
+    private CourtSchedule createRegularCourtSchedule(boolean isOverbookingAllowed, boolean slotBased, int maxDuration, int totalBooked) {
+        return new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(randomUUID().toString())
+                .withIsOverbookingAllowed(isOverbookingAllowed)
+                .withSlotBased(slotBased)
+                .withAllDaySplit(false)
+                .withMaxDuration(maxDuration)
+                .withTotalBooked(totalBooked)
+                .build();
     }
 }

@@ -30,8 +30,11 @@ public class DatabaseSeeder {
     private static final String COURT_SCHEDULE_INSERT_SQL = "INSERT INTO court_schedule (" +
             "id, court_listing_profile_id, oucode, court_room_id, court_room_number, court_house_id, court_house_name," +
             "court_room_name, operational_unit, rota_business_type, panel, court_session, is_slot_based, session_start, " +
-            "max_slot, max_duration_mins, available_slot, available_duration_mins, support_ad_split, max_ad_morning_duration, max_ad_afternoon_duration, session_start_time, session_end_time,national_break_time) \n" +
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
+            "max_slot, max_duration_mins, available_slot, available_duration_mins, support_ad_split, max_ad_morning_duration, max_ad_afternoon_duration, session_start_time, session_end_time, national_break_time, is_overbooking_allowed) \n" +
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    private static final String UPDATE_SESSION_END_TIME_SQL =
+            "UPDATE court_schedule SET session_end_time = ? WHERE id = ?";
 
     private static final String ALLOCATED_LISTING_INSERT_SQL = "INSERT INTO allocated_listings (" +
             "id, court_schedule_id, booking_id, hearing_id, oucode, court_room_id, rota_business_type," +
@@ -165,8 +168,20 @@ public class DatabaseSeeder {
             preparedStatement.setTimestamp(22, new Timestamp(courtSchedule.getSessionStartTime().getTime()));
             preparedStatement.setTimestamp(23, new Timestamp(courtSchedule.getSessionEndTime().getTime()));
             preparedStatement.setTimestamp(24, new Timestamp(courtSchedule.getNationalBreakTime().getTime()));
+            preparedStatement.setBoolean(25, courtSchedule.getIsOverbookingAllowed());
 
             preparedStatement.executeUpdate();
+        }
+    }
+
+    public void updateSessionEndTime(String courtScheduleId, java.util.Date sessionEndTime) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement ps = connection.prepareStatement(UPDATE_SESSION_END_TIME_SQL)) {
+
+            ps.setTimestamp(1, new java.sql.Timestamp(sessionEndTime.getTime()));
+            ps.setString(2, courtScheduleId);
+
+            ps.executeUpdate();
         }
     }
 

@@ -38,8 +38,14 @@ public class HearingSlotRequestParamConverter implements Converter<JsonObject, H
                 valueOf(jsonObject.getString(RequestParameterConstant.IS_SLOT_BASED.getLabel())) : null;
         final String hearingStartTime = jsonObject.containsKey(RequestParameterConstant.HEARING_START_TIME.getLabel()) ?
                 jsonObject.getString(RequestParameterConstant.HEARING_START_TIME.getLabel()) : null;
+        final boolean showOverbookingSlots = jsonObject.containsKey(RequestParameterConstant.SHOW_OVERBOOKING_SLOTS.getLabel()) ?
+                jsonObject.getBoolean(RequestParameterConstant.SHOW_OVERBOOKING_SLOTS.getLabel()) : false;
+        final String caseIdentifier = jsonObject.containsKey(RequestParameterConstant.CASE_IDENTIFIER.getLabel()) ?
+                jsonObject.getString(RequestParameterConstant.CASE_IDENTIFIER.getLabel()) : null;
+        final String duration = jsonObject.containsKey(RequestParameterConstant.DURATION.getLabel()) ?
+                jsonObject.getString(RequestParameterConstant.DURATION.getLabel()) : null;
 
         return new HearingSlotRequestParam(panel, startDate, endDate, exactHearingStartDateTime, ouLevel, ouCode, pageSize,
-                pageNumber, courtRoomId, courtRoomNumber, businessType, courtSession, isSlotBased, hearingStartTime);
+                pageNumber, courtRoomId, courtRoomNumber, businessType, courtSession, isSlotBased, hearingStartTime, showOverbookingSlots, caseIdentifier, duration);
     }
 }

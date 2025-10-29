@@ -10,10 +10,14 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVAL
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 
+import org.mockito.MockitoAnnotations;
+import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
+import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
@@ -27,19 +31,26 @@ import java.lang.reflect.Field;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.json.JsonObject;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class SessionsApiValidatorTest {
 
     @InjectMocks
@@ -63,15 +74,13 @@ class SessionsApiValidatorTest {
     @Mock
     private ReferenceDataCache referenceDataCache;
 
+    @Mock
+    private AllocatedListingService allocatedListingService;
+
     private final String courtCentreId = randomUUID().toString();
     private final String courtRoomId = randomUUID().toString();
 
-    @BeforeEach
-    public void setUp() throws Exception {
-        MockitoAnnotations.openMocks(this);
-        sessionsApiValidator = new SessionsApiValidator();
-        injectReferenceDataCache();
-    }
+    private final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
 
     private void injectReferenceDataCache() throws Exception {
         Field field = SessionsApiValidator.class.getDeclaredField("referenceDataCache");
@@ -187,7 +196,7 @@ class SessionsApiValidatorTest {
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
         when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
-        when(courtScheduleRepository.getSimilarSessions(any(), any(), any(), any(), any())).thenReturn(clashingAllDaySession);
+//        when(courtScheduleRepository.getSimilarSessions(any(), any(), any(), any(), any())).thenReturn(clashingAllDaySession);
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
@@ -200,7 +209,7 @@ class SessionsApiValidatorTest {
     }
 
     @Test
-    void shouldReturnErrorWhenSessionTypeIsDuplicateWithInPayload() {
+    void shouldReturnErrorWhenSessionTypeIsDuplicateWithInPayload() throws JsonProcessingException {
 
         final List<Session> sessionList = Arrays.asList(createAMSession(), createPMSession());
         final Session sessionToBeAdded = createAMSession();
@@ -218,7 +227,6 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
@@ -243,7 +251,6 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(sessionsService.validateSessionIntegrity(any(), any(), any(), any())).thenReturn(errorResult);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
@@ -256,7 +263,6 @@ class SessionsApiValidatorTest {
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getRepeatFor()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
@@ -332,26 +338,45 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndSessionTypeIsNotAllDay() {
-        SessionValidationParams params = new SessionValidationParams(60, 60, true, "AM", "BUSINESS_TYPE", null, null);
+        SessionValidationParams params = new SessionValidationParams(60, 60, true, "AM", "BUSINESS_TYPE", null, null, null, null);
         JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
         assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS, result.getString("errorMessage"));
     }
 
     @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndMaxDurationIsInvalid() {
-        SessionValidationParams params = new SessionValidationParams(null, 60, true, ALL_DAY, "BUSINESS_TYPE", null, null);
-        when(referenceDataCache.getRotaBusinessTypeByCode(params.getBusinessType(), requester)).thenReturn(Optional.of(BusinessType.BusinessTypeBuilder.aBusinessType()
-                .withTypeCode(params.getBusinessType()).withDuration(true).build()));
+        SessionValidationParams params = new SessionValidationParams(null, 60, true, ALL_DAY, "BUSINESS_TYPE", null, null, "10:00", "17:00");
 
         JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
         assertEquals(ErrorMessages.MAX_DURATION_AM_PM_PROVIDED_FOR_ALL_DAY_SPLIT_SESSION, result.getString("errorMessage"));
     }
 
     @Test
+    void shouldReturnErrorWhenIsAllDaySplitIsTrueAndMaxSessionTimeBeforeSessionEndTime() {
+        final String courtScheduleId = randomUUID().toString();
+        SessionValidationParams params = new SessionValidationParams(0, 60, true, ALL_DAY, "BUSINESS_TYPE", null, courtScheduleId, "10:00", "14:29");
+
+        LocalDate day = LocalDate.now().plusDays(3);
+        Date maxHearingStart = Date.from(
+                day.atTime(15, 0).atZone(java.time.ZoneId.systemDefault()).toInstant()
+        );
+        AllocatedListingEachBooked booked = org.mockito.Mockito.mock(AllocatedListingEachBooked.class);
+        when(booked.getHearingStartTime()).thenReturn(maxHearingStart);
+
+        // Validator will fetch allocated listings for this court schedule
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(List.of(booked));
+
+        JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
+        assertEquals(ErrorMessages.MAX_HEARING_TIME_BEFORE_SESSION_END_TIME, result.getString("errorMessage"));
+    }
+
+    @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndBusinessTypeIsNotDurationBased() {
-        SessionValidationParams params = new SessionValidationParams(60, 60, true, ALL_DAY, "BUSINESS_TYPE", null, null);
+        SessionValidationParams params = new SessionValidationParams(60, 60, true, ALL_DAY, "BUSINESS_TYPE", null, null, "10:00", "17:00");
         BusinessType businessType = new BusinessType("BUSINESS_TYPE", 1, "Description", "Category", false, false);
         when(referenceDataCache.getRotaBusinessTypeByCode("BUSINESS_TYPE", requester)).thenReturn(Optional.of(businessType));
+
         JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_DURATION_BASED_SESSION, result.getString("errorMessage"));

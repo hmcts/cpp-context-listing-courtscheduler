@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
+import static java.util.Calendar.MINUTE;
+import static java.util.Comparator.comparing;
 import static java.util.Objects.nonNull;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils.updateTotalBooked;
@@ -12,8 +14,10 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -28,6 +32,7 @@ public final class CourtSchedulerConverter {
     }
 
     public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
+        final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
         final Boolean isAllDaySplit = courtScheduleEntity.getSupportAdSplit();
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder()
                 .withListingProfileId(courtScheduleEntity.getListingProfileId())
@@ -54,7 +59,10 @@ public final class CourtSchedulerConverter {
                 .withCreatedOn(courtScheduleEntity.getCreatedOn())
                 .withUpdatedOn(courtScheduleEntity.getUpdatedOn())
                 .withSessionStartTime(courtScheduleEntity.getSessionStartTime())
-                .withSessionEndTime(courtScheduleEntity.getSessionEndTime());
+                .withSessionEndTime(courtScheduleEntity.getSessionEndTime())
+                .withIsOverbookingAllowed(courtScheduleEntity.getIsOverbookingAllowed())
+                .withMinHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionStartTime()))
+                .withMaxHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionEndTime()));
         if (nonNull(isAllDaySplit) && Boolean.TRUE.equals(isAllDaySplit)) {
             courtScheduleBuilder
                     .withMaxDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration())
@@ -68,13 +76,23 @@ public final class CourtSchedulerConverter {
         return courtScheduleBuilder.build();
     }
 
+    public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convertForOverbooking(
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
+        return new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
+                .withIsOverbookingAllowed(Boolean.TRUE.equals(courtScheduleEntity.getIsOverbookingAllowed()))
+                .withActive(courtScheduleEntity.isActive())
+                .build();
+    }
+
     public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity,
                                                                              final List<AllocatedListingEachBooked> allocatedListingEachBooked) {
-        final List<AllocatedListingEachBooked> allocatedListingEachBookedForThisSchedule = allocatedListingEachBooked.stream()
+        final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
+        final List<AllocatedListingEachBooked> allocatedListings = allocatedListingEachBooked.stream()
                 .filter(eachBooked -> eachBooked.getCourtScheduleId().equals(courtScheduleEntity.getCourtScheduleId()))
                 .toList();
 
-        final Integer totalBooked = allocatedListingEachBookedForThisSchedule.stream().mapToInt(AllocatedListingEachBooked::getDuration).sum();
+        final Integer totalBooked = allocatedListings.stream().mapToInt(AllocatedListingEachBooked::getDuration).sum();
         final Boolean isAllDaySplit = courtScheduleEntity.getSupportAdSplit();
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
                 .withListingProfileId(courtScheduleEntity.getListingProfileId())
@@ -102,15 +120,31 @@ public final class CourtSchedulerConverter {
                 .withMaxDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration())
                 .withCreatedOn(courtScheduleEntity.getCreatedOn())
                 .withUpdatedOn(courtScheduleEntity.getUpdatedOn())
-                .withTotalBooked(totalBooked)
                 .withSessionStartTime(courtScheduleEntity.getSessionStartTime())
-                .withSessionEndTime(courtScheduleEntity.getSessionEndTime());
+                .withSessionEndTime(courtScheduleEntity.getSessionEndTime())
+                .withIsOverbookingAllowed(courtScheduleEntity.getIsOverbookingAllowed())
+                .withMinHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionStartTime()))
+                .withMaxHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionEndTime()));
+
+        final Date minHearingTime = allocatedListings.stream()
+                .map(AllocatedListingEachBooked::getHearingStartTime)
+                .min(Date::compareTo)
+                .orElse(null);
+        final Date maxHearingTime = allocatedListings.stream()
+                .max(comparing(AllocatedListingEachBooked::getHearingStartTime))
+                .map(AllocatedListingEachBooked::getHearingStartTime)
+                .orElse(null);
+        if (minHearingTime != null) {
+            courtScheduleBuilder.withMinHearingTime(simpleDateFormat.format(minHearingTime));
+        }
+        if (maxHearingTime != null) {
+            courtScheduleBuilder.withMaxHearingTime(simpleDateFormat.format(maxHearingTime));
+        }
 
         if (Boolean.TRUE.equals(courtScheduleEntity.getSupportAdSplit()) && ALL_DAY.equals(courtScheduleEntity.getCourtSession())) {
             final AtomicInteger totalBookedForMorning = new AtomicInteger(0);
             final AtomicInteger totalBookedForAfternoon = new AtomicInteger(0);
-
-            allocatedListingEachBookedForThisSchedule
+            allocatedListings
                     .forEach(eachBooked -> {
                         if ((eachBooked.getHearingStartTime().after(courtScheduleEntity.getSessionStartTime()) || eachBooked.getHearingStartTime().equals(courtScheduleEntity.getSessionStartTime()))
                                 && eachBooked.getHearingStartTime().before(combineDateAndTime(courtScheduleEntity.getSessionDate(), DEFAULT_AFTERNOON_START_TIME))

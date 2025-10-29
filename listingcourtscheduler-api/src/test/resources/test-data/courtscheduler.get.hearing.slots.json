@@ -9,5 +9,7 @@
   "courtRoomId": "ID1234",
   "courtRoomNumber": "123",
   "businessType": "buss",
-  "courtSession": "session"
+  "courtSession": "session",
+  "showOverbookedSlots": true,
+  "caseIdentifier": "API"
 }

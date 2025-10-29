@@ -7,6 +7,7 @@ public class RequestedCourtSchedule {
         private String courtScheduleId;
         private String hearingStartTime;
         private Integer durationInMinutes;
+        private String source;
 
     public String getCourtScheduleId() {
         return courtScheduleId;
@@ -32,18 +33,27 @@ public class RequestedCourtSchedule {
         this.durationInMinutes = durationInMinutes;
     }
 
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof RequestedCourtSchedule that)) return false;
         return Objects.equals(courtScheduleId, that.courtScheduleId) &&
                 Objects.equals(hearingStartTime, that.hearingStartTime) &&
-                Objects.equals(durationInMinutes, that.durationInMinutes);
+                Objects.equals(durationInMinutes, that.durationInMinutes) &&
+                Objects.equals(source, that.source);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(courtScheduleId, hearingStartTime, durationInMinutes);
+        return Objects.hash(courtScheduleId, hearingStartTime, durationInMinutes, source);
     }
 
     @Override
@@ -52,6 +62,7 @@ public class RequestedCourtSchedule {
                 "CourtScheduleId='" + courtScheduleId + '\'' +
                 ", hearingStartTime='" + hearingStartTime + '\'' +
                 ", duration=" + durationInMinutes +
+                ", source='" + source + '\'' +
                 '}';
     }
 }

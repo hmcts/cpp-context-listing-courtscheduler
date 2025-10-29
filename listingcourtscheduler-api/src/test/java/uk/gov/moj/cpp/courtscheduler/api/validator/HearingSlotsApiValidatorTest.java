@@ -106,7 +106,10 @@ class HearingSlotsApiValidatorTest {
                 "businessType",
                 "courtSession",
                 false,
-                "invalid-date-format" //other than zoned date format
+                "invalid-date-format", //other than zoned date format
+                false,
+                null,
+                null
         );
 
         BadRequestException thrown = assertThrows(BadRequestException.class,

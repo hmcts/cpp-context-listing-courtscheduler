@@ -154,7 +154,7 @@ class SlotsUpdateServiceTest {
     }
 
     @Test
-    void shouldUpdateListHearingSlotsAndReturnResponse() {
+    void shouldListHearingSlotsAndReturnResponse() {
         final RequestedSlots wrapper = new RequestedSlots();
 
         final Hearing hearing1 = new Hearing();
@@ -167,7 +167,7 @@ class SlotsUpdateServiceTest {
 
         when(courtScheduleRepository.updateListHearingSlots(wrapper)).thenReturn(hearings);
 
-        ListHearingSlotsResponse response = service.updateListHearingSlots(wrapper);
+        ListHearingSlotsResponse response = service.listHearingSlots(wrapper);
 
         assertNotNull(response);
         assertEquals(2, response.getHearings().size());
