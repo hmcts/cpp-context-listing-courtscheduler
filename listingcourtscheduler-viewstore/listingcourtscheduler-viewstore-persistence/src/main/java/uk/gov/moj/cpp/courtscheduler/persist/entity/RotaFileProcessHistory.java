@@ -6,7 +6,10 @@ import java.util.Objects;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
@@ -19,6 +22,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Table(name = "rota_file_process_history")
 public class RotaFileProcessHistory {
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "rota_file_process_history_execution_id_seq")
+    @SequenceGenerator(name = "rota_file_process_history_execution_id_seq", sequenceName = "rota_file_process_history_execution_id_seq", allocationSize = 1)
     @Column(name = "execution_id", nullable = false)
     private Integer executionId;
     @Column(name = "file_name", nullable = false)

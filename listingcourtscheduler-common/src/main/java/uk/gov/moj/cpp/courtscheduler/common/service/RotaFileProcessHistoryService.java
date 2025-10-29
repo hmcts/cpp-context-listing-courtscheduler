@@ -25,7 +25,7 @@ public class RotaFileProcessHistoryService {
     private String computeFileHash(final String fileNamePrefix, final OffsetDateTime fileDate) {
         try {
             final String input = fileNamePrefix + fileDate.toString();
-            final MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            final MessageDigest digest = MessageDigest.getInstance("MD5");
             final byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
 
             final StringBuilder hexString = new StringBuilder();
@@ -38,7 +38,7 @@ public class RotaFileProcessHistoryService {
             }
             return hexString.toString();
         } catch (final NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not available", e);
+            throw new RuntimeException("MD5 algorithm not available", e);
         }
     }
 

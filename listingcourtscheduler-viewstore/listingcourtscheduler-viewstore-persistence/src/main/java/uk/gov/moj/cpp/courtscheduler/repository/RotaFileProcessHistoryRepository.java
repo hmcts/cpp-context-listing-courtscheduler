@@ -16,11 +16,11 @@ public interface RotaFileProcessHistoryRepository extends EntityRepository<RotaF
 
     RotaFileProcessHistory findByFileDateGreaterThan(Timestamp fileDate);
 
-    @Query(value = "from RotaFileProcessHistory where id.fileNamePrefix=:filePrefix and id.fileDate > :fileDate")
+    @Query(value = "from RotaFileProcessHistory where fileNamePrefix=:filePrefix and fileDate > :fileDate")
     List<RotaFileProcessHistory> findByFileNamePrefixAndFileDateGreaterThan(@QueryParam("filePrefix") final String filePrefix,
                                                                             @QueryParam("fileDate") final Timestamp fileDate);
 
     @Modifying
-    @Query(value = "DELETE RotaFileProcessHistory rf WHERE rf.id.fileNamePrefix = :fileNamePrefix AND rf.id.fileDate <= :fileDate")
+    @Query(value = "DELETE RotaFileProcessHistory rf WHERE rf.fileNamePrefix = :fileNamePrefix AND rf.fileDate <= :fileDate")
     void deleteByFileNamePrefixAndFileDate(@QueryParam("fileNamePrefix") String fileNamePrefix, @QueryParam("fileDate") Timestamp fileDate);
 }
