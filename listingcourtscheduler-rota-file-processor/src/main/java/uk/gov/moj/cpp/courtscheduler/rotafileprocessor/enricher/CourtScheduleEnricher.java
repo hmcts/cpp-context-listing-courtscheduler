@@ -135,7 +135,8 @@ public class CourtScheduleEnricher {
                 .withCourtHouseId(courtRoomDetail.getOucodeUUID())
                 .withCourtRoomId(courtRoomDetail.getCourtroomId())
                 .withCourtRoomNumber(courtRoomDetail.getCppCourtRoomId())
-                .withCourtRoomName(courtRoomDetail.getCourtroomName());
+                .withCourtRoomName(courtRoomDetail.getCourtroomName())
+                .withJurisdiction("MAGISTRATES");
     }
 
     private void populateSessionAllocationProperties(final CourtSchedule.CourtScheduleBuilder builder, final CourtRoomSessionAllocation allocation) {
