@@ -334,7 +334,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     cs.max_ad_afternoon_duration,
                     cs.is_overbooking_allowed,
                     cs.is_draft,
-                    cs.jurisdiction,
+                    cs.jurisdiction
                 ORDER BY cs.session_start, cs.court_house_name, cs.court_room_name, cs.court_session, cs.rota_business_type
             """;
 
