@@ -1,34 +1,52 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Objects;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @SuppressWarnings({"squid:S1845"})
 @Entity
 @Table(name = "rota_file_process_history")
 public class RotaFileProcessHistory {
-
     @Id
-    private RotaFileProcessHistoryKey id;
-
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "rota_file_process_history_execution_id_seq")
+    @SequenceGenerator(name = "rota_file_process_history_execution_id_seq", sequenceName = "rota_file_process_history_execution_id_seq", allocationSize = 1)
+    @Column(name = "execution_id", nullable = false)
+    private Integer executionId;
+    @Column(name = "file_name", nullable = false)
+    private String fileName;
+    @Column(name = "file_hash")
+    private String fileHash;
+    @Column(name = "file_name_prefix", nullable = false)
+    private String fileNamePrefix;
+    @Column(name = "file_date", nullable = false)
+    private Timestamp fileDate;
+    @CreationTimestamp
+    @Column(name = "process_start_date")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date processStartDate;
+    @UpdateTimestamp
+    @Column(name = "process_end_date")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date processEndDate;
     @Column(name = "processed_on", nullable = false)
     private Timestamp processedOn;
 
     public RotaFileProcessHistory() {
         //For JPA
-    }
-
-    public RotaFileProcessHistoryKey getId() {
-        return id;
-    }
-
-    public void setId(RotaFileProcessHistoryKey id) {
-        this.id = id;
     }
 
     public Timestamp getProcessedOn() {
@@ -37,6 +55,62 @@ public class RotaFileProcessHistory {
 
     public void setProcessedOn(Timestamp processedOn) {
         this.processedOn = new Timestamp(processedOn.getTime());
+    }
+
+    public Integer getExecutionId() {
+        return executionId;
+    }
+
+    public void setExecutionId(final Integer executionId) {
+        this.executionId = executionId;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(final String fileName) {
+        this.fileName = fileName;
+    }
+
+    public String getFileHash() {
+        return fileHash;
+    }
+
+    public void setFileHash(final String fileHash) {
+        this.fileHash = fileHash;
+    }
+
+    public String getFileNamePrefix() {
+        return fileNamePrefix;
+    }
+
+    public void setFileNamePrefix(final String fileNamePrefix) {
+        this.fileNamePrefix = fileNamePrefix;
+    }
+
+    public Timestamp getFileDate() {
+        return fileDate;
+    }
+
+    public void setFileDate(final Timestamp fileDate) {
+        this.fileDate = fileDate;
+    }
+
+    public Date getProcessStartDate() {
+        return processStartDate;
+    }
+
+    public void setProcessStartDate(final Date processStartDate) {
+        this.processStartDate = processStartDate;
+    }
+
+    public Date getProcessEndDate() {
+        return processEndDate;
+    }
+
+    public void setProcessEndDate(final Date processEndDate) {
+        this.processEndDate = processEndDate;
     }
 
     @Override
@@ -48,18 +122,24 @@ public class RotaFileProcessHistory {
             return false;
         }
         final RotaFileProcessHistory that = (RotaFileProcessHistory) o;
-        return Objects.equals(id, that.id);
+        return Objects.equals(executionId, that.executionId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Objects.hash(executionId);
     }
 
     @Override
     public String toString() {
         return "RotaFileProcessHistory{" +
-                "id=" + id +
+                ", executionId=" + executionId +
+                ", fileName=" + fileName +
+                ", fileHash=" + fileHash +
+                ", fileNamePrefix=" + fileNamePrefix +
+                ", fileDate=" + fileDate +
+                ", processStartDate=" + processStartDate +
+                ", processEndDate=" + processEndDate +
                 ", processedOn=" + processedOn +
                 '}';
     }
