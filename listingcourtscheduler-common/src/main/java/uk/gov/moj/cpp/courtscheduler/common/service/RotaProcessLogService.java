@@ -19,4 +19,8 @@ public class RotaProcessLogService {
     public RotaProcessLog saveRotaProcessLog(final RotaProcessLog rotaProcessLog) {
         return rotaProcessLogRepository.save(rotaProcessLog);
     }
+
+    public int deleteRedundantRotaData(final int numberOfPreviousMonths) {
+        return rotaProcessLogRepository.deleteRedundantRotaData(numberOfPreviousMonths * 30);
+    }
 }
