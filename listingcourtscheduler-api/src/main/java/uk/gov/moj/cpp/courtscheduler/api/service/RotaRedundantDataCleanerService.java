@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 
 import javax.ejb.Asynchronous;
 import javax.ejb.Stateless;
@@ -26,6 +27,9 @@ public class RotaRedundantDataCleanerService {
     @Inject
     private AllocatedListingService allocatedListingService;
 
+    @Inject
+    private RotaProcessLogService rotaProcessLogService;
+
     @Asynchronous
     @Transactional
     public void cleanDataForPreviousMonths(final int numberOfPreviousMonthsAndOlder) {
@@ -35,5 +39,7 @@ public class RotaRedundantDataCleanerService {
         logger.info("numberOfDeletedJudiciariesForRedundancy: {}", numberOfDeletedJudiciariesForRedundancy);
         final int numberOfDeletedCourtSchedulesForRedundancy = courtScheduleService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
         logger.info("numberOfDeletedCourtSchedulesForRedundancy: {}", numberOfDeletedCourtSchedulesForRedundancy);
+        final int numberOfDeletedRotaProcessLogsForRedundancy = rotaProcessLogService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
+        logger.info("numberOfDeletedRotaProcessLogsForRedundancy: {}", numberOfDeletedRotaProcessLogsForRedundancy);
     }
 }
