@@ -18,7 +18,9 @@ import org.hibernate.annotations.CreationTimestamp;
 public class RotaProcessLog {
 
     @Id
-    @Column(name = "execution_id", nullable = false)
+    private String id;
+
+    @Column(name = "execution_id")
     private String executionId;
 
     @CreationTimestamp

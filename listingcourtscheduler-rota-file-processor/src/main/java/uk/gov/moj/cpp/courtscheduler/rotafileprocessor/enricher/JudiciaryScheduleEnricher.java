@@ -72,7 +72,8 @@ public class JudiciaryScheduleEnricher {
                                                                        final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                                        final boolean forMigrated,
                                                                        final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
-                                                                       final Requester requester) {
+                                                                       final Requester requester,
+                                                                       final String executionId) {
         final Map<String, String> errors = new HashMap<>();
         final List<CourtScheduleJudiciary> courtScheduleJudiciarySchedules = new ArrayList<>();
 
@@ -85,8 +86,7 @@ public class JudiciaryScheduleEnricher {
 
             judiciarySchedule.putAll(getJudiciaryInfoFromRota(judiciariesMap, rotaJusticeId));
 
-            //TODO: Use executionId not random UUID
-            enrichJudiciaryFromCppRefdata(judiciarySchedule, errors, requester, randomUUID().toString());
+            enrichJudiciaryFromCppRefdata(judiciarySchedule, errors, requester, executionId);
 
             final String courtListingProfileId = judiciarySchedule.get(COURT_LISTING_PROFILE_ID);
             final CourtSchedule courtSchedule = courtScheduleMap.get(courtListingProfileId);
@@ -112,8 +112,7 @@ public class JudiciaryScheduleEnricher {
         logger.info("PRF: Time taken for judiciary enrichment : {}", (enrichmentEnd - enrichmentStart) / 1000000);
 
         if (!errors.isEmpty()) {
-            //TODO: Use executionId not random UUID
-            missingMessageLogger.logJudiciaryMissingMessage(errors.values(), randomUUID().toString());
+            missingMessageLogger.logJudiciaryMissingMessage(errors.values(), executionId);
         }
 
         return courtScheduleJudiciarySchedules;

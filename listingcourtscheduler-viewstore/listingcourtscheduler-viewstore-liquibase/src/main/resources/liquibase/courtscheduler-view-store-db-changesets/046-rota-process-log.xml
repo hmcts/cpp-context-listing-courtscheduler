@@ -6,9 +6,10 @@
 
     <changeSet id="046" author="koray.kaya" logicalFilePath="046-rota-process-log.xml">
         <createTable tableName="rota_process_log">
-            <column name="execution_id" type="NUMERIC">
-                <constraints nullable="false"/>
+            <column name="id" type="VARCHAR(100)">
+                <constraints primaryKey="true" nullable="false"/>
             </column>
+            <column name="execution_id" type="VARCHAR(100)"/>
             <column name="timestamp" type="timestamp with timezone">
                 <constraints nullable="false"/>
             </column>

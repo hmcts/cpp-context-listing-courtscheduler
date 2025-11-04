@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 
 import static java.util.Collections.emptyList;
+import static java.util.UUID.randomUUID;
 import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -86,7 +87,7 @@ class JudiciaryScheduleEnricherTest {
         when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.of(judiciary));
         when(courtScheduleMap.get(anyString())).thenReturn(new CourtSchedule());
 
-        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, emptyList(), requester);
+        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, emptyList(), requester, randomUUID().toString());
 
         verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
         assertThat(courtScheduleJudiciaries.size(), is(3));
@@ -128,7 +129,7 @@ class JudiciaryScheduleEnricherTest {
         final CourtSchedule courtSchedule = courtSchedule();
         courtScheduleMap.put(courtSchedule.getListingProfileId(), courtSchedule);
 
-        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, List.of(courtSchedule), requester);
+        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, List.of(courtSchedule), requester, randomUUID().toString());
 
         verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
         assertThat(courtScheduleJudiciaries.size(), is(0));

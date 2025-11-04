@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
 
+import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -15,6 +16,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +42,7 @@ class RotaFileProcessHistoryServiceTest {
     @BeforeEach
     void setUp() {
         testRotaFileProcessHistory = new RotaFileProcessHistory();
-        testRotaFileProcessHistory.setExecutionId(1);
+        testRotaFileProcessHistory.setExecutionId(randomUUID().toString());
         testRotaFileProcessHistory.setFileName("test_file.xml");
         testRotaFileProcessHistory.setFileNamePrefix("test_prefix");
     }
@@ -53,7 +55,7 @@ class RotaFileProcessHistoryServiceTest {
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenReturn(testRotaFileProcessHistory);
 
-        RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
+        RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
 
         assertNotNull(result);
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
@@ -75,7 +77,7 @@ class RotaFileProcessHistoryServiceTest {
             return testRotaFileProcessHistory;
         });
 
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
+        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
 
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
     }
@@ -118,7 +120,7 @@ class RotaFileProcessHistoryServiceTest {
             return history;
         });
 
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
+        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
 
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
     }
@@ -134,8 +136,8 @@ class RotaFileProcessHistoryServiceTest {
             return history;
         });
 
-        RotaFileProcessHistory result1 = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
-        RotaFileProcessHistory result2 = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
+        RotaFileProcessHistory result1 = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+        RotaFileProcessHistory result2 = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
 
         // Same content should produce same hash
         assertEquals(result1.getFileHash(), result2.getFileHash());
@@ -149,7 +151,7 @@ class RotaFileProcessHistoryServiceTest {
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenReturn(testRotaFileProcessHistory);
 
-        RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
+        RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
 
         assertNotNull(result);
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
@@ -162,7 +164,7 @@ class RotaFileProcessHistoryServiceTest {
         final byte[] content = null;
 
         assertThrows(NullPointerException.class, () -> {
-            rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
+            rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
         });
     }
 
@@ -177,7 +179,7 @@ class RotaFileProcessHistoryServiceTest {
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenReturn(testRotaFileProcessHistory);
 
-        RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
+        RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
 
         assertNotNull(result);
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
@@ -198,7 +200,7 @@ class RotaFileProcessHistoryServiceTest {
             return history;
         });
 
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
+        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
 
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
     }
@@ -218,7 +220,7 @@ class RotaFileProcessHistoryServiceTest {
             return history;
         });
 
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content);
+        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
 
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
     }

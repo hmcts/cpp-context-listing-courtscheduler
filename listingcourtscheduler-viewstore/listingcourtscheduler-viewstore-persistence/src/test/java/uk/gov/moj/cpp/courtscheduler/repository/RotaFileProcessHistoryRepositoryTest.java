@@ -10,6 +10,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import javax.inject.Inject;
 
@@ -35,7 +36,7 @@ public class RotaFileProcessHistoryRepositoryTest {
     public void shouldSave() {
 
         final RotaFileProcessHistory rotaFileProcessHistory = random(RotaFileProcessHistory.class);
-        rotaFileProcessHistory.setExecutionId(null); // Ensure it's a new entity
+        rotaFileProcessHistory.setExecutionId(UUID.randomUUID().toString());
         rotaFileProcessHistory.setProcessedOn(new Timestamp(System.currentTimeMillis())); // Set required field
 
         rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
@@ -49,7 +50,7 @@ public class RotaFileProcessHistoryRepositoryTest {
     @Test
     public void shouldDeleteByFileNamePrefixAndFileDate() {
         final RotaFileProcessHistory rotaFileProcessHistory = random(RotaFileProcessHistory.class);
-        rotaFileProcessHistory.setExecutionId(null); // Ensure it's a new entity
+        rotaFileProcessHistory.setExecutionId(UUID.randomUUID().toString());
         rotaFileProcessHistory.setProcessedOn(new Timestamp(System.currentTimeMillis())); // Set required field
         rotaFileProcessHistory.setFileDate(Timestamp.valueOf(LocalDate.of(2024, 10, 1).atStartOfDay()));
         rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
@@ -66,7 +67,7 @@ public class RotaFileProcessHistoryRepositoryTest {
     @Test
     public void shouldFindByFileNamePrefixAndFileDateGreaterThan() {
         final RotaFileProcessHistory rotaFileProcessHistory = random(RotaFileProcessHistory.class);
-        rotaFileProcessHistory.setExecutionId(null); // Ensure it's a new entity
+        rotaFileProcessHistory.setExecutionId(UUID.randomUUID().toString());
         rotaFileProcessHistory.setProcessedOn(new Timestamp(System.currentTimeMillis())); // Set required field
         rotaFileProcessHistory.setFileDate(Timestamp.valueOf(LocalDate.of(2024, 10, 1).atStartOfDay()));
         rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);

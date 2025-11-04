@@ -41,10 +41,11 @@ public class RotaFileProcessHistoryService {
     }
 
     @Transactional
-    public RotaFileProcessHistory save(final String fileNamePrefix, final OffsetDateTime fileDate, final byte[] content) {
+    public RotaFileProcessHistory save(final String fileNamePrefix, final OffsetDateTime fileDate, final byte[] content, final String executionId) {
         final Timestamp fileDateAsTimestamp = Timestamp.from(fileDate.toInstant());
 
         final RotaFileProcessHistory rotaFileProcessHistory = new RotaFileProcessHistory();
+        rotaFileProcessHistory.setExecutionId(executionId);
         rotaFileProcessHistory.setProcessedOn(valueOf(LocalDateTime.now()));
         rotaFileProcessHistory.setFileNamePrefix(fileNamePrefix);
         rotaFileProcessHistory.setFileDate(fileDateAsTimestamp);

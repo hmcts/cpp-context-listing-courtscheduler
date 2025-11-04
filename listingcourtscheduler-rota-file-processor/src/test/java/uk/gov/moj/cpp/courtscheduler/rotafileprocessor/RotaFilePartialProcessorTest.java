@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -111,7 +112,7 @@ class RotaFilePartialProcessorTest {
         doNothing().when(sessionsService).updateSlotsAndSchedules(any(uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
         when(allocatedListingService.getAllocatedListingsByCourtScheduleId(anyList())).thenReturn(emptyMap());
 
-        rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, nonMigratedOuCodes, businessTypeMap, migratedMap);
+        rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, nonMigratedOuCodes, businessTypeMap, migratedMap, randomUUID().toString());
 
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
         verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture(), anyString());
@@ -152,7 +153,7 @@ class RotaFilePartialProcessorTest {
         when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(partialStartDate), eq(partialEndDate), anyList())).thenReturn(0);
         when(allocatedListingService.getAllocatedListingsByCourtScheduleId(anyList())).thenReturn(emptyMap());
 
-        rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, emptyList(), businessTypeMap, migratedMap);
+        rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, emptyList(), businessTypeMap, migratedMap, randomUUID().toString());
 
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
         verify(businessTypeMatchingLogger, atLeastOnce()).logMissingBusinessType(missingBusinessTypeCaptor.capture(), anyString());
@@ -182,7 +183,7 @@ class RotaFilePartialProcessorTest {
 
         when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(partialStartDate), eq(partialEndDate), anyList())).thenReturn(0);
 
-        rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), startAndEndDate, ouCodes, emptyList(), businessTypeMap, migratedMap);
+        rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), startAndEndDate, ouCodes, emptyList(), businessTypeMap, migratedMap, randomUUID().toString());
 
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
         verify(courtScheduleJudiciaryService, atLeastOnce()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(partialStartDate), eq(partialEndDate), anyList());
