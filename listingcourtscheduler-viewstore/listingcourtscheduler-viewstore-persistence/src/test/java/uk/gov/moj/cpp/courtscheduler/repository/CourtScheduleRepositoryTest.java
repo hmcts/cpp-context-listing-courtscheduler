@@ -95,6 +95,192 @@ public class CourtScheduleRepositoryTest {
     }
 
     @Test
+    public void shouldUpsertWhenThereAreErrorsLessThanBatchsize() {
+        // Given: 5 existing schedules that will conflict on unique key, batch size 50
+        final String ou = "OU_UPSERT_LT";
+        final String business = "BT_UPSERT";
+        final String courtHouse = "CH_1";
+        final String courtRoomId = "CR_1";
+        final Integer courtRoomNumber = 101;
+        final String panel = "ADULT";
+        final String session = "AM";
+        final LocalDate sessionDate = LocalDate.now().plusDays(3);
+
+        List<CourtSchedule> existing = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            CourtSchedule cs = random(CourtSchedule.class);
+            cs.setCourtScheduleId(UUID.randomUUID().toString());
+            cs.setOuCode(ou);
+            cs.setBusinessType(business);
+            cs.setCourtHouseId(courtHouse);
+            cs.setCourtRoomId(courtRoomId);
+            cs.setCourtRoomNumber(courtRoomNumber);
+            cs.setPanel(panel);
+            cs.setCourtSession(session);
+            cs.setSessionDate(sessionDate);
+            cs.setActive(true);
+            cs.setSlotBased(true);
+            cs.setMaxSlots(10);
+            cs.setAvailableSlots(10);
+            cs.setMaxDuration(0);
+            cs.setAvailableDuration(0);
+            courtScheduleRepository.save(cs);
+            existing.add(cs);
+        }
+
+        // Capture original updatedOn values
+        List<Date> originalUpdated = existing.stream().map(CourtSchedule::getUpdatedOn).collect(Collectors.toList());
+
+        // Prepare 45 inserts where 5 conflict by unique key but have different maxSlots
+        List<CourtSchedule> toInsert = new ArrayList<>();
+        for (int i = 0; i < 40; i++) {
+            CourtSchedule cs = random(CourtSchedule.class);
+            cs.setCourtScheduleId(UUID.randomUUID().toString());
+            cs.setOuCode(ou);
+            cs.setBusinessType(business);
+            cs.setCourtHouseId(courtHouse);
+            cs.setCourtRoomId(courtRoomId);
+            cs.setCourtRoomNumber(courtRoomNumber + 1 + i); // ensure uniqueness
+            cs.setPanel(panel);
+            cs.setCourtSession(session);
+            cs.setSessionDate(sessionDate);
+            cs.setActive(true);
+            cs.setSlotBased(true);
+            cs.setMaxSlots(15);
+            cs.setAvailableSlots(15);
+            cs.setMaxDuration(0);
+            cs.setAvailableDuration(0);
+            toInsert.add(cs);
+        }
+        for (int i = 0; i < 5; i++) {
+            CourtSchedule cs = random(CourtSchedule.class);
+            cs.setCourtScheduleId(UUID.randomUUID().toString());
+            cs.setOuCode(ou);
+            cs.setBusinessType(business);
+            cs.setCourtHouseId(courtHouse);
+            cs.setCourtRoomId(courtRoomId);
+            cs.setCourtRoomNumber(courtRoomNumber); // same unique fields as existing
+            cs.setPanel(panel);
+            cs.setCourtSession(session);
+            cs.setSessionDate(sessionDate);
+            cs.setActive(true);
+            cs.setSlotBased(true);
+            cs.setMaxSlots(20); // changed value to be updated
+            cs.setAvailableSlots(20);
+            cs.setMaxDuration(0);
+            cs.setAvailableDuration(0);
+            toInsert.add(cs);
+        }
+
+        // When
+        courtScheduleRepository.saveCourtSchedules(toInsert);
+
+        // Then: total should be 45 (40 new + 5 existing), and 5 updated maxSlots
+        List<CourtSchedule> all = courtScheduleRepository.findAll().stream()
+                .filter(cs -> ou.equals(cs.getOuCode()) && business.equals(cs.getBusinessType()))
+                .collect(Collectors.toList());
+        assertThat(all.size(), is(45));
+
+        // Verify the 5 existing got updated
+        for (int i = 0; i < 5; i++) {
+            CourtSchedule refreshed = courtScheduleRepository.findBy(existing.get(i).getCourtScheduleId());
+            assertThat(refreshed.getMaxSlots(), is(20));
+            assertTrue(refreshed.getUpdatedOn().after(originalUpdated.get(i)));
+        }
+    }
+
+    @Test
+    public void shouldUpsertWhenThereAreErrorsMoreThanBatchsize() {
+        // Given: 5 existing conflicting schedules, we will try to insert 60 (55 new + 5 conflicts)
+        final String ou = "OU_UPSERT_GT";
+        final String business = "BT_UPSERT";
+        final String courtHouse = "CH_2";
+        final String courtRoomId = "CR_2";
+        final Integer courtRoomNumber = 201;
+        final String panel = "ADULT";
+        final String session = "AM";
+        final LocalDate sessionDate = LocalDate.now().plusDays(4);
+
+        List<CourtSchedule> existing = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            CourtSchedule cs = random(CourtSchedule.class);
+            cs.setCourtScheduleId(UUID.randomUUID().toString());
+            cs.setOuCode(ou);
+            cs.setBusinessType(business);
+            cs.setCourtHouseId(courtHouse);
+            cs.setCourtRoomId(courtRoomId);
+            cs.setCourtRoomNumber(courtRoomNumber);
+            cs.setPanel(panel);
+            cs.setCourtSession(session);
+            cs.setSessionDate(sessionDate);
+            cs.setActive(true);
+            cs.setSlotBased(true);
+            cs.setMaxSlots(5);
+            cs.setAvailableSlots(5);
+            cs.setMaxDuration(0);
+            cs.setAvailableDuration(0);
+            courtScheduleRepository.save(cs);
+            existing.add(cs);
+        }
+        List<Date> originalUpdated = existing.stream().map(CourtSchedule::getUpdatedOn).collect(Collectors.toList());
+
+        List<CourtSchedule> toInsert = new ArrayList<>();
+        for (int i = 0; i < 55; i++) {
+            CourtSchedule cs = random(CourtSchedule.class);
+            cs.setCourtScheduleId(UUID.randomUUID().toString());
+            cs.setOuCode(ou);
+            cs.setBusinessType(business);
+            cs.setCourtHouseId(courtHouse);
+            cs.setCourtRoomId(courtRoomId);
+            cs.setCourtRoomNumber(courtRoomNumber + 1 + i);
+            cs.setPanel(panel);
+            cs.setCourtSession(session);
+            cs.setSessionDate(sessionDate);
+            cs.setActive(true);
+            cs.setSlotBased(true);
+            cs.setMaxSlots(7);
+            cs.setAvailableSlots(7);
+            cs.setMaxDuration(0);
+            cs.setAvailableDuration(0);
+            toInsert.add(cs);
+        }
+        for (int i = 0; i < 5; i++) {
+            CourtSchedule cs = random(CourtSchedule.class);
+            cs.setCourtScheduleId(UUID.randomUUID().toString());
+            cs.setOuCode(ou);
+            cs.setBusinessType(business);
+            cs.setCourtHouseId(courtHouse);
+            cs.setCourtRoomId(courtRoomId);
+            cs.setCourtRoomNumber(courtRoomNumber);
+            cs.setPanel(panel);
+            cs.setCourtSession(session);
+            cs.setSessionDate(sessionDate);
+            cs.setActive(true);
+            cs.setSlotBased(true);
+            cs.setMaxSlots(9);
+            cs.setAvailableSlots(9);
+            cs.setMaxDuration(0);
+            cs.setAvailableDuration(0);
+            toInsert.add(cs);
+        }
+
+        // When
+        courtScheduleRepository.saveCourtSchedules(toInsert);
+
+        // Then: total should be 60 (55 new + 5 existing), and 5 updated maxSlots
+        List<CourtSchedule> all = courtScheduleRepository.findAll().stream()
+                .filter(cs -> ou.equals(cs.getOuCode()) && business.equals(cs.getBusinessType()))
+                .collect(Collectors.toList());
+        assertThat(all.size(), is(60));
+
+        for (int i = 0; i < 5; i++) {
+            CourtSchedule refreshed = courtScheduleRepository.findBy(existing.get(i).getCourtScheduleId());
+            assertThat(refreshed.getMaxSlots(), is(9));
+            assertTrue(refreshed.getUpdatedOn().after(originalUpdated.get(i)));
+        }
+    }
+
+    @Test
     public void shouldUpdateCourtSchedule() {
         // given
         String panel = random(String.class);
