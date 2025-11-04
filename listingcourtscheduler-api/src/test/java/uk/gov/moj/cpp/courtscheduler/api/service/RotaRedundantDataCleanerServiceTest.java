@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,17 +31,22 @@ class RotaRedundantDataCleanerServiceTest {
     @Mock
     private AllocatedListingService allocatedListingService;
 
+    @Mock
+    private RotaProcessLogService rotaProcessLogService;
+
     @Test
     void shouldCleanDataForPreviousMonths() {
         final int numberOfPreviousMonthsAndOlder = 6;
         when(allocatedListingService.deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder))).thenReturn(1);
         when(courtScheduleJudiciaryService.deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder))).thenReturn(5);
         when(courtScheduleService.deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder))).thenReturn(20);
+        when(rotaProcessLogService.deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder))).thenReturn(10);
 
         rotaRedundantDataCleanerService.cleanDataForPreviousMonths(numberOfPreviousMonthsAndOlder);
 
         verify(allocatedListingService, atLeastOnce()).deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder));
         verify(courtScheduleJudiciaryService, atLeastOnce()).deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder));
         verify(courtScheduleService, atLeastOnce()).deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder));
+        verify(rotaProcessLogService, atLeastOnce()).deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder));
     }
 }
