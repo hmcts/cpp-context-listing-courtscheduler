@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
@@ -113,7 +114,7 @@ class RotaFilePartialProcessorTest {
         rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, nonMigratedOuCodes, businessTypeMap, migratedMap);
 
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
-        verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture());
+        verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture(), anyString());
         verify(courtScheduleJudiciaryService, atLeastOnce()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(partialStartDate), eq(partialEndDate), anyList());
         verify(allocatedListingService, atLeastOnce()).getAllocatedListingsByCourtScheduleId(anyList());
 
@@ -154,7 +155,7 @@ class RotaFilePartialProcessorTest {
         rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, emptyList(), businessTypeMap, migratedMap);
 
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
-        verify(businessTypeMatchingLogger, atLeastOnce()).logMissingBusinessType(missingBusinessTypeCaptor.capture());
+        verify(businessTypeMatchingLogger, atLeastOnce()).logMissingBusinessType(missingBusinessTypeCaptor.capture(), anyString());
         verify(courtScheduleJudiciaryService, atLeastOnce()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(partialStartDate), eq(partialEndDate), anyList());
         verify(allocatedListingService, atLeastOnce()).getAllocatedListingsByCourtScheduleId(anyList());
     }

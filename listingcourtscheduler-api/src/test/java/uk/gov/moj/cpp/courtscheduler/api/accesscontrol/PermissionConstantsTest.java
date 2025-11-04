@@ -7,6 +7,8 @@ import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstant
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -14,15 +16,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class PermissionConstantsTest {
 
+    private final ObjectMapper mapper = new ObjectMapper();
+
     @Test
     void shouldCreateSchedulePermission() throws JsonProcessingException {
-        assertThat(createCourtSchedulePermission(),
-                is(getPayload("create-court-schedule-permission.json").replaceAll("\n", "")));
+        JsonNode actual = mapper.readTree(createCourtSchedulePermission());
+        JsonNode expected = mapper.readTree(getPayload("create-court-schedule-permission.json"));
+        assertThat(actual, is(expected));
     }
 
     @Test
     void shouldGetSchedulePermission() throws JsonProcessingException {
-        assertThat(getCourtSchedulePermission(),
-                is(getPayload("get-court-schedule-permission.json").replaceAll("\n", "")));
+        JsonNode actual = mapper.readTree(getCourtSchedulePermission());
+        JsonNode expected = mapper.readTree(getPayload("get-court-schedule-permission.json"));
+        assertThat(actual, is(expected));
     }
 }

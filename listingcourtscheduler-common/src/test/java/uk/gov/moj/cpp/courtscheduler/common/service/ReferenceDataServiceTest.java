@@ -3,10 +3,14 @@ package uk.gov.moj.cpp.courtscheduler.common.service;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME;
@@ -25,6 +29,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -37,9 +42,9 @@ import javax.json.Json;
 import javax.json.JsonObject;
 
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -51,19 +56,14 @@ class ReferenceDataServiceTest {
     @Mock
     private Requester requester;
 
+    @Mock
+    private RotaProcessLogService rotaProcessLogService;
 
     @InjectMocks
     private ReferenceDataService referenceDataService;
+
     @Spy
     private JsonObjectToObjectConverter jsonToObjectConverter = new JsonObjectConvertersFactory().jsonObjectToObjectConverter();
-
-
-    @BeforeEach
-    void setUp() {
-       /* when(referenceDataService.getRotaBusinessTypeByCode(BUSINESS_TYPE_CODE, requester)).thenReturn(Optional.of(new BusinessType()));
-        when(referenceDataService.getRotaCourtRoomByCourtRoomId(COURT_ROOM_ID, requester)).thenReturn(Optional.of(new CourtRoom()));*/
-    }
-
 
     @Test
     void shouldReturnBusinessTypeWhenTypeCodeIsProvided() {
@@ -187,6 +187,15 @@ class ReferenceDataServiceTest {
 
         final Map<UUID, CourtRoom> courtRoomsMap = referenceDataService.getCourtRoomsMap(requester);
         assertFalse(courtRoomsMap.isEmpty());
-    }
 
+        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        verify(rotaProcessLogService, atLeastOnce()).saveRotaProcessLog(logCaptor.capture());
+        RotaProcessLog saved = logCaptor.getValue();
+
+        // Code matches
+        assertEquals(
+                CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND.code(),
+                saved.getErrorCode()
+        );
+    }
 }

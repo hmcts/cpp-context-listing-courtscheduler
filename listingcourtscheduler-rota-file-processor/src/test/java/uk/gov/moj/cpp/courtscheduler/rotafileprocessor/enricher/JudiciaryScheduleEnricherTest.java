@@ -6,6 +6,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -18,10 +19,12 @@ import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setFi
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.util.PropertiesLoader;
 
@@ -58,6 +61,9 @@ class JudiciaryScheduleEnricherTest {
     @Mock
     private Requester requester;
 
+    @Mock
+    private RotaProcessLogService rotaProcessLogService;
+
     @Spy
     private MissingReferenceDataMappingLogger missingMessageLogger = new MissingReferenceDataMappingLogger();
 
@@ -65,6 +71,7 @@ class JudiciaryScheduleEnricherTest {
     public void setUp() {
         setField(judiciaryScheduleEnricher, "missingMessageLogger", missingMessageLogger);
         setField(judiciaryScheduleEnricher, "judiciaryBuilder", new JudiciaryBuilder());
+        setField(missingMessageLogger, "rotaProcessLogService", rotaProcessLogService);
     }
 
     @Test
@@ -134,9 +141,11 @@ class JudiciaryScheduleEnricherTest {
         }
 
         verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
-        verify(missingMessageLogger, atLeastOnce()).logJudiciaryMissingMessage(anyCollection());
+        verify(missingMessageLogger, atLeastOnce()).logJudiciaryMissingMessage(anyCollection(), anyString());
 
         verifyNoMoreInteractions(referenceDataMapperService, missingMessageLogger);
+        verify(rotaProcessLogService, atLeastOnce()).saveRotaProcessLog(any(RotaProcessLog.class));
+        verifyNoMoreInteractions(referenceDataMapperService, missingMessageLogger, rotaProcessLogService);
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {

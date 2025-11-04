@@ -6,6 +6,7 @@ import static java.util.Objects.nonNull;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
@@ -16,9 +17,11 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSI
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_ALL_DAY_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_ALL_DAY_START_TIME;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
@@ -56,6 +59,9 @@ public class RotaDataEnricher {
     @Inject
     private CourtScheduleEnricher courtScheduleEnricher;
 
+    @Inject
+    private RotaProcessLogService rotaProcessLogService;
+
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @SuppressWarnings("squid:S2221")
@@ -64,7 +70,8 @@ public class RotaDataEnricher {
                                                           final Map<String, Boolean> migratedMap,
                                                           final Boolean migrated,
                                                           final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
-                                                          final Requester requester) {
+                                                          final Requester requester,
+                                                          final String executionId) {
         logger.info("enrichCourtListing - rotaPeriodEndDate: {}", rotaPeriodEndDate);
         long enrichCourtListingStartTime = System.currentTimeMillis();
         final Map<String, Map<String, String>> courtListings = records.get(COURT_LISTING);
@@ -78,16 +85,24 @@ public class RotaDataEnricher {
 
                 if (sessionDate.isBefore(rotaPeriodEndDate) || sessionDate.isEqual(rotaPeriodEndDate)) {
                     final CourtSchedule courtSchedule = courtSchedules.get(linkedSessionId);
-                    buildCourtSchedule(listingProfile, courtSchedule, courtSchedules, migratedMap, migrated, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
+                    buildCourtSchedule(listingProfile, courtSchedule, courtSchedules, migratedMap, migrated, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester, executionId);
                 }
             } catch (final Exception ex) {
                 logger.error(format(EXCEPTION_MSG, listingProfile.get("id")), ex);
+                rotaProcessLogService.saveRotaProcessLog(
+                        rotaProcessLog()
+                                .withExecutionId(executionId)
+                                .withErrorCode(ROTA_PROCESSING_ERROR.code())
+                                .withErrorText(ROTA_PROCESSING_ERROR.template().formatted(ex.getMessage()))
+                                .build()
+                );
             }
         }
         final long enrichCourtListingEndTime = System.currentTimeMillis();
         logger.info("Time taken to enrich court listings: {} ms", enrichCourtListingEndTime - enrichCourtListingStartTime);
         if (!missingReferenceDataMappingMap.isEmpty()) {
-            missingReferenceDataMappingLogger.logCourtDetailsMessage(missingReferenceDataMappingMap);
+            //TODO: Use executionId not random UUID
+            missingReferenceDataMappingLogger.logCourtDetailsMessage(missingReferenceDataMappingMap, randomUUID().toString());
         }
         return courtSchedules;
     }
@@ -99,14 +114,15 @@ public class RotaDataEnricher {
                                     final Boolean migrated,
                                     final Map<String, String> missingReferenceDataMappingMap,
                                     final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
-                                    final Requester requester) {
+                                    final Requester requester,
+                                    final String executionId) {
         final String businessType = listingProfile.get(BUSINESS_TYPE);
         final String strSessionDate = listingProfile.get(SESSION_DATE);
         final LocalDate sessionDate = LocalDate.parse(strSessionDate, formatter);
 
         CourtSchedule newCourtSchedule;
         if (isNull(courtSchedule) || !businessType.equals(courtSchedule.getBusinessType())) {
-            newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
+            newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester, executionId);
             if (migrated.equals(migratedMap.get(newCourtSchedule.getOuCode()))) {
                 addCourtSchedule(courtSchedules, newCourtSchedule);
             }

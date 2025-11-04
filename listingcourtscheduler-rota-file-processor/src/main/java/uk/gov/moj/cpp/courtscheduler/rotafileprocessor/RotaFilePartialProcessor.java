@@ -5,6 +5,7 @@ import static java.lang.Boolean.TRUE;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
+import static java.util.UUID.randomUUID;
 import static java.util.stream.Collectors.toMap;
 import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
@@ -29,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -202,7 +204,8 @@ public class RotaFilePartialProcessor {
                 .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         if (!missingBusinessTypes.isEmpty()) {
-            businessTypeMatchingLogger.logMissingBusinessType(new ArrayList<>(missingBusinessTypes));
+            //TODO: Use executionId not random UUID
+            businessTypeMatchingLogger.logMissingBusinessType(new ArrayList<>(missingBusinessTypes), randomUUID().toString());
         }
 
         Map<String, Pair<String, String>> schedulesToUpdateMap= schedulesToUpdate.stream()
