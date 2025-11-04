@@ -45,6 +45,7 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
@@ -126,12 +127,19 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithSessionTimes_AcrossSummerAndWinterTime() {
-        final LocalDate startDate = LocalDate.now().withMonth(10).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-        final java.util.Date expectedStartTimeFirstWeek = java.util.Date.from(startDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
-        final java.util.Date expectedEndTimeFirstWeek = java.util.Date.from(startDate.atTime(12, 0).toInstant(ZoneOffset.UTC));
-        final java.util.Date expectedStartTimeLastWeek = java.util.Date.from(startDate.plusDays(56).atTime(10, 0).toInstant(ZoneOffset.UTC));
-        final java.util.Date expectedEndTimeLastWeek = java.util.Date.from(startDate.plusDays(56).atTime(12, 0).toInstant(ZoneOffset.UTC));
-        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload_testBSTToUTC("create-court-schedule-duration-based-bst-timings.json");
+        LocalDate startDate = LocalDate.now().withMonth(10).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        // If the calculated date is in the past, use next year's October
+        if (startDate.isBefore(LocalDate.now())) {
+            startDate = LocalDate.now().plusYears(1).withMonth(10).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        }
+        final LocalDate endDate = startDate.plusDays(56);
+        // The JSON contains times in BST (local time), so convert to UTC for comparison
+        // 10:00 BST = 09:00 UTC and 12:00 BST = 11:00 UTC during BST period
+        final java.util.Date expectedStartTimeFirstWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(10, 0));
+        final java.util.Date expectedEndTimeFirstWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(12, 0));
+        final java.util.Date expectedStartTimeLastWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate.plusDays(56), LocalTime.of(10, 0));
+        final java.util.Date expectedEndTimeLastWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate.plusDays(56), LocalTime.of(12, 0));
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload_testBSTToUTC("create-court-schedule-duration-based-bst-timings.json", startDate, endDate);
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
@@ -1520,10 +1528,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .replaceAll("END_DATE", endDate.toString());
     }
 
-    public String prepareCreateCourtSchedulePayload_testBSTToUTC(final String jsonFilePath) {
-        final LocalDate startDate = LocalDate.now().withMonth(10).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-        final LocalDate endDate = startDate.plusDays(56);
-
+    public String prepareCreateCourtSchedulePayload_testBSTToUTC(final String jsonFilePath, final LocalDate startDate, final LocalDate endDate) {
         return getPayload(jsonFilePath)
                 .replaceAll("START_DATE", startDate.toString())
                 .replaceAll("END_DATE", endDate.toString());
