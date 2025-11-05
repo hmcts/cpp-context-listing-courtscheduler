@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.BUSINESS_TYPE;
@@ -17,11 +18,11 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTER
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_START_TIME;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_DETAIL_NOT_FOUND;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.COURT_ROOM_ERR_MSG;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -43,7 +44,7 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 public class CourtScheduleEnricher {
 
-    private static final Logger logger = LoggerFactory.getLogger(CourtScheduleEnricher.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleEnricher.class);
 
     @Inject
     private CourtSession courtSession;
@@ -51,11 +52,15 @@ public class CourtScheduleEnricher {
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
+    @Inject
+    private RotaProcessLogService rotaProcessLogService;
+
     public CourtSchedule build(final Map<String, String> listingProfile,
                                final LocalDate sessionDate,
                                final Map<String, String> missingReferenceDataMappingMap,
                                final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
-                               final Requester requester) {
+                               final Requester requester,
+                               final String executionId) {
         final CourtSchedule.CourtScheduleBuilder builder = new CourtSchedule.CourtScheduleBuilder();
         final String businessTypeCode = listingProfile.get(BUSINESS_TYPE);
         final String courtSessionStr = listingProfile.get(SESSION);
@@ -77,13 +82,20 @@ public class CourtScheduleEnricher {
                     .findAny();
             if (courtScheduleOptional.isPresent() && isNotEmpty(courtScheduleOptional.get().getCourtScheduleId())) {
                 final CourtSchedule courtSchedule = courtScheduleOptional.get();
-                logger.info("slot matched between file and db with ouCode: {} - courtScheduleId: {}", courtSchedule.getOuCode(), courtSchedule.getCourtScheduleId());
+                LOGGER.info("slot matched between file and db with ouCode: {} - courtScheduleId: {}", courtSchedule.getOuCode(), courtSchedule.getCourtScheduleId());
                 builder.withCourtScheduleId(courtSchedule.getCourtScheduleId());
                 builder.withCreatedOn(courtSchedule.getCreatedOn());
             }
         } else {
-            final String msgKey = format(COURT_ROOM_ERR_MSG, locationId, venueName, venueId);
-            missingReferenceDataMappingMap.putIfAbsent(msgKey, COURT_DETAIL_NOT_FOUND);
+            final String msg = REF_DATA_VENUE_NOT_FOUND.format(locationId, venueName, venueId);
+            missingReferenceDataMappingMap.putIfAbsent(msg, REF_DATA_VENUE_NOT_FOUND.code());
+            rotaProcessLogService.saveRotaProcessLog(
+                    RotaProcessLogBuilder.rotaProcessLog()
+                            .withExecutionId(executionId)
+                            .withErrorCode(REF_DATA_VENUE_NOT_FOUND.code())
+                            .withErrorText(msg)
+                            .build()
+            );
         }
         return builder.withActive(true).build();
     }
@@ -119,12 +131,12 @@ public class CourtScheduleEnricher {
                                            final Requester requester) {
         final String listingSession = courtSession.getCourtSession(sessionDate, courtSessionStr);
         final Optional<CourtRoomSessionAllocation> sessionAllocation = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(requester, courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessTypeCode);
-        logger.debug("called referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {} - with result : {}",
+        LOGGER.debug("called referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {} - with result : {}",
                 courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessTypeCode, sessionAllocation);
         if (sessionAllocation.isPresent()) {
             final uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation allocation = sessionAllocation.get();
             populateSessionAllocationProperties(builder, allocation);
-            logger.info(format(SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG, allocation.getOucode(), allocation.getCourtRoomId(), builder.getSessionDate(), allocation.getCourtSession(), allocation.getRotaBusinessTypeCode(), allocation.getMaxSlot(), allocation.getMaxDurationMins()));
+            LOGGER.info(format(SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG, allocation.getOucode(), allocation.getCourtRoomId(), builder.getSessionDate(), allocation.getCourtSession(), allocation.getRotaBusinessTypeCode(), allocation.getMaxSlot(), allocation.getMaxDurationMins()));
         }
     }
 

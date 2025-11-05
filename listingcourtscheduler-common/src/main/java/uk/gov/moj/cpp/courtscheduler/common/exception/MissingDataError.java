@@ -1,0 +1,80 @@
+package uk.gov.moj.cpp.courtscheduler.common.exception;
+
+@SuppressWarnings("squid:S1213")
+public enum MissingDataError {
+
+    COURT_DETAIL_NOT_FOUND(
+            "COURT_DETAIL_NOT_FOUND",
+            Prefix.MONITORING + "Court details not found for the following locations :- %n%s"),
+
+    JUDICIARY_NOT_FOUND(
+            "JUDICIARY_NOT_FOUND",
+            Prefix.MONITORING + "Judiciary detail not found for the following judiciaries :-%n%s"),
+
+    BUSINESS_TYPES_NOT_FOUND(
+            "BUSINESS_TYPES_NOT_FOUND",
+            Prefix.MONITORING + "These business types cannot be found on newSlots : {}"),
+
+    JUDICIARY_ERR_MSG(
+            "JUDICIARY_ERR_MSG",
+            " Name %s %s%n Email : %s"),
+
+    REF_DATA_JUDICIARY_EMAIL(
+            "REF_DATA_JUDICIARY_EMAIL",
+            "Judiciary email cannot be found in referenceData"),
+
+    SESSION_DATA_MATCH_EXACT(
+            "SESSION_DATA_MATCH_EXACT",
+            "No matching session for judiciary update : %s - %s - %s - %s"),
+
+    SESSION_DATA_MATCH_RELAXED(
+            "SESSION_DATA_MATCH_RELAXED",
+            "No matching session for judiciary update : %s - %s - %s"),
+
+    REF_DATA_VENUE_NOT_FOUND(
+            "REF_DATA_VENUE_NOT_FOUND",
+            "No matching venue found by either venueId or venueName or LocationId: %s - %s - %d"),
+
+    ROTA_PROCESSING_ERROR(
+            "ROTA_PROCESSING_ERROR",
+            "Uncategorised exception - %s"),
+
+    CREATE_SESSIONS_COURTROOM_NOT_FOUND(
+            "CREATE_SESSIONS_COURTROOM_NOT_FOUND",
+            "rota courtroom mapping is missing for %s"),
+
+    CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND(
+            "CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND",
+            "Duplicate courtroom IDs found: %s");
+
+    public static final String DELIMITER = "%n ------------------%n";
+
+    private static final class Prefix {
+        private static final String MONITORING = "SCSLMissingData: ";
+    }
+
+    private final String code;
+    private final String template;
+
+    MissingDataError(String code, String template) {
+        this.code = code;
+        this.template = template;
+    }
+
+    public String code() {
+        return code;
+    }
+
+    public String template() {
+        return template;
+    }
+
+    public String format(Object... args) {
+        return String.format(template, args);
+    }
+
+    @Override
+    public String toString() {
+        return code;
+    }
+}

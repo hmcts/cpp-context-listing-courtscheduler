@@ -12,7 +12,7 @@ import org.apache.deltaspike.data.api.QueryParam;
 import org.apache.deltaspike.data.api.Repository;
 
 @Repository(forEntity = RotaFileProcessHistory.class)
-public interface RotaFileProcessHistoryRepository extends EntityRepository<RotaFileProcessHistory, Integer> {
+public interface RotaFileProcessHistoryRepository extends EntityRepository<RotaFileProcessHistory, String> {
 
     RotaFileProcessHistory findByFileDateGreaterThan(Timestamp fileDate);
 
