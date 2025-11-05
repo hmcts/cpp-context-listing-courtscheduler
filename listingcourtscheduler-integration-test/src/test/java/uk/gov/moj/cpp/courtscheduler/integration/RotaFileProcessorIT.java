@@ -453,7 +453,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
         return allocatedListing;
     }
-
+    
     private static void assertDefaultStartTimeAndEndTime(final List<CourtSchedule> courtSchedules) {
         courtSchedules.forEach(courtSchedule -> {
             assertNotNull(courtSchedule.getSessionStartTime());

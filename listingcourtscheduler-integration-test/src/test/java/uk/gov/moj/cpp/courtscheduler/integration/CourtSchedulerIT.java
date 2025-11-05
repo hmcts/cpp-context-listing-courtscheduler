@@ -126,7 +126,7 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithSessionTimes_AcrossSummerAndWinterTime() {
-        final LocalDate startDate = LocalDate.now().withMonth(10).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         final java.util.Date expectedStartTimeFirstWeek = java.util.Date.from(startDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
         final java.util.Date expectedEndTimeFirstWeek = java.util.Date.from(startDate.atTime(12, 0).toInstant(ZoneOffset.UTC));
         final java.util.Date expectedStartTimeLastWeek = java.util.Date.from(startDate.plusDays(56).atTime(10, 0).toInstant(ZoneOffset.UTC));
@@ -1521,7 +1521,7 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     public String prepareCreateCourtSchedulePayload_testBSTToUTC(final String jsonFilePath) {
-        final LocalDate startDate = LocalDate.now().withMonth(10).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         final LocalDate endDate = startDate.plusDays(56);
 
         return getPayload(jsonFilePath)
