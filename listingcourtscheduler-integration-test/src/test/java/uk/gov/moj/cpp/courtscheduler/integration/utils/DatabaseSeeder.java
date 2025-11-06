@@ -78,6 +78,8 @@ public class DatabaseSeeder {
     private static final String COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL = "DELETE FROM court_schedule_judiciary where court_listing_profile_id = ?";
     private static final String MIGRATION_STATUS_DELETE_SQL = "DELETE FROM courtscheduler_migration_status";
     private static final String ROTA_FILE_PROCESS_HISTORY_DELETE_SQL = "DELETE FROM rota_file_process_history";
+    private static final String ROTA_LOG_PROCESS_DELETE_SQL = "TRUNCATE TABLE rota_process_log CASCADE";
+
 
     private static final String COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL = "UPDATE court_schedule SET court_listing_profile_id = null WHERE oucode = ?";
     private static final String UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE = "UPDATE court_schedule SET available_slot = available_slot - 1 WHERE court_listing_profile_id = ?";
@@ -137,6 +139,14 @@ public class DatabaseSeeder {
             preparedStatement.executeUpdate();
         }
     }
+
+        public void cleanRotaProcessLogTable() throws SQLException {
+            try (final Connection connection = connectionProvider.getNewConnection(DatabaseSeeder.USERNAME, DatabaseSeeder.PASSWORD, DatabaseSeeder.DATABASE);
+                 final PreparedStatement preparedStatement = connection.prepareStatement(DatabaseSeeder.ROTA_LOG_PROCESS_DELETE_SQL)) {
+                preparedStatement.executeUpdate();
+            }
+        }
+
 
     public void insertCourtSchedule(CourtSchedule courtSchedule) throws SQLException {
 
@@ -378,5 +388,6 @@ public class DatabaseSeeder {
         cleanCourtScheduleJudiciaryTable();
         cleanMigrationStatusTable();
         cleanRotaFileProcessHistoryTable();
+        cleanRotaProcessLogTable();
     }
 }
