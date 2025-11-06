@@ -4,21 +4,27 @@ import static javax.persistence.TemporalType.TIMESTAMP;
 
 import java.util.Date;
 import java.util.Objects;
+import java.util.UUID;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.GenericGenerator;
 
 @Entity
 @Table(name = "rota_process_log")
 public class RotaProcessLog {
 
     @Id
-    private String id;
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
+    @Column(name = "id", columnDefinition = "uuid")
+    private UUID id;
 
     @Column(name = "execution_id")
     private String executionId;
@@ -68,6 +74,14 @@ public class RotaProcessLog {
 
     public void setErrorText(final String errorText) {
         this.errorText = errorText;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(final UUID id) {
+        this.id = id;
     }
 
     @Override
