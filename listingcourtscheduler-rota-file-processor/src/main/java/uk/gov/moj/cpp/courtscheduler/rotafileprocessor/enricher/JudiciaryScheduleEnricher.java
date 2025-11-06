@@ -4,12 +4,10 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Objects.nonNull;
 import static java.util.Optional.empty;
-import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_ERR_MSG;
-import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_JUDICIARY_EMAIL;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.MISSING_SLOT_FOR_JUDICIARY_WARNING_MSG;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.EMAIL_ADDRESS;
@@ -27,11 +25,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.MAGS_
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ROTA_JUDICIARY_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SURNAME;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.TITLE;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
@@ -63,8 +59,7 @@ public class JudiciaryScheduleEnricher {
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
-    @Inject
-    private RotaProcessLogService rotaProcessLogService;
+    
 
     private static final Logger logger = LoggerFactory.getLogger(JudiciaryScheduleEnricher.class);
 
@@ -86,7 +81,7 @@ public class JudiciaryScheduleEnricher {
 
             judiciarySchedule.putAll(getJudiciaryInfoFromRota(judiciariesMap, rotaJusticeId));
 
-            enrichJudiciaryFromCppRefdata(judiciarySchedule, errors, requester, executionId);
+            enrichJudiciaryFromCppRefdata(judiciarySchedule, errors, requester);
 
             final String courtListingProfileId = judiciarySchedule.get(COURT_LISTING_PROFILE_ID);
             final CourtSchedule courtSchedule = courtScheduleMap.get(courtListingProfileId);
@@ -126,7 +121,7 @@ public class JudiciaryScheduleEnricher {
         return judiciaryInfoMap;
     }
 
-    private void enrichJudiciaryFromCppRefdata(final Map<String, String> schedule, final Map<String, String> errors, final Requester requester, final String executionId) {
+    private void enrichJudiciaryFromCppRefdata(final Map<String, String> schedule, final Map<String, String> errors, final Requester requester) {
         final String email = schedule.get(EMAIL_ADDRESS);
 
         final Optional<uk.gov.moj.cpp.courtscheduler.domain.Judiciary> judiciaryFromMapper = isNotEmpty(email) ? referenceDataMapperService.findByEmail(requester, email) : empty();
@@ -144,13 +139,6 @@ public class JudiciaryScheduleEnricher {
             final String lastName = schedule.get(SURNAME);
 
             errors.put(email, JUDICIARY_ERR_MSG.format(firstName, lastName, email));
-            rotaProcessLogService.saveRotaProcessLog(
-                    rotaProcessLog()
-                    .withExecutionId(executionId)
-                    .withErrorCode(REF_DATA_JUDICIARY_EMAIL.code())
-                    .withErrorText(REF_DATA_JUDICIARY_EMAIL.template())
-                    .build()
-            );
         }
     }
 

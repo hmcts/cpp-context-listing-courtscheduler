@@ -16,7 +16,7 @@
             <column name="error_code" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
-            <column name="error_text" type="VARCHAR(255)">
+            <column name="error_text" type="text">
                 <constraints nullable="false"/>
             </column>
         </createTable>

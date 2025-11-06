@@ -127,10 +127,8 @@ public class ReferenceDataService {
                                 jsonObject.containsKey("cppCourtRoomId") && !jsonObject.isNull("cppCourtRoomId")
                                         ? valueOf(jsonObject.getInt("cppCourtRoomId"))
                                         : getStringOrElse(jsonObject, COURTROOM_ID, "unknown");
-                        //TODO: Use executionId not random UUID
                         rotaProcessLogService.saveRotaProcessLog(
                                 rotaProcessLog()
-                                        .withExecutionId(randomUUID().toString())
                                         .withErrorCode(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code())
                                         .withErrorText(cppCourtRoomId)
                                         .build()
@@ -143,10 +141,8 @@ public class ReferenceDataService {
 
         if (!duplicateCourtRoomIds.isEmpty()) {
             LOGGER.error(format("Duplicate courtroom IDs found: %s", duplicateCourtRoomIds));
-            //TODO: Use executionId not random UUID
             rotaProcessLogService.saveRotaProcessLog(
                     rotaProcessLog()
-                            .withExecutionId(randomUUID().toString())
                             .withErrorCode(CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND.code())
                             .withErrorText(CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND.format(duplicateCourtRoomIds))
                             .build()
