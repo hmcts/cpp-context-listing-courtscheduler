@@ -2,11 +2,13 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
+import java.util.UUID;
+
 import org.apache.deltaspike.data.api.AbstractEntityRepository;
 import org.apache.deltaspike.data.api.Repository;
 
 @Repository(forEntity = RotaProcessLog.class)
-public abstract class RotaProcessLogRepository extends AbstractEntityRepository<RotaProcessLog, String> {
+public abstract class RotaProcessLogRepository extends AbstractEntityRepository<RotaProcessLog, UUID> {
 
     private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM rota_process_log WHERE timestamp < (CURRENT_DATE - :numberOfDays)";
 
