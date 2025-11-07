@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static java.time.ZoneOffset.UTC;
 import static java.util.Date.from;
+import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
@@ -1013,6 +1014,7 @@ class CourtSchedulerIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(expected);
 
         AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setId(randomUUID().toString());
         allocatedListing.setCourtScheduleId(expected.getCourtScheduleId());
         allocatedListing.setHearingId(hearingId.toString());
         allocatedListing.setBookingId(bookingId.toString());
@@ -1149,6 +1151,7 @@ class CourtSchedulerIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(expected);
 
         AllocatedListing allocatedListing1 = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing1.setId(randomUUID().toString());
         allocatedListing1.setCourtScheduleId(expected.getCourtScheduleId());
         allocatedListing1.setHearingId(UUID.randomUUID().toString());
         allocatedListing1.setBookingId(UUID.randomUUID().toString());
@@ -1156,6 +1159,7 @@ class CourtSchedulerIT extends AbstractIT {
         databaseSeeder.insertAllocatedListing(allocatedListing1);
 
         AllocatedListing allocatedListing2 = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing2.setId(randomUUID().toString());
         allocatedListing2.setCourtScheduleId(expected.getCourtScheduleId());
         allocatedListing2.setHearingId(UUID.randomUUID().toString());
         allocatedListing2.setBookingId(UUID.randomUUID().toString());
@@ -1163,6 +1167,7 @@ class CourtSchedulerIT extends AbstractIT {
         databaseSeeder.insertAllocatedListing(allocatedListing2);
 
         AllocatedListing allocatedListing3 = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing3.setId(randomUUID().toString());
         allocatedListing3.setCourtScheduleId(expected.getCourtScheduleId());
         allocatedListing3.setHearingId(UUID.randomUUID().toString());
         allocatedListing3.setBookingId(UUID.randomUUID().toString());
@@ -1170,6 +1175,7 @@ class CourtSchedulerIT extends AbstractIT {
         databaseSeeder.insertAllocatedListing(allocatedListing3);
 
         AllocatedListing allocatedListing4 = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing4.setId(randomUUID().toString());
         allocatedListing4.setCourtScheduleId(expected.getCourtScheduleId());
         allocatedListing4.setHearingId(UUID.randomUUID().toString());
         allocatedListing4.setBookingId(UUID.randomUUID().toString());
@@ -1536,6 +1542,7 @@ class CourtSchedulerIT extends AbstractIT {
 
     private AllocatedListing createAllocatedListing(final CourtSchedule courtSchedule, final UUID hearingIdForMorning, final UUID bookingIdForMorning, final int duration, final String time) throws SQLException {
         final AllocatedListing allocatedListingForMorning = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListingForMorning.setId(randomUUID().toString());
         allocatedListingForMorning.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         allocatedListingForMorning.setHearingId(hearingIdForMorning.toString());
         allocatedListingForMorning.setBookingId(bookingIdForMorning.toString());
