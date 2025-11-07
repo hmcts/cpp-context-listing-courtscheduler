@@ -107,6 +107,7 @@ public class ReferenceDataService {
         LOGGER.debug("Total courtrooms found: {}", resultsCount);
         Set<String> seenCourtRoomIds = new HashSet<>();
         Set<String> duplicateCourtRoomIds = new HashSet<>();
+        List<RotaProcessLog> errorLogs = new ArrayList<>();
 
         List<CourtRoom> courtRooms = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS)
                 .orElseThrow(() -> new RuntimeException("No courtrooms found: "))
@@ -127,7 +128,7 @@ public class ReferenceDataService {
                                 jsonObject.containsKey("cppCourtRoomId") && !jsonObject.isNull("cppCourtRoomId")
                                         ? valueOf(jsonObject.getInt("cppCourtRoomId"))
                                         : getStringOrElse(jsonObject, COURTROOM_ID, "unknown");
-                        rotaProcessLogService.saveRotaProcessLog(
+                        errorLogs.add(
                                 rotaProcessLog()
                                         .withErrorCode(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code())
                                         .withErrorText(cppCourtRoomId)
@@ -138,6 +139,20 @@ public class ReferenceDataService {
                 })
                 .filter(Objects::nonNull)
                 .toList();
+
+        if (!errorLogs.isEmpty()) {
+            final String combinedMissingCourtrooms = errorLogs.stream()
+                    .map(RotaProcessLog::getErrorText)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+            rotaProcessLogService.saveRotaProcessLog(
+                    rotaProcessLog()
+                            .withErrorCode(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code())
+                            .withErrorText(CREATE_SESSIONS_COURTROOM_NOT_FOUND.format(combinedMissingCourtrooms))
+                            .build()
+            );
+        }
 
         if (!duplicateCourtRoomIds.isEmpty()) {
             LOGGER.error(format("Duplicate courtroom IDs found: %s", duplicateCourtRoomIds));
