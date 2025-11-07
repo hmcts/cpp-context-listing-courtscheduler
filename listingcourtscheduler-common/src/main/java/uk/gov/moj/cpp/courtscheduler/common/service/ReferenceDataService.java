@@ -140,7 +140,19 @@ public class ReferenceDataService {
                 .filter(Objects::nonNull)
                 .toList();
 
-        errorLogs.forEach(rotaProcessLogService::saveRotaProcessLog);
+        if (!errorLogs.isEmpty()) {
+            final String combinedMissingCourtrooms = errorLogs.stream()
+                    .map(RotaProcessLog::getErrorText)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+            rotaProcessLogService.saveRotaProcessLog(
+                    rotaProcessLog()
+                            .withErrorCode(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code())
+                            .withErrorText(CREATE_SESSIONS_COURTROOM_NOT_FOUND.format(combinedMissingCourtrooms))
+                            .build()
+            );
+        }
 
         if (!duplicateCourtRoomIds.isEmpty()) {
             LOGGER.error(format("Duplicate courtroom IDs found: %s", duplicateCourtRoomIds));
