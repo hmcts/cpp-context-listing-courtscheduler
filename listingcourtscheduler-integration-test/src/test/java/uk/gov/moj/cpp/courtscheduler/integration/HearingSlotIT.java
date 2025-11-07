@@ -68,6 +68,7 @@ class HearingSlotIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setId(randomUUID().toString());
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setBookingId(bookingId);
@@ -881,6 +882,7 @@ class HearingSlotIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setId(randomUUID().toString());
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setBookingId(bookingId);
@@ -2406,6 +2408,7 @@ class HearingSlotIT extends AbstractIT {
     private void createAllocatedListingsAndInsert(final String courtScheduleId, final LocalDate sessionDate, final String hearingId, final
     String bookingId, final String time, final Integer duration) throws SQLException {
         final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setId(randomUUID().toString());
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setBookingId(bookingId);
@@ -2416,6 +2419,7 @@ class HearingSlotIT extends AbstractIT {
 
     private void createAllocatedListingsAndInsert(final String courtScheduleIdForAM, final String hearingId, final String bookingId) throws SQLException {
         final AllocatedListing allocatedListingForAMSession = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListingForAMSession.setId(randomUUID().toString());
         allocatedListingForAMSession.setCourtScheduleId(courtScheduleIdForAM);
         allocatedListingForAMSession.setHearingId(hearingId);
         allocatedListingForAMSession.setBookingId(bookingId);
