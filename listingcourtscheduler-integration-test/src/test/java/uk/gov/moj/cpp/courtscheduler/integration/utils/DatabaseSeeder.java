@@ -72,14 +72,15 @@ public class DatabaseSeeder {
     private static final String COURT_SCHEDULE_MIGRATION_STATUS_INSERT_SQL = "INSERT INTO courtscheduler_migration_status (" +
             "oucode, court_centre_id, migrated, updated_on) VALUES(?, ?, ?, ?)";
     public static final String INSERT_PROVISIONAL_SLOTS_QRY = "INSERT INTO provisional_booking (booking_id, court_schedule_id, hearing_start_time) VALUES (?, ?, ?)";
-    private static final String COURT_SCHEDULE_DELETE_SQL = "DELETE FROM court_schedule";
-    private static final String ALLOCATED_LISTING_DELETE_SQL = "DELETE FROM allocated_listings";
-    private static final String PROVISIONAL_BOOKING_DELETE_SQL = "DELETE FROM provisional_booking";
+    private static final String COURT_SCHEDULE_DELETE_SQL = "TRUNCATE TABLE court_schedule CASCADE";
+    private static final String ALLOCATED_LISTING_DELETE_SQL = "TRUNCATE TABLE allocated_listings CASCADE";
+    private static final String PROVISIONAL_BOOKING_DELETE_SQL = "TRUNCATE TABLE provisional_booking CASCADE";
 
-    private static final String COURT_SCHEDULE_JUDICIARY_DELETE_SQL = "DELETE FROM court_schedule_judiciary";
+    private static final String COURT_SCHEDULE_JUDICIARY_DELETE_SQL = "TRUNCATE TABLE court_schedule_judiciary CASCADE";
     private static final String COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL = "DELETE FROM court_schedule_judiciary where court_listing_profile_id = ?";
-    private static final String MIGRATION_STATUS_DELETE_SQL = "DELETE FROM courtscheduler_migration_status";
-    private static final String ROTA_FILE_PROCESS_HISTORY_DELETE_SQL = "DELETE FROM rota_file_process_history";
+    private static final String MIGRATION_STATUS_DELETE_SQL = "TRUNCATE TABLE courtscheduler_migration_status CASCADE";
+    private static final String ROTA_FILE_PROCESS_HISTORY_DELETE_SQL = "TRUNCATE TABLE rota_file_process_history CASCADE";
+
 
     private static final String COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL = "UPDATE court_schedule SET court_listing_profile_id = null WHERE oucode = ?";
     private static final String UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE = "UPDATE court_schedule SET available_slot = available_slot - 1 WHERE court_listing_profile_id = ?";
