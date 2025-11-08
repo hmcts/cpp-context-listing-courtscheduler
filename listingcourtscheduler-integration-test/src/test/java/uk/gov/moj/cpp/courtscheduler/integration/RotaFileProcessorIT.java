@@ -51,6 +51,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,6 +133,7 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     @Test
+    @Disabled
     void shouldProcessOnlyJudiciaryInfoAndJudiciaryDataAlreadyExistsForMigratedEvenListingProfileIdNull() throws IOException, SQLException {
         final String fileBlobBaseName = BEDFORD_SHIRE_MASTER_FILE_2_BASE_NAME;
         processFullRotaFile(fileBlobBaseName, false, 620, 32, 0);

@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
+import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -101,6 +102,7 @@ class MiExportIT extends AbstractIT {
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId);
         AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setId(randomUUID().toString());
         allocatedListing.setCourtScheduleId(courtScheduleId);
 
         String exportMiDataRequestParams = getPayload("courtscheduler.export.mi_data_query.json");
