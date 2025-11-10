@@ -3,7 +3,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listingcourtscheduler-viewstore</artifactId>
-        <version>17.0.66-MNTR-SNAPSHOT</version>
+        <version>17.0.67-MNTR-SNAPSHOT</version>
     </parent>
     <artifactId>listingcourtscheduler-viewstore-liquibase</artifactId>
 
