@@ -22,7 +22,8 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "totalBooked" : 120
+          "totalBooked" : 120,
+          "isDraft": false
         },
         {
           "courtScheduleId": "AjmueCnClLfGZXNpngWHdOelSWXhE",
@@ -42,7 +43,8 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "totalBooked": 0
+          "totalBooked": 0,
+          "isDraft": false
         }
       ]
     },
@@ -68,7 +70,8 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "totalBooked": 0
+          "totalBooked": 0,
+          "isDraft": false
         },
         {
           "courtScheduleId": "dffg",
@@ -88,7 +91,8 @@
           "maxDuration": 1569984805,
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
-          "totalBooked": 0
+          "totalBooked": 0,
+          "isDraft": false
         },
         {
           "courtScheduleId": "dffg",
@@ -113,7 +117,8 @@
           "maxDurationForMorning": 120,
           "maxDurationForAfternoon": 60,
           "availableDurationForMorning": 60,
-          "availableDurationForAfternoon": 30
+          "availableDurationForAfternoon": 30,
+          "isDraft": false
         }
       ]
     }
