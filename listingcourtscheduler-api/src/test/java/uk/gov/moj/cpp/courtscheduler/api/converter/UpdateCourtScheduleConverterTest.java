@@ -22,7 +22,7 @@ class UpdateCourtScheduleConverterTest {
     private UpdateCourtScheduleConverter updateCourtScheduleConverter;
 
     @Test
-    public void shouldConvertJsonObject_ToUpdateCourtSchedule() {
+    void shouldConvertJsonObject_ToUpdateCourtSchedule() {
 
         final JsonObject jsonObject = Json.createObjectBuilder()
                 .add("courtScheduleId", UUID.randomUUID().toString())
@@ -46,7 +46,7 @@ class UpdateCourtScheduleConverterTest {
     }
 
     @Test
-    public void shouldConvertJsonObject_WithCrownJurisdictionAndIsDraft() {
+    void shouldConvertJsonObject_WithCrownJurisdictionAndIsDraft() {
 
         final JsonObject jsonObject = Json.createObjectBuilder()
                 .add("courtScheduleId", UUID.randomUUID().toString())
@@ -66,7 +66,7 @@ class UpdateCourtScheduleConverterTest {
     }
 
     @Test
-    public void shouldConvertJsonObject_WithoutIsDraft() {
+    void shouldConvertJsonObject_WithoutIsDraft() {
 
         final JsonObject jsonObject = Json.createObjectBuilder()
                 .add("courtScheduleId", UUID.randomUUID().toString())

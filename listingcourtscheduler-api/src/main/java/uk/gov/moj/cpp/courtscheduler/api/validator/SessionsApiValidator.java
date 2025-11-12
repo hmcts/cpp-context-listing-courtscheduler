@@ -74,6 +74,8 @@ public class SessionsApiValidator {
 
     private static final DateTimeFormatter TIME_FORMATTER = ofPattern("HH:mm");
     public static final int DEFAULT_DURATION = 180;
+    public static final String CROWN = "CROWN";
+    public static final String MAGISTRATES = "MAGISTRATES";
 
     @Inject
     private SessionsService sessionsService;
@@ -145,7 +147,7 @@ public class SessionsApiValidator {
 
     private JsonObject validateMonthlyCrownIndex(Session session) {
         if (session == null) return EMPTY_JSON_OBJECT;
-        if (!"CROWN".equalsIgnoreCase(session.getJurisdiction())) {
+        if (!CROWN.equalsIgnoreCase(session.getJurisdiction())) {
             return EMPTY_JSON_OBJECT;
         }
         Integer index = session.getIndex();
@@ -473,18 +475,18 @@ public class SessionsApiValidator {
         if (isNull(jurisdiction) || jurisdiction.isEmpty()) {
             return buildErrorResponse("Jurisdiction is mandatory and must be either MAGISTRATES or CROWN");
         }
-        if (!"MAGISTRATES".equalsIgnoreCase(jurisdiction) && !"CROWN".equalsIgnoreCase(jurisdiction)) {
+        if (!MAGISTRATES.equalsIgnoreCase(jurisdiction) && !CROWN.equalsIgnoreCase(jurisdiction)) {
             return buildErrorResponse("Jurisdiction must be either MAGISTRATES or CROWN");
         }
 
         // Validate is_draft can only be supplied when jurisdiction is CROWN
         Boolean isDraft = updateCourtSchedule.getIsDraft();
-        if (nonNull(isDraft) && "MAGISTRATES".equalsIgnoreCase(jurisdiction)) {
+        if (nonNull(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
             return buildErrorResponse("is_draft can only be supplied when jurisdiction is CROWN");
         }
 
         // Validate that if CROWN and database is_draft = false, it can't be changed to is_draft = true
-        if ("CROWN".equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && TRUE.equals(isDraft)) {
+        if (CROWN.equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && TRUE.equals(isDraft)) {
             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
                     courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
             if (nonNull(persistedCourtSchedule) && FALSE.equals(persistedCourtSchedule.getIsDraft())) {
