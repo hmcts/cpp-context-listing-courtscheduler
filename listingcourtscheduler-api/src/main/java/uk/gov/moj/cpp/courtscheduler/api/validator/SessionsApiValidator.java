@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.time.LocalTime.of;
 import static java.time.LocalTime.parse;
@@ -226,7 +227,7 @@ public class SessionsApiValidator {
         }
 
         for (CourtSchedule cs : courtSchedules) {
-            if (Boolean.TRUE.equals(cs.getSupportAdSplit())) {
+            if (TRUE.equals(cs.getSupportAdSplit())) {
                 final AtomicInteger totalBookedForMorning = new AtomicInteger(0);
                 final AtomicInteger totalBookedForAfternoon = new AtomicInteger(0);
                 final List<AllocatedListingEachBooked> allocatedListingEachBookedForThisSchedule = allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(cs.getCourtScheduleId());
@@ -352,7 +353,7 @@ public class SessionsApiValidator {
         if (maxHearingTime != null && sessionEndTime.isBefore(maxHearingTime)) {
             return buildErrorResponse(ErrorMessages.MAX_HEARING_TIME_BEFORE_SESSION_END_TIME);
         }
-         return EMPTY_JSON_OBJECT;
+        return EMPTY_JSON_OBJECT;
     }
 
     private LocalTime getMinHearingTime(List<AllocatedListingEachBooked> allocatedListings) {
@@ -399,88 +400,116 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-        private JsonObject validateAllDaySplitForUpdate ( final SessionValidationParams params){
-            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(params.getCourtScheduleId());
-            if (nonNull(persistedCourtSchedule)) {
-                final List<AllocatedListingEachBooked> allocatedListingEachBookedForThisSchedule = allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(params.getCourtScheduleId());
-                final AtomicInteger totalBookedForMorning = new AtomicInteger(0);
-                final AtomicInteger totalBookedForAfternoon = new AtomicInteger(0);
+    private JsonObject validateAllDaySplitForUpdate ( final SessionValidationParams params){
+        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(params.getCourtScheduleId());
+        if (nonNull(persistedCourtSchedule)) {
+            final List<AllocatedListingEachBooked> allocatedListingEachBookedForThisSchedule = allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(params.getCourtScheduleId());
+            final AtomicInteger totalBookedForMorning = new AtomicInteger(0);
+            final AtomicInteger totalBookedForAfternoon = new AtomicInteger(0);
 
-                calculateTotalBooked(allocatedListingEachBookedForThisSchedule, persistedCourtSchedule, totalBookedForMorning, totalBookedForAfternoon);
+            calculateTotalBooked(allocatedListingEachBookedForThisSchedule, persistedCourtSchedule, totalBookedForMorning, totalBookedForAfternoon);
 
-                if (params.getMaxDurationForMorning() < totalBookedForMorning.get()) {
-                    return buildErrorResponse(ErrorMessages.MAX_DURATION_FOR_MORNING_LESS_THAN_TOTAL_BOOKED_FOR_MORNING);
-                }
-                if (params.getMaxDurationForAfternoon() < totalBookedForAfternoon.get()) {
-                    return buildErrorResponse(ErrorMessages.MAX_DURATION_FOR_AFTERNOON_LESS_THAN_TOTAL_BOOKED_FOR_AFTERNOON);
-                }
+            if (params.getMaxDurationForMorning() < totalBookedForMorning.get()) {
+                return buildErrorResponse(ErrorMessages.MAX_DURATION_FOR_MORNING_LESS_THAN_TOTAL_BOOKED_FOR_MORNING);
             }
-            return EMPTY_JSON_OBJECT;
-        }
-
-        private void calculateTotalBooked
-        (List < AllocatedListingEachBooked > allocatedListingEachBookedForThisSchedule, uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule
-        persistedCourtSchedule, AtomicInteger totalBookedForMorning, AtomicInteger
-        totalBookedForAfternoon){
-            allocatedListingEachBookedForThisSchedule.forEach(eachBooked -> {
-                if (isMorningSession(eachBooked, persistedCourtSchedule)) {
-                    updateTotalBooked(eachBooked.getDuration(), totalBookedForMorning, totalBookedForAfternoon, DEFAULT_DURATION);
-                } else {
-                    totalBookedForAfternoon.set(totalBookedForAfternoon.get() + eachBooked.getDuration());
-                }
-            });
-        }
-
-        private boolean isMorningSession (AllocatedListingEachBooked
-        eachBooked, uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule
-        persistedCourtSchedule){
-            return (eachBooked.getHearingStartTime().after(persistedCourtSchedule.getSessionStartTime()) || eachBooked.getHearingStartTime().equals(persistedCourtSchedule.getSessionStartTime())) &&
-                    eachBooked.getHearingStartTime().before(combineDateAndTime(persistedCourtSchedule.getSessionDate(), DEFAULT_AFTERNOON_START_TIME));
-        }
-
-        //this should be called after we have a day match. This is to check if the session type is duplicate or not valid for all day
-        private boolean isSessionTypeDuplicateOrNotValidForAllDay ( final Session sessionInList,
-        final Session sessionToBeAdded){
-            return sessionInList.getSessionType().equals(sessionToBeAdded.getSessionType()) || sessionInList.getSessionType().equals("AD") || sessionToBeAdded.getSessionType().equals("AD");
-        }
-
-        private JsonObject getMessageForInvalidDate ( final String value){
-            return buildErrorResponse(START_DATE_IS_INVALID + value);
-        }
-
-        private JsonObject getMessageForInvalidParameterCombination (
-        final RepeatFrequency repeatFrequency){
-            String errorMessage = "Invalid combination of parameters: ";
-            if (repeatFrequency == EVERY_WEEK) {
-                errorMessage += "For More Than once, you should supply a repeat-for and end date ";
-            } else if (repeatFrequency == ONCE) {
-                errorMessage += "For Once, you should not supply a repeat-for and end date ";
+            if (params.getMaxDurationForAfternoon() < totalBookedForAfternoon.get()) {
+                return buildErrorResponse(ErrorMessages.MAX_DURATION_FOR_AFTERNOON_LESS_THAN_TOTAL_BOOKED_FOR_AFTERNOON);
             }
-            return buildErrorResponse(errorMessage);
         }
-
-        private JsonObject buildErrorResponse (String errorMessage){
-            return createObjectBuilder()
-                    .add(ERROR_MESSAGE, errorMessage)
-                    .build();
-        }
-
-        public JsonObject getSessionsUpdateValidation (UpdateCourtSchedule
-        updateCourtSchedule, Requester requester){
-            Integer slotsOrDuration = updateCourtSchedule.getMaxDuration() != null && updateCourtSchedule.getMaxDuration() > 0
-                    ? updateCourtSchedule.getMaxDuration()
-                    : updateCourtSchedule.getMaxSlots();
-
-            SessionValidationParams params = new SessionValidationParams(
-                    updateCourtSchedule.getMaxDurationForMorning(),
-                    updateCourtSchedule.getMaxDurationForAfternoon(),
-                    updateCourtSchedule.isAllDaySplit(),
-                    updateCourtSchedule.getSessionType(),
-                    updateCourtSchedule.getBusinessType(),
-                    slotsOrDuration,
-                    updateCourtSchedule.getCourtScheduleId(),
-                    updateCourtSchedule.getSessionStartTime(),
-                    updateCourtSchedule.getSessionEndTime());
-            return validateSession(params, false, requester);
-        }
+        return EMPTY_JSON_OBJECT;
     }
+
+    private void calculateTotalBooked
+            (List < AllocatedListingEachBooked > allocatedListingEachBookedForThisSchedule, uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule
+                    persistedCourtSchedule, AtomicInteger totalBookedForMorning, AtomicInteger
+                     totalBookedForAfternoon){
+        allocatedListingEachBookedForThisSchedule.forEach(eachBooked -> {
+            if (isMorningSession(eachBooked, persistedCourtSchedule)) {
+                updateTotalBooked(eachBooked.getDuration(), totalBookedForMorning, totalBookedForAfternoon, DEFAULT_DURATION);
+            } else {
+                totalBookedForAfternoon.set(totalBookedForAfternoon.get() + eachBooked.getDuration());
+            }
+        });
+    }
+
+    private boolean isMorningSession (AllocatedListingEachBooked
+                                              eachBooked, uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule
+                                              persistedCourtSchedule){
+        return (eachBooked.getHearingStartTime().after(persistedCourtSchedule.getSessionStartTime()) || eachBooked.getHearingStartTime().equals(persistedCourtSchedule.getSessionStartTime())) &&
+                eachBooked.getHearingStartTime().before(combineDateAndTime(persistedCourtSchedule.getSessionDate(), DEFAULT_AFTERNOON_START_TIME));
+    }
+
+    //this should be called after we have a day match. This is to check if the session type is duplicate or not valid for all day
+    private boolean isSessionTypeDuplicateOrNotValidForAllDay ( final Session sessionInList,
+                                                                final Session sessionToBeAdded){
+        return sessionInList.getSessionType().equals(sessionToBeAdded.getSessionType()) || sessionInList.getSessionType().equals("AD") || sessionToBeAdded.getSessionType().equals("AD");
+    }
+
+    private JsonObject getMessageForInvalidDate ( final String value){
+        return buildErrorResponse(START_DATE_IS_INVALID + value);
+    }
+
+    private JsonObject getMessageForInvalidParameterCombination (
+            final RepeatFrequency repeatFrequency){
+        String errorMessage = "Invalid combination of parameters: ";
+        if (repeatFrequency == EVERY_WEEK) {
+            errorMessage += "For More Than once, you should supply a repeat-for and end date ";
+        } else if (repeatFrequency == ONCE) {
+            errorMessage += "For Once, you should not supply a repeat-for and end date ";
+        }
+        return buildErrorResponse(errorMessage);
+    }
+
+    private JsonObject buildErrorResponse (String errorMessage){
+        return createObjectBuilder()
+                .add(ERROR_MESSAGE, errorMessage)
+                .build();
+    }
+
+    public JsonObject getSessionsUpdateValidation (UpdateCourtSchedule
+                                                           updateCourtSchedule, Requester requester){
+        // Validate jurisdiction
+        String jurisdiction = updateCourtSchedule.getJurisdiction();
+        if (isNull(jurisdiction) || jurisdiction.isEmpty()) {
+            return buildErrorResponse("Jurisdiction is mandatory and must be either MAGISTRATES or CROWN");
+        }
+        if (!"MAGISTRATES".equalsIgnoreCase(jurisdiction) && !"CROWN".equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("Jurisdiction must be either MAGISTRATES or CROWN");
+        }
+
+        // Validate is_draft can only be supplied when jurisdiction is CROWN
+        Boolean isDraft = updateCourtSchedule.getIsDraft();
+        if (nonNull(isDraft) && "MAGISTRATES".equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("is_draft can only be supplied when jurisdiction is CROWN");
+        }
+
+        // Validate that if CROWN and database is_draft = false, it can't be changed to is_draft = true
+        if ("CROWN".equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && TRUE.equals(isDraft)) {
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
+                    courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+            if (nonNull(persistedCourtSchedule) && FALSE.equals(persistedCourtSchedule.getIsDraft())) {
+                return buildErrorResponse("Cannot change is_draft from false to true for CROWN jurisdiction sessions");
+            }
+        }
+
+        SessionValidationParams params = getSessionValidationParams(updateCourtSchedule);
+        return validateSession(params, false, requester);
+    }
+
+    private static SessionValidationParams getSessionValidationParams(final UpdateCourtSchedule updateCourtSchedule) {
+        Integer slotsOrDuration = updateCourtSchedule.getMaxDuration() != null && updateCourtSchedule.getMaxDuration() > 0
+                ? updateCourtSchedule.getMaxDuration()
+                : updateCourtSchedule.getMaxSlots();
+
+        return new SessionValidationParams(
+                updateCourtSchedule.getMaxDurationForMorning(),
+                updateCourtSchedule.getMaxDurationForAfternoon(),
+                updateCourtSchedule.isAllDaySplit(),
+                updateCourtSchedule.getSessionType(),
+                updateCourtSchedule.getBusinessType(),
+                slotsOrDuration,
+                updateCourtSchedule.getCourtScheduleId(),
+                updateCourtSchedule.getSessionStartTime(),
+                updateCourtSchedule.getSessionEndTime());
+    }
+}
