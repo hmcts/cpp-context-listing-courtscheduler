@@ -1089,12 +1089,13 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListing.setBookingId(bookingId.toString());
         databaseSeeder.insertAllocatedListing(allocatedListing);
 
-        String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");
+        String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_isDraft_query.json");
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_CENTRE_ID", expected.getCourtHouseId());
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_ROOM_ID", expected.getCourtRoomId());
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("BUSINESS_TYPE", expected.getBusinessType());
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("SESSION_START_DATE", fromDate.toString());
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("SESSION_END_DATE", toDate.toString());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("IS_DRAFT", "true");
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_SIZE", "10");
         getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_NUMBER", "1");
 
@@ -1113,6 +1114,7 @@ class CourtSchedulerIT extends AbstractIT {
         JsonObject courtScheduleJsonObject = jsonObject.getJsonArray("courtSchedules").getJsonObject(0).getJsonArray("sessions").getJsonObject(0);
         assertThat(courtScheduleJsonObject.getString("courtScheduleId"), is(expected.getCourtScheduleId()));
         assertThat(courtScheduleJsonObject.getString("panel"), is(expected.getPanel()));
+        assertThat(courtScheduleJsonObject.getString("businessType"), is(expected.getBusinessType()));
         assertThat(courtScheduleJsonObject.getBoolean("slotBased"), is(false));
         assertThat(courtScheduleJsonObject.getBoolean("active"), is(true));
         assertThat(courtScheduleJsonObject.getString("courtRoomId"), is(expected.getCourtRoomId()));
