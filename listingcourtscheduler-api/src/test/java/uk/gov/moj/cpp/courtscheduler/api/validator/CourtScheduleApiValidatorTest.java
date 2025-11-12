@@ -46,7 +46,7 @@ class CourtScheduleApiValidatorTest {
         String sessionEndDate = "2024-12-03";
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private CourtScheduleRequestParam createInvalidRequestParam() {
@@ -56,7 +56,7 @@ class CourtScheduleApiValidatorTest {
         String sessionEndDate = "2024-12-03";
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, null, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, null, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private CourtScheduleRequestParam createRequestWithOptionalFieldsOnly() {
@@ -65,7 +65,7 @@ class CourtScheduleApiValidatorTest {
         String sessionEndDate = "2024-12-03";
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, null, null, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, null, null, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
 
