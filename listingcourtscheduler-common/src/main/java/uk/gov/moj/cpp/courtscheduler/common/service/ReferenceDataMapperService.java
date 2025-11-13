@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.lang.String.format;
 import static java.util.Objects.nonNull;
+import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.ListUtils.synchronizedList;
@@ -144,17 +145,7 @@ public class ReferenceDataMapperService {
                 exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             }
         }
-        
-        // If no match by venue name, try to find by venue ID as fallback
-        if (isEmpty(courtRoomsByLocationAndVenueNameOrVenueId)) {
-            final Optional<CourtRoom> courtRoomByVenueId = courtRooms
-                    .stream()
-                    .filter(courtRoom -> courtRoom.getRotaLocationId().equals(venue.getLocationId())
-                            && courtRoom.getRotaVenueId().equals(venue.getVenueId()))
-                    .findAny();
-            return courtRoomByVenueId;
-        }
-        
-        return of(courtRoomsByLocationAndVenueNameOrVenueId.get(0));
+
+        return isEmpty(courtRoomsByLocationAndVenueNameOrVenueId) ? empty() : of(courtRoomsByLocationAndVenueNameOrVenueId.get(0));
     }
 }
