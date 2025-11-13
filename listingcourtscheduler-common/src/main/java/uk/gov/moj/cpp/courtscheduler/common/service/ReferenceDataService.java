@@ -24,6 +24,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
