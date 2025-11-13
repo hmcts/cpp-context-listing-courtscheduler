@@ -8,6 +8,7 @@ import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.matches;
 
 import uk.gov.justice.services.common.configuration.Value;
 import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
@@ -361,7 +362,7 @@ public class ReferenceDataCache {
                     try {
                         cacheService.add(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, locationId, venueName), objectMapper.writeValueAsString(courtRoomList));
 
-                        if (locationId.equals(venue.getLocationId()) && venueName.equals(venue.getVenueName())) {
+                        if (locationId.equals(venue.getLocationId()) && matches(venueName, venue.getVenueName())) {
                             processFoundCourtRoomWithVenue(venue, courtRoomsForVenue, exceptionMessages, courtRoomList);
                         }
                     } catch (final JsonProcessingException jsonProcessingException) {

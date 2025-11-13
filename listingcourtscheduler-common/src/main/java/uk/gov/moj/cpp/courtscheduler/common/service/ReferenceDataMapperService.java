@@ -2,11 +2,11 @@ package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.lang.String.format;
 import static java.util.Objects.nonNull;
-import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.ListUtils.synchronizedList;
 import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.matches;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
@@ -131,7 +131,7 @@ public class ReferenceDataMapperService {
         final List<CourtRoom> courtRoomsByLocationAndVenueNameOrVenueId = courtRooms
                 .stream()
                 .filter(courtRoom -> courtRoom.getRotaLocationId().equals(venue.getLocationId())
-                        && (equalsIgnoreCase(courtRoom.getRotaVenueName(), venue.getVenueName()) || courtRoom.getRotaVenueId().equals(venue.getVenueId())))
+                        && matches(courtRoom.getRotaVenueName(), venue.getVenueName()))
                 .toList();
 
         final Optional<CourtRoom> courtRoomOptional = courtRoomsByLocationAndVenueNameOrVenueId.stream().filter(courtRoom -> courtRoom.getRotaVenueId().equals(venue.getVenueId())).findAny();
@@ -144,6 +144,17 @@ public class ReferenceDataMapperService {
                 exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             }
         }
-        return isEmpty(courtRoomsByLocationAndVenueNameOrVenueId) ? empty() : of(courtRoomsByLocationAndVenueNameOrVenueId.get(0));
+        
+        // If no match by venue name, try to find by venue ID as fallback
+        if (isEmpty(courtRoomsByLocationAndVenueNameOrVenueId)) {
+            final Optional<CourtRoom> courtRoomByVenueId = courtRooms
+                    .stream()
+                    .filter(courtRoom -> courtRoom.getRotaLocationId().equals(venue.getLocationId())
+                            && courtRoom.getRotaVenueId().equals(venue.getVenueId()))
+                    .findAny();
+            return courtRoomByVenueId;
+        }
+        
+        return of(courtRoomsByLocationAndVenueNameOrVenueId.get(0));
     }
 }

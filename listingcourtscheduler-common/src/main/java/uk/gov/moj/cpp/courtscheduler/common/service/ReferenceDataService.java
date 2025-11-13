@@ -12,7 +12,8 @@ import static uk.gov.justice.services.messaging.JsonEnvelope.envelopeFrom;
 import static uk.gov.justice.services.messaging.JsonEnvelope.metadataBuilder;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.*;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.matches;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
@@ -23,7 +24,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -233,7 +233,7 @@ public class ReferenceDataService {
                     final Integer locationId = jsonObject.containsKey(LOCATION_ID) ? jsonObject.getInt(LOCATION_ID) : null;
                     final String venueName = jsonObject.containsKey(VENUE_NAME) ? jsonObject.getString(VENUE_NAME) : null;
                     return nonNull(locationId) && venue.getLocationId().equals(locationId) &&
-                            nonNull(venueName) && venue.getVenueName().equals(venueName);
+                            nonNull(venueName) && matches(venue.getVenueName(), venueName);
 
                 })
                 .map(this::toCourtRoom)
