@@ -24,6 +24,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_D
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_HEARING_TIME_BEFORE_SESSION_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MIN_HEARING_TIME_AFTER_SESSION_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_EDIT_ANOTHER_USER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS;
@@ -66,9 +67,7 @@ import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-
 
 class CourtSchedulerIT extends AbstractIT {
 
@@ -1731,4 +1730,99 @@ class CourtSchedulerIT extends AbstractIT {
                 .replace("END_DATE", endDate.format(ofPattern("yyyy-MM-dd")));
     }
 
+    @Test
+    void shouldPreventCourtroomChangeWhenHearingsExistAndAssigned() throws SQLException {
+        UUID courtScheduleId = UUID.randomUUID();
+        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setBusinessType("DVLA");
+        expected.setSlotBased(true);
+        expected.setMaxSlots(15);
+        expected.setAvailableSlots(15);
+        expected.setIsDraft(false); // Assigned session
+        expected.setHasHearingsBooked(true);
+        expected.setSupportAdSplit(false);
+        expected.setCourtSession(AM_SESSION);
+        expected.setPanel("YOUTH");
+        expected.setCourtRoomId("original-courtroom-id");
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 9, 0));
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(expected);
+
+        // Create a hearing attached to this session
+        UUID hearingId = UUID.randomUUID();
+        UUID bookingId = UUID.randomUUID();
+        createAllocatedListing(expected, hearingId, bookingId, 15, "10:00");
+
+        String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
+        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Different courtroom
+        String changedBusinessType = "DVLA";
+        String changedSessionType = expected.getCourtSession();
+        String changedPanel = expected.getPanel();
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", changedSessionType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", changedPanel);
+        // Replace maxDuration with slot-based fields and add session times
+        String sessionStartTimeStr = DateUtils.sessionTimeFormatter(expected.getSessionStartTime());
+        String sessionEndTimeStr = DateUtils.sessionTimeFormatter(expected.getSessionEndTime());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"maxDuration\": 10",
+                "\"maxSlots\": 15,\n  \"maxDuration\": 0,\n  \"allDaySplit\": false,\n  \"sessionStartTime\": \"" + sessionStartTimeStr + "\",\n  \"sessionEndTime\": \"" + sessionEndTimeStr + "\"");
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+        final String errorResponseMessage = response.readEntity(String.class);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        assertThat(errorResponseMessage, containsString(SESSION_EDIT_ANOTHER_USER));
+    }
+
+    @Test
+    void shouldAllowDraftToAssignedChangeWhenHearingsExist() throws SQLException {
+        UUID courtScheduleId = UUID.randomUUID();
+        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setBusinessType("DVLA");
+        expected.setSlotBased(true);
+        expected.setMaxSlots(15);
+        expected.setAvailableSlots(15);
+        expected.setIsDraft(true); // Currently Draft
+        expected.setHasHearingsBooked(true);
+        expected.setSupportAdSplit(false);
+        expected.setCourtSession(AM_SESSION);
+        expected.setPanel("YOUTH");
+        expected.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 9, 0));
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(expected);
+
+        // Create a hearing attached to this session
+        UUID hearingId = UUID.randomUUID();
+        UUID bookingId = UUID.randomUUID();
+        createAllocatedListing(expected, hearingId, bookingId, 15, "10:00");
+
+        String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
+        String sameCourtRoomId = expected.getCourtRoomId(); // Keep same courtroom
+        String changedBusinessType = "DVLA";
+        String sameSessionType = expected.getCourtSession(); // Keep same session type
+        String samePanel = expected.getPanel(); // Keep same panel
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", sameCourtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", sameSessionType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", samePanel);
+        // Replace maxDuration with slot-based fields and add session times
+        String sessionStartTimeStr = DateUtils.sessionTimeFormatter(expected.getSessionStartTime());
+        String sessionEndTimeStr = DateUtils.sessionTimeFormatter(expected.getSessionEndTime());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"maxDuration\": 10",
+                "\"maxSlots\": 15,\n  \"maxDuration\": 0,\n  \"allDaySplit\": false,\n  \"sessionStartTime\": \"" + sessionStartTimeStr + "\",\n  \"sessionEndTime\": \"" + sessionEndTimeStr + "\"");
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        // Note: The actual draft status change (isDraft flag) would be handled at the repository/entity level
+        // This test verifies that the update can proceed when courtroom, sessionType, and panel are unchanged
+        // even though hearings exist, allowing the draft status to be changed to assigned
+        assertThat("Update response: " + responsePayload, response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
 }
