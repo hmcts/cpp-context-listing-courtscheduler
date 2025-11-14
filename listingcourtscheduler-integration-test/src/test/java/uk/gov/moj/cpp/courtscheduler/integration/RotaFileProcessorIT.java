@@ -58,12 +58,12 @@ import org.slf4j.LoggerFactory;
 
 class RotaFileProcessorIT extends AbstractIT {
 
-    private static Logger logger = LoggerFactory.getLogger(RotaFileProcessorIT.class);
+    private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessorIT.class);
 
     private static final String ROTASL_FILE_PROCESSOR_URL = "/rotasl/process-rota-files";
     private static final String ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL = "/rotasl/clean-redundant-rota-data";
 
-    private AzureBlobClientService azureBlobClientService = new AzureBlobClientService();
+    private final AzureBlobClientService azureBlobClientService = new AzureBlobClientService();
 
     private final String azureBlobInputContainerName = "schedulelistinginput";
     private final String azureBlobOutputContainerName = "schedulelistingoutput";
@@ -84,7 +84,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
 
     @BeforeEach
-    public void setUpAzureBlobClientService() throws SQLException {
+    void setUpAzureBlobClientService() {
         final StorageApplicationParameters storageApplicationParameters = new StorageApplicationParameters();
 
         setField(azureBlobClientService, "rotaslStorageConnectionString", ROTASL_STORAGE_CONNECTION_STRING);
@@ -159,7 +159,7 @@ class RotaFileProcessorIT extends AbstractIT {
     @Test
     void shouldProcessAlsoBiggerFile() throws IOException, SQLException {
         insertCourtSchedulerMigrationStatus(List.of("B13HT00", "B13CC00", "C33LC00", "B13HD00"), false);
-        processFullRotaFile(WESTYORK_SHIRE_MASTER_FILE_BASE_NAME, false, 4251, 3629, 0);
+        processFullRotaFile(WESTYORK_SHIRE_MASTER_FILE_BASE_NAME, false, 4687, 3813, 0);
     }
 
     @Test
@@ -231,26 +231,24 @@ class RotaFileProcessorIT extends AbstractIT {
         final LocalDate snapshotFileStartDate = LocalDate.of(2024, 8, 1);
         final String snapshotFileBaseNamePart1 = "IT_Test_lja_bedfordshire";
         final String snapshotFileBaseNamePart2 = "_snapshot_20240403T180039Z";
-        processSnapshotFile(snapshotFileBaseNamePart1, snapshotFileBaseNamePart2, snapshotFileStartDate, 66, 0, 209);
+        processSnapshotFile(snapshotFileBaseNamePart2, snapshotFileStartDate, 0, 209);
 
         final LocalDate secondSnapshotFileStartDate = LocalDate.of(2024, 8, 2);
         final String secondSnapshotFileBaseNamePart1 = "IT_Test_lja_bedfordshire";
         final String secondSnapshotFileBaseNamePart2 = "_snapshot_20240802T180039Z";
 
-        processSnapshotFile(secondSnapshotFileBaseNamePart1, secondSnapshotFileBaseNamePart2, secondSnapshotFileStartDate, 66, 5, 204);
+        processSnapshotFile(secondSnapshotFileBaseNamePart2, secondSnapshotFileStartDate, 5, 204);
     }
 
-    private void processSnapshotFile(final String snapshotFileBaseNamePart1,
-                                     final String snapshotFileBaseNamePart2,
+    private void processSnapshotFile(final String snapshotFileBaseNamePart2,
                                      final LocalDate snapshotFileStartDate,
-                                     final int numberOfJOHs,
                                      final int numberOfCreatedSlotBeforeSnapshotFile,
                                      final int numberOfCreatedSlotFromSnapshot) throws IOException {
         final Stopwatch stopwatch = Stopwatch.createStarted();
         final String generatedUniqueFileId = randomUUID().toString();
-        final String finalSnapshotFileName = format("%s_%s%s.xml", snapshotFileBaseNamePart1, generatedUniqueFileId, snapshotFileBaseNamePart2);
+        final String finalSnapshotFileName = format("%s_%s%s.xml", "IT_Test_lja_bedfordshire", generatedUniqueFileId, snapshotFileBaseNamePart2);
 
-        final InputStream rotaFileInputStream = getClass().getClassLoader().getResourceAsStream(format("rotafileprocessor/%s%s.xml", snapshotFileBaseNamePart1, snapshotFileBaseNamePart2));
+        final InputStream rotaFileInputStream = getClass().getClassLoader().getResourceAsStream(format("rotafileprocessor/%s%s.xml", "IT_Test_lja_bedfordshire", snapshotFileBaseNamePart2));
 
         if (isNull(rotaFileInputStream)) {
             fail("rotaFileInputStream is null");
@@ -283,7 +281,7 @@ class RotaFileProcessorIT extends AbstractIT {
                 .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(snapshotFileStartDate) || courtSchedule.getSessionDate().isEqual(snapshotFileStartDate)).toList().size());
         assertEquals(numberOfCreatedSlotBeforeSnapshotFile, courtSchedulesFromSnapshotFile.stream()
                 .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(snapshotFileStartDate)).toList().size());
-        assertEquals(numberOfJOHs, courtScheduleJudiciaryEntities.size());
+        assertEquals(66, courtScheduleJudiciaryEntities.size());
 
         final Optional<CourtSchedule> allocatedSlotNotBeingInSnapshotFile = databaseReader.courtSchedules().stream().filter(courtSchedule -> courtSchedule.getListingProfileId().equals("CS4305478")).findAny();
         assertTrue(allocatedSlotNotBeingInSnapshotFile.isPresent());
@@ -315,18 +313,18 @@ class RotaFileProcessorIT extends AbstractIT {
         final Response response = postCommand(ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL, "application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json", SYSTEM_USER_ID, payloadAsJsonString);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
-        final LocalDate OneHundredAnd80DaysBeforeNow = LocalDate.now().minusDays(numberOfPreviousDaysAndOlder);
+        final LocalDate oneHundredAnd80DaysBeforeNow = LocalDate.now().minusDays(numberOfPreviousDaysAndOlder);
         // await until this file uploaded into archive container
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC, SECONDS).until(() -> {
             final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
             return courtScheduleEntities.stream()
-                    .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(OneHundredAnd80DaysBeforeNow) || courtSchedule.getSessionDate().isEqual(OneHundredAnd80DaysBeforeNow))
+                    .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(oneHundredAnd80DaysBeforeNow) || courtSchedule.getSessionDate().isEqual(oneHundredAnd80DaysBeforeNow))
                     .toList().size() == (numberOfTotalCourtSchedules - numberOf180DaysOrOlderThan);
         });
 
         final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
         assertTrue(courtScheduleEntities.stream()
-                .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(OneHundredAnd80DaysBeforeNow))
+                .filter(courtSchedule -> courtSchedule.getSessionDate().isBefore(oneHundredAnd80DaysBeforeNow))
                 .findAny()
                 .isEmpty());
         assertThat(courtScheduleEntities.size(), is(numberOfTotalCourtSchedules - numberOf180DaysOrOlderThan));
