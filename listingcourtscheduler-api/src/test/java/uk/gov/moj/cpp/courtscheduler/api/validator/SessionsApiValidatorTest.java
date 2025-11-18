@@ -549,6 +549,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setSessionStartTime("10:00");
         updateCourtSchedule.setSessionEndTime("13:00");
         updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setJurisdiction("MAGISTRATES");
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(anyString())).thenReturn(emptyList());
 
@@ -571,6 +572,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setSessionStartTime("11:00"); // After hearing at 10:00
         updateCourtSchedule.setSessionEndTime("13:00");
         updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setJurisdiction("MAGISTRATES");
 
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
@@ -601,6 +603,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setSessionStartTime("09:00");
         updateCourtSchedule.setSessionEndTime("09:30"); // Before hearing at 10:00
         updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setJurisdiction("MAGISTRATES");
 
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
@@ -633,6 +636,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setSessionStartTime("09:00"); // Before hearing
         updateCourtSchedule.setSessionEndTime("12:00"); // After hearing
         updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setJurisdiction("MAGISTRATES");
 
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
@@ -664,6 +668,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setSessionStartTime("10:00");
         updateCourtSchedule.setSessionEndTime("17:00");
         updateCourtSchedule.setAllDaySplit(true);
+        updateCourtSchedule.setJurisdiction("MAGISTRATES");
 
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setSupportAdSplit(true);
