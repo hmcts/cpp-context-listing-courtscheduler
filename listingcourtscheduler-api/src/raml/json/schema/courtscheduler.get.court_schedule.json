@@ -96,6 +96,9 @@
                 },
                 "availableDurationForAfternoon": {
                     "type": "integer"
+                },
+                "isDraft": {
+                    "type": "boolean"
                 }
               },
               "required": [

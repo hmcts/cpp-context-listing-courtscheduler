@@ -7,6 +7,7 @@ public record CourtScheduleRequestParam(String courtCentreId,
                                         String businessType,
                                         String sessionStartDate,
                                         String sessionEndDate,
+                                        Boolean isDraft,
                                         String pageSize,
                                         String pageNumber
 ) {
@@ -17,13 +18,13 @@ public record CourtScheduleRequestParam(String courtCentreId,
         CourtScheduleRequestParam that = (CourtScheduleRequestParam) o;
         return Objects.equals(courtCentreId, that.courtCentreId) && Objects.equals(courtRoomId, that.courtRoomId)
                 && Objects.equals(businessType, that.businessType) && Objects.equals(sessionStartDate, that.sessionStartDate)
-                && Objects.equals(sessionEndDate, that.sessionEndDate) && Objects.equals(pageSize, that.pageSize)
-                && Objects.equals(pageNumber, that.pageNumber);
+                && Objects.equals(sessionEndDate, that.sessionEndDate) && Objects.equals(isDraft, that.isDraft)
+                && Objects.equals(pageSize, that.pageSize) && Objects.equals(pageNumber, that.pageNumber);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return Objects.hash(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, isDraft, pageSize, pageNumber);
     }
 
     @Override
@@ -49,6 +50,11 @@ public record CourtScheduleRequestParam(String courtCentreId,
     @Override
     public String sessionEndDate() {
         return sessionEndDate;
+    }
+
+    @Override
+    public Boolean isDraft() {
+        return isDraft;
     }
 
     @Override

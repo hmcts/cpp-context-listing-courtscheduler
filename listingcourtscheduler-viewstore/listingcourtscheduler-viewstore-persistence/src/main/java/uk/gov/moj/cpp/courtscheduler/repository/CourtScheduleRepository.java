@@ -671,6 +671,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             queryString.append("AND s.session_start <= :sessionEndDate ");
             params.put("sessionEndDate", LocalDate.parse(courtScheduleRequestParam.sessionEndDate()));
         }
+        if (courtScheduleRequestParam.isDraft() != null) {
+            queryString.append("AND s.is_draft = :isDraft ");
+            params.put("isDraft", courtScheduleRequestParam.isDraft());
+        }
         queryString.append("group by s.id, al.id, s.court_room_number order by session_start ");
         if (courtScheduleRequestParam.pageSize() != null) {
             queryString.append("LIMIT :pageSize ");

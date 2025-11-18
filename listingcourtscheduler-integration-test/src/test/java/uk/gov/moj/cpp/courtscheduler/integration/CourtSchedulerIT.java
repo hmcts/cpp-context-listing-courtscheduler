@@ -1059,6 +1059,74 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldGetCourtSchedulesCrown() throws SQLException, JsonProcessingException {
+        UUID courtScheduleId = UUID.randomUUID();
+        UUID hearingId = UUID.randomUUID();
+        UUID bookingId = UUID.randomUUID();
+        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        LocalDate fromDate = expected.getSessionDate().minusDays(1);
+        LocalDate toDate = expected.getSessionDate().plusDays(1);
+        expected.setBusinessType("TRL");
+
+        expected.setSlotBased(false);
+        expected.setMaxDuration(5);
+        expected.setAvailableDuration(5);
+        expected.setSupportAdSplit(false);
+        expected.setMaxAdMorningDuration(0);
+        expected.setMaxAdAfternoonDuration(0);
+        expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setIsDraft(true);
+        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
+        expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
+        expected.setIsOverbookingAllowed(false);
+        expected.setJurisdiction("CROWN");
+        databaseSeeder.insertCourtSchedule(expected);
+
+        AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setId(randomUUID().toString());
+        allocatedListing.setCourtScheduleId(expected.getCourtScheduleId());
+        allocatedListing.setHearingId(hearingId.toString());
+        allocatedListing.setBookingId(bookingId.toString());
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_isDraft_query.json");
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_CENTRE_ID", expected.getCourtHouseId());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_ROOM_ID", expected.getCourtRoomId());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("BUSINESS_TYPE", expected.getBusinessType());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("SESSION_START_DATE", fromDate.toString());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("SESSION_END_DATE", toDate.toString());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("IS_DRAFT", "true");
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_SIZE", "10");
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("PAGE_NUMBER", "1");
+
+        Map<String, Object> map = mapper.readValue(getCourtScheduleRequestParams, new TypeReference<>() {
+        });
+
+        final RequestParams requestParams = getRequestParams(BASE_RESOURCE_URL, COURT_SCHEDULE_GET_CONTENT_TYPE, USER_ID, map);
+
+
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
+
+        JsonObject courtScheduleJsonObject = jsonObject.getJsonArray("courtSchedules").getJsonObject(0).getJsonArray("sessions").getJsonObject(0);
+        assertThat(courtScheduleJsonObject.getString("courtScheduleId"), is(expected.getCourtScheduleId()));
+        assertThat(courtScheduleJsonObject.getString("panel"), is(expected.getPanel()));
+        assertThat(courtScheduleJsonObject.getString("businessType"), is(expected.getBusinessType()));
+        assertThat(courtScheduleJsonObject.getBoolean("slotBased"), is(false));
+        assertThat(courtScheduleJsonObject.getBoolean("active"), is(true));
+        assertThat(courtScheduleJsonObject.getString("courtRoomId"), is(expected.getCourtRoomId()));
+        assertThat(courtScheduleJsonObject.getString("courtRoomName"), is(expected.getCourtRoomName()));
+        assertThat(courtScheduleJsonObject.getBoolean("allDaySplit"), is(false));
+        assertThat(courtScheduleJsonObject.getInt("maxDurationForMorning"), is(0));
+        assertThat(courtScheduleJsonObject.getInt("maxDurationForAfternoon"), is(0));
+        assertThat(courtScheduleJsonObject.getBoolean("isDraft"), is(true));
+    }
+
+
+    @Test
     void shouldSearchCourtSchedulesById() throws Exception {
 
         final String courtScheduleId = "abcdef12-3456-7890-abcd-ef1234567890";
