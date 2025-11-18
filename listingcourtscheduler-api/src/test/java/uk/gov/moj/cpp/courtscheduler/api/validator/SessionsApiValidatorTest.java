@@ -24,6 +24,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionValidationParams;
+import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -380,5 +382,158 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_DURATION_BASED_SESSION, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenJurisdictionIsMissing() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withMaxSlots(10)
+                .build();
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("Jurisdiction is mandatory and must be either MAGISTRATES or CROWN", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenJurisdictionIsInvalid() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("INVALID")
+                .withMaxSlots(10)
+                .build();
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("Jurisdiction must be either MAGISTRATES or CROWN", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenIsDraftIsSuppliedWithMagistratesJurisdiction() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withIsDraft(true)
+                .withMaxSlots(10)
+                .build();
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("is_draft can only be supplied when jurisdiction is CROWN", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCrownIsDraftIsChangedFromFalseToTrue() {
+        String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withMaxSlots(10)
+                .build();
+
+        CourtSchedule persistedCourtSchedule = new CourtSchedule();
+        persistedCourtSchedule.setIsDraft(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedCourtSchedule);
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("Cannot change is_draft from false to true for CROWN jurisdiction sessions", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectWhenMagistratesValidationIsSuccessful() {
+        String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(10)
+                .build();
+
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectWhenCrownWithIsDraftValidationIsSuccessful() {
+        String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(false)
+                .withMaxSlots(10)
+                .build();
+
+        CourtSchedule persistedCourtSchedule = new CourtSchedule();
+        persistedCourtSchedule.setIsDraft(false);
+
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectWhenCrownWithIsDraftTrueAndDatabaseIsDraftTrue() {
+        String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withMaxSlots(10)
+                .build();
+
+        CourtSchedule persistedCourtSchedule = new CourtSchedule();
+        persistedCourtSchedule.setIsDraft(true);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedCourtSchedule);
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(0, result.size());
     }
 }

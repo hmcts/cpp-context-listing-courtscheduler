@@ -17,7 +17,8 @@ public class UpdateCourtScheduleConverter implements Converter<JsonObject, Updat
                 .withCourtRoomId(jsonObject.getString("courtRoomId"))
                 .withBusinessType(jsonObject.getString("businessType"))
                 .withSessionType(jsonObject.getString("courtSession"))
-                .withPanel(jsonObject.getString("panel"));
+                .withPanel(jsonObject.getString("panel"))
+                .withJurisdiction(jsonObject.getString("jurisdiction"));
 
         if (jsonObject.containsKey("maxSlots")) {
             courtScheduleBuilder.withMaxSlots(jsonObject.getInt("maxSlots"));
@@ -49,6 +50,10 @@ public class UpdateCourtScheduleConverter implements Converter<JsonObject, Updat
 
         if (jsonObject.containsKey("isOverbookingAllowed")) {
             courtScheduleBuilder.withIsOverbookingAllowed(jsonObject.getBoolean("isOverbookingAllowed"));
+        }
+
+        if (jsonObject.containsKey("is_draft")) {
+            courtScheduleBuilder.withIsDraft(jsonObject.getBoolean("is_draft"));
         }
 
         return courtScheduleBuilder.build();

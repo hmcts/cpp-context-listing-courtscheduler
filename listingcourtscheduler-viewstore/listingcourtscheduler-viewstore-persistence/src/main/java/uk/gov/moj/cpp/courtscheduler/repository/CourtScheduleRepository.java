@@ -367,14 +367,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
 
         final long startTime = System.currentTimeMillis();
         LOGGER.info("Starting optimized batch insert of {} court schedules with batch size {}", courtSchedules.size(), BATCH_SIZE);
-        
+
         // Use optimized processing for all batch sizes
         processOptimizedBatches(courtSchedules, failedSchedules);
-        
+
         final long duration = System.currentTimeMillis() - startTime;
         final int processed = courtSchedules.size() - failedSchedules.size();
         final double throughput = processed > 0 ? (processed * 1000.0 / duration) : 0;
-        
+
         LOGGER.info("Batch insert completed in {}ms. Processed: {}, Failed: {}, Throughput: {} records/sec",
                    duration, processed, failedSchedules.size(), throughput);
     }
@@ -387,26 +387,26 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         final int totalRecords = courtSchedules.size();
         final int batchSize = Math.min(BATCH_SIZE, 1000); // Cap batch size for optimal performance
         final int numBatches = (totalRecords + batchSize - 1) / batchSize;
-        
+
         LOGGER.debug("Processing {} records in {} batches of size {}", totalRecords, numBatches, batchSize);
-        
+
         // Pre-allocate collections for better performance
         final List<CourtSchedule> currentBatch = new ArrayList<>(batchSize);
         int processedCount = 0;
-        
+
         try {
             for (int i = 0; i < totalRecords; i++) {
                 final CourtSchedule cs = courtSchedules.get(i);
                 currentBatch.add(cs);
-                
+
                 // Persist immediately to reduce memory footprint
                 entityManager.persist(cs);
-                
+
                 // Process batch when it reaches the configured size or is the last batch
                 if (currentBatch.size() >= batchSize || i == totalRecords - 1) {
                     if (flushBatchOptimized(currentBatch, failedSchedules)) {
                         processedCount += currentBatch.size();
-                        LOGGER.debug("Successfully processed batch {}/{} with {} records", 
+                        LOGGER.debug("Successfully processed batch {}/{} with {} records",
                                    (processedCount / batchSize) + 1, numBatches, currentBatch.size());
                     } else {
                         LOGGER.warn("Batch failed, processing {} records individually", currentBatch.size());
@@ -416,7 +416,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     currentBatch.clear();
                 }
             }
-            
+
         } catch (Exception e) {
             LOGGER.error("Critical error during optimized batch processing: {}", e.getMessage(), e);
             // Process remaining records individually
@@ -449,7 +449,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
      */
     private void processIndividualRecordsFast(List<CourtSchedule> records, List<CourtSchedule> failedSchedules) {
         LOGGER.debug("Processing {} records individually with fast method", records.size());
-        
+
         for (CourtSchedule cs : records) {
             try {
                 // Minimal entity manager operations for speed
@@ -506,6 +506,11 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         persistedCourtSchedule.setNationalBreakTime(persistedCourtSchedule.getNationalBreakTime());
         persistedCourtSchedule.setUpdatedOn(new Date());
         persistedCourtSchedule.setIsOverbookingAllowed(updateCourtSchedule.isOverbookingAllowed());
+        persistedCourtSchedule.setJurisdiction(updateCourtSchedule.getJurisdiction());
+
+        if (nonNull(updateCourtSchedule.getIsDraft())) {
+            persistedCourtSchedule.setIsDraft(updateCourtSchedule.getIsDraft());
+        }
 
         if (courtRoom.isPresent()) {
             persistedCourtSchedule.setOuCode(courtRoom.get().getOucode());
@@ -1045,9 +1050,9 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> errorDeleteCourtSchedules = new ArrayList<>();
         ModelMapper modelMapper = new ModelMapper();
         courtScheduleIdList.forEach(courtScheduleId -> {
-            List<AllocatedListing> allocatedListings = allocatedListingRepository.findByCourtScheduleId(courtScheduleId);
             CourtSchedule courtSchedule = findBy(courtScheduleId);
             if (courtSchedule != null) {
+                List<AllocatedListing> allocatedListings = allocatedListingRepository.findByCourtScheduleId(courtScheduleId);
                 if (isNotEmpty(allocatedListings)) {
                     uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule domainCourtSchedule =
                             modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class);
@@ -1314,10 +1319,10 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
      */
     private List<CourtSchedule> performFallbackSearchForPolice(String courtCentreId, LocalDate sessionDate, LocalDateTime sessionStartTime, String courtRoomId) {
         // 1st attempt: All parameters
-        List<CourtSchedule> resultList = searchWithLogging("1st Call with All params", 
+        List<CourtSchedule> resultList = searchWithLogging("1st Call with All params",
             () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId),
             courtCentreId, sessionDate, sessionStartTime, courtRoomId);
-        
+
         if (isSearchResultEmpty(resultList)) {
             // 2nd attempt: Remove sessionStartTime
             resultList = searchWithLogging("2nd Call with All params except sessionStartTime",
@@ -1325,14 +1330,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 courtCentreId, sessionDate, null, courtRoomId);
             resultList = applyClosestTimeFilterIfNeeded(resultList, sessionStartTime);
         }
-        
+
         if (isSearchResultEmpty(resultList)) {
             // 3rd attempt: Remove courtRoomId
             resultList = searchWithLogging("3rd Call with All params except courtRoom",
                 () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, null),
                 courtCentreId, sessionDate, sessionStartTime, null);
         }
-        
+
         if (isSearchResultEmpty(resultList)) {
             // 4th attempt: Remove both sessionStartTime and courtRoomId
             resultList = searchWithLogging("4th Call with All params except courtRoom and hearingStartTime",
@@ -1340,18 +1345,18 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                 courtCentreId, sessionDate, null, null);
             resultList = applyClosestTimeFilterIfNeeded(resultList, sessionStartTime);
         }
-        
+
         return resultList;
     }
 
     /**
      * Executes a search with logging and returns the result.
      */
-    private List<CourtSchedule> searchWithLogging(String attemptDescription, 
+    private List<CourtSchedule> searchWithLogging(String attemptDescription,
                                                  java.util.function.Supplier<List<CourtSchedule>> searchFunction,
-                                                 String courtCentreId, LocalDate sessionDate, 
+                                                 String courtCentreId, LocalDate sessionDate,
                                                  LocalDateTime sessionStartTime, String courtRoomId) {
-        LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria {} courtCentreId: {}, sessionDate: {}, sessionStartTime: {}, courtRoomId: {}", 
+        LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria {} courtCentreId: {}, sessionDate: {}, sessionStartTime: {}, courtRoomId: {}",
                    attemptDescription, courtCentreId, sessionDate, sessionStartTime, courtRoomId);
         return searchFunction.get();
     }
@@ -1397,14 +1402,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
         }
 
         LOGGER.info("Finding closest court schedule for requested time: {} comparing all schedules with same business type", requestedTime);
-        
+
         // Calculate national break out time
         LocalDate sessionDate = courtSchedules.get(0).getSessionDate();
         Date nationalBreakTime = TimezoneUtils.calculateNationalBreakTime(sessionDate);
         LocalDateTime nationalBreakOutTime = convertToLocalDateTime(nationalBreakTime);
-        
+
         LOGGER.info("National break out time calculated: {} for session date: {}", nationalBreakOutTime, sessionDate);
-        
+
         // Create two separate filter lists based on national break out time
         List<CourtSchedule> schedulesBeforeBreak = courtSchedules.stream()
                 .filter(schedule -> {
@@ -1415,7 +1420,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     return scheduleTime.isBefore(nationalBreakOutTime);
                 })
                 .toList();
-        
+
         List<CourtSchedule> schedulesAfterBreak = courtSchedules.stream()
                 .filter(schedule -> {
                     if (schedule.getSessionEndTime() == null) {
@@ -1425,34 +1430,34 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                     return scheduleTime.isAfter(nationalBreakOutTime);
                 })
                 .toList();
-        
-        LOGGER.info("Created separate filter lists - Before break: {} schedules, After break: {} schedules", 
+
+        LOGGER.info("Created separate filter lists - Before break: {} schedules, After break: {} schedules",
                 schedulesBeforeBreak.size(), schedulesAfterBreak.size());
-        
+
         // Select the appropriate list based on requested time
         List<CourtSchedule> selectedSchedules;
         if (requestedTime.isBefore(nationalBreakOutTime)) {
             selectedSchedules = schedulesBeforeBreak;
-            LOGGER.info("Requested time {} is before national break out time {}, selecting {} schedules before break", 
+            LOGGER.info("Requested time {} is before national break out time {}, selecting {} schedules before break",
                     requestedTime, nationalBreakOutTime, selectedSchedules.size());
         } else {
             selectedSchedules = schedulesAfterBreak;
-            LOGGER.info("Requested time {} is after or equal to national break out time {}, selecting {} schedules after break", 
+            LOGGER.info("Requested time {} is after or equal to national break out time {}, selecting {} schedules after break",
                     requestedTime, nationalBreakOutTime, selectedSchedules.size());
         }
-        
+
         // If no schedules in selected list, use all schedules as fallback
         if (selectedSchedules.isEmpty()) {
             LOGGER.info("No schedules in selected list, using all {} schedules as fallback", courtSchedules.size());
             selectedSchedules = courtSchedules;
         }
-        
+
         // Find the schedule with the closest session start time from selected schedules
         CourtSchedule closestSchedule = selectedSchedules.get(0);
-        
-        LOGGER.info("Found closest court schedule: {} with session start time: {} and business type: {}", 
+
+        LOGGER.info("Found closest court schedule: {} with session start time: {} and business type: {}",
                 closestSchedule.getCourtScheduleId(), closestSchedule.getSessionStartTime(), closestSchedule.getBusinessType());
-            
+
         return List.of(closestSchedule);
     }
 

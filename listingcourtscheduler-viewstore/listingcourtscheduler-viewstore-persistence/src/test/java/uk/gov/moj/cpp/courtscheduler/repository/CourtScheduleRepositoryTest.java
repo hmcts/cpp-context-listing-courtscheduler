@@ -102,6 +102,7 @@ public class CourtScheduleRepositoryTest {
         CourtRoom courtRoom = random(CourtRoom.class);
 
         CourtSchedule courtScheduleEntity = random(CourtSchedule.class);
+        courtScheduleEntity.setJurisdiction("MAGISTRATES");
         courtScheduleRepository.save(courtScheduleEntity);
 
         uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updatedCourtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder()
@@ -112,6 +113,7 @@ public class CourtScheduleRepositoryTest {
                 .withSessionType(ALL_DAY)
                 .withPanel(panel)
                 .withIsOverbookingAllowed(true)
+                .withJurisdiction("MAGISTRATES")
                 .build();
 
         Result result = courtScheduleRepository.update(courtScheduleEntity, updatedCourtSchedule, Optional.of(courtRoom));
