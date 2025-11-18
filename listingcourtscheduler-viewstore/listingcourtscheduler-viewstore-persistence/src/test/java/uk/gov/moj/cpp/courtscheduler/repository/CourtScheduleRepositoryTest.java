@@ -102,6 +102,7 @@ public class CourtScheduleRepositoryTest {
         CourtRoom courtRoom = random(CourtRoom.class);
 
         CourtSchedule courtScheduleEntity = random(CourtSchedule.class);
+        courtScheduleEntity.setJurisdiction("MAGISTRATES");
         courtScheduleRepository.save(courtScheduleEntity);
 
         uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updatedCourtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder()
@@ -112,6 +113,7 @@ public class CourtScheduleRepositoryTest {
                 .withSessionType(ALL_DAY)
                 .withPanel(panel)
                 .withIsOverbookingAllowed(true)
+                .withJurisdiction("MAGISTRATES")
                 .build();
 
         Result result = courtScheduleRepository.update(courtScheduleEntity, updatedCourtSchedule, Optional.of(courtRoom));
@@ -1110,7 +1112,7 @@ public class CourtScheduleRepositoryTest {
         String sessionEndDate = courtSchedule.getSessionDate().plusDays(2).toString();
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private static CourtScheduleRequestParam getCourtScheduleAllRequestParams(final CourtSchedule courtSchedule,final String courtroomId, final String courtCentreId) {
@@ -1119,7 +1121,7 @@ public class CourtScheduleRepositoryTest {
         String sessionEndDate = courtSchedule.getSessionDate().toString();
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtroomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtroomId, businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private static CourtScheduleRequestParam getCourtScheduleRequestMandatoryParams(final CourtSchedule courtSchedule, final String courtCentreId,final LocalDate startDate,final LocalDate endDate) {
@@ -1129,7 +1131,7 @@ public class CourtScheduleRepositoryTest {
         String sessionEndDate = endDate.toString();
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     @Test

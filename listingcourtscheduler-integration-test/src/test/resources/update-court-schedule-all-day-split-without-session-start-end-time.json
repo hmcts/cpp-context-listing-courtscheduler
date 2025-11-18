@@ -4,6 +4,7 @@
   "courtSession": "SESSION_TYPE",
   "businessType": "BUSINESS_TYPE",
   "panel": "PANEL",
+  "jurisdiction": "MAGISTRATES",
   "maxDuration": 10,
   "allDaySplit": true,
   "maxDurationForMorning": MAX_DURATION_FOR_MORNING,

@@ -972,7 +972,7 @@ class SessionsServiceTest {
         String pageSize = "10";
         String pageNumber = "1";
         return new CourtScheduleRequestParam(courtCentreId, courtRoomId,
-                businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+                businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private Optional<BusinessType> returnBusinessTypeObject(final String businessTypeCode, boolean isSlotBased) {
