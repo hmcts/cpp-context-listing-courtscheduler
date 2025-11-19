@@ -10,7 +10,15 @@
       "minItems": 1
     },
     "courtRoomId": {
-      "$ref": "#/definitions/uuid"
+      "type": "string",
+      "oneOf": [
+        {
+          "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+        },
+        {
+          "pattern": "^$"
+        }
+      ]
     }
   },
   "required": [
