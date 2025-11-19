@@ -1958,8 +1958,7 @@ class CourtSchedulerIT extends AbstractIT {
         String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Different courtroom
         assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", draftSession.getCourtScheduleId());
         assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", draftSessionNoHearings.getCourtScheduleId());
-        assignCourtroomPayload = assignCourtroomPayload.replace("[\"COURT_SCHEDULE_ID_1\", \"COURT_SCHEDULE_ID_2\"]", 
-                "[\"" + draftSession.getCourtScheduleId() + "\", \"" + draftSessionNoHearings.getCourtScheduleId() + "\", \"" + assignedSession.getCourtScheduleId() + "\"]");
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_3", assignedSession.getCourtScheduleId());
         assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
 
         final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
