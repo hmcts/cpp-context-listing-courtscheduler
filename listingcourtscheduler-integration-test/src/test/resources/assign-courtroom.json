@@ -1,5 +1,5 @@
 {
-  "courtScheduleIds": ["COURT_SCHEDULE_ID_1", "COURT_SCHEDULE_ID_2", "COURT_SCHEDULE_ID_3"],
+  "courtScheduleIds": ["COURT_SCHEDULE_ID_1", "COURT_SCHEDULE_ID_2"],
   "courtRoomId": "COURT_ROOM_ID"
 }
 
