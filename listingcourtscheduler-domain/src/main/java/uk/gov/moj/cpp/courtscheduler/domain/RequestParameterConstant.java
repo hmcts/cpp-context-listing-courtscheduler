@@ -58,6 +58,7 @@ public enum RequestParameterConstant {
     IS_DRAFT("isDraft"),
     JURISDICTION("jurisdiction"),
     INDEX("index"),
+    COURT_SCHEDULE_IDS("courtScheduleIds"),
 
     ;
 
