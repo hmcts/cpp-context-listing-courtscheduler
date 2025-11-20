@@ -1898,8 +1898,8 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldAssignCourtroomToMultipleEligibleSessions() throws SQLException {
-        // Scenario 2 & 3: Draft with/without hearings - eligible
-        // Scenario 5: Assigned without hearings - eligible
+        // Draft with/without hearings - eligible
+        // Assigned without hearings - eligible
         
         UUID draftSessionId = UUID.randomUUID();
         CourtSchedule draftSession = RANDOM.nextObject(CourtSchedule.class);
@@ -1975,7 +1975,7 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldNotAssignCourtroomToAssignedSessionWithHearings() throws SQLException {
-        // Scenario 4: Assigned with hearings - NOT eligible
+        //Assigned with hearings - NOT eligible
         
         UUID assignedSessionId = UUID.randomUUID();
         CourtSchedule assignedSession = RANDOM.nextObject(CourtSchedule.class);
@@ -2018,7 +2018,7 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldReturnErrorWhenCourtroomIdNotProvided() throws SQLException {
-        // Scenario 6: Must choose a courtroom
+        //Must choose a courtroom
         
         UUID sessionId = UUID.randomUUID();
         CourtSchedule session = RANDOM.nextObject(CourtSchedule.class);
