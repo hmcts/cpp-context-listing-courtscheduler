@@ -11,6 +11,7 @@ public class AssignCourtroomResponse {
     private List<FailedSession> failedSessions = new ArrayList<>();
 
     public AssignCourtroomResponse() {
+        // Intentionally empty - fields are initialized at declaration
     }
 
     public List<CourtScheduleView> getEligibleSessions() {
