@@ -7,6 +7,7 @@ import static java.util.Optional.empty;
 import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_ERR_MSG;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.MISSING_SLOT_FOR_JUDICIARY_WARNING_MSG;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.EMAIL_ADDRESS;
@@ -24,7 +25,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.MAGS_
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ROTA_JUDICIARY_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SURNAME;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.TITLE;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.JUDICIARY_ERR_MSG;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
@@ -59,14 +59,16 @@ public class JudiciaryScheduleEnricher {
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
-    private static final Logger logger = LoggerFactory.getLogger(JudiciaryScheduleEnricher.class);
+    
 
+    private static final Logger logger = LoggerFactory.getLogger(JudiciaryScheduleEnricher.class);
 
     public Collection<CourtScheduleJudiciary> enrichJudiciarySchedules(final Map<String, CourtSchedule> courtScheduleMap,
                                                                        final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                                        final boolean forMigrated,
                                                                        final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
-                                                                       final Requester requester) {
+                                                                       final Requester requester,
+                                                                       final String executionId) {
         final Map<String, String> errors = new HashMap<>();
         final List<CourtScheduleJudiciary> courtScheduleJudiciarySchedules = new ArrayList<>();
 
@@ -105,7 +107,7 @@ public class JudiciaryScheduleEnricher {
         logger.info("PRF: Time taken for judiciary enrichment : {}", (enrichmentEnd - enrichmentStart) / 1000000);
 
         if (!errors.isEmpty()) {
-            missingMessageLogger.logJudiciaryMissingMessage(errors.values());
+            missingMessageLogger.logJudiciaryMissingMessage(errors.values(), executionId);
         }
 
         return courtScheduleJudiciarySchedules;
@@ -136,7 +138,7 @@ public class JudiciaryScheduleEnricher {
             final String firstName = schedule.get(FORENAMES);
             final String lastName = schedule.get(SURNAME);
 
-            errors.put(email, format(JUDICIARY_ERR_MSG, firstName, lastName, email));
+            errors.put(email, JUDICIARY_ERR_MSG.format(firstName, lastName, email));
         }
     }
 

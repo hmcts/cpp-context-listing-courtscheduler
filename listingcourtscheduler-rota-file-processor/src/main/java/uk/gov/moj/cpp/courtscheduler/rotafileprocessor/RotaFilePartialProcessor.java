@@ -74,7 +74,8 @@ public class RotaFilePartialProcessor {
                                     final List<String> ouCodes,
                                     final List<String> nonMigratedOuCodes,
                                     final Map<String, BusinessType> businessTypesMap,
-                                    final Map<String, Boolean> migratedMap) {
+                                    final Map<String, Boolean> migratedMap,
+                                    final String executionId) {
         logger.info("DD-15703:processFullRotaFile: started processing");
         this.migratedMap = migratedMap;
         final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
@@ -87,7 +88,7 @@ public class RotaFilePartialProcessor {
             logger.info("processFullRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
         }
 
-        final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
+        final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap, executionId);
         manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, slotAndScheduleInfo, startDate, endDate);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
     }
@@ -103,7 +104,7 @@ public class RotaFilePartialProcessor {
                                         final List<String> ouCodes,
                                         final List<String> nonMigratedOuCodes,
                                         final Map<String, BusinessType> businessTypesMap,
-                                        final Map<String, Boolean> migratedMap) {
+                                        final Map<String, Boolean> migratedMap, final String executionId) {
         this.migratedMap = migratedMap;
         final LocalDate startDate = startAndEndDate.get(START_DATE.getLabel());
         final LocalDate endDate = startAndEndDate.get(END_DATE.getLabel());
@@ -121,7 +122,7 @@ public class RotaFilePartialProcessor {
         final long deleteUnallocatedCourtScheduleJudiciariesEndTime = System.currentTimeMillis();
         logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {} in {} ms", numberOfDeletedUnAllocatedCourtScheduleJudiciaries, deleteUnallocatedCourtScheduleJudiciariesEndTime - deleteUnallocatedCourtScheduleJudiciariesStartTime);
         final long extractAndReceiveSlotAndScheduleInfoStartTime = System.currentTimeMillis();
-        final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap);
+        final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap, executionId);
         final long extractAndReceiveSlotAndScheduleInfoEndTime = System.currentTimeMillis();
         logger.info("DD-15703:processSnapshotRotaFile: after getExtractAndReceiveSlotAndScheduleInfo in {} ms", extractAndReceiveSlotAndScheduleInfoEndTime - extractAndReceiveSlotAndScheduleInfoStartTime);
         manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, slotAndScheduleInfo, startDate, endDate);
@@ -134,7 +135,8 @@ public class RotaFilePartialProcessor {
                                                                         final Collection<CourtScheduleJudiciary> schedulesForMigrated,
                                                                         final LocalDate startDate,
                                                                         final LocalDate endDate,
-                                                                        final Map<String, BusinessType> businessTypesMap) {
+                                                                        final Map<String, BusinessType> businessTypesMap,
+                                                                        final String executionId) {
         // all existing slots including migrated and non-migrated
         final List<CourtSchedule> existingSlotList = sessionsService.getExtractedCourtSchedules(ouCodes, startDate, endDate);
         final List<Object[]> allocatedScheduleJudiciaries = courtScheduleJudiciaryService.getAllocatedScheduleJudiciaryInfo(startDate, endDate, ouCodes);
@@ -202,7 +204,7 @@ public class RotaFilePartialProcessor {
                 .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         if (!missingBusinessTypes.isEmpty()) {
-            businessTypeMatchingLogger.logMissingBusinessType(new ArrayList<>(missingBusinessTypes));
+            businessTypeMatchingLogger.logMissingBusinessType(new ArrayList<>(missingBusinessTypes), executionId);
         }
 
         Map<String, Pair<String, String>> schedulesToUpdateMap= schedulesToUpdate.stream()
