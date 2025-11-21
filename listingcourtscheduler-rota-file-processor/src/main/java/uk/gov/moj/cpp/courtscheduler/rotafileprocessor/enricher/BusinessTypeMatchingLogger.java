@@ -1,11 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingDataErrorMessages.BUSINESS_TYPES_NOT_FOUND_MSG;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.BUSINESS_TYPES_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder;
+
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 
 import java.util.List;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,22 +17,33 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 public class BusinessTypeMatchingLogger {
 
-    public static final Logger logger = LoggerFactory.getLogger(BusinessTypeMatchingLogger.class);
+    public static final Logger LOGGER = LoggerFactory.getLogger(BusinessTypeMatchingLogger.class);
+    private static final String NEW_LINE = "------------------------------------------------------------------------------------";
 
-    public void logMissingBusinessType(final List<String> missingBusinessTypes) {
-        logMissingBusinessTypeMessage(missingBusinessTypes);
+    @Inject
+    private RotaProcessLogService rotaProcessLogService;
 
+    public void logMissingBusinessType(final List<String> missingBusinessTypes, final String executionId) {
+        logMissingBusinessTypeMessage(missingBusinessTypes, executionId);
     }
 
-    private void logMissingBusinessTypeMessage(final List<String> missingBusinessTypes) {
-        logger.info("------------------------------------------------------------------------------------");
-
+    private void logMissingBusinessTypeMessage(final List<String> missingBusinessTypes, final String executionId) {
+        LOGGER.info(NEW_LINE);
         if (isNotEmpty(missingBusinessTypes)) {
             final String missingBusinessTypesAsStr = String.join(",", missingBusinessTypes);
-            logger.warn(BUSINESS_TYPES_NOT_FOUND_MSG, missingBusinessTypesAsStr);
+            LOGGER.warn(BUSINESS_TYPES_NOT_FOUND.template(), missingBusinessTypesAsStr);
+
+            final String msg = BUSINESS_TYPES_NOT_FOUND
+                    .template()
+                    .replace("{}", missingBusinessTypesAsStr);
+            rotaProcessLogService.saveRotaProcessLog(
+                    RotaProcessLogBuilder.rotaProcessLog()
+                            .withExecutionId(executionId)
+                            .withErrorCode(BUSINESS_TYPES_NOT_FOUND.code())
+                            .withErrorText(msg)
+                            .build()
+            );
         }
-        logger.info("------------------------------------------------------------------------------------");
+        LOGGER.info(NEW_LINE);
     }
-
-
 }

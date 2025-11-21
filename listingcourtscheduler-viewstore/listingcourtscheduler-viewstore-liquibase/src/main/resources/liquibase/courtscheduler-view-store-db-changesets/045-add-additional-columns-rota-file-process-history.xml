@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="045.1" author="ragubalan.durairaj" logicalFilePath="045-add-additional-columns-rota-file-process-history.xml">
+        <dropPrimaryKey tableName="rota_file_process_history"/>
+    </changeSet>
+
+    <changeSet id="045.2" author="ragubalan.durairaj" logicalFilePath="045-add-additional-columns-rota-file-process-history.xml">
+        <addColumn tableName="rota_file_process_history">
+            <column name="execution_id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_rota_file_process_history"/>
+            </column>
+            <column name="file_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_hash" type="VARCHAR(255)"/>
+            <column name="process_start_date" type="DATETIME"/>
+            <column name="process_end_date" type="DATETIME"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="045.3" author="ragubalan.durairaj" logicalFilePath="045-add-additional-columns-rota-file-process-history.xml">
+        <sql dbms="postgresql">
+            UPDATE rota_file_process_history 
+            SET file_name = CONCAT(file_name_prefix, TO_CHAR(file_date, 'YYYYMMDD'), '.xml')
+            WHERE file_name IS NULL OR file_name = ''
+        </sql>
+    </changeSet>
+</databaseChangeLog>

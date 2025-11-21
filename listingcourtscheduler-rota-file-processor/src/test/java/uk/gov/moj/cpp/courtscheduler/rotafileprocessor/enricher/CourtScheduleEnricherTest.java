@@ -1,23 +1,29 @@
 package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 
 import static java.util.Collections.emptyList;
+import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum.AM;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
 import java.time.LocalDate;
 import java.util.Calendar;
@@ -27,6 +33,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -45,6 +52,9 @@ class CourtScheduleEnricherTest {
 
     @Mock
     private Requester requester;
+
+    @Mock
+    private RotaProcessLogService rotaProcessLogService;
 
     @Test
     void shouldBuildNewCourtSchedule() {
@@ -67,7 +77,7 @@ class CourtScheduleEnricherTest {
         listingProfile.put("locationId", "175");
         listingProfile.put("welshSpeaking", "false");
 
-        final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), new HashMap<>(), emptyList(), requester);
+        final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), new HashMap<>(), emptyList(), requester, randomUUID().toString());
         assertThat(courtSchedule.getListingProfileId(), is("CS2129874"));
         assertThat(courtSchedule.getSessionDate(), is(LocalDate.of(2019, 10, 01)));
         assertThat(courtSchedule.getPanel(), is("ADULT"));
@@ -114,7 +124,7 @@ class CourtScheduleEnricherTest {
                 .withCourtSession(AM.name())
                 .withSessionDate(LocalDate.of(2019, 10, 1))
                 .withBusinessType("DVB")
-                .withCreatedOn(Calendar.getInstance().getTime()).build()), requester);
+                .withCreatedOn(Calendar.getInstance().getTime()).build()), requester, randomUUID().toString());
         assertThat(courtSchedule.getCourtScheduleId(), is(courtScheduleId));
         assertThat(courtSchedule.getListingProfileId(), is("CS2129874"));
         assertThat(courtSchedule.getSessionDate(), is(LocalDate.of(2019, 10, 01)));
@@ -148,11 +158,45 @@ class CourtScheduleEnricherTest {
         listingProfile.put("locationId", "175");
         listingProfile.put("welshSpeaking", "false");
 
-        final Map<String, String> missingReferenceDataMappingMap = new HashMap();
-        courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), missingReferenceDataMappingMap, emptyList(), requester);
-        final String msgKey = " Location id : 175\n Venue name  : Court 1 Cheltenham\n Venue id  : 17729";
+        final Map<String, String> missingReferenceDataMappingMap = new HashMap<>();
+        final String executionId = randomUUID().toString();
+        courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), missingReferenceDataMappingMap, emptyList(), requester, executionId);
+        final String msgKey = "No matching venue found by either venueId or venueName or LocationId: 175 - Court 1 Cheltenham - 17729";
         final String actual = missingReferenceDataMappingMap.get(msgKey);
-        assertThat(actual, is("COURT_DETAIL_NOT_FOUND"));
+        assertThat(actual, is("REF_DATA_VENUE_NOT_FOUND"));
+
+        // verify persisted rota_process_log entry
+        final ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
+        final RotaProcessLog saved = logCaptor.getValue();
+        assertThat(saved.getExecutionId(), is(executionId));
+        assertThat(saved.getErrorCode(), is("REF_DATA_VENUE_NOT_FOUND"));
+        assertThat(saved.getErrorText(), is(msgKey));
+    }
+
+    @Test
+    void shouldNotPersistDuplicateRotaProcessLogsForSameMissingVenue() {
+        final Map<String, String> listingProfile = new HashMap<>();
+        listingProfile.put("id", "CS2129874");
+        listingProfile.put("sessionDate", "2019-10-01");
+        listingProfile.put("session", "AM");
+        listingProfile.put("panel", "ADULT");
+        listingProfile.put("business", "DVB");
+        listingProfile.put("venueName", "Court 1 Cheltenham");
+        listingProfile.put("venueId", "17729");
+        listingProfile.put("locationId", "175");
+        listingProfile.put("welshSpeaking", "false");
+
+        when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap(), eq(requester))).thenReturn(empty());
+
+        final Map<String, String> missingReferenceDataMappingMap = new HashMap<>();
+        final String executionId = randomUUID().toString();
+
+        courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), missingReferenceDataMappingMap, emptyList(), requester, executionId);
+        courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), missingReferenceDataMappingMap, emptyList(), requester, executionId);
+
+        verify(rotaProcessLogService, times(1)).saveRotaProcessLog(any(RotaProcessLog.class));
+        assertThat(missingReferenceDataMappingMap.size(), is(1));
     }
 
     private CourtRoom createCourtRoom() {
