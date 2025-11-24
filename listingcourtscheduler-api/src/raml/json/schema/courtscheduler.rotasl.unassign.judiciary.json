@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": [
+    "courtScheduleId",
+    "judiciaryId"
+  ],
+  "properties": {
+    "courtScheduleId": {
+      "type": "string",
+      "description": "The unique identifier of the court schedule"
+    },
+    "judiciaryId": {
+      "type": "string",
+      "description": "The unique identifier of the judiciary to unassign"
+    }
+  }
+}
+

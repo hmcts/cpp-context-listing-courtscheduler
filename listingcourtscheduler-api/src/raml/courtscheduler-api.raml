@@ -519,6 +519,31 @@ protocols: [ HTTP, HTTPS ]
       202:
         description: Request Accepted
 
+/rotasl/unassign-judiciary:
+  post:
+    description: |
+      Unassign a judiciary from a court schedule. This operation will remove the judiciary assignment if the court schedule has no allocated listings or active provisional bookings.
+        ...
+        (mapping):
+            requestType: application/vnd.courtscheduler.rotasl.unassign.judiciary+json
+            name: courtscheduler.rotasl.unassign.judiciary
+        ...
+    body:
+      application/vnd.courtscheduler.rotasl.unassign.judiciary+json:
+        schema: !include json/schema/courtscheduler.rotasl.unassign.judiciary.json
+        example: !include json/courtscheduler.rotasl.unassign.judiciary.json
+    responses:
+      202:
+        description: Request Accepted - Judiciary unassigned successfully
+      400:
+        description: Bad Request - Cannot unassign judiciary (has allocated listings, provisional bookings, or not found)
+        body:
+          application/json:
+            example: |
+              {
+                "errorMessage": "Cannot unassign judiciary judge-456 from courtSchedule schedule-123: court schedule has allocated listings"
+              }
+
 
 /validate:
   description: |

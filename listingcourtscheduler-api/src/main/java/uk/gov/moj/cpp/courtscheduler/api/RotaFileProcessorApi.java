@@ -62,10 +62,10 @@ public class RotaFileProcessorApi {
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.clean_redundant_rota_data").apply(createObjectBuilder().build());
     }
 
-    @Handles("courtscheduler.unassign.judiciary")
+    @Handles("courtscheduler.rotasl.unassign.judiciary")
     public JsonEnvelope unassignJudiciary(final JsonEnvelope envelope) {
         final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.unassign.judiciary requested : {}", payload);
+        LOGGER.info("courtscheduler.rotasl.unassign.judiciary requested : {}", payload);
 
         final String courtScheduleId = payload.getString("courtScheduleId", "");
         final String judiciaryId = payload.getString("judiciaryId", "");
@@ -80,15 +80,15 @@ public class RotaFileProcessorApi {
 
         try {
             rotaFilePartialProcessor.unassignJudiciary(courtScheduleId, judiciaryId);
-            LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+            LOGGER.info("courtscheduler.rotasl.unassign.judiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
         } catch (IllegalStateException e) {
-            LOGGER.warn("courtscheduler.unassign.judiciary: cannot unassign - {}", e.getMessage());
+            LOGGER.warn("courtscheduler.rotasl.unassign.judiciary: cannot unassign - {}", e.getMessage());
             throw new BadRequestException(e.getMessage());
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("courtscheduler.unassign.judiciary: not found - {}", e.getMessage());
+            LOGGER.warn("courtscheduler.rotasl.unassign.judiciary: not found - {}", e.getMessage());
             throw new BadRequestException(e.getMessage());
         }
 
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.unassign.judiciary").apply(createObjectBuilder().build());
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.unassign.judiciary").apply(createObjectBuilder().build());
     }
 }
