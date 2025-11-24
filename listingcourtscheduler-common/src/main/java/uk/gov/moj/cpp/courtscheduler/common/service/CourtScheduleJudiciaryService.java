@@ -64,4 +64,8 @@ public class CourtScheduleJudiciaryService {
     public int deleteRedundantRotaData(final int numberOfPreviousMonthsAndOlder) {
         return courtScheduleJudiciaryRepository.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder * 30);
     }
+
+    public boolean hasActiveProvisionalBooking(final String courtScheduleId) {
+        return courtScheduleJudiciaryRepository.hasActiveProvisionalBooking(courtScheduleId);
+    }
 }

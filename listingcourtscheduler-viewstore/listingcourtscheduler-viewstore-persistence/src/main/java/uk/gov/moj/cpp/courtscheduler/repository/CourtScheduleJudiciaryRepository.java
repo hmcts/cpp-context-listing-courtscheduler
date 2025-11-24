@@ -115,4 +115,14 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 .setParameter("numberOfDays", numberOfDays)
                 .executeUpdate();
     }
+
+    @SuppressWarnings("squid:S2077")
+    public boolean hasActiveProvisionalBooking(final String courtScheduleId) {
+        final String query = "SELECT COUNT(*) FROM provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = :courtScheduleId";
+        final Number count = (Number) entityManager()
+                .createNativeQuery(query)
+                .setParameter("courtScheduleId", courtScheduleId)
+                .getSingleResult();
+        return count != null && count.intValue() > 0;
+    }
 }

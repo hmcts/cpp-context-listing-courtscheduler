@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api;
 
 import static javax.json.Json.createObjectBuilder;
 
+import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
 import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
 import uk.gov.justice.services.core.enveloper.Enveloper;
@@ -9,6 +10,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileCaptureAndProcessTriggerService;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaRedundantDataCleanerService;
+import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFilePartialProcessor;
 
 import javax.inject.Inject;
 import javax.json.JsonObject;
@@ -33,6 +35,9 @@ public class RotaFileProcessorApi {
     @Inject
     private RotaRedundantDataCleanerService rotaRedundantDataCleanerService;
 
+    @Inject
+    private RotaFilePartialProcessor rotaFilePartialProcessor;
+
     @Handles("courtscheduler.rotasl.process_rota_files")
     public JsonEnvelope processRotaFiles(final JsonEnvelope envelope) {
         LOGGER.info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
@@ -55,5 +60,35 @@ public class RotaFileProcessorApi {
         LOGGER.info("successfully called and completed - rotaRedundantDataCleanerService.cleanDataForPreviousMonths asynchronously");
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.clean_redundant_rota_data").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.unassign.judiciary")
+    public JsonEnvelope unassignJudiciary(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.unassign.judiciary requested : {}", payload);
+
+        final String courtScheduleId = payload.getString("courtScheduleId", "");
+        final String judiciaryId = payload.getString("judiciaryId", "");
+
+        if (courtScheduleId.isEmpty()) {
+            throw new BadRequestException("courtScheduleId is required");
+        }
+
+        if (judiciaryId.isEmpty()) {
+            throw new BadRequestException("judiciaryId is required");
+        }
+
+        try {
+            rotaFilePartialProcessor.unassignJudiciary(courtScheduleId, judiciaryId);
+            LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+        } catch (IllegalStateException e) {
+            LOGGER.warn("courtscheduler.unassign.judiciary: cannot unassign - {}", e.getMessage());
+            throw new BadRequestException(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("courtscheduler.unassign.judiciary: not found - {}", e.getMessage());
+            throw new BadRequestException(e.getMessage());
+        }
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.unassign.judiciary").apply(createObjectBuilder().build());
     }
 }

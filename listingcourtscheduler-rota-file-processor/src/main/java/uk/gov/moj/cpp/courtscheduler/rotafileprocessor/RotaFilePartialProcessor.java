@@ -4,6 +4,7 @@ import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
+import static java.util.Collections.singletonList;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toMap;
 import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
@@ -19,6 +20,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
 
 import java.time.LocalDate;
@@ -60,6 +63,9 @@ public class RotaFilePartialProcessor {
 
     @Inject
     private BusinessTypeMatchingLogger businessTypeMatchingLogger;
+
+    @Inject
+    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
@@ -330,5 +336,39 @@ public class RotaFilePartialProcessor {
             totalAmount = allocatedListings.get(courtScheduleId);
         }
         return totalAmount;
+    }
+
+    @Transactional
+    public void unassignJudiciary(final String courtScheduleId, final String judiciaryId) {
+        logger.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+
+        // Check if there are allocated listings for this court schedule
+        final Map<String, Integer> allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(singletonList(courtScheduleId));
+        if (allocatedListings.containsKey(courtScheduleId) && allocatedListings.get(courtScheduleId) > 0) {
+            final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has allocated listings", judiciaryId, courtScheduleId);
+            logger.warn("unassignJudiciary: {}", errorMessage);
+            throw new IllegalStateException(errorMessage);
+        }
+
+        // Check if there are active provisional bookings for this court schedule
+        if (courtScheduleJudiciaryService.hasActiveProvisionalBooking(courtScheduleId)) {
+            final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has active provisional bookings", judiciaryId, courtScheduleId);
+            logger.warn("unassignJudiciary: {}", errorMessage);
+            throw new IllegalStateException(errorMessage);
+        }
+
+        // Find the CourtScheduleJudiciary entity
+        final CourtScheduleJudiciaryKey key = new CourtScheduleJudiciaryKey(courtScheduleId, judiciaryId);
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciary = courtScheduleJudiciaryRepository.findBy(key);
+
+        if (courtScheduleJudiciary == null) {
+            final String errorMessage = String.format("Judiciary %s not found for courtSchedule %s", judiciaryId, courtScheduleId);
+            logger.warn("unassignJudiciary: {}", errorMessage);
+            throw new IllegalArgumentException(errorMessage);
+        }
+
+        // Remove the judiciary assignment
+        courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary);
+        logger.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
     }
 }
