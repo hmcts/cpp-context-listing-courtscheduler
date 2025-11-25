@@ -177,29 +177,6 @@ class RotaFileProcessorApiTest {
     }
 
     @Test
-    void shouldThrowBadRequestExceptionWhenCourtScheduleHasProvisionalBookings() {
-        final String requestName = "courtscheduler.rotasl.unassign.judiciary";
-        final String courtScheduleId = "schedule-123";
-        final String judiciaryId = "judge-456";
-        final String errorMessage = "Cannot unassign judiciary judge-456 from courtSchedule schedule-123: court schedule has active provisional bookings";
-
-        final JsonObject payloadAsJsonObject = createObjectBuilder()
-                .add("courtScheduleId", courtScheduleId)
-                .add("judiciaryId", judiciaryId)
-                .build();
-        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
-        doThrow(new IllegalStateException(errorMessage))
-                .when(rotaFilePartialProcessor).unassignJudiciary(eq(courtScheduleId), eq(judiciaryId));
-
-        BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> rotaFileProcessorApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
-
-        assertEquals(errorMessage, exception.getMessage());
-        verify(rotaFilePartialProcessor, atLeastOnce()).unassignJudiciary(eq(courtScheduleId), eq(judiciaryId));
-        verify(LOGGER, atLeastOnce()).warn("courtscheduler.rotasl.unassign.judiciary: cannot unassign - {}", errorMessage);
-    }
-
-    @Test
     void shouldThrowBadRequestExceptionWhenJudiciaryNotFound() {
         final String requestName = "courtscheduler.rotasl.unassign.judiciary";
         final String courtScheduleId = "schedule-123";

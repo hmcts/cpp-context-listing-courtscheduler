@@ -350,13 +350,6 @@ public class RotaFilePartialProcessor {
             throw new IllegalStateException(errorMessage);
         }
 
-        // Check if there are active provisional bookings for this court schedule
-        if (courtScheduleJudiciaryService.hasActiveProvisionalBooking(courtScheduleId)) {
-            final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has active provisional bookings", judiciaryId, courtScheduleId);
-            logger.warn("unassignJudiciary: {}", errorMessage);
-            throw new IllegalStateException(errorMessage);
-        }
-
         // Find the CourtScheduleJudiciary entity
         final CourtScheduleJudiciaryKey key = new CourtScheduleJudiciaryKey(courtScheduleId, judiciaryId);
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciary = courtScheduleJudiciaryRepository.findBy(key);
