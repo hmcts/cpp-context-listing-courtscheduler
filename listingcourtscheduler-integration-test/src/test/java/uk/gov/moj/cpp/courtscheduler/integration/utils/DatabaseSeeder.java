@@ -80,6 +80,7 @@ public class DatabaseSeeder {
     private static final String COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL = "DELETE FROM court_schedule_judiciary where court_listing_profile_id = ?";
     private static final String MIGRATION_STATUS_DELETE_SQL = "TRUNCATE TABLE courtscheduler_migration_status CASCADE";
     private static final String ROTA_FILE_PROCESS_HISTORY_DELETE_SQL = "TRUNCATE TABLE rota_file_process_history CASCADE";
+    private static final String ROTA_LOG_PROCESS_DELETE_SQL = "TRUNCATE TABLE rota_process_log CASCADE";
 
 
     private static final String COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL = "UPDATE court_schedule SET court_listing_profile_id = null WHERE oucode = ?";
@@ -140,6 +141,14 @@ public class DatabaseSeeder {
             preparedStatement.executeUpdate();
         }
     }
+
+        public void cleanRotaProcessLogTable() throws SQLException {
+            try (final Connection connection = connectionProvider.getNewConnection(DatabaseSeeder.USERNAME, DatabaseSeeder.PASSWORD, DatabaseSeeder.DATABASE);
+                 final PreparedStatement preparedStatement = connection.prepareStatement(DatabaseSeeder.ROTA_LOG_PROCESS_DELETE_SQL)) {
+                preparedStatement.executeUpdate();
+            }
+        }
+
 
     private static String normalizeJurisdiction(String j) {
         if (j == null) return "MAGISTRATES";
@@ -388,5 +397,6 @@ public class DatabaseSeeder {
         cleanCourtScheduleJudiciaryTable();
         cleanMigrationStatusTable();
         cleanRotaFileProcessHistoryTable();
+        cleanRotaProcessLogTable();
     }
 }

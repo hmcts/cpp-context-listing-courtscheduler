@@ -74,11 +74,60 @@ public class CourtScheduleRetryService {
         return null;
     }
 
+    @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
+    public void upsertOne(final CourtSchedule courtSchedule) {
+        try {
+            entityManager.persist(courtSchedule);
+            entityManager.flush();
+        } catch (Exception ex) {
+            if (isUniqueConstraintViolation(ex)) {
+                // Update existing record's slots/duration using existing logic
+                retryAndSave(courtSchedule, false);
+            } else {
+                throw ex;
+            }
+        }
+    }
+
+    private boolean isUniqueConstraintViolation(Throwable ex) {
+        // Walk the cause chain to detect common uniqueness exceptions
+        Throwable t = ex;
+        while (t != null) {
+            String name = t.getClass().getName();
+            String msg = t.getMessage() != null ? t.getMessage().toLowerCase() : "";
+            if (name.contains("ConstraintViolationException") || name.contains("SQLIntegrityConstraintViolationException")
+                    || msg.contains("unique") || msg.contains("duplicate") || msg.contains("constraint")) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
+    }
+
     public List<CourtSchedule> findPersistedSchedules(CourtSchedule courtSchedule) {
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
-        courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
-        return entityManager.createQuery(criteriaQuery).getResultList();
+        try {
+            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+            CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+            courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
+            return entityManager.createQuery(criteriaQuery).getResultList();
+        } catch (Exception ex) {
+            LOGGER.warn("findPersistedSchedules criteria query failed: {}. Falling back to key lookup.", ex.getMessage());
+            try {
+                // Fallback: use repository method to find by core unique keys
+                var info = repository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
+                        courtSchedule.getCourtRoomId(),
+                        courtSchedule.getSessionDate(),
+                        courtSchedule.getBusinessType(),
+                        courtSchedule.getCourtSession());
+                if (info != null && info.getCourtScheduleId() != null) {
+                    CourtSchedule found = entityManager.find(CourtSchedule.class, info.getCourtScheduleId());
+                    return found != null ? List.of(found) : List.of();
+                }
+            } catch (Exception nested) {
+                LOGGER.warn("Fallback key lookup failed: {}", nested.getMessage());
+            }
+            return List.of();
+        }
     }
 
     private boolean hasMaxSlotsChanged(CourtSchedule persistedCourtSchedule, CourtSchedule courtSchedule) {

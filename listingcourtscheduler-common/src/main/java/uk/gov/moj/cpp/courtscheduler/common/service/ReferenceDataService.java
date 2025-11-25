@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.lang.String.format;
+import static java.lang.String.valueOf;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -9,6 +10,10 @@ import static javax.json.Json.createObjectBuilder;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static uk.gov.justice.services.messaging.JsonEnvelope.envelopeFrom;
 import static uk.gov.justice.services.messaging.JsonEnvelope.metadataBuilder;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.matches;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.*;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
@@ -19,6 +24,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -33,6 +39,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonString;
@@ -61,6 +68,9 @@ public class ReferenceDataService {
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
+
+    @Inject
+    private RotaProcessLogService rotaProcessLogService;
 
     public List<LocalDate> getPublicHolidays(final String division, final LocalDate fromDate, final LocalDate toDate, final Requester requester) {
 
@@ -98,6 +108,7 @@ public class ReferenceDataService {
         LOGGER.debug("Total courtrooms found: {}", resultsCount);
         Set<String> seenCourtRoomIds = new HashSet<>();
         Set<String> duplicateCourtRoomIds = new HashSet<>();
+        List<RotaProcessLog> errorLogs = new ArrayList<>();
 
         List<CourtRoom> courtRooms = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS)
                 .orElseThrow(() -> new RuntimeException("No courtrooms found: "))
@@ -114,14 +125,44 @@ public class ReferenceDataService {
                     } catch (Exception e) {
                         LOGGER.error(format("Error while converting court room with ID: %d", jsonObject.getInt("cppCourtRoomId")));
                         LOGGER.error(format("Skipping the failed records, %d records left", resultsCount - 1));
+                        String cppCourtRoomId =
+                                jsonObject.containsKey("cppCourtRoomId") && !jsonObject.isNull("cppCourtRoomId")
+                                        ? valueOf(jsonObject.getInt("cppCourtRoomId"))
+                                        : getStringOrElse(jsonObject, COURTROOM_ID, "unknown");
+                        errorLogs.add(
+                                rotaProcessLog()
+                                        .withErrorCode(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code())
+                                        .withErrorText(cppCourtRoomId)
+                                        .build()
+                        );
                         return null;
                     }
                 })
                 .filter(Objects::nonNull)
                 .toList();
 
+        if (!errorLogs.isEmpty()) {
+            final String combinedMissingCourtrooms = errorLogs.stream()
+                    .map(RotaProcessLog::getErrorText)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+            rotaProcessLogService.saveRotaProcessLog(
+                    rotaProcessLog()
+                            .withErrorCode(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code())
+                            .withErrorText(CREATE_SESSIONS_COURTROOM_NOT_FOUND.format(combinedMissingCourtrooms))
+                            .build()
+            );
+        }
+
         if (!duplicateCourtRoomIds.isEmpty()) {
             LOGGER.error(format("Duplicate courtroom IDs found: %s", duplicateCourtRoomIds));
+            rotaProcessLogService.saveRotaProcessLog(
+                    rotaProcessLog()
+                            .withErrorCode(CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND.code())
+                            .withErrorText(CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND.format(duplicateCourtRoomIds))
+                            .build()
+            );
         }
 
         // Return only distinct courtrooms based on their IDs
@@ -130,7 +171,6 @@ public class ReferenceDataService {
                 .distinct()
                 .toList();
     }
-
 
     public List<BusinessType> getRotaBusinessTypes(final Requester requester) {
 
@@ -209,7 +249,7 @@ public class ReferenceDataService {
                     final Integer locationId = jsonObject.containsKey(LOCATION_ID) ? jsonObject.getInt(LOCATION_ID) : null;
                     final String venueName = jsonObject.containsKey(VENUE_NAME) ? jsonObject.getString(VENUE_NAME) : null;
                     return nonNull(locationId) && venue.getLocationId().equals(locationId) &&
-                            nonNull(venueName) && venue.getVenueName().equals(venueName);
+                            nonNull(venueName) && matches(venue.getVenueName(), venueName);
 
                 })
                 .map(this::toCourtRoom)
