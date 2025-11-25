@@ -439,6 +439,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
             LOGGER.warn("Batch flush failed for {} records: {}", batch.size(), e.getMessage());
             // Add failed records to failedSchedules list
             failedSchedules.addAll(batch);
+            entityManager.clear();
             return false;
         }
     }
@@ -449,17 +450,14 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
      */
     private void processIndividualRecordsFast(List<CourtSchedule> records, List<CourtSchedule> failedSchedules) {
         LOGGER.debug("Processing {} records individually with fast method", records.size());
-        
+
         for (CourtSchedule cs : records) {
             try {
-                // Minimal entity manager operations for speed
-                entityManager.persist(cs);
-                entityManager.flush();
-                LOGGER.debug("Successfully processed individual record: {}", cs.getCourtScheduleId());
+                // Each record is handled in its own REQUIRES_NEW transaction via retry service
+                courtScheduleRetryService.upsertOne(cs);
             } catch (Exception ex) {
-                LOGGER.warn("Failed to persist individual record {}: {}", cs.getCourtScheduleId(), ex.getMessage());
+                LOGGER.warn("Failed to upsert individual record {}: {}", cs.getCourtScheduleId(), ex.getMessage());
                 failedSchedules.add(cs);
-                entityManager.clear();
             }
         }
     }
