@@ -24,6 +24,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toLocalTime;
 
 import uk.gov.justice.services.core.requester.Requester;
@@ -793,5 +794,174 @@ public class SessionsService {
 
     public List<CourtSchedule> getCourtSchedulesById(final SearchCourtSchedulesByIdRequestParam requestParam) {
         return courtScheduleRepository.getCourtSchedulesByIdList(requestParam.getCourtScheduleIds());
+    }
+
+    @Transactional
+    public uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse assignCourtroom(
+            final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request, final Requester requester) {
+        
+        final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response = 
+                new uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse();
+        
+        if (isEmpty(request.getCourtScheduleIds())) {
+            return response;
+        }
+
+        // Get all sessions by IDs
+        final List<CourtSchedule> sessions = courtScheduleRepository.getCourtSchedulesByIdList(request.getCourtScheduleIds());
+        final Map<String, CourtSchedule> sessionMap = sessions.stream()
+                .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, s -> s));
+
+        // Get all allocated listings to check for hearings
+        final List<String> sessionIds = request.getCourtScheduleIds();
+        final List<AllocatedListingEachBooked> allAllocatedListings = 
+                allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(sessionIds);
+        final Map<String, List<AllocatedListingEachBooked>> allocatedListingsBySessionId = 
+                allAllocatedListings.stream()
+                        .collect(Collectors.groupingBy(AllocatedListingEachBooked::getCourtScheduleId));
+
+        // Get courtroom details
+        final Optional<CourtRoom> courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(
+                request.getCourtRoomId(), requester);
+
+        if (courtRoom.isEmpty()) {
+            // All sessions are ineligible if courtroom not found
+            request.getCourtScheduleIds().forEach(id -> {
+                final uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession ineligible = 
+                        new uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession(
+                                id, "Courtroom not found");
+                response.getIneligibleSessions().add(ineligible);
+            });
+            return response;
+        }
+
+        // Categorize sessions
+        final List<CourtSchedule> eligibleSessions = new ArrayList<>();
+        final List<uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession> ineligibleSessions = 
+                new ArrayList<>();
+
+        for (final String sessionId : request.getCourtScheduleIds()) {
+            final CourtSchedule session = sessionMap.get(sessionId);
+            
+            if (isNull(session)) {
+                ineligibleSessions.add(new uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession(
+                        sessionId, "Session not found"));
+                continue;
+            }
+
+            // Check if session has hearings
+            final List<AllocatedListingEachBooked> allocatedListings = 
+                    allocatedListingsBySessionId.getOrDefault(sessionId, emptyList());
+            final boolean hasHearings = !isEmpty(allocatedListings);
+
+            // Eligibility check based on acceptance criteria:
+            // - Draft with hearings: YES (eligible)
+            // - Draft without hearings: YES (eligible)
+            // - Assigned with hearings: NO (not eligible)
+            // - Assigned without hearings: YES (eligible)
+            final boolean isDraft = session.isDraft();
+            final boolean isAssigned = !isDraft;
+
+            if (isAssigned && hasHearings) {
+                // Scenario 4: Assigned with hearings - NOT eligible
+                ineligibleSessions.add(new uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession(
+                        sessionId, "Cannot assign courtroom to an assigned session with hearings"));
+            } else {
+                // All other cases are eligible
+                eligibleSessions.add(session);
+            }
+        }
+
+        // Convert eligible sessions to view
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView> eligibleSessionViews = 
+                eligibleSessions.stream()
+                        .map(s -> {
+                            s.setBusinessDescription(enrichBusinessDescription(s.getBusinessType(), requester));
+                            return convertToView(s);
+                        })
+                        .collect(Collectors.toList());
+        response.setEligibleSessions(eligibleSessionViews);
+        response.setIneligibleSessions(ineligibleSessions);
+
+        // Apply courtroom to eligible sessions
+        for (final CourtSchedule session : eligibleSessions) {
+            try {
+                final UpdateCourtSchedule updateRequest = new UpdateCourtSchedule.UpdateCourtScheduleBuilder()
+                        .withCourtScheduleId(session.getCourtScheduleId())
+                        .withCourtRoomId(request.getCourtRoomId())
+                        .withBusinessType(session.getBusinessType())
+                        .withSessionType(session.getCourtSession())
+                        .withPanel(session.getPanel())
+                        .withMaxSlots(session.getMaxSlots())
+                        .withMaxDuration(session.getMaxDuration())
+                        .withMaxDurationForMorning(session.getMaxDurationForMorning())
+                        .withMaxDurationForAfternoon(session.getMaxDurationForAfternoon())
+                        .withAllDaySplit(session.isAllDaySplit())
+                        .withSessionStartTime(session.getSessionStartTime() != null 
+                                ? sessionTimeFormatter(session.getSessionStartTime()) : null)
+                        .withSessionEndTime(session.getSessionEndTime() != null 
+                                ? sessionTimeFormatter(session.getSessionEndTime()) : null)
+                        .withIsOverbookingAllowed(session.isOverbookingAllowed())
+                        .withJurisdiction(session.getJurisdiction() != null ? session.getJurisdiction() : "MAGISTRATES")
+                        .withIsDraft(session.isDraft())
+                        .build();
+
+                final Result result = update(updateRequest, requester);
+                
+                if (!result.isSuccess()) {
+                    response.getFailedSessions().add(new uk.gov.moj.cpp.courtscheduler.domain.FailedSession(
+                            session.getCourtScheduleId(), result.getMsg()));
+                }
+            } catch (Exception e) {
+                logger.error("Failed to assign courtroom to session {}: {}", 
+                        session.getCourtScheduleId(), e.getMessage());
+                response.getFailedSessions().add(new uk.gov.moj.cpp.courtscheduler.domain.FailedSession(
+                        session.getCourtScheduleId(), 
+                        "Failed to assign courtroom: " + (e.getMessage() != null ? e.getMessage() : "Unknown error")));
+            }
+        }
+
+        return response;
+    }
+
+    private uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView convertToView(final CourtSchedule session) {
+        return new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView.CourtScheduleViewBuilder()
+                .withCourtScheduleId(session.getCourtScheduleId())
+                .withActive(session.isActive())
+                .withTotalBooked(session.getTotalBooked())
+                .withSlotBased(session.isSlotBased())
+                .withAvailableDuration(session.getAvailableDuration())
+                .withAvailableSlots(session.getAvailableSlots())
+                .withBusinessType(session.getBusinessType())
+                .withBusinessDescription(session.getBusinessDescription())
+                .withCourtHouseId(session.getCourtHouseId())
+                .withCourtHouseName(session.getCourtHouseName())
+                .withCourtRoomNumber(session.getCourtRoomNumber())
+                .withCourtRoomId(session.getCourtRoomId())
+                .withCourtRoomName(session.getCourtRoomName())
+                .withCourtSession(session.getCourtSession())
+                .withListingProfileId(session.getListingProfileId())
+                .withMaxDuration(session.getMaxDuration())
+                .withMaxSlots(session.getMaxSlots())
+                .withOperationalUnit(session.getOperationalUnit())
+                .withOuCode(session.getOuCode())
+                .withPanel(session.getPanel())
+                .withSessionDate(session.getSessionDate())
+                .withAllDaySplit(session.isAllDaySplit())
+                .withMaxDurationForMorning(session.getMaxDurationForMorning())
+                .withMaxDurationForAfternoon(session.getMaxDurationForAfternoon())
+                .withTotalBookedForMorning(session.getTotalBookedForMorning())
+                .withTotalBookedForAfternoon(session.getTotalBookedForAfternoon())
+                .withAvailableDurationForMorning(session.getAvailableDurationForMorning())
+                .withAvailableDurationForAfternoon(session.getAvailableDurationForAfternoon())
+                .withMinHearingTime(session.getMinHearingTime())
+                .withMaxHearingTime(session.getMaxHearingTime())
+                .withSessionStartTime(session.getSessionStartTime() != null 
+                        ? sessionTimeFormatter(session.getSessionStartTime()) : null)
+                .withSessionEndTime(session.getSessionEndTime() != null 
+                        ? sessionTimeFormatter(session.getSessionEndTime()) : null)
+                .withIsOverbookingAllowed(session.isOverbookingAllowed())
+                .withIsDraft(session.isDraft())
+                .build();
     }
 }

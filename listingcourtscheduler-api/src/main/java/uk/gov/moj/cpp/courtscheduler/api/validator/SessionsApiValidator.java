@@ -514,4 +514,16 @@ public class SessionsApiValidator {
                 updateCourtSchedule.getSessionStartTime(),
                 updateCourtSchedule.getSessionEndTime());
     }
+
+    public JsonObject getAssignCourtroomValidation(final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request) {
+        if (isNull(request.getCourtScheduleIds()) || request.getCourtScheduleIds().isEmpty()) {
+            return buildErrorResponse("At least one court schedule ID must be provided");
+        }
+
+        if (isNull(request.getCourtRoomId()) || request.getCourtRoomId().trim().isEmpty()) {
+            return buildErrorResponse("Courtroom ID must be provided");
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
 }

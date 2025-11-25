@@ -81,6 +81,26 @@ protocols: [ HTTP, HTTPS ]
       202:
         description: OK
 
+/courtschedule/assign.courtroom:
+  post:
+    description: |
+      Assign a courtroom to multiple court sessions at once.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.assign.courtroom+json
+          name: courtscheduler.assign.courtroom
+      ...
+    body:
+      application/vnd.courtscheduler.assign.courtroom+json:
+        schema: !include json/schema/courtscheduler.assign.courtroom.json
+        example: !include json/courtscheduler.assign.courtroom.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.assign.courtroom.response+json:
+            schema: !include json/schema/courtscheduler.assign.courtroom.response.json
+            example: !include json/courtscheduler.assign.courtroom.response.json
+
 /courtschedule/delete:
   post:
     description: |
