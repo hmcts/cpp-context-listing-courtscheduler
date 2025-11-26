@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.Collections.singletonList;
+import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -11,6 +12,8 @@ import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.transaction.Transactional;
 
 import org.slf4j.Logger;
@@ -27,7 +30,10 @@ public class JudiciaryService {
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
-    @Transactional
+    @PersistenceContext(unitName = "courtscheduler-persistence-unit")
+    private EntityManager entityManager;
+
+    @Transactional(REQUIRES_NEW)
     public void unassignJudiciary(final String courtScheduleId, final String judiciaryId) {
         logger.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
 
@@ -49,9 +55,12 @@ public class JudiciaryService {
             throw new IllegalArgumentException(errorMessage);
         }
 
-        // Remove the judiciary assignment
-        courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary);
+        // Remove the judiciary assignment using EntityManager
+        entityManager.remove(courtScheduleJudiciary);
+        entityManager.flush();
         logger.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
     }
 }
+
+
 

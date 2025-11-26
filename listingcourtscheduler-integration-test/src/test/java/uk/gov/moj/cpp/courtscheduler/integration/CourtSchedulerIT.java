@@ -13,6 +13,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
@@ -25,13 +26,17 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSI
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SPLIT_ONLY_APPLIES_DURATION_BASED_SESSION;
+import static org.apache.activemq.artemis.utils.RandomUtil.randomSimpleString;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getRandomFutureDateWithinNextYear;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.localDateToDateWithTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.getUtcTimeStringForDate;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
+import static javax.json.Json.createArrayBuilder;
+import static javax.json.Json.createObjectBuilder;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
@@ -39,6 +44,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
 import java.io.StringReader;
@@ -57,6 +64,7 @@ import java.util.TimeZone;
 import java.util.UUID;
 
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.ws.rs.core.Response;
@@ -76,6 +84,7 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String VALIDATE_URL = "/validate";
     private static final String VALIDATE_SESSION_AVAILABILITY_URL = "/validate-session-availability";
     private static final String OUCODE_MIGRATE_URL = "/oucode/migrate";
+    private static final String UNASSIGN_JUDICIARY_URL = "/unassign-judiciary";
 
     private static final String COURT_SCHEDULE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
     private static final String COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
@@ -1550,6 +1559,213 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListingForMorning.setHearingStartTime(combineDateAndTime(courtSchedule.getSessionDate(), time));
         databaseSeeder.insertAllocatedListing(allocatedListingForMorning);
         return allocatedListingForMorning;
+    }
+
+    @Test
+    void shouldUnassignJudiciarySuccessfully() throws SQLException, Exception {
+        // Setup: Create a court schedule and assign a judiciary
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        // Verify judiciary is assigned
+        List<CourtScheduleJudiciary> judiciariesBefore = databaseReader.courtScheduleJudiciaries();
+        assertTrue(judiciariesBefore.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+
+        // Call unassign endpoint
+
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Verify judiciary is unassigned
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        assertFalse(judiciariesAfter.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenUnassigningJudiciaryWithAllocatedListings() throws SQLException, Exception {
+        // Setup: Create a court schedule with allocated listings and assign a judiciary
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        // Add allocated listing to the court schedule
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        // Call unassign endpoint
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+
+        // Verify judiciary is still assigned (not removed due to allocated listings)
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        assertTrue(judiciariesAfter.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenJudiciaryNotFound() throws SQLException, IllegalArgumentException {
+        // Setup: Create a court schedule but no judiciary assignment
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final String nonExistentJudiciaryId = randomUUID().toString();
+
+        // Call unassign endpoint with non-existent judiciary
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", nonExistentJudiciaryId)
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenSessionIdsMissing() {
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", randomUUID().toString())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenJudiciaryIdMissing() {
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(randomUUID().toString())
+                                        .build())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    private CourtSchedule createTestCourtSchedule() {
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(randomUUID().toString());
+        courtSchedule.setListingProfileId("CS" + randomSimpleString().toString());
+        courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setSessionDate(LocalDate.now().plusDays(30));
+        courtSchedule.setActive(true);
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setAvailableSlots(10);
+        courtSchedule.setMaxDuration(240);
+        courtSchedule.setAvailableDuration(240);
+        courtSchedule.setCourtSession(AM_SESSION);
+        courtSchedule.setPanel("ADULT");
+        courtSchedule.setBusinessType("TRL");
+        courtSchedule.setSupportAdSplit(false);
+        courtSchedule.setIsOverbookingAllowed(false);
+        courtSchedule.setMaxAdMorningDuration(0);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        return courtSchedule;
+    }
+
+    private CourtScheduleJudiciary createTestCourtScheduleJudiciary(final String courtScheduleId) {
+        final CourtScheduleJudiciary courtScheduleJudiciary = new CourtScheduleJudiciary();
+        final CourtScheduleJudiciaryKey key = new CourtScheduleJudiciaryKey();
+        key.setCourtScheduleId(courtScheduleId);
+        key.setJudiciaryId(randomUUID().toString());
+        courtScheduleJudiciary.setId(key);
+        courtScheduleJudiciary.setCourtListingProfileId("CS" + randomSimpleString().toString());
+        courtScheduleJudiciary.setRotaJudiciaryId("ROTA" + randomSimpleString().toString());
+        courtScheduleJudiciary.setTitle("Mr");
+        courtScheduleJudiciary.setForenames("John");
+        courtScheduleJudiciary.setSurname("Doe");
+        courtScheduleJudiciary.setEmail("john.doe@example.com");
+        courtScheduleJudiciary.setJudiciaryType("MAGISTRATE");
+        courtScheduleJudiciary.setBenchChairman(false);
+        courtScheduleJudiciary.setDeputy(false);
+        courtScheduleJudiciary.setPosition("1");
+        courtScheduleJudiciary.setActive(true);
+        return courtScheduleJudiciary;
+    }
+
+    private AllocatedListing getAllocatedListing(final CourtSchedule courtSchedule) {
+        final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setId(randomUUID().toString());
+        allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
+        allocatedListing.setOucode(courtSchedule.getOuCode());
+        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0).atZone(UTC_ZONE).toInstant()));
+        allocatedListing.setDuration(60);
+        allocatedListing.setHearingId(randomUUID().toString());
+        allocatedListing.setBookingId(randomUUID().toString());
+        return allocatedListing;
     }
 
 }
