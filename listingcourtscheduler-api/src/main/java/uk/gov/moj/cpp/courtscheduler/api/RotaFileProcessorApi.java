@@ -10,7 +10,6 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileCaptureAndProcessTriggerService;
 import uk.gov.moj.cpp.courtscheduler.api.service.RotaRedundantDataCleanerService;
-import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFilePartialProcessor;
 
 import javax.inject.Inject;
 import javax.json.JsonObject;
@@ -35,9 +34,6 @@ public class RotaFileProcessorApi {
     @Inject
     private RotaRedundantDataCleanerService rotaRedundantDataCleanerService;
 
-    @Inject
-    private RotaFilePartialProcessor rotaFilePartialProcessor;
-
     @Handles("courtscheduler.rotasl.process_rota_files")
     public JsonEnvelope processRotaFiles(final JsonEnvelope envelope) {
         LOGGER.info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
@@ -60,49 +56,5 @@ public class RotaFileProcessorApi {
         LOGGER.info("successfully called and completed - rotaRedundantDataCleanerService.cleanDataForPreviousMonths asynchronously");
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.clean_redundant_rota_data").apply(createObjectBuilder().build());
-    }
-
-    @Handles("courtscheduler.rotasl.unassign.judiciary")
-    public JsonEnvelope unassignJudiciary(final JsonEnvelope envelope) {
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.rotasl.unassign.judiciary requested : {}", payload);
-
-        if (!payload.containsKey("assignments")) {
-            throw new BadRequestException("assignments array is required");
-        }
-
-        final javax.json.JsonArray assignments = payload.getJsonArray("assignments");
-        if (assignments == null || payload.isNull("assignments") || assignments.isEmpty()) {
-            throw new BadRequestException("assignments array must contain at least one item");
-        }
-
-        for (int i = 0; i < assignments.size(); i++) {
-            final JsonObject assignment = assignments.getJsonObject(i);
-            final String courtScheduleId = assignment.getString("courtScheduleId", "");
-            final String judiciaryId = assignment.getString("judiciaryId", "");
-
-            if (courtScheduleId.isEmpty()) {
-                throw new BadRequestException(String.format("courtScheduleId is required in assignments[%d]", i));
-            }
-
-            if (judiciaryId.isEmpty()) {
-                throw new BadRequestException(String.format("judiciaryId is required in assignments[%d]", i));
-            }
-
-            try {
-                rotaFilePartialProcessor.unassignJudiciary(courtScheduleId, judiciaryId);
-                LOGGER.info("courtscheduler.rotasl.unassign.judiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
-            } catch (IllegalStateException e) {
-                final String errorMessage = e.getMessage();
-                LOGGER.warn("courtscheduler.rotasl.unassign.judiciary: cannot unassign - {}", errorMessage);
-                throw new BadRequestException(errorMessage);
-            } catch (Exception e) {
-                final String errorMessage = e.getMessage();
-                LOGGER.warn("courtscheduler.rotasl.unassign.judiciary: not found - {}", errorMessage);
-                throw new BadRequestException(errorMessage);
-            }
-        }
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.unassign.judiciary").apply(createObjectBuilder().build());
     }
 }

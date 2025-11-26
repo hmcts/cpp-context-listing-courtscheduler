@@ -214,10 +214,10 @@ rule "API - Action - courtscheduler.rotasl.clean_redundant_rota_data"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.rotasl.unassign.judiciary"
+rule "API - Action - courtscheduler.unassign.judiciary"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.rotasl.unassign.judiciary");
+    $action: Action(name == "courtscheduler.unassign.judiciary");
         eval(userAndGroupProvider.isSystemUser($action));
   then
     $outcome.setSuccess(true);

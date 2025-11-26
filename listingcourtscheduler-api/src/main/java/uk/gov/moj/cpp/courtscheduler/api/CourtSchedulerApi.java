@@ -30,6 +30,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -141,6 +142,8 @@ public class CourtSchedulerApi {
     private AllocatedListingService allocatedListingService;
     @Inject
     private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
+    @Inject
+    private JudiciaryService judiciaryService;
 
 
     @Handles("courtscheduler.create")
@@ -506,6 +509,61 @@ public class CourtSchedulerApi {
                 .build()
                 : EMPTY_JSON_OBJECT;
         return envelopeFor(envelope, resJsonObj, ORGANISATION_UNIT_HMI_STATUS);
+    }
+
+    @Handles("courtscheduler.unassign.judiciary")
+    public JsonEnvelope unassignJudiciary(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.unassign.judiciary requested : {}", payload);
+
+        if (!payload.containsKey("judiciaries")) {
+            throw new BadRequestException("judiciaries array is required");
+        }
+
+        final javax.json.JsonArray judiciaries = payload.getJsonArray("judiciaries");
+        if (judiciaries == null || payload.isNull("judiciaries") || judiciaries.isEmpty()) {
+            throw new BadRequestException("judiciaries array must contain at least one item");
+        }
+
+        for (int i = 0; i < judiciaries.size(); i++) {
+            final JsonObject judiciary = judiciaries.getJsonObject(i);
+            final String judiciaryId = judiciary.getString("judiciaryId", "");
+
+            if (judiciaryId.isEmpty()) {
+                throw new BadRequestException(String.format("judiciaryId is required in judiciaries[%d]", i));
+            }
+
+            if (!judiciary.containsKey("sessionIds")) {
+                throw new BadRequestException(String.format("sessionIds array is required in judiciaries[%d]", i));
+            }
+
+            final javax.json.JsonArray sessionIds = judiciary.getJsonArray("sessionIds");
+            if (sessionIds == null || judiciary.isNull("sessionIds") || sessionIds.isEmpty()) {
+                throw new BadRequestException(String.format("sessionIds array must contain at least one item in judiciaries[%d]", i));
+            }
+
+            for (int j = 0; j < sessionIds.size(); j++) {
+                final String sessionId = sessionIds.getString(j, "");
+                if (sessionId.isEmpty()) {
+                    throw new BadRequestException(String.format("sessionId is required in judiciaries[%d].sessionIds[%d]", i, j));
+                }
+
+                try {
+                    judiciaryService.unassignJudiciary(sessionId, judiciaryId);
+                    LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciary {} from session {}", judiciaryId, sessionId);
+                } catch (IllegalStateException e) {
+                    final String errorMessage = e.getMessage();
+                    LOGGER.warn("courtscheduler.unassign.judiciary: cannot unassign - {}", errorMessage);
+                    throw new BadRequestException(errorMessage);
+                } catch (Exception e) {
+                    final String errorMessage = e.getMessage();
+                    LOGGER.warn("courtscheduler.unassign.judiciary: not found - {}", errorMessage);
+                    throw new BadRequestException(errorMessage);
+                }
+            }
+        }
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.unassign.judiciary").apply(createObjectBuilder().build());
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {

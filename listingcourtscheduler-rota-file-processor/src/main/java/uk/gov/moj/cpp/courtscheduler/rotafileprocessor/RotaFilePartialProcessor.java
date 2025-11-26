@@ -337,31 +337,4 @@ public class RotaFilePartialProcessor {
         }
         return totalAmount;
     }
-
-    @Transactional
-    public void unassignJudiciary(final String courtScheduleId, final String judiciaryId) {
-        logger.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
-
-        // Check if there are allocated listings for this court schedule
-        final Map<String, Integer> allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(singletonList(courtScheduleId));
-        if (allocatedListings.containsKey(courtScheduleId) && allocatedListings.get(courtScheduleId) > 0) {
-            final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has allocated listings", judiciaryId, courtScheduleId);
-            logger.warn("unassignJudiciary: {}", errorMessage);
-            throw new IllegalStateException(errorMessage);
-        }
-
-        // Find the CourtScheduleJudiciary entity
-        final CourtScheduleJudiciaryKey key = new CourtScheduleJudiciaryKey(courtScheduleId, judiciaryId);
-        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciary = courtScheduleJudiciaryRepository.findBy(key);
-
-        if (courtScheduleJudiciary == null) {
-            final String errorMessage = String.format("Judiciary %s not found for courtSchedule %s", judiciaryId, courtScheduleId);
-            logger.warn("unassignJudiciary: {}", errorMessage);
-            throw new IllegalArgumentException(errorMessage);
-        }
-
-        // Remove the judiciary assignment
-        courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary);
-        logger.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
-    }
 }

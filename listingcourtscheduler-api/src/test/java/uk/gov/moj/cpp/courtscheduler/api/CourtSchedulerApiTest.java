@@ -13,6 +13,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,6 +46,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -163,6 +166,8 @@ class CourtSchedulerApiTest {
     private JsonEnvelope envelope;
     @Mock
     private ListHearingSlotConverter listHearingSlotConverter;
+    @Mock
+    private JudiciaryService judiciaryService;
 
 
     @Test
@@ -696,6 +701,237 @@ class CourtSchedulerApiTest {
 
         assertThrows(ValidationException.class, () ->
                 courtSchedulerApi.validateSessionAvailabilityCourtSchedule(validationEnvelope));
+    }
+
+    @Test
+    void shouldUnassignJudiciarySuccessfully() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        doNothing().when(judiciaryService).unassignJudiciary(eq(sessionId), eq(judiciaryId));
+
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(eq(sessionId), eq(judiciaryId));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenSessionIdsIsMissing() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", "judge-456")
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+
+        assertEquals("sessionIds array is required in judiciaries[0]", exception.getMessage());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(anyString(), anyString());
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenJudiciaryIdIsMissing() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("sessionIds", createArrayBuilder()
+                        .add("schedule-123")
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+
+        assertEquals("judiciaryId is required in judiciaries[0]", exception.getMessage());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(anyString(), anyString());
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenCourtScheduleHasAllocatedListings() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+        final String errorMessage = "Cannot unassign judiciary judge-456 from courtSchedule schedule-123: court schedule has allocated listings";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        doThrow(new IllegalStateException(errorMessage))
+                .when(judiciaryService).unassignJudiciary(eq(sessionId), eq(judiciaryId));
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+
+        assertEquals(errorMessage, exception.getMessage());
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(eq(sessionId), eq(judiciaryId));
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenJudiciaryNotFound() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+        final String errorMessage = "Judiciary judge-456 not found for courtSchedule schedule-123";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        doThrow(new IllegalArgumentException(errorMessage))
+                .when(judiciaryService).unassignJudiciary(eq(sessionId), eq(judiciaryId));
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+
+        assertEquals(errorMessage, exception.getMessage());
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(eq(sessionId), eq(judiciaryId));
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenJudiciariesArrayIsMissing() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+
+        assertEquals("judiciaries array is required", exception.getMessage());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(anyString(), anyString());
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenJudiciariesArrayIsEmpty() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+
+        assertEquals("judiciaries array must contain at least one item", exception.getMessage());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(anyString(), anyString());
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenSessionIdsArrayIsEmpty() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", "judge-456")
+                .add("sessionIds", createArrayBuilder().build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+
+        assertEquals("sessionIds array must contain at least one item in judiciaries[0]", exception.getMessage());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(anyString(), anyString());
+    }
+
+    @Test
+    void shouldUnassignMultipleJudiciariesSuccessfully() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String sessionId2 = "1b2c3d44-7e8f-4b9a-8c7d-2a3b4c5d6666";
+        final String sessionId3 = "22223333-4444-5555-6666-777788889999";
+        final String judiciaryId1 = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+        final String judiciaryId2 = "7e6f4a11-1111-2222-3333-444455556666";
+
+        final JsonObject judiciary1 = createObjectBuilder()
+                .add("judiciaryId", judiciaryId1)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId1)
+                        .add(sessionId2)
+                        .build())
+                .build();
+        final JsonObject judiciary2 = createObjectBuilder()
+                .add("judiciaryId", judiciaryId2)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId3)
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary1)
+                .add(judiciary2)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        doNothing().when(judiciaryService).unassignJudiciary(anyString(), anyString());
+
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(eq(sessionId1), eq(judiciaryId1));
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(eq(sessionId2), eq(judiciaryId1));
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(eq(sessionId3), eq(judiciaryId2));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {

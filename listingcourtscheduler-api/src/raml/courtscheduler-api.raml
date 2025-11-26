@@ -519,19 +519,19 @@ protocols: [ HTTP, HTTPS ]
       202:
         description: Request Accepted
 
-/rotasl/unassign-judiciary:
+/unassign-judiciary:
   post:
     description: |
       Unassign a judiciary from a court schedule. This operation will remove the judiciary assignment if the court schedule has no allocated listings.
         ...
         (mapping):
-            requestType: application/vnd.courtscheduler.rotasl.unassign.judiciary+json
-            name: courtscheduler.rotasl.unassign.judiciary
+            requestType: application/vnd.courtscheduler.unassign.judiciary+json
+            name: courtscheduler.unassign.judiciary
         ...
     body:
-      application/vnd.courtscheduler.rotasl.unassign.judiciary+json:
-        schema: !include json/schema/courtscheduler.rotasl.unassign.judiciary.json
-        example: !include json/courtscheduler.rotasl.unassign.judiciary.json
+      application/vnd.courtscheduler.unassign.judiciary+json:
+        schema: !include json/schema/courtscheduler.unassign.judiciary.json
+        example: !include json/courtscheduler.unassign.judiciary.json
     responses:
       202:
         description: Request Accepted - Judiciary unassigned successfully

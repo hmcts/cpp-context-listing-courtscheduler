@@ -67,7 +67,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private static final String ROTASL_FILE_PROCESSOR_URL = "/rotasl/process-rota-files";
     private static final String ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL = "/rotasl/clean-redundant-rota-data";
-    private static final String ROTASL_UNASSIGN_JUDICIARY_URL = "/rotasl/unassign-judiciary";
+    private static final String UNASSIGN_JUDICIARY_URL = "/unassign-judiciary";
 
     private final AzureBlobClientService azureBlobClientService = new AzureBlobClientService();
 
@@ -356,17 +356,19 @@ class RotaFileProcessorIT extends AbstractIT {
         // Call unassign endpoint
 
         final String requestPayload = createObjectBuilder()
-                .add("assignments", createArrayBuilder()
+                .add("judiciaries", createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
                                 .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
                                 .build())
                         .build())
                 .build()
                 .toString();
 
-        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
-                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
                 SYSTEM_USER_ID,
                 requestPayload);
 
@@ -396,17 +398,19 @@ class RotaFileProcessorIT extends AbstractIT {
 
         // Call unassign endpoint
         final String requestPayload = createObjectBuilder()
-                .add("assignments", createArrayBuilder()
+                .add("judiciaries", createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
                                 .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
                                 .build())
                         .build())
                 .build()
                 .toString();
 
-        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
-                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
                 SYSTEM_USER_ID,
                 requestPayload);
 
@@ -429,17 +433,19 @@ class RotaFileProcessorIT extends AbstractIT {
 
         // Call unassign endpoint with non-existent judiciary
         final String requestPayload = createObjectBuilder()
-                .add("assignments", createArrayBuilder()
+                .add("judiciaries", createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
                                 .add("judiciaryId", nonExistentJudiciaryId)
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
                                 .build())
                         .build())
                 .build()
                 .toString();
 
-        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
-                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
                 SYSTEM_USER_ID,
                 requestPayload);
 
@@ -447,9 +453,9 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     @Test
-    void shouldReturnBadRequestWhenCourtScheduleIdMissing() {
+    void shouldReturnBadRequestWhenSessionIdsMissing() {
         final String requestPayload = createObjectBuilder()
-                .add("assignments", createArrayBuilder()
+                .add("judiciaries", createArrayBuilder()
                         .add(createObjectBuilder()
                                 .add("judiciaryId", randomUUID().toString())
                                 .build())
@@ -457,8 +463,8 @@ class RotaFileProcessorIT extends AbstractIT {
                 .build()
                 .toString();
 
-        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
-                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
                 SYSTEM_USER_ID,
                 requestPayload);
 
@@ -468,16 +474,18 @@ class RotaFileProcessorIT extends AbstractIT {
     @Test
     void shouldReturnBadRequestWhenJudiciaryIdMissing() {
         final String requestPayload = createObjectBuilder()
-                .add("assignments", createArrayBuilder()
+                .add("judiciaries", createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("courtScheduleId", randomUUID().toString())
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(randomUUID().toString())
+                                        .build())
                                 .build())
                         .build())
                 .build()
                 .toString();
 
-        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
-                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+        final Response response = postCommand(UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.unassign.judiciary+json",
                 SYSTEM_USER_ID,
                 requestPayload);
 

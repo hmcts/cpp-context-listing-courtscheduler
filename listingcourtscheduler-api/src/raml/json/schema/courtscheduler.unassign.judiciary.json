@@ -2,27 +2,31 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "required": [
-    "assignments"
+    "judiciaries"
   ],
   "properties": {
-    "assignments": {
+    "judiciaries": {
       "type": "array",
-      "description": "List of court schedule and judiciary pairs to unassign",
+      "description": "List of judiciaries to unassign from sessions",
       "minItems": 1,
       "items": {
         "type": "object",
         "required": [
-          "courtScheduleId",
-          "judiciaryId"
+          "judiciaryId",
+          "sessionIds"
         ],
         "properties": {
-          "courtScheduleId": {
-            "type": "string",
-            "description": "The unique identifier of the court schedule"
-          },
           "judiciaryId": {
             "type": "string",
             "description": "The unique identifier of the judiciary to unassign"
+          },
+          "sessionIds": {
+            "type": "array",
+            "description": "List of session (court schedule) IDs to unassign the judiciary from",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
