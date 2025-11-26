@@ -6,7 +6,9 @@ import static java.util.Objects.nonNull;
 import static java.util.Optional.of;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static javax.json.Json.createObjectBuilder;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.activemq.artemis.utils.RandomUtil.randomSimpleString;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
@@ -14,6 +16,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -30,6 +33,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
 import java.io.ByteArrayInputStream;
@@ -62,6 +66,7 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private static final String ROTASL_FILE_PROCESSOR_URL = "/rotasl/process-rota-files";
     private static final String ROTASL_CLEAN_REDUNDANT_ROTA_DATA_URL = "/rotasl/clean-redundant-rota-data";
+    private static final String ROTASL_UNASSIGN_JUDICIARY_URL = "/rotasl/unassign-judiciary";
 
     private final AzureBlobClientService azureBlobClientService = new AzureBlobClientService();
 
@@ -332,6 +337,170 @@ class RotaFileProcessorIT extends AbstractIT {
         assertTrue(databaseReader.allocatedListings().isEmpty());
     }
 
+    @Test
+    void shouldUnassignJudiciarySuccessfully() throws SQLException, Exception {
+        // Setup: Create a court schedule and assign a judiciary
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        // Verify judiciary is assigned
+        List<CourtScheduleJudiciary> judiciariesBefore = databaseReader.courtScheduleJudiciaries();
+        assertTrue(judiciariesBefore.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+
+        // Call unassign endpoint
+        final String requestPayload = createObjectBuilder()
+                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
+                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                .build()
+                .toString();
+
+        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Verify judiciary is unassigned
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        assertFalse(judiciariesAfter.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenUnassigningJudiciaryWithAllocatedListings() throws SQLException, Exception {
+        // Setup: Create a court schedule with allocated listings and assign a judiciary
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        // Add allocated listing to the court schedule
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        // Call unassign endpoint
+        final String requestPayload = createObjectBuilder()
+                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
+                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                .build()
+                .toString();
+
+        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+
+        // Verify judiciary is still assigned (not removed due to allocated listings)
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        assertTrue(judiciariesAfter.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenJudiciaryNotFound() throws SQLException {
+        // Setup: Create a court schedule but no judiciary assignment
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final String nonExistentJudiciaryId = randomUUID().toString();
+
+        // Call unassign endpoint with non-existent judiciary
+        final String requestPayload = createObjectBuilder()
+                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
+                .add("judiciaryId", nonExistentJudiciaryId)
+                .build()
+                .toString();
+
+        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenCourtScheduleIdMissing() {
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaryId", randomUUID().toString())
+                .build()
+                .toString();
+
+        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenJudiciaryIdMissing() {
+        final String requestPayload = createObjectBuilder()
+                .add("courtScheduleId", randomUUID().toString())
+                .build()
+                .toString();
+
+        final Response response = postCommand(ROTASL_UNASSIGN_JUDICIARY_URL,
+                "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    private CourtSchedule createTestCourtSchedule() {
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(randomUUID().toString());
+        courtSchedule.setListingProfileId("CS" + randomSimpleString().toString());
+        courtSchedule.setOuCode(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE);
+        courtSchedule.setSessionDate(LocalDate.now().plusDays(30));
+        courtSchedule.setActive(true);
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setAvailableSlots(10);
+        courtSchedule.setMaxDuration(240);
+        courtSchedule.setAvailableDuration(240);
+        courtSchedule.setCourtSession(AM_SESSION);
+        courtSchedule.setPanel("ADULT");
+        courtSchedule.setBusinessType("TRL");
+        courtSchedule.setSupportAdSplit(false);
+        courtSchedule.setIsOverbookingAllowed(false);
+        courtSchedule.setMaxAdMorningDuration(0);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        return courtSchedule;
+    }
+
+    private CourtScheduleJudiciary createTestCourtScheduleJudiciary(final String courtScheduleId) {
+        final CourtScheduleJudiciary courtScheduleJudiciary = new CourtScheduleJudiciary();
+        final CourtScheduleJudiciaryKey key = new CourtScheduleJudiciaryKey();
+        key.setCourtScheduleId(courtScheduleId);
+        key.setJudiciaryId(randomUUID().toString());
+        courtScheduleJudiciary.setId(key);
+        courtScheduleJudiciary.setCourtListingProfileId("CS" + randomSimpleString().toString());
+        courtScheduleJudiciary.setRotaJudiciaryId("ROTA" + randomSimpleString().toString());
+        courtScheduleJudiciary.setTitle("Mr");
+        courtScheduleJudiciary.setForenames("John");
+        courtScheduleJudiciary.setSurname("Doe");
+        courtScheduleJudiciary.setEmail("john.doe@example.com");
+        courtScheduleJudiciary.setJudiciaryType("MAGISTRATE");
+        courtScheduleJudiciary.setBenchChairman(false);
+        courtScheduleJudiciary.setDeputy(false);
+        courtScheduleJudiciary.setPosition("1");
+        courtScheduleJudiciary.setActive(true);
+        return courtScheduleJudiciary;
+    }
 
     private void processFullRotaFile(final String fileBlobBaseName,
                                      final boolean migrated,
