@@ -56,7 +56,8 @@ public class JudiciaryService {
         }
 
         // Remove the judiciary assignment using EntityManager
-        entityManager.remove(courtScheduleJudiciary);
+        final CourtScheduleJudiciary managed = entityManager.merge(courtScheduleJudiciary);
+        entityManager.remove(managed);
         entityManager.flush();
         logger.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
     }
