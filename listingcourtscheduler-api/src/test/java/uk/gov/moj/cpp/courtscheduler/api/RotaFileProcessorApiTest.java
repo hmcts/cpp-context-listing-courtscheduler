@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.UUID.randomUUID;
+import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -105,9 +106,15 @@ class RotaFileProcessorApiTest {
         final String courtScheduleId = "schedule-123";
         final String judiciaryId = "judge-456";
 
-        final JsonObject payloadAsJsonObject = createObjectBuilder()
+        final JsonObject assignment = createObjectBuilder()
                 .add("courtScheduleId", courtScheduleId)
                 .add("judiciaryId", judiciaryId)
+                .build();
+        final javax.json.JsonArray assignmentsArray = createArrayBuilder()
+                .add(assignment)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("assignments", assignmentsArray)
                 .build();
         final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
         when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
@@ -125,15 +132,21 @@ class RotaFileProcessorApiTest {
     void shouldThrowBadRequestExceptionWhenCourtScheduleIdIsMissing() {
         final String requestName = "courtscheduler.rotasl.unassign.judiciary";
 
-        final JsonObject payloadAsJsonObject = createObjectBuilder()
+        final JsonObject assignment = createObjectBuilder()
                 .add("judiciaryId", "judge-456")
+                .build();
+        final javax.json.JsonArray assignmentsArray = createArrayBuilder()
+                .add(assignment)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("assignments", assignmentsArray)
                 .build();
         final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
 
         BadRequestException exception = assertThrows(BadRequestException.class,
                 () -> rotaFileProcessorApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
 
-        assertEquals("courtScheduleId is required", exception.getMessage());
+        assertEquals("courtScheduleId is required in assignments[0]", exception.getMessage());
         verify(rotaFilePartialProcessor, org.mockito.Mockito.never()).unassignJudiciary(anyString(), anyString());
     }
 
@@ -141,15 +154,21 @@ class RotaFileProcessorApiTest {
     void shouldThrowBadRequestExceptionWhenJudiciaryIdIsMissing() {
         final String requestName = "courtscheduler.rotasl.unassign.judiciary";
 
-        final JsonObject payloadAsJsonObject = createObjectBuilder()
+        final JsonObject assignment = createObjectBuilder()
                 .add("courtScheduleId", "schedule-123")
+                .build();
+        final javax.json.JsonArray assignmentsArray = createArrayBuilder()
+                .add(assignment)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("assignments", assignmentsArray)
                 .build();
         final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
 
         BadRequestException exception = assertThrows(BadRequestException.class,
                 () -> rotaFileProcessorApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
 
-        assertEquals("judiciaryId is required", exception.getMessage());
+        assertEquals("judiciaryId is required in assignments[0]", exception.getMessage());
         verify(rotaFilePartialProcessor, org.mockito.Mockito.never()).unassignJudiciary(anyString(), anyString());
     }
 
@@ -160,9 +179,15 @@ class RotaFileProcessorApiTest {
         final String judiciaryId = "judge-456";
         final String errorMessage = "Cannot unassign judiciary judge-456 from courtSchedule schedule-123: court schedule has allocated listings";
 
-        final JsonObject payloadAsJsonObject = createObjectBuilder()
+        final JsonObject assignment = createObjectBuilder()
                 .add("courtScheduleId", courtScheduleId)
                 .add("judiciaryId", judiciaryId)
+                .build();
+        final javax.json.JsonArray assignmentsArray = createArrayBuilder()
+                .add(assignment)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("assignments", assignmentsArray)
                 .build();
         final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
         doThrow(new IllegalStateException(errorMessage))
@@ -183,9 +208,15 @@ class RotaFileProcessorApiTest {
         final String judiciaryId = "judge-456";
         final String errorMessage = "Judiciary judge-456 not found for courtSchedule schedule-123";
 
-        final JsonObject payloadAsJsonObject = createObjectBuilder()
+        final JsonObject assignment = createObjectBuilder()
                 .add("courtScheduleId", courtScheduleId)
                 .add("judiciaryId", judiciaryId)
+                .build();
+        final javax.json.JsonArray assignmentsArray = createArrayBuilder()
+                .add(assignment)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("assignments", assignmentsArray)
                 .build();
         final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
         doThrow(new IllegalArgumentException(errorMessage))
@@ -197,6 +228,74 @@ class RotaFileProcessorApiTest {
         assertEquals(errorMessage, exception.getMessage());
         verify(rotaFilePartialProcessor, atLeastOnce()).unassignJudiciary(eq(courtScheduleId), eq(judiciaryId));
         verify(LOGGER, atLeastOnce()).warn("courtscheduler.rotasl.unassign.judiciary: not found - {}", errorMessage);
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenAssignmentsArrayIsMissing() {
+        final String requestName = "courtscheduler.rotasl.unassign.judiciary";
+
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> rotaFileProcessorApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+
+        assertEquals("assignments array is required", exception.getMessage());
+        verify(rotaFilePartialProcessor, org.mockito.Mockito.never()).unassignJudiciary(anyString(), anyString());
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenAssignmentsArrayIsEmpty() {
+        final String requestName = "courtscheduler.rotasl.unassign.judiciary";
+
+        final javax.json.JsonArray assignmentsArray = createArrayBuilder()
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("assignments", assignmentsArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> rotaFileProcessorApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+
+        assertEquals("assignments array must contain at least one item", exception.getMessage());
+        verify(rotaFilePartialProcessor, org.mockito.Mockito.never()).unassignJudiciary(anyString(), anyString());
+    }
+
+    @Test
+    void shouldUnassignMultipleJudiciariesSuccessfully() {
+        final String requestName = "courtscheduler.rotasl.unassign.judiciary";
+        final String courtScheduleId1 = "schedule-123";
+        final String judiciaryId1 = "judge-456";
+        final String courtScheduleId2 = "schedule-789";
+        final String judiciaryId2 = "judge-012";
+
+        final JsonObject assignment1 = createObjectBuilder()
+                .add("courtScheduleId", courtScheduleId1)
+                .add("judiciaryId", judiciaryId1)
+                .build();
+        final JsonObject assignment2 = createObjectBuilder()
+                .add("courtScheduleId", courtScheduleId2)
+                .add("judiciaryId", judiciaryId2)
+                .build();
+        final javax.json.JsonArray assignmentsArray = createArrayBuilder()
+                .add(assignment1)
+                .add(assignment2)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("assignments", assignmentsArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        doNothing().when(rotaFilePartialProcessor).unassignJudiciary(eq(courtScheduleId1), eq(judiciaryId1));
+        doNothing().when(rotaFilePartialProcessor).unassignJudiciary(eq(courtScheduleId2), eq(judiciaryId2));
+
+        rotaFileProcessorApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(rotaFilePartialProcessor, atLeastOnce()).unassignJudiciary(eq(courtScheduleId1), eq(judiciaryId1));
+        verify(rotaFilePartialProcessor, atLeastOnce()).unassignJudiciary(eq(courtScheduleId2), eq(judiciaryId2));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {

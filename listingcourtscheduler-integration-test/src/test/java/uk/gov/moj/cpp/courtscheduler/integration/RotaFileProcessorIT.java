@@ -6,6 +6,7 @@ import static java.util.Objects.nonNull;
 import static java.util.Optional.of;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -353,9 +354,14 @@ class RotaFileProcessorIT extends AbstractIT {
                         && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
 
         // Call unassign endpoint
+
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
-                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                .add("assignments", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
+                                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .build())
+                        .build())
                 .build()
                 .toString();
 
@@ -363,6 +369,8 @@ class RotaFileProcessorIT extends AbstractIT {
                 "application/vnd.courtscheduler.rotasl.unassign.judiciary+json",
                 SYSTEM_USER_ID,
                 requestPayload);
+
+
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
@@ -388,8 +396,12 @@ class RotaFileProcessorIT extends AbstractIT {
 
         // Call unassign endpoint
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
-                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                .add("assignments", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
+                                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .build())
+                        .build())
                 .build()
                 .toString();
 
@@ -408,7 +420,7 @@ class RotaFileProcessorIT extends AbstractIT {
     }
 
     @Test
-    void shouldReturnBadRequestWhenJudiciaryNotFound() throws SQLException {
+    void shouldReturnBadRequestWhenJudiciaryNotFound() throws SQLException, IllegalArgumentException {
         // Setup: Create a court schedule but no judiciary assignment
         final CourtSchedule courtSchedule = createTestCourtSchedule();
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -417,8 +429,12 @@ class RotaFileProcessorIT extends AbstractIT {
 
         // Call unassign endpoint with non-existent judiciary
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
-                .add("judiciaryId", nonExistentJudiciaryId)
+                .add("assignments", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("courtScheduleId", courtSchedule.getCourtScheduleId())
+                                .add("judiciaryId", nonExistentJudiciaryId)
+                                .build())
+                        .build())
                 .build()
                 .toString();
 
@@ -433,7 +449,11 @@ class RotaFileProcessorIT extends AbstractIT {
     @Test
     void shouldReturnBadRequestWhenCourtScheduleIdMissing() {
         final String requestPayload = createObjectBuilder()
-                .add("judiciaryId", randomUUID().toString())
+                .add("assignments", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", randomUUID().toString())
+                                .build())
+                        .build())
                 .build()
                 .toString();
 
@@ -448,7 +468,11 @@ class RotaFileProcessorIT extends AbstractIT {
     @Test
     void shouldReturnBadRequestWhenJudiciaryIdMissing() {
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleId", randomUUID().toString())
+                .add("assignments", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("courtScheduleId", randomUUID().toString())
+                                .build())
+                        .build())
                 .build()
                 .toString();
 

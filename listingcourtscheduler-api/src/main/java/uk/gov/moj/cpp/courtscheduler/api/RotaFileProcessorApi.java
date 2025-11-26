@@ -67,26 +67,40 @@ public class RotaFileProcessorApi {
         final JsonObject payload = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.rotasl.unassign.judiciary requested : {}", payload);
 
-        final String courtScheduleId = payload.getString("courtScheduleId", "");
-        final String judiciaryId = payload.getString("judiciaryId", "");
-
-        if (courtScheduleId.isEmpty()) {
-            throw new BadRequestException("courtScheduleId is required");
+        if (!payload.containsKey("assignments")) {
+            throw new BadRequestException("assignments array is required");
         }
 
-        if (judiciaryId.isEmpty()) {
-            throw new BadRequestException("judiciaryId is required");
+        final javax.json.JsonArray assignments = payload.getJsonArray("assignments");
+        if (assignments == null || payload.isNull("assignments") || assignments.isEmpty()) {
+            throw new BadRequestException("assignments array must contain at least one item");
         }
 
-        try {
-            rotaFilePartialProcessor.unassignJudiciary(courtScheduleId, judiciaryId);
-            LOGGER.info("courtscheduler.rotasl.unassign.judiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
-        } catch (IllegalStateException e) {
-            LOGGER.warn("courtscheduler.rotasl.unassign.judiciary: cannot unassign - {}", e.getMessage());
-            throw new BadRequestException(e.getMessage());
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("courtscheduler.rotasl.unassign.judiciary: not found - {}", e.getMessage());
-            throw new BadRequestException(e.getMessage());
+        for (int i = 0; i < assignments.size(); i++) {
+            final JsonObject assignment = assignments.getJsonObject(i);
+            final String courtScheduleId = assignment.getString("courtScheduleId", "");
+            final String judiciaryId = assignment.getString("judiciaryId", "");
+
+            if (courtScheduleId.isEmpty()) {
+                throw new BadRequestException(String.format("courtScheduleId is required in assignments[%d]", i));
+            }
+
+            if (judiciaryId.isEmpty()) {
+                throw new BadRequestException(String.format("judiciaryId is required in assignments[%d]", i));
+            }
+
+            try {
+                rotaFilePartialProcessor.unassignJudiciary(courtScheduleId, judiciaryId);
+                LOGGER.info("courtscheduler.rotasl.unassign.judiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+            } catch (IllegalStateException e) {
+                final String errorMessage = e.getMessage();
+                LOGGER.warn("courtscheduler.rotasl.unassign.judiciary: cannot unassign - {}", errorMessage);
+                throw new BadRequestException(errorMessage);
+            } catch (Exception e) {
+                final String errorMessage = e.getMessage();
+                LOGGER.warn("courtscheduler.rotasl.unassign.judiciary: not found - {}", errorMessage);
+                throw new BadRequestException(errorMessage);
+            }
         }
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.unassign.judiciary").apply(createObjectBuilder().build());
