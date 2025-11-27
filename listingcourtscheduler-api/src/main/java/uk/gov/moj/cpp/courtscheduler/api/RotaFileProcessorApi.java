@@ -20,6 +20,8 @@ import org.slf4j.LoggerFactory;
 public class RotaFileProcessorApi {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RotaFileProcessorApi.class.getName());
+    private static final String ROTA_PROCESS_NEW = "new";
+    private static final String ROTA_PROCESS = "rotaProcess";
 
     @Inject
     private Enveloper enveloper;
@@ -39,9 +41,9 @@ public class RotaFileProcessorApi {
         final JsonObject payload = envelope.payloadAsJsonObject();
         LOGGER.info("calling rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
         final boolean isForItTest = payload.getBoolean("forItTest", false);
-        final String rotaProcess = payload.containsKey("rotaProcess") && !payload.isNull("rotaProcess") 
-                ? payload.getString("rotaProcess") 
-                : "new";
+        final String rotaProcess = payload.containsKey(ROTA_PROCESS) && !payload.isNull(ROTA_PROCESS)
+                ? payload.getString(ROTA_PROCESS)
+                : ROTA_PROCESS_NEW;
         rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, isForItTest, rotaProcess);
         LOGGER.info("successfully called and completed - rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
 

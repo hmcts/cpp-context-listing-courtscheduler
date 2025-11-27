@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 public class RotaFileCaptureAndProcessTriggerService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileCaptureAndProcessTriggerService.class);
+    private static final String ROTA_PROCESS_OLD = "old";
 
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
@@ -73,7 +74,7 @@ public class RotaFileCaptureAndProcessTriggerService {
                     final long downloadEnd = System.nanoTime();
                     logger.info("PRF: Downloaded blob {} in {} ms", blobName, (downloadEnd - downloadStart) / 1_000_000);
                     
-                    if ("old".equals(rotaProcess)) {
+                    if (ROTA_PROCESS_OLD.equals(rotaProcess)) {
                         logger.info("Using old rota file processor service for blob: {}", blobName);
                         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
                     } else {
