@@ -39,6 +39,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
@@ -147,6 +148,8 @@ public class CourtSchedulerApi {
     private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
     @Inject
     private JudiciaryService judiciaryService;
+    @Inject
+    private JudiciariesApiValidator judiciariesApiValidator;
 
 
     @Handles("courtscheduler.create")
@@ -519,38 +522,20 @@ public class CourtSchedulerApi {
         final JsonObject payload = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.unassign.judiciary requested : {}", payload);
 
-        if (!payload.containsKey(JUDICIARIES)) {
-            throw new BadRequestException("judiciaries array is required");
+        JsonObject validate = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
+
+        if (!validate.isEmpty()) {
+            return envelopeFor(envelope, validate, ERROR);
         }
 
         final javax.json.JsonArray judiciaries = payload.getJsonArray(JUDICIARIES);
-        if (judiciaries == null || payload.isNull(JUDICIARIES) || judiciaries.isEmpty()) {
-            throw new BadRequestException("judiciaries array must contain at least one item");
-        }
-
         for (int i = 0; i < judiciaries.size(); i++) {
             final JsonObject judiciary = judiciaries.getJsonObject(i);
             final String judiciaryId = judiciary.getString(JUDICIARY_ID, "");
-
-            if (judiciaryId.isEmpty()) {
-                throw new BadRequestException(String.format("judiciaryId is required in judiciaries[%d]", i));
-            }
-
-            if (!judiciary.containsKey(SESSIONIDS)) {
-                throw new BadRequestException(String.format("sessionIds array is required in judiciaries[%d]", i));
-            }
-
             final javax.json.JsonArray sessionIds = judiciary.getJsonArray(SESSIONIDS);
-            if (sessionIds == null || judiciary.isNull(SESSIONIDS) || sessionIds.isEmpty()) {
-                throw new BadRequestException(String.format("sessionIds array must contain at least one item in judiciaries[%d]", i));
-            }
 
             for (int j = 0; j < sessionIds.size(); j++) {
                 final String sessionId = sessionIds.getString(j, "");
-                if (sessionId.isEmpty()) {
-                    throw new BadRequestException(String.format("sessionId is required in judiciaries[%d].sessionIds[%d]", i, j));
-                }
-
                 unassignJudiciary(sessionId, judiciaryId);
             }
         }
