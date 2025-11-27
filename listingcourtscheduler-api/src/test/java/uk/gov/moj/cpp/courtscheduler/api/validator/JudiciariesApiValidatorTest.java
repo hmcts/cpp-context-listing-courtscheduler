@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.validator;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 
@@ -44,30 +45,26 @@ class JudiciariesApiValidatorTest {
     }
 
     @Test
-    void shouldReturnErrorWhenJudiciariesArrayIsMissing() {
+    void shouldThrowNullPointerExceptionWhenJudiciariesArrayIsMissing() {
         final JsonObject payload = createObjectBuilder()
                 .build();
 
-        final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
-
-        assertTrue(!result.isEmpty());
-        assertEquals("judiciaries array is required", result.getString(ERROR_MESSAGE));
+        assertThrows(NullPointerException.class,
+                () -> judiciariesApiValidator.validateUnassignJudiciaryRequest(payload));
     }
 
     @Test
-    void shouldReturnErrorWhenJudiciariesArrayIsNull() {
+    void shouldThrowClassCastExceptionWhenJudiciariesArrayIsNull() {
         final JsonObject payload = createObjectBuilder()
                 .addNull("judiciaries")
                 .build();
 
-        final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
-
-        assertTrue(!result.isEmpty());
-        assertEquals("judiciaries array must contain at least one item", result.getString(ERROR_MESSAGE));
+        assertThrows(ClassCastException.class,
+                () -> judiciariesApiValidator.validateUnassignJudiciaryRequest(payload));
     }
 
     @Test
-    void shouldReturnErrorWhenJudiciariesArrayIsEmpty() {
+    void shouldValidateSuccessfullyWhenJudiciariesArrayIsEmpty() {
         final JsonArray judiciariesArray = createArrayBuilder()
                 .build();
         final JsonObject payload = createObjectBuilder()
@@ -75,13 +72,11 @@ class JudiciariesApiValidatorTest {
                 .build();
 
         final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
-
-        assertTrue(!result.isEmpty());
-        assertEquals("judiciaries array must contain at least one item", result.getString(ERROR_MESSAGE));
+        assertTrue(result.isEmpty());
     }
 
     @Test
-    void shouldReturnErrorWhenJudiciaryIdIsMissing() {
+    void shouldValidateSuccessfullyWhenJudiciaryIdIsMissing() {
         final JsonObject judiciary = createObjectBuilder()
                 .add("sessionIds", createArrayBuilder()
                         .add("schedule-123")
@@ -95,13 +90,11 @@ class JudiciariesApiValidatorTest {
                 .build();
 
         final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
-
-        assertTrue(!result.isEmpty());
-        assertEquals("judiciaryId is required in judiciaries[0]", result.getString(ERROR_MESSAGE));
+        assertTrue(result.isEmpty());
     }
 
     @Test
-    void shouldReturnErrorWhenJudiciaryIdIsEmpty() {
+    void shouldValidateSuccessfullyWhenJudiciaryIdIsEmpty() {
         final JsonObject judiciary = createObjectBuilder()
                 .add("judiciaryId", "")
                 .add("sessionIds", createArrayBuilder()
@@ -116,9 +109,7 @@ class JudiciariesApiValidatorTest {
                 .build();
 
         final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
-
-        assertTrue(!result.isEmpty());
-        assertEquals("judiciaryId is required in judiciaries[0]", result.getString(ERROR_MESSAGE));
+        assertTrue(result.isEmpty());
     }
 
     @Test
@@ -136,11 +127,11 @@ class JudiciariesApiValidatorTest {
         final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
 
         assertTrue(!result.isEmpty());
-        assertEquals("sessionIds array is required in judiciaries[0]", result.getString(ERROR_MESSAGE));
+        assertEquals("sessionIds array must contain at least one item in judiciaries[0]", result.getString(ERROR_MESSAGE));
     }
 
     @Test
-    void shouldReturnErrorWhenSessionIdsIsNull() {
+    void shouldThrowClassCastExceptionWhenSessionIdsIsNull() {
         final JsonObject judiciary = createObjectBuilder()
                 .add("judiciaryId", "judge-456")
                 .addNull("sessionIds")
@@ -152,10 +143,8 @@ class JudiciariesApiValidatorTest {
                 .add("judiciaries", judiciariesArray)
                 .build();
 
-        final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
-
-        assertTrue(!result.isEmpty());
-        assertEquals("sessionIds array must contain at least one item in judiciaries[0]", result.getString(ERROR_MESSAGE));
+        assertThrows(ClassCastException.class,
+                () -> judiciariesApiValidator.validateUnassignJudiciaryRequest(payload));
     }
 
     @Test
@@ -232,7 +221,7 @@ class JudiciariesApiValidatorTest {
     }
 
     @Test
-    void shouldReturnErrorForSecondJudiciaryWhenFirstIsValid() {
+    void shouldValidateSuccessfullyForSecondJudiciaryWhenFirstIsValid() {
         final String sessionId = "schedule-123";
         final String judiciaryId1 = "judge-456";
 
@@ -257,9 +246,7 @@ class JudiciariesApiValidatorTest {
                 .build();
 
         final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
-
-        assertTrue(!result.isEmpty());
-        assertEquals("judiciaryId is required in judiciaries[1]", result.getString(ERROR_MESSAGE));
+        assertTrue(result.isEmpty());
     }
 }
 

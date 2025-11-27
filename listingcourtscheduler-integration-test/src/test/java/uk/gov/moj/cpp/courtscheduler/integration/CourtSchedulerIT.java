@@ -1694,6 +1694,8 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldReturnBadRequestWhenJudiciaryIdMissing() {
+        // Note: Validator no longer validates missing judiciaryId, but service layer will return error
+        // when trying to find judiciary with empty ID
         final String requestPayload = createObjectBuilder()
                 .add("judiciaries", createArrayBuilder()
                         .add(createObjectBuilder()

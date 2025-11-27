@@ -22,34 +22,12 @@ public class JudiciariesApiValidator {
     public JsonObject validateUnassignJudiciaryRequest(final JsonObject payload) {
         LOGGER.info("Validating unassign judiciary request : {}", payload);
 
-        if (!payload.containsKey(JUDICIARIES)) {
-            return getMessage("judiciaries array is required");
-        }
-
-        if (payload.isNull(JUDICIARIES)) {
-            return getMessage("judiciaries array must contain at least one item");
-        }
-
         final JsonArray judiciaries = payload.getJsonArray(JUDICIARIES);
-        if (judiciaries == null || judiciaries.isEmpty()) {
-            return getMessage("judiciaries array must contain at least one item");
-        }
+
 
         for (int i = 0; i < judiciaries.size(); i++) {
             final JsonObject judiciary = judiciaries.getJsonObject(i);
             final String judiciaryId = judiciary.getString(JUDICIARY_ID, "");
-
-            if (judiciaryId.isEmpty()) {
-                return getMessage(String.format("judiciaryId is required in judiciaries[%d]", i));
-            }
-
-            if (!judiciary.containsKey(SESSIONIDS)) {
-                return getMessage(String.format("sessionIds array is required in judiciaries[%d]", i));
-            }
-
-            if (judiciary.isNull(SESSIONIDS)) {
-                return getMessage(String.format("sessionIds array must contain at least one item in judiciaries[%d]", i));
-            }
 
             final JsonArray sessionIds = judiciary.getJsonArray(SESSIONIDS);
             if (sessionIds == null || sessionIds.isEmpty()) {
