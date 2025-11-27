@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.api;
 
 import static javax.json.Json.createObjectBuilder;
 
-import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
 import uk.gov.justice.services.core.annotation.CustomServiceComponent;
 import uk.gov.justice.services.core.annotation.Handles;
 import uk.gov.justice.services.core.enveloper.Enveloper;

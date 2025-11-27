@@ -4,7 +4,6 @@ import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
-import static java.util.Collections.singletonList;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toMap;
 import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
@@ -20,8 +19,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
 
 import java.time.LocalDate;
@@ -63,9 +60,6 @@ public class RotaFilePartialProcessor {
 
     @Inject
     private BusinessTypeMatchingLogger businessTypeMatchingLogger;
-
-    @Inject
-    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
