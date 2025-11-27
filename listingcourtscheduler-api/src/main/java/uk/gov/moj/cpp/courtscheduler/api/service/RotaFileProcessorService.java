@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
-import static java.util.Objects.isNull;
 import static java.util.Optional.empty;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
@@ -17,7 +16,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDGE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDGE_TITLE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDICIARY_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDICIARY_TYPE;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.LOCATION_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.MAGISTRATE_FORENAMES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.MAGISTRATE_SURNAME;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.MAGS_EMAIL;
@@ -28,12 +26,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSI
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SURNAME;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.TITLE;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE_ID;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE_NAME;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshotFileNamePrefix;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshotFileTimeStampAsOffsetDateTime;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
@@ -44,19 +38,17 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
-import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
+import uk.gov.moj.cpp.courtscheduler.api.service.helper.CourtScheduleJudiciaryQueryHelper;
+import uk.gov.moj.cpp.courtscheduler.api.service.helper.DateParsingUtility;
+import uk.gov.moj.cpp.courtscheduler.api.service.helper.JudiciaryCourtScheduleMapComparator;
+import uk.gov.moj.cpp.courtscheduler.api.service.helper.RotaFileUtility;
+import uk.gov.moj.cpp.courtscheduler.api.service.helper.VenueCourtRoomHelper;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryBuilder;
 
 import java.io.ByteArrayInputStream;
-import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -78,40 +70,42 @@ import org.slf4j.LoggerFactory;
 public class RotaFileProcessorService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessorService.class);
-    private static final String SNAPSHOT_NAME_PART = "_snapshot_";
-    private static final String DUMMY_NAME_PART = "dummysupport";
-    private static final long NANOSECONDS_TO_MILLISECONDS = 1_000_000L;
-    private static final String EMPTY_STRING = "";
-    private static final String SNAPSHOT_FILE_PROCESSING_SKIPPED = "Snapshot file processing skipped";
-
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final AzureBlobClientService azureBlobClientService;
     private final RotaFileParser rotaFileParser;
-    private final RotaFileProcessHistoryRepository rotaFileProcessHistoryRepository;
     private final RotaFileProcessHistoryService rotaFileProcessHistoryService;
     private final RotaReferenceDataService referenceDataValidationService;
     private final SessionsService sessionsService;
     private final JudiciaryBuilder judiciaryBuilder;
-    private final CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+    private final RotaFileUtility rotaFileUtility;
+    private final DateParsingUtility dateParsingUtility;
+    private final VenueCourtRoomHelper venueCourtRoomHelper;
+    private final CourtScheduleJudiciaryQueryHelper courtScheduleJudiciaryQueryHelper;
+    private final JudiciaryCourtScheduleMapComparator mapComparator;
 
     @Inject
     public RotaFileProcessorService(final AzureBlobClientService azureBlobClientService,
                                     final RotaFileParser rotaFileParser,
-                                    final RotaFileProcessHistoryRepository rotaFileProcessHistoryRepository,
                                     final RotaFileProcessHistoryService rotaFileProcessHistoryService,
                                     final RotaReferenceDataService referenceDataValidationService,
                                     final SessionsService sessionsService,
                                     final JudiciaryBuilder judiciaryBuilder,
-                                    final CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository) {
+                                    final RotaFileUtility rotaFileUtility,
+                                    final DateParsingUtility dateParsingUtility,
+                                    final VenueCourtRoomHelper venueCourtRoomHelper,
+                                    final CourtScheduleJudiciaryQueryHelper courtScheduleJudiciaryQueryHelper,
+                                    final JudiciaryCourtScheduleMapComparator mapComparator) {
         this.azureBlobClientService = azureBlobClientService;
         this.rotaFileParser = rotaFileParser;
-        this.rotaFileProcessHistoryRepository = rotaFileProcessHistoryRepository;
         this.rotaFileProcessHistoryService = rotaFileProcessHistoryService;
         this.referenceDataValidationService = referenceDataValidationService;
         this.sessionsService = sessionsService;
         this.judiciaryBuilder = judiciaryBuilder;
-        this.courtScheduleJudiciaryRepository = courtScheduleJudiciaryRepository;
+        this.rotaFileUtility = rotaFileUtility;
+        this.dateParsingUtility = dateParsingUtility;
+        this.venueCourtRoomHelper = venueCourtRoomHelper;
+        this.courtScheduleJudiciaryQueryHelper = courtScheduleJudiciaryQueryHelper;
+        this.mapComparator = mapComparator;
     }
 
     // ============================================================================
@@ -143,7 +137,7 @@ public class RotaFileProcessorService {
         final long processEnd = System.nanoTime();
         
         logger.info("PRF: Processing and parsing completed for blob {} in {} ms", 
-                blobName, convertNanosToMillis(processEnd - processStart));
+                blobName, rotaFileUtility.convertNanosToMillis(processEnd - processStart));
         logger.info("rota file parsed successfully for blob with name: {} - parsed {} record types", 
                 blobName, records.size());
         
@@ -158,16 +152,17 @@ public class RotaFileProcessorService {
         logger.info("Created judiciary court schedule map with {} entries for blob: {}", 
                 judiciaryIdListOfCourtScheduleIdMapFromRotaFeed.size(), blobName);
         
-        final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb = queryCourtScheduleIdsByJudiciaryIds(judiciaryIdListOfCourtScheduleIdMapFromRotaFeed);
+        final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb = courtScheduleJudiciaryQueryHelper
+                .queryCourtScheduleIdsByJudiciaryIds(judiciaryIdListOfCourtScheduleIdMapFromRotaFeed);
         logger.info("Queried court schedule IDs from database for {} judiciary IDs for blob: {}", 
                 judiciaryCourtScheduleIdsFromDb.size(), blobName);
 
-        final Map<String, List<UUID>> judiciaryAssignmentMap = findMissingCourtScheduleIdsInDB(
+        final Map<String, List<UUID>> judiciaryAssignmentMap = mapComparator.findMissingCourtScheduleIdsInDB(
                 judiciaryIdListOfCourtScheduleIdMapFromRotaFeed, judiciaryCourtScheduleIdsFromDb);
         logger.info("Found missing court schedule IDs for {} judiciary IDs for blob: {}", 
                 judiciaryAssignmentMap.size(), blobName);
 
-        final Map<String, List<UUID>> judiciaryUnAssignmentMap = findMissingCourtScheduleIdsInRotaFeed(
+        final Map<String, List<UUID>> judiciaryUnAssignmentMap = mapComparator.findMissingCourtScheduleIdsInRotaFeed(
                 judiciaryCourtScheduleIdsFromDb, judiciaryIdListOfCourtScheduleIdMapFromRotaFeed);
         logger.info("Found court schedule IDs in database missing in rota feed for {} judiciary IDs for blob: {}", 
                 judiciaryUnAssignmentMap.size(), blobName);
@@ -181,7 +176,7 @@ public class RotaFileProcessorService {
         final long fileLength = blobByteArray.length;
         azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
         final long uploadEnd = System.nanoTime();
-        logger.info("PRF: Upload completed for blob {} in {} ms", blobName, convertNanosToMillis(uploadEnd - uploadStart));
+        logger.info("PRF: Upload completed for blob {} in {} ms", blobName, rotaFileUtility.convertNanosToMillis(uploadEnd - uploadStart));
         
         azureBlobClientService.releaseLease(blobName, leaseId, false);
         azureBlobClientService.deleteFile(blobName, empty());
@@ -201,28 +196,9 @@ public class RotaFileProcessorService {
      * @return ParseResult containing the parsed records and execution ID
      */
     private ParseResult parseFileContent(final String fileName, final byte[] content) {
-        final String executionId = processSnapshotFileIfNeeded(fileName, content);
+        final String executionId = rotaFileUtility.processSnapshotFileIfNeeded(fileName, content, rotaFileProcessHistoryService);
         final Map<RotaPayload, Map<String, Map<String, String>>> records = parseFile(fileName, content);
         return new ParseResult(records, executionId);
-    }
-
-    private String processSnapshotFileIfNeeded(final String fileName, final byte[] content) {
-        if (!isSnapshotFile(fileName)) {
-            return EMPTY_STRING;
-        }
-        
-        if (isNewerSnapshotFileProcessed(fileName)) {
-            logger.warn("Skipping snapshot file - newer version already processed: {}", fileName);
-            throw new IllegalStateException(SNAPSHOT_FILE_PROCESSING_SKIPPED);
-        }
-        
-        logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.save");
-        final OffsetDateTime fileDateTime = getLJASnapshotFileTimeStampAsOffsetDateTime(fileName);
-        final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
-        final String executionId = randomUUID().toString();
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDateTime, content, executionId);
-        logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.save - executionId: {}", executionId);
-        return executionId;
     }
 
     private Map<RotaPayload, Map<String, Map<String, String>>> parseFile(final String fileName, final byte[] content) {
@@ -230,10 +206,10 @@ public class RotaFileProcessorService {
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
         final long parsingEndTime = System.nanoTime();
         
-        logger.info("PRF: Parsed file {} in {} ms", fileName, convertNanosToMillis(parsingEndTime - parsingStartTime));
+        logger.info("PRF: Parsed file {} in {} ms", fileName, rotaFileUtility.convertNanosToMillis(parsingEndTime - parsingStartTime));
         logger.info("File parsed successfully for file: {}", fileName);
         
-        if (isDummyFile(fileName)) {
+        if (rotaFileUtility.isDummyFile(fileName)) {
             logger.warn("Dummy support file detected: {}", fileName);
         }
         
@@ -436,151 +412,6 @@ public class RotaFileProcessorService {
         return judiciaryCourtScheduleMap;
     }
 
-    /**
-     * Queries the court_schedule_judiciary database table for all judiciary IDs from the provided map,
-     * groups the court schedule IDs by judiciary ID, and returns them as a map.
-     *
-     * @param judiciaryCourtScheduleMap the map containing judiciary IDs as keys
-     * @return a map of judiciary IDs to lists of CourtSchedule UUIDs from the database
-     */
-    private Map<String, List<UUID>> queryCourtScheduleIdsByJudiciaryIds(final Map<String, List<UUID>> judiciaryCourtScheduleMap) {
-        if (judiciaryCourtScheduleMap == null || judiciaryCourtScheduleMap.isEmpty()) {
-            logger.debug("No judiciary IDs provided to query court schedule IDs");
-            return Collections.emptyMap();
-        }
-        
-        final List<String> judiciaryIds = new ArrayList<>(judiciaryCourtScheduleMap.keySet());
-        logger.debug("Querying court schedule IDs for {} judiciary IDs", judiciaryIds.size());
-        
-        try {
-            final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> courtScheduleJudiciaries = 
-                    courtScheduleJudiciaryRepository.findByJudiciaryIds(judiciaryIds);
-            
-            final Map<String, List<UUID>> result = new ConcurrentHashMap<>();
-            
-            courtScheduleJudiciaries.forEach(csj -> {
-                final String judiciaryId = csj.getId().getJudiciaryId();
-                final String courtScheduleId = csj.getId().getCourtScheduleId();
-                
-                try {
-                    final UUID courtScheduleUuid = UUID.fromString(courtScheduleId);
-                    result.computeIfAbsent(judiciaryId, k -> new ArrayList<>()).add(courtScheduleUuid);
-                } catch (final IllegalArgumentException ex) {
-                    logger.warn("Invalid UUID format for court schedule ID: {}", courtScheduleId);
-                }
-            });
-            
-            logger.debug("Queried and grouped {} court schedule IDs for {} judiciary IDs", 
-                    courtScheduleJudiciaries.size(), result.size());
-            
-            return result;
-        } catch (final Exception ex) {
-            logger.error("Error querying court schedule IDs by judiciary IDs: {}", ex.getMessage(), ex);
-            return Collections.emptyMap();
-        }
-    }
-
-    /**
-     * Compares the rota feed map and database map to find court schedule IDs that are present
-     * in the rota feed but missing in the database for each judiciary ID.
-     *
-     * @param rotaFeedMap the map from rota feed with judiciary IDs as keys and lists of court schedule IDs as values
-     * @param databaseMap the map from database with judiciary IDs as keys and lists of court schedule IDs as values
-     * @return a map of judiciary IDs to lists of missing court schedule IDs
-     */
-    private Map<String, List<UUID>> findMissingCourtScheduleIdsInDB(final Map<String, List<UUID>> rotaFeedMap,
-                                                                    final Map<String, List<UUID>> databaseMap) {
-        if (rotaFeedMap == null || rotaFeedMap.isEmpty()) {
-            logger.debug("No rota feed map provided to find missing court schedule IDs");
-            return Collections.emptyMap();
-        }
-        
-        final Map<String, List<UUID>> result = new ConcurrentHashMap<>();
-        
-        rotaFeedMap.forEach((judiciaryId, rotaFeedCourtScheduleIds) -> {
-            if (rotaFeedCourtScheduleIds == null || rotaFeedCourtScheduleIds.isEmpty()) {
-                logger.debug("No court schedule IDs in rota feed for judiciary ID: {}", judiciaryId);
-                return;
-            }
-            
-            // Get the court schedule IDs from database for this judiciary ID, or empty list if not found
-            final List<UUID> databaseCourtScheduleIds = databaseMap != null 
-                    ? databaseMap.getOrDefault(judiciaryId, Collections.emptyList())
-                    : Collections.emptyList();
-            
-            // Find court schedule IDs that are in rota feed but not in database
-            final List<UUID> missingCourtScheduleIds = rotaFeedCourtScheduleIds.stream()
-                    .filter(courtScheduleId -> !databaseCourtScheduleIds.contains(courtScheduleId))
-                    .toList();
-            
-            if (!missingCourtScheduleIds.isEmpty()) {
-                result.put(judiciaryId, new ArrayList<>(missingCourtScheduleIds));
-                logger.debug("Found {} missing court schedule ID(s) for judiciary ID: {}", 
-                        missingCourtScheduleIds.size(), judiciaryId);
-            } else {
-                logger.debug("No missing court schedule IDs for judiciary ID: {}", judiciaryId);
-            }
-        });
-        
-        final int totalMissing = result.values().stream()
-                .mapToInt(List::size)
-                .sum();
-        logger.debug("Found {} total missing court schedule IDs across {} judiciary IDs", 
-                totalMissing, result.size());
-        
-        return result;
-    }
-
-    /**
-     * Compares the database map and rota feed map to find court schedule IDs that are present
-     * in the database but missing in the rota feed for each judiciary ID.
-     *
-     * @param databaseMap the map from database with judiciary IDs as keys and lists of court schedule IDs as values
-     * @param rotaFeedMap the map from rota feed with judiciary IDs as keys and lists of court schedule IDs as values
-     * @return a map of judiciary IDs to lists of missing court schedule IDs (present in database but not in rota feed)
-     */
-    private Map<String, List<UUID>> findMissingCourtScheduleIdsInRotaFeed(final Map<String, List<UUID>> databaseMap,
-                                                                           final Map<String, List<UUID>> rotaFeedMap) {
-        if (databaseMap == null || databaseMap.isEmpty()) {
-            logger.debug("No database map provided to find missing court schedule IDs in rota feed");
-            return Collections.emptyMap();
-        }
-        
-        final Map<String, List<UUID>> result = new ConcurrentHashMap<>();
-        
-        databaseMap.forEach((judiciaryId, databaseCourtScheduleIds) -> {
-            if (databaseCourtScheduleIds == null || databaseCourtScheduleIds.isEmpty()) {
-                logger.debug("No court schedule IDs in database for judiciary ID: {}", judiciaryId);
-                return;
-            }
-            
-            // Get the court schedule IDs from rota feed for this judiciary ID, or empty list if not found
-            final List<UUID> rotaFeedCourtScheduleIds = rotaFeedMap != null 
-                    ? rotaFeedMap.getOrDefault(judiciaryId, Collections.emptyList())
-                    : Collections.emptyList();
-            
-            // Find court schedule IDs that are in database but not in rota feed
-            final List<UUID> missingCourtScheduleIds = databaseCourtScheduleIds.stream()
-                    .filter(courtScheduleId -> !rotaFeedCourtScheduleIds.contains(courtScheduleId))
-                    .toList();
-            
-            if (!missingCourtScheduleIds.isEmpty()) {
-                result.put(judiciaryId, new ArrayList<>(missingCourtScheduleIds));
-                logger.debug("Found {} court schedule ID(s) in database missing in rota feed for judiciary ID: {}", 
-                        missingCourtScheduleIds.size(), judiciaryId);
-            } else {
-                logger.debug("No missing court schedule IDs in rota feed for judiciary ID: {}", judiciaryId);
-            }
-        });
-        
-        final int totalMissing = result.values().stream()
-                .mapToInt(List::size)
-                .sum();
-        logger.debug("Found {} total court schedule IDs in database missing in rota feed across {} judiciary IDs", 
-                totalMissing, result.size());
-        
-        return result;
-    }
 
     // ============================================================================
     // PRIVATE PROCESSING METHODS - Record Processing
@@ -627,13 +458,13 @@ public class RotaFileProcessorService {
             return;
         }
         
-        final LocalDate sessionDate = parseSessionDate(sessionDateStr);
+        final LocalDate sessionDate = dateParsingUtility.parseSessionDate(sessionDateStr);
         if (sessionDate == null) {
             logger.warn("Skipping court listing {} - invalid session date: {}", listingProfileId, sessionDateStr);
             return;
         }
         
-        final CourtRoom courtRoom = getCourtRoom(listingProfile, requester, executionId, missingReferenceDataMappingMap);
+        final CourtRoom courtRoom = venueCourtRoomHelper.getCourtRoom(listingProfile, requester, executionId, missingReferenceDataMappingMap);
         if (courtRoom == null) {
             logger.debug("Skipping court listing {} - could not determine court room", listingProfileId);
             return;
@@ -678,92 +509,6 @@ public class RotaFileProcessorService {
         buildAndAddScheduleJudiciary(judiciarySchedule, scheduleJudiciaryList, courtListingProfileId, judiciaryId);
     }
 
-    // ============================================================================
-    // PRIVATE HELPER/UTILITY METHODS - File Utilities
-    // ============================================================================
-
-    private long convertNanosToMillis(final long nanos) {
-        return nanos / NANOSECONDS_TO_MILLISECONDS;
-    }
-
-    private boolean isSnapshotFile(final String fileName) {
-        return fileName.contains(SNAPSHOT_NAME_PART);
-    }
-
-    private boolean isDummyFile(final String fileName) {
-        return fileName.contains(DUMMY_NAME_PART);
-    }
-
-    private boolean isNewerSnapshotFileProcessed(final String fileName) {
-        final OffsetDateTime fileDateTime = getLJASnapshotFileTimeStampAsOffsetDateTime(fileName);
-        if (isNull(fileDateTime)) {
-            logger.warn("Invalid file date/time in fileName: {}", fileName);
-            return true;
-        }
-        
-        final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
-        final List<RotaFileProcessHistory> newerFiles = rotaFileProcessHistoryRepository
-                .findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, Timestamp.from(fileDateTime.toInstant()));
-        
-        if (isNotEmpty(newerFiles)) {
-            logger.warn("Newer snapshot file already processed for prefix: {}", fileNamePrefix);
-            return true;
-        }
-        
-        return false;
-    }
-
-    // ============================================================================
-    // PRIVATE HELPER/UTILITY METHODS - Venue/CourtRoom
-    // ============================================================================
-
-    private CourtRoom getCourtRoom(final Map<String, String> listingProfile,
-                                   final Requester requester,
-                                   final String executionId,
-                                   final Map<String, String> missingReferenceDataMappingMap) {
-        final String locationIdStr = listingProfile.get(LOCATION_ID);
-        final String venueIdStr = listingProfile.get(VENUE_ID);
-        final String venueName = listingProfile.get(VENUE_NAME);
-        
-        if (!isNotEmpty(locationIdStr) || !isNotEmpty(venueIdStr) || !isNotEmpty(venueName)) {
-            logger.debug("Missing venue information for court listing");
-            return null;
-        }
-        
-        return parseAndValidateVenue(locationIdStr, venueIdStr, venueName, requester, executionId, missingReferenceDataMappingMap);
-    }
-
-    private CourtRoom parseAndValidateVenue(final String locationIdStr,
-                                            final String venueIdStr,
-                                            final String venueName,
-                                            final Requester requester,
-                                            final String executionId,
-                                            final Map<String, String> missingReferenceDataMappingMap) {
-        try {
-            final Integer locationId = Integer.parseInt(locationIdStr);
-            final Integer venueId = Integer.parseInt(venueIdStr);
-            final Venue venue = new Venue(locationId, venueId, venueName);
-            
-            return referenceDataValidationService.validateAndFindVenue(venue, missingReferenceDataMappingMap, requester, executionId)
-                    .orElse(null);
-        } catch (final NumberFormatException ex) {
-            logger.warn("Invalid locationId or venueId format: locationId={}, venueId={}", locationIdStr, venueIdStr);
-            return null;
-        }
-    }
-
-    // ============================================================================
-    // PRIVATE HELPER/UTILITY METHODS - Date/Time Parsing
-    // ============================================================================
-
-    private LocalDate parseSessionDate(final String sessionDateStr) {
-        try {
-            return LocalDate.parse(sessionDateStr, DATE_FORMATTER);
-        } catch (final Exception ex) {
-            logger.warn("Failed to parse session date: {}", sessionDateStr, ex);
-            return null;
-        }
-    }
 
     // ============================================================================
     // PRIVATE HELPER/UTILITY METHODS - CourtSchedule
