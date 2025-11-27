@@ -86,6 +86,9 @@ public class CourtSchedulerApi {
     protected static final String RESULTS = "results";
     private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
     private static final String ORGANISATION_UNIT_HMI_STATUS = "organisationUnitHMIStatus";
+    private static final String JUDICIARIES = "judiciaries";
+    private static final String SESSIONIDS = "sessionIds";
+    private static final String JUDICIARY_ID = "judiciaryId";
     @Inject
     private Enveloper enveloper;
     @Inject
@@ -516,29 +519,29 @@ public class CourtSchedulerApi {
         final JsonObject payload = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.unassign.judiciary requested : {}", payload);
 
-        if (!payload.containsKey("judiciaries")) {
+        if (!payload.containsKey(JUDICIARIES)) {
             throw new BadRequestException("judiciaries array is required");
         }
 
-        final javax.json.JsonArray judiciaries = payload.getJsonArray("judiciaries");
-        if (judiciaries == null || payload.isNull("judiciaries") || judiciaries.isEmpty()) {
+        final javax.json.JsonArray judiciaries = payload.getJsonArray(JUDICIARIES);
+        if (judiciaries == null || payload.isNull(JUDICIARIES) || judiciaries.isEmpty()) {
             throw new BadRequestException("judiciaries array must contain at least one item");
         }
 
         for (int i = 0; i < judiciaries.size(); i++) {
             final JsonObject judiciary = judiciaries.getJsonObject(i);
-            final String judiciaryId = judiciary.getString("judiciaryId", "");
+            final String judiciaryId = judiciary.getString(JUDICIARY_ID, "");
 
             if (judiciaryId.isEmpty()) {
                 throw new BadRequestException(String.format("judiciaryId is required in judiciaries[%d]", i));
             }
 
-            if (!judiciary.containsKey("sessionIds")) {
+            if (!judiciary.containsKey(SESSIONIDS)) {
                 throw new BadRequestException(String.format("sessionIds array is required in judiciaries[%d]", i));
             }
 
-            final javax.json.JsonArray sessionIds = judiciary.getJsonArray("sessionIds");
-            if (sessionIds == null || judiciary.isNull("sessionIds") || sessionIds.isEmpty()) {
+            final javax.json.JsonArray sessionIds = judiciary.getJsonArray(SESSIONIDS);
+            if (sessionIds == null || judiciary.isNull(SESSIONIDS) || sessionIds.isEmpty()) {
                 throw new BadRequestException(String.format("sessionIds array must contain at least one item in judiciaries[%d]", i));
             }
 
@@ -548,22 +551,26 @@ public class CourtSchedulerApi {
                     throw new BadRequestException(String.format("sessionId is required in judiciaries[%d].sessionIds[%d]", i, j));
                 }
 
-                try {
-                    judiciaryService.unassignJudiciary(sessionId, judiciaryId);
-                    LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciary {} from session {}", judiciaryId, sessionId);
-                } catch (IllegalStateException e) {
-                    final String errorMessage = e.getMessage();
-                    LOGGER.warn("courtscheduler.unassign.judiciary: cannot unassign - {}", errorMessage);
-                    throw new BadRequestException(errorMessage);
-                } catch (Exception e) {
-                    final String errorMessage = e.getMessage();
-                    LOGGER.warn("courtscheduler.unassign.judiciary: not found - {}", errorMessage);
-                    throw new BadRequestException(errorMessage);
-                }
+                unassignJudiciary(sessionId, judiciaryId);
             }
         }
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.unassign.judiciary").apply(createObjectBuilder().build());
+    }
+
+    private void unassignJudiciary(String sessionId, String judiciaryId) {
+        try {
+            judiciaryService.unassignJudiciary(sessionId, judiciaryId);
+            LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciary {} from session {}", judiciaryId, sessionId);
+        } catch (IllegalStateException e) {
+            final String errorMessage = e.getMessage();
+            LOGGER.warn("courtscheduler.unassign.judiciary: cannot unassign - {}", errorMessage);
+            throw new BadRequestException(errorMessage);
+        } catch (Exception e) {
+            final String errorMessage = e.getMessage();
+            LOGGER.warn("courtscheduler.unassign.judiciary: not found - {}", errorMessage);
+            throw new BadRequestException(errorMessage);
+        }
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {
