@@ -8,6 +8,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 
+import java.util.List;
 import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -34,32 +35,43 @@ public class JudiciaryService {
     private EntityManager entityManager;
 
     @Transactional(REQUIRES_NEW)
-    public void unassignJudiciary(final String courtScheduleId, final String judiciaryId) {
-        logger.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+    public void unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds) {
+        logger.info("unassignJudiciary: attempting to unassign judiciaries from sessions : {}", judiciaryToSessionIds);
 
-        // Check if there are allocated listings for this court schedule
-        final Map<String, Integer> allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(singletonList(courtScheduleId));
-        if (allocatedListings.containsKey(courtScheduleId) && allocatedListings.get(courtScheduleId) > 0) {
-            final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has allocated listings", judiciaryId, courtScheduleId);
-            logger.warn("unassignJudiciary: {}", errorMessage);
-            throw new IllegalStateException(errorMessage);
+        for (Map.Entry<String, List<String>> entry : judiciaryToSessionIds.entrySet()) {
+            final String judiciaryId = entry.getKey();
+            final List<String> sessionIds = entry.getValue();
+
+            for (String courtScheduleId : sessionIds) {
+                logger.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+
+                // Check if there are allocated listings for this court schedule
+                final Map<String, Integer> allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(singletonList(courtScheduleId));
+                if (allocatedListings.containsKey(courtScheduleId) && allocatedListings.get(courtScheduleId) > 0) {
+                    final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has allocated listings", judiciaryId, courtScheduleId);
+                    logger.warn("unassignJudiciary: {}", errorMessage);
+                    throw new IllegalStateException(errorMessage);
+                }
+
+                // Find the CourtScheduleJudiciary entity
+                final CourtScheduleJudiciaryKey key = new CourtScheduleJudiciaryKey(courtScheduleId, judiciaryId);
+                final CourtScheduleJudiciary courtScheduleJudiciary = courtScheduleJudiciaryRepository.findBy(key);
+
+                if (courtScheduleJudiciary == null) {
+                    final String errorMessage = String.format("Judiciary %s not found for courtSchedule %s", judiciaryId, courtScheduleId);
+                    logger.warn("unassignJudiciary: {}", errorMessage);
+                    throw new IllegalArgumentException(errorMessage);
+                }
+
+                // Remove the judiciary assignment using EntityManager
+                final CourtScheduleJudiciary managed = entityManager.merge(courtScheduleJudiciary);
+                entityManager.remove(managed);
+                logger.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+            }
         }
 
-        // Find the CourtScheduleJudiciary entity
-        final CourtScheduleJudiciaryKey key = new CourtScheduleJudiciaryKey(courtScheduleId, judiciaryId);
-        final CourtScheduleJudiciary courtScheduleJudiciary = courtScheduleJudiciaryRepository.findBy(key);
-
-        if (courtScheduleJudiciary == null) {
-            final String errorMessage = String.format("Judiciary %s not found for courtSchedule %s", judiciaryId, courtScheduleId);
-            logger.warn("unassignJudiciary: {}", errorMessage);
-            throw new IllegalArgumentException(errorMessage);
-        }
-
-        // Remove the judiciary assignment using EntityManager
-        final CourtScheduleJudiciary managed = entityManager.merge(courtScheduleJudiciary);
-        entityManager.remove(managed);
         entityManager.flush();
-        logger.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+        logger.info("unassignJudiciary: successfully completed unassigning judiciaries from sessions");
     }
 }
 

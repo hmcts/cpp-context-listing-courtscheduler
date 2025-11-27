@@ -68,7 +68,10 @@ import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.inject.Inject;
@@ -528,25 +531,32 @@ public class CourtSchedulerApi {
             return envelopeFor(envelope, validate, ERROR);
         }
 
+        // Build map of judiciaryId -> List of sessionIds
+        final Map<String, List<String>> judiciaryToSessionIds = new HashMap<>();
         final javax.json.JsonArray judiciaries = payload.getJsonArray(JUDICIARIES);
+        
         for (int i = 0; i < judiciaries.size(); i++) {
             final JsonObject judiciary = judiciaries.getJsonObject(i);
             final String judiciaryId = judiciary.getString(JUDICIARY_ID, "");
             final javax.json.JsonArray sessionIds = judiciary.getJsonArray(SESSIONIDS);
 
+            final List<String> sessionIdList = new ArrayList<>();
             for (int j = 0; j < sessionIds.size(); j++) {
                 final String sessionId = sessionIds.getString(j, "");
-                unassignJudiciary(sessionId, judiciaryId);
+                sessionIdList.add(sessionId);
             }
+            judiciaryToSessionIds.put(judiciaryId, sessionIdList);
         }
+
+        unassignJudiciaries(judiciaryToSessionIds);
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.unassign.judiciary").apply(createObjectBuilder().build());
     }
 
-    private void unassignJudiciary(String sessionId, String judiciaryId) {
+    private void unassignJudiciaries(Map<String, List<String>> judiciaryToSessionIds) {
         try {
-            judiciaryService.unassignJudiciary(sessionId, judiciaryId);
-            LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciary {} from session {}", judiciaryId, sessionId);
+            judiciaryService.unassignJudiciary(judiciaryToSessionIds);
+            LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciaries from sessions");
         } catch (IllegalStateException e) {
             final String errorMessage = e.getMessage();
             LOGGER.warn("courtscheduler.unassign.judiciary: cannot unassign - {}", errorMessage);
