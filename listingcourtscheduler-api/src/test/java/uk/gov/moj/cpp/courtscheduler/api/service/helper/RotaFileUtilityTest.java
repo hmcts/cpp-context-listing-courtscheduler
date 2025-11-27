@@ -114,9 +114,9 @@ class RotaFileUtilityTest {
     @Test
     void shouldReturnTrue_WhenNewerSnapshotFileProcessed() {
         // given
-        String fileName = "test_snapshot_20240115_120000.csv";
+        String fileName = "test_snapshot_20240115T120000Z.xml";
         OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
-        String fileNamePrefix = "test_snapshot";
+        String fileNamePrefix = "test_snapshot_";
         Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
 
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(
@@ -133,9 +133,9 @@ class RotaFileUtilityTest {
     @Test
     void shouldReturnFalse_WhenNoNewerSnapshotFileProcessed() {
         // given
-        String fileName = "test_snapshot_20240115_120000.csv";
+        String fileName = "test_snapshot_20240115T120000Z.xml";
         OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
-        String fileNamePrefix = "test_snapshot";
+        String fileNamePrefix = "test_snapshot_";
         Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
 
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(
@@ -164,10 +164,10 @@ class RotaFileUtilityTest {
     @Test
     void shouldProcessSnapshotFile_WhenValidSnapshotFile() {
         // given
-        String fileName = "test_snapshot_20240115_120000.csv";
+        String fileName = "test_snapshot_20240115T120000Z.xml";
         byte[] content = "test content".getBytes();
         OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
-        String fileNamePrefix = "test_snapshot";
+        String fileNamePrefix = "test_snapshot_";
         Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
 
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(
@@ -201,10 +201,10 @@ class RotaFileUtilityTest {
     @Test
     void shouldThrowException_WhenNewerSnapshotFileAlreadyProcessed() {
         // given
-        String fileName = "test_snapshot_20240115_120000.csv";
+        String fileName = "test_snapshot_20240115T120000Z.xml";
         byte[] content = "test content".getBytes();
         OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
-        String fileNamePrefix = "test_snapshot";
+        String fileNamePrefix = "test_snapshot_";
         Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
 
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(

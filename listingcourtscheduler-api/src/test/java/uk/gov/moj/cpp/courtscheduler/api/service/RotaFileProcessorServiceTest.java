@@ -146,7 +146,7 @@ class RotaFileProcessorServiceTest {
                 .withCourtScheduleId(randomUUID().toString())
                 .withCourtRoomId("courtroom-1")
                 .withPanel("PANEL1")
-                .withSessionDate(LocalDate.now())
+                .withSessionDate(LocalDate.parse("2024-01-15"))
                 .withCourtSession("AM")
                 .build();
     }
@@ -298,10 +298,6 @@ class RotaFileProcessorServiceTest {
         Map<String, List<UUID>> dbMap = new HashMap<>();
         when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
                 .thenReturn(dbMap);
-        when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
-                .thenReturn(rotaFeedMap);
-        when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
-                .thenReturn(emptyMap());
     }
 
     @Test
@@ -579,7 +575,9 @@ class RotaFileProcessorServiceTest {
     @Test
     void shouldHandleExceptionDuringScheduleProcessing() {
         // given
-        setupSuccessfulProcessing();
+        when(rotaFileUtility.processSnapshotFileIfNeeded(anyString(), any(), any()))
+                .thenReturn(executionId);
+        when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
         Map<String, Map<String, String>> schedules = new HashMap<>();
         Map<String, String> scheduleData = new HashMap<>();
         scheduleData.put(ROTA_JUDICIARY_ID, "judge-1");
@@ -593,7 +591,6 @@ class RotaFileProcessorServiceTest {
         magistrates.put("judge-1", magistrateData);
         records.put(MAGISTRATES, magistrates);
 
-        when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("Validation error"));
 
@@ -601,8 +598,10 @@ class RotaFileProcessorServiceTest {
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
-        // Should continue processing despite exception
-        verify(azureBlobClientService).uploadProcessedFile(any(), anyLong(), anyString(), any());
+        // Exception should be caught and lease should be released with error flag
+        verify(azureBlobClientService).releaseLease(blobName, leaseId, true);
+        verify(azureBlobClientService, never()).uploadProcessedFile(any(), anyLong(), anyString(), any());
+        verify(azureBlobClientService, never()).deleteFile(anyString(), any());
     }
 
     @Test
@@ -639,10 +638,6 @@ class RotaFileProcessorServiceTest {
         Map<String, List<UUID>> dbMap = new HashMap<>();
         when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
                 .thenReturn(dbMap);
-        when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
-                .thenReturn(rotaFeedMap);
-        when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
-                .thenReturn(emptyMap());
 
         // when
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);

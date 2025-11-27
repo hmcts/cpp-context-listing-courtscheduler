@@ -152,10 +152,16 @@ public class RotaFileProcessorService {
         logger.info("Created judiciary court schedule map with {} entries for blob: {}", 
                 judiciaryIdListOfCourtScheduleIdMapFromRotaFeed.size(), blobName);
         
-        final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb = courtScheduleJudiciaryQueryHelper
-                .queryCourtScheduleIdsByJudiciaryIds(judiciaryIdListOfCourtScheduleIdMapFromRotaFeed);
-        logger.info("Queried court schedule IDs from database for {} judiciary IDs for blob: {}", 
-                judiciaryCourtScheduleIdsFromDb.size(), blobName);
+        final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb;
+        if (judiciaryIdListOfCourtScheduleIdMapFromRotaFeed.isEmpty()) {
+            logger.debug("Skipping database query - no judiciary court schedule map entries for blob: {}", blobName);
+            judiciaryCourtScheduleIdsFromDb = Collections.emptyMap();
+        } else {
+            judiciaryCourtScheduleIdsFromDb = courtScheduleJudiciaryQueryHelper
+                    .queryCourtScheduleIdsByJudiciaryIds(judiciaryIdListOfCourtScheduleIdMapFromRotaFeed);
+            logger.info("Queried court schedule IDs from database for {} judiciary IDs for blob: {}", 
+                    judiciaryCourtScheduleIdsFromDb.size(), blobName);
+        }
 
         final Map<String, List<UUID>> judiciaryAssignmentMap = mapComparator.findMissingCourtScheduleIdsInDB(
                 judiciaryIdListOfCourtScheduleIdMapFromRotaFeed, judiciaryCourtScheduleIdsFromDb);
@@ -379,8 +385,8 @@ public class RotaFileProcessorService {
                     return;
                 }
                 
-                // Validate that judiciaryId exists in judiciaryMap
-                if (!judiciaryMap.containsKey(judiciaryId)) {
+                // Validate that judiciaryId exists in judiciaryMap (check by value since map is keyed by justiceId)
+                if (!judiciaryMap.containsValue(UUID.fromString(judiciaryId))) {
                     logger.debug("Skipping schedule - judiciaryId {} not found in judiciaryMap", judiciaryId);
                     return;
                 }

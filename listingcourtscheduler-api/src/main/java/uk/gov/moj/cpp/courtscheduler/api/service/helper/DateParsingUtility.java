@@ -24,8 +24,21 @@ public class DateParsingUtility {
      * @return the parsed LocalDate, or null if parsing fails
      */
     public LocalDate parseSessionDate(final String sessionDateStr) {
+        if (sessionDateStr == null || sessionDateStr.isEmpty()) {
+            return null;
+        }
+        
         try {
-            return LocalDate.parse(sessionDateStr, DATE_FORMATTER);
+            final LocalDate parsedDate = LocalDate.parse(sessionDateStr, DATE_FORMATTER);
+            // Validate that the parsed date matches the input string exactly
+            // This ensures that invalid dates like "2023-02-29" are rejected
+            // (LocalDate.parse would adjust it to 2023-02-28, so we check the formatted output)
+            final String formattedDate = parsedDate.format(DATE_FORMATTER);
+            if (!formattedDate.equals(sessionDateStr)) {
+                logger.warn("Date string does not match parsed date: {} != {}", sessionDateStr, formattedDate);
+                return null;
+            }
+            return parsedDate;
         } catch (final Exception ex) {
             logger.warn("Failed to parse session date: {}", sessionDateStr, ex);
             return null;
