@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.rotafileprocessor;
+package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
@@ -49,8 +49,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
+import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryBuilder;
-import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.service.RotaReferenceDataValidationService;
 
 import java.io.ByteArrayInputStream;
 import java.sql.Timestamp;
@@ -75,9 +75,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Stateless
-public class RotaFileProcessor {
+public class RotaFileProcessorService {
 
-    private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessorService.class);
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
     private static final long NANOSECONDS_TO_MILLISECONDS = 1_000_000L;
@@ -90,20 +90,20 @@ public class RotaFileProcessor {
     private final RotaFileParser rotaFileParser;
     private final RotaFileProcessHistoryRepository rotaFileProcessHistoryRepository;
     private final RotaFileProcessHistoryService rotaFileProcessHistoryService;
-    private final RotaReferenceDataValidationService referenceDataValidationService;
+    private final RotaReferenceDataService referenceDataValidationService;
     private final SessionsService sessionsService;
     private final JudiciaryBuilder judiciaryBuilder;
     private final CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
     @Inject
-    public RotaFileProcessor(final AzureBlobClientService azureBlobClientService,
-                           final RotaFileParser rotaFileParser,
-                           final RotaFileProcessHistoryRepository rotaFileProcessHistoryRepository,
-                           final RotaFileProcessHistoryService rotaFileProcessHistoryService,
-                           final RotaReferenceDataValidationService referenceDataValidationService,
-                           final SessionsService sessionsService,
-                           final JudiciaryBuilder judiciaryBuilder,
-                           final CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository) {
+    public RotaFileProcessorService(final AzureBlobClientService azureBlobClientService,
+                                    final RotaFileParser rotaFileParser,
+                                    final RotaFileProcessHistoryRepository rotaFileProcessHistoryRepository,
+                                    final RotaFileProcessHistoryService rotaFileProcessHistoryService,
+                                    final RotaReferenceDataService referenceDataValidationService,
+                                    final SessionsService sessionsService,
+                                    final JudiciaryBuilder judiciaryBuilder,
+                                    final CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository) {
         this.azureBlobClientService = azureBlobClientService;
         this.rotaFileParser = rotaFileParser;
         this.rotaFileProcessHistoryRepository = rotaFileProcessHistoryRepository;

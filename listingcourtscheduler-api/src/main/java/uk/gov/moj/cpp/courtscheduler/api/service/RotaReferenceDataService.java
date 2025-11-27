@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.service;
+package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.String.format;
 import static java.util.Optional.empty;
@@ -37,9 +37,9 @@ import org.slf4j.LoggerFactory;
  * - Session allocation validation (OU code, room ID, session, and business type)
  */
 @ApplicationScoped
-public class RotaReferenceDataValidationService {
+public class RotaReferenceDataService {
 
-    private static final Logger logger = LoggerFactory.getLogger(RotaReferenceDataValidationService.class);
+    private static final Logger logger = LoggerFactory.getLogger(RotaReferenceDataService.class);
 
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
