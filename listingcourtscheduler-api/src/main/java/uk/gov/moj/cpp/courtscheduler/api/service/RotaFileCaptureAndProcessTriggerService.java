@@ -34,6 +34,9 @@ public class RotaFileCaptureAndProcessTriggerService {
     private RotaFileProcessorService rotaFileProcessorService;
 
     @Inject
+    private uk.gov.moj.cpp.courtscheduler.api.service.RotaFileProcessorService newRotaFileProcessorService;
+
+    @Inject
     private AzureBlobClientService azureBlobClientService;
 
     private static final String IT_TEST_BLOB_PREFIX = "IT_Test_";
@@ -41,8 +44,8 @@ public class RotaFileCaptureAndProcessTriggerService {
 
     @Asynchronous
     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
-    public Future<String> captureRotaFilesAndProcessEach(final Requester requester, boolean isForItTest) {
-        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
+    public Future<String> captureRotaFilesAndProcessEach(final Requester requester, boolean isForItTest, final String rotaProcess) {
+        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called with rotaProcess: {}", rotaProcess);
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
 
         boolean referenceDataLoaded = false;
@@ -69,7 +72,14 @@ public class RotaFileCaptureAndProcessTriggerService {
                     final BlobContent blobContent = azureBlobClientService.downloadFiles(blobItem);
                     final long downloadEnd = System.nanoTime();
                     logger.info("PRF: Downloaded blob {} in {} ms", blobName, (downloadEnd - downloadStart) / 1_000_000);
-                    rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
+                    
+                    if ("old".equals(rotaProcess)) {
+                        logger.info("Using old rota file processor service for blob: {}", blobName);
+                        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
+                    } else {
+                        logger.info("Using new rota file processor service for blob: {}", blobName);
+                        newRotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
+                    }
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);
                 }

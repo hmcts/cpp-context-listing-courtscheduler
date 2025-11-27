@@ -39,7 +39,10 @@ public class RotaFileProcessorApi {
         final JsonObject payload = envelope.payloadAsJsonObject();
         LOGGER.info("calling rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
         final boolean isForItTest = payload.getBoolean("forItTest", false);
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, isForItTest);
+        final String rotaProcess = payload.containsKey("rotaProcess") && !payload.isNull("rotaProcess") 
+                ? payload.getString("rotaProcess") 
+                : "new";
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, isForItTest, rotaProcess);
         LOGGER.info("successfully called and completed - rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.process_rota_files").apply(createObjectBuilder().build());
