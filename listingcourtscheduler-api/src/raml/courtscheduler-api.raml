@@ -619,3 +619,53 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.validate.session.availability.response+json:
             schema: !include json/schema/courtscheduler.validate.session.availability.response.json
             example: !include json/courtscheduler.validate.session.availability.response.json
+
+/judiciary:
+  description: |
+    Add judiciary availability rule
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.judiciary.add.availability.rule+json
+          name: courtscheduler.judiciary.add.availability.rule
+      ...
+    body:
+      application/vnd.courtscheduler.judiciary.add.availability.rule+json:
+        schema: !include json/schema/courtscheduler.judiciary.add.availability.rule.json
+        example: !include json/courtscheduler.judiciary.add.availability.rule.json
+    responses:
+      202:
+        description: OK
+
+  get:
+    description: |
+      Find available judiciaries based on date range and rules
+      ...
+      (mapping):
+          responseType: application/vnd.courtscheduler.judiciary.find.availability+json
+          name: courtscheduler.judiciary.find.availability
+      ...
+    queryParameters:
+      startDate:
+        description: Start date of the search range
+        type: string
+        required: true
+      endDate:
+        description: End date of the search range
+        type: string
+        required: true
+      courtHouseId:
+        description: Optional court house ID to filter by
+        type: string
+        required: false
+      judiciaryId:
+        description: Optional judiciary ID to filter by
+        type: string
+        required: false
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.judiciary.find.availability+json:
+            schema: !include json/schema/courtscheduler.find.judiciary.availability.json
+            example: !include json/courtscheduler.find.judiciary.availability.json

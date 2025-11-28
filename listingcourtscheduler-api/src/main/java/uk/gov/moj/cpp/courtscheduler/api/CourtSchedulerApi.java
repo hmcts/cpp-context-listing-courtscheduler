@@ -30,6 +30,13 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
+import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
+import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciaryAvailabilityRuleApiValidator;
+import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -71,6 +78,7 @@ import java.util.Optional;
 
 import javax.inject.Inject;
 import javax.json.Json;
+import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
@@ -141,6 +149,14 @@ public class CourtSchedulerApi {
     private AllocatedListingService allocatedListingService;
     @Inject
     private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
+    @Inject
+    private AddJudiciaryAvailabilityRuleConverter addJudiciaryAvailabilityRuleConverter;
+    @Inject
+    private FindJudiciaryAvailabilityConverter findJudiciaryAvailabilityConverter;
+    @Inject
+    private JudiciaryAvailabilityService judiciaryAvailabilityService;
+    @Inject
+    private JudiciaryAvailabilityRuleApiValidator judiciaryAvailabilityRuleApiValidator;
 
 
     @Handles("courtscheduler.create")
@@ -506,6 +522,45 @@ public class CourtSchedulerApi {
                 .build()
                 : EMPTY_JSON_OBJECT;
         return envelopeFor(envelope, resJsonObj, ORGANISATION_UNIT_HMI_STATUS);
+    }
+
+    @Handles("courtscheduler.judiciary.add.availability.rule")
+    public JsonEnvelope addJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.add.availability.rule requested : {}", requestFromApiJsonObject);
+        
+        AddJudiciaryAvailabilityRuleRequest request = addJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRule(request);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        judiciaryAvailabilityService.addJudiciaryAvailabilityRule(request);
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.add.availability.rule").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.judiciary.find.availability")
+    public JsonEnvelope findJudiciaryAvailability(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.find.availability requested : {}", requestFromApiJsonObject);
+        
+        FindJudiciaryAvailabilityRequest request = findJudiciaryAvailabilityConverter.convert(requestFromApiJsonObject);
+        FindJudiciaryAvailabilityResponse response = judiciaryAvailabilityService.findJudiciaryAvailability(request);
+
+        // Build JSON array directly for strings (ListToJsonArrayConverter is for objects, not strings)
+        final JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
+        if (response.getAvailableJudiciaries() != null) {
+            for (String judiciaryId : response.getAvailableJudiciaries()) {
+                arrayBuilder.add(judiciaryId);
+            }
+        }
+        final JsonValue result = arrayBuilder.build();
+
+        return enveloper
+                .withMetadataFrom(envelope, "courtscheduler.judiciary.find.availability")
+                .apply(createObjectBuilder().add("availableJudiciaries", result).build());
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {

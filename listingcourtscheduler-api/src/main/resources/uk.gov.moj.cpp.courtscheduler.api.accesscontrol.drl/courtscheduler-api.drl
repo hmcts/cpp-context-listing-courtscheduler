@@ -88,6 +88,24 @@ rule "API - Action - courtscheduler.update.hearing.slots"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.judiciary.add.availability.rule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.judiciary.add.availability.rule");
+         eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.find.availability"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.judiciary.find.availability");
+         eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.search.update.hearing.slots"
   when
     $outcome: Outcome();
