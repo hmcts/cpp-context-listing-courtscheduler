@@ -1504,6 +1504,167 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldDeleteCourtScheduleSessionsRegardlessOfJurisdictionType() throws Exception {
+        String magistratesCourtScheduleId = UUID.randomUUID().toString();
+        String crownCourtScheduleId = UUID.randomUUID().toString();
+
+        // Create MAGISTRATES court schedule (deletable - no allocated listings)
+        CourtSchedule magistratesSchedule = RANDOM.nextObject(CourtSchedule.class);
+        magistratesSchedule.setBusinessType("TRL");
+        magistratesSchedule.setSlotBased(false);
+        magistratesSchedule.setMaxDuration(120);
+        magistratesSchedule.setAvailableDuration(120);
+        magistratesSchedule.setSupportAdSplit(false);
+        magistratesSchedule.setCourtSession(ALL_DAY);
+        magistratesSchedule.setCourtScheduleId(magistratesCourtScheduleId);
+        magistratesSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
+        magistratesSchedule.setSessionStartTime(combineDateAndTime(magistratesSchedule.getSessionDate(), "10:00"));
+        magistratesSchedule.setSessionEndTime(combineDateAndTime(magistratesSchedule.getSessionDate(), "16:00"));
+        magistratesSchedule.setJurisdiction("MAGISTRATES");
+        magistratesSchedule.setIsDraft(false);
+        magistratesSchedule.setActive(true);
+        databaseSeeder.insertCourtSchedule(magistratesSchedule);
+
+        // Create CROWN court schedule (deletable - no allocated listings)
+        CourtSchedule crownSchedule = RANDOM.nextObject(CourtSchedule.class);
+        crownSchedule.setBusinessType("TRL");
+        crownSchedule.setSlotBased(false);
+        crownSchedule.setMaxDuration(120);
+        crownSchedule.setAvailableDuration(120);
+        crownSchedule.setSupportAdSplit(false);
+        crownSchedule.setCourtSession(ALL_DAY);
+        crownSchedule.setCourtScheduleId(crownCourtScheduleId);
+        crownSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
+        crownSchedule.setSessionStartTime(combineDateAndTime(crownSchedule.getSessionDate(), "10:00"));
+        crownSchedule.setSessionEndTime(combineDateAndTime(crownSchedule.getSessionDate(), "16:00"));
+        crownSchedule.setJurisdiction("CROWN");
+        crownSchedule.setIsDraft(true);
+        crownSchedule.setActive(true);
+        databaseSeeder.insertCourtSchedule(crownSchedule);
+
+        // Delete both schedules in a single request
+        // Create JSON payload with both IDs
+        String deletePayload = "{\"sessions\": [\"" + magistratesCourtScheduleId + "\", \"" + crownCourtScheduleId + "\"]}";
+
+        final Response deleteResponse = postCommand(BASE_RESOURCE_URL + DELETE_URL,
+                COURT_SCHEDULE_DELETE_CONTENT_TYPE, USER_ID, deletePayload);
+
+        assertThat(deleteResponse.getStatus(), is(OK.getStatusCode()));
+
+        // Verify successful deletion - empty sessions array means both were deleted successfully
+        try (JsonReader jsonReader = Json.createReader(new StringReader(deleteResponse.readEntity(String.class)))) {
+            JsonObject jsonResponse = jsonReader.readObject();
+            assertTrue(jsonResponse.containsKey("sessions"), "Response should contain 'sessions' key");
+            // Empty array means successful deletion (no errors)
+            assertThat(jsonResponse.getJsonArray("sessions").size(), is(0));
+            // Should not contain error key when deletion is successful
+            assertThat(jsonResponse.containsKey("error"), is(false));
+        }
+
+        // Verify both schedules are deleted from database
+        List<CourtSchedule> remainingSchedules = databaseReader.courtSchedules();
+        assertThat(remainingSchedules.stream()
+                .noneMatch(cs -> cs.getCourtScheduleId().equals(magistratesCourtScheduleId)
+                        || cs.getCourtScheduleId().equals(crownCourtScheduleId)), is(true));
+
+        // Test Case 2: Rejection when sessions have allocated listings for both jurisdictions
+        String magistratesWithListingsId = UUID.randomUUID().toString();
+        String crownWithListingsId = UUID.randomUUID().toString();
+
+        // Create MAGISTRATES court schedule with allocated listings
+        CourtSchedule magistratesWithListings = RANDOM.nextObject(CourtSchedule.class);
+        magistratesWithListings.setBusinessType("TRL");
+        magistratesWithListings.setSlotBased(false);
+        magistratesWithListings.setMaxDuration(120);
+        magistratesWithListings.setAvailableDuration(60);
+        magistratesWithListings.setSupportAdSplit(false);
+        magistratesWithListings.setCourtSession(ALL_DAY);
+        magistratesWithListings.setCourtScheduleId(magistratesWithListingsId);
+        magistratesWithListings.setSessionDate(getRandomFutureDateWithinNextYear());
+        magistratesWithListings.setSessionStartTime(combineDateAndTime(magistratesWithListings.getSessionDate(), "10:00"));
+        magistratesWithListings.setSessionEndTime(combineDateAndTime(magistratesWithListings.getSessionDate(), "16:00"));
+        magistratesWithListings.setJurisdiction("MAGISTRATES");
+        magistratesWithListings.setIsDraft(false);
+        magistratesWithListings.setActive(true);
+        databaseSeeder.insertCourtSchedule(magistratesWithListings);
+
+        // Create allocated listing for MAGISTRATES schedule
+        final UUID magistratesHearingId = UUID.randomUUID();
+        final UUID magistratesBookingId = UUID.randomUUID();
+        createAllocatedListing(magistratesWithListings, magistratesHearingId, magistratesBookingId, 60, "10:00");
+
+        // Create CROWN court schedule with allocated listings
+        CourtSchedule crownWithListings = RANDOM.nextObject(CourtSchedule.class);
+        crownWithListings.setBusinessType("TRL");
+        crownWithListings.setSlotBased(false);
+        crownWithListings.setMaxDuration(120);
+        crownWithListings.setAvailableDuration(60);
+        crownWithListings.setSupportAdSplit(false);
+        crownWithListings.setCourtSession(ALL_DAY);
+        crownWithListings.setCourtScheduleId(crownWithListingsId);
+        crownWithListings.setSessionDate(getRandomFutureDateWithinNextYear());
+        crownWithListings.setSessionStartTime(combineDateAndTime(crownWithListings.getSessionDate(), "10:00"));
+        crownWithListings.setSessionEndTime(combineDateAndTime(crownWithListings.getSessionDate(), "16:00"));
+        crownWithListings.setJurisdiction("CROWN");
+        crownWithListings.setIsDraft(true);
+        crownWithListings.setActive(true);
+        databaseSeeder.insertCourtSchedule(crownWithListings);
+
+        // Create allocated listing for CROWN schedule
+        final UUID crownHearingId = UUID.randomUUID();
+        final UUID crownBookingId = UUID.randomUUID();
+        final AllocatedListing crownAllocatedListing = createAllocatedListing(crownWithListings, crownHearingId, crownBookingId, 60, "10:00");
+
+        // Try to delete both schedules with allocated listings
+        // Create JSON payload with both IDs
+        String deleteWithListingsPayload = "{\"sessions\": [\"" + magistratesWithListingsId + "\", \"" + crownWithListingsId + "\"]}";
+
+        final Response deleteWithListingsResponse = postCommand(BASE_RESOURCE_URL + DELETE_URL,
+                COURT_SCHEDULE_DELETE_CONTENT_TYPE, USER_ID, deleteWithListingsPayload);
+
+        assertThat(deleteWithListingsResponse.getStatus(), is(OK.getStatusCode()));
+
+        // Verify rejection - both should be returned in sessions array with error message
+        try (JsonReader jsonReader = Json.createReader(new StringReader(deleteWithListingsResponse.readEntity(String.class)))) {
+            JsonObject jsonResponse = jsonReader.readObject();
+            assertTrue(jsonResponse.containsKey("error"), "Response should contain an 'error' key when deletion fails");
+            assertThat(jsonResponse.getString("error"), is("Some sessions could not be removed. Please check again."));
+            assertTrue(jsonResponse.containsKey("sessions"), "Response should contain 'sessions' key");
+
+            // Both MAGISTRATES and CROWN schedules should be returned (can't be deleted due to allocated listings)
+            assertThat(jsonResponse.getJsonArray("sessions").size(), is(2));
+
+            // Verify MAGISTRATES schedule is in response
+            boolean magistratesFound = false;
+            boolean crownFound = false;
+            for (int i = 0; i < jsonResponse.getJsonArray("sessions").size(); i++) {
+                JsonObject sessionObj = jsonResponse.getJsonArray("sessions").getJsonObject(i);
+                String courtScheduleId = sessionObj.getString("courtScheduleId");
+                if (courtScheduleId.equals(magistratesWithListingsId)) {
+                    magistratesFound = true;
+                    assertThat(sessionObj.getInt("totalBooked"), is(60));
+                    // Verify it's the MAGISTRATES schedule by checking courtScheduleId
+                    assertThat(sessionObj.getString("courtScheduleId"), is(magistratesWithListingsId));
+                } else if (courtScheduleId.equals(crownWithListingsId)) {
+                    crownFound = true;
+                    assertThat(sessionObj.getInt("totalBooked"), is(60));
+                    // Verify it's the CROWN schedule by checking courtScheduleId
+                    assertThat(sessionObj.getString("courtScheduleId"), is(crownWithListingsId));
+                }
+            }
+            assertThat(magistratesFound, is(true));
+            assertThat(crownFound, is(true));
+        }
+
+        // Verify both schedules still exist in database (not deleted)
+        List<CourtSchedule> schedulesAfterFailedDelete = databaseReader.courtSchedules();
+        assertThat(schedulesAfterFailedDelete.stream()
+                .anyMatch(cs -> cs.getCourtScheduleId().equals(magistratesWithListingsId)), is(true));
+        assertThat(schedulesAfterFailedDelete.stream()
+                .anyMatch(cs -> cs.getCourtScheduleId().equals(crownWithListingsId)), is(true));
+    }
+
+    @Test
     void shouldMigrateOuCodes() throws Exception {
         CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
         courtSchedulerMigrationStatus.setOuCode("B12345");
