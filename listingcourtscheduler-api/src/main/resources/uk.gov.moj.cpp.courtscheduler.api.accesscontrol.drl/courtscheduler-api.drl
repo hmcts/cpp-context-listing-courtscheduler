@@ -92,7 +92,7 @@ rule "API - Action - courtscheduler.judiciary.add.availability.rule"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.judiciary.add.availability.rule");
-         eval(userAndGroupProvider.isSystemUser($action));
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
 end
@@ -101,7 +101,7 @@ rule "API - Action - courtscheduler.judiciary.find.availability"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.judiciary.find.availability");
-         eval(userAndGroupProvider.isSystemUser($action));
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
 end
