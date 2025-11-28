@@ -39,7 +39,6 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConver
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
@@ -65,7 +64,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatusList;
-import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
@@ -157,8 +155,6 @@ class CourtSchedulerApiTest {
     private UpdateCourtScheduleConverter updateCourtScheduleConverter;
     @Mock
     private CourtScheduleApiValidator courtScheduleApiValidator;
-    @Mock
-    private OuCodeMigrateConverter ouCodeMigrateConverter;
     @Mock
     private JsonEnvelope envelope;
     @Mock
@@ -546,21 +542,6 @@ class CourtSchedulerApiTest {
 
         verify(provisionalBookingService, atLeastOnce()).fetchProvisionalSlots(anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(getProvisionalBookingEnvelope, requestName);
-    }
-
-    @Test
-    void shouldMigrateOuCodes() throws IOException {
-        String payload = getPayload("oucode-migrate-courtscheduler.json");
-        final JsonObject jsonObject = payloadToObject(payload);
-        final String requestName = "courtscheduler.oucode.migrate";
-
-        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
-        when(ouCodeMigrateConverter.convert(anyString())).thenReturn(new OuCodeMigrateRequest());
-        when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
-        when(sessionsService.migrateOuCodes(any())).thenReturn(Result.SUCCESS());
-        courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(migrateOuCodeEnvelope, requestName);
     }
 
     @Test
