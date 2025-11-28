@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
-import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.VenueCourtRoomHelper;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 

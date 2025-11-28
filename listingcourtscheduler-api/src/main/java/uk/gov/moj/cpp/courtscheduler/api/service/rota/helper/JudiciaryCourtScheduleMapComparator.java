@@ -30,7 +30,7 @@ public class JudiciaryCourtScheduleMapComparator {
      * @return a map of judiciary IDs to lists of missing court schedule IDs
      */
     public Map<String, List<UUID>> findMissingCourtScheduleIdsInDB(final Map<String, List<UUID>> rotaFeedMap,
-                                                                    final Map<String, List<UUID>> databaseMap) {
+                                                                   final Map<String, List<UUID>> databaseMap) {
         if (rotaFeedMap == null || rotaFeedMap.isEmpty()) {
             logger.debug("No rota feed map provided to find missing court schedule IDs");
             return Collections.emptyMap();
@@ -81,7 +81,7 @@ public class JudiciaryCourtScheduleMapComparator {
      * @return a map of judiciary IDs to lists of missing court schedule IDs (present in database but not in rota feed)
      */
     public Map<String, List<UUID>> findMissingCourtScheduleIdsInRotaFeed(final Map<String, List<UUID>> databaseMap,
-                                                                          final Map<String, List<UUID>> rotaFeedMap) {
+                                                                         final Map<String, List<UUID>> rotaFeedMap) {
         if (databaseMap == null || databaseMap.isEmpty()) {
             logger.debug("No database map provided to find missing court schedule IDs in rota feed");
             return Collections.emptyMap();

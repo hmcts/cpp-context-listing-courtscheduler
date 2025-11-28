@@ -20,8 +20,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDICIARY_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDGE_EMAIL;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDICIARY_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.MAGS_EMAIL;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ROTA_JUDICIARY_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
@@ -30,8 +30,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 
 import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaFileProcessor;
-import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.CourtScheduleJudiciaryQueryHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.DateParsingUtility;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleMapComparator;
@@ -126,7 +124,7 @@ class RotaFileProcessorTest {
         executionId = "execution-123";
 
         records = new HashMap<>();
-        
+
         judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
                 .withId(randomUUID().toString())
                 .withEmailAddress("judge@example.com")
@@ -288,13 +286,13 @@ class RotaFileProcessorTest {
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of(courtSchedule));
-        
+
         CourtScheduleJudiciary scheduleJudiciary = judiciary()
                 .withJudiciaryId(judiciary.getId())
                 .withCourtListingProfileId("listing-1")
                 .build();
         when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(scheduleJudiciary);
-        
+
         Map<String, List<UUID>> rotaFeedMap = new HashMap<>();
         rotaFeedMap.put(judiciary.getId(), List.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
         Map<String, List<UUID>> dbMap = new HashMap<>();
@@ -485,7 +483,7 @@ class RotaFileProcessorTest {
         when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
-        
+
         CourtScheduleJudiciary scheduleJudiciary = judiciary()
                 .withJudiciaryId(judiciary.getId())
                 .withCourtListingProfileId("listing-1")

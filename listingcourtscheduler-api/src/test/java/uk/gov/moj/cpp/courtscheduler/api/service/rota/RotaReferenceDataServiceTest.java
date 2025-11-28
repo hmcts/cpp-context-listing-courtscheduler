@@ -19,7 +19,6 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.RE
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
 
 import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
@@ -141,11 +140,11 @@ class RotaReferenceDataServiceTest {
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByEmail(requester, email);
-        
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor = 
+
+        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
-        
+
         uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(JUDICIARY_NOT_FOUND.code()));
@@ -177,11 +176,11 @@ class RotaReferenceDataServiceTest {
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByEmail(requester, email);
-        
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor = 
+
+        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
-        
+
         uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(ROTA_PROCESSING_ERROR.code()));
@@ -217,11 +216,11 @@ class RotaReferenceDataServiceTest {
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService, never()).findByVenue(any(), anyMap(), any());
-        
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor = 
+
+        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
-        
+
         uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(REF_DATA_VENUE_NOT_FOUND.code()));
@@ -252,11 +251,11 @@ class RotaReferenceDataServiceTest {
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByVenue(eq(venue), anyMap(), eq(requester));
-        
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor = 
+
+        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
-        
+
         uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(REF_DATA_VENUE_NOT_FOUND.code()));
@@ -276,11 +275,11 @@ class RotaReferenceDataServiceTest {
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByVenue(eq(venue), anyMap(), eq(requester));
-        
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor = 
+
+        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
-        
+
         uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(ROTA_PROCESSING_ERROR.code()));

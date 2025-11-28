@@ -94,8 +94,8 @@ public class RotaFileUtility {
     /**
      * Processes a snapshot file if needed, generating an execution ID.
      *
-     * @param fileName the name of the file
-     * @param content the byte content of the file
+     * @param fileName                      the name of the file
+     * @param content                       the byte content of the file
      * @param rotaFileProcessHistoryService the service for saving file process history
      * @return the execution ID if it's a snapshot file, empty string otherwise
      * @throws IllegalStateException if a newer snapshot file has already been processed

@@ -52,8 +52,8 @@ public class RotaReferenceDataService {
      * Used to identify and validate judiciaries from the rota file.
      * If the judiciary is not found or an error occurs, it will be logged using RotaProcessLogService.
      *
-     * @param requester the requester for making reference data queries
-     * @param email the email address of the judiciary
+     * @param requester   the requester for making reference data queries
+     * @param email       the email address of the judiciary
      * @param executionId the execution ID for logging purposes (can be null)
      * @return Optional containing the Judiciary if found, empty otherwise
      */
@@ -65,7 +65,7 @@ public class RotaReferenceDataService {
 
         try {
             final Optional<Judiciary> judiciaryOptional = referenceDataMapperService.findByEmail(requester, email);
-            
+
             if (judiciaryOptional.isPresent()) {
                 logger.debug("Judiciary validation for email {} - found: {}", email, true);
                 return judiciaryOptional;
@@ -106,16 +106,16 @@ public class RotaReferenceDataService {
      * Identifies venues using location ID, venue ID, and venue name.
      * If the venue is not found or an error occurs, it will be logged using RotaProcessLogService.
      *
-     * @param venue the venue containing locationId, venueId, and venueName
+     * @param venue             the venue containing locationId, venueId, and venueName
      * @param exceptionMessages map to store exception messages for missing venue mappings
-     * @param requester the requester for making reference data queries
-     * @param executionId the execution ID for logging purposes (can be null)
+     * @param requester         the requester for making reference data queries
+     * @param executionId       the execution ID for logging purposes (can be null)
      * @return Optional containing the CourtRoom if found, empty otherwise
      */
     public Optional<CourtRoom> validateAndFindVenue(final Venue venue,
-                                                     final Map<String, String> exceptionMessages,
-                                                     final Requester requester,
-                                                     final String executionId) {
+                                                    final Map<String, String> exceptionMessages,
+                                                    final Requester requester,
+                                                    final String executionId) {
         if (venue == null) {
             logger.warn("Venue is null, cannot validate venue");
             if (isNotEmpty(executionId)) {
@@ -206,18 +206,18 @@ public class RotaReferenceDataService {
      * Validates and retrieves session allocation information.
      * Checks if a session allocation exists for the given OU code, room ID, session, and business type.
      *
-     * @param requester the requester for making reference data queries
-     * @param ouCode the organizational unit code
-     * @param roomId the court room ID
+     * @param requester      the requester for making reference data queries
+     * @param ouCode         the organizational unit code
+     * @param roomId         the court room ID
      * @param listingSession the listing session (e.g., "AM", "PM", "ALL_DAY")
-     * @param businessType the business type code
+     * @param businessType   the business type code
      * @return Optional containing the CourtRoomSessionAllocation if found, empty otherwise
      */
     public Optional<CourtRoomSessionAllocation> validateAndFindSessionAllocation(final Requester requester,
-                                                                                  final String ouCode,
-                                                                                  final Integer roomId,
-                                                                                  final String listingSession,
-                                                                                  final String businessType) {
+                                                                                 final String ouCode,
+                                                                                 final Integer roomId,
+                                                                                 final String listingSession,
+                                                                                 final String businessType) {
         if (ouCode == null || roomId == null || listingSession == null || businessType == null) {
             logger.warn("Session allocation validation skipped - missing required parameters: ouCode={}, roomId={}, listingSession={}, businessType={}",
                     ouCode, roomId, listingSession, businessType);

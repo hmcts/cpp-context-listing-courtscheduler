@@ -32,9 +32,9 @@ public class VenueCourtRoomHelper {
     /**
      * Extracts and validates court room information from a listing profile.
      *
-     * @param listingProfile the listing profile containing venue information
-     * @param requester the requester for making reference data queries
-     * @param executionId the execution ID for logging purposes
+     * @param listingProfile                 the listing profile containing venue information
+     * @param requester                      the requester for making reference data queries
+     * @param executionId                    the execution ID for logging purposes
      * @param missingReferenceDataMappingMap map to store missing reference data mappings
      * @return the CourtRoom if found, null otherwise
      */
@@ -57,11 +57,11 @@ public class VenueCourtRoomHelper {
     /**
      * Parses and validates venue information to retrieve a CourtRoom.
      *
-     * @param locationIdStr the location ID as a string
-     * @param venueIdStr the venue ID as a string
-     * @param venueName the venue name
-     * @param requester the requester for making reference data queries
-     * @param executionId the execution ID for logging purposes
+     * @param locationIdStr                  the location ID as a string
+     * @param venueIdStr                     the venue ID as a string
+     * @param venueName                      the venue name
+     * @param requester                      the requester for making reference data queries
+     * @param executionId                    the execution ID for logging purposes
      * @param missingReferenceDataMappingMap map to store missing reference data mappings
      * @return the CourtRoom if found, null otherwise
      */

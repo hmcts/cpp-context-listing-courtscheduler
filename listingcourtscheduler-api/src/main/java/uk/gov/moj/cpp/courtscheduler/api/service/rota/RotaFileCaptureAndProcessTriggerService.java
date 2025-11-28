@@ -58,7 +58,7 @@ public class RotaFileCaptureAndProcessTriggerService {
             final Optional<Map.Entry<String, BlobItem>> availableFile = azureBlobClientService.findAvailableFile(blobPrefix);
             fileAvailable = availableFile.isPresent();
             if (fileAvailable) {
-                logger.info("Found file {}",availableFile.get());
+                logger.info("Found file {}", availableFile.get());
                 final String leaseId = availableFile.get().getKey();
                 final String blobName = availableFile.get().getValue().getName();
                 final BlobItem blobItem = availableFile.get().getValue();
@@ -73,7 +73,7 @@ public class RotaFileCaptureAndProcessTriggerService {
                     final BlobContent blobContent = azureBlobClientService.downloadFiles(blobItem);
                     final long downloadEnd = System.nanoTime();
                     logger.info("PRF: Downloaded blob {} in {} ms", blobName, (downloadEnd - downloadStart) / 1_000_000);
-                    
+
                     if (ROTA_PROCESS_OLD.equals(rotaProcess)) {
                         logger.info("Using old rota file processor service for blob: {}", blobName);
                         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);

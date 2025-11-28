@@ -5,8 +5,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.DateParsingUtility;
-
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;

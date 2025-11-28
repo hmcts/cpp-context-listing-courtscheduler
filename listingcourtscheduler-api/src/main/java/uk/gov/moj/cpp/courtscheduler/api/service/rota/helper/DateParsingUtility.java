@@ -27,7 +27,7 @@ public class DateParsingUtility {
         if (sessionDateStr == null || sessionDateStr.isEmpty()) {
             return null;
         }
-        
+
         try {
             final LocalDate parsedDate = LocalDate.parse(sessionDateStr, DATE_FORMATTER);
             // Validate that the parsed date matches the input string exactly
