@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import static java.util.Collections.emptyMap;
 import static java.util.UUID.randomUUID;
@@ -19,6 +19,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.RE
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;

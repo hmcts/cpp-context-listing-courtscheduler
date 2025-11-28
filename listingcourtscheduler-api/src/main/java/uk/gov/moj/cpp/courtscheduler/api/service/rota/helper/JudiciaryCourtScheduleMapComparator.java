@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service.helper;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 import java.util.ArrayList;
 import java.util.Collections;

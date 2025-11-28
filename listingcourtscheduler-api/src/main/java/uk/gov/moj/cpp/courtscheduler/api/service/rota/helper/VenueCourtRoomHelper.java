@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service.helper;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.LOCATION_ID;
@@ -6,7 +6,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE_NAME;
 
 import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.moj.cpp.courtscheduler.api.service.RotaReferenceDataService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 

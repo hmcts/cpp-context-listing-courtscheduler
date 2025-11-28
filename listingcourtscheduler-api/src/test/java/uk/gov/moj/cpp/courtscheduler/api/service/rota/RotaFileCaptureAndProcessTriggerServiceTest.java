@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.mockito.ArgumentMatchers.any;

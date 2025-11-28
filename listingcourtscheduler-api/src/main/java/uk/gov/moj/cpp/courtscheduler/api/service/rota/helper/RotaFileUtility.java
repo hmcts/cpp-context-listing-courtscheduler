@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service.helper;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 import static java.util.Objects.isNull;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;

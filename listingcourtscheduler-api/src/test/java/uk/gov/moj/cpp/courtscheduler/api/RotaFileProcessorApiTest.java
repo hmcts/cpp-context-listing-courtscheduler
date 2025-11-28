@@ -16,8 +16,8 @@ import uk.gov.justice.services.messaging.Envelope;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
-import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileCaptureAndProcessTriggerService;
-import uk.gov.moj.cpp.courtscheduler.api.service.RotaRedundantDataCleanerService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaFileCaptureAndProcessTriggerService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaRedundantDataCleanerService;
 
 import java.util.UUID;
 import java.util.function.Function;

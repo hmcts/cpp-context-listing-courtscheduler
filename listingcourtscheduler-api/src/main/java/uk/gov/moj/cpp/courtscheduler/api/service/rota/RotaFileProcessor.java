@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
@@ -39,11 +39,11 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.CourtScheduleJudiciaryQueryHelper;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.DateParsingUtility;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.JudiciaryCourtScheduleMapComparator;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.RotaFileUtility;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.VenueCourtRoomHelper;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.CourtScheduleJudiciaryQueryHelper;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.DateParsingUtility;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleMapComparator;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaFileUtility;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.VenueCourtRoomHelper;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryBuilder;
 
@@ -67,9 +67,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Stateless
-public class RotaFileProcessorService {
+public class RotaFileProcessor {
 
-    private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessorService.class);
+    private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessor.class);
 
     private final AzureBlobClientService azureBlobClientService;
     private final RotaFileParser rotaFileParser;
@@ -84,17 +84,17 @@ public class RotaFileProcessorService {
     private final JudiciaryCourtScheduleMapComparator mapComparator;
 
     @Inject
-    public RotaFileProcessorService(final AzureBlobClientService azureBlobClientService,
-                                    final RotaFileParser rotaFileParser,
-                                    final RotaFileProcessHistoryService rotaFileProcessHistoryService,
-                                    final RotaReferenceDataService referenceDataValidationService,
-                                    final SessionsService sessionsService,
-                                    final JudiciaryBuilder judiciaryBuilder,
-                                    final RotaFileUtility rotaFileUtility,
-                                    final DateParsingUtility dateParsingUtility,
-                                    final VenueCourtRoomHelper venueCourtRoomHelper,
-                                    final CourtScheduleJudiciaryQueryHelper courtScheduleJudiciaryQueryHelper,
-                                    final JudiciaryCourtScheduleMapComparator mapComparator) {
+    public RotaFileProcessor(final AzureBlobClientService azureBlobClientService,
+                             final RotaFileParser rotaFileParser,
+                             final RotaFileProcessHistoryService rotaFileProcessHistoryService,
+                             final RotaReferenceDataService referenceDataValidationService,
+                             final SessionsService sessionsService,
+                             final JudiciaryBuilder judiciaryBuilder,
+                             final RotaFileUtility rotaFileUtility,
+                             final DateParsingUtility dateParsingUtility,
+                             final VenueCourtRoomHelper venueCourtRoomHelper,
+                             final CourtScheduleJudiciaryQueryHelper courtScheduleJudiciaryQueryHelper,
+                             final JudiciaryCourtScheduleMapComparator mapComparator) {
         this.azureBlobClientService = azureBlobClientService;
         this.rotaFileParser = rotaFileParser;
         this.rotaFileProcessHistoryService = rotaFileProcessHistoryService;

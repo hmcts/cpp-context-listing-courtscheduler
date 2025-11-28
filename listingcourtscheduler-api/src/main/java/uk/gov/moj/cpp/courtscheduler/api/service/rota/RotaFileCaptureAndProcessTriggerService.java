@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
@@ -35,7 +35,7 @@ public class RotaFileCaptureAndProcessTriggerService {
     private RotaFileProcessorService rotaFileProcessorService;
 
     @Inject
-    private uk.gov.moj.cpp.courtscheduler.api.service.RotaFileProcessorService newRotaFileProcessorService;
+    private RotaFileProcessor newRotaFileProcessor;
 
     @Inject
     private AzureBlobClientService azureBlobClientService;
@@ -79,7 +79,7 @@ public class RotaFileCaptureAndProcessTriggerService {
                         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
                     } else {
                         logger.info("Using new rota file processor service for blob: {}", blobName);
-                        newRotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
+                        newRotaFileProcessor.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
                     }
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);

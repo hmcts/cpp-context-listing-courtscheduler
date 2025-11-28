@@ -1,10 +1,11 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaRedundantDataCleanerService;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;

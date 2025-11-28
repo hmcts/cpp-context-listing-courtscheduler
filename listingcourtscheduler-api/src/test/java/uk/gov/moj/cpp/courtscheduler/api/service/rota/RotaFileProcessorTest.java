@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Optional.empty;
@@ -30,11 +30,13 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 
 import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.CourtScheduleJudiciaryQueryHelper;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.DateParsingUtility;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.JudiciaryCourtScheduleMapComparator;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.RotaFileUtility;
-import uk.gov.moj.cpp.courtscheduler.api.service.helper.VenueCourtRoomHelper;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaFileProcessor;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.CourtScheduleJudiciaryQueryHelper;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.DateParsingUtility;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleMapComparator;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaFileUtility;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.VenueCourtRoomHelper;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
@@ -64,7 +66,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class RotaFileProcessorServiceTest {
+class RotaFileProcessorTest {
 
     @Mock
     private AzureBlobClientService azureBlobClientService;
@@ -103,7 +105,7 @@ class RotaFileProcessorServiceTest {
     private Requester requester;
 
     @InjectMocks
-    private RotaFileProcessorService rotaFileProcessorService;
+    private RotaFileProcessor rotaFileProcessor;
 
     private String blobName;
     private String leaseId;
@@ -161,7 +163,7 @@ class RotaFileProcessorServiceTest {
         setupSuccessfulProcessing();
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(azureBlobClientService).uploadProcessedFile(any(ByteArrayInputStream.class), eq((long) blobContent.length), eq(blobName), eq(empty()));
@@ -177,7 +179,7 @@ class RotaFileProcessorServiceTest {
         when(rotaFileParser.parse(anyString(), any())).thenThrow(new RuntimeException("Parsing error"));
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(azureBlobClientService).releaseLease(blobName, leaseId, true);
@@ -196,7 +198,7 @@ class RotaFileProcessorServiceTest {
         setupRecordsWithData();
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(rotaFileParser).parse(blobName, blobContent);
@@ -219,7 +221,7 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), any());
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(rotaFileParser).parse(blobName, blobContent);
@@ -314,7 +316,7 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), any());
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(rotaFileUtility).processSnapshotFileIfNeeded(eq(blobName), eq(blobContent), eq(rotaFileProcessHistoryService));
@@ -334,7 +336,7 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), any());
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(rotaFileUtility).isDummyFile(blobName);
@@ -355,7 +357,7 @@ class RotaFileProcessorServiceTest {
                 .thenReturn(Optional.of(judiciary));
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(referenceDataValidationService).validateAndFindJudiciaryByEmail(any(), eq("magistrate@example.com"), eq(executionId));
@@ -384,7 +386,7 @@ class RotaFileProcessorServiceTest {
                 .thenReturn(List.of(courtSchedule));
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(dateParsingUtility).parseSessionDate("2024-01-15");
@@ -406,7 +408,7 @@ class RotaFileProcessorServiceTest {
         when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(dateParsingUtility, never()).parseSessionDate(anyString());
@@ -429,7 +431,7 @@ class RotaFileProcessorServiceTest {
         when(dateParsingUtility.parseSessionDate("invalid-date")).thenReturn(null);
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(venueCourtRoomHelper, never()).getCourtRoom(anyMap(), any(), anyString(), anyMap());
@@ -456,7 +458,7 @@ class RotaFileProcessorServiceTest {
                 .thenReturn(null);
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(sessionsService, never()).getExtractedCourtSchedules(anyList(), any(), any());
@@ -491,7 +493,7 @@ class RotaFileProcessorServiceTest {
         when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(scheduleJudiciary);
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(judiciaryBuilder).build(anyMap(), anyString());
@@ -511,7 +513,7 @@ class RotaFileProcessorServiceTest {
         when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(judiciaryBuilder, never()).build(anyMap(), anyString());
@@ -539,7 +541,7 @@ class RotaFileProcessorServiceTest {
                 .thenReturn(Optional.of(judiciary));
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(judiciaryBuilder, never()).build(anyMap(), anyString());
@@ -565,7 +567,7 @@ class RotaFileProcessorServiceTest {
                 .thenThrow(new RuntimeException("Date parsing error"));
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         // Should continue processing despite exception
@@ -595,7 +597,7 @@ class RotaFileProcessorServiceTest {
                 .thenThrow(new RuntimeException("Validation error"));
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         // Exception should be caught and lease should be released with error flag
@@ -617,7 +619,7 @@ class RotaFileProcessorServiceTest {
                 .thenReturn(dbMap);
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         @SuppressWarnings("unchecked")
@@ -640,7 +642,7 @@ class RotaFileProcessorServiceTest {
                 .thenReturn(dbMap);
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         verify(mapComparator).findMissingCourtScheduleIdsInDB(anyMap(), anyMap());
@@ -686,7 +688,7 @@ class RotaFileProcessorServiceTest {
                 .thenReturn(List.of(matchingSchedule, nonMatchingSchedule));
 
         // when
-        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
         // then
         // The filtering should only include matchingSchedule

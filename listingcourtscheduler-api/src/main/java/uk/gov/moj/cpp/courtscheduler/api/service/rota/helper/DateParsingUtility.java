@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service.helper;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
