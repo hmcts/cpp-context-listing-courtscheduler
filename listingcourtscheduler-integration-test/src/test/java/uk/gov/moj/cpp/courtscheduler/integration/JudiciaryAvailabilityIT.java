@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 
 class JudiciaryAvailabilityIT extends AbstractIT {
 
-    private static final String JUDICIARY_RESOURCE_URL = "/judiciary";
+    private static final String JUDICIARY_RESOURCE_URL = "/judiciary-availability";
     private static final String ADD_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.add.availability.rule+json";
     private static final String FIND_AVAILABILITY_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.find.availability+json";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
