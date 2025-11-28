@@ -71,42 +71,38 @@ public class RotaFileProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessor.class);
 
-    private final AzureBlobClientService azureBlobClientService;
-    private final RotaFileParser rotaFileParser;
-    private final RotaFileProcessHistoryService rotaFileProcessHistoryService;
-    private final RotaReferenceDataService referenceDataValidationService;
-    private final SessionsService sessionsService;
-    private final JudiciaryBuilder judiciaryBuilder;
-    private final RotaFileUtility rotaFileUtility;
-    private final DateParsingUtility dateParsingUtility;
-    private final VenueCourtRoomHelper venueCourtRoomHelper;
-    private final CourtScheduleJudiciaryQueryHelper courtScheduleJudiciaryQueryHelper;
-    private final JudiciaryCourtScheduleMapComparator mapComparator;
+    @Inject
+    private AzureBlobClientService azureBlobClientService;
 
     @Inject
-    public RotaFileProcessor(final AzureBlobClientService azureBlobClientService,
-                             final RotaFileParser rotaFileParser,
-                             final RotaFileProcessHistoryService rotaFileProcessHistoryService,
-                             final RotaReferenceDataService referenceDataValidationService,
-                             final SessionsService sessionsService,
-                             final JudiciaryBuilder judiciaryBuilder,
-                             final RotaFileUtility rotaFileUtility,
-                             final DateParsingUtility dateParsingUtility,
-                             final VenueCourtRoomHelper venueCourtRoomHelper,
-                             final CourtScheduleJudiciaryQueryHelper courtScheduleJudiciaryQueryHelper,
-                             final JudiciaryCourtScheduleMapComparator mapComparator) {
-        this.azureBlobClientService = azureBlobClientService;
-        this.rotaFileParser = rotaFileParser;
-        this.rotaFileProcessHistoryService = rotaFileProcessHistoryService;
-        this.referenceDataValidationService = referenceDataValidationService;
-        this.sessionsService = sessionsService;
-        this.judiciaryBuilder = judiciaryBuilder;
-        this.rotaFileUtility = rotaFileUtility;
-        this.dateParsingUtility = dateParsingUtility;
-        this.venueCourtRoomHelper = venueCourtRoomHelper;
-        this.courtScheduleJudiciaryQueryHelper = courtScheduleJudiciaryQueryHelper;
-        this.mapComparator = mapComparator;
-    }
+    private RotaFileParser rotaFileParser;
+
+    @Inject
+    private RotaFileProcessHistoryService rotaFileProcessHistoryService;
+
+    @Inject
+    private RotaReferenceDataService referenceDataValidationService;
+
+    @Inject
+    private SessionsService sessionsService;
+
+    @Inject
+    private JudiciaryBuilder judiciaryBuilder;
+
+    @Inject
+    private RotaFileUtility rotaFileUtility;
+
+    @Inject
+    private DateParsingUtility dateParsingUtility;
+
+    @Inject
+    private VenueCourtRoomHelper venueCourtRoomHelper;
+
+    @Inject
+    private CourtScheduleJudiciaryQueryHelper courtScheduleJudiciaryQueryHelper;
+
+    @Inject
+    private JudiciaryCourtScheduleMapComparator mapComparator;
 
     // ============================================================================
     // PUBLIC API METHODS
