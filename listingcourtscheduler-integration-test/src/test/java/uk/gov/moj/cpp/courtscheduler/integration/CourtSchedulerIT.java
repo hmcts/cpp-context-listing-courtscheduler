@@ -84,7 +84,7 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String VALIDATE_URL = "/validate";
     private static final String VALIDATE_SESSION_AVAILABILITY_URL = "/validate-session-availability";
     private static final String OUCODE_MIGRATE_URL = "/oucode/migrate";
-    private static final String UNASSIGN_JUDICIARY_URL = "/unassign-judiciary";
+    private static final String UNASSIGN_JUDICIARY_URL = "/session";
 
     private static final String COURT_SCHEDULE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
     private static final String COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
