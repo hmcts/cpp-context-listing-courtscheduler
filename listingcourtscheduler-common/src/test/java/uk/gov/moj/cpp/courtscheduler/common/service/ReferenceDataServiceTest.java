@@ -14,6 +14,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CR
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME;
+import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.getPayload;
@@ -176,6 +177,29 @@ class ReferenceDataServiceTest {
         Optional<BusinessType> appType = businessTypes.stream().filter(b -> "APP".equals(b.getTypeCode())).findFirst();
         assertTrue(appType.isPresent());
         assertEquals("MAGISTRATES", appType.get().getJurisdiction());
+    }
+
+    @Test
+    void shouldGetCpCourtRooms() {
+        final JsonObject courtRoomsJson = getPayload("/test-data/referencedata.get.ou-courtrooms.json");
+        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
+                .withId(randomUUID())
+                .withName(REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME)
+                .build(), courtRoomsJson);
+
+        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+
+        final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms(requester);
+        assertTrue(isNotEmpty(courtRooms));
+        assertEquals(1, courtRooms.size());
+        CourtRoom courtRoom = courtRooms.get(0);
+        assertEquals("8e912353-3b5d-36c3-953e-ad3b94b19de3", courtRoom.getId());
+        assertEquals(121, courtRoom.getCppCourtRoomId());
+        assertEquals("121", courtRoom.getCourtroomId());
+        assertEquals("Courtroom 01", courtRoom.getCourtroomName());
+        assertEquals(39, courtRoom.getRotaVenueId());
+        assertEquals("BEXLEY MAGISTRATES' COURT", courtRoom.getRotaVenueName());
+        assertEquals("B01BH00", courtRoom.getOucode());
     }
 
     @Test

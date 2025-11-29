@@ -39,6 +39,9 @@ public class StubUtil {
     private static final String QUERY_RELATIVE_URL_ROTA_JUDICIARIES = "/referencedata-service/query/api/rest/referencedata/judiciaries";
     private static final String ROTA_JUDICIARIES_QUERY_MEDIA_TYPE = "application/vnd.reference-data.judiciaries+json";
 
+    private static final String QUERY_RELATIVE_URL_CP_COURTROOMS = "/referencedata-service/query/api/rest/referencedata/courtrooms";
+    private static final String CP_COURTROOMS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.ou-courtrooms+json";
+
     public static void setupLoggedInUsersPermissionQueryStub(final String userId) {
         reset();
         stubPingFor("usersgroups-service");
@@ -99,6 +102,15 @@ public class StubUtil {
                 .willReturn(aResponse().withStatus(SC_OK)
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", ROTA_JUDICIARIES_QUERY_MEDIA_TYPE)
+                        .withBody(getPayload(responsePath))));
+    }
+
+    public static void stubGetCpCourtRooms(final String responsePath) {
+        final String urlPath = QUERY_RELATIVE_URL_CP_COURTROOMS;
+        stubFor(get(urlPathEqualTo(urlPath))
+                .willReturn(aResponse().withStatus(SC_OK)
+                        .withHeader("CPPID", randomUUID().toString())
+                        .withHeader("Content-Type", CP_COURTROOMS_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
     }
 

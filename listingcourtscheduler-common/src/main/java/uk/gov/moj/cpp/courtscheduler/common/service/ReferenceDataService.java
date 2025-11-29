@@ -58,9 +58,12 @@ public class ReferenceDataService {
     private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME = "referencedata.query.cp-rota-courtroom-mappings";
     private static final String REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME = "referencedata.query.judiciaries";
     private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME = "referencedata.query.courtroom-session-allocations";
+    private static final String REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME = "referencedata.query.courtrooms";
     private static final String PUBLIC_HOLIDAYS = "publicHolidays";
     private static final String DATE = "date";
     private static final String CP_ROTA_COURT_ROOM_MAPPINGS = "cpRotaCourtRoomMappings";
+    private static final String ORGANISATION_UNITS = "organisationunits";
+    private static final String COURTROOMS = "courtrooms";
     private static final String COURTROOM_ID = "courtroomId";
     private static final String VENUE_NAME = "rotaVenueName";
     private static final String LOCATION_ID = "rotaLocationId";
@@ -204,6 +207,30 @@ public class ReferenceDataService {
         return getRotaCourtRoomMappings(requester).stream()
                 .filter(courtRoom -> nonNull(courtRoom.getCourtroomId()))
                 .collect(Collectors.toMap(courtRoom -> UUID.fromString(courtRoom.getCourtroomId()), c -> c));
+    }
+
+    public List<CourtRoom> getCpCourtRooms(final Requester requester) {
+        final JsonEnvelope envelope =
+                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME).build(),
+                        createObjectBuilder().build());
+
+        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+
+        if (!payload.containsKey(ORGANISATION_UNITS)) {
+            return emptyList();
+        }
+
+        return payload.getJsonArray(ORGANISATION_UNITS).stream()
+                .map(JsonObject.class::cast)
+                .flatMap(ou -> {
+                    if (ou.containsKey(COURTROOMS)) {
+                        return ou.getJsonArray(COURTROOMS).stream()
+                                .map(JsonObject.class::cast)
+                                .map(courtRoomJson -> toCpCourtRoom(courtRoomJson, ou));
+                    }
+                    return java.util.stream.Stream.empty();
+                })
+                .toList();
     }
 
     public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId, final Requester requester) {
@@ -358,6 +385,22 @@ public class ReferenceDataService {
                 .withRotaBusinessTypeCode(getStringOrElse(jsonObject, "rotaBusinessTypeCode", null))
                 .withValidFrom(getStringOrElse(jsonObject, "validFrom", null))
                 .withValidTo(getStringOrElse(jsonObject, "validTo", null))
+                .build();
+    }
+
+    private CourtRoom toCpCourtRoom(JsonObject jsonObject, JsonObject ou) {
+        return CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withId(getStringOrElse(jsonObject, "id", null))
+                .withCppCourtRoomId(getIntOrElse(jsonObject, "courtroomId", null))
+                .withCourtRoomId(String.valueOf(getIntOrElse(jsonObject, "courtroomId", 0)))
+                .withCourtRoomName(getStringOrElse(jsonObject, "courtroomName", null))
+                .withRotaVenueId(getIntOrElse(jsonObject, "venueId", null))
+                .withRotaVenueName(getStringOrElse(jsonObject, "venueName", null))
+                .withOucode(getStringOrElse(ou, "oucode", null))
+                .withOucodeL3Name(getStringOrElse(ou, "oucodeL3Name", null))
+                .withOucodeL2Name(getStringOrElse(ou, "oucodeL2Name", null))
+                .withOucodeL2Code(getStringOrElse(ou, "oucodeL2Code", null))
+                .withOucodeUUID(getStringOrElse(ou, "id", null))
                 .build();
     }
 

@@ -724,7 +724,13 @@ public class SessionsService {
 
     private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsOrDuration, Requester requester) {
         final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType(), requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
-        final CourtRoom courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId(), requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+        CourtRoom courtRoom;
+        if ("CROWN".equalsIgnoreCase(builder.getJurisdiction())) {
+            courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(builder.getCourtRoomId(), requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+        } else {
+            courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId(), requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+        }
+
         if (businessType.isSlot()) {
             builder.withSlotBased(true);
             builder.withMaxSlots(maxSlotsOrDuration);
