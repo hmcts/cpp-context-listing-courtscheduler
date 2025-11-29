@@ -68,6 +68,7 @@ public class ReferenceDataService {
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
+    private static final String ALL = "ALL";
 
     @Inject
     private RotaProcessLogService rotaProcessLogService;
@@ -176,10 +177,13 @@ public class ReferenceDataService {
 
         final JsonEnvelope envelope =
                 envelopeFrom(metadataBuilder().withId(randomUUID()).withName(ReferenceDataService.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME).build(),
-                        createObjectBuilder().build());
+                        createObjectBuilder().add("jurisdiction", ALL).build());
+
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        return JsonObjects.getJsonArray(payload, "rotaBusinessTypes").orElseThrow(() -> new RuntimeException("No business type found: "))
+        final JsonArray rotaBusinessTypes = JsonObjects.getJsonArray(payload, "rotaBusinessTypes").orElseThrow(() -> new RuntimeException("No business type found: "));
+        LOGGER.info("Number of rotaBusinessTypes returned: {}", rotaBusinessTypes.size());
+        return rotaBusinessTypes
                 .stream()
                 .map(JsonObject.class::cast)
                 .map(this::toBusinessType)
@@ -187,18 +191,9 @@ public class ReferenceDataService {
     }
 
     public Optional<BusinessType> getRotaBusinessTypeByCode(final String typeCode, final Requester requester) {
-        final JsonEnvelope envelope =
-                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME).build(),
-                        createObjectBuilder().add("typeCode", typeCode).build());
-
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        final List<BusinessType> businessTypeList = JsonObjects.getJsonArray(payload, "rotaBusinessTypes").orElseThrow(() -> new RuntimeException("No business type found: " + typeCode))
-                .stream()
-                .map(JsonObject.class::cast)
-                .map(this::toBusinessType)
-                .toList();
-        return isEmpty(businessTypeList) ? Optional.empty() : Optional.of(businessTypeList.get(0));
-
+        return getRotaBusinessTypes(requester).stream()
+                .filter(businessType -> businessType.getTypeCode().equals(typeCode))
+                .findFirst();
     }
 
     public Map<String, BusinessType> getRotaBusinessTypesMap(final Requester requester) {
@@ -311,6 +306,7 @@ public class ReferenceDataService {
                 .withTypeDescription(jsonObject.getString("typeDescription"))
                 .withSlot(jsonObject.getBoolean("slot"))
                 .withDuration(jsonObject.getBoolean("duration"))
+                .withJurisdiction(getStringOrElse(jsonObject, "jurisdiction", null))
                 .build();
     }
 

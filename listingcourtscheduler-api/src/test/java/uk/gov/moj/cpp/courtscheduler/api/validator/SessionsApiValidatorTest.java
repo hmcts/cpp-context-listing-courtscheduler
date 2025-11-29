@@ -374,7 +374,7 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndBusinessTypeIsNotDurationBased() {
         SessionValidationParams params = new SessionValidationParams(60, 60, true, ALL_DAY, "BUSINESS_TYPE", null, null, "10:00", "17:00");
-        BusinessType businessType = new BusinessType("BUSINESS_TYPE", 1, "Description", "Category", false, false);
+        BusinessType businessType = new BusinessType("BUSINESS_TYPE", 1, "Description", "Category", false, false, null);
         when(referenceDataCache.getRotaBusinessTypeByCode("BUSINESS_TYPE", requester)).thenReturn(Optional.of(businessType));
 
         JsonObject result = sessionsApiValidator.validateSession(params, true, requester);

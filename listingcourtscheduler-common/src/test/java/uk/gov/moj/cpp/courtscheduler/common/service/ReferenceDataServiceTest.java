@@ -68,7 +68,7 @@ class ReferenceDataServiceTest {
     @Test
     void shouldReturnBusinessTypeWhenTypeCodeIsProvided() {
 
-        final JsonObject responsePayload = mockBusinessType("DVLA");
+        final JsonObject responsePayload = getPayload("/test-data/referencedata.get.businesstypes.json");
 
         final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
                 .withId(randomUUID())
@@ -77,8 +77,15 @@ class ReferenceDataServiceTest {
 
         when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
 
-        final Optional<BusinessType> businessType = referenceDataService.getRotaBusinessTypeByCode("DVLA", requester);
+        final Optional<BusinessType> businessType = referenceDataService.getRotaBusinessTypeByCode("APP", requester);
         assertThat(businessType, Matchers.notNullValue());
+        assertEquals("APP", businessType.get().getTypeCode());
+
+        ArgumentCaptor<Envelope> envelopeCaptor = ArgumentCaptor.forClass(Envelope.class);
+        verify(requester).requestAsAdmin(envelopeCaptor.capture(), any());
+        JsonObject payload = (JsonObject) envelopeCaptor.getValue().payload();
+        assertEquals("ALL", payload.getString("jurisdiction"));
+        assertFalse(payload.containsKey("typeCode"));
     }
 
     @Test
@@ -159,6 +166,16 @@ class ReferenceDataServiceTest {
 
         final List<BusinessType> businessTypes = referenceDataService.getRotaBusinessTypes(requester);
         assertTrue(isNotEmpty(businessTypes));
+
+        ArgumentCaptor<Envelope> envelopeCaptor = ArgumentCaptor.forClass(Envelope.class);
+        verify(requester).requestAsAdmin(envelopeCaptor.capture(), any());
+        JsonObject payload = (JsonObject) envelopeCaptor.getValue().payload();
+        assertEquals("ALL", payload.getString("jurisdiction"));
+
+        // Verify mapping of jurisdiction
+        Optional<BusinessType> appType = businessTypes.stream().filter(b -> "APP".equals(b.getTypeCode())).findFirst();
+        assertTrue(appType.isPresent());
+        assertEquals("MAGISTRATES", appType.get().getJurisdiction());
     }
 
     @Test
