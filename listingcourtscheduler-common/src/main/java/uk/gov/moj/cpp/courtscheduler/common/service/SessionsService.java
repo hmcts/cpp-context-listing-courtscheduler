@@ -9,6 +9,7 @@ import static java.util.Objects.nonNull;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME;
@@ -710,7 +711,7 @@ public class SessionsService {
                 .withIsOverbookingAllowed(TRUE.equals(session.isOverbookingAllowed()))
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate))
                 .withIsDraft(!isNull(session.isDraft()) && session.isDraft())
-                .withJurisdiction(!isNull(session.getJurisdiction()) ? session.getJurisdiction() : "MAGISTRATES");
+                .withJurisdiction(!isNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction());
         enrichSession(courtScheduleBuilder, session.getSlotsOrDuration(), requester);
         return courtScheduleBuilder.build();
     }
@@ -724,7 +725,13 @@ public class SessionsService {
 
     private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsOrDuration, Requester requester) {
         final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType(), requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
-        final CourtRoom courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId(), requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+        CourtRoom courtRoom;
+        if ("CROWN".equalsIgnoreCase(builder.getJurisdiction())) {
+            courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(builder.getCourtRoomId(), requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+        } else {
+            courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId(), requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+        }
+
         if (businessType.isSlot()) {
             builder.withSlotBased(true);
             builder.withMaxSlots(maxSlotsOrDuration);

@@ -150,6 +150,38 @@ class SessionsServiceTest {
     }
 
     @Test
+    void shouldCreateCourtSchedulesWithCrownJurisdictionFetchingCpCourtRoom() {
+        // Given
+        final LocalDate startDate = LocalDate.of(2024, 6, 20);
+        final Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(randomUUID().toString())
+                .withCourtRoomId("court-room-id")
+                .withSessionType("AM")
+                .withPanelType("Adult")
+                .withJurisdiction("CROWN")
+                .build();
+
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+
+        // Ensure getCpCourtRoomByCourtRoomId is called, NOT getRotaCourtRoomByCourtRoomId
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq("court-room-id"), eq(requester)))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId("court-room-id").build()));
+
+        // When
+        sessionsService.create(createSessionRequest, requester);
+
+        // Then
+        verify(referenceDataCache).getCpCourtRoomByCourtRoomId(eq("court-room-id"), eq(requester));
+        verify(referenceDataCache, never()).getRotaCourtRoomByCourtRoomId(any(), any());
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(any(List.class));
+    }
+
+    @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingToday() {
         final List<Session> sessions = Arrays.asList(
                 singleSession(WEEK_DAYS_FIRST_HALF, true),

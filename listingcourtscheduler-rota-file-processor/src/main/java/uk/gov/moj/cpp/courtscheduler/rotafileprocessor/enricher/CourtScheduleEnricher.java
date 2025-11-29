@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
@@ -150,7 +151,7 @@ public class CourtScheduleEnricher {
                 .withCourtRoomId(courtRoomDetail.getCourtroomId())
                 .withCourtRoomNumber(courtRoomDetail.getCppCourtRoomId())
                 .withCourtRoomName(courtRoomDetail.getCourtroomName())
-                .withJurisdiction("MAGISTRATES");
+                .withJurisdiction(MAGISTRATES.getJurisdiction());
     }
 
     private void populateSessionAllocationProperties(final CourtSchedule.CourtScheduleBuilder builder, final CourtRoomSessionAllocation allocation) {

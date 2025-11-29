@@ -21,6 +21,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.RO
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_COURTROOM_CACHE_PREFIX;
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY;
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_JUDICIARIES_CACHE_KEY;
+import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.CP_COURTROOM_CACHE_PREFIX;
 
 import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
@@ -431,6 +432,34 @@ class ReferenceDataCacheTest {
         verify(referenceDataService, atLeastOnce()).getRotaCourtRoomByVenue(eq(venue), anyMap(), eq(requester));
     }
 
+    @Test
+    void shouldReturnCpCourtRoomFromCacheWhenCacheEnabled() {
+        setCommonCacheEnabled();
+        setCpCourtRoomCache();
+        referenceDataCache.getCpCourtRoomByCourtRoomId(COURT_ROOM_ID, requester);
+        verify(cacheService).get(CP_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID);
+    }
+
+    @Test
+    void shouldReturnCpCourtRoomFromCacheWhenCacheEnabledHoweverNotInTheCache() {
+        setCommonCacheEnabled();
+        when(cacheService.get(CP_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
+        when(referenceDataService.getCpCourtRooms(requester)).thenReturn(List.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+
+        referenceDataCache.getCpCourtRoomByCourtRoomId(COURT_ROOM_ID, requester);
+        verify(cacheService).get(CP_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID);
+        verify(referenceDataService).getCpCourtRooms(requester);
+    }
+
+    @Test
+    void shouldReturnCpCourtRoomFromServiceWhenCacheDisabled() {
+        setCommonCacheDisabled();
+        when(referenceDataService.getCpCourtRooms(requester)).thenReturn(List.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+
+        referenceDataCache.getCpCourtRoomByCourtRoomId(COURT_ROOM_ID, requester);
+        verify(referenceDataService).getCpCourtRooms(requester);
+    }
+
     private void setBusinessTypeCache() {
         when(cacheService.get(ROTA_BUSINESS_TYPE_CACHE_PREFIX + BUSINESS_TYPE_CODE)).thenReturn(" {\n" +
                 "      \"id\": \"0c90ad7e-7c8d-3bd6-a52d-c4b7ec107a78\",\n" +
@@ -478,6 +507,10 @@ class ReferenceDataCacheTest {
                 "      \"courtroomId\": \"2bd129f3-780e-37dd-b9aa-48690f91b69c\"\n" +
                 "    }");
 
+    }
+
+    private void setCpCourtRoomCache() {
+        when(cacheService.get(CP_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn("{\"id\":\"" + COURT_ROOM_ID + "\"}");
     }
 
     private void setCourtRoomByVenueCache() {

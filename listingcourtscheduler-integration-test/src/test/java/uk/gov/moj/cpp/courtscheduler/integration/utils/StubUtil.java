@@ -39,6 +39,9 @@ public class StubUtil {
     private static final String QUERY_RELATIVE_URL_ROTA_JUDICIARIES = "/referencedata-service/query/api/rest/referencedata/judiciaries";
     private static final String ROTA_JUDICIARIES_QUERY_MEDIA_TYPE = "application/vnd.reference-data.judiciaries+json";
 
+    private static final String QUERY_RELATIVE_URL_CP_COURTROOMS = "/referencedata-service/query/api/rest/referencedata/courtrooms";
+    private static final String CP_COURTROOMS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.ou-courtrooms+json";
+
     public static void setupLoggedInUsersPermissionQueryStub(final String userId) {
         reset();
         stubPingFor("usersgroups-service");
@@ -64,31 +67,9 @@ public class StubUtil {
         final String urlPath = QUERY_RELATIVE_URL_BUSINESS_TYPE;
         final String fullPayload = getPayload(responsePath);
 
-        // Stub for requests with typeCode parameter
-        stubFor(get(urlPathEqualTo(urlPath))
-                .withQueryParam("typeCode", equalTo("TRL"))
-                .atPriority(1)
-                .willReturn(aResponse()
-                        .withStatus(SC_OK)
-                        .withHeader("CPPID", randomUUID().toString())
-                        .withHeader("Content-Type", ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE)
-                        .withBody("{\n" +
-                                "          \"rotaBusinessTypes\": [\n" +
-                                "            {\n" +
-                                "              \"id\": \"c9bb572b-2769-4da6-a41b-c8d7f15fc4a8\",\n" +
-                                "              \"seqNum\": 10,\n" +
-                                "              \"typeCode\": \"TRL\",\n" +
-                                "              \"typeDescription\": \"TRL\",\n" +
-                                "              \"slot\": false,\n" +
-                                "              \"duration\": true,\n" +
-                                "              \"validFrom\": \"2019-01-01\",\n" +
-                                "              \"validTo\": \"2019-12-31\"\n" +
-                                "            }\n" +
-                                "          ]\n" +
-                                "        }")));
-
         // Stub for requests without typeCode parameter
         stubFor(get(urlPathEqualTo(urlPath))
+                .withQueryParam("jurisdiction", equalTo("ALL"))
                 .atPriority(2)
                 .willReturn(aResponse()
                         .withStatus(SC_OK)
@@ -121,6 +102,15 @@ public class StubUtil {
                 .willReturn(aResponse().withStatus(SC_OK)
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", ROTA_JUDICIARIES_QUERY_MEDIA_TYPE)
+                        .withBody(getPayload(responsePath))));
+    }
+
+    public static void stubGetCpCourtRooms(final String responsePath) {
+        final String urlPath = QUERY_RELATIVE_URL_CP_COURTROOMS;
+        stubFor(get(urlPathEqualTo(urlPath))
+                .willReturn(aResponse().withStatus(SC_OK)
+                        .withHeader("CPPID", randomUUID().toString())
+                        .withHeader("Content-Type", CP_COURTROOMS_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
     }
 

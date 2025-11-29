@@ -14,8 +14,11 @@ import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER;
@@ -37,6 +40,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
@@ -126,7 +130,72 @@ public class SessionsApiValidator {
             LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
             return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor());
         }
+
+        final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
+        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
+            return businessTypeAndCourtRoomValidationResult;
+        }
+
         return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateBusinessTypesAndCourtRooms(CreateSessionRequestParam requestParam, Requester requester) {
+        for (Session session : requestParam.getSessionList()) {
+            JsonObject error = validateSessionBusinessTypeAndCourtRoom(session, requester);
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+        if (nonNull(requestParam.getSessionToBeAdded())) {
+            JsonObject error = validateSessionBusinessTypeAndCourtRoom(requestParam.getSessionToBeAdded(), requester);
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateSessionBusinessTypeAndCourtRoom(Session session, Requester requester) {
+        Optional<BusinessType> businessTypeOpt = referenceDataCache.getRotaBusinessTypeByCode(session.getBusinessType(), requester);
+        if (businessTypeOpt.isEmpty()) {
+            return buildErrorResponse(BUSINESS_TYPE_NOT_FOUND + session.getBusinessType());
+        }
+        BusinessType businessType = businessTypeOpt.get();
+
+        String sessionJurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
+        String businessTypeJurisdiction = nonNull(businessType.getJurisdiction()) ? businessType.getJurisdiction() : MAGISTRATES.getJurisdiction();
+
+        if (MAGISTRATES.equalsIgnoreCase(sessionJurisdiction) && !MAGISTRATES.equalsIgnoreCase(businessTypeJurisdiction)) {
+            return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
+        }
+        if (CROWN.equalsIgnoreCase(sessionJurisdiction) && !CROWN.equalsIgnoreCase(businessTypeJurisdiction)) {
+            return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
+        }
+
+        if (!isDurationBasedWithValidDuration(session, businessType)) {
+            return buildErrorResponse("Duration should be supplied for duration-based business type " + session.getBusinessType());
+        }
+
+        Optional<CourtRoom> courtRoomOpt;
+        if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
+            courtRoomOpt = referenceDataCache.getCpCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
+        } else {
+            courtRoomOpt = referenceDataCache.getRotaCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
+        }
+
+        if (courtRoomOpt.isEmpty()) {
+            return buildErrorResponse(COURTROOM_NOT_FOUND + session.getCourtRoomId());
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private static boolean isDurationBasedWithValidDuration(final Session session, final BusinessType businessType) {
+        //if slot based based, then its ok. otherwise if its all day split, morning/afternoon duration should be supplied,for regular allday duraton should be supplied
+        return businessType.isSlot() || (allDaySplitWithValidDuration(session) || hasValidDuration(session));
+    }
+
+    private static boolean hasValidDuration(final Session session) {
+        return nonNull(session.getSlotsOrDuration()) && (session.getSlotsOrDuration() >= 1);
+    }
+
+    private static boolean allDaySplitWithValidDuration(final Session session) {
+        return ALL_DAY.equals(session.getSessionType()) && session.isAllDaySplit() && (nonNull(session.getMaxDurationForMorning()) && nonNull(session.getMaxDurationForAfternoon()));
     }
 
     private JsonObject validateMonthlyCrownIndexForRequest(CreateSessionRequestParam requestParam) {
@@ -144,7 +213,7 @@ public class SessionsApiValidator {
 
     private JsonObject validateMonthlyCrownIndex(Session session) {
         if (session == null) return EMPTY_JSON_OBJECT;
-        if (!"CROWN".equalsIgnoreCase(session.getJurisdiction())) {
+        if (!CROWN.equalsIgnoreCase(session.getJurisdiction())) {
             return EMPTY_JSON_OBJECT;
         }
         Integer index = session.getIndex();

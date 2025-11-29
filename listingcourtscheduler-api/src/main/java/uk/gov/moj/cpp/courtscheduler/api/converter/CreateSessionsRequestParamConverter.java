@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.ALL_DAY_SPLIT;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.BUSINESS_TYPE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_CENTRE_ID;
@@ -75,7 +76,7 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
                     .withJurisdiction(jsonObject.getString(JURISDICTION.getLabel()))
                     .withIsDraft(jsonObject.getBoolean(IS_DRAFT.getLabel(), false))
                     .withIndex(jsonObject.containsKey(INDEX.getLabel()) ? jsonObject.getInt(INDEX.getLabel()) : null)
-                    .withJurisdiction(jsonObject.containsKey(JURISDICTION.getLabel()) ? jsonObject.getString(JURISDICTION.getLabel()) : "MAGISTRATES");
+                    .withJurisdiction(jsonObject.containsKey(JURISDICTION.getLabel()) ? jsonObject.getString(JURISDICTION.getLabel()) : MAGISTRATES.getJurisdiction());
 
             if (!isNull(jsonObject.get(IS_OVERBOOKING_ALLOWED.getLabel()))) {
                 sessionBuilder.withIsOverbookingAllowed(jsonObject.getBoolean(IS_OVERBOOKING_ALLOWED.getLabel()));
@@ -104,7 +105,7 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
                 .withMaxDurationForAfternoon(jsonObject.getInt(MAX_DURATION_FOR_AFTERNOON.getLabel(), -1))
                 .withIsDraft(jsonObject.getBoolean(IS_DRAFT.getLabel(), false))
                 .withIndex(jsonObject.containsKey(INDEX.getLabel()) ? jsonObject.getInt(INDEX.getLabel()) : null)
-                .withJurisdiction(jsonObject.containsKey(JURISDICTION.getLabel()) ? jsonObject.getString(JURISDICTION.getLabel()) : "MAGISTRATES");
+                .withJurisdiction(jsonObject.containsKey(JURISDICTION.getLabel()) ? jsonObject.getString(JURISDICTION.getLabel()) : MAGISTRATES.getJurisdiction());
 
         if (!isNull(jsonObject.get(ALL_DAY_SPLIT.getLabel()))) {
             sessionBuilder.withAllDaySplit(jsonObject.getBoolean(ALL_DAY_SPLIT.getLabel()));

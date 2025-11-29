@@ -18,6 +18,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_DURATION_FOR_AFTERNOON_LESS_THAN_TOTAL_BOOKED_FOR_AFTERNOON;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_DURATION_FOR_MORNING_LESS_THAN_TOTAL_BOOKED_FOR_MORNING;
@@ -1015,7 +1016,7 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
         expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
         expected.setIsOverbookingAllowed(false);
-        expected.setJurisdiction("MAGISTRATES");
+        expected.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(expected);
 
         AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
@@ -1079,7 +1080,7 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         courtSchedule.setOuCode("B12345");
         courtSchedule.setIsDraft(false);
-        courtSchedule.setJurisdiction("MAGISTRATES");
+        courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
         courtSchedule.setActive(true);
 
         databaseSeeder.insertCourtSchedule(courtSchedule);
