@@ -118,11 +118,6 @@ public class SessionsApiValidator {
             return result;
         }
 
-        final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
-        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
-            return businessTypeAndCourtRoomValidationResult;
-        }
-
         //if the request is coming from validate endpoint, this object should be populated
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
             LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
@@ -133,6 +128,12 @@ public class SessionsApiValidator {
             LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
             return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor());
         }
+
+        final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
+        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
+            return businessTypeAndCourtRoomValidationResult;
+        }
+
         return EMPTY_JSON_OBJECT;
     }
 

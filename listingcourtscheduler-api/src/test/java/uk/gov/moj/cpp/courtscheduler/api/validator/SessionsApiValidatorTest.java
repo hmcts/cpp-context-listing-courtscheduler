@@ -183,7 +183,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        mockReferenceData(false, "321");
+        //mockReferenceData(false, "321");
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
@@ -208,7 +208,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        mockReferenceData(true, courtRoomId);
+        //mockReferenceData(true, courtRoomId);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Duration should be set for this session", result.getString("errorMessage"));
@@ -234,7 +234,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        mockReferenceData(true, courtRoomId);
+        //mockReferenceData(true, courtRoomId);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
@@ -260,18 +260,18 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        mockReferenceData(true, courtRoomId);
+        //mockReferenceData(true, courtRoomId);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
     }
 
-    private void mockReferenceData(boolean slotBased, String courtRoomId) {
+   /* private void mockReferenceData(boolean slotBased, String courtRoomId) {
         String typeDescription = slotBased ? "DVLA" : "TRL";
         BusinessType bt = new BusinessType(randomUUID().toString(), 1, typeDescription, typeDescription, slotBased, !slotBased, "MAGISTRATES");
         when(referenceDataCache.getRotaBusinessTypeByCode(typeDescription, requester)).thenReturn(Optional.of(bt));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(new uk.gov.moj.cpp.courtscheduler.domain.CourtRoom()));
-    }
+    }*/
 
     @Test
     void shouldReturnEmptyJsonObjectWhenValidationIsSuccessful() {
