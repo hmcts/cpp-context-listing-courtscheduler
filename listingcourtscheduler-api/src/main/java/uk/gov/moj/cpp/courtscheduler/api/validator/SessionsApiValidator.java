@@ -75,6 +75,8 @@ public class SessionsApiValidator {
 
     private static final DateTimeFormatter TIME_FORMATTER = ofPattern("HH:mm");
     public static final int DEFAULT_DURATION = 180;
+    private static final String MAGISTRATES = "MAGISTRATES";
+    private static final String CROWN = "CROWN";
 
     @Inject
     private SessionsService sessionsService;
@@ -156,13 +158,13 @@ public class SessionsApiValidator {
         }
         BusinessType businessType = businessTypeOpt.get();
 
-        String sessionJurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : "MAGISTRATES";
-        String businessTypeJurisdiction = nonNull(businessType.getJurisdiction()) ? businessType.getJurisdiction() : "MAGISTRATES";
+        String sessionJurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES;
+        String businessTypeJurisdiction = nonNull(businessType.getJurisdiction()) ? businessType.getJurisdiction() : MAGISTRATES;
 
-        if ("MAGISTRATES".equalsIgnoreCase(sessionJurisdiction) && !"MAGISTRATES".equalsIgnoreCase(businessTypeJurisdiction)) {
+        if (MAGISTRATES.equalsIgnoreCase(sessionJurisdiction) && !MAGISTRATES.equalsIgnoreCase(businessTypeJurisdiction)) {
             return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
         }
-        if ("CROWN".equalsIgnoreCase(sessionJurisdiction) && !"CROWN".equalsIgnoreCase(businessTypeJurisdiction)) {
+        if (CROWN.equalsIgnoreCase(sessionJurisdiction) && !CROWN.equalsIgnoreCase(businessTypeJurisdiction)) {
             return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
         }
 
@@ -171,7 +173,7 @@ public class SessionsApiValidator {
         }
 
         Optional<CourtRoom> courtRoomOpt;
-        if ("CROWN".equalsIgnoreCase(sessionJurisdiction)) {
+        if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
             courtRoomOpt = referenceDataCache.getCpCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
         } else {
             courtRoomOpt = referenceDataCache.getRotaCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
@@ -211,7 +213,7 @@ public class SessionsApiValidator {
 
     private JsonObject validateMonthlyCrownIndex(Session session) {
         if (session == null) return EMPTY_JSON_OBJECT;
-        if (!"CROWN".equalsIgnoreCase(session.getJurisdiction())) {
+        if (!CROWN.equalsIgnoreCase(session.getJurisdiction())) {
             return EMPTY_JSON_OBJECT;
         }
         Integer index = session.getIndex();
