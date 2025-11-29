@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
@@ -284,7 +285,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "MAGISTRATES");
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(new uk.gov.moj.cpp.courtscheduler.domain.CourtRoom()));
 
@@ -303,7 +304,7 @@ class SessionsApiValidatorTest {
                 .withBusinessType("DVLA")
                 .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction("MAGISTRATES")
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
                 .withSlotsOrDuration(60)
                 .build();
 
@@ -331,7 +332,7 @@ class SessionsApiValidatorTest {
                 .withBusinessType("TRL")
                 .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction("MAGISTRATES")
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
                 .withSlotsOrDuration(0)
                 .build();
 
@@ -359,7 +360,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "MAGISTRATES");
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
 
@@ -429,7 +430,7 @@ class SessionsApiValidatorTest {
                 .withPanelType(panelType)
                 .withRepeatDays(Set.of(DayOfWeek.MONDAY))
                 .withIsDraft(isDraft)
-                .withJurisdiction("MAGISTRATES")
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
                 .build();
     }
 

@@ -2,6 +2,8 @@ package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 
 import static java.util.Objects.isNull;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
@@ -27,7 +29,7 @@ public class DatabaseSeeder {
     private static final String PASSWORD = "scsl";
     private static final String DATABASE = "scsl";
     private static final java.util.Set<String> ALLOWED_JURISDICTIONS =
-            java.util.Set.of("MAGISTRATES", "CROWN");
+            java.util.Set.of(MAGISTRATES.getJurisdiction(), CROWN.getJurisdiction());
 
     private static final String COURT_SCHEDULE_INSERT_SQL = "INSERT INTO court_schedule (" +
             "id, court_listing_profile_id, oucode, court_room_id, court_room_number, court_house_id, court_house_name," +
@@ -151,9 +153,9 @@ public class DatabaseSeeder {
 
 
     private static String normalizeJurisdiction(String j) {
-        if (j == null) return "MAGISTRATES";
+        if (j == null) return MAGISTRATES.getJurisdiction();
         String up = j.trim().toUpperCase();
-        return ALLOWED_JURISDICTIONS.contains(up) ? up : "MAGISTRATES";
+        return ALLOWED_JURISDICTIONS.contains(up) ? up : MAGISTRATES.getJurisdiction();
     }
 
     public void insertCourtSchedule(CourtSchedule courtSchedule) throws SQLException {

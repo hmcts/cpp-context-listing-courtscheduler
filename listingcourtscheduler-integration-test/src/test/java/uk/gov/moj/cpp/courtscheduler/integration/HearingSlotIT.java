@@ -15,6 +15,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
@@ -247,7 +248,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setSlotBased(true);
         courtSchedule.setMaxSlots(10);
         courtSchedule.setAvailableSlots(9);
-        courtSchedule.setJurisdiction("MAGISTRATES");
+        courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtSchedule);
@@ -433,7 +434,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setIsDraft(false);
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
-        courtSchedule.setJurisdiction("MAGISTRATES");
+        courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtSchedule);
@@ -817,7 +818,7 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleAMSession.setOuCode(ouCode);
         courtScheduleAMSession.setIsOverbookingAllowed(true);
         courtScheduleAMSession.setIsDraft(false);
-        courtScheduleAMSession.setJurisdiction("MAGISTRATES");
+        courtScheduleAMSession.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtScheduleAMSession);
 
         final CourtSchedule courtSchedulePMSession = RANDOM.nextObject(CourtSchedule.class);
@@ -828,7 +829,7 @@ class HearingSlotIT extends AbstractIT {
         courtSchedulePMSession.setOuCode(ouCode);
         courtSchedulePMSession.setIsOverbookingAllowed(true);
         courtSchedulePMSession.setIsDraft(false);
-        courtSchedulePMSession.setJurisdiction("MAGISTRATES");
+        courtSchedulePMSession.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtSchedulePMSession);
 
         final CourtSchedule courtScheduleADSession = RANDOM.nextObject(CourtSchedule.class);
@@ -839,7 +840,7 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleADSession.setOuCode(ouCode);
         courtScheduleADSession.setIsOverbookingAllowed(true);
         courtScheduleADSession.setIsDraft(false);
-        courtScheduleADSession.setJurisdiction("MAGISTRATES");
+        courtScheduleADSession.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtScheduleADSession);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryForAM = createJudiciaryForSchedule(courtScheduleAMSession);

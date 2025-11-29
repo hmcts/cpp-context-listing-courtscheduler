@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
@@ -259,7 +260,7 @@ class SlotsSearchServiceTest {
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1)))
                 .withIsOverbookingAllowed(true)
                 .withIsDraft(false)
-                .withJurisdiction("MAGISTRATES")
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
                 .withMinHearingTime("09:00")
                 .withMaxHearingTime("12:00")
                 .build();
@@ -320,7 +321,7 @@ class SlotsSearchServiceTest {
                 .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
                 .withIsOverbookingAllowed(true)
                 .withIsDraft(false)
-                .withJurisdiction("MAGISTRATES")
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
                 .build();
     }
 
