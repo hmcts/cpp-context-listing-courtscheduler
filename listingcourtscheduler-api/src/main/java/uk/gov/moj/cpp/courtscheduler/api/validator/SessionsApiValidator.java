@@ -165,7 +165,7 @@ public class SessionsApiValidator {
             return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
         }
 
-        if (!businessType.isSlot() && (isNull(session.getSlotsOrDuration()) || session.getSlotsOrDuration() <= 0)) {
+        if (!isDurationBasedWithValidDuration(session, businessType)) {
             return buildErrorResponse("Duration should be supplied for duration-based business type " + session.getBusinessType());
         }
 
@@ -180,6 +180,19 @@ public class SessionsApiValidator {
             return buildErrorResponse(COURTROOM_NOT_FOUND + session.getCourtRoomId());
         }
         return EMPTY_JSON_OBJECT;
+    }
+
+    private static boolean isDurationBasedWithValidDuration(final Session session, final BusinessType businessType) {
+        //if slot based based, then its ok. otherwise if its all day split, morning/afternoon duration should be supplied,for regular allday duraton should be supplied
+        return businessType.isSlot() || (allDaySplitWithValidDuration(session) || hasValidDuration(session));
+    }
+
+    private static boolean hasValidDuration(final Session session) {
+        return nonNull(session.getSlotsOrDuration()) && (session.getSlotsOrDuration() >= 1);
+    }
+
+    private static boolean allDaySplitWithValidDuration(final Session session) {
+        return ALL_DAY.equals(session.getSessionType()) && session.isAllDaySplit() && (nonNull(session.getMaxDurationForMorning()) && nonNull(session.getMaxDurationForAfternoon()));
     }
 
     private JsonObject validateMonthlyCrownIndexForRequest(CreateSessionRequestParam requestParam) {

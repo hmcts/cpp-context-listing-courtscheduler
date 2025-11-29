@@ -343,7 +343,6 @@ class SessionsApiValidatorTest {
 
         BusinessType businessType = new BusinessType("TRL", 1, "Description", "Category", false, true, "MAGISTRATES");
         when(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).thenReturn(Optional.of(businessType));
-
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals("Duration should be supplied for duration-based business type TRL", result.getString("errorMessage"));
