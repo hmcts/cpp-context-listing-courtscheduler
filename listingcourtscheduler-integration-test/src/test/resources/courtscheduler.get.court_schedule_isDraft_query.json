@@ -1,0 +1,10 @@
+{
+  "courtCentreId": "COURT_CENTRE_ID",
+  "courtRoomId": "COURT_ROOM_ID",
+  "businessType": "BUSINESS_TYPE",
+  "sessionStartDate": "SESSION_START_DATE",
+  "sessionEndDate": "SESSION_END_DATE",
+  "isDraft": "IS_DRAFT",
+  "pageSize": "PAGE_SIZE",
+  "pageNumber": "PAGE_NUMBER"
+}

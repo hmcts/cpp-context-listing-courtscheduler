@@ -40,6 +40,7 @@ import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteResponseConverter;
+import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
@@ -95,7 +96,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.common.constraint.Assert;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -1004,7 +1004,7 @@ class SessionsServiceTest {
         String pageSize = "10";
         String pageNumber = "1";
         return new CourtScheduleRequestParam(courtCentreId, courtRoomId,
-                businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+                businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private Optional<BusinessType> returnBusinessTypeObject(final String businessTypeCode, boolean isSlotBased) {
@@ -1778,5 +1778,445 @@ class SessionsServiceTest {
         
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
+    }
+
+    @Test
+    void shouldPreventCourtroomChangeWhenHearingsExist() {
+        // Scenario 2: Courtroom assignment is locked when hearings exist
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(true);
+        persistedCourtSchedule.setCourtRoomId("original-courtroom-id");
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId("new-courtroom-id"); // Attempting to change courtroom
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(persistedCourtSchedule.getCourtSession());
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertFalse(result.isSuccess());
+        assertEquals(ErrorMessages.SESSION_EDIT_ANOTHER_USER, result.getMsg());
+    }
+
+    @Test
+    void shouldPreventSessionTypeChangeWhenHearingsExist() {
+        // Scenario 2 & 4: Session type (AM/PM/AD) is locked when hearings exist
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(true);
+        persistedCourtSchedule.setCourtSession(AM_SESSION);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(PM_SESSION); // Attempting to change session type
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("14:00");
+        updateCourtSchedule.setSessionEndTime("17:00");
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertFalse(result.isSuccess());
+        assertEquals(ErrorMessages.SESSION_EDIT_ANOTHER_USER, result.getMsg());
+    }
+
+    @Test
+    void shouldPreventPanelChangeWhenHearingsExist() {
+        // Scenario 2: Panel change is locked when hearings exist
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(true);
+        persistedCourtSchedule.setPanel("ADULT");
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(persistedCourtSchedule.getCourtSession());
+        updateCourtSchedule.setPanel("YOUTH"); // Attempting to change panel
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertFalse(result.isSuccess());
+        assertEquals(ErrorMessages.SESSION_EDIT_ANOTHER_USER, result.getMsg());
+    }
+
+    @Test
+    void shouldAllowCourtroomChangeWhenNoHearingsExist() {
+        final String courtScheduleId = randomUUID().toString();
+
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(false);
+        persistedCourtSchedule.setSlotBased(true);
+        persistedCourtSchedule.setCourtRoomId("original-courtroom-id");
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId("new-courtroom-id"); // Changing courtroom when no hearings
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(persistedCourtSchedule.getCourtSession());
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setMaxSlots(15);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("new-courtroom-id"), eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertTrue(result.isSuccess());
+    }
+
+    @Test
+    void shouldAllowEditableFieldsUpdateWhenNoHearings() {
+
+        final String courtScheduleId = randomUUID().toString();
+
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(false);
+        persistedCourtSchedule.setSlotBased(true);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setMaxSlots(20); // Changing duration/slots
+        updateCourtSchedule.setSessionStartTime("09:00"); // Changing start time
+        updateCourtSchedule.setSessionEndTime("12:00"); // Changing end time
+        updateCourtSchedule.setIsOverbookingAllowed(true); // Changing overbooking
+        updateCourtSchedule.setAllDaySplit(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertTrue(result.isSuccess());
+    }
+
+    @Test
+    void shouldRejectEndTimeBeforeStartTime() {
+        // Scenario 6: Invalid inputs show inline errors - End time before start time
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(false);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("13:00"); // Start time after end time
+        updateCourtSchedule.setSessionEndTime("10:00"); // End time before start time
+        updateCourtSchedule.setAllDaySplit(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertFalse(result.isSuccess());
+        assertEquals(ErrorMessages.SESSION_START_TIME_CANNOT_BE_LATER_THAN_END_TIME, result.getMsg());
+    }
+
+    @Test
+    void shouldRejectAMSessionEndTimeAfter13() {
+        // Scenario 6: Invalid inputs - AM session end time exceeds 13:00
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(false);
+        persistedCourtSchedule.setCourtSession(AM_SESSION);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("14:00"); // AM session end time after 13:00
+        updateCourtSchedule.setAllDaySplit(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertFalse(result.isSuccess());
+        assertEquals(ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED, result.getMsg());
+    }
+
+    @Test
+    void shouldRejectPMSessionStartTimeBefore14() {
+        // Scenario 6: Invalid inputs - PM session start time before 14:00
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(false);
+        persistedCourtSchedule.setCourtSession(PM_SESSION);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(PM_SESSION);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("13:00"); // PM session start time before 14:00
+        updateCourtSchedule.setSessionEndTime("17:00");
+        updateCourtSchedule.setAllDaySplit(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertFalse(result.isSuccess());
+        assertEquals(ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER, result.getMsg());
+    }
+
+    @Test
+    void shouldRejectSessionTimingConflictWithHearings() {
+        // Scenario 4: Edit session timing when hearings are listed - conflict with hearing times
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(true);
+        persistedCourtSchedule.setSessionDate(LocalDate.of(2024, 6, 20));
+        persistedCourtSchedule.setCourtSession(AM_SESSION);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(AM_SESSION); // Session type unchanged (locked)
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("11:00"); // New start time after hearing
+        updateCourtSchedule.setSessionEndTime("13:00");
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), "10:00"));
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(List.of(booked));
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertFalse(result.isSuccess());
+        assertEquals(SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME, result.getMsg());
+    }
+
+    @Test
+    void shouldRejectSessionEndTimeBeforeHearingTime() {
+        // Scenario 4: Edit session timing - end time before hearing time
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(true);
+        persistedCourtSchedule.setSessionDate(LocalDate.of(2024, 6, 20));
+        persistedCourtSchedule.setCourtSession(AM_SESSION);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("09:00");
+        updateCourtSchedule.setSessionEndTime("09:30"); // New end time before hearing
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), "10:00"));
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(List.of(booked));
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertFalse(result.isSuccess());
+        assertEquals(SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME, result.getMsg());
+    }
+
+    @Test
+    void shouldAllowSessionTimingUpdateWhenHearingsFitWithinWindow() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(true);
+        persistedCourtSchedule.setSlotBased(true);
+        persistedCourtSchedule.setSessionDate(LocalDate.of(2024, 6, 20));
+        persistedCourtSchedule.setCourtSession(AM_SESSION);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(AM_SESSION); // Session type unchanged
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("09:00"); // New start before hearing
+        updateCourtSchedule.setSessionEndTime("12:00"); // New end after hearing
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setMaxSlots(20);
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+
+        when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), "10:00"));
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(List.of(booked));
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertTrue(result.isSuccess());
+    }
+
+    @Test
+    void shouldSuccessfullyUpdateSessionAndReturnSuccess() {
+        final String courtScheduleId = randomUUID().toString();
+
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+
+        persistedCourtSchedule.setHasHearingsBooked(false);
+        persistedCourtSchedule.setSlotBased(true);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setMaxSlots(15);
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setIsOverbookingAllowed(true);
+        updateCourtSchedule.setAllDaySplit(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertTrue(result.isSuccess());
+        verify(courtScheduleRepository, times(1)).update(any(), any(), any());
+    }
+
+    @Test
+    void shouldAllowDraftToAssignedChangeWhenHearingsExist() {
+        final String courtScheduleId = randomUUID().toString();
+
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(true);
+        persistedCourtSchedule.setSlotBased(true);
+        persistedCourtSchedule.setIsDraft(true); // Currently Draft
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(persistedCourtSchedule.getCourtSession());
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setMaxSlots(15);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        // Note: The actual draft status change would be handled at the repository/entity level
+
+        // This test verifies that the update can proceed when other fields are unchanged
+
+        assertTrue(result.isSuccess());
+    }
+
+    @Test
+    void shouldUpdateDurationBasedSessionSuccessfully() {
+        // Scenario 3 & 8: Update duration for duration-based session (Magistrate's court)
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "TRL");
+        persistedCourtSchedule.setHasHearingsBooked(false);
+        persistedCourtSchedule.setSlotBased(false);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("TRL");
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setMaxDuration(180); // Duration in minutes (Hours/Minutes)
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertTrue(result.isSuccess());
+        verify(courtScheduleRepository, times(1)).update(any(), any(), any());
+    }
+
+    @Test
+    void shouldUpdateSlotBasedSessionSuccessfully() {
+        // Scenario 3: Update slots for slot-based session
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setHasHearingsBooked(false);
+        persistedCourtSchedule.setSlotBased(true);
+
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setMaxSlots(25); // Slots number
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(5); // Some slots booked
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        Result result = sessionsService.update(updateCourtSchedule, requester);
+
+        assertTrue(result.isSuccess());
+        assertEquals(20, updateCourtSchedule.getAvailableSlots()); // 25 - 5 = 20
+        verify(courtScheduleRepository, times(1)).update(any(), any(), any());
     }
 }

@@ -14,6 +14,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
@@ -42,6 +43,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamC
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
@@ -70,6 +72,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 
 import java.io.IOException;
@@ -163,6 +167,8 @@ class CourtSchedulerApiTest {
     private JsonEnvelope envelope;
     @Mock
     private ListHearingSlotConverter listHearingSlotConverter;
+    @Mock
+    private AssignCourtroomRequestConverter assignCourtroomRequestConverter;
 
 
     @Test
@@ -696,6 +702,76 @@ class CourtSchedulerApiTest {
 
         assertThrows(ValidationException.class, () ->
                 courtSchedulerApi.validateSessionAvailabilityCourtSchedule(validationEnvelope));
+    }
+
+    @Test
+    void shouldAssignCourtroom() {
+        // Given a request to assign courtroom
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("courtScheduleIds", createArrayBuilder()
+                        .add("schedule-id-1")
+                        .add("schedule-id-2"))
+                .add("courtRoomId", "courtroom-id-123")
+                .build();
+        final String requestName = "courtscheduler.assign.courtroom";
+        final JsonEnvelope assignCourtroomJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        // Mock the converter
+        AssignCourtroomRequest assignCourtroomRequest = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of("schedule-id-1", "schedule-id-2"))
+                .withCourtRoomId("courtroom-id-123")
+                .build();
+
+        AssignCourtroomResponse assignCourtroomResponse = new AssignCourtroomResponse();
+
+        when(assignCourtroomRequestConverter.convert(any(JsonObject.class))).thenReturn(assignCourtroomRequest);
+        when(sessionsApiValidator.getAssignCourtroomValidation(any(AssignCourtroomRequest.class))).thenReturn(EMPTY_JSON_OBJECT);
+        when(sessionsService.assignCourtroom(any(AssignCourtroomRequest.class), any(Requester.class))).thenReturn(assignCourtroomResponse);
+        when(enveloper.withMetadataFrom(assignCourtroomJsonEnvelope, requestName)).thenReturn(function);
+        when(objectToJsonObjectConverter.convert(any(AssignCourtroomResponse.class))).thenReturn(createObjectBuilder().build());
+
+        // When
+        courtSchedulerApi.assignCourtroom(assignCourtroomJsonEnvelope);
+
+        // Then
+        verify(assignCourtroomRequestConverter, atLeastOnce()).convert(any(JsonObject.class));
+        verify(sessionsApiValidator, atLeastOnce()).getAssignCourtroomValidation(any(AssignCourtroomRequest.class));
+        verify(sessionsService, atLeastOnce()).assignCourtroom(any(AssignCourtroomRequest.class), any(Requester.class));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(assignCourtroomJsonEnvelope, requestName);
+        verify(objectToJsonObjectConverter, atLeastOnce()).convert(any(AssignCourtroomResponse.class));
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenAssignCourtroomValidationFails() {
+        // Given a request with invalid data
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("courtScheduleIds", createArrayBuilder())
+                .add("courtRoomId", "")
+                .build();
+        final String requestName = "courtscheduler.assign.courtroom";
+        final JsonEnvelope assignCourtroomJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        AssignCourtroomRequest assignCourtroomRequest = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(Collections.emptyList())
+                .withCourtRoomId("")
+                .build();
+
+        JsonObject validationError = createObjectBuilder()
+                .add("errorMessage", "At least one court schedule ID must be provided")
+                .build();
+
+        when(assignCourtroomRequestConverter.convert(any(JsonObject.class))).thenReturn(assignCourtroomRequest);
+        when(sessionsApiValidator.getAssignCourtroomValidation(any(AssignCourtroomRequest.class))).thenReturn(validationError);
+
+        // When/Then
+        assertThrows(ValidationException.class, () ->
+                courtSchedulerApi.assignCourtroom(assignCourtroomJsonEnvelope));
+
+        verify(assignCourtroomRequestConverter, atLeastOnce()).convert(any(JsonObject.class));
+        verify(sessionsApiValidator, atLeastOnce()).getAssignCourtroomValidation(any(AssignCourtroomRequest.class));
+        verify(sessionsService, never()).assignCourtroom(any(), any());
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {
