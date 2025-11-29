@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 
@@ -168,18 +170,20 @@ class SessionsApiValidatorTest {
         LocalDate futureDate = LocalDate.now().plusDays(1);
         final List<Session> sessionList = Arrays.asList(session().withSessionType("AM").
                 withRepeatDays(Set.of(DayOfWeek.MONDAY)).withCourtCentreId("123")
-                .withCourtRoomId("321").withBusinessType("TRL").build(), session().withSessionType("PM")
+                .withCourtRoomId("321").withBusinessType("TRL").withSlotsOrDuration(20) .build(), session().withSessionType("PM")
                 .withRepeatDays(Set.of(DayOfWeek.MONDAY)).withCourtCentreId("123")
-                .withCourtRoomId("321").withBusinessType("TRL").build());
+                .withCourtRoomId("321").withBusinessType("TRL").withSlotsOrDuration(20).build());
         when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
 
         final Session sessionToBeAdded = session().withSessionType("AM").withRepeatDays(Set.of(DayOfWeek.MONDAY)).withCourtCentreId("123")
-                .withCourtRoomId("321").withBusinessType("TRL").build();
+                .withCourtRoomId("321").withBusinessType("TRL").withSlotsOrDuration(20).build();
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        mockReferenceData(false, "321");
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
@@ -203,6 +207,8 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        mockReferenceData(true, courtRoomId);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Duration should be set for this session", result.getString("errorMessage"));
@@ -228,6 +234,8 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
+        mockReferenceData(true, courtRoomId);
+
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
     }
@@ -252,22 +260,142 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
+        mockReferenceData(true, courtRoomId);
+
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
+    }
+
+    private void mockReferenceData(boolean slotBased, String courtRoomId) {
+        String typeDescription = slotBased ? "DVLA" : "TRL";
+        BusinessType bt = new BusinessType(randomUUID().toString(), 1, typeDescription, typeDescription, slotBased, !slotBased, "MAGISTRATES");
+        when(referenceDataCache.getRotaBusinessTypeByCode(typeDescription, requester)).thenReturn(Optional.of(bt));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(new uk.gov.moj.cpp.courtscheduler.domain.CourtRoom()));
     }
 
     @Test
     void shouldReturnEmptyJsonObjectWhenValidationIsSuccessful() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = createAMSession();
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "MAGISTRATES");
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(new uk.gov.moj.cpp.courtscheduler.domain.CourtRoom()));
+
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals(0, result.size());
+    }
+
+    @Test
+    void shouldReturnErrorWhenBusinessTypeJurisdictionMismatch() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction("MAGISTRATES")
+                .withSlotsOrDuration(60)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals("Business Type jurisdiction CROWN does not match session jurisdiction MAGISTRATES", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenDurationBasedBusinessTypeHasNoDuration() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("TRL")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction("MAGISTRATES")
+                .withSlotsOrDuration(0)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        BusinessType businessType = new BusinessType("TRL", 1, "Description", "Category", false, true, "MAGISTRATES");
+        when(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).thenReturn(Optional.of(businessType));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals("Duration should be supplied for duration-based business type TRL", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtRoomNotFound() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = createAMSession();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "MAGISTRATES");
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCpCourtRoomNotFoundForCrown() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction("CROWN")
+                .withSlotsOrDuration(60)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
     }
 
     private Session createDraftSession() {

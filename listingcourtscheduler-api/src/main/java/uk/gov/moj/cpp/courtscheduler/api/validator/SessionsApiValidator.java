@@ -16,6 +16,7 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER;
@@ -37,6 +38,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
@@ -116,6 +118,11 @@ public class SessionsApiValidator {
             return result;
         }
 
+        final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
+        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
+            return businessTypeAndCourtRoomValidationResult;
+        }
+
         //if the request is coming from validate endpoint, this object should be populated
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
             LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
@@ -125,6 +132,52 @@ public class SessionsApiValidator {
             }
             LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
             return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor());
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateBusinessTypesAndCourtRooms(CreateSessionRequestParam requestParam, Requester requester) {
+        for (Session session : requestParam.getSessionList()) {
+            JsonObject error = validateSessionBusinessTypeAndCourtRoom(session, requester);
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+        if (nonNull(requestParam.getSessionToBeAdded())) {
+            JsonObject error = validateSessionBusinessTypeAndCourtRoom(requestParam.getSessionToBeAdded(), requester);
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateSessionBusinessTypeAndCourtRoom(Session session, Requester requester) {
+        Optional<BusinessType> businessTypeOpt = referenceDataCache.getRotaBusinessTypeByCode(session.getBusinessType(), requester);
+        if (businessTypeOpt.isEmpty()) {
+            return buildErrorResponse(BUSINESS_TYPE_NOT_FOUND + session.getBusinessType());
+        }
+        BusinessType businessType = businessTypeOpt.get();
+
+        String sessionJurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : "MAGISTRATES";
+        String businessTypeJurisdiction = nonNull(businessType.getJurisdiction()) ? businessType.getJurisdiction() : "MAGISTRATES";
+
+        if ("MAGISTRATES".equalsIgnoreCase(sessionJurisdiction) && !"MAGISTRATES".equalsIgnoreCase(businessTypeJurisdiction)) {
+            return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
+        }
+        if ("CROWN".equalsIgnoreCase(sessionJurisdiction) && !"CROWN".equalsIgnoreCase(businessTypeJurisdiction)) {
+            return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
+        }
+
+        if (!businessType.isSlot() && (isNull(session.getSlotsOrDuration()) || session.getSlotsOrDuration() <= 0)) {
+            return buildErrorResponse("Duration should be supplied for duration-based business type " + session.getBusinessType());
+        }
+
+        Optional<CourtRoom> courtRoomOpt;
+        if ("CROWN".equalsIgnoreCase(sessionJurisdiction)) {
+            courtRoomOpt = referenceDataCache.getCpCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
+        } else {
+            courtRoomOpt = referenceDataCache.getRotaCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
+        }
+
+        if (courtRoomOpt.isEmpty()) {
+            return buildErrorResponse(COURTROOM_NOT_FOUND + session.getCourtRoomId());
         }
         return EMPTY_JSON_OBJECT;
     }
