@@ -4,10 +4,14 @@ import static java.util.Collections.singletonList;
 import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +35,12 @@ public class JudiciaryService {
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
+    @Inject
+    private CourtScheduleRepository courtScheduleRepository;
+
+    @Inject
+    private RotaProcessLogService rotaProcessLogService;
+
     @PersistenceContext(unitName = "courtscheduler-persistence-unit")
     private EntityManager entityManager;
 
@@ -42,8 +52,29 @@ public class JudiciaryService {
             final String judiciaryId = entry.getKey();
             final List<String> sessionIds = entry.getValue();
 
+            // Check if judiciary exists in any assignment
+            final List<CourtScheduleJudiciary> judiciaryAssignments = courtScheduleJudiciaryRepository.findByJudiciaryId(judiciaryId);
+            final boolean judiciaryExists = !judiciaryAssignments.isEmpty();
+
             for (String courtScheduleId : sessionIds) {
                 logger.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+
+                // Check if session (court schedule) exists
+                final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
+                if (courtSchedule == null) {
+                    final String errorText = String.format("Session ID %s not found for unassign judiciary operation", courtScheduleId);
+                    logger.warn("unassignJudiciary: {}", errorText);
+                    logToRotaProcessTable("SESSION_ID_NOT_FOUND_ASSIGNMENT", errorText);
+                    continue;
+                }
+
+                // Check if judiciary exists in any assignment
+                if (!judiciaryExists) {
+                    final String errorText = String.format("Judiciary ID %s not found for unassign judiciary operation", judiciaryId);
+                    logger.warn("unassignJudiciary: {}", errorText);
+                    logToRotaProcessTable("JUDICIARY_ID_NOT_FOUND_ASSIGNMENT", errorText);
+                    continue;
+                }
 
                 // Check if there are allocated listings for this court schedule
                 final Map<String, Integer> allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(singletonList(courtScheduleId));
@@ -58,9 +89,9 @@ public class JudiciaryService {
                 final CourtScheduleJudiciary courtScheduleJudiciary = courtScheduleJudiciaryRepository.findBy(key);
 
                 if (courtScheduleJudiciary == null) {
-                    final String errorMessage = String.format("Judiciary %s not found for courtSchedule %s", judiciaryId, courtScheduleId);
-                    logger.warn("unassignJudiciary: {}", errorMessage);
-                    throw new IllegalArgumentException(errorMessage);
+                    // Judiciary exists but not for this specific session - skip this assignment
+                    logger.info("unassignJudiciary: Judiciary {} not assigned to courtSchedule {}, skipping", judiciaryId, courtScheduleId);
+                    continue;
                 }
 
                 // Remove the judiciary assignment using EntityManager
@@ -72,6 +103,19 @@ public class JudiciaryService {
 
         entityManager.flush();
         logger.info("unassignJudiciary: successfully completed unassigning judiciaries from sessions");
+    }
+
+    private void logToRotaProcessTable(final String errorCode, final String errorText) {
+        try {
+            final RotaProcessLog rotaProcessLog = new RotaProcessLog();
+            rotaProcessLog.setErrorCode(errorCode);
+            rotaProcessLog.setErrorText(errorText);
+            rotaProcessLog.setTimestamp(new Date());
+            rotaProcessLogService.saveRotaProcessLog(rotaProcessLog);
+            logger.info("unassignJudiciary: Logged to rota_process_log - errorCode: {}, errorText: {}", errorCode, errorText);
+        } catch (Exception e) {
+            logger.error("unassignJudiciary: Failed to log to rota_process_log - errorCode: {}, errorText: {}", errorCode, errorText, e);
+        }
     }
 }
 
