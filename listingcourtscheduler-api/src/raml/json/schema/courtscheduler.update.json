@@ -49,14 +49,47 @@
       "type": "string",
       "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
     },
-    "isOverbookingAllowed": {"type": "boolean"}
+    "isOverbookingAllowed": {"type": "boolean"},
+    "jurisdiction": {
+      "type": "string",
+      "enum": ["MAGISTRATES", "CROWN"]
+    },
+    "is_draft": {
+      "type": "boolean"
+    }
   },
   "required": [
     "courtScheduleId",
     "courtRoomId",
     "courtSession",
     "businessType",
-    "panel"
+    "panel",
+    "jurisdiction"
+  ],
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "jurisdiction": { "enum": ["CROWN"] }
+          }
+        },
+        {
+          "allOf": [
+            {
+              "properties": {
+                "jurisdiction": { "enum": ["MAGISTRATES"] }
+              }
+            },
+            {
+              "not": {
+                "required": ["is_draft"]
+              }
+            }
+          ]
+        }
+      ]
+    }
   ],
   "additionalProperties": false,
   "definitions": {

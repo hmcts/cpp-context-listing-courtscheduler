@@ -46,6 +46,10 @@ protocols: [ HTTP, HTTPS ]
       sessionEndDate:
         type: string
         required: true
+      isDraft:
+        description: isDraft
+        type: boolean
+        required: false
       pageSize:
         description: Number of records to be displayed per page
         type: string
@@ -76,6 +80,26 @@ protocols: [ HTTP, HTTPS ]
     responses:
       202:
         description: OK
+
+/courtschedule/assign.courtroom:
+  post:
+    description: |
+      Assign a courtroom to multiple court sessions at once.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.assign.courtroom+json
+          name: courtscheduler.assign.courtroom
+      ...
+    body:
+      application/vnd.courtscheduler.assign.courtroom+json:
+        schema: !include json/schema/courtscheduler.assign.courtroom.json
+        example: !include json/courtscheduler.assign.courtroom.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.assign.courtroom.response+json:
+            schema: !include json/schema/courtscheduler.assign.courtroom.response.json
+            example: !include json/courtscheduler.assign.courtroom.response.json
 
 /courtschedule/delete:
   post:

@@ -1,10 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
 import static io.smallrye.common.constraint.Assert.assertTrue;
+import static java.util.Collections.emptyList;
 import static java.util.UUID.randomUUID;
 import static javax.json.Json.createObjectBuilder;
+import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
@@ -13,7 +17,6 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURT
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 
-import org.mockito.MockitoAnnotations;
 import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
@@ -27,6 +30,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionValidationParams;
+import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -38,15 +43,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 import javax.json.JsonObject;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -488,7 +489,7 @@ class SessionsApiValidatorTest {
         Date maxHearingStart = Date.from(
                 day.atTime(15, 0).atZone(java.time.ZoneId.systemDefault()).toInstant()
         );
-        AllocatedListingEachBooked booked = org.mockito.Mockito.mock(AllocatedListingEachBooked.class);
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
         when(booked.getHearingStartTime()).thenReturn(maxHearingStart);
 
         // Validator will fetch allocated listings for this court schedule
@@ -508,5 +509,305 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_DURATION_BASED_SESSION, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenJurisdictionIsMissing() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withMaxSlots(10)
+                .build();
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("Jurisdiction is mandatory and must be either MAGISTRATES or CROWN", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenJurisdictionIsInvalid() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("INVALID")
+                .withMaxSlots(10)
+                .build();
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("Jurisdiction must be either MAGISTRATES or CROWN", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenIsDraftIsSuppliedWithMagistratesJurisdiction() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withIsDraft(true)
+                .withMaxSlots(10)
+                .build();
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("is_draft can only be supplied when jurisdiction is CROWN", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCrownIsDraftIsChangedFromFalseToTrue() {
+        String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withMaxSlots(10)
+                .build();
+
+        CourtSchedule persistedCourtSchedule = new CourtSchedule();
+        persistedCourtSchedule.setIsDraft(false);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedCourtSchedule);
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("Cannot change is_draft from false to true for CROWN jurisdiction sessions", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectWhenMagistratesValidationIsSuccessful() {
+        String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(10)
+                .build();
+
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectWhenCrownWithIsDraftValidationIsSuccessful() {
+        String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(false)
+                .withMaxSlots(10)
+                .build();
+
+        CourtSchedule persistedCourtSchedule = new CourtSchedule();
+        persistedCourtSchedule.setIsDraft(false);
+
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectWhenCrownWithIsDraftTrueAndDatabaseIsDraftTrue() {
+        String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withMaxSlots(10)
+                .build();
+
+        CourtSchedule persistedCourtSchedule = new CourtSchedule();
+        persistedCourtSchedule.setIsDraft(true);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedCourtSchedule);
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void shouldValidateUpdateSessionWithValidInputs() {
+        // Scenario 3 & 5: Valid inputs should pass validation
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(randomUUID().toString());
+        updateCourtSchedule.setCourtRoomId(randomUUID().toString());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType("AM");
+        updateCourtSchedule.setPanel("ADULT");
+        updateCourtSchedule.setMaxSlots(20);
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setJurisdiction("MAGISTRATES");
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(anyString())).thenReturn(emptyList());
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldRejectUpdateWhenSessionStartTimeAfterHearingTime() {
+        // Scenario 4: Session timing conflict - start time after hearing time
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(randomUUID().toString());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType("AM");
+        updateCourtSchedule.setPanel("ADULT");
+        updateCourtSchedule.setMaxSlots(20);
+        updateCourtSchedule.setSessionStartTime("11:00"); // After hearing at 10:00
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setJurisdiction("MAGISTRATES");
+
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        Date hearingTime = Date.from(LocalDate.now().plusDays(1).atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        when(booked.getHearingStartTime()).thenReturn(hearingTime);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals(ErrorMessages.MIN_HEARING_TIME_AFTER_SESSION_START_TIME, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldRejectUpdateWhenSessionEndTimeBeforeHearingTime() {
+        // Scenario 4: Session timing conflict - end time before hearing time
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(randomUUID().toString());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType("AM");
+        updateCourtSchedule.setPanel("ADULT");
+        updateCourtSchedule.setMaxSlots(20);
+        updateCourtSchedule.setSessionStartTime("09:00");
+        updateCourtSchedule.setSessionEndTime("09:30"); // Before hearing at 10:00
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setJurisdiction("MAGISTRATES");
+
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        // Use the same timezone as getMaxHearingTime (systemDefault)
+        Date hearingTime = Date.from(LocalDate.now().plusDays(1).atTime(10, 0)
+                .atZone(java.time.ZoneId.systemDefault()).toInstant());
+        when(booked.getHearingStartTime()).thenReturn(hearingTime);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals(ErrorMessages.MAX_HEARING_TIME_BEFORE_SESSION_END_TIME, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldValidateUpdateWhenHearingsFitWithinSessionWindow() {
+        // Scenario 4: Valid update when hearings fit within session window
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(randomUUID().toString());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setSessionType("AM");
+        updateCourtSchedule.setPanel("ADULT");
+        updateCourtSchedule.setMaxSlots(20);
+        updateCourtSchedule.setSessionStartTime("09:00"); // Before hearing
+        updateCourtSchedule.setSessionEndTime("12:00"); // After hearing
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setJurisdiction("MAGISTRATES");
+
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        Date hearingTime = Date.from(LocalDate.now().plusDays(1).atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        when(booked.getHearingStartTime()).thenReturn(hearingTime);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldValidateUpdateForAllDaySplitSession() {
+        // Scenario 3: Valid update for all-day split session
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule();
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(randomUUID().toString());
+        updateCourtSchedule.setBusinessType("TRL");
+        updateCourtSchedule.setSessionType("AD");
+        updateCourtSchedule.setPanel("ADULT");
+        updateCourtSchedule.setMaxDuration(0);
+        updateCourtSchedule.setMaxDurationForMorning(120);
+        updateCourtSchedule.setMaxDurationForAfternoon(180);
+        updateCourtSchedule.setSessionStartTime("10:00");
+        updateCourtSchedule.setSessionEndTime("17:00");
+        updateCourtSchedule.setAllDaySplit(true);
+        updateCourtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
+
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setSupportAdSplit(true);
+
+        BusinessType businessType = new BusinessType("TRL", 1, "Description", "Category", false, true,MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).thenReturn(Optional.of(businessType));
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedSchedule);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(emptyList());
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(EMPTY_JSON_OBJECT, result);
     }
 }

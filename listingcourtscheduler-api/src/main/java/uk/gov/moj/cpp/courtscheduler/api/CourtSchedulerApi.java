@@ -141,6 +141,8 @@ public class CourtSchedulerApi {
     private AllocatedListingService allocatedListingService;
     @Inject
     private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
+    @Inject
+    private uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter assignCourtroomRequestConverter;
 
 
     @Handles("courtscheduler.create")
@@ -265,6 +267,27 @@ public class CourtSchedulerApi {
                 .add(RESULTS, objectToJsonObjectConverter.convert(result))
                 .build();
         return envelopeFor(envelope, responseObject, RESULTS);
+    }
+
+    @Handles("courtscheduler.assign.courtroom")
+    public JsonEnvelope assignCourtroom(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.assign.courtroom requested : {}", payload);
+        
+        uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request = 
+                assignCourtroomRequestConverter.convert(envelope.payloadAsJsonObject());
+
+        JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(request);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response = 
+                sessionsService.assignCourtroom(request, requester);
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.assign.courtroom")
+                .apply(objectToJsonObjectConverter.convert(response));
     }
 
     @Handles("courtscheduler.update.hearing.slots")

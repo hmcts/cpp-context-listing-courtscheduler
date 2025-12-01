@@ -34,8 +34,8 @@ public class DatabaseSeeder {
     private static final String COURT_SCHEDULE_INSERT_SQL = "INSERT INTO court_schedule (" +
             "id, court_listing_profile_id, oucode, court_room_id, court_room_number, court_house_id, court_house_name," +
             "court_room_name, operational_unit, rota_business_type, panel, court_session, is_slot_based, session_start, " +
-            "max_slot, max_duration_mins, available_slot, available_duration_mins, support_ad_split, max_ad_morning_duration, max_ad_afternoon_duration, session_start_time, session_end_time, national_break_time, is_overbooking_allowed, jurisdiction) \n" +
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "max_slot, max_duration_mins, available_slot, available_duration_mins, support_ad_split, max_ad_morning_duration, max_ad_afternoon_duration, session_start_time, session_end_time, national_break_time, is_overbooking_allowed, is_draft, jurisdiction) \n" +
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String UPDATE_SESSION_END_TIME_SQL =
             "UPDATE court_schedule SET session_end_time = ? WHERE id = ?";
@@ -189,7 +189,8 @@ public class DatabaseSeeder {
             preparedStatement.setTimestamp(23, new Timestamp(courtSchedule.getSessionEndTime().getTime()));
             preparedStatement.setTimestamp(24, new Timestamp(courtSchedule.getNationalBreakTime().getTime()));
             preparedStatement.setBoolean(25, courtSchedule.getIsOverbookingAllowed());
-            preparedStatement.setString(26, normalizeJurisdiction(courtSchedule.getJurisdiction()));
+            preparedStatement.setBoolean(26, courtSchedule.getIsDraft());
+            preparedStatement.setString(27, normalizeJurisdiction(courtSchedule.getJurisdiction()));
 
             preparedStatement.executeUpdate();
         }
