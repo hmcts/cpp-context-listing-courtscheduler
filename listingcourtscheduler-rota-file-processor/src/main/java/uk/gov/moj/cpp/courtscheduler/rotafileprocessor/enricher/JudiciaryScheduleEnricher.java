@@ -59,8 +59,6 @@ public class JudiciaryScheduleEnricher {
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
-    
-
     private static final Logger logger = LoggerFactory.getLogger(JudiciaryScheduleEnricher.class);
 
     public Collection<CourtScheduleJudiciary> enrichJudiciarySchedules(final Map<String, CourtSchedule> courtScheduleMap,
@@ -98,9 +96,15 @@ public class JudiciaryScheduleEnricher {
                         courtScheduleJudiciarySchedules.add(courtScheduleJudiciary);
                     }
                 } else if (courtScheduleOptional.isEmpty()) {
-                   logger.warn(format(MISSING_SLOT_FOR_JUDICIARY_WARNING_MSG, courtSchedule.getSessionDate(), courtSchedule.getCourtHouseName(), courtSchedule.getCourtRoomName(), courtSchedule.getBusinessType(),
-                           courtSchedule.getCourtSession(), courtSchedule.getPanel()));
+                    final String errorMessage = format(MISSING_SLOT_FOR_JUDICIARY_WARNING_MSG, courtSchedule.getSessionDate(), courtSchedule.getCourtHouseName(), courtSchedule.getCourtRoomName(), courtSchedule.getBusinessType(),
+                            courtSchedule.getCourtSession(), courtSchedule.getPanel());
+                    logger.warn(errorMessage);
+                    errors.put(courtListingProfileId, errorMessage);
                 }
+            } else {
+                final String errorMessage = format("No matching court schedule found for court listing profile ID: %s", courtListingProfileId);
+                logger.warn(errorMessage);
+                errors.put(courtListingProfileId, errorMessage);
             }
         }
         final long enrichmentEnd = System.nanoTime();

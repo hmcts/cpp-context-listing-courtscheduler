@@ -40,7 +40,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -214,26 +213,26 @@ public class RotaFileProcessorService {
         if (fileName.contains(SNAPSHOT_NAME_PART)) {
             logger.info("DD-15703:RotaFileProcessor: Before  processSnapshotRotaFile");
             final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
-            for(final DateRange dateRange: dateRanges) {
+            for(int i = 0; i < dateRanges.size(); i++) {
+                final DateRange dateRange = dateRanges.get(i);
+                final boolean isLastDateRange = (i == dateRanges.size() - 1);
                 final Map<String, LocalDate> startAndEndDate = new HashMap<>();
                 startAndEndDate.put(START_DATE.getLabel(), dateRange.getStart());
                 startAndEndDate.put(END_DATE.getLabel(), dateRange.getEnd());
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
                 logger.info("Filtered Slots for Snapshot : {} within dateRange: {} - {}", filteredSlots.keySet(), dateRange.getStart(), dateRange.getEnd());
-                rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId);
+                rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId, rotaFileProcessHistory, isLastDateRange);
                 logger.info("snapshot rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
-            logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
-            if(rotaFileProcessHistory != null)
-                rotaFileProcessHistoryService.update(rotaFileProcessHistory);
-            logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
         } else {
             final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
-            for(final DateRange dateRange: dateRanges) {
+            for(int i = 0; i < dateRanges.size(); i++) {
+                final DateRange dateRange = dateRanges.get(i);
+                final boolean isLastDateRange = (i == dateRanges.size() - 1);
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
                 logger.info("Filtered Slots for Full Rota file : {}", filteredSlots.keySet());
-                rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId);
+                rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId, rotaFileProcessHistory, isLastDateRange);
                 logger.info("master rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
@@ -322,7 +321,7 @@ public class RotaFileProcessorService {
                 .filter(slot -> (slot.getValue().getSessionDate().isEqual(dateRange.getStart()) ||
                         slot.getValue().getSessionDate().isEqual(dateRange.getEnd()) ||
                         (slot.getValue().getSessionDate().isAfter(dateRange.getStart()) &&
-                        slot.getValue().getSessionDate().isBefore(dateRange.getEnd()))))
+                                slot.getValue().getSessionDate().isBefore(dateRange.getEnd()))))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }
