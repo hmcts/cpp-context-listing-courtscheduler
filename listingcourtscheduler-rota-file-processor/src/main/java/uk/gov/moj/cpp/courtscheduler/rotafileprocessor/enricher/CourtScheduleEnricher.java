@@ -88,14 +88,16 @@ public class CourtScheduleEnricher {
             }
         } else {
             final String msg = REF_DATA_VENUE_NOT_FOUND.format(locationId, venueName, venueId);
-            missingReferenceDataMappingMap.putIfAbsent(msg, REF_DATA_VENUE_NOT_FOUND.code());
-            rotaProcessLogService.saveRotaProcessLog(
-                    RotaProcessLogBuilder.rotaProcessLog()
-                            .withExecutionId(executionId)
-                            .withErrorCode(REF_DATA_VENUE_NOT_FOUND.code())
-                            .withErrorText(msg)
-                            .build()
-            );
+            final boolean isNewMissingVenue = missingReferenceDataMappingMap.putIfAbsent(msg, REF_DATA_VENUE_NOT_FOUND.code()) == null;
+            if (isNewMissingVenue) {
+                rotaProcessLogService.saveRotaProcessLog(
+                        RotaProcessLogBuilder.rotaProcessLog()
+                                .withExecutionId(executionId)
+                                .withErrorCode(REF_DATA_VENUE_NOT_FOUND.code())
+                                .withErrorText(msg)
+                                .build()
+                );
+            }
         }
         return builder.withActive(true).build();
     }
