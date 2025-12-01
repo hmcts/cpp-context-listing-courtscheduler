@@ -4,7 +4,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listingcourtscheduler-parent</artifactId>
-        <version>17.0.69-MNTR-SNAPSHOT</version>
+        <version>17.0.65-RP-SNAPSHOT</version>
     </parent>
 
     <artifactId>listingcourtscheduler-rota-file-processor</artifactId>
