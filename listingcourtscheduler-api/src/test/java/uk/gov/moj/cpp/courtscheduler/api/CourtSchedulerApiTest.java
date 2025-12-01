@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,6 +34,7 @@ import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciariesRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
@@ -51,13 +53,16 @@ import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil;
+import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
@@ -163,6 +168,12 @@ class CourtSchedulerApiTest {
     private JsonEnvelope envelope;
     @Mock
     private ListHearingSlotConverter listHearingSlotConverter;
+    @Mock
+    private AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
+    @Mock
+    private AssignJudiciariesApiValidator assignJudiciariesApiValidator;
+    @Mock
+    private JudiciaryAssignmentService judiciaryAssignmentService;
 
 
     @Test
@@ -219,6 +230,42 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.deleteCourtSchedule(deleteCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(deleteCourtScheduleJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldAssignJudiciaries() throws IOException {
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.assign-judiciary.json"));
+        final String requestName = "courtscheduler.assign-judiciary";
+        final JsonEnvelope envelope = createEnvelope(requestName, jsonObject);
+
+        final AssignJudiciariesRequest requestDto = AssignJudiciariesRequest.builder().build();
+
+        when(assignJudiciariesRequestConverter.convert(jsonObject)).thenReturn(requestDto);
+        when(assignJudiciariesApiValidator.validate(requestDto)).thenReturn(EMPTY_JSON_OBJECT);
+        when(enveloper.withMetadataFrom(envelope, requestName)).thenReturn(function);
+        when(function.apply(any(JsonObject.class))).thenReturn(envelope);
+
+        courtSchedulerApi.assignJudiciary(envelope);
+
+        verify(judiciaryAssignmentService).assignJudiciaries(requestDto, requester, envelope.metadata().id().toString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(envelope, requestName);
+        final ArgumentCaptor<JsonObject> responseCaptor = ArgumentCaptor.forClass(JsonObject.class);
+        verify(function).apply(responseCaptor.capture());
+        assertTrue(responseCaptor.getValue().isEmpty());
+    }
+
+    @Test
+    void shouldThrowWhenAssignJudiciariesFailsValidation() throws IOException {
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.assign-judiciary.json"));
+        final JsonEnvelope envelope = createEnvelope("courtscheduler.assign-judiciary", jsonObject);
+        final AssignJudiciariesRequest requestDto = AssignJudiciariesRequest.builder().build();
+        final JsonObject validationError = createObjectBuilder().add("errorMessage", "invalid").build();
+
+        when(assignJudiciariesRequestConverter.convert(jsonObject)).thenReturn(requestDto);
+        when(assignJudiciariesApiValidator.validate(requestDto)).thenReturn(validationError);
+
+        assertThrows(ValidationException.class, () -> courtSchedulerApi.assignJudiciary(envelope));
+        verify(judiciaryAssignmentService, never()).assignJudiciaries(any(), any(), any());
     }
 
     @Test
@@ -286,11 +333,11 @@ class CourtSchedulerApiTest {
         String hearingDateJsonName = "hearingDate";
         String courtScheduleIdJsonName = "courtScheduleId";
         JsonObject schedule1 = createObjectBuilder().add(courtScheduleIdJsonName, "Court-Schedule-Id1")
-                                                    .add(hearingDateJsonName, "2025-04-25")
-                                                    .build();
+                .add(hearingDateJsonName, "2025-04-25")
+                .build();
         JsonObject schedule2 = createObjectBuilder().add(courtScheduleIdJsonName, "Court-Schedule-Id2")
-                                                    .add(hearingDateJsonName, "2025-04-26")
-                                                    .build();
+                .add(hearingDateJsonName, "2025-04-26")
+                .build();
         JsonArrayBuilder schedulesJsonArrayBuilder = createArrayBuilder().add(schedule1).add(schedule2);
         when(slotsUpdateService.update(any())).thenReturn(createObjectBuilder().add("schedules", schedulesJsonArrayBuilder).build());
         when(enveloper.withMetadataFrom(updateHearingSlotsEnvelope, requestName)).thenReturn(function);

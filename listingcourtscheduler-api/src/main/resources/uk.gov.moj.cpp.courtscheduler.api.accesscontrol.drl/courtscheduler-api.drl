@@ -79,6 +79,15 @@ rule "API - Action - courtscheduler.validate.session.availability"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.assign-judiciary"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.assign-judiciary");
+        eval(userAndGroupProvider.isSystemUser($action));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.update.hearing.slots"
   when
     $outcome: Outcome();
