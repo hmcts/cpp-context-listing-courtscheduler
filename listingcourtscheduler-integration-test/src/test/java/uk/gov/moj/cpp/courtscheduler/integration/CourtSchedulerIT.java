@@ -46,7 +46,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
 import java.io.StringReader;
 import java.sql.SQLException;
@@ -64,7 +63,6 @@ import java.util.TimeZone;
 import java.util.UUID;
 
 import javax.json.Json;
-import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.ws.rs.core.Response;
@@ -83,7 +81,6 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String SEARCH_BY_ID_URL = "/search.court-schedules-by-id";
     private static final String VALIDATE_URL = "/validate";
     private static final String VALIDATE_SESSION_AVAILABILITY_URL = "/validate-session-availability";
-    private static final String OUCODE_MIGRATE_URL = "/oucode/migrate";
     private static final String UNASSIGN_JUDICIARY_URL = "/session";
 
     private static final String COURT_SCHEDULE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
@@ -93,7 +90,6 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String COURT_SCHEDULE_GET_CONTENT_TYPE = "application/vnd.courtscheduler.get+json";
     private static final String COURT_SCHEDULE_SEARCH_COURTSCHEDULES_BY_ID_CONTENT_TYPE = "application/vnd.courtscheduler.search.court-schedules-by-id+json";
     private static final String COURT_SCHEDULE_DELETE_CONTENT_TYPE = "application/vnd.courtscheduler.delete+json";
-    private static final String COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE = "application/vnd.courtscheduler.oucode.migrate+json";
 
     public static final String DEFAULT_MORNING_START_TIME = "10:00";
     public static final String DEFAULT_MORNING_END_TIME = "13:00";
@@ -1434,27 +1430,6 @@ class CourtSchedulerIT extends AbstractIT {
         final Response response = postCommand(BASE_RESOURCE_URL + DELETE_URL, COURT_SCHEDULE_DELETE_CONTENT_TYPE, USER_ID, deleteHearingSlotsPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
-    }
-
-    @Test
-    void shouldMigrateOuCodes() throws Exception {
-        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
-        courtSchedulerMigrationStatus.setOuCode("B12345");
-        courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
-        courtSchedulerMigrationStatus.setMigrated(false);
-        databaseSeeder.insertCourtScheduleMigrationStatus(courtSchedulerMigrationStatus);
-
-        CourtSchedulerMigrationStatus schedulerMigrationStatus = new CourtSchedulerMigrationStatus();
-        schedulerMigrationStatus.setOuCode("C12345");
-        schedulerMigrationStatus.setCourtCentreId("100f36bc-f33a-42ea-8a6c-8103636c5341");
-        schedulerMigrationStatus.setMigrated(false);
-        databaseSeeder.insertCourtScheduleMigrationStatus(schedulerMigrationStatus);
-
-        String migrateOuCodePayload = getPayload("oucode-migrate-courtscheduler.json");
-
-        final Response response = postCommand(OUCODE_MIGRATE_URL, COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE, SYSTEM_USER_ID, migrateOuCodePayload);
-
-        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
     @Test

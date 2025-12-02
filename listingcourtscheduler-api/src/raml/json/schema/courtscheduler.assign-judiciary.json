@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "judiciaries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "judiciaryId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sessionIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          }
+        },
+        "required": [
+          "judiciaryId",
+          "sessionIds"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "judiciaries"
+  ],
+  "additionalProperties": false
+}
+

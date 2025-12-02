@@ -16,6 +16,7 @@ import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciariesRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToViewConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
@@ -24,7 +25,6 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConve
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeRecalculateAvailabilityConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
@@ -37,6 +37,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
+import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
@@ -44,7 +45,9 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidato
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
@@ -57,7 +60,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatusList;
-import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -142,8 +144,6 @@ public class CourtSchedulerApi {
     @Inject
     private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
     @Inject
-    private OuCodeMigrateConverter ouCodeMigrateConverter;
-    @Inject
     private OuCodeRecalculateAvailabilityConverter ouCodeRecalculateAvailabilityConverter;
     @Inject
     private AllocatedListingService allocatedListingService;
@@ -153,6 +153,15 @@ public class CourtSchedulerApi {
     private JudiciaryUnassignmentService judiciaryService;
     @Inject
     private JudiciariesApiValidator judiciariesApiValidator;
+
+    @Inject
+    private AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
+
+    @Inject
+    private AssignJudiciariesApiValidator assignJudiciariesApiValidator;
+
+    @Inject
+    private JudiciaryAssignmentService judiciaryAssignmentService;
 
 
     @Handles("courtscheduler.create")
@@ -197,6 +206,26 @@ public class CourtSchedulerApi {
         }
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.validate.session.availability").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.assign-judiciary")
+    public JsonEnvelope assignJudiciary(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.assign-judiciary requested : {}", payload);
+
+        final AssignJudiciariesRequest requestDto = assignJudiciariesRequestConverter.convert(payload);
+        final JsonObject validation = assignJudiciariesApiValidator.validate(requestDto);
+
+        if (!validation.isEmpty()) {
+            throw new ValidationException(validation);
+        }
+
+        judiciaryAssignmentService.assignJudiciaries(
+                requestDto,
+                requester,
+                envelope.metadata().id().toString());
+
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
     }
 
     @Handles("courtscheduler.delete")
@@ -455,23 +484,6 @@ public class CourtSchedulerApi {
 
         JsonObject responseObject = provisionalBookingService.fetchProvisionalSlots(bookingIds);
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
-    }
-
-    @Handles("courtscheduler.oucode.migrate")
-    public JsonEnvelope migrateOuCode(final JsonEnvelope envelope) {
-
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.oucode.migrate requested : {}", payload);
-
-        OuCodeMigrateRequest ouCodeMigrateRequest = ouCodeMigrateConverter.convert(payload.toString());
-
-        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
-
-        if (!result.isSuccess()) {
-            throw new BadRequestException(result.getMsg());
-        }
-
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
     }
 
     @Handles("courtscheduler.oucode.recalculate.availability")

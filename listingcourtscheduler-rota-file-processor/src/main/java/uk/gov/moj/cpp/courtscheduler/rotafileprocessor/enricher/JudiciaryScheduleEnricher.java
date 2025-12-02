@@ -65,7 +65,6 @@ public class JudiciaryScheduleEnricher {
 
     public Collection<CourtScheduleJudiciary> enrichJudiciarySchedules(final Map<String, CourtSchedule> courtScheduleMap,
                                                                        final Map<RotaPayload, Map<String, Map<String, String>>> records,
-                                                                       final boolean forMigrated,
                                                                        final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
                                                                        final Requester requester,
                                                                        final String executionId) {
@@ -86,20 +85,29 @@ public class JudiciaryScheduleEnricher {
             final String courtListingProfileId = judiciarySchedule.get(COURT_LISTING_PROFILE_ID);
             final CourtSchedule courtSchedule = courtScheduleMap.get(courtListingProfileId);
             if (nonNull(courtSchedule)) {
-                final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinDateRange.stream()
-                        .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(courtSchedule.getCourtRoomId())
-                                && activeCourtSchedule.getSessionDate().equals(courtSchedule.getSessionDate())
-                                && activeCourtSchedule.getBusinessType().equals(courtSchedule.getBusinessType())
-                                && activeCourtSchedule.getCourtSession().equals(courtSchedule.getCourtSession()))
-                        .findAny();
-                if (!forMigrated || (courtScheduleOptional.isPresent() && equalsIgnoreCase(courtSchedule.getOuCode(), courtScheduleOptional.get().getOuCode()))) {
+                if (activeCourtSchedulesByOuCodesWithinDateRange.isEmpty()) {
+                    // If no active court schedules provided, process all schedules (non-migrated behavior)
                     final CourtScheduleJudiciary courtScheduleJudiciary = judiciaryBuilder.build(judiciarySchedule, courtSchedule.getCourtScheduleId());
                     if (isNotEmpty(courtScheduleJudiciary.getJudiciaryId())) {
                         courtScheduleJudiciarySchedules.add(courtScheduleJudiciary);
                     }
-                } else if (courtScheduleOptional.isEmpty()) {
-                   logger.warn(format(MISSING_SLOT_FOR_JUDICIARY_WARNING_MSG, courtSchedule.getSessionDate(), courtSchedule.getCourtHouseName(), courtSchedule.getCourtRoomName(), courtSchedule.getBusinessType(),
-                           courtSchedule.getCourtSession(), courtSchedule.getPanel()));
+                } else {
+                    // If active court schedules provided, validate that the schedule exists
+                    final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinDateRange.stream()
+                            .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(courtSchedule.getCourtRoomId())
+                                    && activeCourtSchedule.getSessionDate().equals(courtSchedule.getSessionDate())
+                                    && activeCourtSchedule.getBusinessType().equals(courtSchedule.getBusinessType())
+                                    && activeCourtSchedule.getCourtSession().equals(courtSchedule.getCourtSession()))
+                            .findAny();
+                    if (courtScheduleOptional.isPresent() && equalsIgnoreCase(courtSchedule.getOuCode(), courtScheduleOptional.get().getOuCode())) {
+                        final CourtScheduleJudiciary courtScheduleJudiciary = judiciaryBuilder.build(judiciarySchedule, courtSchedule.getCourtScheduleId());
+                        if (isNotEmpty(courtScheduleJudiciary.getJudiciaryId())) {
+                            courtScheduleJudiciarySchedules.add(courtScheduleJudiciary);
+                        }
+                    } else if (courtScheduleOptional.isEmpty()) {
+                       logger.warn(format(MISSING_SLOT_FOR_JUDICIARY_WARNING_MSG, courtSchedule.getSessionDate(), courtSchedule.getCourtHouseName(), courtSchedule.getCourtRoomName(), courtSchedule.getBusinessType(),
+                               courtSchedule.getCourtSession(), courtSchedule.getPanel()));
+                    }
                 }
             }
         }

@@ -96,6 +96,23 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.delete.response.json
             example: !include json/courtscheduler.delete.response.json
 
+/judiciary/assign:
+  post:
+    description: |
+      Assign a judiciary to one or more existing court sessions.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.assign-judiciary+json
+          name: courtscheduler.assign-judiciary
+      ...
+    body:
+      application/vnd.courtscheduler.assign-judiciary+json:
+        schema: !include json/schema/courtscheduler.assign-judiciary.json
+        example: !include json/courtscheduler.assign-judiciary.json
+    responses:
+      202:
+        description: Request accepted for processing.
+
 /courtschedule/search.court-schedules-by-id:
   description: |
     Search Court Schedules by IDs
@@ -468,22 +485,6 @@ protocols: [ HTTP, HTTPS ]
     responses:
       202:
         description: Recalculation accepted
-
-/oucode/migrate:
-  post:
-    description: |
-      ...
-      (mapping):
-          requestType: application/vnd.courtscheduler.oucode.migrate+json
-          name: courtscheduler.oucode.migrate
-      ...
-    body:
-      application/vnd.courtscheduler.oucode.migrate+json:
-        schema: !include json/schema/courtscheduler.oucode.migrate.json
-        example: !include json/courtscheduler.oucode.migrate.json
-    responses:
-      202:
-        description: OK
 
 /rotasl/process-rota-files:
   post:

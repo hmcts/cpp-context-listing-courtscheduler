@@ -59,6 +59,18 @@ public class ReferenceDataMapperService {
         return judiciaryOptional;
     }
 
+    public Optional<Judiciary> findById(final Requester requester, final String judiciaryId) {
+        this.judiciaries = isEmpty(judiciaries) ? referenceDataCache.getJudiciaries(requester) : judiciaries;
+        if (isEmpty(judiciaries)) {
+            return empty();
+        }
+        final Optional<Judiciary> judiciaryOptional = judiciaries.stream()
+                .filter(judiciary -> equalsIgnoreCase(judiciaryId, judiciary.getId()))
+                .findFirst();
+        logger.debug("judiciary found for id {} with judiciary : {}", judiciaryId, judiciaryOptional.orElse(null));
+        return judiciaryOptional;
+    }
+
     public Optional<CourtRoomSessionAllocation> findByOuCodeAndRoomIdAndListingSessionAndBusinessType(final Requester requester,
                                                                                                       final String ouCode,
                                                                                                       final Integer roomId,

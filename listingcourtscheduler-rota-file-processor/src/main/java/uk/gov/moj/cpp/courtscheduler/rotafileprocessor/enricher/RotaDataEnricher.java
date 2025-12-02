@@ -67,8 +67,6 @@ public class RotaDataEnricher {
     @SuppressWarnings("squid:S2221")
     public Map<String, CourtSchedule> enrichCourtListings(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                           final LocalDate rotaPeriodEndDate,
-                                                          final Map<String, Boolean> migratedMap,
-                                                          final Boolean migrated,
                                                           final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
                                                           final Requester requester,
                                                           final String executionId) {
@@ -85,7 +83,7 @@ public class RotaDataEnricher {
 
                 if (sessionDate.isBefore(rotaPeriodEndDate) || sessionDate.isEqual(rotaPeriodEndDate)) {
                     final CourtSchedule courtSchedule = courtSchedules.get(linkedSessionId);
-                    buildCourtSchedule(listingProfile, courtSchedule, courtSchedules, migratedMap, migrated, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester, executionId);
+                    buildCourtSchedule(listingProfile, courtSchedule, courtSchedules, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester, executionId);
                 }
             } catch (final Exception ex) {
                 logger.error(format(EXCEPTION_MSG, listingProfile.get("id")), ex);
@@ -109,8 +107,6 @@ public class RotaDataEnricher {
     private void buildCourtSchedule(final Map<String, String> listingProfile,
                                     final CourtSchedule courtSchedule,
                                     final Map<String, CourtSchedule> courtSchedules,
-                                    final Map<String, Boolean> migratedMap,
-                                    final Boolean migrated,
                                     final Map<String, String> missingReferenceDataMappingMap,
                                     final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
                                     final Requester requester,
@@ -122,9 +118,7 @@ public class RotaDataEnricher {
         CourtSchedule newCourtSchedule;
         if (isNull(courtSchedule) || !businessType.equals(courtSchedule.getBusinessType())) {
             newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester, executionId);
-            if (migrated.equals(migratedMap.get(newCourtSchedule.getOuCode()))) {
-                addCourtSchedule(courtSchedules, newCourtSchedule);
-            }
+            addCourtSchedule(courtSchedules, newCourtSchedule);
         } else {
             newCourtSchedule = updateExistingCourtSchedule(courtSchedule, listingProfile.get(SESSION), activeCourtSchedulesByOuCodesWithinRotaPeriod, requester);
             courtSchedules.put(courtSchedule.getListingProfileId(), newCourtSchedule);

@@ -45,7 +45,15 @@ public enum MissingDataError {
 
     CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND(
             "CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND",
-            "Duplicate courtroom IDs found: %s");
+            "Duplicate courtroom IDs found: %s"),
+
+    JUDICIARY_ID_NOT_FOUND_ASSIGNMENT(
+            "JUDICIARY_ID_NOT_FOUND_ASSIGNMENT",
+            Prefix.MONITORING + "Judiciary assignment failed for ids: %s"),
+
+    SESSION_ID_NOT_FOUND_ASSIGNMENT(
+            "SESSION_ID_NOT_FOUND_ASSIGNMENT",
+            Prefix.MONITORING + "Court schedule assignment failed for session ids: %s");
 
     public static final String DELIMITER = "%n ------------------%n";
 

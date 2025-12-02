@@ -65,14 +65,38 @@ class ReferenceDataMapperServiceTest {
                 .filter(judiciary -> judiciary.getEmailAddress().equals(emailFilter))
                 .findFirst()
                 .ifPresent(judiciary -> {
-                    assertEquals(judiciary.getId(), judiciaryOptional.get().getId());
-                    assertEquals(judiciary.getForenames(), judiciaryOptional.get().getForenames());
-                    assertEquals(judiciary.getSurname(), judiciaryOptional.get().getSurname());
-                    assertEquals(judiciary.getJudiciaryType(), judiciaryOptional.get().getJudiciaryType());
+                            assertEquals(judiciary.getId(), judiciaryOptional.get().getId());
+                            assertEquals(judiciary.getForenames(), judiciaryOptional.get().getForenames());
+                            assertEquals(judiciary.getSurname(), judiciaryOptional.get().getSurname());
+                            assertEquals(judiciary.getJudiciaryType(), judiciaryOptional.get().getJudiciaryType());
                         }
 
                 );
 
+        verify(referenceDataCache, atLeastOnce()).getJudiciaries(eq(requester));
+    }
+
+    @Test
+    void shouldFindJudiciaryById() throws JsonProcessingException {
+        final List<Judiciary> judiciaries = getJudiciaries();
+        when(referenceDataCache.getJudiciaries(eq(requester))).thenReturn(judiciaries);
+
+        final String judiciaryId = judiciaries.get(0).getId();
+
+        final Optional<Judiciary> judiciaryOptional = referenceDataMapperService.findById(requester, judiciaryId);
+
+        assertTrue(judiciaryOptional.isPresent());
+        assertEquals(judiciaryId, judiciaryOptional.get().getId());
+        verify(referenceDataCache, atLeastOnce()).getJudiciaries(eq(requester));
+    }
+
+    @Test
+    void shouldReturnEmptyWhenJudiciaryIdNotFound() throws JsonProcessingException {
+        when(referenceDataCache.getJudiciaries(eq(requester))).thenReturn(getJudiciaries());
+
+        final Optional<Judiciary> judiciaryOptional = referenceDataMapperService.findById(requester, "unknown-id");
+
+        assertTrue(judiciaryOptional.isEmpty());
         verify(referenceDataCache, atLeastOnce()).getJudiciaries(eq(requester));
     }
 
