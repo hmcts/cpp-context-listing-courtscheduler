@@ -47,7 +47,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryService;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -173,7 +173,7 @@ class CourtSchedulerApiTest {
     @Mock
     private ListHearingSlotConverter listHearingSlotConverter;
     @Mock
-    private JudiciaryService judiciaryService;
+    private JudiciaryUnassignmentService judiciaryService;
 
 
     @Test

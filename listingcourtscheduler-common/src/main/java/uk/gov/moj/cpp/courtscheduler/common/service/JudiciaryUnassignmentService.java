@@ -1,10 +1,8 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.util.Collections.singletonList;
 import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 
-import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
-import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
@@ -25,9 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
-public class JudiciaryService {
+public class JudiciaryUnassignmentService {
 
-    private static final Logger logger = LoggerFactory.getLogger(JudiciaryService.class);
+    private static final Logger logger = LoggerFactory.getLogger(JudiciaryUnassignmentService.class);
 
     @Inject
     private AllocatedListingService allocatedListingService;
@@ -81,6 +79,7 @@ public class JudiciaryService {
                 if (allocatedListings.containsKey(courtScheduleId) && allocatedListings.get(courtScheduleId) > 0) {
                     final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has allocated listings", judiciaryId, courtScheduleId);
                     logger.warn("unassignJudiciary: {}", errorMessage);
+                    logToRotaProcessTable("ALLOCATED_LISTING_FOUND_FOR_JUDICIARY", errorMessage);
                     throw new IllegalStateException(errorMessage);
                 }
 
@@ -90,7 +89,9 @@ public class JudiciaryService {
 
                 if (courtScheduleJudiciary == null) {
                     // Judiciary exists but not for this specific session - skip this assignment
+                    final String errorText = String.format("CourtScheduleJudiciary not found for judiciary %s and courtSchedule %s", judiciaryId, courtScheduleId);
                     logger.info("unassignJudiciary: Judiciary {} not assigned to courtSchedule {}, skipping", judiciaryId, courtScheduleId);
+                    logToRotaProcessTable("COURT_SCHEDULE_JUDICIARY_NOT_FOUND", errorText);
                     continue;
                 }
 
@@ -118,6 +119,4 @@ public class JudiciaryService {
         }
     }
 }
-
-
 
