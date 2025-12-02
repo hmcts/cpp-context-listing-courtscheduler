@@ -47,7 +47,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
@@ -57,9 +56,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
@@ -92,7 +89,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.common.constraint.Assert;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.deltaspike.data.api.QueryInvocationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -116,8 +112,6 @@ class SessionsServiceTest {
     private Requester requester;
     @Mock
     private AllocatedListingRepository allocatedListingRepository;
-    @Mock
-    private CourtMigrationRepository courtMigrationRepository;
     @Mock
     private ReferenceDataCache referenceDataCache;
     @Mock
@@ -690,77 +684,6 @@ class SessionsServiceTest {
         assertEquals("All day split flag cannot be changed for this session", result.getMsg());
     }
 
-    @Test
-    void shouldReturnMigratedCourt() {
-        final String oucode = "B01LY00" ;
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(oucode);
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(true);
-
-        when(courtMigrationRepository.findByOuCode(oucode)).thenReturn(migrationStatus);
-        Assert.assertTrue(sessionsService.isMigrated(oucode));
-
-    }
-
-    @Test
-    void shouldReturnFalseForNonMigratedCourt() {
-        final String oucode = "B01LY00" ;
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(oucode);
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(false);
-
-        when(courtMigrationRepository.findByOuCode(oucode)).thenReturn(migrationStatus);
-        Assert.assertFalse(sessionsService.isMigrated(oucode));
-
-    }
-
-    @Test
-    void shouldReturnAllInfoAboutMigratedOrNot() {
-        final String ouCode1 = "B01LY00" ;
-        final String ouCode2 = "B06IS00" ;
-        final CourtSchedulerMigrationStatus migrationStatus1 = new CourtSchedulerMigrationStatus();
-        migrationStatus1.setOuCode(ouCode1);
-        migrationStatus1.setCourtCentreId(randomUUID().toString());
-        migrationStatus1.setMigrated(false);
-
-        final CourtSchedulerMigrationStatus migrationStatus2 = new CourtSchedulerMigrationStatus();
-        migrationStatus2.setOuCode(ouCode2);
-        migrationStatus2.setCourtCentreId(randomUUID().toString());
-        migrationStatus2.setMigrated(true);
-
-        when(courtMigrationRepository.findAll()).thenReturn(List.of(migrationStatus1, migrationStatus2));
-        final Map<String, Boolean> migratedMap = sessionsService.migratedMapByOuCode();
-
-        assertEquals(2, migratedMap.size());
-        assertFalse(migratedMap.get(ouCode1));
-        assertTrue(migratedMap.get(ouCode2));
-    }
-
-    @Test
-    void shouldReturnMigratedCourtByCourtCentreId() {
-        final String oucode = "B01LY00" ;
-        final String courtCentreId = randomUUID().toString();
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(oucode);
-        migrationStatus.setCourtCentreId(courtCentreId);
-        migrationStatus.setMigrated(true);
-        when(courtMigrationRepository.findByCourtCentreId(courtCentreId)).thenReturn(migrationStatus);
-        Assert.assertTrue(sessionsService.isMigratedByCourtCentreId(courtCentreId));
-    }
-
-    @Test
-    void shouldReturnFalseForNonMigratedCourtByCourtCentreId() {
-        final String oucode = "B01LY00" ;
-        final String courtCentreId = randomUUID().toString();
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(oucode);
-        migrationStatus.setCourtCentreId(courtCentreId);
-        migrationStatus.setMigrated(false);
-        when(courtMigrationRepository.findByCourtCentreId(courtCentreId)).thenReturn(migrationStatus);
-        Assert.assertFalse(sessionsService.isMigratedByCourtCentreId(courtCentreId));
-    }
 
     @Test
     void shouldGetExtractedCourtSchedules() throws JsonProcessingException {
@@ -909,45 +832,6 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, never()).deleteSlots(anyList());
     }
 
-    @Test
-    void shouldMigrate_GivenOuCodes_Successfully() {
-        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
-        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02") ;
-        ouCodeMigrateRequest.setOuCodes(ouCodes);
-        ouCodeMigrateRequest.setMigrated(true);
-
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(ouCodes.get(0));
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(false);
-
-        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(migrationStatus);
-
-        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
-
-        verify(courtMigrationRepository, atLeastOnce()).save(any());
-        assertThat(result.isSuccess(), is(true));
-    }
-
-    @Test
-    void shouldNotMigrate_OuCode_IfAnyOneNotFound() {
-        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
-        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02");
-        ouCodeMigrateRequest.setOuCodes(ouCodes);
-        ouCodeMigrateRequest.setMigrated(true);
-
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(ouCodes.get(0));
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(false);
-
-        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(null);
-
-        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
-
-        verify(courtMigrationRepository, never()).save(any());
-        assertThat(result.isSuccess(), is(false));
-    }
 
     private static CourtSchedule getPersistedCourtSchedule(final String courtScheduleId, final String businessTypeCode) {
         CourtSchedule courtSchedule = random(CourtSchedule.class);
