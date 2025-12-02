@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;

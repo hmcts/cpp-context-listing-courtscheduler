@@ -16,8 +16,8 @@ import uk.gov.justice.services.messaging.Envelope;
 import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
-import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileCaptureAndProcessTriggerService;
-import uk.gov.moj.cpp.courtscheduler.api.service.RotaRedundantDataCleanerService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaFileCaptureAndProcessTriggerService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaRedundantDataCleanerService;
 
 import java.util.UUID;
 import java.util.function.Function;
@@ -64,11 +64,11 @@ class RotaFileProcessorApiTest {
         final JsonObject payloadAsJsonObject = createObjectBuilder().build();
         final JsonEnvelope processRotaFilesJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
         when(enveloper.withMetadataFrom(processRotaFilesJsonEnvelope, requestName)).thenReturn(function);
-        when(rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(eq(requester), eq(false))).thenReturn(new AsyncResult<>("SUCCESS"));
+        when(rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(eq(requester), eq(false), eq("new"))).thenReturn(new AsyncResult<>("SUCCESS"));
 
         rotaFileProcessorApi.processRotaFiles(processRotaFilesJsonEnvelope);
 
-        verify(rotaFileCaptureAndProcessTriggerService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester), eq(false));
+        verify(rotaFileCaptureAndProcessTriggerService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester), eq(false), eq("new"));
         verify(LOGGER, atLeastOnce()).info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
         verify(enveloper, atLeastOnce()).withMetadataFrom(processRotaFilesJsonEnvelope, requestName);
     }

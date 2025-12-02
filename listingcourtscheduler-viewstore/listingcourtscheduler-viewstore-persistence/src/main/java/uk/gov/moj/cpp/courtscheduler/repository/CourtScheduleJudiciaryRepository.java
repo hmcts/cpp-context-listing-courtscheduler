@@ -49,6 +49,9 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId IN (:courtScheduleIds)")
     public abstract List<CourtScheduleJudiciary> findInCourtScheduleIds(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);
 
+    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.judiciaryId IN (:judiciaryIds) AND csj.active = true")
+    public abstract List<CourtScheduleJudiciary> findByJudiciaryIds(@QueryParam("judiciaryIds") final List<String> judiciaryIds);
+
     public List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
         List<CourtScheduleJudiciary> courtScheduleJudiciaries = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
                 DateUtils.getDate(miFilterCriteria.getFromLocalDate()),

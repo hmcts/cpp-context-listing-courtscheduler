@@ -7,8 +7,8 @@ import uk.gov.justice.services.core.annotation.Handles;
 import uk.gov.justice.services.core.enveloper.Enveloper;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.moj.cpp.courtscheduler.api.service.RotaFileCaptureAndProcessTriggerService;
-import uk.gov.moj.cpp.courtscheduler.api.service.RotaRedundantDataCleanerService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaFileCaptureAndProcessTriggerService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaRedundantDataCleanerService;
 
 import javax.inject.Inject;
 import javax.json.JsonObject;
@@ -20,6 +20,8 @@ import org.slf4j.LoggerFactory;
 public class RotaFileProcessorApi {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RotaFileProcessorApi.class.getName());
+    private static final String ROTA_PROCESS_NEW = "new";
+    private static final String ROTA_PROCESS = "rotaProcess";
 
     @Inject
     private Enveloper enveloper;
@@ -39,7 +41,10 @@ public class RotaFileProcessorApi {
         final JsonObject payload = envelope.payloadAsJsonObject();
         LOGGER.info("calling rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
         final boolean isForItTest = payload.getBoolean("forItTest", false);
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, isForItTest);
+        final String rotaProcess = payload.containsKey(ROTA_PROCESS) && !payload.isNull(ROTA_PROCESS)
+                ? payload.getString(ROTA_PROCESS)
+                : ROTA_PROCESS_NEW;
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, isForItTest, rotaProcess);
         LOGGER.info("successfully called and completed - rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.process_rota_files").apply(createObjectBuilder().build());
