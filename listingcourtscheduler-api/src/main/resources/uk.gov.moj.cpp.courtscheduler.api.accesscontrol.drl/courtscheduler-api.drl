@@ -196,15 +196,6 @@ rule "API - Action - courtscheduler.export.allocated_listings"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.oucode.migrate"
-  when
-    $outcome: Outcome();
-    $action: Action(name == "courtscheduler.oucode.migrate");
-        eval(userAndGroupProvider.isSystemUser($action));
-  then
-    $outcome.setSuccess(true);
-end
-
 rule "API - Action - courtscheduler.rotasl.process_rota_files"
   when
     $outcome: Outcome();

@@ -486,22 +486,6 @@ protocols: [ HTTP, HTTPS ]
       202:
         description: Recalculation accepted
 
-/oucode/migrate:
-  post:
-    description: |
-      ...
-      (mapping):
-          requestType: application/vnd.courtscheduler.oucode.migrate+json
-          name: courtscheduler.oucode.migrate
-      ...
-    body:
-      application/vnd.courtscheduler.oucode.migrate+json:
-        schema: !include json/schema/courtscheduler.oucode.migrate.json
-        example: !include json/courtscheduler.oucode.migrate.json
-    responses:
-      202:
-        description: OK
-
 /rotasl/process-rota-files:
   post:
     description: |
