@@ -226,5 +226,13 @@ class JudiciaryScheduleEnricherTest {
         final Map<String, List<String>> captured = captor.getValue();
         assertThat(captured.containsKey("CABC90"), is(true));
         assertThat(captured.get("CABC90").isEmpty(), is(false));
+
+        // Verify that the log was actually saved to the database
+        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        verify(rotaProcessLogService, atLeastOnce()).saveRotaProcessLog(logCaptor.capture());
+        final List<RotaProcessLog> allLogs = logCaptor.getAllValues();
+        final boolean hasMissingCourtSession = allLogs.stream()
+                .anyMatch(log -> "MISSING_COURT_SESSION".equals(log.getErrorCode()) && executionId.equals(log.getExecutionId()));
+        assertThat("Should have logged MISSING_COURT_SESSION", hasMissingCourtSession, is(true));
     }
 }

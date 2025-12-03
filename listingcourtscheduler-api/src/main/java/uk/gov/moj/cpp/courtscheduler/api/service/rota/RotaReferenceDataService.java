@@ -4,7 +4,6 @@ import static java.lang.String.format;
 import static java.util.Optional.empty;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
-import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
@@ -71,18 +70,8 @@ public class RotaReferenceDataService {
                 logger.debug("Judiciary validation for email {} - found: {}", email, true);
                 return judiciaryOptional;
             } else {
-                // Judiciary not found - log error
+                // Judiciary not found - don't log here, let caller aggregate
                 logger.warn("Judiciary not found for email: {}", email);
-                if (isNotEmpty(executionId)) {
-                    final String errorMessage = JUDICIARY_NOT_FOUND.format(email);
-                    rotaProcessLogService.saveRotaProcessLog(
-                            rotaProcessLog()
-                                    .withExecutionId(executionId)
-                                    .withErrorCode(JUDICIARY_NOT_FOUND.code())
-                                    .withErrorText(errorMessage)
-                                    .build()
-                    );
-                }
                 return empty();
             }
         } catch (final Exception ex) {
@@ -119,7 +108,10 @@ public class RotaReferenceDataService {
                                                     final String executionId) {
         if (venue == null) {
             logger.warn("Venue is null, cannot validate venue");
-            if (isNotEmpty(executionId)) {
+            if (exceptionMessages != null) {
+                final String venueDetails = buildVenueDetails(null);
+                exceptionMessages.putIfAbsent(venueDetails, REF_DATA_VENUE_NOT_FOUND.code());
+            } else if (isNotEmpty(executionId)) {
                 final String errorMessage = REF_DATA_VENUE_NOT_FOUND.format(buildVenueDetails(null));
                 rotaProcessLogService.saveRotaProcessLog(
                         rotaProcessLog()
@@ -136,16 +128,20 @@ public class RotaReferenceDataService {
                 venue.getLocationId(), venue.getVenueId(), venue.getVenueName());
 
         try {
-            final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(venue, exceptionMessages, requester);
+            final Map<String, String> safeExceptionMessages = exceptionMessages != null ? exceptionMessages : new java.util.HashMap<>();
+            final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(venue, safeExceptionMessages, requester);
 
             if (courtRoomOptional.isPresent()) {
                 logger.debug("Venue validated successfully - found court room: {}", courtRoomOptional.get().getCourtroomId());
                 return courtRoomOptional;
             } else {
-                // Venue not found - log error
+                // Venue not found - populate map if provided, otherwise log directly
                 logger.warn("Venue validation failed - locationId: {}, venueId: {}, venueName: {}",
                         venue.getLocationId(), venue.getVenueId(), venue.getVenueName());
-                if (isNotEmpty(executionId)) {
+                if (exceptionMessages != null) {
+                    final String venueDetails = buildVenueDetails(venue);
+                    exceptionMessages.putIfAbsent(venueDetails, REF_DATA_VENUE_NOT_FOUND.code());
+                } else if (isNotEmpty(executionId)) {
                     final String errorMessage = REF_DATA_VENUE_NOT_FOUND.format(buildVenueDetails(venue));
                     rotaProcessLogService.saveRotaProcessLog(
                             rotaProcessLog()

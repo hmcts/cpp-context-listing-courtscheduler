@@ -14,7 +14,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
 
@@ -130,7 +129,7 @@ class RotaReferenceDataServiceTest {
     }
 
     @Test
-    void shouldReturnEmptyAndLogError_WhenJudiciaryNotFound() {
+    void shouldReturnEmptyWithoutLogging_WhenJudiciaryNotFound() {
         // given
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.empty());
 
@@ -140,14 +139,8 @@ class RotaReferenceDataServiceTest {
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByEmail(requester, email);
-
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
-                ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
-        verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
-
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
-        assertThat(log.getExecutionId(), is(executionId));
-        assertThat(log.getErrorCode(), is(JUDICIARY_NOT_FOUND.code()));
+        // Should not log here - will be aggregated and logged by caller
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
     }
 
     @Test
@@ -208,10 +201,24 @@ class RotaReferenceDataServiceTest {
     }
 
     @Test
-    void shouldReturnEmptyAndLogError_WhenVenueIsNull() {
+    void shouldPopulateMapWhenVenueIsNull() {
         // when
         Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
                 null, exceptionMessages, requester, executionId);
+
+        // then
+        assertFalse(result.isPresent());
+        verify(referenceDataMapperService, never()).findByVenue(any(), anyMap(), any());
+        // Should populate map instead of logging directly
+        assertThat(exceptionMessages.isEmpty(), is(false));
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
+    }
+
+    @Test
+    void shouldLogDirectlyWhenVenueIsNullAndNoMapProvided() {
+        // when
+        Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
+                null, null, requester, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -239,7 +246,7 @@ class RotaReferenceDataServiceTest {
     }
 
     @Test
-    void shouldReturnEmptyAndLogError_WhenVenueNotFound() {
+    void shouldPopulateMapWhenVenueNotFound() {
         // given
         when(referenceDataMapperService.findByVenue(eq(venue), anyMap(), eq(requester)))
                 .thenReturn(Optional.empty());
@@ -247,6 +254,24 @@ class RotaReferenceDataServiceTest {
         // when
         Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
                 venue, exceptionMessages, requester, executionId);
+
+        // then
+        assertFalse(result.isPresent());
+        verify(referenceDataMapperService).findByVenue(eq(venue), anyMap(), eq(requester));
+        // Should populate map instead of logging directly
+        assertThat(exceptionMessages.isEmpty(), is(false));
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
+    }
+
+    @Test
+    void shouldLogDirectlyWhenVenueNotFoundAndNoMapProvided() {
+        // given
+        when(referenceDataMapperService.findByVenue(eq(venue), anyMap(), eq(requester)))
+                .thenReturn(Optional.empty());
+
+        // when
+        Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
+                venue, null, requester, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -489,4 +514,3 @@ class RotaReferenceDataServiceTest {
                 any(), anyString(), any(), anyString(), anyString());
     }
 }
-
