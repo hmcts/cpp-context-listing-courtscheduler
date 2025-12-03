@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
-import static java.util.Calendar.MINUTE;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.nonNull;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
@@ -14,10 +13,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -126,7 +123,8 @@ public final class CourtSchedulerConverter {
                 .withIsOverbookingAllowed(courtScheduleEntity.getIsOverbookingAllowed())
                 .withIsDraft(courtScheduleEntity.getIsDraft())
                 .withMinHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionStartTime()))
-                .withMaxHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionEndTime()));
+                .withMaxHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionEndTime()))
+                .withJurisdiction(courtScheduleEntity.getJurisdiction());
 
         final Date minHearingTime = allocatedListings.stream()
                 .map(AllocatedListingEachBooked::getHearingStartTime)

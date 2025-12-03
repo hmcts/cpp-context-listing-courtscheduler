@@ -23,7 +23,8 @@
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
           "totalBooked" : 120,
-          "isDraft": false
+          "isDraft": false,
+          "jurisdictionType": "MAGISTRATES"
         },
         {
           "courtScheduleId": "AjmueCnClLfGZXNpngWHdOelSWXhE",
@@ -44,7 +45,8 @@
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
           "totalBooked": 0,
-          "isDraft": false
+          "isDraft": false,
+          "jurisdictionType": "CROWN"
         }
       ]
     },
@@ -71,7 +73,8 @@
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
           "totalBooked": 0,
-          "isDraft": false
+          "isDraft": false,
+          "jurisdictionType": "MAGISTRATES"
         },
         {
           "courtScheduleId": "dffg",
@@ -92,7 +95,8 @@
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
           "totalBooked": 0,
-          "isDraft": false
+          "isDraft": false,
+          "jurisdictionType": "CROWN"
         },
         {
           "courtScheduleId": "dffg",
@@ -118,7 +122,8 @@
           "maxDurationForAfternoon": 60,
           "availableDurationForMorning": 60,
           "availableDurationForAfternoon": 30,
-          "isDraft": false
+          "isDraft": false,
+          "jurisdictionType": "MAGISTRATES"
         }
       ]
     }

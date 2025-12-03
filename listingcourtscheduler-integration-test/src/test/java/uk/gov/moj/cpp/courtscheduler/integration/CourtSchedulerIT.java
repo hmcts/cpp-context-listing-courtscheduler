@@ -18,6 +18,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_DURATION_FOR_AFTERNOON_LESS_THAN_TOTAL_BOOKED_FOR_AFTERNOON;
@@ -1058,6 +1059,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getBoolean("allDaySplit"), is(false));
         assertThat(courtScheduleJsonObject.getInt("maxDurationForMorning"), is(0));
         assertThat(courtScheduleJsonObject.getInt("maxDurationForAfternoon"), is(0));
+        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(MAGISTRATES.getJurisdiction()));
     }
 
     @Test
@@ -1125,6 +1127,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getInt("maxDurationForMorning"), is(0));
         assertThat(courtScheduleJsonObject.getInt("maxDurationForAfternoon"), is(0));
         assertThat(courtScheduleJsonObject.getBoolean("isDraft"), is(true));
+        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(CROWN.getJurisdiction()));
     }
 
 
@@ -1225,6 +1228,7 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
         expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
         expected.setIsOverbookingAllowed(true);
+        expected.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(expected);
 
         AllocatedListing allocatedListing1 = RANDOM.nextObject(AllocatedListing.class);
@@ -1295,6 +1299,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getBoolean("isOverbookingAllowed"), is(true));
         assertThat(courtScheduleJsonObject.getString("sessionStartTime"), is("10:00"));
         assertThat(courtScheduleJsonObject.getString("sessionEndTime"), is("17:00"));
+        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(MAGISTRATES.getJurisdiction()));
     }
 
     @Test
@@ -1316,6 +1321,7 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
         expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
         expected.setIsOverbookingAllowed(true);
+        expected.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(expected);
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");
@@ -1354,6 +1360,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getBoolean("isOverbookingAllowed"), is(true));
         assertThat(courtScheduleJsonObject.getString("sessionStartTime"), is("10:00"));
         assertThat(courtScheduleJsonObject.getString("sessionEndTime"), is("17:00"));
+        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(MAGISTRATES.getJurisdiction()));
     }
 
     @Test
@@ -1380,6 +1387,7 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
         courtSchedule.setIsOverbookingAllowed(false);
+        courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final AllocatedListing allocatedListingForMorning = createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 60, "10:00");
@@ -1426,6 +1434,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getBoolean("isOverbookingAllowed"), is(false));
         assertThat(courtScheduleJsonObject.getString("sessionStartTime"), is(getUtcTimeStringForDate(courtSchedule.getSessionDate(),10,0)));
         assertThat(courtScheduleJsonObject.getString("sessionEndTime"), is(getUtcTimeStringForDate(courtSchedule.getSessionDate(),16,0)));
+        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(MAGISTRATES.getJurisdiction()));
     }
 
     @Test
