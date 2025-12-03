@@ -150,7 +150,7 @@ public class CourtSchedulerApi {
     @Inject
     private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
     @Inject
-    private JudiciaryUnassignmentService judiciaryService;
+    private JudiciaryUnassignmentService judiciaryUnassignmentService;
     @Inject
     private JudiciariesApiValidator judiciariesApiValidator;
 
@@ -567,7 +567,7 @@ public class CourtSchedulerApi {
 
     private void unassignJudiciaries(Map<String, List<String>> judiciaryToSessionIds, String executionId) {
         try {
-            judiciaryService.unassignJudiciary(judiciaryToSessionIds, executionId);
+            judiciaryUnassignmentService.unassignJudiciary(judiciaryToSessionIds, executionId);
             LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciaries from sessions");
         } catch (IllegalStateException e) {
             final String errorMessage = e.getMessage();
