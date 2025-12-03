@@ -4,10 +4,10 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Objects.nonNull;
 import static java.util.Optional.empty;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
-import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_ERR_MSG;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.MISSING_SLOT_FOR_JUDICIARY_WARNING_MSG;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.EMAIL_ADDRESS;
@@ -59,7 +59,7 @@ public class JudiciaryScheduleEnricher {
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
-    
+
 
     private static final Logger logger = LoggerFactory.getLogger(JudiciaryScheduleEnricher.class);
 
@@ -70,6 +70,7 @@ public class JudiciaryScheduleEnricher {
                                                                        final String executionId) {
         final Map<String, String> errors = new HashMap<>();
         final List<CourtScheduleJudiciary> courtScheduleJudiciarySchedules = new ArrayList<>();
+        final Map<String, List<String>> missingSessionsByOuCode = new HashMap<>();
 
         final long enrichmentStart = System.nanoTime();
         final Collection<Map<String, String>> schedules = records.get(RotaPayload.SCHEDULE).values();
@@ -105,8 +106,14 @@ public class JudiciaryScheduleEnricher {
                             courtScheduleJudiciarySchedules.add(courtScheduleJudiciary);
                         }
                     } else if (courtScheduleOptional.isEmpty()) {
-                       logger.warn(format(MISSING_SLOT_FOR_JUDICIARY_WARNING_MSG, courtSchedule.getSessionDate(), courtSchedule.getCourtHouseName(), courtSchedule.getCourtRoomName(), courtSchedule.getBusinessType(),
-                               courtSchedule.getCourtSession(), courtSchedule.getPanel()));
+                        logger.warn(format(MISSING_SLOT_FOR_JUDICIARY_WARNING_MSG,
+                                courtSchedule.getSessionDate(),
+                                courtSchedule.getCourtHouseName(),
+                                courtSchedule.getCourtRoomName(),
+                                courtSchedule.getBusinessType(),
+                                courtSchedule.getCourtSession(),
+                                courtSchedule.getPanel()));
+                        recordMissingSession(missingSessionsByOuCode, courtSchedule);
                     }
                 }
             }
@@ -116,6 +123,9 @@ public class JudiciaryScheduleEnricher {
 
         if (!errors.isEmpty()) {
             missingMessageLogger.logJudiciaryMissingMessage(errors.values(), executionId);
+        }
+        if (!missingSessionsByOuCode.isEmpty()) {
+            missingMessageLogger.logMissingCourtSessions(missingSessionsByOuCode, executionId);
         }
 
         return courtScheduleJudiciarySchedules;
@@ -143,10 +153,7 @@ public class JudiciaryScheduleEnricher {
             schedule.put(SURNAME, judiciary.getSurname());
             schedule.put(JUDICIARY_TYPE, judiciary.getJudiciaryType());
         } else {
-            final String firstName = schedule.get(FORENAMES);
-            final String lastName = schedule.get(SURNAME);
-
-            errors.put(email, JUDICIARY_ERR_MSG.format(firstName, lastName, email));
+            errors.put(email, email);
         }
     }
 
@@ -173,5 +180,19 @@ public class JudiciaryScheduleEnricher {
         }
 
         return props.get(defaultKey);
+    }
+
+    private void recordMissingSession(final Map<String, List<String>> missingSessionsByOuCode, final CourtSchedule courtSchedule) {
+        final String ouCode = defaultIfBlank(courtSchedule.getOuCode(), "UNKNOWN_OUCODE");
+        final String sessionDetails = format("%s - %s - %s - %s - %s - %s",
+                courtSchedule.getSessionDate(),
+                defaultIfBlank(courtSchedule.getCourtHouseName(), "UNKNOWN_COURTHOUSE"),
+                defaultIfBlank(courtSchedule.getCourtRoomName(), "UNKNOWN_COURTROOM"),
+                defaultIfBlank(courtSchedule.getBusinessType(), "UNKNOWN_BUSINESS_TYPE"),
+                defaultIfBlank(courtSchedule.getCourtSession(), "UNKNOWN_SESSION"),
+                defaultIfBlank(courtSchedule.getPanel(), "UNKNOWN_PANEL"));
+        missingSessionsByOuCode
+                .computeIfAbsent(ouCode, key -> new ArrayList<>())
+                .add(sessionDetails);
     }
 }

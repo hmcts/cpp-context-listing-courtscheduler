@@ -4,9 +4,13 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Optional.empty;
 import static java.util.UUID.randomUUID;
+import static java.util.stream.Collectors.joining;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.DELIMITER;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.EMAIL_ADDRESS;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.FORENAMES;
@@ -28,6 +32,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SURNA
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.TITLE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.CourtScheduleJudiciaryQueryHelper;
@@ -37,6 +42,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaFileUtility;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.VenueCourtRoomHelper;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -55,6 +61,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -63,6 +70,7 @@ import javax.ejb.TransactionAttribute;
 import javax.ejb.TransactionAttributeType;
 import javax.inject.Inject;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,6 +108,9 @@ public class RotaFileProcessor {
 
     @Inject
     private CourtScheduleJudiciaryQueryHelper courtScheduleJudiciaryQueryHelper;
+
+    @Inject
+    private RotaProcessLogService rotaProcessLogService;
 
     @Inject
     private JudiciaryCourtScheduleMapComparator mapComparator;
@@ -242,11 +253,29 @@ public class RotaFileProcessor {
         }
 
         final Map<String, UUID> judiciaryMap = new ConcurrentHashMap<>();
+        final Set<String> missingJudiciaryEmails = ConcurrentHashMap.newKeySet();
         final Map<String, Map<String, String>> magistrates = getRecordsByType(records, RotaPayload.MAGISTRATES);
         final Map<String, Map<String, String>> districtJudges = getRecordsByType(records, RotaPayload.DISTRICT_JUDGES);
 
-        processJudiciaries(magistrates, MAGS_EMAIL, requester, executionId, judiciaryMap, "magistrate");
-        processJudiciaries(districtJudges, JUDGE_EMAIL, requester, executionId, judiciaryMap, "district judge");
+        processJudiciaries(magistrates, MAGS_EMAIL, requester, executionId, judiciaryMap, missingJudiciaryEmails, "magistrate");
+        processJudiciaries(districtJudges, JUDGE_EMAIL, requester, executionId, judiciaryMap, missingJudiciaryEmails, "district judge");
+
+        if (!missingJudiciaryEmails.isEmpty() && isNotEmpty(executionId)) {
+            final String judiciaryMissingMessages = missingJudiciaryEmails.stream()
+                    .filter(StringUtils::isNotEmpty)
+                    .distinct()
+                    .collect(joining(format(DELIMITER)));
+            if (isNotEmpty(judiciaryMissingMessages)) {
+                final String msg = JUDICIARY_NOT_FOUND.format(judiciaryMissingMessages);
+                rotaProcessLogService.saveRotaProcessLog(
+                        rotaProcessLog()
+                                .withExecutionId(executionId)
+                                .withErrorCode(JUDICIARY_NOT_FOUND.code())
+                                .withErrorText(msg)
+                                .build()
+                );
+            }
+        }
 
         logger.debug("Created judiciary map with {} entries ({} magistrates, {} district judges)",
                 judiciaryMap.size(), magistrates.size(), districtJudges.size());
@@ -288,6 +317,26 @@ public class RotaFileProcessor {
                 logger.error("Error processing court listing profile {}: {}", listingProfileId, ex.getMessage(), ex);
             }
         });
+
+        if (!missingReferenceDataMappingMap.isEmpty() && isNotEmpty(executionId)) {
+            final String venueDetails = missingReferenceDataMappingMap.entrySet()
+                    .stream()
+                    .filter(e -> REF_DATA_VENUE_NOT_FOUND.code().equals(e.getValue()))
+                    .map(Map.Entry::getKey)
+                    .filter(org.apache.commons.lang3.StringUtils::isNotBlank)
+                    .distinct()
+                    .collect(joining(format(DELIMITER)));
+            if (isNotEmpty(venueDetails)) {
+                final String msg = REF_DATA_VENUE_NOT_FOUND.format(venueDetails);
+                rotaProcessLogService.saveRotaProcessLog(
+                        rotaProcessLog()
+                                .withExecutionId(executionId)
+                                .withErrorCode(REF_DATA_VENUE_NOT_FOUND.code())
+                                .withErrorText(msg)
+                                .build()
+                );
+            }
+        }
 
         logger.debug("Created court schedule map with {} entries from {} court listings",
                 courtScheduleMap.size(), courtListings.size());
@@ -424,6 +473,7 @@ public class RotaFileProcessor {
                                     final Requester requester,
                                     final String executionId,
                                     final Map<String, UUID> judiciaryMap,
+                                    final Set<String> missingJudiciaryEmails,
                                     final String judiciaryType) {
         judiciaries.forEach((justiceId, judiciaryData) -> {
             if (judiciaryData == null || judiciaryData.isEmpty()) {
@@ -438,10 +488,13 @@ public class RotaFileProcessor {
             }
 
             referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId)
-                    .ifPresent(judiciary -> {
-                        judiciaryMap.put(justiceId, UUID.fromString(judiciary.getId()));
-                        logger.debug("Mapped {} {} to judiciary with ID: {}", judiciaryType, justiceId, judiciary.getId());
-                    });
+                    .ifPresentOrElse(
+                            judiciary -> {
+                                judiciaryMap.put(justiceId, UUID.fromString(judiciary.getId()));
+                                logger.debug("Mapped {} {} to judiciary with ID: {}", judiciaryType, justiceId, judiciary.getId());
+                            },
+                            () -> missingJudiciaryEmails.add(email)
+                    );
         });
     }
 
