@@ -30,6 +30,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -39,6 +40,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
@@ -68,7 +70,10 @@ import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.inject.Inject;
@@ -87,6 +92,9 @@ public class CourtSchedulerApi {
     protected static final String RESULTS = "results";
     private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
     private static final String ORGANISATION_UNIT_HMI_STATUS = "organisationUnitHMIStatus";
+    private static final String JUDICIARIES = "judiciaries";
+    private static final String SESSIONIDS = "sessionIds";
+    private static final String JUDICIARY_ID = "judiciaryId";
     @Inject
     private Enveloper enveloper;
     @Inject
@@ -141,6 +149,10 @@ public class CourtSchedulerApi {
     private AllocatedListingService allocatedListingService;
     @Inject
     private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
+    @Inject
+    private JudiciaryUnassignmentService judiciaryUnassignmentService;
+    @Inject
+    private JudiciariesApiValidator judiciariesApiValidator;
 
     @Inject
     private AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
@@ -518,6 +530,54 @@ public class CourtSchedulerApi {
                 .build()
                 : EMPTY_JSON_OBJECT;
         return envelopeFor(envelope, resJsonObj, ORGANISATION_UNIT_HMI_STATUS);
+    }
+
+    @Handles("courtscheduler.unassign.judiciary")
+    public JsonEnvelope unassignJudiciary(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.unassign.judiciary requested : {}", payload);
+
+        JsonObject validate = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
+
+        if (!validate.isEmpty()) {
+            return envelopeFor(envelope, validate, ERROR);
+        }
+
+        // Build map of judiciaryId -> List of sessionIds
+        final Map<String, List<String>> judiciaryToSessionIds = new HashMap<>();
+        final javax.json.JsonArray judiciaries = payload.getJsonArray(JUDICIARIES);
+        
+        for (int i = 0; i < judiciaries.size(); i++) {
+            final JsonObject judiciary = judiciaries.getJsonObject(i);
+            final String judiciaryId = judiciary.getString(JUDICIARY_ID, "");
+            final javax.json.JsonArray sessionIds = judiciary.getJsonArray(SESSIONIDS);
+
+            final List<String> sessionIdList = new ArrayList<>();
+            for (int j = 0; j < sessionIds.size(); j++) {
+                final String sessionId = sessionIds.getString(j, "");
+                sessionIdList.add(sessionId);
+            }
+            judiciaryToSessionIds.put(judiciaryId, sessionIdList);
+        }
+
+        unassignJudiciaries(judiciaryToSessionIds, envelope.metadata().id().toString());
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.unassign.judiciary").apply(createObjectBuilder().build());
+    }
+
+    private void unassignJudiciaries(Map<String, List<String>> judiciaryToSessionIds, String executionId) {
+        try {
+            judiciaryUnassignmentService.unassignJudiciary(judiciaryToSessionIds, executionId);
+            LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciaries from sessions");
+        } catch (IllegalStateException e) {
+            final String errorMessage = e.getMessage();
+            LOGGER.warn("courtscheduler.unassign.judiciary: cannot unassign - {}", errorMessage);
+            throw new BadRequestException(errorMessage);
+        } catch (Exception e) {
+            final String errorMessage = e.getMessage();
+            LOGGER.warn("courtscheduler.unassign.judiciary: not found - {}", errorMessage);
+            throw new BadRequestException(errorMessage);
+        }
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {

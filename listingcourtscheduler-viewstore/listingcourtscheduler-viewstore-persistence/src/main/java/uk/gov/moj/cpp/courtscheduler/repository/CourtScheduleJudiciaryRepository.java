@@ -43,6 +43,9 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId = ?1")
     abstract List<CourtScheduleJudiciary> findByCourtScheduleId(String courtScheduleId);
 
+    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.judiciaryId = ?1 AND csj.active = true")
+    public abstract List<CourtScheduleJudiciary> findByJudiciaryId(String judiciaryId);
+
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId IN (:courtScheduleIds)")
     public abstract List<CourtScheduleJudiciary> findInCourtScheduleIds(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);
 

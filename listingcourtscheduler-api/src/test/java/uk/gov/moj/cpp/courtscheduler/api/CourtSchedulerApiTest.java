@@ -8,11 +8,14 @@ import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -45,6 +48,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -55,6 +59,7 @@ import uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
@@ -83,7 +88,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -161,6 +168,8 @@ class CourtSchedulerApiTest {
     @Mock
     private CourtScheduleApiValidator courtScheduleApiValidator;
     @Mock
+    private JudiciariesApiValidator judiciariesApiValidator;
+    @Mock
     private JsonEnvelope envelope;
     @Mock
     private ListHearingSlotConverter listHearingSlotConverter;
@@ -170,6 +179,8 @@ class CourtSchedulerApiTest {
     private AssignJudiciariesApiValidator assignJudiciariesApiValidator;
     @Mock
     private JudiciaryAssignmentService judiciaryAssignmentService;
+    @Mock
+    private JudiciaryUnassignmentService judiciaryUnassignmentService;
 
 
     @Test
@@ -724,6 +735,272 @@ class CourtSchedulerApiTest {
 
         assertThrows(ValidationException.class, () ->
                 courtSchedulerApi.validateSessionAvailabilityCourtSchedule(validationEnvelope));
+    }
+
+    @Test
+    void shouldUnassignJudiciarySuccessfully() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
+
+        final Map<String, List<String>> expectedMap = new HashMap<>();
+        expectedMap.put(judiciaryId, Collections.singletonList(sessionId));
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(Map.class), anyString());
+
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldReturnErrorEnvelopeWhenSessionIdsIsMissing() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "sessionIds array is required in judiciaries[0]";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", "judge-456")
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldReturnErrorEnvelopeWhenJudiciaryIdIsMissing() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "judiciaryId is required in judiciaries[0]";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("sessionIds", createArrayBuilder()
+                        .add("schedule-123")
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldContinueProcessingWhenCourtScheduleHasAllocatedListings() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(), anyString());
+
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldContinueProcessingWhenJudiciaryNotFound() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(), anyString());
+
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldReturnErrorEnvelopeWhenJudiciariesArrayIsMissing() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "judiciaries array is required";
+
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldReturnErrorEnvelopeWhenJudiciariesArrayIsEmpty() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "judiciaries array must contain at least one item";
+
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldReturnErrorEnvelopeWhenSessionIdsArrayIsEmpty() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "sessionIds array must contain at least one item in judiciaries[0]";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", "judge-456")
+                .add("sessionIds", createArrayBuilder().build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldUnassignMultipleJudiciariesSuccessfully() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String sessionId2 = "1b2c3d44-7e8f-4b9a-8c7d-2a3b4c5d6666";
+        final String sessionId3 = "22223333-4444-5555-6666-777788889999";
+        final String judiciaryId1 = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+        final String judiciaryId2 = "7e6f4a11-1111-2222-3333-444455556666";
+
+        final JsonObject judiciary1 = createObjectBuilder()
+                .add("judiciaryId", judiciaryId1)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId1)
+                        .add(sessionId2)
+                        .build())
+                .build();
+        final JsonObject judiciary2 = createObjectBuilder()
+                .add("judiciaryId", judiciaryId2)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId3)
+                        .build())
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary1)
+                .add(judiciary2)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(Map.class), anyString());
+
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {
