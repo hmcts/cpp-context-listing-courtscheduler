@@ -99,6 +99,9 @@
                 },
                 "isDraft": {
                     "type": "boolean"
+                },
+                "jurisdictionType": {
+                    "type": "string"
                 }
               },
               "required": [
