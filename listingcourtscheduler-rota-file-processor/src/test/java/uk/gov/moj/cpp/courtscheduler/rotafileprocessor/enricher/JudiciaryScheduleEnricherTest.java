@@ -42,6 +42,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -180,5 +181,58 @@ class JudiciaryScheduleEnricherTest {
                 .withAvailableDuration(182)
                 .withMaxSlots(125)
                 .build();
+    }
+
+    @Test
+    void shouldLogMissingCourtSessionsByOuCode() throws IOException {
+        final String file = "rotafileprocessor/judiciary_enrich_payload.xml";
+        final byte[] blobContent = givenBlobContent(file);
+        final RotaFileParser rotaFileParser = new RotaFileParser();
+        setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
+        final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
+
+        final CourtSchedule courtSchedule = new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(UUID.randomUUID().toString())
+                .withListingProfileId("LP-123")
+                .withSessionDate(LocalDate.of(2024, 12, 24))
+                .withOuCode("CABC90")
+                .withCourtRoomId("room-1")
+                .withCourtRoomName("Courtroom 1")
+                .withCourtHouseName("Liverpool Mags Court")
+                .withBusinessType("DVB")
+                .withCourtSession("AM")
+                .withPanel("ADULT")
+                .build();
+
+        when(courtScheduleMap.get(anyString())).thenReturn(courtSchedule);
+        when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.of(getJudiciary()));
+
+        final List<CourtSchedule> activeSchedules = List.of(
+                new CourtSchedule.CourtScheduleBuilder()
+                        .withCourtScheduleId(UUID.randomUUID().toString())
+                        .withOuCode("CABC90")
+                        .withCourtRoomId("room-2")
+                        .withSessionDate(LocalDate.of(2024, 12, 24))
+                        .withBusinessType("OTHER")
+                        .withCourtSession("PM")
+                        .build()
+        );
+
+        final String executionId = randomUUID().toString();
+        judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, true, activeSchedules, requester, executionId);
+
+        ArgumentCaptor<Map<String, List<String>>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(missingMessageLogger).logMissingCourtSessions(captor.capture(), eq(executionId));
+        final Map<String, List<String>> captured = captor.getValue();
+        assertThat(captured.containsKey("CABC90"), is(true));
+        assertThat(captured.get("CABC90").isEmpty(), is(false));
+
+        // Verify that the log was actually saved to the database
+        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        verify(rotaProcessLogService, atLeastOnce()).saveRotaProcessLog(logCaptor.capture());
+        final List<RotaProcessLog> allLogs = logCaptor.getAllValues();
+        final boolean hasMissingCourtSession = allLogs.stream()
+                .anyMatch(log -> "MISSING_COURT_SESSION".equals(log.getErrorCode()) && executionId.equals(log.getExecutionId()));
+        assertThat("Should have logged MISSING_COURT_SESSION", hasMissingCourtSession, is(true));
     }
 }

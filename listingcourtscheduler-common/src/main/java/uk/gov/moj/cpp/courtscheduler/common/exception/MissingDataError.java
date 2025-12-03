@@ -23,17 +23,13 @@ public enum MissingDataError {
             "REF_DATA_JUDICIARY_EMAIL",
             "Judiciary email cannot be found in referenceData"),
 
-    SESSION_DATA_MATCH_EXACT(
-            "SESSION_DATA_MATCH_EXACT",
-            "No matching session for judiciary update : %s - %s - %s - %s"),
-
-    SESSION_DATA_MATCH_RELAXED(
-            "SESSION_DATA_MATCH_RELAXED",
-            "No matching session for judiciary update : %s - %s - %s"),
-
     REF_DATA_VENUE_NOT_FOUND(
             "REF_DATA_VENUE_NOT_FOUND",
-            "No matching venue found by either venueId or venueName or LocationId: %s - %s - %d"),
+            Prefix.MONITORING + "No matching venue found by either venueId or venueName or LocationId:%n%s"),
+
+    MISSING_COURT_SESSION(
+            "MISSING_COURT_SESSION",
+            Prefix.MONITORING + "No matching sessions found for courthouse %s:%n%s"),
 
     ROTA_PROCESSING_ERROR(
             "ROTA_PROCESSING_ERROR",
