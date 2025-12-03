@@ -3,37 +3,29 @@ package uk.gov.moj.cpp.courtscheduler.common.exception;
 @SuppressWarnings("squid:S1213")
 public enum MissingDataError {
 
-    COURT_DETAIL_NOT_FOUND(
-            "COURT_DETAIL_NOT_FOUND",
-            Prefix.MONITORING + "Court details not found for the following locations :- %n%s"),
-
     JUDICIARY_NOT_FOUND(
             "JUDICIARY_NOT_FOUND",
             Prefix.MONITORING + "Judiciary detail not found for the following judiciaries :-%n%s"),
+
+    COURT_DETAIL_NOT_FOUND(
+            "COURT_DETAIL_NOT_FOUND",
+            Prefix.MONITORING + "Court details not found for the following locations :- %n%s"),
 
     BUSINESS_TYPES_NOT_FOUND(
             "BUSINESS_TYPES_NOT_FOUND",
             Prefix.MONITORING + "These business types cannot be found on newSlots : {}"),
 
-    JUDICIARY_ERR_MSG(
-            "JUDICIARY_ERR_MSG",
-            " Name %s %s%n Email : %s"),
-
     REF_DATA_JUDICIARY_EMAIL(
             "REF_DATA_JUDICIARY_EMAIL",
             "Judiciary email cannot be found in referenceData"),
 
-    SESSION_DATA_MATCH_EXACT(
-            "SESSION_DATA_MATCH_EXACT",
-            "No matching session for judiciary update : %s - %s - %s - %s"),
-
-    SESSION_DATA_MATCH_RELAXED(
-            "SESSION_DATA_MATCH_RELAXED",
-            "No matching session for judiciary update : %s - %s - %s"),
+    MISSING_COURT_SESSION(
+            "MISSING_COURT_SESSION",
+            Prefix.MONITORING + "No matching sessions found for courthouse %s:%n%s"),
 
     REF_DATA_VENUE_NOT_FOUND(
             "REF_DATA_VENUE_NOT_FOUND",
-            "No matching venue found by either venueId or venueName or LocationId: %s - %s - %d"),
+            Prefix.MONITORING + "No matching venue found by either venueId or venueName or LocationId:%n%s"),
 
     ROTA_PROCESSING_ERROR(
             "ROTA_PROCESSING_ERROR",

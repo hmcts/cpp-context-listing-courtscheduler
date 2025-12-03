@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import static java.lang.String.format;
 import static java.util.Optional.empty;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
@@ -119,11 +120,12 @@ public class RotaReferenceDataService {
         if (venue == null) {
             logger.warn("Venue is null, cannot validate venue");
             if (isNotEmpty(executionId)) {
+                final String errorMessage = REF_DATA_VENUE_NOT_FOUND.format(buildVenueDetails(null));
                 rotaProcessLogService.saveRotaProcessLog(
                         rotaProcessLog()
                                 .withExecutionId(executionId)
                                 .withErrorCode(REF_DATA_VENUE_NOT_FOUND.code())
-                                .withErrorText("Venue is null, cannot validate venue")
+                                .withErrorText(errorMessage)
                                 .build()
                 );
             }
@@ -144,7 +146,7 @@ public class RotaReferenceDataService {
                 logger.warn("Venue validation failed - locationId: {}, venueId: {}, venueName: {}",
                         venue.getLocationId(), venue.getVenueId(), venue.getVenueName());
                 if (isNotEmpty(executionId)) {
-                    final String errorMessage = REF_DATA_VENUE_NOT_FOUND.format(venue.getLocationId(), venue.getVenueName(), venue.getVenueId());
+                    final String errorMessage = REF_DATA_VENUE_NOT_FOUND.format(buildVenueDetails(venue));
                     rotaProcessLogService.saveRotaProcessLog(
                             rotaProcessLog()
                                     .withExecutionId(executionId)
@@ -172,6 +174,16 @@ public class RotaReferenceDataService {
             }
             return empty();
         }
+    }
+
+    private String buildVenueDetails(final Venue venue) {
+        if (venue == null) {
+            return "UNKNOWN_LOCATION - UNKNOWN_VENUE - UNKNOWN_VENUE_ID";
+        }
+        final String locationId = venue.getLocationId() != null ? venue.getLocationId().toString() : "UNKNOWN_LOCATION";
+        final String venueName = defaultIfBlank(venue.getVenueName(), "UNKNOWN_VENUE");
+        final String venueId = venue.getVenueId() != null ? venue.getVenueId().toString() : "UNKNOWN_VENUE_ID";
+        return format("%s - %s - %s", locationId, venueName, venueId);
     }
 
     /**
