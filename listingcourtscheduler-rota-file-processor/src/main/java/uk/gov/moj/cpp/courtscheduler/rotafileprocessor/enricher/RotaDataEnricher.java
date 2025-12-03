@@ -99,7 +99,7 @@ public class RotaDataEnricher {
         final long enrichCourtListingEndTime = System.currentTimeMillis();
         logger.info("Time taken to enrich court listings: {} ms", enrichCourtListingEndTime - enrichCourtListingStartTime);
         if (!missingReferenceDataMappingMap.isEmpty()) {
-            missingReferenceDataMappingLogger.logCourtDetailsMessage(missingReferenceDataMappingMap, executionId);
+            missingReferenceDataMappingLogger.logMissingVenueMessages(missingReferenceDataMappingMap, executionId);
         }
         return courtSchedules;
     }
