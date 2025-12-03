@@ -41,14 +41,19 @@ import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtSched
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaFileUtility;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.VenueCourtRoomHelper;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryBuilder;
@@ -115,6 +120,12 @@ public class RotaFileProcessor {
     @Inject
     private JudiciaryCourtScheduleMapComparator mapComparator;
 
+    @Inject
+    private JudiciaryAssignmentService judiciaryAssignmentService;
+
+    @Inject
+    private JudiciaryUnassignmentService judiciaryUnassignmentService;
+
     // ============================================================================
     // PUBLIC API METHODS
     // ============================================================================
@@ -180,8 +191,25 @@ public class RotaFileProcessor {
         logger.info("Found court schedule IDs in database missing in rota feed for {} judiciary IDs for blob: {}",
                 judiciaryUnAssignmentMap.size(), blobName);
 
-        // TODO Call assign service method with judiciaryAssignmentMap
-        // TODO Call unassign service method with judiciaryUnAssignmentMap
+        if (!judiciaryAssignmentMap.isEmpty()) {
+            final AssignJudiciariesRequest assignRequest = buildAssignJudiciariesRequest(judiciaryAssignmentMap);
+            final AssignJudiciariesResponse assignResponse = judiciaryAssignmentService.assignJudiciaries(
+                    assignRequest, requester, executionId);
+            logger.info("Assigned judiciaries for blob: {} - requested: {}, successful: {}, failures: {}",
+                    blobName, assignResponse.getRequestedAssignments(), assignResponse.getSuccessfulAssignments(),
+                    assignResponse.getFailures().size());
+        } else {
+            logger.debug("Skipping judiciary assignment - no assignments to process for blob: {}", blobName);
+        }
+
+        if (!judiciaryUnAssignmentMap.isEmpty()) {
+            final Map<String, List<String>> unassignMap = convertToUnassignmentMap(judiciaryUnAssignmentMap);
+            judiciaryUnassignmentService.unassignJudiciary(unassignMap, executionId);
+            logger.info("Unassigned judiciaries for blob: {} - processed {} judiciary IDs",
+                    blobName, unassignMap.size());
+        } else {
+            logger.debug("Skipping judiciary unassignment - no unassignments to process for blob: {}", blobName);
+        }
     }
 
     private void uploadAndCleanup(final byte[] blobByteArray, final String blobName, final String leaseId) {
@@ -708,6 +736,51 @@ public class RotaFileProcessor {
     private Map<String, Map<String, String>> getRecordsByType(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                               final RotaPayload payloadType) {
         return records.getOrDefault(payloadType, Collections.emptyMap());
+    }
+
+    // ============================================================================
+    // PRIVATE HELPER/UTILITY METHODS - Request Building
+    // ============================================================================
+
+    /**
+     * Converts a map of judiciary IDs to lists of court schedule UUIDs into an AssignJudiciariesRequest.
+     *
+     * @param judiciaryAssignmentMap map where key is judiciaryId (String) and value is list of court schedule UUIDs
+     * @return AssignJudiciariesRequest containing the judiciary assignments
+     */
+    private AssignJudiciariesRequest buildAssignJudiciariesRequest(final Map<String, List<UUID>> judiciaryAssignmentMap) {
+        final List<JudiciaryAssignment> assignments = judiciaryAssignmentMap.entrySet().stream()
+                .map(entry -> {
+                    final String judiciaryId = entry.getKey();
+                    final List<String> sessionIds = entry.getValue().stream()
+                            .map(UUID::toString)
+                            .toList();
+                    return JudiciaryAssignment.builder()
+                            .withJudiciaryId(judiciaryId)
+                            .withSessionIds(sessionIds)
+                            .build();
+                })
+                .toList();
+
+        return AssignJudiciariesRequest.builder()
+                .withJudiciaries(assignments)
+                .build();
+    }
+
+    /**
+     * Converts a map of judiciary IDs to lists of court schedule UUIDs into a map with String session IDs.
+     *
+     * @param judiciaryUnAssignmentMap map where key is judiciaryId (String) and value is list of court schedule UUIDs
+     * @return Map where key is judiciaryId (String) and value is list of session IDs (String)
+     */
+    private Map<String, List<String>> convertToUnassignmentMap(final Map<String, List<UUID>> judiciaryUnAssignmentMap) {
+        return judiciaryUnAssignmentMap.entrySet().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().stream()
+                                .map(UUID::toString)
+                                .toList()
+                ));
     }
 
     // ============================================================================

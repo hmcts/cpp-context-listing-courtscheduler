@@ -36,9 +36,13 @@ import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtSched
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaFileUtility;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.VenueCourtRoomHelper;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
@@ -98,6 +102,12 @@ class RotaFileProcessorTest {
 
     @Mock
     private JudiciaryCourtScheduleMapComparator mapComparator;
+
+    @Mock
+    private JudiciaryAssignmentService judiciaryAssignmentService;
+
+    @Mock
+    private JudiciaryUnassignmentService judiciaryUnassignmentService;
 
     @Mock
     private Requester requester;
@@ -691,6 +701,264 @@ class RotaFileProcessorTest {
         // then
         // The filtering should only include matchingSchedule
         verify(sessionsService).getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class));
+    }
+
+    // ============================================================================
+    // Tests for assign and unassign scenarios
+    // ============================================================================
+
+    @Test
+    void shouldCallAssignJudiciariesWhenAssignmentMapIsNotEmpty() {
+        // given
+        setupSuccessfulProcessing();
+        setupRecordsWithData();
+
+        final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
+        final UUID sessionId2 = randomUUID();
+
+        final Map<String, List<UUID>> rotaFeedMap = new HashMap<>();
+        rotaFeedMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
+        final Map<String, List<UUID>> dbMap = new HashMap<>();
+        final Map<String, List<UUID>> assignmentMap = new HashMap<>();
+        assignmentMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
+
+        when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
+                .thenReturn(dbMap);
+        when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
+                .thenReturn(assignmentMap);
+        when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
+                .thenReturn(emptyMap());
+
+        final AssignJudiciariesResponse assignResponse = AssignJudiciariesResponse.builder()
+                .withRequestedAssignments(2)
+                .withSuccessfulAssignments(2)
+                .withFailures(List.of())
+                .build();
+        when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+                .thenReturn(assignResponse);
+
+        // when
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+
+        // then
+        final ArgumentCaptor<AssignJudiciariesRequest> requestCaptor = ArgumentCaptor.forClass(AssignJudiciariesRequest.class);
+        verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(requester), eq(executionId));
+
+        final AssignJudiciariesRequest capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest.getJudiciaries().size(), is(1));
+        assertThat(capturedRequest.getJudiciaries().get(0).getJudiciaryId(), is(judiciary.getId()));
+        assertThat(capturedRequest.getJudiciaries().get(0).getSessionIds().size(), is(2));
+        assertThat(capturedRequest.getJudiciaries().get(0).getSessionIds(), is(List.of(sessionId1.toString(), sessionId2.toString())));
+    }
+
+    @Test
+    void shouldNotCallAssignJudiciariesWhenAssignmentMapIsEmpty() {
+        // given
+        setupSuccessfulProcessing();
+        setupRecordsWithData();
+
+        final Map<String, List<UUID>> rotaFeedMap = new HashMap<>();
+        rotaFeedMap.put(judiciary.getId(), List.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
+        final Map<String, List<UUID>> dbMap = new HashMap<>();
+        dbMap.put(judiciary.getId(), List.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
+
+        when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
+                .thenReturn(dbMap);
+        when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
+                .thenReturn(emptyMap());
+        when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
+                .thenReturn(emptyMap());
+
+        // when
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+
+        // then
+        verify(judiciaryAssignmentService, never()).assignJudiciaries(any(), any(), anyString());
+    }
+
+    @Test
+    void shouldCallUnassignJudiciaryWhenUnassignmentMapIsNotEmpty() {
+        // given
+        setupSuccessfulProcessing();
+        setupRecordsWithData();
+
+        final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
+        final UUID sessionId2 = randomUUID();
+
+        final Map<String, List<UUID>> dbMap = new HashMap<>();
+        dbMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
+        final Map<String, List<UUID>> unassignmentMap = new HashMap<>();
+        unassignmentMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
+
+        when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
+                .thenReturn(dbMap);
+        when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
+                .thenReturn(emptyMap());
+        when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
+                .thenReturn(unassignmentMap);
+
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(anyMap(), eq(executionId));
+
+        // when
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+
+        // then
+        @SuppressWarnings("unchecked")
+        final ArgumentCaptor<Map<String, List<String>>> mapCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(judiciaryUnassignmentService).unassignJudiciary(mapCaptor.capture(), eq(executionId));
+
+        final Map<String, List<String>> capturedMap = mapCaptor.getValue();
+        assertThat(capturedMap.size(), is(1));
+        assertThat(capturedMap.containsKey(judiciary.getId()), is(true));
+        assertThat(capturedMap.get(judiciary.getId()).size(), is(2));
+        assertThat(capturedMap.get(judiciary.getId()), is(List.of(sessionId1.toString(), sessionId2.toString())));
+    }
+
+    @Test
+    void shouldNotCallUnassignJudiciaryWhenUnassignmentMapIsEmpty() {
+        // given
+        setupSuccessfulProcessing();
+        setupRecordsWithData();
+
+        final Map<String, List<UUID>> rotaFeedMap = new HashMap<>();
+        rotaFeedMap.put(judiciary.getId(), List.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
+        final Map<String, List<UUID>> dbMap = new HashMap<>();
+        dbMap.put(judiciary.getId(), List.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
+
+        when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
+                .thenReturn(dbMap);
+        when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
+                .thenReturn(emptyMap());
+        when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
+                .thenReturn(emptyMap());
+
+        // when
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+
+        // then
+        verify(judiciaryUnassignmentService, never()).unassignJudiciary(anyMap(), anyString());
+    }
+
+    @Test
+    void shouldCallBothAssignAndUnassignWhenBothMapsAreNotEmpty() {
+        // given
+        setupSuccessfulProcessing();
+        setupRecordsWithData();
+
+        final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
+        final UUID sessionId2 = randomUUID();
+        final UUID sessionId3 = randomUUID();
+
+        final Map<String, List<UUID>> rotaFeedMap = new HashMap<>();
+        rotaFeedMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
+        final Map<String, List<UUID>> dbMap = new HashMap<>();
+        dbMap.put(judiciary.getId(), List.of(sessionId3));
+        final Map<String, List<UUID>> assignmentMap = new HashMap<>();
+        assignmentMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
+        final Map<String, List<UUID>> unassignmentMap = new HashMap<>();
+        unassignmentMap.put(judiciary.getId(), List.of(sessionId3));
+
+        when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
+                .thenReturn(dbMap);
+        when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
+                .thenReturn(assignmentMap);
+        when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
+                .thenReturn(unassignmentMap);
+
+        final AssignJudiciariesResponse assignResponse = AssignJudiciariesResponse.builder()
+                .withRequestedAssignments(2)
+                .withSuccessfulAssignments(2)
+                .withFailures(List.of())
+                .build();
+        when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+                .thenReturn(assignResponse);
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(anyMap(), eq(executionId));
+
+        // when
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+
+        // then
+        verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId));
+        verify(judiciaryUnassignmentService).unassignJudiciary(anyMap(), eq(executionId));
+    }
+
+    @Test
+    void shouldHandleMultipleJudiciariesInAssignmentMap() {
+        // given
+        setupSuccessfulProcessing();
+        setupRecordsWithData();
+
+        final String judiciaryId1 = judiciary.getId();
+        final String judiciaryId2 = randomUUID().toString();
+        final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
+        final UUID sessionId2 = randomUUID();
+
+        final Map<String, List<UUID>> assignmentMap = new HashMap<>();
+        assignmentMap.put(judiciaryId1, List.of(sessionId1));
+        assignmentMap.put(judiciaryId2, List.of(sessionId2));
+
+        when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
+                .thenReturn(emptyMap());
+        when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
+                .thenReturn(assignmentMap);
+        when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
+                .thenReturn(emptyMap());
+
+        final AssignJudiciariesResponse assignResponse = AssignJudiciariesResponse.builder()
+                .withRequestedAssignments(2)
+                .withSuccessfulAssignments(2)
+                .withFailures(List.of())
+                .build();
+        when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+                .thenReturn(assignResponse);
+
+        // when
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+
+        // then
+        final ArgumentCaptor<AssignJudiciariesRequest> requestCaptor = ArgumentCaptor.forClass(AssignJudiciariesRequest.class);
+        verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(requester), eq(executionId));
+
+        final AssignJudiciariesRequest capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest.getJudiciaries().size(), is(2));
+    }
+
+    @Test
+    void shouldHandleMultipleJudiciariesInUnassignmentMap() {
+        // given
+        setupSuccessfulProcessing();
+        setupRecordsWithData();
+
+        final String judiciaryId1 = judiciary.getId();
+        final String judiciaryId2 = randomUUID().toString();
+        final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
+        final UUID sessionId2 = randomUUID();
+
+        final Map<String, List<UUID>> unassignmentMap = new HashMap<>();
+        unassignmentMap.put(judiciaryId1, List.of(sessionId1));
+        unassignmentMap.put(judiciaryId2, List.of(sessionId2));
+
+        when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
+                .thenReturn(emptyMap());
+        when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
+                .thenReturn(emptyMap());
+        when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
+                .thenReturn(unassignmentMap);
+
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(anyMap(), eq(executionId));
+
+        // when
+        rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+
+        // then
+        @SuppressWarnings("unchecked")
+        final ArgumentCaptor<Map<String, List<String>>> mapCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(judiciaryUnassignmentService).unassignJudiciary(mapCaptor.capture(), eq(executionId));
+
+        final Map<String, List<String>> capturedMap = mapCaptor.getValue();
+        assertThat(capturedMap.size(), is(2));
+        assertThat(capturedMap.containsKey(judiciaryId1), is(true));
+        assertThat(capturedMap.containsKey(judiciaryId2), is(true));
     }
 }
 
