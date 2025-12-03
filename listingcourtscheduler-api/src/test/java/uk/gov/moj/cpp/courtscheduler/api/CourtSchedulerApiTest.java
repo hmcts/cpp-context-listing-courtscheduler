@@ -761,12 +761,12 @@ class CourtSchedulerApiTest {
 
         final Map<String, List<String>> expectedMap = new HashMap<>();
         expectedMap.put(judiciaryId, Collections.singletonList(sessionId));
-        doNothing().when(judiciaryService).unassignJudiciary(any(Map.class));
+        doNothing().when(judiciaryService).unassignJudiciary(any(Map.class), anyString());
 
         courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
-        verify(judiciaryService, atLeastOnce()).unassignJudiciary(any());
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(any(), anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
@@ -794,7 +794,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
-        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
@@ -824,16 +824,15 @@ class CourtSchedulerApiTest {
         final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
-        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
-    void shouldThrowBadRequestExceptionWhenCourtScheduleHasAllocatedListings() {
+    void shouldContinueProcessingWhenCourtScheduleHasAllocatedListings() {
         final String requestName = "courtscheduler.unassign.judiciary";
         final String sessionId = "schedule-123";
         final String judiciaryId = "judge-456";
-        final String errorMessage = "Cannot unassign judiciary judge-456 from courtSchedule schedule-123: court schedule has allocated listings";
 
         final JsonObject judiciary = createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
@@ -848,24 +847,22 @@ class CourtSchedulerApiTest {
                 .add("judiciaries", judiciariesArray)
                 .build();
         final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
         when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
-        doThrow(new IllegalStateException(errorMessage))
-                .when(judiciaryService).unassignJudiciary(any());
+        doNothing().when(judiciaryService).unassignJudiciary(any(), anyString());
 
-        BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        assertEquals(errorMessage, exception.getMessage());
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
-        verify(judiciaryService, atLeastOnce()).unassignJudiciary(any());
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
-    void shouldThrowBadRequestExceptionWhenJudiciaryNotFound() {
+    void shouldContinueProcessingWhenJudiciaryNotFound() {
         final String requestName = "courtscheduler.unassign.judiciary";
         final String sessionId = "schedule-123";
         final String judiciaryId = "judge-456";
-        final String errorMessage = "Judiciary judge-456 not found for courtSchedule schedule-123";
 
         final JsonObject judiciary = createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
@@ -880,16 +877,15 @@ class CourtSchedulerApiTest {
                 .add("judiciaries", judiciariesArray)
                 .build();
         final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
         when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
-        doThrow(new IllegalArgumentException(errorMessage))
-                .when(judiciaryService).unassignJudiciary(any());
+        doNothing().when(judiciaryService).unassignJudiciary(any(), anyString());
 
-        BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope));
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        assertEquals(errorMessage, exception.getMessage());
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
-        verify(judiciaryService, atLeastOnce()).unassignJudiciary(any());
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(any(), anyString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
@@ -909,7 +905,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
-        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
@@ -933,7 +929,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
-        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
@@ -962,7 +958,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
-        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any());
+        verify(judiciaryService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
@@ -998,12 +994,12 @@ class CourtSchedulerApiTest {
         final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
         when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
         when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
-        doNothing().when(judiciaryService).unassignJudiciary(any(Map.class));
+        doNothing().when(judiciaryService).unassignJudiciary(any(Map.class), anyString());
 
         courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
-        verify(judiciaryService, atLeastOnce()).unassignJudiciary(any());
+        verify(judiciaryService, atLeastOnce()).unassignJudiciary(any(), anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 

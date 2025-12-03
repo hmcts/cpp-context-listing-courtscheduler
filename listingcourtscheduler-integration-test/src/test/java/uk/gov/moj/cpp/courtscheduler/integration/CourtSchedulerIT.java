@@ -1580,7 +1580,7 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
-    void shouldReturnBadRequestWhenUnassigningJudiciaryWithAllocatedListings() throws SQLException, Exception {
+    void shouldContinueProcessingWhenUnassigningJudiciaryWithAllocatedListings() throws SQLException, Exception {
         // Setup: Create a court schedule with allocated listings and assign a judiciary
         final CourtSchedule courtSchedule = createTestCourtSchedule();
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -1610,7 +1610,8 @@ class CourtSchedulerIT extends AbstractIT {
                 SYSTEM_USER_ID,
                 requestPayload);
 
-        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        // Should return ACCEPTED since we continue processing (no exception thrown)
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
         // Verify judiciary is still assigned (not removed due to allocated listings)
         List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
@@ -1620,7 +1621,7 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
-    void shouldReturnBadRequestWhenJudiciaryNotFound() throws SQLException, IllegalArgumentException {
+    void shouldContinueProcessingWhenJudiciaryNotFound() throws SQLException, IllegalArgumentException {
         // Setup: Create a court schedule but no judiciary assignment
         final CourtSchedule courtSchedule = createTestCourtSchedule();
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -1645,7 +1646,8 @@ class CourtSchedulerIT extends AbstractIT {
                 SYSTEM_USER_ID,
                 requestPayload);
 
-        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        // Should return ACCEPTED since we continue processing (no exception thrown)
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
     @Test

@@ -560,14 +560,14 @@ public class CourtSchedulerApi {
             judiciaryToSessionIds.put(judiciaryId, sessionIdList);
         }
 
-        unassignJudiciaries(judiciaryToSessionIds);
+        unassignJudiciaries(judiciaryToSessionIds, envelope.metadata().id().toString());
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.unassign.judiciary").apply(createObjectBuilder().build());
     }
 
-    private void unassignJudiciaries(Map<String, List<String>> judiciaryToSessionIds) {
+    private void unassignJudiciaries(Map<String, List<String>> judiciaryToSessionIds, String executionId) {
         try {
-            judiciaryService.unassignJudiciary(judiciaryToSessionIds);
+            judiciaryService.unassignJudiciary(judiciaryToSessionIds, executionId);
             LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciaries from sessions");
         } catch (IllegalStateException e) {
             final String errorMessage = e.getMessage();

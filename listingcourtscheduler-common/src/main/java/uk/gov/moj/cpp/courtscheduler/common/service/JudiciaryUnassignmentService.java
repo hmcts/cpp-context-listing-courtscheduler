@@ -2,16 +2,20 @@ package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.util.Collections.singletonList;
 import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
+import uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
-import java.util.Date;
+import java.util.Calendar;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -25,7 +29,7 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 public class JudiciaryUnassignmentService {
 
-    private static final Logger logger = LoggerFactory.getLogger(JudiciaryUnassignmentService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryUnassignmentService.class);
 
     @Inject
     private AllocatedListingService allocatedListingService;
@@ -43,8 +47,13 @@ public class JudiciaryUnassignmentService {
     private EntityManager entityManager;
 
     @Transactional(REQUIRES_NEW)
-    public void unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds) {
-        logger.info("unassignJudiciary: attempting to unassign judiciaries from sessions : {}", judiciaryToSessionIds);
+    public void unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds, final String executionId) {
+        LOGGER.info("unassignJudiciary: attempting to unassign judiciaries from sessions : {}", judiciaryToSessionIds);
+
+        final Set<String> missingSessionIds = new LinkedHashSet<>();
+        final Set<String> missingJudiciaryIds = new LinkedHashSet<>();
+        final Set<String> allocatedListingSessionIds = new LinkedHashSet<>();
+        final Set<String> missingCourtScheduleJudiciaryIds = new LinkedHashSet<>();
 
         for (Map.Entry<String, List<String>> entry : judiciaryToSessionIds.entrySet()) {
             final String judiciaryId = entry.getKey();
@@ -54,33 +63,30 @@ public class JudiciaryUnassignmentService {
             final List<CourtScheduleJudiciary> judiciaryAssignments = courtScheduleJudiciaryRepository.findByJudiciaryId(judiciaryId);
             final boolean judiciaryExists = !judiciaryAssignments.isEmpty();
 
+            if (!judiciaryExists) {
+                missingJudiciaryIds.add(judiciaryId);
+                LOGGER.warn("unassignJudiciary: Judiciary ID {} not found for unassign judiciary operation", judiciaryId);
+                continue;
+            }
+
             for (String courtScheduleId : sessionIds) {
-                logger.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+                LOGGER.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
 
                 // Check if session (court schedule) exists
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
                 if (courtSchedule == null) {
-                    final String errorText = String.format("Session ID %s not found for unassign judiciary operation", courtScheduleId);
-                    logger.warn("unassignJudiciary: {}", errorText);
-                    logToRotaProcessTable("SESSION_ID_NOT_FOUND_ASSIGNMENT", errorText);
-                    continue;
-                }
-
-                // Check if judiciary exists in any assignment
-                if (!judiciaryExists) {
-                    final String errorText = String.format("Judiciary ID %s not found for unassign judiciary operation", judiciaryId);
-                    logger.warn("unassignJudiciary: {}", errorText);
-                    logToRotaProcessTable("JUDICIARY_ID_NOT_FOUND_ASSIGNMENT", errorText);
+                    missingSessionIds.add(courtScheduleId);
+                    LOGGER.warn("unassignJudiciary: Session ID {} not found for unassign judiciary operation", courtScheduleId);
                     continue;
                 }
 
                 // Check if there are allocated listings for this court schedule
                 final Map<String, Integer> allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(singletonList(courtScheduleId));
                 if (allocatedListings.containsKey(courtScheduleId) && allocatedListings.get(courtScheduleId) > 0) {
+                    allocatedListingSessionIds.add(courtScheduleId);
                     final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has allocated listings", judiciaryId, courtScheduleId);
-                    logger.warn("unassignJudiciary: {}", errorMessage);
-                    logToRotaProcessTable("ALLOCATED_LISTING_FOUND_FOR_JUDICIARY", errorMessage);
-                    throw new IllegalStateException(errorMessage);
+                    LOGGER.warn("unassignJudiciary: {}", errorMessage);
+                    continue;
                 }
 
                 // Find the CourtScheduleJudiciary entity
@@ -89,34 +95,77 @@ public class JudiciaryUnassignmentService {
 
                 if (courtScheduleJudiciary == null) {
                     // Judiciary exists but not for this specific session - skip this assignment
-                    final String errorText = String.format("CourtScheduleJudiciary not found for judiciary %s and courtSchedule %s", judiciaryId, courtScheduleId);
-                    logger.info("unassignJudiciary: Judiciary {} not assigned to courtSchedule {}, skipping", judiciaryId, courtScheduleId);
-                    logToRotaProcessTable("COURT_SCHEDULE_JUDICIARY_NOT_FOUND", errorText);
+                    final String identifier = String.format("%s-%s", judiciaryId, courtScheduleId);
+                    missingCourtScheduleJudiciaryIds.add(identifier);
+                    LOGGER.info("unassignJudiciary: Judiciary {} not assigned to courtSchedule {}, skipping", judiciaryId, courtScheduleId);
                     continue;
                 }
 
                 // Remove the judiciary assignment using EntityManager
-                final CourtScheduleJudiciary managed = entityManager.merge(courtScheduleJudiciary);
-                entityManager.remove(managed);
-                logger.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+                try {
+                    final CourtScheduleJudiciary managed = entityManager.merge(courtScheduleJudiciary);
+                    entityManager.remove(managed);
+                    LOGGER.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+                } catch (Exception ex) {
+                    LOGGER.error("Unexpected error while unassigning judiciary {} from session {}", judiciaryId, courtScheduleId, ex);
+                    // Continue processing other assignments
+                }
             }
         }
 
         entityManager.flush();
-        logger.info("unassignJudiciary: successfully completed unassigning judiciaries from sessions");
+        logMissingReferences(missingJudiciaryIds, missingSessionIds, allocatedListingSessionIds, missingCourtScheduleJudiciaryIds, executionId);
+        LOGGER.info("unassignJudiciary: successfully completed unassigning judiciaries from sessions");
     }
 
-    private void logToRotaProcessTable(final String errorCode, final String errorText) {
-        try {
-            final RotaProcessLog rotaProcessLog = new RotaProcessLog();
-            rotaProcessLog.setErrorCode(errorCode);
-            rotaProcessLog.setErrorText(errorText);
-            rotaProcessLog.setTimestamp(new Date());
-            rotaProcessLogService.saveRotaProcessLog(rotaProcessLog);
-            logger.info("unassignJudiciary: Logged to rota_process_log - errorCode: {}, errorText: {}", errorCode, errorText);
-        } catch (Exception e) {
-            logger.error("unassignJudiciary: Failed to log to rota_process_log - errorCode: {}, errorText: {}", errorCode, errorText, e);
+    private void logMissingReferences(final Set<String> missingJudiciaryIds,
+                                     final Set<String> missingSessionIds,
+                                     final Set<String> allocatedListingSessionIds,
+                                     final Set<String> missingCourtScheduleJudiciaryIds,
+                                     final String executionId) {
+        if (!missingJudiciaryIds.isEmpty()) {
+            final String joined = String.join(", ", missingJudiciaryIds);
+            LOGGER.warn("Missing judiciary ids for unassignment: {}", joined);
+            final RotaProcessLog log = rotaProcessLog()
+                    .withExecutionId(executionId)
+                    .withErrorCode(MissingDataError.JUDICIARY_ID_NOT_FOUND_ASSIGNMENT.code())
+                    .withErrorText(MissingDataError.JUDICIARY_ID_NOT_FOUND_ASSIGNMENT.format(joined))
+                    .withTimestamp(Calendar.getInstance().getTime())
+                    .build();
+            rotaProcessLogService.saveRotaProcessLog(log);
+        }
+        if (!missingSessionIds.isEmpty()) {
+            final String joined = String.join(", ", missingSessionIds);
+            LOGGER.warn("Missing session ids for unassignment: {}", joined);
+            final RotaProcessLog log = rotaProcessLog()
+                    .withExecutionId(executionId)
+                    .withErrorCode(MissingDataError.SESSION_ID_NOT_FOUND_ASSIGNMENT.code())
+                    .withErrorText(MissingDataError.SESSION_ID_NOT_FOUND_ASSIGNMENT.format(joined))
+                    .withTimestamp(Calendar.getInstance().getTime())
+                    .build();
+            rotaProcessLogService.saveRotaProcessLog(log);
+        }
+        if (!allocatedListingSessionIds.isEmpty()) {
+            final String joined = String.join(", ", allocatedListingSessionIds);
+            LOGGER.warn("Session ids with allocated listings for unassignment: {}", joined);
+            final RotaProcessLog log = rotaProcessLog()
+                    .withExecutionId(executionId)
+                    .withErrorCode("ALLOCATED_LISTING_FOUND_FOR_JUDICIARY")
+                    .withErrorText(String.format("SCSLMissingData: Cannot unassign judiciary from sessions with allocated listings: %s", joined))
+                    .withTimestamp(Calendar.getInstance().getTime())
+                    .build();
+            rotaProcessLogService.saveRotaProcessLog(log);
+        }
+        if (!missingCourtScheduleJudiciaryIds.isEmpty()) {
+            final String joined = String.join(", ", missingCourtScheduleJudiciaryIds);
+            LOGGER.warn("Missing court schedule judiciary assignments for unassignment: {}", joined);
+            final RotaProcessLog log = rotaProcessLog()
+                    .withExecutionId(executionId)
+                    .withErrorCode("COURT_SCHEDULE_JUDICIARY_NOT_FOUND")
+                    .withErrorText(String.format("SCSLMissingData: CourtScheduleJudiciary not found for: %s", joined))
+                    .withTimestamp(Calendar.getInstance().getTime())
+                    .build();
+            rotaProcessLogService.saveRotaProcessLog(log);
         }
     }
 }
-
