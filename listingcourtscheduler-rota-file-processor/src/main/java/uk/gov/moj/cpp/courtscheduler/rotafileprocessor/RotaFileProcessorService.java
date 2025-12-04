@@ -18,7 +18,6 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
-import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
@@ -90,9 +89,6 @@ public class RotaFileProcessorService {
     private MissingReferenceDataMappingLogger missingReferenceDataMappingLogger;
 
     @Inject
-    private RotaProcessLogService rotaProcessLogService;
-
-    @Inject
     @Value(key ="rota.months.of.provisional.data.to.populate", defaultValue = "6")
     private String rotaMonthsOfProvisionalDataToPopulate;
 
@@ -134,7 +130,7 @@ public class RotaFileProcessorService {
 
     private void process(final String fileName, final byte[] content, final Requester requester) {
         RotaFileProcessHistory rotaFileProcessHistory = null;
-        String executionId = "";
+        String executionId = randomUUID().toString();
         if (fileName.contains(SNAPSHOT_NAME_PART)) {
             if (checkFileDateTimeFieldAndIfNewerVersionOfSnapshotFileProcessed(fileName)) {
                 return;
@@ -142,7 +138,6 @@ public class RotaFileProcessorService {
             logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.save");
             final OffsetDateTime fileDateTime = getLJASnapshotFileTimeStampAsOffsetDateTime(fileName);
             final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
-            executionId = randomUUID().toString();
             rotaFileProcessHistory = rotaFileProcessHistoryService.save(fileNamePrefix, fileDateTime, content, executionId);
             logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.save");
         }
