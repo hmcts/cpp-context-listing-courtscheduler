@@ -3,17 +3,22 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.util.UUID.randomUUID;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
+import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryAvailabilityRuleRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,11 +43,12 @@ public class JudiciaryAvailabilityService {
         entity.setId(randomUUID().toString());
         entity.setJudiciaryId(request.getJudiciaryId());
         entity.setCourtHouseId(request.getCourtHouseId());
-        entity.setGroup(request.getGroup());
+        entity.setAvailabilityType(request.getAvailabilityType());
         entity.setFromDate(request.getStartDate());
         entity.setToDate(request.getEndDate());
         entity.setRecurringType(request.getRecurringType());
         entity.setReason(request.getReason());
+        entity.setSessionType(request.getSessionType());
 
         // Convert domain repeat days to entity repeat days
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
@@ -115,9 +121,9 @@ public class JudiciaryAvailabilityService {
         for (JudiciaryAvailabilityRule rule : rules) {
             final Set<String> ruleDays = extractDaysFromRule(rule, queryStartDate, queryEndDate);
 
-            if ("Available".equalsIgnoreCase(rule.getGroup())) {
+            if (AvailabilityType.AVAILABLE == rule.getAvailabilityType()) {
                 availableDays.addAll(ruleDays);
-            } else if ("Unavailable".equalsIgnoreCase(rule.getGroup())) {
+            } else if (AvailabilityType.UNAVAILABLE == rule.getAvailabilityType()) {
                 availableDays.removeAll(ruleDays);
             }
         }
@@ -144,18 +150,18 @@ public class JudiciaryAvailabilityService {
         }
 
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay repeatDay : rule.getRepeatDays()) {
-            final String dayName = repeatDay.getDayOfWeek();
+            final AvailabilityDayOfWeek dayName = repeatDay.getDayOfWeek();
             final Integer index = repeatDay.getIndex();
             // 0 means no index was provided
             final boolean hasIndex = index != null && index > 0;
 
-            if (rule.getRecurringType() == null || rule.getRecurringType().isEmpty()) {
+            if (rule.getRecurringType() == null) {
                 // No recurring type - add all matching days in the date range
                 addDaysForDateRange(days, dayName, effectiveStart, effectiveEnd);
-            } else if ("Monthly".equalsIgnoreCase(rule.getRecurringType()) && hasIndex) {
+            } else if (RecurringType.MONTHLY.equals(rule.getRecurringType()) && hasIndex) {
                 // Monthly recurring with index (e.g., 2nd Tuesday, 3rd Wednesday)
                 addDaysForMonthlyRecurring(days, dayName, index, effectiveStart, effectiveEnd);
-            } else if ("Weekly".equalsIgnoreCase(rule.getRecurringType())) {
+            } else if (RecurringType.WEEKLY.equals(rule.getRecurringType())) {
                 // Weekly recurring - add all matching days in the date range
                 addDaysForDateRange(days, dayName, effectiveStart, effectiveEnd);
             } else {
@@ -170,7 +176,7 @@ public class JudiciaryAvailabilityService {
     /**
      * Add all occurrences of a day of week within the date range.
      */
-    private void addDaysForDateRange(final Set<String> days, final String dayName, final LocalDate start, final LocalDate end) {
+    private void addDaysForDateRange(final Set<String> days, final AvailabilityDayOfWeek dayName, final LocalDate start, final LocalDate end) {
         final DayOfWeek targetDayOfWeek = convertDayNameToDayOfWeek(dayName);
         if (targetDayOfWeek == null) {
             return;
@@ -179,7 +185,7 @@ public class JudiciaryAvailabilityService {
         LocalDate current = start;
         while (!current.isAfter(end)) {
             if (current.getDayOfWeek() == targetDayOfWeek) {
-                days.add(dayName);
+                days.add(targetDayOfWeek.getDisplayName(TextStyle.FULL, Locale.UK));
             }
             current = current.plusDays(1);
         }
@@ -190,7 +196,7 @@ public class JudiciaryAvailabilityService {
      */
     private void addDaysForMonthlyRecurring(
             final Set<String> days,
-            final String dayName,
+            final AvailabilityDayOfWeek dayName,
             final Integer index,
             final LocalDate start,
             final LocalDate end) {
@@ -204,7 +210,7 @@ public class JudiciaryAvailabilityService {
         while (!current.isAfter(end)) {
             // Check if current date is the Nth occurrence of the target day in its month
             if (isNthOccurrenceOfDayInMonth(current, targetDayOfWeek, index)) {
-                days.add(dayName);
+                days.add(targetDayOfWeek.getDisplayName(TextStyle.FULL,Locale.UK));
             }
             current = current.plusDays(1);
         }
@@ -236,12 +242,12 @@ public class JudiciaryAvailabilityService {
     /**
      * Convert day name (e.g., "Monday") to DayOfWeek enum.
      */
-    private DayOfWeek convertDayNameToDayOfWeek(final String dayName) {
+    private DayOfWeek convertDayNameToDayOfWeek(final AvailabilityDayOfWeek dayName) {
         if (dayName == null) {
             return null;
         }
         try {
-            return DayOfWeek.valueOf(dayName.toUpperCase());
+            return DayOfWeek.valueOf(dayName.name());
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid day name: {}", dayName);
             return null;

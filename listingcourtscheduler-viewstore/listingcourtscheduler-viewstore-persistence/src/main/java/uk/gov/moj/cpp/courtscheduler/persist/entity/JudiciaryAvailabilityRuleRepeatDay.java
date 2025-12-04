@@ -1,18 +1,23 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
+
 import java.io.Serializable;
 import java.util.Objects;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 
 @Embeddable
 public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "day_of_week", nullable = false)
-    private String dayOfWeek; // Full name: Monday, Tuesday, etc.
+    private AvailabilityDayOfWeek dayOfWeek; // Full name: Monday, Tuesday, etc.
 
     @Column(name = "day_index", nullable = false)
     private Integer index; // Optional index for recurring patterns (0 means no index)
@@ -21,16 +26,16 @@ public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
         //For JPA
     }
 
-    public JudiciaryAvailabilityRuleRepeatDay(String dayOfWeek, Integer index) {
+    public JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek dayOfWeek, Integer index) {
         this.dayOfWeek = dayOfWeek;
         this.index = index;
     }
 
-    public String getDayOfWeek() {
+    public AvailabilityDayOfWeek getDayOfWeek() {
         return this.dayOfWeek;
     }
 
-    public void setDayOfWeek(String dayOfWeek) {
+    public void setDayOfWeek(AvailabilityDayOfWeek dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
     }
 

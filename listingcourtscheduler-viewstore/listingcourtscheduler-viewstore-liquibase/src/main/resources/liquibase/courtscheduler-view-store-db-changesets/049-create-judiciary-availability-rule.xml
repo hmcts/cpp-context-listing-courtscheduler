@@ -15,7 +15,7 @@
             <column name="court_house_id" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
-            <column name="group_type" type="VARCHAR(20)">
+            <column name="availability_type" type="VARCHAR(20)">
                 <constraints nullable="false"/>
             </column>
             <column name="from_date" type="DATE">
@@ -26,6 +26,9 @@
             </column>
             <column name="recurring_type" type="VARCHAR(20)"/>
             <column name="reason" type="VARCHAR(500)"/>
+            <column name="session_type" type="VARCHAR(10)" defaultValue="AD">
+                <constraints nullable="false"/>
+            </column>
             <column name="created_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>

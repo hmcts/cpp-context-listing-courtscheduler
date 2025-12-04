@@ -3,17 +3,19 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 public class AddJudiciaryAvailabilityRuleRequest {
 
     private String judiciaryId;
     private String courtHouseId;
-    private String group; // Available or Unavailable
+    private AvailabilityType availabilityType;
     private LocalDate startDate;
     private LocalDate endDate;
-    private String recurringType; // Weekly or Monthly (optional)
+    private RecurringType recurringType; // Weekly or Monthly (optional)
     private List<JudiciaryAvailabilityRuleRepeatDay> repeatDays;
     private String reason; // Optional
+    private SessionType sessionType;
 
     public String getJudiciaryId() {
         return this.judiciaryId;
@@ -31,12 +33,12 @@ public class AddJudiciaryAvailabilityRuleRequest {
         this.courtHouseId = courtHouseId;
     }
 
-    public String getGroup() {
-        return this.group;
+    public AvailabilityType getAvailabilityType() {
+        return this.availabilityType;
     }
 
-    public void setGroup(String group) {
-        this.group = group;
+    public void setAvailabilityType(AvailabilityType availabilityType) {
+        this.availabilityType = availabilityType;
     }
 
     public LocalDate getStartDate() {
@@ -55,11 +57,11 @@ public class AddJudiciaryAvailabilityRuleRequest {
         this.endDate = endDate;
     }
 
-    public String getRecurringType() {
+    public RecurringType getRecurringType() {
         return this.recurringType;
     }
 
-    public void setRecurringType(String recurringType) {
+    public void setRecurringType(RecurringType recurringType) {
         this.recurringType = recurringType;
     }
 
@@ -79,42 +81,38 @@ public class AddJudiciaryAvailabilityRuleRequest {
         this.reason = reason;
     }
 
+    public SessionType getSessionType() {
+        return sessionType;
+    }
+
+    public void setSessionType(final SessionType sessionType) {
+        this.sessionType = sessionType;
+    }
+
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-        final AddJudiciaryAvailabilityRuleRequest that = (AddJudiciaryAvailabilityRuleRequest) o;
-        return Objects.equals(this.judiciaryId, that.judiciaryId) &&
-                Objects.equals(this.courtHouseId, that.courtHouseId) &&
-                Objects.equals(this.group, that.group) &&
-                Objects.equals(this.startDate, that.startDate) &&
-                Objects.equals(this.endDate, that.endDate) &&
-                Objects.equals(this.recurringType, that.recurringType) &&
-                Objects.equals(this.repeatDays, that.repeatDays) &&
-                Objects.equals(this.reason, that.reason);
+    public boolean equals(final Object o) {
+        if (!(o instanceof final AddJudiciaryAvailabilityRuleRequest that)) return false;
+        return Objects.equals(getJudiciaryId(), that.getJudiciaryId()) && Objects.equals(getCourtHouseId(), that.getCourtHouseId()) && getAvailabilityType() == that.getAvailabilityType() && Objects.equals(getStartDate(), that.getStartDate()) && Objects.equals(getEndDate(), that.getEndDate()) && getRecurringType() == that.getRecurringType() && Objects.equals(getRepeatDays(), that.getRepeatDays()) && Objects.equals(getReason(), that.getReason()) && getSessionType() == that.getSessionType();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.judiciaryId, this.courtHouseId, this.group, this.startDate, this.endDate, this.recurringType, this.repeatDays, this.reason);
+        return Objects.hash(getJudiciaryId(), getCourtHouseId(), getAvailabilityType(), getStartDate(), getEndDate(), getRecurringType(), getRepeatDays(), getReason(), getSessionType());
     }
 
     @Override
     public String toString() {
-        return "AddJudiciaryAvailabilityRuleRequest{" +
-                "judiciaryId='" + this.judiciaryId + '\'' +
-                ", courtHouseId='" + this.courtHouseId + '\'' +
-                ", group='" + this.group + '\'' +
-                ", startDate=" + this.startDate +
-                ", endDate=" + this.endDate +
-                ", recurringType='" + this.recurringType + '\'' +
-                ", repeatDays=" + this.repeatDays +
-                ", reason='" + this.reason + '\'' +
-                '}';
+        return new StringJoiner(", ", AddJudiciaryAvailabilityRuleRequest.class.getSimpleName() + "[", "]")
+                .add("judiciaryId='" + getJudiciaryId() + "'")
+                .add("courtHouseId='" + getCourtHouseId() + "'")
+                .add("availabilityType=" + getAvailabilityType())
+                .add("startDate=" + getStartDate())
+                .add("endDate=" + getEndDate())
+                .add("recurringType=" + getRecurringType())
+                .add("repeatDays=" + getRepeatDays())
+                .add("reason='" + getReason() + "'")
+                .add("sessionType=" + getSessionType())
+                .toString();
     }
 }
 

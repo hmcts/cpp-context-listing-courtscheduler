@@ -9,6 +9,8 @@ import java.util.Objects;
 import javax.persistence.Column;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
+import javax.persistence.Enumerated;
+import javax.persistence.EnumType;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.Table;
@@ -17,6 +19,10 @@ import javax.persistence.TemporalType;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
+import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
+import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 
 @Entity
 @Table(name = "judiciary_availability_rule")
@@ -32,8 +38,9 @@ public class JudiciaryAvailabilityRule {
     @Column(name = "court_house_id", nullable = false, length = 100)
     private String courtHouseId;
 
-    @Column(name = "group_type", nullable = false, length = 20)
-    private String group; // Available or Unavailable
+    @Enumerated(EnumType.STRING)
+    @Column(name = "availability_type", nullable = false, length = 20)
+    private AvailabilityType availabilityType;
 
     @Column(name = "from_date", nullable = false)
     private LocalDate fromDate;
@@ -41,8 +48,9 @@ public class JudiciaryAvailabilityRule {
     @Column(name = "to_date", nullable = false)
     private LocalDate toDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "recurring_type", length = 20)
-    private String recurringType; // Weekly or Monthly
+    private RecurringType recurringType; // Weekly or Monthly
 
     @ElementCollection(fetch = FetchType.EAGER)
     @javax.persistence.CollectionTable(
@@ -50,6 +58,10 @@ public class JudiciaryAvailabilityRule {
             joinColumns = @javax.persistence.JoinColumn(name = "rule_id")
     )
     private List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "session_type")
+    private SessionType sessionType;
 
     @Column(name = "reason", length = 500)
     private String reason;
@@ -92,12 +104,12 @@ public class JudiciaryAvailabilityRule {
         this.courtHouseId = courtHouseId;
     }
 
-    public String getGroup() {
-        return this.group;
+    public AvailabilityType getAvailabilityType() {
+        return this.availabilityType;
     }
 
-    public void setGroup(String group) {
-        this.group = group;
+    public void setAvailabilityType(AvailabilityType availabilityType) {
+        this.availabilityType = availabilityType;
     }
 
     public LocalDate getFromDate() {
@@ -116,11 +128,11 @@ public class JudiciaryAvailabilityRule {
         this.toDate = toDate;
     }
 
-    public String getRecurringType() {
+    public RecurringType getRecurringType() {
         return this.recurringType;
     }
 
-    public void setRecurringType(String recurringType) {
+    public void setRecurringType(RecurringType recurringType) {
         this.recurringType = recurringType;
     }
 
@@ -156,38 +168,23 @@ public class JudiciaryAvailabilityRule {
         this.updatedOn = updatedOn;
     }
 
+    public SessionType getSessionType() {
+        return sessionType;
+    }
+
+    public void setSessionType(final SessionType sessionType) {
+        this.sessionType = sessionType;
+    }
+
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-        final JudiciaryAvailabilityRule that = (JudiciaryAvailabilityRule) o;
-        return Objects.equals(this.id, that.id);
+    public boolean equals(final Object o) {
+        if (!(o instanceof final JudiciaryAvailabilityRule that)) return false;
+        return Objects.equals(getId(), that.getId()) && Objects.equals(getJudiciaryId(), that.getJudiciaryId()) && Objects.equals(getCourtHouseId(), that.getCourtHouseId()) && getAvailabilityType() == that.getAvailabilityType() && Objects.equals(getFromDate(), that.getFromDate()) && Objects.equals(getToDate(), that.getToDate()) && getRecurringType() == that.getRecurringType() && Objects.equals(getRepeatDays(), that.getRepeatDays()) && getSessionType() == that.getSessionType() && Objects.equals(getReason(), that.getReason()) && Objects.equals(getCreatedOn(), that.getCreatedOn()) && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.id);
-    }
-
-    @Override
-    public String toString() {
-        return "JudiciaryAvailabilityRule{" +
-                "id='" + this.id + '\'' +
-                ", judiciaryId='" + this.judiciaryId + '\'' +
-                ", courtHouseId='" + this.courtHouseId + '\'' +
-                ", group='" + this.group + '\'' +
-                ", fromDate=" + this.fromDate +
-                ", toDate=" + this.toDate +
-                ", recurringType='" + this.recurringType + '\'' +
-                ", repeatDays=" + this.repeatDays +
-                ", reason='" + this.reason + '\'' +
-                ", createdOn=" + this.createdOn +
-                ", updatedOn=" + this.updatedOn +
-                '}';
+        return Objects.hash(getId(), getJudiciaryId(), getCourtHouseId(), getAvailabilityType(), getFromDate(), getToDate(), getRecurringType(), getRepeatDays(), getSessionType(), getReason(), getCreatedOn(), getUpdatedOn());
     }
 }
 

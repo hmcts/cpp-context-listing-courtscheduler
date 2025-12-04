@@ -35,12 +35,8 @@ public class JudiciaryAvailabilityRuleApiValidator {
             return getMessage("courtHouseId");
         }
 
-        if (isBlank(request.getGroup())) {
-            return getMessage("group");
-        }
-
-        if (!"Available".equalsIgnoreCase(request.getGroup()) && !"Unavailable".equalsIgnoreCase(request.getGroup())) {
-            return buildErrorResponse("group must be either 'Available' or 'Unavailable'");
+        if (request.getAvailabilityType() == null) {
+            return getMessage("availabilityType");
         }
 
         if (request.getStartDate() == null) {
@@ -69,13 +65,8 @@ public class JudiciaryAvailabilityRuleApiValidator {
 
     private JsonObject validateRepeatDays(final List<JudiciaryAvailabilityRuleRepeatDay> repeatDays) {
         for (JudiciaryAvailabilityRuleRepeatDay repeatDay : repeatDays) {
-            if (isBlank(repeatDay.getDayOfWeek())) {
+            if (repeatDay.getDayOfWeek() == null) {
                 return getMessage("repeatDays.dayOfWeek");
-            }
-            // Validate day name is a valid day
-            final String day = repeatDay.getDayOfWeek();
-            if (!isValidDayName(day)) {
-                return buildErrorResponse("Invalid day name: " + day + ". Must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday");
             }
         }
         return EMPTY_JSON_OBJECT;

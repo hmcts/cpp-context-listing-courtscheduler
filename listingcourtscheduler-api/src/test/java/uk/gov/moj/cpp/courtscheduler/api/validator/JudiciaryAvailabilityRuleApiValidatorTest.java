@@ -25,6 +25,8 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
+import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,13 +42,13 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         this.request = new AddJudiciaryAvailabilityRuleRequest();
         this.request.setJudiciaryId(UUID.randomUUID().toString());
         this.request.setCourtHouseId(UUID.randomUUID().toString());
-        this.request.setGroup("Available");
+        this.request.setAvailabilityType(AvailabilityType.AVAILABLE);
         this.request.setStartDate(LocalDate.of(2026, 1, 1));
         this.request.setEndDate(LocalDate.of(2026, 1, 31));
         
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Monday", null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Tuesday", null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.TUESDAY, null));
         this.request.setRepeatDays(repeatDays);
     }
 
@@ -86,29 +88,18 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
     }
 
     @Test
-    void shouldReturnErrorWhenGroupIsBlank() {
-        this.request.setGroup("");
+    void shouldReturnErrorWhenGroupIsNull() {
+        this.request.setAvailabilityType(null);
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("group"));
-    }
-
-    @Test
-    void shouldReturnErrorWhenGroupIsInvalid() {
-        this.request.setGroup("InvalidGroup");
-
-        JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
-
-        Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("Available") || 
-                   result.getString("errorMessage").contains("Unavailable"));
+        Assertions.assertTrue(result.getString("errorMessage").contains("availabilityType"));
     }
 
     @Test
     void shouldAcceptAvailableGroup() {
-        this.request.setGroup("Available");
+        this.request.setAvailabilityType(AvailabilityType.AVAILABLE);
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
@@ -117,7 +108,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldAcceptUnavailableGroup() {
-        this.request.setGroup("Unavailable");
+        this.request.setAvailabilityType(AvailabilityType.UNAVAILABLE);
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
@@ -190,7 +181,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
     @Test
     void shouldReturnErrorWhenDayOfWeekIsBlank() {
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("", null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(null, null));
         this.request.setRepeatDays(repeatDays);
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
@@ -203,26 +194,26 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
     @Test
     void shouldReturnErrorWhenDayOfWeekIsInvalid() {
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("InvalidDay", null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(null, null));
         this.request.setRepeatDays(repeatDays);
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("Invalid day name") || 
+        Assertions.assertTrue(result.getString("errorMessage").contains("dayOfWeek") ||
                    result.getString("errorMessage").contains("InvalidDay"));
     }
 
     @Test
     void shouldAcceptValidDayNames() {
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Monday", null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Tuesday", null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Wednesday", null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Thursday", null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Friday", null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Saturday", null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Sunday", null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.TUESDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.WEDNESDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.THURSDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.FRIDAY, null));
+        //repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.TUESDAY, null));
+        //repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Sunday", null));
         this.request.setRepeatDays(repeatDays);
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
@@ -233,9 +224,9 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
     @Test
     void shouldAcceptDayNamesCaseInsensitive() {
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("monday", null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("TUESDAY", null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("WeDnEsDaY", null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.TUESDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.WEDNESDAY, null));
         this.request.setRepeatDays(repeatDays);
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);

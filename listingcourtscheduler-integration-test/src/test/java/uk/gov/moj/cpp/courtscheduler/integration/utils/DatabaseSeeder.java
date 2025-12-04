@@ -5,7 +5,6 @@ import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -22,7 +21,6 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 
 public class DatabaseSeeder {
 
@@ -465,7 +463,7 @@ public class DatabaseSeeder {
                     ruleStmt.setString(1, rule.ruleId);
                     ruleStmt.setString(2, rule.judiciaryId);
                     ruleStmt.setString(3, rule.courtHouseId);
-                    ruleStmt.setString(4, rule.group);
+                    ruleStmt.setString(4, rule.availabilityType);
                     ruleStmt.setDate(5, Date.valueOf(rule.fromDate));
                     ruleStmt.setDate(6, Date.valueOf(rule.toDate));
                     if (rule.recurringType != null) {
@@ -515,20 +513,20 @@ public class DatabaseSeeder {
         final String ruleId;
         final String judiciaryId;
         final String courtHouseId;
-        final String group;
+        final String availabilityType;
         final LocalDate fromDate;
         final LocalDate toDate;
         final String recurringType;
         final String reason;
         final List<String> repeatDays;
 
-        public RuleData(String ruleId, String judiciaryId, String courtHouseId, String group,
+        public RuleData(String ruleId, String judiciaryId, String courtHouseId, String availabilityType,
                        LocalDate fromDate, LocalDate toDate, String recurringType, String reason,
                        List<String> repeatDays) {
             this.ruleId = ruleId;
             this.judiciaryId = judiciaryId;
             this.courtHouseId = courtHouseId;
-            this.group = group;
+            this.availabilityType = availabilityType;
             this.fromDate = fromDate;
             this.toDate = toDate;
             this.recurringType = recurringType;

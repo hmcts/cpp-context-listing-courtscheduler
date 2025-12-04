@@ -4,15 +4,19 @@
   "properties": {
     "judiciaryId": {"$ref": "#/definitions/uuid"},
     "courtHouseId": {"$ref": "#/definitions/uuid"},
-    "group": {
+    "availabilityType": {
       "type": "string",
-      "enum": ["Available", "Unavailable"]
+      "enum": ["AVAILABLE", "UNAVAILABLE"]
     },
     "startDate": {"type": "string", "format": "date"},
     "endDate": {"type": "string", "format": "date"},
     "recurringType": {
       "type": "string",
-      "enum": ["Weekly", "Monthly"]
+      "enum": ["WEEKLY", "MONTHLY"]
+    },
+    "sessionType": {
+      "type": "string",
+      "enum": ["AM", "PM", "AD"]
     },
     "repeatDays": {
       "type": "array",
@@ -20,14 +24,14 @@
         "oneOf": [
           {
             "type": "string",
-            "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            "enum": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
           },
           {
             "type": "object",
             "properties": {
               "day": {
                 "type": "string",
-                "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                "enum": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
               },
               "index": {"type": "integer"}
             },
@@ -38,7 +42,7 @@
     },
     "reason": {"type": "string"}
   },
-  "required": ["judiciaryId", "courtHouseId", "group", "startDate", "endDate", "repeatDays"],
+  "required": ["judiciaryId", "courtHouseId", "availabilityType", "startDate", "endDate", "repeatDays"],
   "definitions": {
     "uuid": {
       "type": "string",

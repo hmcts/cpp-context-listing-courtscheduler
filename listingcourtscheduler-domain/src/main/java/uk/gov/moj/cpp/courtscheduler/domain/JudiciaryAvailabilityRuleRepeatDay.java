@@ -4,22 +4,22 @@ import java.util.Objects;
 
 public class JudiciaryAvailabilityRuleRepeatDay {
 
-    private String dayOfWeek; // Full name: Monday, Tuesday, etc.
+    private AvailabilityDayOfWeek dayOfWeek; // Full name: Monday, Tuesday, etc.
     private Integer index; // Optional index for recurring patterns
 
     public JudiciaryAvailabilityRuleRepeatDay() {
     }
 
-    public JudiciaryAvailabilityRuleRepeatDay(String dayOfWeek, Integer index) {
+    public JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek dayOfWeek, Integer index) {
         this.dayOfWeek = dayOfWeek;
         this.index = index;
     }
 
-    public String getDayOfWeek() {
+    public AvailabilityDayOfWeek getDayOfWeek() {
         return this.dayOfWeek;
     }
 
-    public void setDayOfWeek(String dayOfWeek) {
+    public void setDayOfWeek(AvailabilityDayOfWeek dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
     }
 

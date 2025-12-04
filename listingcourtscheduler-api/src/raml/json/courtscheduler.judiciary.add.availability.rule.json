@@ -1,17 +1,17 @@
 {
   "judiciaryId": "123e4567-e89b-12d3-a456-426614174000",
   "courtHouseId": "223e4567-e89b-12d3-a456-426614174000",
-  "group": "Available",
+  "availabilityType": "AVAILABLE",
   "startDate": "2026-01-01",
   "endDate": "2026-01-31",
-  "recurringType": "Monthly",
+  "recurringType": "MONTHLY",
   "repeatDays": [
     {
-      "day": "Tuesday",
+      "day": "TUESDAY",
       "index": 2
     },
     {
-      "day": "Wednesday",
+      "day": "WEDNESDAY",
       "index": 3
     }
   ],
