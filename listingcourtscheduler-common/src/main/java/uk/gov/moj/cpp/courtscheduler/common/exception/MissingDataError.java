@@ -3,10 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.common.exception;
 @SuppressWarnings("squid:S1213")
 public enum MissingDataError {
 
-    COURT_DETAIL_NOT_FOUND(
-            "COURT_DETAIL_NOT_FOUND",
-            Prefix.MONITORING + "Court details not found for the following locations :- %n%s"),
-
     JUDICIARY_NOT_FOUND(
             "JUDICIARY_NOT_FOUND",
             Prefix.MONITORING + "Judiciary detail not found for the following judiciaries :-%n%n%s"),
@@ -18,10 +14,6 @@ public enum MissingDataError {
     JUDICIARY_ERR_MSG(
             "JUDICIARY_ERR_MSG",
             "Name %s %s%nEmail : %s"),
-
-    REF_DATA_JUDICIARY_EMAIL(
-            "REF_DATA_JUDICIARY_EMAIL",
-            "Judiciary email cannot be found in referenceData"),
 
     REF_DATA_VENUE_NOT_FOUND(
             "REF_DATA_VENUE_NOT_FOUND",
