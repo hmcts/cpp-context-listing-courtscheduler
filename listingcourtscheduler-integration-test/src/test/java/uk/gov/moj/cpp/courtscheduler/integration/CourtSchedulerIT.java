@@ -1059,7 +1059,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getBoolean("allDaySplit"), is(false));
         assertThat(courtScheduleJsonObject.getInt("maxDurationForMorning"), is(0));
         assertThat(courtScheduleJsonObject.getInt("maxDurationForAfternoon"), is(0));
-        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(MAGISTRATES.getJurisdiction()));
+        assertThat(courtScheduleJsonObject.getString("jurisdiction"), is(MAGISTRATES.getJurisdiction()));
     }
 
     @Test
@@ -1127,7 +1127,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getInt("maxDurationForMorning"), is(0));
         assertThat(courtScheduleJsonObject.getInt("maxDurationForAfternoon"), is(0));
         assertThat(courtScheduleJsonObject.getBoolean("isDraft"), is(true));
-        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(CROWN.getJurisdiction()));
+        assertThat(courtScheduleJsonObject.getString("jurisdiction"), is(CROWN.getJurisdiction()));
     }
 
 
@@ -1299,7 +1299,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getBoolean("isOverbookingAllowed"), is(true));
         assertThat(courtScheduleJsonObject.getString("sessionStartTime"), is("10:00"));
         assertThat(courtScheduleJsonObject.getString("sessionEndTime"), is("17:00"));
-        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(MAGISTRATES.getJurisdiction()));
+        assertThat(courtScheduleJsonObject.getString("jurisdiction"), is(MAGISTRATES.getJurisdiction()));
     }
 
     @Test
@@ -1360,7 +1360,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getBoolean("isOverbookingAllowed"), is(true));
         assertThat(courtScheduleJsonObject.getString("sessionStartTime"), is("10:00"));
         assertThat(courtScheduleJsonObject.getString("sessionEndTime"), is("17:00"));
-        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(MAGISTRATES.getJurisdiction()));
+        assertThat(courtScheduleJsonObject.getString("jurisdiction"), is(MAGISTRATES.getJurisdiction()));
     }
 
     @Test
@@ -1434,7 +1434,7 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getBoolean("isOverbookingAllowed"), is(false));
         assertThat(courtScheduleJsonObject.getString("sessionStartTime"), is(getUtcTimeStringForDate(courtSchedule.getSessionDate(),10,0)));
         assertThat(courtScheduleJsonObject.getString("sessionEndTime"), is(getUtcTimeStringForDate(courtSchedule.getSessionDate(),16,0)));
-        assertThat(courtScheduleJsonObject.getString("jurisdictionType"), is(MAGISTRATES.getJurisdiction()));
+        assertThat(courtScheduleJsonObject.getString("jurisdiction"), is(MAGISTRATES.getJurisdiction()));
     }
 
     @Test
