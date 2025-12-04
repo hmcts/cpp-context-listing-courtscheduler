@@ -46,7 +46,7 @@ public class CourtScheduleView {
     @JsonProperty("isOverbookingAllowed")
     private boolean overbookingAllowed;
     private Boolean isDraft;
-    private String jurisdictionType;
+    private String jurisdiction;
 
     protected CourtScheduleView(final CourtScheduleViewBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -85,7 +85,7 @@ public class CourtScheduleView {
         this.sessionEndTime = builder.sessionEndTime;
         this.overbookingAllowed = builder.isOverbookingAllowed;
         this.isDraft = builder.isDraft;
-        this.jurisdictionType = builder.jurisdictionType;
+        this.jurisdiction = builder.jurisdictionType;
     }
 
     public CourtScheduleView() {
@@ -351,12 +351,12 @@ public class CourtScheduleView {
         this.isDraft = isDraft;
     }
 
-    public String getJurisdictionType() {
-        return jurisdictionType;
+    public String getJurisdiction() {
+        return jurisdiction;
     }
 
-    public void setJurisdictionType(final String jurisdictionType) {
-        this.jurisdictionType = jurisdictionType;
+    public void setJurisdiction(final String jurisdiction) {
+        this.jurisdiction = jurisdiction;
     }
 
     public static final class CourtScheduleViewBuilder {

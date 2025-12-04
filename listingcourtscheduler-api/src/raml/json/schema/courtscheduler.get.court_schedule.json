@@ -100,7 +100,7 @@
                 "isDraft": {
                     "type": "boolean"
                 },
-                "jurisdictionType": {
+                "jurisdiction": {
                     "type": "string"
                 }
               },

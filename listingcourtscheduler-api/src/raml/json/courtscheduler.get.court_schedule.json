@@ -24,7 +24,7 @@
           "availableDuration": -1716884195,
           "totalBooked" : 120,
           "isDraft": false,
-          "jurisdictionType": "MAGISTRATES"
+          "jurisdiction": "MAGISTRATES"
         },
         {
           "courtScheduleId": "AjmueCnClLfGZXNpngWHdOelSWXhE",
@@ -46,7 +46,7 @@
           "availableDuration": -1716884195,
           "totalBooked": 0,
           "isDraft": false,
-          "jurisdictionType": "CROWN"
+          "jurisdiction": "CROWN"
         }
       ]
     },
@@ -74,7 +74,7 @@
           "availableDuration": -1716884195,
           "totalBooked": 0,
           "isDraft": false,
-          "jurisdictionType": "MAGISTRATES"
+          "jurisdiction": "MAGISTRATES"
         },
         {
           "courtScheduleId": "dffg",
@@ -96,7 +96,7 @@
           "availableDuration": -1716884195,
           "totalBooked": 0,
           "isDraft": false,
-          "jurisdictionType": "CROWN"
+          "jurisdiction": "CROWN"
         },
         {
           "courtScheduleId": "dffg",
@@ -123,7 +123,7 @@
           "availableDurationForMorning": 60,
           "availableDurationForAfternoon": 30,
           "isDraft": false,
-          "jurisdictionType": "MAGISTRATES"
+          "jurisdiction": "MAGISTRATES"
         }
       ]
     }

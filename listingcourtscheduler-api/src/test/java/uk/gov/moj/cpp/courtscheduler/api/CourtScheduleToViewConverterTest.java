@@ -72,7 +72,7 @@ class CourtScheduleToViewConverterTest {
         assertThat(courtSessionsViews.size(), is(1));
         List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJurisdictionType(), is(jurisdictionType));
+        assertThat(sessions.get(0).getJurisdiction(), is(jurisdictionType));
     }
 
     @Test
@@ -88,7 +88,7 @@ class CourtScheduleToViewConverterTest {
         assertThat(courtSessionsViews.size(), is(1));
         List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJurisdictionType(), is((String) null));
+        assertThat(sessions.get(0).getJurisdiction(), is((String) null));
     }
 
     @Test
@@ -105,6 +105,6 @@ class CourtScheduleToViewConverterTest {
         assertThat(courtSessionsViews.size(), is(1));
         List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJurisdictionType(), is(jurisdictionType));
+        assertThat(sessions.get(0).getJurisdiction(), is(jurisdictionType));
     }
 }
