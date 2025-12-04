@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Objects.nonNull;
-import static java.util.Optional.empty;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -67,10 +66,10 @@ public class JudiciaryScheduleEnricher {
                                                                        final boolean forMigrated,
                                                                        final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
                                                                        final Requester requester,
-                                                                       final String executionId) {
-        final Map<String, String> errors = new HashMap<>();
+                                                                       final String executionId,
+                                                                       final Map<String, String> errors,
+                                                                       final Map<String, List<String>> missingSessionsByOuCode) {
         final List<CourtScheduleJudiciary> courtScheduleJudiciarySchedules = new ArrayList<>();
-        final Map<String, List<String>> missingSessionsByOuCode = new HashMap<>();
 
         final long enrichmentStart = System.nanoTime();
         final Collection<Map<String, String>> schedules = records.get(RotaPayload.SCHEDULE).values();
@@ -116,13 +115,6 @@ public class JudiciaryScheduleEnricher {
         final long enrichmentEnd = System.nanoTime();
         logger.info("PRF: Time taken for judiciary enrichment : {}", (enrichmentEnd - enrichmentStart) / 1000000);
 
-        if (!errors.isEmpty()) {
-            missingMessageLogger.logJudiciaryMissingMessage(errors.values(), executionId);
-        }
-        if (!missingSessionsByOuCode.isEmpty()) {
-            missingMessageLogger.logMissingCourtSessions(missingSessionsByOuCode, executionId);
-        }
-
         return courtScheduleJudiciarySchedules;
     }
 
@@ -137,7 +129,12 @@ public class JudiciaryScheduleEnricher {
     private void enrichJudiciaryFromCppRefdata(final Map<String, String> schedule, final Map<String, String> errors, final Requester requester) {
         final String email = schedule.get(EMAIL_ADDRESS);
 
-        final Optional<uk.gov.moj.cpp.courtscheduler.domain.Judiciary> judiciaryFromMapper = isNotEmpty(email) ? referenceDataMapperService.findByEmail(requester, email) : empty();
+        // Only process if email is present and not blank
+        if (isBlank(email)) {
+            return;
+        }
+
+        final Optional<uk.gov.moj.cpp.courtscheduler.domain.Judiciary> judiciaryFromMapper = referenceDataMapperService.findByEmail(requester, email);
 
         if (judiciaryFromMapper.isPresent()) {
             final Judiciary judiciary = judiciaryFromMapper.get();
@@ -148,10 +145,13 @@ public class JudiciaryScheduleEnricher {
             schedule.put(SURNAME, judiciary.getSurname());
             schedule.put(JUDICIARY_TYPE, judiciary.getJudiciaryType());
         } else {
+            // Only log if names and email are not blank
             final String firstName = schedule.get(FORENAMES);
             final String lastName = schedule.get(SURNAME);
 
-            errors.put(email, JUDICIARY_ERR_MSG.format(firstName, lastName, email));
+            if (isNotEmpty(firstName) && isNotEmpty(lastName) && isNotEmpty(email)) {
+                errors.put(email, JUDICIARY_ERR_MSG.format(firstName, lastName, email));
+            }
         }
     }
 
