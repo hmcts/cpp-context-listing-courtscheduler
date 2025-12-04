@@ -669,3 +669,19 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.judiciary.find.availability+json:
             schema: !include json/schema/courtscheduler.find.judiciary.availability.json
             example: !include json/courtscheduler.find.judiciary.availability.json
+
+  delete:
+    description: |
+      Delete judiciary availability rule
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.judiciary.delete.availability.rule+json
+          name: courtscheduler.judiciary.delete.availability.rule
+      ...
+    body:
+      application/vnd.courtscheduler.judiciary.delete.availability.rule+json:
+        schema: !include json/schema/courtscheduler.judiciary.delete.availability.rule.json
+        example: !include json/courtscheduler.judiciary.delete.availability.rule.json
+    responses:
+      202:
+        description: OK

@@ -1,11 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
-import static java.util.UUID.randomUUID;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -27,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
+import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 
 @ExtendWith(MockitoExtension.class)
@@ -232,6 +228,46 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         MatcherAssert.assertThat(result, CoreMatchers.is(JsonValue.EMPTY_JSON_OBJECT));
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectForValidDeleteRequest() {
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(UUID.randomUUID().toString());
+
+        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(request);
+
+        MatcherAssert.assertThat(result, CoreMatchers.is(JsonValue.EMPTY_JSON_OBJECT));
+    }
+
+    @Test
+    void shouldReturnErrorWhenDeleteRequestIsNull() {
+        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(null);
+
+        Assertions.assertFalse(result.isEmpty());
+        Assertions.assertTrue(result.getString("errorMessage").contains("Request"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenRuleIdIsBlank() {
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId("");
+
+        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(request);
+
+        Assertions.assertFalse(result.isEmpty());
+        Assertions.assertTrue(result.getString("errorMessage").contains("ruleId"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenRuleIdIsNull() {
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(null);
+
+        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(request);
+
+        Assertions.assertFalse(result.isEmpty());
+        Assertions.assertTrue(result.getString("errorMessage").contains("ruleId"));
     }
 }
 

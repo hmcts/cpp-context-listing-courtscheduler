@@ -31,10 +31,12 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.DeleteJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciaryAvailabilityRuleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
@@ -151,6 +153,8 @@ public class CourtSchedulerApi {
     private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
     @Inject
     private AddJudiciaryAvailabilityRuleConverter addJudiciaryAvailabilityRuleConverter;
+    @Inject
+    private DeleteJudiciaryAvailabilityRuleConverter deleteJudiciaryAvailabilityRuleConverter;
     @Inject
     private FindJudiciaryAvailabilityConverter findJudiciaryAvailabilityConverter;
     @Inject
@@ -561,6 +565,23 @@ public class CourtSchedulerApi {
         return enveloper
                 .withMetadataFrom(envelope, "courtscheduler.judiciary.find.availability")
                 .apply(createObjectBuilder().add("availableJudiciaries", result).build());
+    }
+
+    @Handles("courtscheduler.judiciary.delete.availability.rule")
+    public JsonEnvelope deleteJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.delete.availability.rule requested : {}", requestFromApiJsonObject);
+        
+        DeleteJudiciaryAvailabilityRuleRequest request = deleteJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRule(request);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        judiciaryAvailabilityService.deleteJudiciaryAvailabilityRule(request);
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.delete.availability.rule").apply(createObjectBuilder().build());
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {

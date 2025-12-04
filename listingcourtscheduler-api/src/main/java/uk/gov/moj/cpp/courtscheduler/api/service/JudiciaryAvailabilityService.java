@@ -5,6 +5,7 @@ import static java.util.UUID.randomUUID;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
+import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
@@ -66,6 +67,19 @@ public class JudiciaryAvailabilityService {
 
         repository.save(entity);
         LOGGER.info("Saved judiciary availability rule with id: {}", entity.getId());
+    }
+
+    public void deleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
+        LOGGER.info("Deleting judiciary availability rule: {}", request);
+
+        final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
+        if (entity == null) {
+            LOGGER.warn("Judiciary availability rule with id {} not found", request.getRuleId());
+            throw new IllegalArgumentException("Judiciary availability rule with id " + request.getRuleId() + " not found");
+        }
+
+        repository.remove(entity);
+        LOGGER.info("Deleted judiciary availability rule with id: {}", request.getRuleId());
     }
 
     public FindJudiciaryAvailabilityResponse findJudiciaryAvailability(final FindJudiciaryAvailabilityRequest request) {

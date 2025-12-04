@@ -19,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,6 +36,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
     private static final String JUDICIARY_RESOURCE_URL = "/judiciary-availability";
     private static final String ADD_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.add.availability.rule+json";
+    private static final String DELETE_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.delete.availability.rule+json";
     private static final String FIND_AVAILABILITY_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.find.availability+json";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
 
@@ -441,6 +443,78 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final JsonObject firstMondayJsonObject = stringToJsonObjectConverter.convert(firstMondayResponseData.getPayload());
         final JsonArray firstMondayAvailableJudiciaries = firstMondayJsonObject.getJsonArray("availableJudiciaries");
         assertTrue(containsJudiciary(firstMondayAvailableJudiciaries, judiciaryId), "Should contain the judiciary on 1st Monday");
+    }
+
+    @Test
+    void shouldDeleteJudiciaryAvailabilityRule() throws Exception {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+
+        // Insert a rule via database seeder
+        databaseSeeder.insertJudiciaryAvailabilityRule(
+                ruleId,
+                judiciaryId,
+                courtHouseId,
+                "Available",
+                startDate,
+                endDate,
+                "Weekly",
+                null,
+                Arrays.asList("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        );
+
+        // Verify the rule exists by finding availability
+        final LocalDate queryStartDate = LocalDate.of(2026, 1, 5); // Monday
+        final LocalDate queryEndDate = LocalDate.of(2026, 1, 9); // Friday
+
+        Map<String, Object> queryParams = new HashMap<>();
+        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
+        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("judiciaryId", judiciaryId);
+
+        RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        ResponseData responseData = poll(requestParams)
+                .with()
+                .timeout(30L, SECONDS)
+                .pollInterval(50L, MILLISECONDS)
+                .pollDelay(0L, MILLISECONDS)
+                .until();
+
+        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should be available before deletion");
+
+        // Delete the rule
+        final String deletePayload = Json.createObjectBuilder()
+                .add("ruleId", ruleId)
+                .build()
+                .toString();
+
+        final Response deleteResponse = deleteCommand(JUDICIARY_RESOURCE_URL, DELETE_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, deletePayload);
+        assertThat(deleteResponse.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Verify the rule is deleted by checking availability again
+        // Wait a bit for the deletion to be processed
+        Thread.sleep(100);
+
+        requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        responseData = poll(requestParams)
+                .with()
+                .timeout(30L, SECONDS)
+                .pollInterval(50L, MILLISECONDS)
+                .pollDelay(0L, MILLISECONDS)
+                .until();
+
+        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available after deletion");
     }
 
     private boolean containsJudiciary(final JsonArray availableJudiciaries, final String judiciaryId) {

@@ -4,6 +4,7 @@ import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
+import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
@@ -317,6 +319,41 @@ class JudiciaryAvailabilityServiceTest {
         rule.setRepeatDays(repeatDays);
         
         return rule;
+    }
+
+    @Test
+    void shouldDeleteJudiciaryAvailabilityRule() {
+        final String ruleId = randomUUID().toString();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+
+        JudiciaryAvailabilityRule existingRule = new JudiciaryAvailabilityRule();
+        existingRule.setId(ruleId);
+        existingRule.setJudiciaryId(judiciaryId);
+        existingRule.setCourtHouseId(courtHouseId);
+
+        when(repository.findBy(ruleId)).thenReturn(existingRule);
+
+        service.deleteJudiciaryAvailabilityRule(request);
+
+        verify(repository).findBy(ruleId);
+        verify(repository).remove(existingRule);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenRuleNotFound() {
+        final String ruleId = randomUUID().toString();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+
+        when(repository.findBy(ruleId)).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.deleteJudiciaryAvailabilityRule(request));
+
+        assertThat(exception.getMessage(), is("Judiciary availability rule with id " + ruleId + " not found"));
+        verify(repository).findBy(ruleId);
+        verify(repository, org.mockito.Mockito.never()).remove(org.mockito.ArgumentMatchers.any());
     }
 }
 

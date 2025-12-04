@@ -8,6 +8,7 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 
 import java.util.List;
@@ -58,6 +59,20 @@ public class JudiciaryAvailabilityRuleApiValidator {
         final JsonObject repeatDaysValidation = validateRepeatDays(request.getRepeatDays());
         if (!EMPTY_JSON_OBJECT.equals(repeatDaysValidation)) {
             return repeatDaysValidation;
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    public JsonObject validateDeleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
+        LOGGER.info("Validating DeleteJudiciaryAvailabilityRule input : {}", request);
+
+        if (request == null) {
+            return getMessage("Request");
+        }
+
+        if (isBlank(request.getRuleId())) {
+            return getMessage("ruleId");
         }
 
         return EMPTY_JSON_OBJECT;

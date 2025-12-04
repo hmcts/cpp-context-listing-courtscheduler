@@ -100,6 +100,15 @@ public abstract class AbstractIT extends RestClient {
         return super.deleteCommand(requestParams.getUrl(), requestParams.getMediaType(), requestParams.getHeaders());
     }
 
+    protected Response deleteCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
+        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
+                .withHeader(HeaderConstants.USER_ID, userId)
+                .build();
+
+        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(requestParams.getMediaType()));
+        return ResteasyClientBuilderFactory.clientBuilder().build().target(requestParams.getUrl()).request().headers(requestParams.getHeaders()).method("DELETE", entity);
+    }
+
     protected RequestParams getRequestParams(final String path, final String contentType, final UUID userId, final Map<String, Object> queryParams) {
         final String url = (isEmpty(queryParams)) ? BASE_URL + path : (BASE_URL + path + "?" + createUrlFromParam(queryParams));
         RequestParamsBuilder requestParamsBuilder = RequestParamsBuilder.requestParams(url, contentType);
