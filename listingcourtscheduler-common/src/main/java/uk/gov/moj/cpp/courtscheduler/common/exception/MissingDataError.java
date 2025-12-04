@@ -9,7 +9,7 @@ public enum MissingDataError {
 
     JUDICIARY_NOT_FOUND(
             "JUDICIARY_NOT_FOUND",
-            Prefix.MONITORING + "Judiciary detail not found for the following judiciaries :-%n%s"),
+            Prefix.MONITORING + "Judiciary detail not found for the following judiciaries :-%n%n%s"),
 
     BUSINESS_TYPES_NOT_FOUND(
             "BUSINESS_TYPES_NOT_FOUND",
@@ -17,7 +17,7 @@ public enum MissingDataError {
 
     JUDICIARY_ERR_MSG(
             "JUDICIARY_ERR_MSG",
-            " Name %s %s%n Email : %s"),
+            "Name %s %s%nEmail : %s"),
 
     REF_DATA_JUDICIARY_EMAIL(
             "REF_DATA_JUDICIARY_EMAIL",
@@ -43,7 +43,7 @@ public enum MissingDataError {
             "CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND",
             "Duplicate courtroom IDs found: %s");
 
-    public static final String DELIMITER = "%n ------------------%n";
+    public static final String DELIMITER = "%n%n------------------%n";
 
     private static final class Prefix {
         private static final String MONITORING = "SCSLMissingData: ";
