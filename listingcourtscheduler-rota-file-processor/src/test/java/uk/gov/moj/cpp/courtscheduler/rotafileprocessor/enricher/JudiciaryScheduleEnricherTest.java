@@ -9,9 +9,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -42,7 +43,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -88,7 +88,9 @@ class JudiciaryScheduleEnricherTest {
         when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.of(judiciary));
         when(courtScheduleMap.get(anyString())).thenReturn(new CourtSchedule());
 
-        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, emptyList(), requester, randomUUID().toString());
+        final Map<String, String> errors = new HashMap<>();
+        final Map<String, List<String>> missingSessionsByOuCode = new HashMap<>();
+        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, emptyList(), requester, randomUUID().toString(), errors, missingSessionsByOuCode);
 
         verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
         assertThat(courtScheduleJudiciaries.size(), is(3));
@@ -130,7 +132,9 @@ class JudiciaryScheduleEnricherTest {
         final CourtSchedule courtSchedule = courtSchedule();
         courtScheduleMap.put(courtSchedule.getListingProfileId(), courtSchedule);
 
-        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, List.of(courtSchedule), requester, randomUUID().toString());
+        final Map<String, String> errors = new HashMap<>();
+        final Map<String, List<String>> missingSessionsByOuCode = new HashMap<>();
+        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, List.of(courtSchedule), requester, randomUUID().toString(), errors, missingSessionsByOuCode);
 
         verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
         assertThat(courtScheduleJudiciaries.size(), is(0));
@@ -143,10 +147,16 @@ class JudiciaryScheduleEnricherTest {
         }
 
         verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
-        verify(missingMessageLogger, atLeastOnce()).logJudiciaryMissingMessage(anyCollection(), anyString());
+
+        // Verify that errors map is populated with missing judiciary information
+        // (logging happens at higher level, not in the enricher)
+        assertThat("Errors map should contain missing judiciary entries", errors.isEmpty(), is(false));
+        assertThat("Should have at least one error entry", errors.size() >= 1, is(true));
 
         verifyNoMoreInteractions(referenceDataMapperService, missingMessageLogger);
-        verify(rotaProcessLogService, atLeastOnce()).saveRotaProcessLog(any(RotaProcessLog.class));
+        // Verify that logging was NOT called from enrichJudiciarySchedules (aggregation happens at higher level)
+        verify(missingMessageLogger, never()).logJudiciaryMissingMessage(anyCollection(), anyString());
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any(RotaProcessLog.class));
         verifyNoMoreInteractions(referenceDataMapperService, missingMessageLogger, rotaProcessLogService);
     }
 
@@ -219,20 +229,15 @@ class JudiciaryScheduleEnricherTest {
         );
 
         final String executionId = randomUUID().toString();
-        judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, true, activeSchedules, requester, executionId);
+        final Map<String, String> errors = new HashMap<>();
+        final Map<String, List<String>> missingSessionsByOuCode = new HashMap<>();
+        judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, true, activeSchedules, requester, executionId, errors, missingSessionsByOuCode);
 
-        ArgumentCaptor<Map<String, List<String>>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(missingMessageLogger).logMissingCourtSessions(captor.capture(), eq(executionId));
-        final Map<String, List<String>> captured = captor.getValue();
-        assertThat(captured.containsKey("CABC90"), is(true));
-        assertThat(captured.get("CABC90").isEmpty(), is(false));
+        // Verify that missing sessions were collected in the map
+        assertThat(missingSessionsByOuCode.containsKey("CABC90"), is(true));
+        assertThat(missingSessionsByOuCode.get("CABC90").isEmpty(), is(false));
 
-        // Verify that the log was actually saved to the database
-        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
-        verify(rotaProcessLogService, atLeastOnce()).saveRotaProcessLog(logCaptor.capture());
-        final List<RotaProcessLog> allLogs = logCaptor.getAllValues();
-        final boolean hasMissingCourtSession = allLogs.stream()
-                .anyMatch(log -> "MISSING_COURT_SESSION".equals(log.getErrorCode()) && executionId.equals(log.getExecutionId()));
-        assertThat("Should have logged MISSING_COURT_SESSION", hasMissingCourtSession, is(true));
+        // Verify that logging was NOT called from enrichJudiciarySchedules (aggregation happens at higher level)
+        verify(missingMessageLogger, never()).logMissingCourtSessions(anyMap(), anyString());
     }
 }

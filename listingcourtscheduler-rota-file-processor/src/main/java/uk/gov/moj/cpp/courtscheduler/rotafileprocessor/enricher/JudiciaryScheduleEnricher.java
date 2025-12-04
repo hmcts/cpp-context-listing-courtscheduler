@@ -67,10 +67,10 @@ public class JudiciaryScheduleEnricher {
                                                                        final boolean forMigrated,
                                                                        final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange,
                                                                        final Requester requester,
-                                                                       final String executionId) {
-        final Map<String, String> errors = new HashMap<>();
+                                                                       final String executionId,
+                                                                       final Map<String, String> errors,
+                                                                       final Map<String, List<String>> missingSessionsByOuCode) {
         final List<CourtScheduleJudiciary> courtScheduleJudiciarySchedules = new ArrayList<>();
-        final Map<String, List<String>> missingSessionsByOuCode = new HashMap<>();
 
         final long enrichmentStart = System.nanoTime();
         final Collection<Map<String, String>> schedules = records.get(RotaPayload.SCHEDULE).values();
@@ -115,13 +115,6 @@ public class JudiciaryScheduleEnricher {
         }
         final long enrichmentEnd = System.nanoTime();
         logger.info("PRF: Time taken for judiciary enrichment : {}", (enrichmentEnd - enrichmentStart) / 1000000);
-
-        if (!errors.isEmpty()) {
-            missingMessageLogger.logJudiciaryMissingMessage(errors.values(), executionId);
-        }
-        if (!missingSessionsByOuCode.isEmpty()) {
-            missingMessageLogger.logMissingCourtSessions(missingSessionsByOuCode, executionId);
-        }
 
         return courtScheduleJudiciarySchedules;
     }

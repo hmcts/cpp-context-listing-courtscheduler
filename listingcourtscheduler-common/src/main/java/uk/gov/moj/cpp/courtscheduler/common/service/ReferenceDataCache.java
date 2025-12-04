@@ -357,18 +357,18 @@ public class ReferenceDataCache {
         if (isNotEmpty(courtRooms)) {
             final Map<Integer, Map<String, List<CourtRoom>>> courtRoomGroupByLocationIdAndVenueName = courtRooms.stream().collect(Collectors.groupingBy(CourtRoom::getRotaLocationId, Collectors.groupingBy(CourtRoom::getRotaVenueName)));
             courtRoomGroupByLocationIdAndVenueName.forEach((locationId, mapByVenueName) ->
-                mapByVenueName.keySet().forEach(venueName -> {
-                    final List<CourtRoom> courtRoomList = mapByVenueName.get(venueName).stream().filter(courtRoomByLocationId -> courtRoomByLocationId.getRotaLocationId().equals(locationId)).toList();
-                    try {
-                        cacheService.add(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, locationId, venueName), objectMapper.writeValueAsString(courtRoomList));
+                    mapByVenueName.keySet().forEach(venueName -> {
+                        final List<CourtRoom> courtRoomList = mapByVenueName.get(venueName).stream().filter(courtRoomByLocationId -> courtRoomByLocationId.getRotaLocationId().equals(locationId)).toList();
+                        try {
+                            cacheService.add(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, locationId, venueName), objectMapper.writeValueAsString(courtRoomList));
 
-                        if (locationId.equals(venue.getLocationId()) && matches(venueName, venue.getVenueName())) {
-                            processFoundCourtRoomWithVenue(venue, courtRoomsForVenue, exceptionMessages, courtRoomList);
+                            if (locationId.equals(venue.getLocationId()) && matches(venueName, venue.getVenueName())) {
+                                processFoundCourtRoomWithVenue(venue, courtRoomsForVenue, exceptionMessages, courtRoomList);
+                            }
+                        } catch (final JsonProcessingException jsonProcessingException) {
+                            LOGGER.error("exception whilst adding into the cache for locationId: {} and venueName {} with exception: {}", locationId, venueName, jsonProcessingException.getMessage(), jsonProcessingException);
                         }
-                    } catch (final JsonProcessingException jsonProcessingException) {
-                        LOGGER.error("exception whilst adding into the cache for locationId: {} and venueName {} with exception: {}", locationId, venueName, jsonProcessingException.getMessage(), jsonProcessingException);
-                    }
-                })
+                    })
             );
 
             return ofNullable(courtRoomsForVenue.get());
