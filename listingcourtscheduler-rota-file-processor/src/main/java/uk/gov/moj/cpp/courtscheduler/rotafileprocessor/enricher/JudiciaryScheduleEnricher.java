@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -52,9 +53,6 @@ public class JudiciaryScheduleEnricher {
 
     @Inject
     private JudiciaryBuilder judiciaryBuilder;
-
-    @Inject
-    private MissingReferenceDataMappingLogger missingMessageLogger;
 
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
@@ -75,6 +73,13 @@ public class JudiciaryScheduleEnricher {
         final Collection<Map<String, String>> schedules = records.get(RotaPayload.SCHEDULE).values();
         final Map<String, Map<String, String>> judiciariesMap = getJudiciaryInfoMap(records);
 
+        final Map<String, CourtSchedule> activeCourtScheduleMap = activeCourtSchedulesByOuCodesWithinDateRange.stream()
+                .collect(Collectors.toMap(
+                        this::getCourtScheduleKey,
+                        cs -> cs,
+                        (v1, v2) -> v1
+                ));
+
         for (final Map<String, String> judiciarySchedule : schedules) {
             final String rotaJusticeId = judiciarySchedule.get(ROTA_JUDICIARY_ID);
 
@@ -85,12 +90,10 @@ public class JudiciaryScheduleEnricher {
             final String courtListingProfileId = judiciarySchedule.get(COURT_LISTING_PROFILE_ID);
             final CourtSchedule courtSchedule = courtScheduleMap.get(courtListingProfileId);
             if (nonNull(courtSchedule)) {
-                final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinDateRange.stream()
-                        .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(courtSchedule.getCourtRoomId())
-                                && activeCourtSchedule.getSessionDate().equals(courtSchedule.getSessionDate())
-                                && activeCourtSchedule.getBusinessType().equals(courtSchedule.getBusinessType())
-                                && activeCourtSchedule.getCourtSession().equals(courtSchedule.getCourtSession()))
-                        .findAny();
+                final String key = getCourtScheduleKey(courtSchedule);
+                final CourtSchedule foundSchedule = activeCourtScheduleMap.get(key);
+                final Optional<CourtSchedule> courtScheduleOptional = Optional.ofNullable(foundSchedule);
+
                 if (!forMigrated || (courtScheduleOptional.isPresent() && equalsIgnoreCase(courtSchedule.getOuCode(), courtScheduleOptional.get().getOuCode()))) {
                     final CourtScheduleJudiciary courtScheduleJudiciary = judiciaryBuilder.build(judiciarySchedule, courtSchedule.getCourtScheduleId());
                     if (isNotEmpty(courtScheduleJudiciary.getJudiciaryId())) {
@@ -108,8 +111,7 @@ public class JudiciaryScheduleEnricher {
                 }
             } else {
                 final String errorMessage = format("No matching court schedule found for court listing profile ID: %s", courtListingProfileId);
-                logger.warn(errorMessage);
-                errors.put(courtListingProfileId, errorMessage);
+                logger.debug(errorMessage);
             }
         }
         final long enrichmentEnd = System.nanoTime();
@@ -192,5 +194,9 @@ public class JudiciaryScheduleEnricher {
         missingSessionsByOuCode
                 .computeIfAbsent(ouCode, key -> new ArrayList<>())
                 .add(sessionDetails);
+    }
+
+    private String getCourtScheduleKey(final CourtSchedule cs) {
+        return cs.getCourtRoomId() + "|" + cs.getSessionDate() + "|" + cs.getBusinessType() + "|" + cs.getCourtSession();
     }
 }
