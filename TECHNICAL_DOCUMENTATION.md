@@ -17,7 +17,7 @@
 ## Overview
 
 ### Purpose
-The Court Scheduler Service is a microservice designed to manage court schedules, hearing slots, and judicial allocations for HM Courts & Tribunals Service (HMCTS). The system processes rota files from the Legal Aid Agency (LJA) system, creates and manages court schedules, allocates hearing slots, and provides comprehensive scheduling capabilities for court operations.
+The Court Scheduler Service is a microservice designed to manage court schedules, hearing slots, and judicial allocations for HM Courts & Tribunals Service (HMCTS). The system processes  files from the ROTA system for judiciary updates , creates and manages court schedules, allocates hearing slots, and provides comprehensive scheduling capabilities for court operations.
 
 ### Key Capabilities
 - **Court Schedule Management**: Create, update, delete, and query court schedules
