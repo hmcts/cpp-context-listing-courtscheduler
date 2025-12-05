@@ -18,11 +18,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTER
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_START_TIME;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -52,9 +50,6 @@ public class CourtScheduleEnricher {
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
 
-    @Inject
-    private RotaProcessLogService rotaProcessLogService;
-
     public CourtSchedule build(final Map<String, String> listingProfile,
                                final LocalDate sessionDate,
                                final Map<String, String> missingReferenceDataMappingMap,
@@ -76,9 +71,9 @@ public class CourtScheduleEnricher {
 
             final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinRotaPeriod.stream()
                     .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(builder.getCourtRoomId())
-                    && activeCourtSchedule.getSessionDate().equals(builder.getSessionDate())
-                    && activeCourtSchedule.getBusinessType().equals(builder.getBusinessType())
-                    && activeCourtSchedule.getCourtSession().equals(builder.getCourtSession()))
+                            && activeCourtSchedule.getSessionDate().equals(builder.getSessionDate())
+                            && activeCourtSchedule.getBusinessType().equals(builder.getBusinessType())
+                            && activeCourtSchedule.getCourtSession().equals(builder.getCourtSession()))
                     .findAny();
             if (courtScheduleOptional.isPresent() && isNotEmpty(courtScheduleOptional.get().getCourtScheduleId())) {
                 final CourtSchedule courtSchedule = courtScheduleOptional.get();
@@ -87,17 +82,8 @@ public class CourtScheduleEnricher {
                 builder.withCreatedOn(courtSchedule.getCreatedOn());
             }
         } else {
-            final String msg = REF_DATA_VENUE_NOT_FOUND.format(locationId, venueName, venueId);
-            final boolean isNewMissingVenue = missingReferenceDataMappingMap.putIfAbsent(msg, REF_DATA_VENUE_NOT_FOUND.code()) == null;
-            if (isNewMissingVenue) {
-                rotaProcessLogService.saveRotaProcessLog(
-                        RotaProcessLogBuilder.rotaProcessLog()
-                                .withExecutionId(executionId)
-                                .withErrorCode(REF_DATA_VENUE_NOT_FOUND.code())
-                                .withErrorText(msg)
-                                .build()
-                );
-            }
+            final String venueDetails = format("%d - %s - %d", locationId, venueName, venueId);
+            missingReferenceDataMappingMap.putIfAbsent(venueDetails, REF_DATA_VENUE_NOT_FOUND.code());
         }
         return builder.withActive(true).build();
     }
@@ -121,8 +107,8 @@ public class CourtScheduleEnricher {
             builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_START_TIME))
                     .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_END_TIME));
         }
-            builder.withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
-                    
+        builder.withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+
     }
 
     private void populateSessionAllocation(final CourtSchedule.CourtScheduleBuilder builder,
