@@ -3,9 +3,9 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 import static java.util.Collections.emptyList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 
 import java.sql.Timestamp;
@@ -63,29 +64,6 @@ class RotaFileUtilityTest {
         assertThat(result, is(0L));
     }
 
-    @Test
-    void shouldIdentifySnapshotFile() {
-        // given
-        String fileName = "test_snapshot_20240115.csv";
-
-        // when
-        boolean result = rotaFileUtility.isSnapshotFile(fileName);
-
-        // then
-        assertTrue(result);
-    }
-
-    @Test
-    void shouldNotIdentifyNonSnapshotFile() {
-        // given
-        String fileName = "test_file_20240115.csv";
-
-        // when
-        boolean result = rotaFileUtility.isSnapshotFile(fileName);
-
-        // then
-        assertFalse(result);
-    }
 
     @Test
     void shouldIdentifyDummyFile() {
@@ -119,9 +97,36 @@ class RotaFileUtilityTest {
         String fileNamePrefix = "test_snapshot_";
         Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
 
+        RotaFileProcessHistory newerFile = new RotaFileProcessHistory();
+        newerFile.setExecutionId("newer-execution-id");
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(
                 eq(fileNamePrefix), eq(timestamp)))
-                .thenReturn(List.of(new uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory()));
+                .thenReturn(List.of(newerFile));
+
+        // when
+        boolean result = rotaFileUtility.isNewerSnapshotFileProcessed(fileName);
+
+        // then
+        assertTrue(result);
+        verify(rotaFileProcessHistoryRepository).findByFileNamePrefixAndFileDateGreaterThan(
+                eq(fileNamePrefix), eq(timestamp));
+    }
+
+    @Test
+    void shouldReturnTrue_WhenMultipleNewerSnapshotFilesProcessed() {
+        // given
+        String fileName = "test_snapshot_20240115T120000Z.xml";
+        OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
+        String fileNamePrefix = "test_snapshot_";
+        Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
+
+        RotaFileProcessHistory newerFile1 = new RotaFileProcessHistory();
+        newerFile1.setExecutionId("newer-execution-id-1");
+        RotaFileProcessHistory newerFile2 = new RotaFileProcessHistory();
+        newerFile2.setExecutionId("newer-execution-id-2");
+        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(
+                eq(fileNamePrefix), eq(timestamp)))
+                .thenReturn(List.of(newerFile1, newerFile2));
 
         // when
         boolean result = rotaFileUtility.isNewerSnapshotFileProcessed(fileName);
@@ -147,6 +152,8 @@ class RotaFileUtilityTest {
 
         // then
         assertFalse(result);
+        verify(rotaFileProcessHistoryRepository).findByFileNamePrefixAndFileDateGreaterThan(
+                eq(fileNamePrefix), eq(timestamp));
     }
 
     @Test
@@ -162,58 +169,151 @@ class RotaFileUtilityTest {
     }
 
     @Test
-    void shouldProcessSnapshotFile_WhenValidSnapshotFile() {
+    void shouldCreateAndSaveFileProcessHistory_WhenValidFile() {
         // given
         String fileName = "test_snapshot_20240115T120000Z.xml";
         byte[] content = "test content".getBytes();
         OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
         String fileNamePrefix = "test_snapshot_";
-        Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
 
-        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(
-                eq(fileNamePrefix), eq(timestamp)))
-                .thenReturn(emptyList());
+        RotaFileProcessHistory mockHistory = new RotaFileProcessHistory();
+        mockHistory.setExecutionId("test-execution-id");
+        mockHistory.setFileNamePrefix(fileNamePrefix);
+        when(rotaFileProcessHistoryService.save(eq(fileNamePrefix), eq(fileDateTime), eq(content), anyString()))
+                .thenReturn(mockHistory);
 
         // when
-        String executionId = rotaFileUtility.processSnapshotFileIfNeeded(fileName, content, rotaFileProcessHistoryService);
+        RotaFileProcessHistory result = rotaFileUtility.createAndSaveFileProcessHistory(
+                fileName, content, rotaFileProcessHistoryService);
 
         // then
-        assertNotNull(executionId);
-        assertFalse(executionId.isEmpty());
+        assertNotNull(result);
+        assertNotNull(result.getExecutionId());
+        assertFalse(result.getExecutionId().isEmpty());
+        assertEquals("test-execution-id", result.getExecutionId());
         verify(rotaFileProcessHistoryService).save(eq(fileNamePrefix), eq(fileDateTime), eq(content), anyString());
     }
 
     @Test
-    void shouldReturnEmptyString_WhenNotSnapshotFile() {
+    void shouldCreateAndSaveFileProcessHistory_WhenValidRotaFile() {
+        // given
+        String fileName = "test_rota_20240115T120000Z.xml";
+        byte[] content = "rota file content".getBytes();
+        OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
+        String fileNamePrefix = "test_rota_";
+
+        RotaFileProcessHistory mockHistory = new RotaFileProcessHistory();
+        mockHistory.setExecutionId("rota-execution-id");
+        when(rotaFileProcessHistoryService.save(eq(fileNamePrefix), eq(fileDateTime), eq(content), anyString()))
+                .thenReturn(mockHistory);
+
+        // when
+        RotaFileProcessHistory result = rotaFileUtility.createAndSaveFileProcessHistory(
+                fileName, content, rotaFileProcessHistoryService);
+
+        // then
+        assertNotNull(result);
+        assertEquals("rota-execution-id", result.getExecutionId());
+        verify(rotaFileProcessHistoryService).save(eq(fileNamePrefix), eq(fileDateTime), eq(content), anyString());
+    }
+
+    @Test
+    void shouldReturnNull_WhenFileTimestampCannotBeExtracted() {
         // given
         String fileName = "test_file.csv";
         byte[] content = "test content".getBytes();
 
         // when
-        String executionId = rotaFileUtility.processSnapshotFileIfNeeded(fileName, content, rotaFileProcessHistoryService);
+        RotaFileProcessHistory result = rotaFileUtility.createAndSaveFileProcessHistory(
+                fileName, content, rotaFileProcessHistoryService);
 
         // then
-        assertNotNull(executionId);
-        assertTrue(executionId.isEmpty());
+        assertThat(result, is(org.hamcrest.Matchers.nullValue()));
         verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(), anyString());
     }
 
     @Test
-    void shouldThrowException_WhenNewerSnapshotFileAlreadyProcessed() {
+    void shouldReturnNull_WhenFileNameHasNoTimestamp() {
         // given
-        String fileName = "test_snapshot_20240115T120000Z.xml";
+        String fileName = "invalid_filename_without_timestamp.xml";
         byte[] content = "test content".getBytes();
-        OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
-        String fileNamePrefix = "test_snapshot_";
-        Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
 
-        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(
-                eq(fileNamePrefix), eq(timestamp)))
-                .thenReturn(List.of(new uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory()));
+        // when
+        RotaFileProcessHistory result = rotaFileUtility.createAndSaveFileProcessHistory(
+                fileName, content, rotaFileProcessHistoryService);
 
-        // when & then
-        assertThrows(IllegalStateException.class, () ->
-                rotaFileUtility.processSnapshotFileIfNeeded(fileName, content, rotaFileProcessHistoryService));
+        // then
+        assertThat(result, is(org.hamcrest.Matchers.nullValue()));
+        verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(), anyString());
+    }
+
+    @Test
+    void shouldReturnNull_WhenFileNameIsEmpty() {
+        // given
+        String fileName = "";
+        byte[] content = "test content".getBytes();
+
+        // when
+        RotaFileProcessHistory result = rotaFileUtility.createAndSaveFileProcessHistory(
+                fileName, content, rotaFileProcessHistoryService);
+
+        // then
+        assertThat(result, is(org.hamcrest.Matchers.nullValue()));
+        verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(), anyString());
+    }
+
+    @Test
+    void shouldHandleCaseSensitiveDummyFileCheck() {
+        // given
+        String fileName1 = "DUMMYSUPPORT_file.xml";
+        String fileName2 = "DummySupport_file.xml";
+        String fileName3 = "dummysupport_file.xml";
+
+        // when
+        boolean result1 = rotaFileUtility.isDummyFile(fileName1);
+        boolean result2 = rotaFileUtility.isDummyFile(fileName2);
+        boolean result3 = rotaFileUtility.isDummyFile(fileName3);
+
+        // then
+        assertFalse(result1); // Case sensitive - uppercase doesn't match
+        assertFalse(result2); // Case sensitive - mixed case doesn't match
+        assertTrue(result3); // Case sensitive - lowercase matches
+    }
+
+    @Test
+    void shouldHandleDummyFileInPath() {
+        // given
+        String fileName = "path/to/dummysupport/file.xml";
+
+        // when
+        boolean result = rotaFileUtility.isDummyFile(fileName);
+
+        // then
+        assertTrue(result);
+    }
+
+    @Test
+    void shouldConvertLargeNanosToMillis() {
+        // given
+        long nanos = 1_000_000_000L; // 1 second
+
+        // when
+        long result = rotaFileUtility.convertNanosToMillis(nanos);
+
+        // then
+        assertThat(result, is(1000L));
+    }
+
+    @Test
+    void shouldConvertNegativeNanosToMillis() {
+        // given
+        long nanos = -5_000_000L;
+
+        // when
+        long result = rotaFileUtility.convertNanosToMillis(nanos);
+
+        // then
+        assertThat(result, is(-5L));
     }
 }
 
