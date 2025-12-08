@@ -546,18 +546,18 @@ public class SessionsApiValidator {
             return buildErrorResponse("Jurisdiction must be either MAGISTRATES or CROWN");
         }
 
-        // Validate is_draft can only be supplied when jurisdiction is CROWN
+        // Validate isDraft can only be supplied when jurisdiction is CROWN
         Boolean isDraft = updateCourtSchedule.getIsDraft();
         if (nonNull(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
-            return buildErrorResponse("is_draft can only be supplied when jurisdiction is CROWN");
+            return buildErrorResponse("isDraft can only be supplied when jurisdiction is CROWN");
         }
 
-        // Validate that if CROWN and database is_draft = false, it can't be changed to is_draft = true
+        // Validate that if CROWN and database isDraft = false, it can't be changed to isDraft = true
         if (CROWN.equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && TRUE.equals(isDraft)) {
             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
                     courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
             if (nonNull(persistedCourtSchedule) && FALSE.equals(persistedCourtSchedule.getIsDraft())) {
-                return buildErrorResponse("Cannot change is_draft from false to true for CROWN jurisdiction sessions");
+                return buildErrorResponse("Cannot change isDraft from false to true for CROWN jurisdiction sessions");
             }
         }
 

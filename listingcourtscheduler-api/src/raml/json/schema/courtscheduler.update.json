@@ -54,7 +54,7 @@
       "type": "string",
       "enum": ["MAGISTRATES", "CROWN"]
     },
-    "is_draft": {
+    "isDraft": {
       "type": "boolean"
     }
   },
@@ -83,7 +83,7 @@
             },
             {
               "not": {
-                "required": ["is_draft"]
+                "required": ["isDraft"]
               }
             }
           ]
