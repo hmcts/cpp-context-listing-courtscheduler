@@ -142,7 +142,7 @@ public class RotaFileProcessor {
             return false;
         }
 
-        if (rotaFileUtility.isNewerSnapshotFileProcessed(blobName)) {
+        if (rotaFileUtility.isSnapshotFile(blobName) && rotaFileUtility.isNewerSnapshotFileProcessed(blobName)) {
             logger.warn("Skipping snapshot file - newer version already processed: {}", blobName);
             return false;
         }

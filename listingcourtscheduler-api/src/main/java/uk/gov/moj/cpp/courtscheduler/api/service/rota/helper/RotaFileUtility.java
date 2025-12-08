@@ -31,6 +31,7 @@ public class RotaFileUtility {
     private static final Logger logger = LoggerFactory.getLogger(RotaFileUtility.class);
     
     private static final String DUMMY_NAME_PART = "dummysupport";
+    private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final long NANOSECONDS_TO_MILLISECONDS = 1_000_000L;
     private static final String LOG_PREFIX_DD_15703 = "DD-15703:processSnapshotRotaFile: ";
 
@@ -55,6 +56,16 @@ public class RotaFileUtility {
      */
     public boolean isDummyFile(final String fileName) {
         return fileName.contains(DUMMY_NAME_PART);
+    }
+
+    /**
+     * Checks if the file is a snapshot file.
+     *
+     * @param fileName the name of the file
+     * @return true if the file is a snapshot file, false otherwise
+     */
+    public boolean isSnapshotFile(final String fileName) {
+        return fileName.contains(SNAPSHOT_NAME_PART);
     }
 
     /**
