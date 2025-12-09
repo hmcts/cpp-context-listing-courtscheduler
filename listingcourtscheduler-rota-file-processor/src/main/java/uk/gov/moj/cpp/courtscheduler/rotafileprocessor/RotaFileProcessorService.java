@@ -32,6 +32,7 @@ import java.io.ByteArrayInputStream;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -148,6 +149,16 @@ public class RotaFileProcessorService {
         logger.info("rotaPeriodStartDate: {}, rotaPeriodEndDate: {}, rotaPeriodStartDay: {}, rotaPeriodEndDay: {}, masterRotaPeriodCutOffDate: {}, monthsBetweenRotaPeriod: {}", rotaPeriodStartDate, rotaPeriodEndDate,
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDay(), rotaPeriodDateInfoProvider.getRotaPeriodEndDay(), rotaPeriodEndDate, rotaPeriodDateInfoProvider.getMonthsBetweenRotaPeriod());
 
+        // Create rota_file_process_history record for master rota files (same as snapshot files)
+        if (!fileName.contains(SNAPSHOT_NAME_PART)) {
+            logger.info("DD-15703:processMasterRotaFile: before rotaFileProcessHistoryRepository.save");
+            final String fileNamePrefix = fileName.endsWith(".xml") ? fileName.substring(0, fileName.length() - 4) : fileName;
+            final OffsetDateTime fileDateTime = rotaPeriodStartDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+            executionId = randomUUID().toString();
+            rotaFileProcessHistory = rotaFileProcessHistoryService.save(fileNamePrefix, fileDateTime, content, executionId);
+            logger.info("DD-15703:processMasterRotaFile: after rotaFileProcessHistoryRepository.save - executionId: {}", executionId);
+        }
+
         final List<String> locations = getLocationFromRecords(records);
 
         logger.info("DD-15703:RotaFileProcessor: Before getOuCodeFromCourtRoomMappingsByLocationId");
@@ -215,6 +226,10 @@ public class RotaFileProcessorService {
                 logger.info("master rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
+            logger.info("DD-15703:processMasterRotaFile: before rotaFileProcessHistoryRepository.update");
+            if(rotaFileProcessHistory != null)
+                rotaFileProcessHistoryService.update(rotaFileProcessHistory);
+            logger.info("DD-15703:processMasterRotaFile: after rotaFileProcessHistoryRepository.update");
         }
     }
 
