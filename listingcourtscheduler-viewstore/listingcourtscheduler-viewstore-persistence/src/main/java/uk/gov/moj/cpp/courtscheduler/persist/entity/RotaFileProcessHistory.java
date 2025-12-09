@@ -12,7 +12,6 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 @SuppressWarnings({"squid:S1845"})
 @Entity
@@ -33,7 +32,6 @@ public class RotaFileProcessHistory {
     @Column(name = "process_start_date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date processStartDate;
-    @UpdateTimestamp
     @Column(name = "process_end_date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date processEndDate;

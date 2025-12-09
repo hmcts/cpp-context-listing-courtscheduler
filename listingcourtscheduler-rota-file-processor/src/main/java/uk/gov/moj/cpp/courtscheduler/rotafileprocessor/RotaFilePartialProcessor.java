@@ -14,11 +14,13 @@ import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.STAR
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
 
 import java.time.LocalDate;
@@ -61,6 +63,9 @@ public class RotaFilePartialProcessor {
     @Inject
     private BusinessTypeMatchingLogger businessTypeMatchingLogger;
 
+    @Inject
+    private RotaFileProcessHistoryService rotaFileProcessHistoryService;
+
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Asynchronous
@@ -75,7 +80,9 @@ public class RotaFilePartialProcessor {
                                     final List<String> nonMigratedOuCodes,
                                     final Map<String, BusinessType> businessTypesMap,
                                     final Map<String, Boolean> migratedMap,
-                                    final String executionId) {
+                                    final String executionId,
+                                    final RotaFileProcessHistory rotaFileProcessHistory,
+                                    final boolean isLastDateRange) {
         logger.info("DD-15703:processFullRotaFile: started processing");
         this.migratedMap = migratedMap;
         final int numberOfDeletedUnAllocatedCourtScheduleJudiciaries = courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
@@ -91,6 +98,12 @@ public class RotaFilePartialProcessor {
         final SlotAndScheduleInfo slotAndScheduleInfo = getExtractAndReceiveSlotAndScheduleInfo(ouCodes, slots, schedules, schedulesForMigrated, startDate, endDate, businessTypesMap, executionId);
         manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, slotAndScheduleInfo, startDate, endDate);
         logger.info("DD-15703:processFullRotaFile: after manageCourtSchedule");
+
+        // Update process_end_date after all processing completes (only for last date range)
+        if (rotaFileProcessHistory != null && isLastDateRange) {
+            logger.info("DD-15703:processFullRotaFile: updating process_end_date after processing completes");
+            rotaFileProcessHistoryService.update(rotaFileProcessHistory);
+        }
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
@@ -104,7 +117,10 @@ public class RotaFilePartialProcessor {
                                         final List<String> ouCodes,
                                         final List<String> nonMigratedOuCodes,
                                         final Map<String, BusinessType> businessTypesMap,
-                                        final Map<String, Boolean> migratedMap, final String executionId) {
+                                        final Map<String, Boolean> migratedMap,
+                                        final String executionId,
+                                        final RotaFileProcessHistory rotaFileProcessHistory,
+                                        final boolean isLastDateRange) {
         this.migratedMap = migratedMap;
         final LocalDate startDate = startAndEndDate.get(START_DATE.getLabel());
         final LocalDate endDate = startAndEndDate.get(END_DATE.getLabel());
@@ -127,6 +143,12 @@ public class RotaFilePartialProcessor {
         logger.info("DD-15703:processSnapshotRotaFile: after getExtractAndReceiveSlotAndScheduleInfo in {} ms", extractAndReceiveSlotAndScheduleInfoEndTime - extractAndReceiveSlotAndScheduleInfoStartTime);
         manageCourtSchedule(ouCodes, nonMigratedOuCodes, slotsForMigrated, schedules, businessTypesMap, slotAndScheduleInfo, startDate, endDate);
         logger.info("DD-15703:processSnapshotRotaFile: after manageCourtSchedule");
+
+        // Update process_end_date after all processing completes (only for last date range)
+        if (rotaFileProcessHistory != null && isLastDateRange) {
+            logger.info("DD-15703:processSnapshotRotaFile: updating process_end_date after processing completes");
+            rotaFileProcessHistoryService.update(rotaFileProcessHistory);
+        }
     }
 
     private SlotAndScheduleInfo getExtractAndReceiveSlotAndScheduleInfo(final List<String> ouCodes,
