@@ -3,8 +3,13 @@ package uk.gov.moj.cpp.courtscheduler.domain.utils;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 import org.junit.jupiter.api.Test;
 
@@ -64,21 +69,42 @@ public class FileUtilTest {
     }
 
     @Test
-    public void shouldReturnNull_WhenFileNameTooShort() {
+    public void shouldReturnCurrentTimestamp_WhenFileNameTooShort() {
         final String actual = FileUtil.getLJAFileTimeStampAsString("short.xml");
-        assertThat(actual, nullValue());
+        assertNotNull(actual);
+        // Verify it's a valid timestamp format
+        try {
+            LocalDateTime.parse(actual, DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"));
+            assertTrue(true);
+        } catch (DateTimeParseException e) {
+            assertTrue(false, "Returned timestamp is not in valid format");
+        }
     }
 
     @Test
-    public void shouldReturnNull_WhenTimestampInvalid() {
+    public void shouldReturnCurrentTimestamp_WhenTimestampInvalid() {
         final String actual = FileUtil.getLJAFileTimeStampAsString("test_file_20210122T12000Z.xml");
-        assertThat(actual, nullValue());
+        assertNotNull(actual);
+        // Verify it's a valid timestamp format
+        try {
+            LocalDateTime.parse(actual, DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"));
+            assertTrue(true);
+        } catch (DateTimeParseException e) {
+            assertTrue(false, "Returned timestamp is not in valid format");
+        }
     }
 
     @Test
-    public void shouldReturnNull_WhenNoTimestampInFileName() {
+    public void shouldReturnCurrentTimestamp_WhenNoTimestampInFileName() {
         final String actual = FileUtil.getLJAFileTimeStampAsString("test_file_without_timestamp.xml");
-        assertThat(actual, nullValue());
+        assertNotNull(actual);
+        // Verify it's a valid timestamp format
+        try {
+            LocalDateTime.parse(actual, DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"));
+            assertTrue(true);
+        } catch (DateTimeParseException e) {
+            assertTrue(false, "Returned timestamp is not in valid format");
+        }
     }
 
     @Test
@@ -125,21 +151,30 @@ public class FileUtilTest {
     }
 
     @Test
-    public void shouldReturnNull_WhenFileNameTooShort_ForOffsetDateTime() {
+    public void shouldReturnCurrentTimestamp_WhenFileNameTooShort_ForOffsetDateTime() {
+        final OffsetDateTime now = OffsetDateTime.now();
         final OffsetDateTime actual = FileUtil.getLJAFileTimeStampAsOffsetDateTime("short.xml");
-        assertThat(actual, nullValue());
+        assertNotNull(actual);
+        // Verify it's a valid OffsetDateTime (current timestamp) - within 5 seconds of now
+        assertTrue(actual.isAfter(now.minusSeconds(5)) && actual.isBefore(now.plusSeconds(5)));
     }
 
     @Test
-    public void shouldReturnNull_WhenTimestampInvalid_ForOffsetDateTime() {
+    public void shouldReturnCurrentTimestamp_WhenTimestampInvalid_ForOffsetDateTime() {
+        final OffsetDateTime now = OffsetDateTime.now();
         final OffsetDateTime actual = FileUtil.getLJAFileTimeStampAsOffsetDateTime("test_file_20210122T12000Z.xml");
-        assertThat(actual, nullValue());
+        assertNotNull(actual);
+        // Verify it's a valid OffsetDateTime (current timestamp) - within 5 seconds of now
+        assertTrue(actual.isAfter(now.minusSeconds(5)) && actual.isBefore(now.plusSeconds(5)));
     }
 
     @Test
-    public void shouldReturnNull_WhenNoTimestampInFileName_ForOffsetDateTime() {
+    public void shouldReturnCurrentTimestamp_WhenNoTimestampInFileName_ForOffsetDateTime() {
+        final OffsetDateTime now = OffsetDateTime.now();
         final OffsetDateTime actual = FileUtil.getLJAFileTimeStampAsOffsetDateTime("test_file_without_timestamp.xml");
-        assertThat(actual, nullValue());
+        assertNotNull(actual);
+        // Verify it's a valid OffsetDateTime (current timestamp) - within 5 seconds of now
+        assertTrue(actual.isAfter(now.minusSeconds(5)) && actual.isBefore(now.plusSeconds(5)));
     }
 
     @Test

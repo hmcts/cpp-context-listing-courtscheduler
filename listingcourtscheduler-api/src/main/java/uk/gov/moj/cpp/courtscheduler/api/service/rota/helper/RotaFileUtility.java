@@ -6,6 +6,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshot
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshotFileTimeStampAsOffsetDateTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJAFileNamePrefix;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJAFileTimeStampAsOffsetDateTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJAFileTimeStampAsString;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
@@ -120,6 +121,13 @@ public class RotaFileUtility {
                                                                   final byte[] content,
                                                                   final uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService rotaFileProcessHistoryService) {
         logger.info("{}before rotaFileProcessHistoryRepository.save", LOG_PREFIX_DD_15703);
+        
+        // Check if timestamp actually exists in the filename (not generated)
+        final String timeStampAsString = getLJAFileTimeStampAsString(fileName);
+        if (isNull(timeStampAsString)) {
+            logger.warn("Cannot create file process history - invalid file date/time in fileName: {}", fileName);
+            return null;
+        }
         
         final OffsetDateTime fileDateTime = getLJAFileTimeStampAsOffsetDateTime(fileName);
         if (isNull(fileDateTime)) {
