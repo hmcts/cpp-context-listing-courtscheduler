@@ -52,8 +52,8 @@ public class UpdateCourtScheduleConverter implements Converter<JsonObject, Updat
             courtScheduleBuilder.withIsOverbookingAllowed(jsonObject.getBoolean("isOverbookingAllowed"));
         }
 
-        if (jsonObject.containsKey("is_draft")) {
-            courtScheduleBuilder.withIsDraft(jsonObject.getBoolean("is_draft"));
+        if (jsonObject.containsKey("isDraft")) {
+            courtScheduleBuilder.withIsDraft(jsonObject.getBoolean("isDraft"));
         }
 
         return courtScheduleBuilder.build();

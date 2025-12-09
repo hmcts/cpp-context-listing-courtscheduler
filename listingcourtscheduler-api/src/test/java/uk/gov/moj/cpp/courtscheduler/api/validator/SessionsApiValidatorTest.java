@@ -12,7 +12,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
-import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
@@ -562,7 +561,7 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
         assertTrue(result.containsKey("errorMessage"));
-        assertEquals("is_draft can only be supplied when jurisdiction is CROWN", result.getString("errorMessage"));
+        assertEquals("isDraft can only be supplied when jurisdiction is CROWN", result.getString("errorMessage"));
     }
 
     @Test
@@ -588,7 +587,7 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
         assertTrue(result.containsKey("errorMessage"));
-        assertEquals("Cannot change is_draft from false to true for CROWN jurisdiction sessions", result.getString("errorMessage"));
+        assertEquals("Cannot change isDraft from false to true for CROWN jurisdiction sessions", result.getString("errorMessage"));
     }
 
     @Test

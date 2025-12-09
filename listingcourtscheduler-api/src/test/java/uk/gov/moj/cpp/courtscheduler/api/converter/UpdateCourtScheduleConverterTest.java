@@ -55,7 +55,7 @@ class UpdateCourtScheduleConverterTest {
                 .add("courtSession", "AM")
                 .add("panel", "ADULT")
                 .add("jurisdiction", "CROWN")
-                .add("is_draft", true)
+                .add("isDraft", true)
                 .add("maxSlots", 1)
                 .build();
 
