@@ -11,16 +11,16 @@ import javax.json.JsonValue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
+import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
+import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
 public class AddJudiciaryAvailabilityRuleConverter implements Converter<JsonObject, AddJudiciaryAvailabilityRuleRequest> {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
     public static final String RECURRING_TYPE = "recurringType";
-    public static final String REASON = "reason";
     public static final String REPEAT_DAYS = "repeatDays";
     public static final String INDEX = "index";
     public static final String SESSION_TYPE = "sessionType";
@@ -31,10 +31,6 @@ public class AddJudiciaryAvailabilityRuleConverter implements Converter<JsonObje
 
         request.setJudiciaryId(jsonObject.getString("judiciaryId"));
         request.setCourtHouseId(jsonObject.getString("courtHouseId"));
-        final String groupString = jsonObject.getString("availabilityType");
-        // Convert to enum - handle case-insensitive input
-        request.setAvailabilityType(AvailabilityType.valueOf(groupString.toUpperCase()));
-
         request.setStartDate(LocalDate.parse(jsonObject.getString("startDate"), AddJudiciaryAvailabilityRuleConverter.DATE_FORMATTER));
         request.setEndDate(LocalDate.parse(jsonObject.getString("endDate"), AddJudiciaryAvailabilityRuleConverter.DATE_FORMATTER));
 
@@ -46,15 +42,18 @@ public class AddJudiciaryAvailabilityRuleConverter implements Converter<JsonObje
             request.setSessionType(SessionType.valueOf(jsonObject.getString(SESSION_TYPE)));
         }
 
-        if (jsonObject.containsKey(REASON) && !jsonObject.isNull(REASON)) {
-            request.setReason(jsonObject.getString(REASON));
-        }
-
         // Convert repeatDays - support both array of strings and array of objects with index
         if (jsonObject.containsKey(REPEAT_DAYS) && !jsonObject.isNull(REPEAT_DAYS)) {
             final JsonArray repeatDaysArray = jsonObject.getJsonArray(REPEAT_DAYS);
             final List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = this.convertRepeatDays(repeatDaysArray);
             request.setRepeatDays(repeatDays);
+        }
+
+        // Convert unavailabilities array
+        if (jsonObject.containsKey("unavailabilities") && !jsonObject.isNull("unavailabilities")) {
+            final JsonArray unavailabilitiesArray = jsonObject.getJsonArray("unavailabilities");
+            final List<JudiciaryUnavailabilityRequest> unavailabilities = this.convertUnavailabilities(unavailabilitiesArray);
+            request.setUnavailabilities(unavailabilities);
         }
 
         return request;
@@ -81,6 +80,34 @@ public class AddJudiciaryAvailabilityRuleConverter implements Converter<JsonObje
         }
 
         return repeatDays;
+    }
+
+    private List<JudiciaryUnavailabilityRequest> convertUnavailabilities(final JsonArray unavailabilitiesArray) {
+        final List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
+
+        for (JsonValue jsonValue : unavailabilitiesArray) {
+            if (jsonValue.getValueType() == javax.json.JsonValue.ValueType.OBJECT) {
+                final JsonObject unavailabilityObject = (JsonObject) jsonValue;
+                final JudiciaryUnavailabilityRequest unavailability = new JudiciaryUnavailabilityRequest();
+                
+                if (unavailabilityObject.containsKey("startDate") && !unavailabilityObject.isNull("startDate")) {
+                    unavailability.setStartDate(LocalDate.parse(unavailabilityObject.getString("startDate"), DATE_FORMATTER));
+                }
+                
+                if (unavailabilityObject.containsKey("endDate") && !unavailabilityObject.isNull("endDate")) {
+                    unavailability.setEndDate(LocalDate.parse(unavailabilityObject.getString("endDate"), DATE_FORMATTER));
+                }
+                
+                if (unavailabilityObject.containsKey("reason") && !unavailabilityObject.isNull("reason")) {
+                    final String reasonString = unavailabilityObject.getString("reason");
+                    unavailability.setReason(UnavailabilityReason.valueOf(reasonString));
+                }
+                
+                unavailabilities.add(unavailability);
+            }
+        }
+
+        return unavailabilities;
     }
 }
 

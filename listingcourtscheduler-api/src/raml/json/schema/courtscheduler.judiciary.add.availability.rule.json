@@ -4,10 +4,6 @@
   "properties": {
     "judiciaryId": {"$ref": "#/definitions/uuid"},
     "courtHouseId": {"$ref": "#/definitions/uuid"},
-    "availabilityType": {
-      "type": "string",
-      "enum": ["AVAILABLE", "UNAVAILABLE"]
-    },
     "startDate": {"type": "string", "format": "date"},
     "endDate": {"type": "string", "format": "date"},
     "recurringType": {
@@ -40,9 +36,23 @@
         ]
       }
     },
-    "reason": {"type": "string"}
+    "unavailabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "startDate": {"type": "string", "format": "date"},
+          "endDate": {"type": "string", "format": "date"},
+          "reason": {
+            "type": "string",
+            "enum": ["TRAINING", "ANNUAL_LEAVE", "OFFICIAL_BUSINESS", "SICK_LEAVE"]
+          }
+        },
+        "required": ["startDate", "endDate"]
+      }
+    }
   },
-  "required": ["judiciaryId", "courtHouseId", "availabilityType", "startDate", "endDate", "repeatDays"],
+  "required": ["judiciaryId", "courtHouseId", "startDate", "endDate", "repeatDays"],
   "definitions": {
     "uuid": {
       "type": "string",

@@ -9,6 +9,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUser
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataCourtRoomSessionAllocations;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciarySpecialisms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
@@ -66,6 +67,7 @@ public abstract class AbstractIT extends RestClient {
         setupUserAsSystemUser(SYSTEM_USER_ID.toString());
         stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
         stubGetReferenceDataJudiciaries("referencedata.judiciaries.json");
+        stubGetReferenceDataJudiciarySpecialisms("referencedata.judiciary-specialisms.json");
         setupReferenceDataStubs();
     }
 

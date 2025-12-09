@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
 import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 
 import javax.json.Json;
@@ -31,7 +30,6 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
                 .add("courtHouseId", courtHouseId)
-                .add("availabilityType", AvailabilityType.AVAILABLE.name())
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
                 .add("repeatDays", Json.createArrayBuilder()
@@ -44,7 +42,6 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         assertNotNull(result);
         assertThat(result.getJudiciaryId(), is(judiciaryId));
         assertThat(result.getCourtHouseId(), is(courtHouseId));
-        assertThat(result.getAvailabilityType(), is(AvailabilityType.AVAILABLE));
         assertThat(result.getStartDate().toString(), is("2026-01-01"));
         assertThat(result.getEndDate().toString(), is("2026-01-31"));
         assertThat(result.getRepeatDays().size(), is(2));
@@ -62,7 +59,6 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
                 .add("courtHouseId", courtHouseId)
-                .add("availabilityType", AvailabilityType.AVAILABLE.name())
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-07-31")
                 .add("recurringType", RecurringType.MONTHLY.name())
@@ -95,10 +91,8 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
                 .add("courtHouseId", courtHouseId)
-                .add("availabilityType", AvailabilityType.UNAVAILABLE.name())
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
-                .add("reason", "Holiday")
                 .add("repeatDays", Json.createArrayBuilder()
                         .add("Monday")
                         .add(Json.createObjectBuilder()
@@ -109,8 +103,6 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getAvailabilityType(), is(AvailabilityType.UNAVAILABLE));
-        assertThat(result.getReason(), is("Holiday"));
         assertThat(result.getRepeatDays().size(), is(2));
         assertThat(result.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.MONDAY));
         assertThat(result.getRepeatDays().get(0).getIndex(), is(nullValue()));
@@ -126,7 +118,6 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
                 .add("courtHouseId", courtHouseId)
-                .add("availabilityType", AvailabilityType.AVAILABLE.name())
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
                 .add("repeatDays", Json.createArrayBuilder().add("Monday"))
@@ -136,7 +127,6 @@ class AddJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRecurringType(), is(nullValue()));
-        assertThat(result.getReason(), is(nullValue()));
     }
 
     @Test
@@ -147,7 +137,6 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
                 .add("courtHouseId", courtHouseId)
-                .add("availabilityType", AvailabilityType.AVAILABLE.name())
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
                 .add("repeatDays", Json.createArrayBuilder()

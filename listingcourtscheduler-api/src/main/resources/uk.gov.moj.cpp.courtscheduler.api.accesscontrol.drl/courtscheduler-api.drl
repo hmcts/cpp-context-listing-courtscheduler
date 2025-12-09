@@ -106,6 +106,15 @@ rule "API - Action - courtscheduler.judiciary.find.availability"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.judiciary.find.availability.rule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.judiciary.find.availability.rule");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.judiciary.delete.availability.rule"
   when
     $outcome: Outcome();

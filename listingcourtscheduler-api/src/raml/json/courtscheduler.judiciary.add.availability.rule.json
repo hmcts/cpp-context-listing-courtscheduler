@@ -1,7 +1,6 @@
 {
   "judiciaryId": "123e4567-e89b-12d3-a456-426614174000",
   "courtHouseId": "223e4567-e89b-12d3-a456-426614174000",
-  "availabilityType": "AVAILABLE",
   "startDate": "2026-01-01",
   "endDate": "2026-01-31",
   "recurringType": "MONTHLY",
@@ -15,6 +14,12 @@
       "index": 3
     }
   ],
-  "reason": "Regular availability"
+  "unavailabilities": [
+    {
+      "startDate": "2026-01-10",
+      "endDate": "2026-01-15",
+      "reason": "ANNUAL_LEAVE"
+    }
+  ]
 }
 

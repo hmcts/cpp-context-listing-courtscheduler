@@ -23,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConver
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
+import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeRecalculateAvailabilityConverter;
@@ -33,12 +34,16 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRe
 import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.DeleteJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciaryAvailabilityRuleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -158,9 +163,13 @@ public class CourtSchedulerApi {
     @Inject
     private FindJudiciaryAvailabilityConverter findJudiciaryAvailabilityConverter;
     @Inject
+    private FindJudiciaryAvailabilityRuleConverter findJudiciaryAvailabilityRuleConverter;
+    @Inject
     private JudiciaryAvailabilityService judiciaryAvailabilityService;
     @Inject
     private JudiciaryAvailabilityRuleApiValidator judiciaryAvailabilityRuleApiValidator;
+    @Inject
+    private FindJudiciaryAvailabilityRuleResponseConverter findJudiciaryAvailabilityRuleResponseConverter;
 
 
     @Handles("courtscheduler.create")
@@ -582,6 +591,21 @@ public class CourtSchedulerApi {
         judiciaryAvailabilityService.deleteJudiciaryAvailabilityRule(request);
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.delete.availability.rule").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.judiciary.find.availability.rule")
+    public JsonEnvelope findJudiciaryAvailabilityRules(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.find.availability.rule requested : {}", requestFromApiJsonObject);
+        
+        FindJudiciaryAvailabilityRuleRequest request = findJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+        FindJudiciaryAvailabilityRuleResponse response = judiciaryAvailabilityService.findJudiciaryAvailabilityRules(request, requester);
+
+        final JsonObject responseObject = findJudiciaryAvailabilityRuleResponseConverter.convert(response);
+
+        return enveloper
+                .withMetadataFrom(envelope, "courtscheduler.judiciary.find.availability.rule")
+                .apply(responseObject);
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {

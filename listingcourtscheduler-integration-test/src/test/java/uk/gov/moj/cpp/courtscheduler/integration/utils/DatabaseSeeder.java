@@ -4,7 +4,10 @@ package uk.gov.moj.cpp.courtscheduler.integration.utils;
 import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
+import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
+import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -83,11 +86,15 @@ public class DatabaseSeeder {
     private static final String JUDICIARY_AVAILABILITY_RULE_DELETE_SQL = "TRUNCATE TABLE judiciary_availability_rule CASCADE";
 
     private static final String JUDICIARY_AVAILABILITY_RULE_INSERT_SQL = "INSERT INTO judiciary_availability_rule (" +
-            "id, judiciary_id, court_house_id, group_type, from_date, to_date, recurring_type, reason, created_on, updated_on) " +
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+            "id, judiciary_id, court_house_id, from_date, to_date, recurring_type,  session_type, created_on, updated_on) " +
+            "VALUES(?, ?, ?, ?, ?, ?, 'AD', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
 
-    private static final String JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL = "INSERT INTO judiciary_availability_rule_repeat_days (" +
+    private static final String JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL = "INSERT INTO judiciary_availability_rule_repeat_day (" +
             "rule_id, day_of_week, day_index) VALUES(?, ?, ?)";
+
+    private static final String JUDICIARY_UNAVAILABILITY_INSERT_SQL = "INSERT INTO judiciary_unavailability (" +
+            "id, availability_rule_id, from_date, to_date, reason, created_on, updated_on) " +
+            "VALUES(?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
 
 
     private static final String COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL = "UPDATE court_schedule SET court_listing_profile_id = null WHERE oucode = ?";
@@ -401,44 +408,58 @@ public class DatabaseSeeder {
             final String ruleId,
             final String judiciaryId,
             final String courtHouseId,
-            final String group,
+            final List<JudiciaryUnavailabilityRequest> unavailabilities,
             final LocalDate fromDate,
             final LocalDate toDate,
-            final String recurringType,
-            final String reason,
-            final List<String> repeatDays) throws SQLException {
+            final RecurringType recurringType,
+            final List<AvailabilityDayOfWeek> repeatDays) throws SQLException {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement ruleStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_INSERT_SQL);
-                 final PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL)) {
+                 final PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL);
+                 final PreparedStatement unavailabilityStmt = connection.prepareStatement(JUDICIARY_UNAVAILABILITY_INSERT_SQL)) {
 
-                // Insert rule
+                // Always insert the rule (availability_type column removed)
                 ruleStmt.setString(1, ruleId);
                 ruleStmt.setString(2, judiciaryId);
                 ruleStmt.setString(3, courtHouseId);
-                ruleStmt.setString(4, group);
-                ruleStmt.setDate(5, Date.valueOf(fromDate));
-                ruleStmt.setDate(6, Date.valueOf(toDate));
+                ruleStmt.setDate(4, Date.valueOf(fromDate));
+                ruleStmt.setDate(5, Date.valueOf(toDate));
                 if (recurringType != null) {
-                    ruleStmt.setString(7, recurringType);
+                    ruleStmt.setString(6, recurringType.name());
                 } else {
-                    ruleStmt.setNull(7, Types.VARCHAR);
+                    ruleStmt.setNull(6, Types.VARCHAR);
                 }
-                if (reason != null) {
-                    ruleStmt.setString(8, reason);
-                } else {
-                    ruleStmt.setNull(8, Types.VARCHAR);
-                }
+
                 ruleStmt.executeUpdate();
 
                 // Insert repeat days
-                for (String dayOfWeek : repeatDays) {
+                for (AvailabilityDayOfWeek dayOfWeek : repeatDays) {
                     repeatDaysStmt.setString(1, ruleId);
-                    repeatDaysStmt.setString(2, dayOfWeek);
+                    repeatDaysStmt.setString(2, dayOfWeek.name());
                     repeatDaysStmt.setInt(3, 0); // Default index is 0
                     repeatDaysStmt.addBatch();
                 }
                 repeatDaysStmt.executeBatch();
+
+                // If availabilityType is UNAVAILABLE, create a corresponding JudiciaryUnavailability record
+                if (unavailabilities != null && !unavailabilities.isEmpty()) {
+
+                    for(final JudiciaryUnavailabilityRequest request : unavailabilities) {
+
+                        final String unavailabilityId = java.util.UUID.randomUUID().toString();
+                        unavailabilityStmt.setString(1, unavailabilityId);
+                        unavailabilityStmt.setString(2, ruleId);
+                        unavailabilityStmt.setDate(3, Date.valueOf(request.getStartDate()));
+                        unavailabilityStmt.setDate(4, Date.valueOf(request.getEndDate()));
+                        if (request.getReason() != null) {
+                            unavailabilityStmt.setString(5, request.getReason().name());
+                        } else {
+                            unavailabilityStmt.setNull(5, Types.VARCHAR);
+                        }
+                        unavailabilityStmt.executeUpdate();
+                    }
+                }
 
                 connection.commit();
             } catch (SQLException e) {
@@ -455,27 +476,23 @@ public class DatabaseSeeder {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement ruleStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_INSERT_SQL);
-                 final PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL)) {
+                 final PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL);
+                 final PreparedStatement unavailabilityStmt = connection.prepareStatement(JUDICIARY_UNAVAILABILITY_INSERT_SQL)) {
 
                 int processedCount = 0;
                 for (RuleData rule : rules) {
-                    // Insert rule
+                    // Insert rule (availability_type column removed)
                     ruleStmt.setString(1, rule.ruleId);
                     ruleStmt.setString(2, rule.judiciaryId);
                     ruleStmt.setString(3, rule.courtHouseId);
-                    ruleStmt.setString(4, rule.availabilityType);
-                    ruleStmt.setDate(5, Date.valueOf(rule.fromDate));
-                    ruleStmt.setDate(6, Date.valueOf(rule.toDate));
+                    ruleStmt.setDate(4, Date.valueOf(rule.fromDate));
+                    ruleStmt.setDate(5, Date.valueOf(rule.toDate));
                     if (rule.recurringType != null) {
-                        ruleStmt.setString(7, rule.recurringType);
+                        ruleStmt.setString(6, rule.recurringType);
                     } else {
-                        ruleStmt.setNull(7, Types.VARCHAR);
+                        ruleStmt.setNull(6, Types.VARCHAR);
                     }
-                    if (rule.reason != null) {
-                        ruleStmt.setString(8, rule.reason);
-                    } else {
-                        ruleStmt.setNull(8, Types.VARCHAR);
-                    }
+
                     ruleStmt.addBatch();
 
                     // Prepare repeat days for batch
@@ -486,13 +503,33 @@ public class DatabaseSeeder {
                         repeatDaysStmt.addBatch();
                     }
 
+                    // If availabilityType is UNAVAILABLE, create a corresponding JudiciaryUnavailability record
+                    if (rule.unavailabilities != null && !rule.unavailabilities.isEmpty()) {
+                        for(final JudiciaryUnavailabilityRequest request : rule.unavailabilities) {
+                            final String unavailabilityId = java.util.UUID.randomUUID().toString();
+                            unavailabilityStmt.setString(1, unavailabilityId);
+                            unavailabilityStmt.setString(2, rule.ruleId);
+                            unavailabilityStmt.setDate(3, Date.valueOf(request.getStartDate()));
+                            unavailabilityStmt.setDate(4, Date.valueOf(request.getEndDate()));
+                            if (request.getReason() != null) {
+                                unavailabilityStmt.setString(5, request.getReason().name());
+                            } else {
+                                unavailabilityStmt.setNull(5, Types.VARCHAR);
+                            }
+                            unavailabilityStmt.addBatch();
+                        }
+                    }
+
                     processedCount++;
                     // Execute in chunks to avoid memory issues
                     if (processedCount % BATCH_SIZE == 0) {
                         ruleStmt.executeBatch();
                         repeatDaysStmt.executeBatch();
+                        unavailabilityStmt.executeBatch();
                         connection.commit();
                         connection.setAutoCommit(false); // Re-enable for next chunk
+                        // Clear unavailability batch for next chunk
+                        unavailabilityStmt.clearBatch();
                     }
                 }
 
@@ -500,6 +537,7 @@ public class DatabaseSeeder {
                 if (processedCount % BATCH_SIZE != 0) {
                     ruleStmt.executeBatch();
                     repeatDaysStmt.executeBatch();
+                    unavailabilityStmt.executeBatch();
                 }
                 connection.commit();
             } catch (SQLException e) {
@@ -513,78 +551,26 @@ public class DatabaseSeeder {
         final String ruleId;
         final String judiciaryId;
         final String courtHouseId;
-        final String availabilityType;
+        final List<JudiciaryUnavailabilityRequest> unavailabilities;
         final LocalDate fromDate;
         final LocalDate toDate;
         final String recurringType;
-        final String reason;
         final List<String> repeatDays;
 
-        public RuleData(String ruleId, String judiciaryId, String courtHouseId, String availabilityType,
-                       LocalDate fromDate, LocalDate toDate, String recurringType, String reason,
-                       List<String> repeatDays) {
+        public RuleData(String ruleId, String judiciaryId, String courtHouseId, List<JudiciaryUnavailabilityRequest> unavailabilities,
+                        LocalDate fromDate, LocalDate toDate, String recurringType,
+                        List<String> repeatDays) {
             this.ruleId = ruleId;
             this.judiciaryId = judiciaryId;
             this.courtHouseId = courtHouseId;
-            this.availabilityType = availabilityType;
+            this.unavailabilities = unavailabilities;
             this.fromDate = fromDate;
             this.toDate = toDate;
             this.recurringType = recurringType;
-            this.reason = reason;
             this.repeatDays = repeatDays;
         }
     }
 
-    public void insertJudiciaryAvailabilityRuleWithIndex(
-            final String ruleId,
-            final String judiciaryId,
-            final String courtHouseId,
-            final String group,
-            final LocalDate fromDate,
-            final LocalDate toDate,
-            final String recurringType,
-            final String reason,
-            final List<Pair<String, Integer>> repeatDaysWithIndex) throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement ruleStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_INSERT_SQL);
-                 final PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL)) {
-
-                // Insert rule
-                ruleStmt.setString(1, ruleId);
-                ruleStmt.setString(2, judiciaryId);
-                ruleStmt.setString(3, courtHouseId);
-                ruleStmt.setString(4, group);
-                ruleStmt.setDate(5, Date.valueOf(fromDate));
-                ruleStmt.setDate(6, Date.valueOf(toDate));
-                if (recurringType != null) {
-                    ruleStmt.setString(7, recurringType);
-                } else {
-                    ruleStmt.setNull(7, Types.VARCHAR);
-                }
-                if (reason != null) {
-                    ruleStmt.setString(8, reason);
-                } else {
-                    ruleStmt.setNull(8, Types.VARCHAR);
-                }
-                ruleStmt.executeUpdate();
-
-                // Insert repeat days with index
-                for (Pair<String, Integer> dayWithIndex : repeatDaysWithIndex) {
-                    repeatDaysStmt.setString(1, ruleId);
-                    repeatDaysStmt.setString(2, dayWithIndex.getFirst());
-                    repeatDaysStmt.setInt(3, dayWithIndex.getSecond());
-                    repeatDaysStmt.addBatch();
-                }
-                repeatDaysStmt.executeBatch();
-
-                connection.commit();
-            } catch (SQLException e) {
-                connection.rollback();
-                throw e;
-            }
-        }
-    }
 
     public void cleanDb() throws SQLException {
         cleanProvisionalBookingTable();

@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration.performance;
 
+import static java.util.Arrays.asList;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -9,15 +10,19 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule_.unavailabilities;
 
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.integration.AbstractIT;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder.RuleData;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,11 +62,10 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     randomUUID().toString(),
                     judiciaryId,
                     courtHouseId,
-                    "Available",
+                    Collections.emptyList(),
                     availableStart1,
                     availableEnd1,
                     "Weekly",
-                    null,
                     List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             ));
 
@@ -71,11 +75,10 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     randomUUID().toString(),
                     judiciaryId,
                     courtHouseId,
-                    "Available",
+                    Collections.emptyList(),
                     availableStart2,
                     availableEnd2,
                     "Weekly",
-                    null,
                     List.of("Monday", "Tuesday", "Wednesday")
             ));
 
@@ -85,26 +88,27 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     randomUUID().toString(),
                     judiciaryId,
                     courtHouseId,
-                    "Available",
+                    Collections.emptyList(),
                     availableStart3,
                     availableEnd3,
                     "Weekly",
-                    null,
                     List.of("Thursday", "Friday")
             ));
 
             // Create at least 1 unavailable rule (but not affecting the query range)
             final LocalDate unavailableStart = LocalDate.of(2026, 1, 20);
             final LocalDate unavailableEnd = LocalDate.of(2026, 1, 25);
+            final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
+            List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
+            unavailabilities.add(unavail);
             allRules.add(new RuleData(
                     randomUUID().toString(),
                     judiciaryId,
                     courtHouseId,
-                    "Unavailable",
+                    unavailabilities,
                     unavailableStart,
                     unavailableEnd,
                     "Weekly",
-                    "Holiday",
                     List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             ));
         }
@@ -121,11 +125,10 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     randomUUID().toString(),
                     judiciaryId,
                     courtHouseId,
-                    "Available",
+                    new ArrayList<>(),
                     availableStart1,
                     availableEnd1,
                     "Weekly",
-                    null,
                     List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             ));
 
@@ -135,11 +138,10 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     randomUUID().toString(),
                     judiciaryId,
                     courtHouseId,
-                    "Available",
+                    new ArrayList<>(),
                     availableStart2,
                     availableEnd2,
                     "Weekly",
-                    null,
                     List.of("Monday", "Tuesday", "Wednesday")
             ));
 
@@ -149,24 +151,24 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     randomUUID().toString(),
                     judiciaryId,
                     courtHouseId,
-                    "Available",
+                    new ArrayList<>(),
                     availableStart3,
                     availableEnd3,
                     "Weekly",
-                    null,
                     List.of("Thursday", "Friday")
             ));
-
+            final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
+            List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
+            unavailabilities.add(unavail);
             // Create 1 unavailable rule that makes them unavailable during the query range
             allRules.add(new RuleData(
                     randomUUID().toString(),
                     judiciaryId,
                     courtHouseId,
-                    "Unavailable",
+                    unavailabilities,
                     queryStartDate,
                     queryEndDate,
                     "Weekly",
-                    "Unavailable during query period",
                     List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             ));
         }

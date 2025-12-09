@@ -4,14 +4,20 @@ import static java.util.UUID.randomUUID;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
+import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
+import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryAvailabilityRuleRepository;
+import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -21,11 +27,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +44,10 @@ public class JudiciaryAvailabilityService {
 
     @Inject
     private JudiciaryAvailabilityRuleRepository repository;
+    @Inject
+    private ReferenceDataService referenceDataService;
+    @Inject
+    private EntityManager entityManager;
 
     public void addJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Adding judiciary availability rule: {}", request);
@@ -44,12 +56,10 @@ public class JudiciaryAvailabilityService {
         entity.setId(randomUUID().toString());
         entity.setJudiciaryId(request.getJudiciaryId());
         entity.setCourtHouseId(request.getCourtHouseId());
-        entity.setAvailabilityType(request.getAvailabilityType());
         entity.setFromDate(request.getStartDate());
         entity.setToDate(request.getEndDate());
         entity.setRecurringType(request.getRecurringType());
-        entity.setReason(request.getReason());
-        entity.setSessionType(request.getSessionType());
+        entity.setSessionType(request.getSessionType() != null ? request.getSessionType() : SessionType.AD);
 
         // Convert domain repeat days to entity repeat days
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
@@ -64,9 +74,29 @@ public class JudiciaryAvailabilityService {
             }
         }
         entity.setRepeatDays(repeatDays);
+        entity.setUnavailabilities(new ArrayList<>());
 
+        // Create unavailability records from the unavailabilities array
+        if (request.getUnavailabilities() != null && !request.getUnavailabilities().isEmpty()) {
+            for (uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest unavailabilityRequest : request.getUnavailabilities()) {
+                final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability unavailability = 
+                        new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability();
+                unavailability.setId(randomUUID().toString());
+                unavailability.setRule(entity);
+                unavailability.setFromDate(unavailabilityRequest.getStartDate());
+                unavailability.setToDate(unavailabilityRequest.getEndDate());
+                unavailability.setReason(unavailabilityRequest.getReason());
+                
+                // Add to entity - will be persisted via cascade when entity is saved
+                entity.getUnavailabilities().add(unavailability);
+                LOGGER.info("Created judiciary unavailability with id: {}", unavailability.getId());
+            }
+        }
+
+        // Save the rule - unavailabilities will be persisted automatically via cascade
         repository.save(entity);
-        LOGGER.info("Saved judiciary availability rule with id: {}", entity.getId());
+        LOGGER.info("Saved judiciary availability rule with id: {} and {} unavailabilities", 
+                entity.getId(), entity.getUnavailabilities().size());
     }
 
     public void deleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
@@ -105,17 +135,130 @@ public class JudiciaryAvailabilityService {
             final String judiciaryId = entry.getKey();
             final List<JudiciaryAvailabilityRule> judiciaryRules = entry.getValue();
 
+            final Set<LocalDate> unavailabilityDates = new HashSet<>();
             // Compile available days for this judiciary
-            final Set<String> compiledAvailableDays = compileAvailableDays(judiciaryRules, request.getStartDate(), request.getEndDate());
+            final Set<String> compiledAvailableDays = compileAvailableDays(judiciaryRules, request.getStartDate(), request.getEndDate(), unavailabilityDates);
 
             // Check if any date in the query range matches the compiled days
-            if (hasMatchingDates(request.getStartDate(), request.getEndDate(), compiledAvailableDays)) {
+            if (hasMatchingDates(request.getStartDate(), request.getEndDate(), compiledAvailableDays, unavailabilityDates)) {
                 availableJudiciaries.add(judiciaryId);
             }
         }
 
         LOGGER.info("Found {} available judiciaries", availableJudiciaries.size());
         return new FindJudiciaryAvailabilityResponse(availableJudiciaries);
+    }
+
+    public FindJudiciaryAvailabilityRuleResponse findJudiciaryAvailabilityRules(final FindJudiciaryAvailabilityRuleRequest request, final Requester requester) {
+        LOGGER.info("Finding judiciary availability rules for: {}", request);
+
+        // Get default pagination values if not provided
+        final int pageSize = request.getPageSize() != null ? request.getPageSize() : 20;
+        final int pageNumber = request.getPageNumber() != null ? request.getPageNumber() : 1;
+        final boolean withJudiciaries = Boolean.TRUE.equals(request.getWithJudiciaries());
+        final boolean withSpecialisms = Boolean.TRUE.equals(request.getWithSpecialisms());
+
+        // Find rules with pagination
+        final java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = repository.findRulesByDateRangeWithPagination(
+                request.getStartDate(),
+                request.getEndDate(),
+                request.getCourtHouseId(),
+                request.getJudiciaryId(),
+                pageSize,
+                pageNumber
+        );
+
+        final int totalCount = result.getKey();
+        final List<JudiciaryAvailabilityRule> rules = result.getValue();
+
+        LOGGER.info("Found {} rules (total: {}) for page {} with page size {}", rules.size(), totalCount, pageNumber, pageSize);
+
+        // Convert entities to domain response objects
+        final List<JudiciaryAvailabilityRuleResponse> ruleResponses = rules.stream()
+                .map(this::convertToResponse)
+                .toList();
+
+        final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse(ruleResponses, totalCount, pageNumber, pageSize);
+
+        // Always initialize judiciaries list (empty if not requested)
+        final List<Judiciary> judiciaries = new ArrayList<>();
+        
+        // Fetch judiciaries if requested
+        if (withJudiciaries && requester != null) {
+            // Extract unique judiciary IDs from rules
+            final Set<String> judiciaryIds = rules.stream()
+                    .map(JudiciaryAvailabilityRule::getJudiciaryId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            if (!judiciaryIds.isEmpty()) {
+                final List<String> judiciaryIdList = new ArrayList<>(judiciaryIds);
+                final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesByIds(judiciaryIdList, requester);
+                judiciaries.addAll(fetchedJudiciaries);
+                LOGGER.info("Fetched {} judiciaries for {} unique IDs", fetchedJudiciaries.size(), judiciaryIds.size());
+            }
+        }
+        
+        response.setJudiciaries(judiciaries);
+
+        // Always initialize specialisms list (empty if not requested)
+        final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism> specialisms = new ArrayList<>();
+        
+        // Fetch specialisms if requested
+        if (withSpecialisms && requester != null) {
+            // Extract unique judiciary IDs from rules
+            final Set<String> judiciaryIds = rules.stream()
+                    .map(JudiciaryAvailabilityRule::getJudiciaryId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            if (!judiciaryIds.isEmpty()) {
+                final List<String> judiciaryIdList = new ArrayList<>(judiciaryIds);
+                final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism> fetchedSpecialisms = referenceDataService.getSpecialismsByJudiciaryIds(judiciaryIdList, requester);
+                specialisms.addAll(fetchedSpecialisms);
+                LOGGER.info("Fetched {} specialisms for {} unique IDs", fetchedSpecialisms.size(), judiciaryIds.size());
+            }
+        }
+        
+        response.setSpecialisms(specialisms);
+        return response;
+    }
+
+    private JudiciaryAvailabilityRuleResponse convertToResponse(final JudiciaryAvailabilityRule entity) {
+        final JudiciaryAvailabilityRuleResponse response = new JudiciaryAvailabilityRuleResponse();
+        response.setId(entity.getId());
+        response.setJudiciaryId(entity.getJudiciaryId());
+        response.setCourtHouseId(entity.getCourtHouseId());
+        response.setStartDate(entity.getFromDate());
+        response.setEndDate(entity.getToDate());
+        response.setRecurringType(entity.getRecurringType());
+        response.setSessionType(entity.getSessionType());
+
+        // Convert entity repeat days to domain repeat days
+        if (entity.getRepeatDays() != null && !entity.getRepeatDays().isEmpty()) {
+            final List<JudiciaryAvailabilityRuleRepeatDay> domainRepeatDays = new ArrayList<>();
+            for (uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay entityDay : entity.getRepeatDays()) {
+                // Convert 0 index to null (0 means no index in database)
+                final Integer index = entityDay.getIndex() != null && entityDay.getIndex() > 0 ? entityDay.getIndex() : null;
+                domainRepeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(entityDay.getDayOfWeek(), index));
+            }
+            response.setRepeatDays(domainRepeatDays);
+        }
+
+        // Convert entity unavailabilities to domain unavailabilities
+        if (entity.getUnavailabilities() != null && !entity.getUnavailabilities().isEmpty()) {
+            final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse> domainUnavailabilities = new ArrayList<>();
+            for (uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability entityUnavailability : entity.getUnavailabilities()) {
+                domainUnavailabilities.add(new uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse(
+                        entityUnavailability.getFromDate(),
+                        entityUnavailability.getToDate(),
+                        entityUnavailability.getReason()
+                ));
+            }
+            response.setUnavailabilities(domainUnavailabilities);
+        }
+
+        return response;
     }
 
     /**
@@ -128,17 +271,20 @@ public class JudiciaryAvailabilityService {
     private Set<String> compileAvailableDays(
             final List<JudiciaryAvailabilityRule> rules,
             final LocalDate queryStartDate,
-            final LocalDate queryEndDate) {
+            final LocalDate queryEndDate, final Set<LocalDate> unavailabilityDays) {
 
         final Set<String> availableDays = new HashSet<>();
 
         for (JudiciaryAvailabilityRule rule : rules) {
+            // Always add days from the rule (rule defines availability)
             final Set<String> ruleDays = extractDaysFromRule(rule, queryStartDate, queryEndDate);
+            availableDays.addAll(ruleDays);
 
-            if (AvailabilityType.AVAILABLE == rule.getAvailabilityType()) {
-                availableDays.addAll(ruleDays);
-            } else if (AvailabilityType.UNAVAILABLE == rule.getAvailabilityType()) {
-                availableDays.removeAll(ruleDays);
+            // Remove days that are marked as unavailable
+            if (rule.getUnavailabilities() != null && !rule.getUnavailabilities().isEmpty()) {
+                final Set<LocalDate> unavailableDays = extractDaysFromUnavailabilities(
+                        rule.getUnavailabilities(), queryStartDate, queryEndDate);
+                unavailabilityDays.addAll(unavailableDays);
             }
         }
 
@@ -181,6 +327,41 @@ public class JudiciaryAvailabilityService {
             } else {
                 // Default: add all matching days
                 addDaysForDateRange(days, dayName, effectiveStart, effectiveEnd);
+            }
+        }
+
+        return days;
+    }
+
+    /**
+     * Extract days from unavailabilities (all days within each unavailability date range).
+     */
+    private Set<LocalDate> extractDaysFromUnavailabilities(
+            final List<uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability> unavailabilities,
+            final LocalDate queryStartDate,
+            final LocalDate queryEndDate) {
+
+        final Set<LocalDate> days = new HashSet<>();
+
+        for (uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability unavailability : unavailabilities) {
+            // Determine the effective date range (intersection of unavailability dates and query dates)
+            final LocalDate effectiveStart = unavailability.getFromDate().isAfter(queryStartDate) 
+                    ? unavailability.getFromDate() 
+                    : queryStartDate;
+            final LocalDate effectiveEnd = unavailability.getToDate().isBefore(queryEndDate) 
+                    ? unavailability.getToDate() 
+                    : queryEndDate;
+
+            // If there's no overlap, skip this unavailability
+            if (effectiveStart.isAfter(effectiveEnd)) {
+                continue;
+            }
+
+            // Add all days within the unavailability date range
+            LocalDate current = effectiveStart;
+            while (!current.isAfter(effectiveEnd)) {
+                days.add(current);
+                current = current.plusDays(1);
             }
         }
 
@@ -271,13 +452,18 @@ public class JudiciaryAvailabilityService {
     /**
      * Check if any date in the query range has a day of week that matches the compiled available days.
      */
-    private boolean hasMatchingDates(final LocalDate start, final LocalDate end, final Set<String> availableDays) {
+    private boolean hasMatchingDates(final LocalDate start, final LocalDate end, final Set<String> availableDays, final Set<LocalDate> unavailabilityDates) {
         if (availableDays.isEmpty()) {
             return false;
         }
 
         LocalDate current = start;
         while (!current.isAfter(end)) {
+
+            if(unavailabilityDates.contains(current)){
+                current = current.plusDays(1);
+                continue;
+            }
             final DayOfWeek dayOfWeek = current.getDayOfWeek();
             // Check if the day name matches (stored as "Monday", "Tuesday", etc.)
             final String dayName = dayOfWeek.name().substring(0, 1) + dayOfWeek.name().substring(1).toLowerCase();

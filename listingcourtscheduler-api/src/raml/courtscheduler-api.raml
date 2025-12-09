@@ -640,11 +640,15 @@ protocols: [ HTTP, HTTPS ]
 
   get:
     description: |
-      Find available judiciaries based on date range and rules
+      Find available judiciaries based on date range and rules, or find availability rules from the database with pagination.
+      The response type determines which operation is performed.
       ...
       (mapping):
           responseType: application/vnd.courtscheduler.judiciary.find.availability+json
           name: courtscheduler.judiciary.find.availability
+        (mapping):
+            responseType: application/vnd.courtscheduler.judiciary.find.availability.rule+json
+            name: courtscheduler.judiciary.find.availability.rule
       ...
     queryParameters:
       startDate:
@@ -663,12 +667,31 @@ protocols: [ HTTP, HTTPS ]
         description: Optional judiciary ID to filter by
         type: string
         required: false
+      pageSize:
+        description: Optional page size for pagination. Default is 20
+        type: integer
+        required: false
+      pageNumber:
+        description: Optional page number for pagination. Default is 1
+        type: integer
+        required: false
+      withJudiciaries:
+        description: Optional flag to include judiciaries in response. Default is true
+        type: boolean
+        required: false
+      withSpecialisms:
+        description: Optional flag to include specialisms in response. Default is true
+        type: boolean
+        required: false
     responses:
       200:
         body:
           application/vnd.courtscheduler.judiciary.find.availability+json:
             schema: !include json/schema/courtscheduler.find.judiciary.availability.json
             example: !include json/courtscheduler.find.judiciary.availability.json
+          application/vnd.courtscheduler.judiciary.find.availability.rule+json:
+            schema: !include json/schema/courtscheduler.find.judiciary.availability.rule.json
+            example: !include json/courtscheduler.find.judiciary.availability.rule.json
 
   delete:
     description: |

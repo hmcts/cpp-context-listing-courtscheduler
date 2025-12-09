@@ -28,6 +28,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
@@ -197,5 +198,94 @@ class ReferenceDataServiceTest {
                 CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND.code(),
                 saved.getErrorCode()
         );
+    }
+
+    @Test
+    void shouldGetSpecialismsByJudiciaryIds() {
+        final String judiciaryId1 = randomUUID().toString();
+        final String judiciaryId2 = randomUUID().toString();
+
+        // Create response payload with new structure: { "judiciarySpecialisms": [{ "judiciaryId": "...", "specialisms": [...] }, ...] }
+        // The specialisms are enum strings in an array
+        final JsonObject responsePayload = Json.createObjectBuilder()
+                .add("judiciarySpecialisms", Json.createArrayBuilder()
+                        .add(Json.createObjectBuilder()
+                                .add("judiciaryId", judiciaryId1)
+                                .add("specialisms", Json.createArrayBuilder()
+                                        .add("MURDER")
+                                        .add("ATTEMPTED_MURDER")))
+                        .add(Json.createObjectBuilder()
+                                .add("judiciaryId", judiciaryId2)
+                                .add("specialisms", Json.createArrayBuilder()
+                                        .add("SEXUAL_OFFENCE"))))
+                .build();
+
+        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
+                .withId(randomUUID())
+                .withName("referencedata.query.judiciary-specialisms")
+                .build(), responsePayload);
+
+        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+
+        final List<JudiciarySpecialism> specialisms = referenceDataService.getSpecialismsByJudiciaryIds(
+                java.util.Arrays.asList(judiciaryId1, judiciaryId2), requester);
+
+        assertTrue(isNotEmpty(specialisms));
+        assertThat(specialisms.size(), Matchers.is(2)); // 1 for judiciary1, 1 for judiciary2
+        assertThat(specialisms.get(0).getJudiciaryId(), Matchers.is(judiciaryId1));
+        assertThat(specialisms.get(0).getSpecialisms().size(), Matchers.is(2));
+        assertThat(specialisms.get(0).getSpecialisms(), Matchers.hasItems(
+                uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.MURDER,
+                uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.ATTEMPTED_MURDER));
+        assertThat(specialisms.get(1).getJudiciaryId(), Matchers.is(judiciaryId2));
+        assertThat(specialisms.get(1).getSpecialisms().size(), Matchers.is(1));
+        assertThat(specialisms.get(1).getSpecialisms(), Matchers.hasItem(
+                uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.SEXUAL_OFFENCE));
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenJudiciaryIdsIsEmpty() {
+        final List<JudiciarySpecialism> specialisms = referenceDataService.getSpecialismsByJudiciaryIds(
+                java.util.Collections.emptyList(), requester);
+
+        assertThat(specialisms, Matchers.empty());
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenJudiciaryIdsIsNull() {
+        final List<JudiciarySpecialism> specialisms = referenceDataService.getSpecialismsByJudiciaryIds(
+                null, requester);
+
+        assertThat(specialisms, Matchers.empty());
+    }
+
+    @Test
+    void shouldGetSpecialismsFromArrayWhenJudiciaryIdNotInRequest() {
+        final String judiciaryId = randomUUID().toString();
+
+        // Create response payload with the requested judiciaryId
+        final JsonObject responsePayload = Json.createObjectBuilder()
+                .add("judiciarySpecialisms", Json.createArrayBuilder()
+                        .add(Json.createObjectBuilder()
+                                .add("judiciaryId", judiciaryId)
+                                .add("specialisms", Json.createArrayBuilder()
+                                        .add("MURDER")
+                                        .add("TERRORISM"))))
+                .build();
+
+        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
+                .withId(randomUUID())
+                .withName("referencedata.query.judiciary-specialisms")
+                .build(), responsePayload);
+
+        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+
+        final List<JudiciarySpecialism> specialisms = referenceDataService.getSpecialismsByJudiciaryIds(
+                java.util.Arrays.asList(judiciaryId), requester);
+
+        // The reference data service should return the requested judiciaryId
+        assertThat(specialisms.size(), Matchers.is(1));
+        assertThat(specialisms.get(0).getJudiciaryId(), Matchers.is(judiciaryId));
+        assertThat(specialisms.get(0).getSpecialisms().size(), Matchers.is(2));
     }
 }

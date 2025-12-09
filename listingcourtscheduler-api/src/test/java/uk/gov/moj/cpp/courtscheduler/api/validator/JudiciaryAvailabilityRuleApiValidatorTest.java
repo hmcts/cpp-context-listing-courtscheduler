@@ -1,7 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +19,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityType;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 
@@ -38,7 +35,6 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         this.request = new AddJudiciaryAvailabilityRuleRequest();
         this.request.setJudiciaryId(UUID.randomUUID().toString());
         this.request.setCourtHouseId(UUID.randomUUID().toString());
-        this.request.setAvailabilityType(AvailabilityType.AVAILABLE);
         this.request.setStartDate(LocalDate.of(2026, 1, 1));
         this.request.setEndDate(LocalDate.of(2026, 1, 31));
         
@@ -81,34 +77,6 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
         Assertions.assertFalse(result.isEmpty());
         Assertions.assertTrue(result.getString("errorMessage").contains("courtHouseId"));
-    }
-
-    @Test
-    void shouldReturnErrorWhenGroupIsNull() {
-        this.request.setAvailabilityType(null);
-
-        JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
-
-        Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("availabilityType"));
-    }
-
-    @Test
-    void shouldAcceptAvailableGroup() {
-        this.request.setAvailabilityType(AvailabilityType.AVAILABLE);
-
-        JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
-
-        MatcherAssert.assertThat(result, CoreMatchers.is(JsonValue.EMPTY_JSON_OBJECT));
-    }
-
-    @Test
-    void shouldAcceptUnavailableGroup() {
-        this.request.setAvailabilityType(AvailabilityType.UNAVAILABLE);
-
-        JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
-
-        MatcherAssert.assertThat(result, CoreMatchers.is(JsonValue.EMPTY_JSON_OBJECT));
     }
 
     @Test

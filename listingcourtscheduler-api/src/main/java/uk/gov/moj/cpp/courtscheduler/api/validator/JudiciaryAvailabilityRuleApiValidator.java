@@ -36,10 +36,6 @@ public class JudiciaryAvailabilityRuleApiValidator {
             return getMessage("courtHouseId");
         }
 
-        if (request.getAvailabilityType() == null) {
-            return getMessage("availabilityType");
-        }
-
         if (request.getStartDate() == null) {
             return getMessage("startDate");
         }

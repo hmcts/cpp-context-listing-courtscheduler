@@ -9,13 +9,12 @@ public class AddJudiciaryAvailabilityRuleRequest {
 
     private String judiciaryId;
     private String courtHouseId;
-    private AvailabilityType availabilityType;
     private LocalDate startDate;
     private LocalDate endDate;
     private RecurringType recurringType; // Weekly or Monthly (optional)
     private List<JudiciaryAvailabilityRuleRepeatDay> repeatDays;
-    private String reason; // Optional
     private SessionType sessionType;
+    private List<JudiciaryUnavailabilityRequest> unavailabilities; // Optional array of unavailability periods
 
     public String getJudiciaryId() {
         return this.judiciaryId;
@@ -31,14 +30,6 @@ public class AddJudiciaryAvailabilityRuleRequest {
 
     public void setCourtHouseId(String courtHouseId) {
         this.courtHouseId = courtHouseId;
-    }
-
-    public AvailabilityType getAvailabilityType() {
-        return this.availabilityType;
-    }
-
-    public void setAvailabilityType(AvailabilityType availabilityType) {
-        this.availabilityType = availabilityType;
     }
 
     public LocalDate getStartDate() {
@@ -73,14 +64,6 @@ public class AddJudiciaryAvailabilityRuleRequest {
         this.repeatDays = repeatDays;
     }
 
-    public String getReason() {
-        return this.reason;
-    }
-
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
-
     public SessionType getSessionType() {
         return sessionType;
     }
@@ -89,15 +72,23 @@ public class AddJudiciaryAvailabilityRuleRequest {
         this.sessionType = sessionType;
     }
 
+    public List<JudiciaryUnavailabilityRequest> getUnavailabilities() {
+        return unavailabilities;
+    }
+
+    public void setUnavailabilities(List<JudiciaryUnavailabilityRequest> unavailabilities) {
+        this.unavailabilities = unavailabilities;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (!(o instanceof final AddJudiciaryAvailabilityRuleRequest that)) return false;
-        return Objects.equals(getJudiciaryId(), that.getJudiciaryId()) && Objects.equals(getCourtHouseId(), that.getCourtHouseId()) && getAvailabilityType() == that.getAvailabilityType() && Objects.equals(getStartDate(), that.getStartDate()) && Objects.equals(getEndDate(), that.getEndDate()) && getRecurringType() == that.getRecurringType() && Objects.equals(getRepeatDays(), that.getRepeatDays()) && Objects.equals(getReason(), that.getReason()) && getSessionType() == that.getSessionType();
+        return Objects.equals(getJudiciaryId(), that.getJudiciaryId()) && Objects.equals(getCourtHouseId(), that.getCourtHouseId()) && Objects.equals(getStartDate(), that.getStartDate()) && Objects.equals(getEndDate(), that.getEndDate()) && getRecurringType() == that.getRecurringType() && Objects.equals(getRepeatDays(), that.getRepeatDays()) && getSessionType() == that.getSessionType() && Objects.equals(getUnavailabilities(), that.getUnavailabilities());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getJudiciaryId(), getCourtHouseId(), getAvailabilityType(), getStartDate(), getEndDate(), getRecurringType(), getRepeatDays(), getReason(), getSessionType());
+        return Objects.hash(getJudiciaryId(), getCourtHouseId(), getStartDate(), getEndDate(), getRecurringType(), getRepeatDays(), getSessionType(), getUnavailabilities());
     }
 
     @Override
@@ -105,13 +96,12 @@ public class AddJudiciaryAvailabilityRuleRequest {
         return new StringJoiner(", ", AddJudiciaryAvailabilityRuleRequest.class.getSimpleName() + "[", "]")
                 .add("judiciaryId='" + getJudiciaryId() + "'")
                 .add("courtHouseId='" + getCourtHouseId() + "'")
-                .add("availabilityType=" + getAvailabilityType())
                 .add("startDate=" + getStartDate())
                 .add("endDate=" + getEndDate())
                 .add("recurringType=" + getRecurringType())
                 .add("repeatDays=" + getRepeatDays())
-                .add("reason='" + getReason() + "'")
                 .add("sessionType=" + getSessionType())
+                .add("unavailabilities=" + getUnavailabilities())
                 .toString();
     }
 }
