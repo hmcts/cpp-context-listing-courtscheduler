@@ -828,7 +828,7 @@ public class SessionsService {
                         .collect(Collectors.groupingBy(AllocatedListingEachBooked::getCourtScheduleId));
 
         // Get courtroom details
-        final Optional<CourtRoom> courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(
+        final Optional<CourtRoom> courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(
                 request.getCourtRoomId(), requester);
 
         if (courtRoom.isEmpty()) {
@@ -886,7 +886,7 @@ public class SessionsService {
                             s.setBusinessDescription(enrichBusinessDescription(s.getBusinessType(), requester));
                             return convertToView(s);
                         })
-                        .collect(Collectors.toList());
+                        .toList();
         response.setEligibleSessions(eligibleSessionViews);
         response.setIneligibleSessions(ineligibleSessions);
 
