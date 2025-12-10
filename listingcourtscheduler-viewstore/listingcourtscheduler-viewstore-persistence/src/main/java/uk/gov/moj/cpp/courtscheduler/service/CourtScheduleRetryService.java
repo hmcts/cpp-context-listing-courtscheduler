@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
@@ -11,6 +12,7 @@ import javax.ejb.TransactionAttribute;
 import javax.ejb.TransactionAttributeType;
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
+import javax.persistence.PersistenceException;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import java.util.Date;
@@ -79,13 +81,22 @@ public class CourtScheduleRetryService {
         try {
             entityManager.persist(courtSchedule);
             entityManager.flush();
-        } catch (Exception ex) {
+        } catch (PersistenceException ex) {
             if (isUniqueConstraintViolation(ex)) {
-                // Update existing record's slots/duration using existing logic
-                retryAndSave(courtSchedule, false);
-            } else {
-                throw ex;
+                LOGGER.debug("Constraint violation while persisting schedule {} - retrying update", courtSchedule.getCourtScheduleId());
+                try {
+                    retryAndSave(courtSchedule, false);
+                    return;
+                } catch (RuntimeException retryEx) {
+                    final String errorMessage = String.format("Failed to upsert court schedule %s after retry: %s",
+                            courtSchedule.getCourtScheduleId(), retryEx.getMessage());
+                    throw new PersistenceStoreException(errorMessage, retryEx);
+                }
             }
+            final String errorMessage = String.format("Persistence exception during upsert for court schedule %s: %s",
+                    courtSchedule.getCourtScheduleId(), ex.getMessage());
+            LOGGER.warn(errorMessage);
+            throw new PersistenceStoreException(errorMessage, ex);
         }
     }
 
