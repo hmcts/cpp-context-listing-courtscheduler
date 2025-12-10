@@ -82,8 +82,8 @@ public class CourtScheduleEnricher {
                 builder.withCreatedOn(courtSchedule.getCreatedOn());
             }
         } else {
-            final String venueEntry = format("%d - %s - %d", locationId, venueName, venueId);
-            missingReferenceDataMappingMap.putIfAbsent(venueEntry, REF_DATA_VENUE_NOT_FOUND.code());
+            final String venueDetails = format("%d - %s - %d", locationId, venueName, venueId);
+            missingReferenceDataMappingMap.putIfAbsent(venueDetails, REF_DATA_VENUE_NOT_FOUND.code());
         }
         return builder.withActive(true).build();
     }
