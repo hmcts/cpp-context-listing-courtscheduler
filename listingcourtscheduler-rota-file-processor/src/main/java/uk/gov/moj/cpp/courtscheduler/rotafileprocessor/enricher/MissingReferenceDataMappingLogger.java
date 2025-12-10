@@ -58,6 +58,9 @@ public class MissingReferenceDataMappingLogger {
     }
 
     public void logJudiciaryMissingMessage(final Collection<String> messages, final String executionId) {
+        if (!isNotEmpty(executionId) || messages.isEmpty()) {
+            return;
+        }
         LOGGER.warn(NEW_LINE);
         final String judiciaryMissingMessages = messages
                 .stream()
