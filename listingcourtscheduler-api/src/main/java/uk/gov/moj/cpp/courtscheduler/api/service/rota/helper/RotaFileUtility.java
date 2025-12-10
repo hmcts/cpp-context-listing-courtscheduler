@@ -4,6 +4,8 @@ import static java.util.Objects.isNull;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshotFileNamePrefix;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshotFileTimeStampAsOffsetDateTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJAFileNamePrefix;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJAFileTimeStampAsOffsetDateTime;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
@@ -27,11 +29,10 @@ import org.slf4j.LoggerFactory;
 public class RotaFileUtility {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileUtility.class);
-    private static final String SNAPSHOT_NAME_PART = "_snapshot_";
+    
     private static final String DUMMY_NAME_PART = "dummysupport";
     private static final long NANOSECONDS_TO_MILLISECONDS = 1_000_000L;
-    private static final String EMPTY_STRING = "";
-    private static final String SNAPSHOT_FILE_PROCESSING_SKIPPED = "Snapshot file processing skipped";
+    private static final String LOG_PREFIX_DD_15703 = "DD-15703:processSnapshotRotaFile: ";
 
     @Inject
     private RotaFileProcessHistoryRepository rotaFileProcessHistoryRepository;
@@ -47,16 +48,6 @@ public class RotaFileUtility {
     }
 
     /**
-     * Checks if the file is a snapshot file.
-     *
-     * @param fileName the name of the file
-     * @return true if the file is a snapshot file, false otherwise
-     */
-    public boolean isSnapshotFile(final String fileName) {
-        return fileName.contains(SNAPSHOT_NAME_PART);
-    }
-
-    /**
      * Checks if the file is a dummy support file.
      *
      * @param fileName the name of the file
@@ -68,23 +59,37 @@ public class RotaFileUtility {
 
     /**
      * Checks if a newer snapshot file has already been processed.
+     * Returns true if the file date/time cannot be extracted (fail-safe behavior).
      *
      * @param fileName the name of the file to check
-     * @return true if a newer snapshot file has been processed, false otherwise
+     * @return true if a newer snapshot file has been processed or if file date cannot be extracted, false otherwise
      */
     public boolean isNewerSnapshotFileProcessed(final String fileName) {
         final OffsetDateTime fileDateTime = getLJASnapshotFileTimeStampAsOffsetDateTime(fileName);
         if (isNull(fileDateTime)) {
-            logger.warn("Invalid file date/time in fileName: {}", fileName);
+            logger.warn("Invalid file date/time in fileName: {} - treating as newer file processed", fileName);
             return true;
         }
 
+        return checkForNewerFiles(fileName, fileDateTime);
+    }
+
+    /**
+     * Checks the repository for newer files with the same prefix.
+     *
+     * @param fileName     the name of the file
+     * @param fileDateTime the date/time of the file
+     * @return true if newer files exist, false otherwise
+     */
+    private boolean checkForNewerFiles(final String fileName, final OffsetDateTime fileDateTime) {
         final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
+        final Timestamp fileTimestamp = Timestamp.from(fileDateTime.toInstant());
         final List<RotaFileProcessHistory> newerFiles = rotaFileProcessHistoryRepository
-                .findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, Timestamp.from(fileDateTime.toInstant()));
+                .findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, fileTimestamp);
 
         if (isNotEmpty(newerFiles)) {
-            logger.warn("Newer snapshot file already processed for prefix: {}", fileNamePrefix);
+            logger.warn("Newer snapshot file already processed for prefix: {} - found {} newer file(s)",
+                    fileNamePrefix, newerFiles.size());
             return true;
         }
 
@@ -92,33 +97,50 @@ public class RotaFileUtility {
     }
 
     /**
-     * Processes a snapshot file if needed, generating an execution ID.
+     * Creates and saves a file process history record, generating an execution ID.
+     * Returns null if the file timestamp cannot be extracted from the filename.
      *
      * @param fileName                      the name of the file
      * @param content                       the byte content of the file
      * @param rotaFileProcessHistoryService the service for saving file process history
-     * @return the execution ID if it's a snapshot file, empty string otherwise
-     * @throws IllegalStateException if a newer snapshot file has already been processed
+     * @return the RotaFileProcessHistory record that was saved, or null if file timestamp cannot be extracted
      */
-    public String processSnapshotFileIfNeeded(final String fileName,
-                                              final byte[] content,
-                                              final uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService rotaFileProcessHistoryService) {
-        if (!isSnapshotFile(fileName)) {
-            return EMPTY_STRING;
+    public RotaFileProcessHistory createAndSaveFileProcessHistory(final String fileName,
+                                                                  final byte[] content,
+                                                                  final uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService rotaFileProcessHistoryService) {
+        logger.info("{}before rotaFileProcessHistoryRepository.save", LOG_PREFIX_DD_15703);
+        
+        final OffsetDateTime fileDateTime = getLJAFileTimeStampAsOffsetDateTime(fileName);
+        if (isNull(fileDateTime)) {
+            logger.warn("Cannot create file process history - invalid file date/time in fileName: {}", fileName);
+            return null;
         }
 
-        if (isNewerSnapshotFileProcessed(fileName)) {
-            logger.warn("Skipping snapshot file - newer version already processed: {}", fileName);
-            throw new IllegalStateException(SNAPSHOT_FILE_PROCESSING_SKIPPED);
-        }
+        return saveFileProcessHistory(fileName, fileDateTime, content, rotaFileProcessHistoryService);
+    }
 
-        logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.save");
-        final OffsetDateTime fileDateTime = getLJASnapshotFileTimeStampAsOffsetDateTime(fileName);
-        final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
+    /**
+     * Saves the file process history record with the extracted file information.
+     *
+     * @param fileName                      the name of the file
+     * @param fileDateTime                  the extracted file date/time
+     * @param content                       the byte content of the file
+     * @param rotaFileProcessHistoryService the service for saving file process history
+     * @return the saved RotaFileProcessHistory record
+     */
+    private RotaFileProcessHistory saveFileProcessHistory(final String fileName,
+                                                          final OffsetDateTime fileDateTime,
+                                                          final byte[] content,
+                                                          final uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService rotaFileProcessHistoryService) {
+        final String fileNamePrefix = getLJAFileNamePrefix(fileName);
         final String executionId = UUID.randomUUID().toString();
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDateTime, content, executionId);
-        logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.save - executionId: {}", executionId);
-        return executionId;
+        
+        final RotaFileProcessHistory rotaFileProcessHistory = rotaFileProcessHistoryService.save(
+                fileNamePrefix, fileDateTime, content, executionId);
+        
+        logger.info("{}after rotaFileProcessHistoryRepository.save - executionId: {}", 
+                LOG_PREFIX_DD_15703, executionId);
+        
+        return rotaFileProcessHistory;
     }
 }
-
