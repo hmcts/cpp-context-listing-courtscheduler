@@ -391,7 +391,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setEndDate(endDate);
         request.setPageSize(10);
         request.setPageNumber(1);
-        request.setWithJudiciaries(false);
+        request.setWithJudiciary(false);
 
         JudiciaryAvailabilityRule rule1 = createRule(judiciaryId,
                 startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
@@ -425,7 +425,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setEndDate(endDate);
         request.setPageSize(null);
         request.setPageNumber(null);
-        request.setWithJudiciaries(false);
+        request.setWithJudiciary(false);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
                 startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
@@ -455,7 +455,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setEndDate(endDate);
         request.setPageSize(10);
         request.setPageNumber(1);
-        request.setWithJudiciaries(true);
+        request.setWithJudiciary(true);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
                 startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
@@ -474,7 +474,7 @@ class JudiciaryAvailabilityServiceTest {
                 .withSeqId(1)
                 .build();
 
-        when(referenceDataService.getJudiciariesByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester)))
+        when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester)))
                 .thenReturn(Collections.singletonList(judiciary));
 
         FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
@@ -484,7 +484,7 @@ class JudiciaryAvailabilityServiceTest {
         assertThat(response.getJudiciaries(), is(org.hamcrest.Matchers.notNullValue()));
         assertThat(response.getJudiciaries().size(), is(1));
         assertThat(response.getJudiciaries().get(0).getId(), is(judiciaryId));
-        verify(referenceDataService).getJudiciariesByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester));
+        verify(referenceDataService).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester));
     }
 
     @Test
@@ -497,7 +497,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setEndDate(endDate);
         request.setPageSize(10);
         request.setPageNumber(1);
-        request.setWithJudiciaries(true);
+        request.setWithJudiciary(true);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
                 startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
@@ -514,7 +514,7 @@ class JudiciaryAvailabilityServiceTest {
         assertThat(response.getRules().size(), is(1));
         assertThat(response.getJudiciaries(), is(org.hamcrest.Matchers.notNullValue()));
         assertThat(response.getJudiciaries().size(), is(0));
-        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
+        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -528,7 +528,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setPageSize(10);
         request.setPageNumber(1);
-        request.setWithJudiciaries(false);
+        request.setWithJudiciary(false);
 
         java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 new java.util.AbstractMap.SimpleEntry<>(0, Collections.emptyList());
@@ -554,7 +554,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setJudiciaryId(judiciaryId);
         request.setPageSize(10);
         request.setPageNumber(1);
-        request.setWithJudiciaries(false);
+        request.setWithJudiciary(false);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
                 startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
@@ -583,7 +583,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setEndDate(endDate);
         request.setPageSize(10);
         request.setPageNumber(1);
-        request.setWithJudiciaries(true);
+        request.setWithJudiciary(true);
 
         JudiciaryAvailabilityRule rule1 = createRule(judiciaryId,
                 startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
@@ -612,7 +612,7 @@ class JudiciaryAvailabilityServiceTest {
                 .withSeqId(2)
                 .build();
 
-        when(referenceDataService.getJudiciariesByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester)))
+        when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester)))
                 .thenReturn(Arrays.asList(judiciary1, judiciary2));
 
         FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
@@ -620,11 +620,11 @@ class JudiciaryAvailabilityServiceTest {
         assertNotNull(response);
         assertThat(response.getRules().size(), is(2));
         assertThat(response.getJudiciaries().size(), is(2));
-        verify(referenceDataService).getJudiciariesByIds(org.mockito.ArgumentMatchers.argThat(list -> list.size() == 2 && list.contains(judiciaryId) && list.contains(judiciaryId2)), org.mockito.ArgumentMatchers.eq(requester));
+        verify(referenceDataService).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.argThat(list -> list.size() == 2 && list.contains(judiciaryId) && list.contains(judiciaryId2)), org.mockito.ArgumentMatchers.eq(requester));
     }
 
     @Test
-    void shouldFindJudiciaryAvailabilityRulesWithSpecialisms() {
+    void shouldFindJudiciaryAvailabilityRulesWithEmptySpecialisms() {
         LocalDate startDate = LocalDate.of(2026, 1, 1);
         LocalDate endDate = LocalDate.of(2026, 1, 31);
         
@@ -633,7 +633,6 @@ class JudiciaryAvailabilityServiceTest {
         request.setEndDate(endDate);
         request.setPageSize(10);
         request.setPageNumber(1);
-        request.setWithSpecialisms(true);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
                 startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
@@ -644,25 +643,14 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism specialism = new uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism();
-        specialism.setJudiciaryId(judiciaryId);
-        specialism.setSpecialisms(java.util.Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.MURDER));
-
-        when(referenceDataService.getSpecialismsByJudiciaryIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester)))
-                .thenReturn(Collections.singletonList(specialism));
-
         FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
-        assertThat(response.getSpecialisms(), is(org.hamcrest.Matchers.notNullValue()));
-        assertThat(response.getSpecialisms().size(), is(1));
-        assertThat(response.getSpecialisms().get(0).getJudiciaryId(), is(judiciaryId));
-        verify(referenceDataService).getSpecialismsByJudiciaryIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester));
     }
 
     @Test
-    void shouldFindJudiciaryAvailabilityRulesWithSpecialismsButNoRequester() {
+    void shouldFindJudiciaryAvailabilityRulesWithEmptySpecialismsWhenNoRequester() {
         LocalDate startDate = LocalDate.of(2026, 1, 1);
         LocalDate endDate = LocalDate.of(2026, 1, 31);
         
@@ -671,7 +659,6 @@ class JudiciaryAvailabilityServiceTest {
         request.setEndDate(endDate);
         request.setPageSize(10);
         request.setPageNumber(1);
-        request.setWithSpecialisms(true);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
                 startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
@@ -686,9 +673,6 @@ class JudiciaryAvailabilityServiceTest {
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
-        assertThat(response.getSpecialisms(), is(org.hamcrest.Matchers.notNullValue()));
-        assertThat(response.getSpecialisms().size(), is(0));
-        verify(referenceDataService, org.mockito.Mockito.never()).getSpecialismsByJudiciaryIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
     }
 }
 

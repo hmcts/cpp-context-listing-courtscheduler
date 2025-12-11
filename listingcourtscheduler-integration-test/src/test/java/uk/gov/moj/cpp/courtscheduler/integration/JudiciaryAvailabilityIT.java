@@ -9,6 +9,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 
@@ -755,7 +756,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("withJudiciaries", true);
+        queryParams.put("withJudiciary", true);
 
         final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -772,7 +773,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertTrue(rules.size() > 0, "Should find at least one rule");
         assertTrue(jsonObject.containsKey("judiciaries"), "Should contain judiciaries node");
         final JsonArray judiciaries = jsonObject.getJsonArray("judiciaries");
-        assertTrue(judiciaries.size() > 0, "Should contain judiciaries when withJudiciaries is true");
+        assertTrue(judiciaries.size() > 0, "Should contain judiciaries when withJudiciary is true");
         
         // Verify judiciary structure
         final JsonObject judiciary = judiciaries.getJsonObject(0);
@@ -807,7 +808,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("withJudiciaries", false);
+        queryParams.put("withJudiciary", false);
 
         final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -1021,7 +1022,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("withSpecialisms", true);
 
         final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -1036,13 +1036,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         final JsonArray rules = jsonObject.getJsonArray("rules");
         assertTrue(rules.size() > 0, "Should find at least one rule");
-        assertTrue(jsonObject.containsKey("specialisms"), "Should always contain specialisms node");
-        final JsonArray specialisms = jsonObject.getJsonArray("specialisms");
-        assertTrue(specialisms.size() >= 0, "Should contain specialisms when withSpecialisms is true");
+
     }
 
     @Test
-    void shouldFindJudiciaryAvailabilityRulesWithSpecialismsFalse() throws Exception {
+    void shouldFindJudiciaryAvailabilityRulesWithSpecialismsAlwaysReturned() throws Exception {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
@@ -1066,7 +1064,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("withSpecialisms", false);
 
         final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -1081,7 +1078,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         assertTrue(jsonObject.containsKey("specialisms"), "Should always contain specialisms node");
         final JsonArray specialisms = jsonObject.getJsonArray("specialisms");
-        assertThat(specialisms.size(), is(0));
+        // Specialisms are always returned (may be empty if no specialisms found)
+        assertNotNull(specialisms);
     }
 
     @Test
@@ -1112,8 +1110,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("withJudiciaries", true);
-        queryParams.put("withSpecialisms", true);
+        queryParams.put("withJudiciary", true);
         queryParams.put("judiciaryId", judiciaryId);
 
         final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
@@ -1139,10 +1136,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertTrue(jsonObject.containsKey("specialisms"), "Should contain specialisms node");
         
         final JsonArray judiciaries = jsonObject.getJsonArray("judiciaries");
-        final JsonArray specialisms = jsonObject.getJsonArray("specialisms");
-        
+
         // Verify judiciaries structure and content
-        assertTrue(judiciaries.size() > 0, "Should contain judiciaries when withJudiciaries is true");
+        assertTrue(judiciaries.size() > 0, "Should contain judiciaries when withJudiciary is true");
         final JsonObject judiciary = java.util.stream.IntStream.range(0, judiciaries.size())
             .mapToObj(judiciaries::getJsonObject)
             .filter(j -> judiciaryId.equals(j.getString("id")))
@@ -1153,16 +1149,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertTrue(judiciary.containsKey("surname"), "Judiciary should have surname");
         assertTrue(judiciary.containsKey("forenames"), "Judiciary should have forenames");
         assertTrue(judiciary.containsKey("judiciaryType"), "Judiciary should have judiciaryType");
+        assertTrue(judiciary.containsKey("specialisms"), "Judiciary should have specialisms");
         
-        // Verify specialisms structure and content
-        assertTrue(specialisms.size() > 0, "Should contain specialisms when withSpecialisms is true");
-
-        // Verify that all specialisms belong to the expected judiciary
-        for (int i = 0; i < specialisms.size(); i++) {
-            final JsonObject spec = specialisms.getJsonObject(i);
-            assertThat(spec.getString("judiciaryId"), is(notNullValue()));
-            assertTrue(spec.containsKey("specialisms"), "Each specialism should have a specialisms array");
-        }
     }
 }
 

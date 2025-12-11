@@ -11,8 +11,7 @@ public class FindJudiciaryAvailabilityRuleRequest {
     private String judiciaryId; // Optional
     private Integer pageSize; // Optional, default 20
     private Integer pageNumber; // Optional, default 1
-    private Boolean withJudiciaries; // Optional, default false
-    private Boolean withSpecialisms; // Optional, default false
+    private Boolean withJudiciary; // Optional, default false
 
     public FindJudiciaryAvailabilityRuleRequest() {
     }
@@ -74,20 +73,12 @@ public class FindJudiciaryAvailabilityRuleRequest {
         this.pageNumber = pageNumber;
     }
 
-    public Boolean getWithJudiciaries() {
-        return this.withJudiciaries;
+    public Boolean getWithJudiciary() {
+        return this.withJudiciary;
     }
 
-    public void setWithJudiciaries(Boolean withJudiciaries) {
-        this.withJudiciaries = withJudiciaries;
-    }
-
-    public Boolean getWithSpecialisms() {
-        return this.withSpecialisms;
-    }
-
-    public void setWithSpecialisms(Boolean withSpecialisms) {
-        this.withSpecialisms = withSpecialisms;
+    public void setWithJudiciary(Boolean withJudiciary) {
+        this.withJudiciary = withJudiciary;
     }
 
     @Override
@@ -105,13 +96,12 @@ public class FindJudiciaryAvailabilityRuleRequest {
                 Objects.equals(this.judiciaryId, that.judiciaryId) &&
                 Objects.equals(this.pageSize, that.pageSize) &&
                 Objects.equals(this.pageNumber, that.pageNumber) &&
-                Objects.equals(this.withJudiciaries, that.withJudiciaries) &&
-                Objects.equals(this.withSpecialisms, that.withSpecialisms);
+                Objects.equals(this.withJudiciary, that.withJudiciary);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.startDate, this.endDate, this.courtHouseId, this.judiciaryId, this.pageSize, this.pageNumber, this.withJudiciaries, this.withSpecialisms);
+        return Objects.hash(this.startDate, this.endDate, this.courtHouseId, this.judiciaryId, this.pageSize, this.pageNumber, this.withJudiciary);
     }
 
     @Override
@@ -123,8 +113,7 @@ public class FindJudiciaryAvailabilityRuleRequest {
                 ", judiciaryId='" + this.judiciaryId + '\'' +
                 ", pageSize=" + this.pageSize +
                 ", pageNumber=" + this.pageNumber +
-                ", withJudiciaries=" + this.withJudiciaries +
-                ", withSpecialisms=" + this.withSpecialisms +
+                ", withJudiciary=" + this.withJudiciary +
                 '}';
     }
 }

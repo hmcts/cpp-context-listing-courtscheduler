@@ -51,7 +51,7 @@
         </sonar.cpd.exclusions>
         <usersgroups.version>17.0.38</usersgroups.version>
         <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
-        <referencedata.version>17.0.122-LPT-1730-SNAPSHOT</referencedata.version>
+        <referencedata.version>17.0.123-LPT-1730-SNAPSHOT</referencedata.version>
         <lettuce.core.version>5.2.1.RELEASE</lettuce.core.version>
         <azure.storage.version>8.6.6</azure.storage.version>
         <azure.core.version>1.53.0</azure.core.version>

@@ -14,11 +14,9 @@ import javax.json.JsonObjectBuilder;
 public class FindJudiciaryAvailabilityRuleResponseConverter implements Converter<FindJudiciaryAvailabilityRuleResponse, JsonObject> {
 
     private final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.Judiciary> judiciaryConverter;
-    private final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism> specialismsConverter;
 
     public FindJudiciaryAvailabilityRuleResponseConverter() {
         this.judiciaryConverter = new ListToJsonArrayConverter<>();
-        this.specialismsConverter = new ListToJsonArrayConverter<>();
     }
 
     @Override
@@ -35,19 +33,12 @@ public class FindJudiciaryAvailabilityRuleResponseConverter implements Converter
                 ? judiciaryConverter.convert(response.getJudiciaries())
                 : Json.createArrayBuilder().build();
 
-        // Always include specialisms node (empty array if not requested or no results)
-        // The specialisms are already grouped by judiciaryId from the reference data service
-        final JsonArray specialismsArray = response.getSpecialisms() != null 
-                ? specialismsConverter.convert(response.getSpecialisms())
-                : Json.createArrayBuilder().build();
-
         return Json.createObjectBuilder()
                 .add("rules", rulesArrayBuilder.build())
                 .add("totalCount", response.getTotalCount())
                 .add("pageNumber", response.getPageNumber())
                 .add("pageSize", response.getPageSize())
                 .add("judiciaries", judiciariesArray)
-                .add("specialisms", specialismsArray)
                 .build();
     }
 

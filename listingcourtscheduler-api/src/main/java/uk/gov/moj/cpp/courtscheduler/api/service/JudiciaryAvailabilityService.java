@@ -155,8 +155,7 @@ public class JudiciaryAvailabilityService {
         // Get default pagination values if not provided
         final int pageSize = request.getPageSize() != null ? request.getPageSize() : 20;
         final int pageNumber = request.getPageNumber() != null ? request.getPageNumber() : 1;
-        final boolean withJudiciaries = Boolean.TRUE.equals(request.getWithJudiciaries());
-        final boolean withSpecialisms = Boolean.TRUE.equals(request.getWithSpecialisms());
+        final boolean withJudiciary = Boolean.TRUE.equals(request.getWithJudiciary());
 
         // Find rules with pagination
         final java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = repository.findRulesByDateRangeWithPagination(
@@ -184,7 +183,7 @@ public class JudiciaryAvailabilityService {
         final List<Judiciary> judiciaries = new ArrayList<>();
         
         // Fetch judiciaries if requested
-        if (withJudiciaries && requester != null) {
+        if (withJudiciary && requester != null) {
             // Extract unique judiciary IDs from rules
             final Set<String> judiciaryIds = rules.stream()
                     .map(JudiciaryAvailabilityRule::getJudiciaryId)
@@ -193,7 +192,7 @@ public class JudiciaryAvailabilityService {
 
             if (!judiciaryIds.isEmpty()) {
                 final List<String> judiciaryIdList = new ArrayList<>(judiciaryIds);
-                final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesByIds(judiciaryIdList, requester);
+                final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesWithSpecialismByIds(judiciaryIdList, requester);
                 judiciaries.addAll(fetchedJudiciaries);
                 LOGGER.info("Fetched {} judiciaries for {} unique IDs", fetchedJudiciaries.size(), judiciaryIds.size());
             }
@@ -201,26 +200,6 @@ public class JudiciaryAvailabilityService {
         
         response.setJudiciaries(judiciaries);
 
-        // Always initialize specialisms list (empty if not requested)
-        final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism> specialisms = new ArrayList<>();
-        
-        // Fetch specialisms if requested
-        if (withSpecialisms && requester != null) {
-            // Extract unique judiciary IDs from rules
-            final Set<String> judiciaryIds = rules.stream()
-                    .map(JudiciaryAvailabilityRule::getJudiciaryId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-
-            if (!judiciaryIds.isEmpty()) {
-                final List<String> judiciaryIdList = new ArrayList<>(judiciaryIds);
-                final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism> fetchedSpecialisms = referenceDataService.getSpecialismsByJudiciaryIds(judiciaryIdList, requester);
-                specialisms.addAll(fetchedSpecialisms);
-                LOGGER.info("Fetched {} specialisms for {} unique IDs", fetchedSpecialisms.size(), judiciaryIds.size());
-            }
-        }
-        
-        response.setSpecialisms(specialisms);
         return response;
     }
 
