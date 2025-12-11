@@ -6,7 +6,10 @@ import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.DELIMITER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PANEL;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
@@ -169,8 +172,38 @@ public class RotaCourtScheduleHelper {
                 .filter(cs -> panel.equals(cs.getPanel())
                         && courtRoomId.equals(cs.getCourtRoomId())
                         && sessionDate.equals(cs.getSessionDate())
-                        && session.equals(cs.getCourtSession()))
+                        && matchesSession(session, cs.getCourtSession()))
                 .toList();
+    }
+
+    /**
+     * Checks if the session values match, considering that 'AD' (All Day) can match both 'AM' and 'PM' sessions.
+     * 
+     * @param requestedSession the session value from the rota file (AM, PM, or AD)
+     * @param courtScheduleSession the session value from the court schedule (AM, PM, or AD)
+     * @return true if sessions match according to the matching rules
+     */
+    private boolean matchesSession(final String requestedSession, final String courtScheduleSession) {
+        if (requestedSession == null || courtScheduleSession == null) {
+            return false;
+        }
+        
+        // Exact match
+        if (requestedSession.equals(courtScheduleSession)) {
+            return true;
+        }
+        
+        // If requested session is AM, also match AD
+        if (AM_SESSION.equals(requestedSession) && ALL_DAY.equals(courtScheduleSession)) {
+            return true;
+        }
+        
+        // If requested session is PM, also match AD
+        if (PM_SESSION.equals(requestedSession) && ALL_DAY.equals(courtScheduleSession)) {
+            return true;
+        }
+        
+        return false;
     }
 
     private void logMissingReferenceData(final Map<String, String> missingReferenceDataMappingMap, final String executionId) {

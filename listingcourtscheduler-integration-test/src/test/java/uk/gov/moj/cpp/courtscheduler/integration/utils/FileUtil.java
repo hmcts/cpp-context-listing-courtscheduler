@@ -23,8 +23,7 @@ public class FileUtil {
 
     public static String getPayload(final String path) {
         String request = null;
-        try {
-            final InputStream inputStream = FileUtil.class.getClassLoader().getResourceAsStream(path);
+        try (final InputStream inputStream = FileUtil.class.getClassLoader().getResourceAsStream(path)) {
             assertThat(inputStream, notNullValue());
             request = IOUtils.toString(inputStream, defaultCharset());
         } catch (final Exception e) {

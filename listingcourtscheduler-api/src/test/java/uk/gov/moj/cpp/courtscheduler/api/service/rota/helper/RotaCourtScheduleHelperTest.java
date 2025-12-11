@@ -11,7 +11,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PANEL;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
@@ -324,6 +327,202 @@ class RotaCourtScheduleHelperTest {
         assertThat(result.size(), is(1));
         assertThat(result.get(listingProfileId).size(), is(1));
         assertThat(result.get(listingProfileId).get(0), is(UUID.fromString(matchingSchedule.getCourtScheduleId())));
+    }
+
+    @Test
+    void shouldMatchADSession_WhenRequestedSessionIsAM() {
+        // given
+        final String listingProfileId = "listing-1";
+        final String sessionDateStr = "2024-01-15";
+        final Map<String, String> listingProfile = new HashMap<>();
+        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(SESSION_DATE, sessionDateStr);
+        listingProfile.put(SESSION, AM_SESSION);
+        listingProfile.put("locationId", "100");
+        listingProfile.put("venueId", "200");
+        listingProfile.put("venueName", "Test Venue");
+
+        final Map<String, Map<String, String>> courtListings = new HashMap<>();
+        courtListings.put(listingProfileId, listingProfile);
+        records.put(COURT_LISTING, courtListings);
+
+        final CourtSchedule adSchedule = new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(UUID.randomUUID().toString())
+                .withCourtRoomId("courtroom-1")
+                .withPanel("PANEL1")
+                .withSessionDate(sessionDate)
+                .withCourtSession(ALL_DAY)
+                .build();
+
+        when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+                .thenReturn(courtRoom);
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+                .thenReturn(List.of(adSchedule));
+
+        // when
+        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+
+        // then
+        assertThat(result.size(), is(1));
+        assertThat(result.get(listingProfileId).size(), is(1));
+        assertThat(result.get(listingProfileId).get(0), is(UUID.fromString(adSchedule.getCourtScheduleId())));
+    }
+
+    @Test
+    void shouldMatchADSession_WhenRequestedSessionIsPM() {
+        // given
+        final String listingProfileId = "listing-1";
+        final String sessionDateStr = "2024-01-15";
+        final Map<String, String> listingProfile = new HashMap<>();
+        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(SESSION_DATE, sessionDateStr);
+        listingProfile.put(SESSION, PM_SESSION);
+        listingProfile.put("locationId", "100");
+        listingProfile.put("venueId", "200");
+        listingProfile.put("venueName", "Test Venue");
+
+        final Map<String, Map<String, String>> courtListings = new HashMap<>();
+        courtListings.put(listingProfileId, listingProfile);
+        records.put(COURT_LISTING, courtListings);
+
+        final CourtSchedule adSchedule = new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(UUID.randomUUID().toString())
+                .withCourtRoomId("courtroom-1")
+                .withPanel("PANEL1")
+                .withSessionDate(sessionDate)
+                .withCourtSession(ALL_DAY)
+                .build();
+
+        when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+                .thenReturn(courtRoom);
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+                .thenReturn(List.of(adSchedule));
+
+        // when
+        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+
+        // then
+        assertThat(result.size(), is(1));
+        assertThat(result.get(listingProfileId).size(), is(1));
+        assertThat(result.get(listingProfileId).get(0), is(UUID.fromString(adSchedule.getCourtScheduleId())));
+    }
+
+    @Test
+    void shouldNotMatchAMSession_WhenRequestedSessionIsPM() {
+        // given
+        final String listingProfileId = "listing-1";
+        final String sessionDateStr = "2024-01-15";
+        final Map<String, String> listingProfile = new HashMap<>();
+        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(SESSION_DATE, sessionDateStr);
+        listingProfile.put(SESSION, PM_SESSION);
+        listingProfile.put("locationId", "100");
+        listingProfile.put("venueId", "200");
+        listingProfile.put("venueName", "Test Venue");
+
+        final Map<String, Map<String, String>> courtListings = new HashMap<>();
+        courtListings.put(listingProfileId, listingProfile);
+        records.put(COURT_LISTING, courtListings);
+
+        final CourtSchedule amSchedule = new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(UUID.randomUUID().toString())
+                .withCourtRoomId("courtroom-1")
+                .withPanel("PANEL1")
+                .withSessionDate(sessionDate)
+                .withCourtSession(AM_SESSION)
+                .build();
+
+        when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+                .thenReturn(courtRoom);
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+                .thenReturn(List.of(amSchedule));
+
+        // when
+        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+
+        // then
+        assertThat(result, is(emptyMap()));
+    }
+
+    @Test
+    void shouldMatchExactSession_WhenRequestedSessionIsAD() {
+        // given
+        final String listingProfileId = "listing-1";
+        final String sessionDateStr = "2024-01-15";
+        final Map<String, String> listingProfile = new HashMap<>();
+        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(SESSION_DATE, sessionDateStr);
+        listingProfile.put(SESSION, ALL_DAY);
+        listingProfile.put("locationId", "100");
+        listingProfile.put("venueId", "200");
+        listingProfile.put("venueName", "Test Venue");
+
+        final Map<String, Map<String, String>> courtListings = new HashMap<>();
+        courtListings.put(listingProfileId, listingProfile);
+        records.put(COURT_LISTING, courtListings);
+
+        final CourtSchedule adSchedule = new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(UUID.randomUUID().toString())
+                .withCourtRoomId("courtroom-1")
+                .withPanel("PANEL1")
+                .withSessionDate(sessionDate)
+                .withCourtSession(ALL_DAY)
+                .build();
+
+        when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+                .thenReturn(courtRoom);
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+                .thenReturn(List.of(adSchedule));
+
+        // when
+        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+
+        // then
+        assertThat(result.size(), is(1));
+        assertThat(result.get(listingProfileId).size(), is(1));
+        assertThat(result.get(listingProfileId).get(0), is(UUID.fromString(adSchedule.getCourtScheduleId())));
+    }
+
+    @Test
+    void shouldNotMatchAMOrPM_WhenRequestedSessionIsAD() {
+        // given
+        final String listingProfileId = "listing-1";
+        final String sessionDateStr = "2024-01-15";
+        final Map<String, String> listingProfile = new HashMap<>();
+        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(SESSION_DATE, sessionDateStr);
+        listingProfile.put(SESSION, ALL_DAY);
+        listingProfile.put("locationId", "100");
+        listingProfile.put("venueId", "200");
+        listingProfile.put("venueName", "Test Venue");
+
+        final Map<String, Map<String, String>> courtListings = new HashMap<>();
+        courtListings.put(listingProfileId, listingProfile);
+        records.put(COURT_LISTING, courtListings);
+
+        final CourtSchedule amSchedule = new CourtSchedule.CourtScheduleBuilder()
+                .withCourtScheduleId(UUID.randomUUID().toString())
+                .withCourtRoomId("courtroom-1")
+                .withPanel("PANEL1")
+                .withSessionDate(sessionDate)
+                .withCourtSession(AM_SESSION)
+                .build();
+
+        when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+                .thenReturn(courtRoom);
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+                .thenReturn(List.of(amSchedule));
+
+        // when
+        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+
+        // then
+        assertThat(result, is(emptyMap()));
     }
 }
 
