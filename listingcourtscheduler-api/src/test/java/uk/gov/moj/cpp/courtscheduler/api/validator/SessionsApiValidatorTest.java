@@ -8,6 +8,8 @@ import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
@@ -24,6 +26,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
@@ -84,6 +87,21 @@ class SessionsApiValidatorTest {
     private final String courtRoomId = randomUUID().toString();
 
     private final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+
+    private void stubMagCourtRoomAvailable(String courtRoomId) {
+        lenient().when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
+    }
+
+    private void stubCrownCourtRoomAvailable(String courtRoomId) {
+        lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
+    }
+
+    private void stubBusinessType(String code, String jurisdiction, boolean slot, boolean duration) {
+        lenient().when(referenceDataCache.getRotaBusinessTypeByCode(eq(code), eq(requester)))
+                .thenReturn(Optional.of(new BusinessType("id-" + code, 1, code, "desc-" + code, slot, duration, jurisdiction)));
+    }
 
     private void injectReferenceDataCache() throws Exception {
         Field field = SessionsApiValidator.class.getDeclaredField("referenceDataCache");
@@ -558,10 +576,52 @@ class SessionsApiValidatorTest {
                 .withMaxSlots(10)
                 .build();
 
+        stubMagCourtRoomAvailable(courtRoomId);
+
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("isDraft can only be supplied when jurisdiction is CROWN", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtRoomNotFoundForMagistratesUpdate() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(10)
+                .build();
+
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtRoomNotFoundForCrownUpdate() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withMaxSlots(10)
+                .build();
+
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
     }
 
     @Test
@@ -577,6 +637,9 @@ class SessionsApiValidatorTest {
                 .withIsDraft(true)
                 .withMaxSlots(10)
                 .build();
+
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
 
         CourtSchedule persistedCourtSchedule = new CourtSchedule();
         persistedCourtSchedule.setIsDraft(false);
@@ -603,6 +666,8 @@ class SessionsApiValidatorTest {
                 .withMaxSlots(10)
                 .build();
 
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("BUSINESS_TYPE", "MAGISTRATES", true, false);
         when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
@@ -630,6 +695,8 @@ class SessionsApiValidatorTest {
 
         when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -657,6 +724,8 @@ class SessionsApiValidatorTest {
                 .thenReturn(persistedCourtSchedule);
         when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -678,6 +747,8 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setAllDaySplit(false);
         updateCourtSchedule.setJurisdiction("MAGISTRATES");
 
+        stubMagCourtRoomAvailable(updateCourtSchedule.getCourtRoomId());
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(anyString())).thenReturn(emptyList());
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -700,6 +771,9 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setSessionEndTime("13:00");
         updateCourtSchedule.setAllDaySplit(false);
         updateCourtSchedule.setJurisdiction("MAGISTRATES");
+
+        stubMagCourtRoomAvailable(updateCourtSchedule.getCourtRoomId());
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
@@ -731,6 +805,9 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setSessionEndTime("09:30"); // Before hearing at 10:00
         updateCourtSchedule.setAllDaySplit(false);
         updateCourtSchedule.setJurisdiction("MAGISTRATES");
+
+        stubMagCourtRoomAvailable(updateCourtSchedule.getCourtRoomId());
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
@@ -765,6 +842,9 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setAllDaySplit(false);
         updateCourtSchedule.setJurisdiction("MAGISTRATES");
 
+        stubMagCourtRoomAvailable(updateCourtSchedule.getCourtRoomId());
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
 
@@ -789,7 +869,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setBusinessType("TRL");
         updateCourtSchedule.setSessionType("AD");
         updateCourtSchedule.setPanel("ADULT");
-        updateCourtSchedule.setMaxDuration(0);
+        updateCourtSchedule.setMaxDuration(1);
         updateCourtSchedule.setMaxDurationForMorning(120);
         updateCourtSchedule.setMaxDurationForAfternoon(180);
         updateCourtSchedule.setSessionStartTime("10:00");
@@ -797,11 +877,12 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setAllDaySplit(true);
         updateCourtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
 
+        stubMagCourtRoomAvailable(updateCourtSchedule.getCourtRoomId());
+
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setSupportAdSplit(true);
 
-        BusinessType businessType = new BusinessType("TRL", 1, "Description", "Category", false, true,MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).thenReturn(Optional.of(businessType));
+        stubBusinessType("TRL", MAGISTRATES.getJurisdiction(), false, true);
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedSchedule);
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(emptyList());
 

@@ -546,6 +546,12 @@ public class SessionsApiValidator {
             return buildErrorResponse("Jurisdiction must be either MAGISTRATES or CROWN");
         }
 
+        // Validate courtroom source matches jurisdiction
+        JsonObject courtRoomValidation = validateCourtRoomForJurisdiction(updateCourtSchedule, requester);
+        if (!courtRoomValidation.isEmpty()) {
+            return courtRoomValidation;
+        }
+
         // Validate isDraft can only be supplied when jurisdiction is CROWN
         Boolean isDraft = updateCourtSchedule.getIsDraft();
         if (nonNull(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
@@ -563,6 +569,22 @@ public class SessionsApiValidator {
 
         SessionValidationParams params = getSessionValidationParams(updateCourtSchedule);
         return validateSession(params, false, requester);
+    }
+
+    private JsonObject validateCourtRoomForJurisdiction(final UpdateCourtSchedule updateCourtSchedule, final Requester requester) {
+        String courtRoomId = updateCourtSchedule.getCourtRoomId();
+        if (isNull(courtRoomId) || courtRoomId.trim().isEmpty()) {
+            return buildErrorResponse("Courtroom ID must be provided");
+        }
+
+        Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(updateCourtSchedule.getJurisdiction())
+                ? referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)
+                : referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester);
+
+        if (courtRoomOpt.isEmpty()) {
+            return buildErrorResponse(COURTROOM_NOT_FOUND + courtRoomId);
+        }
+        return EMPTY_JSON_OBJECT;
     }
 
     private static SessionValidationParams getSessionValidationParams(final UpdateCourtSchedule updateCourtSchedule) {
