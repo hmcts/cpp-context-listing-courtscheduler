@@ -194,10 +194,10 @@ public class SessionsService {
                     sessionStartTime.isBefore(LocalTime.of(1, 0))) {
                 return new Result(format(ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER, updateCourtSchedule.getSessionType()), false);
             } else if (PM_SESSION.equals(updateCourtSchedule.getSessionType()) && sessionStartTime.isBefore(LocalTime.of(14, 0))) {
-                    return new Result(ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER, false);
+                return new Result(ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER, false);
             } else if ((PM_SESSION.equals(updateCourtSchedule.getSessionType()) || ALL_DAY.equals(updateCourtSchedule.getSessionType())) &&
                     sessionEndTime.isAfter(LocalTime.of(23, 59))) {
-                    return new Result(format(ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER, updateCourtSchedule.getSessionType()), false);
+                return new Result(format(ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER, updateCourtSchedule.getSessionType()), false);
             }
         }
 
@@ -208,12 +208,12 @@ public class SessionsService {
         final Optional<CourtRoom> courtRoom;
         if (nonNull(courtRoomId) && !courtRoomId.equalsIgnoreCase(persistedCourtSchedule.getCourtRoomId())) {
             // Determine jurisdiction: use from updateCourtSchedule if available, otherwise from persistedCourtSchedule, otherwise default to MAGISTRATES
-            String jurisdiction = nonNull(updateCourtSchedule.getJurisdiction()) 
-                    ? updateCourtSchedule.getJurisdiction() 
-                    : (nonNull(persistedCourtSchedule.getJurisdiction()) 
-                            ? persistedCourtSchedule.getJurisdiction() 
+            String jurisdiction = nonNull(updateCourtSchedule.getJurisdiction())
+                    ? updateCourtSchedule.getJurisdiction()
+                    : (nonNull(persistedCourtSchedule.getJurisdiction())
+                            ? persistedCourtSchedule.getJurisdiction()
                             : MAGISTRATES.getJurisdiction());
-            
+
             if (CROWN.equalsIgnoreCase(jurisdiction)) {
                 courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
             } else {
@@ -284,11 +284,11 @@ public class SessionsService {
         allocatedCourtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester)));
         List<AllocatedListingEachBooked> allocatedListingEachBooked = new ArrayList<>();
         if(!isEmpty(allocatedCourtSchedules)) {
-        allocatedListingEachBooked = allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(allocatedCourtSchedules.stream()
-                .map(CourtSchedule::getCourtScheduleId)
-                .toList())
-                .stream()
-                .toList();
+            allocatedListingEachBooked = allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(allocatedCourtSchedules.stream()
+                            .map(CourtSchedule::getCourtScheduleId)
+                            .toList())
+                    .stream()
+                    .toList();
         }
         final List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = CourtScheduleToDeleteResponseConverter.convert(allocatedCourtSchedules, allocatedListingEachBooked);
         final ListToJsonArrayConverter<CourtScheduleDeleteResponse> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
@@ -648,7 +648,7 @@ public class SessionsService {
 
     private void processMonthlyFrequency(List<Session> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList, Requester requester) {
         LocalDate currentDate = startDate;
-        
+
         while (!currentDate.isAfter(endDate)) {
             for (Session session : sessionList) {
                 populateCourtScheduleListForMonth(session, currentDate, endDate, courtScheduleList, requester);
@@ -662,14 +662,14 @@ public class SessionsService {
         if (monthEnd.isAfter(endDate)) {
             monthEnd = endDate;
         }
-        
+
         for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
             LocalDate sessionDateCandidate = findNthOccurrenceOfDayInMonth(dayOfWeek, monthStart, session.getIndex());
-            
+
             if (sessionDateCandidate != null && !sessionDateCandidate.isAfter(endDate) &&
-                !sessionDateCandidate.isAfter(monthEnd) && 
-                !sessionDateCandidate.isBefore(monthStart)) {
-                
+                    !sessionDateCandidate.isAfter(monthEnd) &&
+                    !sessionDateCandidate.isBefore(monthStart)) {
+
                 CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, requester, session.getSessionStartTime(), session.getSessionEndTime());
                 courtScheduleList.add(courtSchedule);
             }
@@ -679,18 +679,18 @@ public class SessionsService {
     private LocalDate findNthOccurrenceOfDayInMonth(DayOfWeek dayOfWeek, LocalDate monthStart, Integer index) {
         LocalDate firstDayOfMonth = monthStart.withDayOfMonth(1);
         LocalDate firstOccurrence = firstDayOfMonth.with(TemporalAdjusters.nextOrSame(dayOfWeek));
-        
+
         if (index == 1) {
             return firstOccurrence;
         }
-        
+
         LocalDate nthOccurrence = firstOccurrence.plusWeeks( (long) index - 1);
-        
+
         // Check if the nth occurrence is still within the same month
         if (nthOccurrence.getMonth() == firstDayOfMonth.getMonth()) {
             return nthOccurrence;
         }
-        
+
         // If index is 5 and the month doesn't have 5 occurrences, fallback to index 4
         if (index == 5) {
             LocalDate fourthOccurrence = firstOccurrence.plusWeeks(3);
@@ -698,7 +698,7 @@ public class SessionsService {
                 return fourthOccurrence;
             }
         }
-        
+
         return null;
     }
 
@@ -707,7 +707,7 @@ public class SessionsService {
 
         final DateUtils.SessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(session.getSessionType(), sessionStartTime, sessionEndTime);
         final Date sessionStartDate = combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionStartTime());
-        
+
         courtScheduleBuilder.withCourtScheduleId(UUID.randomUUID().toString())
                 .withBusinessType(session.getBusinessType())
                 .withCourtHouseId(session.getCourtCentreId())
@@ -787,7 +787,7 @@ public class SessionsService {
     }
 
     private boolean validatedWeeklyFrequency(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare,
-                                          LocalDate startDate, LocalDate endDate, Integer repeatFor) {
+                                             LocalDate startDate, LocalDate endDate, Integer repeatFor) {
         //Method validates the hearing slots available for the EVERY_WEEK frequency considering repeatFor and repeatDays parameter
         //These params are needed to skip the weeks based on the frequency
         boolean violated = false;
@@ -818,10 +818,10 @@ public class SessionsService {
     @Transactional
     public uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse assignCourtroom(
             final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request, final Requester requester) {
-        
-        final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response = 
+
+        final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response =
                 new uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse();
-        
+
         if (isEmpty(request.getCourtScheduleIds())) {
             return response;
         }
@@ -833,9 +833,9 @@ public class SessionsService {
 
         // Get all allocated listings to check for hearings
         final List<String> sessionIds = request.getCourtScheduleIds();
-        final List<AllocatedListingEachBooked> allAllocatedListings = 
+        final List<AllocatedListingEachBooked> allAllocatedListings =
                 allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(sessionIds);
-        final Map<String, List<AllocatedListingEachBooked>> allocatedListingsBySessionId = 
+        final Map<String, List<AllocatedListingEachBooked>> allocatedListingsBySessionId =
                 allAllocatedListings.stream()
                         .collect(Collectors.groupingBy(AllocatedListingEachBooked::getCourtScheduleId));
 
@@ -846,7 +846,7 @@ public class SessionsService {
         if (courtRoom.isEmpty()) {
             // All sessions are ineligible if courtroom not found
             request.getCourtScheduleIds().forEach(id -> {
-                final uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession ineligible = 
+                final uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession ineligible =
                         new uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession(
                                 id, "Courtroom not found");
                 response.getIneligibleSessions().add(ineligible);
@@ -858,12 +858,12 @@ public class SessionsService {
 
         // Categorize sessions
         final List<CourtSchedule> eligibleSessions = new ArrayList<>();
-        final List<uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession> ineligibleSessions = 
+        final List<uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession> ineligibleSessions =
                 new ArrayList<>();
 
         for (final String sessionId : request.getCourtScheduleIds()) {
             final CourtSchedule session = sessionMap.get(sessionId);
-            
+
             if (isNull(session)) {
                 ineligibleSessions.add(new uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession(
                         sessionId, "Session not found"));
@@ -887,7 +887,7 @@ public class SessionsService {
             }
 
             // Check if session has hearings
-            final List<AllocatedListingEachBooked> allocatedListings = 
+            final List<AllocatedListingEachBooked> allocatedListings =
                     allocatedListingsBySessionId.getOrDefault(sessionId, emptyList());
             final boolean hasHearings = !isEmpty(allocatedListings);
 
@@ -910,7 +910,7 @@ public class SessionsService {
         }
 
         // Convert eligible sessions to view
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView> eligibleSessionViews = 
+        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView> eligibleSessionViews =
                 eligibleSessions.stream()
                         .map(s -> {
                             s.setBusinessDescription(enrichBusinessDescription(s.getBusinessType(), requester));
@@ -934,9 +934,9 @@ public class SessionsService {
                         .withMaxDurationForMorning(session.getMaxDurationForMorning())
                         .withMaxDurationForAfternoon(session.getMaxDurationForAfternoon())
                         .withAllDaySplit(session.isAllDaySplit())
-                        .withSessionStartTime(session.getSessionStartTime() != null 
+                        .withSessionStartTime(session.getSessionStartTime() != null
                                 ? sessionTimeFormatter(session.getSessionStartTime()) : null)
-                        .withSessionEndTime(session.getSessionEndTime() != null 
+                        .withSessionEndTime(session.getSessionEndTime() != null
                                 ? sessionTimeFormatter(session.getSessionEndTime()) : null)
                         .withIsOverbookingAllowed(session.isOverbookingAllowed())
                         .withJurisdiction(session.getJurisdiction() != null ? session.getJurisdiction() : "MAGISTRATES")
@@ -944,16 +944,16 @@ public class SessionsService {
                         .build();
 
                 final Result result = update(updateRequest, requester);
-                
+
                 if (!result.isSuccess()) {
                     response.getFailedSessions().add(new uk.gov.moj.cpp.courtscheduler.domain.FailedSession(
                             session.getCourtScheduleId(), result.getMsg()));
                 }
             } catch (Exception e) {
-                logger.error("Failed to assign courtroom to session {}: {}", 
+                logger.error("Failed to assign courtroom to session {}: {}",
                         session.getCourtScheduleId(), e.getMessage());
                 response.getFailedSessions().add(new uk.gov.moj.cpp.courtscheduler.domain.FailedSession(
-                        session.getCourtScheduleId(), 
+                        session.getCourtScheduleId(),
                         "Failed to assign courtroom: " + (e.getMessage() != null ? e.getMessage() : "Unknown error")));
             }
         }
@@ -993,9 +993,9 @@ public class SessionsService {
                 .withAvailableDurationForAfternoon(session.getAvailableDurationForAfternoon())
                 .withMinHearingTime(session.getMinHearingTime())
                 .withMaxHearingTime(session.getMaxHearingTime())
-                .withSessionStartTime(session.getSessionStartTime() != null 
+                .withSessionStartTime(session.getSessionStartTime() != null
                         ? sessionTimeFormatter(session.getSessionStartTime()) : null)
-                .withSessionEndTime(session.getSessionEndTime() != null 
+                .withSessionEndTime(session.getSessionEndTime() != null
                         ? sessionTimeFormatter(session.getSessionEndTime()) : null)
                 .withIsOverbookingAllowed(session.isOverbookingAllowed())
                 .withIsDraft(session.isDraft())
