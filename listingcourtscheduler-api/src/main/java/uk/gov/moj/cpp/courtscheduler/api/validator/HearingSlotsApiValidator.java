@@ -68,7 +68,7 @@ public class HearingSlotsApiValidator {
         final var start = LocalDates.from(hearingSlotRequestParam.sessionStartDate());
         final var end = LocalDates.from(hearingSlotRequestParam.sessionEndDate());
         if (end.isBefore(start)) {
-            return getMessage(START_DATE_AFTER_END_DATE);
+            return buildErrorResponse(START_DATE_AFTER_END_DATE);
         }
 
         if (isNotBlank(hearingSlotRequestParam.hearingStartTime())) {
