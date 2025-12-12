@@ -2084,6 +2084,8 @@ class CourtSchedulerIT extends AbstractIT {
         draftSession.setCourtSession(AM_SESSION);
         draftSession.setPanel("YOUTH");
         draftSession.setCourtRoomId("original-courtroom-id");
+        draftSession.setJurisdiction("CROWN");
+        draftSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0));
         draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(draftSession);
@@ -2105,6 +2107,8 @@ class CourtSchedulerIT extends AbstractIT {
         draftSessionNoHearings.setCourtSession(AM_SESSION);
         draftSessionNoHearings.setPanel("YOUTH");
         draftSessionNoHearings.setCourtRoomId("original-courtroom-id");
+        draftSessionNoHearings.setJurisdiction("CROWN");
+        draftSessionNoHearings.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         draftSessionNoHearings.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 9, 0));
         draftSessionNoHearings.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(draftSessionNoHearings);
@@ -2161,6 +2165,8 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setCourtSession(AM_SESSION);
         assignedSession.setPanel("YOUTH");
         assignedSession.setCourtRoomId("original-courtroom-id");
+        assignedSession.setJurisdiction("CROWN");
+        assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0));
         assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(assignedSession);
@@ -2181,10 +2187,20 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
+        // Parse JSON response
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+        
         // Verify response contains ineligible sessions
-        assertThat(responsePayload, containsString("ineligibleSessions"));
-        assertThat(responsePayload, containsString(assignedSession.getCourtScheduleId()));
-        assertThat(responsePayload, containsString("Cannot assign courtroom to an assigned session with hearings"));
+        assertThat("Response should contain ineligibleSessions", jsonResponse.containsKey("ineligibleSessions"), is(true));
+        
+        // Check that the assigned session is in the ineligible sessions with the correct reason
+        boolean foundIneligibleSession = jsonResponse.getJsonArray("ineligibleSessions").stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(item -> assignedSession.getCourtScheduleId().equals(item.getString("courtScheduleId"))
+                        && "Cannot assign courtroom to an assigned session with hearings".equals(item.getString("reason")));
+        assertThat("Should find assigned session with hearings in ineligible sessions", foundIneligibleSession, is(true));
     }
 
     @Test
@@ -2232,6 +2248,8 @@ class CourtSchedulerIT extends AbstractIT {
         eligibleSession.setCourtSession(AM_SESSION);
         eligibleSession.setPanel("YOUTH");
         eligibleSession.setCourtRoomId("original-courtroom-id");
+        eligibleSession.setJurisdiction("CROWN");
+        eligibleSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         eligibleSession.setSessionStartTime(DateUtils.localDateToDateWithTime(eligibleSession.getSessionDate(), 9, 0));
         eligibleSession.setSessionEndTime(DateUtils.localDateToDateWithTime(eligibleSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(eligibleSession);
@@ -2249,6 +2267,8 @@ class CourtSchedulerIT extends AbstractIT {
         ineligibleSession.setCourtSession(AM_SESSION);
         ineligibleSession.setPanel("YOUTH");
         ineligibleSession.setCourtRoomId("original-courtroom-id");
+        ineligibleSession.setJurisdiction("CROWN");
+        ineligibleSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         ineligibleSession.setSessionStartTime(DateUtils.localDateToDateWithTime(ineligibleSession.getSessionDate(), 9, 0));
         ineligibleSession.setSessionEndTime(DateUtils.localDateToDateWithTime(ineligibleSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(ineligibleSession);
@@ -2274,5 +2294,149 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(responsePayload, containsString("ineligibleSessions"));
         assertThat(responsePayload, containsString(eligibleSession.getCourtScheduleId()));
         assertThat(responsePayload, containsString(ineligibleSession.getCourtScheduleId()));
+    }
+
+    @Test
+    void shouldMarkNonCrownSessionsAsIneligible() throws SQLException {
+        // Test that MAGISTRATES sessions are marked as ineligible
+        
+        UUID crownSessionId = UUID.randomUUID();
+        CourtSchedule crownSession = RANDOM.nextObject(CourtSchedule.class);
+        crownSession.setCourtScheduleId(crownSessionId.toString());
+        crownSession.setBusinessType("DVLA");
+        crownSession.setSlotBased(true);
+        crownSession.setMaxSlots(15);
+        crownSession.setAvailableSlots(15);
+        crownSession.setIsDraft(true);
+        crownSession.setSupportAdSplit(false);
+        crownSession.setCourtSession(AM_SESSION);
+        crownSession.setPanel("YOUTH");
+        crownSession.setCourtRoomId("original-courtroom-id");
+        crownSession.setJurisdiction("CROWN");
+        crownSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        crownSession.setSessionStartTime(DateUtils.localDateToDateWithTime(crownSession.getSessionDate(), 9, 0));
+        crownSession.setSessionEndTime(DateUtils.localDateToDateWithTime(crownSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(crownSession);
+
+        UUID magistratesSessionId = UUID.randomUUID();
+        CourtSchedule magistratesSession = RANDOM.nextObject(CourtSchedule.class);
+        magistratesSession.setCourtScheduleId(magistratesSessionId.toString());
+        magistratesSession.setBusinessType("DVLA");
+        magistratesSession.setSlotBased(true);
+        magistratesSession.setMaxSlots(15);
+        magistratesSession.setAvailableSlots(15);
+        magistratesSession.setIsDraft(true);
+        magistratesSession.setSupportAdSplit(false);
+        magistratesSession.setCourtSession(AM_SESSION);
+        magistratesSession.setPanel("YOUTH");
+        magistratesSession.setCourtRoomId("original-courtroom-id");
+        magistratesSession.setJurisdiction("MAGISTRATES");
+        magistratesSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        magistratesSession.setSessionStartTime(DateUtils.localDateToDateWithTime(magistratesSession.getSessionDate(), 9, 0));
+        magistratesSession.setSessionEndTime(DateUtils.localDateToDateWithTime(magistratesSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(magistratesSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", crownSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", magistratesSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+        
+        // Parse JSON response
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+        
+        // Verify CROWN session is eligible
+        assertThat("Response should contain eligibleSessions", jsonResponse.containsKey("eligibleSessions"), is(true));
+        boolean foundEligibleCrownSession = jsonResponse.getJsonArray("eligibleSessions").stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(item -> crownSession.getCourtScheduleId().equals(item.getString("courtScheduleId")));
+        assertThat("Should find CROWN session in eligible sessions", foundEligibleCrownSession, is(true));
+        
+        // Verify MAGISTRATES session is ineligible
+        assertThat("Response should contain ineligibleSessions", jsonResponse.containsKey("ineligibleSessions"), is(true));
+        boolean foundIneligibleMagistratesSession = jsonResponse.getJsonArray("ineligibleSessions").stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(item -> magistratesSession.getCourtScheduleId().equals(item.getString("courtScheduleId"))
+                        && "assign.courtroom endpoint is only valid for CROWN jurisdiction sessions".equals(item.getString("reason")));
+        assertThat("Should find MAGISTRATES session in ineligible sessions with correct reason", foundIneligibleMagistratesSession, is(true));
+    }
+
+    @Test
+    void shouldMarkSessionsWithWrongCourtCentreAsIneligible() throws SQLException {
+        // Test that sessions with different court centre than courtroom are marked as ineligible
+        
+        UUID correctCourtCentreSessionId = UUID.randomUUID();
+        CourtSchedule correctCourtCentreSession = RANDOM.nextObject(CourtSchedule.class);
+        correctCourtCentreSession.setCourtScheduleId(correctCourtCentreSessionId.toString());
+        correctCourtCentreSession.setBusinessType("DVLA");
+        correctCourtCentreSession.setSlotBased(true);
+        correctCourtCentreSession.setMaxSlots(15);
+        correctCourtCentreSession.setAvailableSlots(15);
+        correctCourtCentreSession.setIsDraft(true);
+        correctCourtCentreSession.setSupportAdSplit(false);
+        correctCourtCentreSession.setCourtSession(AM_SESSION);
+        correctCourtCentreSession.setPanel("YOUTH");
+        correctCourtCentreSession.setCourtRoomId("original-courtroom-id");
+        correctCourtCentreSession.setJurisdiction("CROWN");
+        correctCourtCentreSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        correctCourtCentreSession.setSessionStartTime(DateUtils.localDateToDateWithTime(correctCourtCentreSession.getSessionDate(), 9, 0));
+        correctCourtCentreSession.setSessionEndTime(DateUtils.localDateToDateWithTime(correctCourtCentreSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(correctCourtCentreSession);
+
+        UUID wrongCourtCentreSessionId = UUID.randomUUID();
+        CourtSchedule wrongCourtCentreSession = RANDOM.nextObject(CourtSchedule.class);
+        wrongCourtCentreSession.setCourtScheduleId(wrongCourtCentreSessionId.toString());
+        wrongCourtCentreSession.setBusinessType("DVLA");
+        wrongCourtCentreSession.setSlotBased(true);
+        wrongCourtCentreSession.setMaxSlots(15);
+        wrongCourtCentreSession.setAvailableSlots(15);
+        wrongCourtCentreSession.setIsDraft(true);
+        wrongCourtCentreSession.setSupportAdSplit(false);
+        wrongCourtCentreSession.setCourtSession(AM_SESSION);
+        wrongCourtCentreSession.setPanel("YOUTH");
+        wrongCourtCentreSession.setCourtRoomId("original-courtroom-id");
+        wrongCourtCentreSession.setJurisdiction("CROWN");
+        wrongCourtCentreSession.setCourtHouseId("different-court-centre-id-12345");
+        wrongCourtCentreSession.setSessionStartTime(DateUtils.localDateToDateWithTime(wrongCourtCentreSession.getSessionDate(), 9, 0));
+        wrongCourtCentreSession.setSessionEndTime(DateUtils.localDateToDateWithTime(wrongCourtCentreSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(wrongCourtCentreSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", correctCourtCentreSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", wrongCourtCentreSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+        
+        // Parse JSON response
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+        
+        // Verify session with correct court centre is eligible
+        assertThat("Response should contain eligibleSessions", jsonResponse.containsKey("eligibleSessions"), is(true));
+        boolean foundEligibleCorrectCourtCentreSession = jsonResponse.getJsonArray("eligibleSessions").stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(item -> correctCourtCentreSession.getCourtScheduleId().equals(item.getString("courtScheduleId")));
+        assertThat("Should find session with correct court centre in eligible sessions", foundEligibleCorrectCourtCentreSession, is(true));
+        
+        // Verify session with wrong court centre is ineligible
+        assertThat("Response should contain ineligibleSessions", jsonResponse.containsKey("ineligibleSessions"), is(true));
+        boolean foundIneligibleWrongCourtCentreSession = jsonResponse.getJsonArray("ineligibleSessions").stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(item -> wrongCourtCentreSession.getCourtScheduleId().equals(item.getString("courtScheduleId"))
+                        && "The new courtroom must belong to the same court centre as the session".equals(item.getString("reason")));
+        assertThat("Should find session with wrong court centre in ineligible sessions with correct reason", foundIneligibleWrongCourtCentreSession, is(true));
     }
 }

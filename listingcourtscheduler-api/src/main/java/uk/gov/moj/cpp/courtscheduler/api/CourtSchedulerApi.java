@@ -277,7 +277,7 @@ public class CourtSchedulerApi {
         uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request = 
                 assignCourtroomRequestConverter.convert(envelope.payloadAsJsonObject());
 
-        JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(request);
+        JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
 
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);

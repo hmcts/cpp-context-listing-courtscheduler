@@ -9,6 +9,7 @@ import static java.util.Objects.nonNull;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
@@ -206,7 +207,18 @@ public class SessionsService {
 
         final Optional<CourtRoom> courtRoom;
         if (nonNull(courtRoomId) && !courtRoomId.equalsIgnoreCase(persistedCourtSchedule.getCourtRoomId())) {
-            courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+            // Determine jurisdiction: use from updateCourtSchedule if available, otherwise from persistedCourtSchedule, otherwise default to MAGISTRATES
+            String jurisdiction = nonNull(updateCourtSchedule.getJurisdiction()) 
+                    ? updateCourtSchedule.getJurisdiction() 
+                    : (nonNull(persistedCourtSchedule.getJurisdiction()) 
+                            ? persistedCourtSchedule.getJurisdiction() 
+                            : MAGISTRATES.getJurisdiction());
+            
+            if (CROWN.equalsIgnoreCase(jurisdiction)) {
+                courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+            } else {
+                courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+            }
         } else {
             courtRoom = Optional.empty();
         }
@@ -842,6 +854,8 @@ public class SessionsService {
             return response;
         }
 
+        final String courtRoomCourtCentreId = courtRoom.get().getOucodeUUID();
+
         // Categorize sessions
         final List<CourtSchedule> eligibleSessions = new ArrayList<>();
         final List<uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession> ineligibleSessions = 
@@ -853,6 +867,22 @@ public class SessionsService {
             if (isNull(session)) {
                 ineligibleSessions.add(new uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession(
                         sessionId, "Session not found"));
+                continue;
+            }
+
+            // Check if session is CROWN jurisdiction
+            final String jurisdiction = session.getJurisdiction();
+            if (isNull(jurisdiction) || !CROWN.equalsIgnoreCase(jurisdiction)) {
+                ineligibleSessions.add(new uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession(
+                        sessionId, "assign.courtroom endpoint is only valid for CROWN jurisdiction sessions"));
+                continue;
+            }
+
+            // Check if courtroom belongs to the same court centre as the session
+            final String sessionCourtCentreId = session.getCourtHouseId();
+            if (isNull(sessionCourtCentreId) || isNull(courtRoomCourtCentreId) || !sessionCourtCentreId.equals(courtRoomCourtCentreId)) {
+                ineligibleSessions.add(new uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession(
+                        sessionId, "The new courtroom must belong to the same court centre as the session"));
                 continue;
             }
 

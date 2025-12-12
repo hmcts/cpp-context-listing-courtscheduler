@@ -398,7 +398,7 @@ public class DatabaseSeeder {
         cleanAllocatedListingTable();
         cleanCourtScheduleTable();
         cleanCourtScheduleJudiciaryTable();
-        cleanMigrationStatusTable();
+//        cleanMigrationStatusTable();
         cleanRotaFileProcessHistoryTable();
         cleanRotaProcessLogTable();
     }

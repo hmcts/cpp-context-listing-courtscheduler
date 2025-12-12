@@ -27,6 +27,34 @@
           "venueId": 39
         }
       ]
+    },
+    {
+      "id": "785339c1-af71-3322-a55b-ba255e0db1c2",
+      "oucode": "C01CR00",
+      "lja": "1234",
+      "oucodeL1Code": "C",
+      "courtId": "100",
+      "oucodeL1Name": "Crown Courts",
+      "oucodeL3Name": "Test Crown Court",
+      "oucodeL3WelshName": "Llys Goron Profi",
+      "address1": "Test Street",
+      "address2": "Test City",
+      "address3": "Test County",
+      "postcode": "TE5T 1NG",
+      "defaultStartTime": "10:00:00",
+      "defaultDurationHrs": "07:00:00",
+      "oucodeL2Code": "01",
+      "oucodeL2Name": "Test Region",
+      "region": "Test Region",
+      "courtrooms": [
+        {
+          "id": "3fc02c0f-f92e-31da-9686-d626ac8ccdc3",
+          "venueName": "TEST CROWN COURT",
+          "courtroomId": 999,
+          "courtroomName": "Courtroom 01",
+          "venueId": 1
+        }
+      ]
     }
   ]
 }
