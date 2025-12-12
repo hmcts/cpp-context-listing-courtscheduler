@@ -6,6 +6,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshot
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshotFileTimeStampAsOffsetDateTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJAFileNamePrefix;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJAFileTimeStampAsOffsetDateTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJAFileTimeStampAsString;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
@@ -31,6 +32,7 @@ public class RotaFileUtility {
     private static final Logger logger = LoggerFactory.getLogger(RotaFileUtility.class);
     
     private static final String DUMMY_NAME_PART = "dummysupport";
+    private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final long NANOSECONDS_TO_MILLISECONDS = 1_000_000L;
     private static final String LOG_PREFIX_DD_15703 = "DD-15703:processSnapshotRotaFile: ";
 
@@ -55,6 +57,16 @@ public class RotaFileUtility {
      */
     public boolean isDummyFile(final String fileName) {
         return fileName.contains(DUMMY_NAME_PART);
+    }
+
+    /**
+     * Checks if the file is a snapshot file.
+     *
+     * @param fileName the name of the file
+     * @return true if the file is a snapshot file, false otherwise
+     */
+    public boolean isSnapshotFile(final String fileName) {
+        return fileName.contains(SNAPSHOT_NAME_PART);
     }
 
     /**
@@ -109,6 +121,13 @@ public class RotaFileUtility {
                                                                   final byte[] content,
                                                                   final uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService rotaFileProcessHistoryService) {
         logger.info("{}before rotaFileProcessHistoryRepository.save", LOG_PREFIX_DD_15703);
+        
+        // Check if timestamp actually exists in the filename (not generated)
+        final String timeStampAsString = getLJAFileTimeStampAsString(fileName);
+        if (isNull(timeStampAsString)) {
+            logger.warn("Cannot create file process history - invalid file date/time in fileName: {}", fileName);
+            return null;
+        }
         
         final OffsetDateTime fileDateTime = getLJAFileTimeStampAsOffsetDateTime(fileName);
         if (isNull(fileDateTime)) {

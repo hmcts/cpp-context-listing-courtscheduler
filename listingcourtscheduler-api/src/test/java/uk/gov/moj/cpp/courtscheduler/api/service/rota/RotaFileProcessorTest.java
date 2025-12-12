@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -218,7 +219,8 @@ class RotaFileProcessorTest {
         when(rotaFileParser.parse(anyString(), any())).thenReturn(emptyMap());
         when(rotaFileUtility.convertNanosToMillis(anyLong())).thenReturn(100L);
         when(rotaFileUtility.isDummyFile(anyString())).thenReturn(false);
-        when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
+        when(rotaFileUtility.isSnapshotFile(anyString())).thenReturn(false);
+        lenient().when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
         when(rotaFileProcessHistoryService.update(any(RotaFileProcessHistory.class)))
                 .thenReturn(rotaFileProcessHistory);
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(), anyLong(), anyString(), any());
@@ -255,7 +257,8 @@ class RotaFileProcessorTest {
         when(rotaFileParser.parse(anyString(), any())).thenReturn(emptyMap());
         when(rotaFileUtility.convertNanosToMillis(anyLong())).thenReturn(100L);
         when(rotaFileUtility.isDummyFile(anyString())).thenReturn(false);
-        when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
+        when(rotaFileUtility.isSnapshotFile(anyString())).thenReturn(false);
+        lenient().when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(), anyLong(), anyString(), any());
         doNothing().when(azureBlobClientService).releaseLease(anyString(), anyString(), anyBoolean());
         doNothing().when(azureBlobClientService).deleteFile(anyString(), any());
@@ -289,7 +292,11 @@ class RotaFileProcessorTest {
         // given
         blobName = "test_snapshot_20240115T120000Z.xml";
         when(rotaFileUtility.isDummyFile(blobName)).thenReturn(false);
+        when(rotaFileUtility.isSnapshotFile(blobName)).thenReturn(true);
         when(rotaFileUtility.isNewerSnapshotFileProcessed(blobName)).thenReturn(true);
+        doNothing().when(azureBlobClientService).uploadProcessedFile(any(), anyLong(), anyString(), any());
+        doNothing().when(azureBlobClientService).releaseLease(anyString(), anyString(), anyBoolean());
+        doNothing().when(azureBlobClientService).deleteFile(anyString(), any());
 
         // when
         rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
@@ -310,7 +317,8 @@ class RotaFileProcessorTest {
                 .thenReturn(rotaFileProcessHistory);
         when(rotaFileUtility.convertNanosToMillis(anyLong())).thenReturn(100L);
         when(rotaFileUtility.isDummyFile(anyString())).thenReturn(false);
-        when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
+        when(rotaFileUtility.isSnapshotFile(anyString())).thenReturn(false);
+        lenient().when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
         when(rotaFileProcessHistoryService.update(any(RotaFileProcessHistory.class)))
                 .thenReturn(rotaFileProcessHistory);
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(), anyLong(), anyString(), any());
@@ -389,6 +397,7 @@ class RotaFileProcessorTest {
         when(rotaFileParser.parse(anyString(), any())).thenReturn(emptyMap());
         when(rotaFileUtility.convertNanosToMillis(anyLong())).thenReturn(100L);
         when(rotaFileUtility.isDummyFile(anyString())).thenReturn(false);
+        when(rotaFileUtility.isSnapshotFile(anyString())).thenReturn(true);
         when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
         when(rotaFileProcessHistoryService.update(any(RotaFileProcessHistory.class)))
                 .thenReturn(rotaFileProcessHistory);
@@ -634,7 +643,8 @@ class RotaFileProcessorTest {
         when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
         when(rotaFileUtility.convertNanosToMillis(anyLong())).thenReturn(100L);
         when(rotaFileUtility.isDummyFile(anyString())).thenReturn(false);
-        when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
+        when(rotaFileUtility.isSnapshotFile(anyString())).thenReturn(false);
+        lenient().when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
         doNothing().when(azureBlobClientService).releaseLease(anyString(), anyString(), anyBoolean());
 
         Map<String, Map<String, String>> courtListings = new HashMap<>();

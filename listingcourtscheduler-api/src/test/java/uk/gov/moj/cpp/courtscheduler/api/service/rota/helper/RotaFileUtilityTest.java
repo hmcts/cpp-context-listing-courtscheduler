@@ -233,18 +233,25 @@ class RotaFileUtilityTest {
     }
 
     @Test
-    void shouldReturnNull_WhenFileNameHasNoTimestamp() {
+    void shouldCreateAndSaveFileProcessHistory_WhenFileNameHasNoTimestamp() {
         // given
         String fileName = "invalid_filename_without_timestamp.xml";
         byte[] content = "test content".getBytes();
+        String fileNamePrefix = "invalid_filename_without_timestamp.xml";
+
+        RotaFileProcessHistory mockHistory = new RotaFileProcessHistory();
+        mockHistory.setExecutionId("generated-execution-id");
+        when(rotaFileProcessHistoryService.save(eq(fileNamePrefix), any(OffsetDateTime.class), eq(content), anyString()))
+                .thenReturn(mockHistory);
 
         // when
         RotaFileProcessHistory result = rotaFileUtility.createAndSaveFileProcessHistory(
                 fileName, content, rotaFileProcessHistoryService);
 
         // then
-        assertThat(result, is(org.hamcrest.Matchers.nullValue()));
-        verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(), anyString());
+        assertNotNull(result);
+        assertNotNull(result.getExecutionId());
+        verify(rotaFileProcessHistoryService).save(eq(fileNamePrefix), any(OffsetDateTime.class), eq(content), anyString());
     }
 
     @Test

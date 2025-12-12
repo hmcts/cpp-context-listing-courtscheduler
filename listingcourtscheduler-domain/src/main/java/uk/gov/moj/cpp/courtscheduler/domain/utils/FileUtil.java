@@ -47,22 +47,31 @@ public class FileUtil {
     }
 
     /**
-     * Extracts the timestamp string from a file name by looking for the timestamp pattern
-     * at the end of the filename (before .xml). This method does not require "_snapshot_"
-     * to be present in the filename.
+     * Extracts the timestamp string from a file name.
+     * For snapshot files (containing "_snapshot_"), extracts the timestamp after "_snapshot_".
+     * For non-snapshot files, extracts the timestamp from the end of the filename (before .xml).
+     * If no timestamp is found in a non-snapshot file, returns the current timestamp.
      *
      * @param fileName the name of the file
-     * @return the timestamp string, or null if not found
+     * @return the timestamp string, or current timestamp if not found (for non-snapshot files)
      */
     public static String getLJAFileTimeStampAsString(final String fileName) {
         if (!fileName.endsWith(XML_NAME_PART)) {
             return null;
         }
 
+        // If it's a snapshot file, use the same logic as getLJASnapshotFileTimeStampAsString
+        if (fileName.contains(SNAPSHOT_NAME_PART)) {
+            return fileName.substring(fileName.indexOf(SNAPSHOT_NAME_PART) + SNAPSHOT_NAME_PART.length(),
+                    fileName.length() - XML_NAME_PART.length());
+        }
+
+        // For non-snapshot files, try to extract timestamp from the end
         final int minFileNameLength = TIMESTAMP_STRING_LENGTH + XML_NAME_PART.length();
         
         if (fileName.length() < minFileNameLength) {
-            return null;
+            // If no timestamp found, return current timestamp
+            return LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern(FILE_NAME_TIMESTAMP_PATTERN));
         }
 
         final String timestampCandidate = fileName.substring(
@@ -73,7 +82,8 @@ public class FileUtil {
             LocalDateTime.parse(timestampCandidate, DateTimeFormatter.ofPattern(FILE_NAME_TIMESTAMP_PATTERN));
             return timestampCandidate;
         } catch (DateTimeParseException e) {
-            return null;
+            // If timestamp parsing fails, return current timestamp
+            return LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern(FILE_NAME_TIMESTAMP_PATTERN));
         }
     }
 
@@ -110,6 +120,11 @@ public class FileUtil {
     public static String getLJAFileNamePrefix(final String fileName) {
         final String timeStampAsString = getLJAFileTimeStampAsString(fileName);
         if (timeStampAsString == null) {
+            return fileName;
+        }
+
+        // Check if the timestamp actually exists in the filename (not generated)
+        if (!fileName.contains(timeStampAsString)) {
             return fileName;
         }
 

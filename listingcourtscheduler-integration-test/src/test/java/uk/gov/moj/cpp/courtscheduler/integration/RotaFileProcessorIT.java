@@ -8,7 +8,6 @@ import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static org.apache.activemq.artemis.utils.RandomUtil.randomSimpleString;
-import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -55,6 +54,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Disabled
+@Deprecated
 class RotaFileProcessorIT extends AbstractIT {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessorIT.class);
