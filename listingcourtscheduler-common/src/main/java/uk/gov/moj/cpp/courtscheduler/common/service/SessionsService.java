@@ -886,6 +886,27 @@ public class SessionsService {
                 continue;
             }
 
+            // Check for duplicate sessions
+            final String courtRoomName = courtRoom.get().getCourtroomName();
+            final String sessionCourtSession = session.getCourtSession();
+            final List<String> duplicateSessionTypes = getDuplicateSessionTypes(sessionCourtSession);
+            
+            if (isNotEmpty(duplicateSessionTypes)) {
+                final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> duplicateSessions = 
+                        courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
+                                courtRoomName,
+                                session.getSessionDate(),
+                                session.getBusinessType(),
+                                duplicateSessionTypes,
+                                session.getCourtScheduleId());
+                
+                if (isNotEmpty(duplicateSessions)) {
+                    ineligibleSessions.add(new uk.gov.moj.cpp.courtscheduler.domain.IneligibleSession(
+                            sessionId, "Duplicate session already exists with same business type, session date, and courtroom"));
+                    continue;
+                }
+            }
+
             // Check if session has hearings
             final List<AllocatedListingEachBooked> allocatedListings =
                     allocatedListingsBySessionId.getOrDefault(sessionId, emptyList());
@@ -1000,5 +1021,30 @@ public class SessionsService {
                 .withIsOverbookingAllowed(session.isOverbookingAllowed())
                 .withIsDraft(session.isDraft())
                 .build();
+    }
+
+    /**
+     * Determines which session types to check for duplicates based on the current session type.
+     * - AM session: check for AM or AD
+     * - PM session: check for PM or AD
+     * - AD session: check for AD, AM, or PM
+     *
+     * @param sessionType The current session type (AM, PM, or AD)
+     * @return List of session types to check for duplicates
+     */
+    private List<String> getDuplicateSessionTypes(final String sessionType) {
+        if (isNull(sessionType)) {
+            return emptyList();
+        }
+        
+        if (AM_SESSION.equalsIgnoreCase(sessionType)) {
+            return List.of(AM_SESSION, ALL_DAY);
+        } else if (PM_SESSION.equalsIgnoreCase(sessionType)) {
+            return List.of(PM_SESSION, ALL_DAY);
+        } else if (ALL_DAY.equalsIgnoreCase(sessionType)) {
+            return List.of(ALL_DAY, AM_SESSION, PM_SESSION);
+        }
+        
+        return emptyList();
     }
 }

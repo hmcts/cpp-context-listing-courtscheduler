@@ -2439,4 +2439,208 @@ class CourtSchedulerIT extends AbstractIT {
                         && "The new courtroom must belong to the same court centre as the session".equals(item.getString("reason")));
         assertThat("Should find session with wrong court centre in ineligible sessions with correct reason", foundIneligibleWrongCourtCentreSession, is(true));
     }
+
+    @Test
+    void shouldMarkAMSessionAsIneligibleWhenDuplicateAMSessionExists() throws SQLException {
+        // Test that AM session is marked as ineligible when duplicate AM session exists
+        
+        UUID existingSessionId = UUID.randomUUID();
+        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
+        existingSession.setCourtScheduleId(existingSessionId.toString());
+        existingSession.setBusinessType("DVLA");
+        existingSession.setSlotBased(true);
+        existingSession.setMaxSlots(15);
+        existingSession.setAvailableSlots(15);
+        existingSession.setIsDraft(true);
+        existingSession.setSupportAdSplit(false);
+        existingSession.setCourtSession(AM_SESSION);
+        existingSession.setPanel("YOUTH");
+        existingSession.setJurisdiction("CROWN");
+        existingSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
+        existingSession.setCourtRoomName("Courtroom 01");
+        existingSession.setSessionDate(LocalDate.now().plusDays(1));
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0));
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(existingSession);
+
+        UUID newSessionId = UUID.randomUUID();
+        CourtSchedule newSession = RANDOM.nextObject(CourtSchedule.class);
+        newSession.setCourtScheduleId(newSessionId.toString());
+        newSession.setBusinessType("DVLA");
+        newSession.setSlotBased(true);
+        newSession.setMaxSlots(15);
+        newSession.setAvailableSlots(15);
+        newSession.setIsDraft(true);
+        newSession.setSupportAdSplit(false);
+        newSession.setCourtSession(AM_SESSION);
+        newSession.setPanel("YOUTH");
+        newSession.setJurisdiction("CROWN");
+        newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        newSession.setCourtRoomId("original-courtroom-id");
+        newSession.setSessionDate(existingSession.getSessionDate()); // Same date
+        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0));
+        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(newSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+        
+        // Parse JSON response
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+        
+        // Verify session is ineligible due to duplicate
+        assertThat("Response should contain ineligibleSessions", jsonResponse.containsKey("ineligibleSessions"), is(true));
+        boolean foundIneligibleDuplicateSession = jsonResponse.getJsonArray("ineligibleSessions").stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(item -> newSessionId.toString().equals(item.getString("courtScheduleId"))
+                        && item.getString("reason").contains("Duplicate session already exists"));
+        assertThat("Should find session with duplicate in ineligible sessions", foundIneligibleDuplicateSession, is(true));
+    }
+
+    @Test
+    void shouldMarkAMSessionAsIneligibleWhenDuplicateADSessionExists() throws SQLException {
+        // Test that AM session is marked as ineligible when duplicate AD session exists
+        
+        UUID existingSessionId = UUID.randomUUID();
+        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
+        existingSession.setCourtScheduleId(existingSessionId.toString());
+        existingSession.setBusinessType("DVLA");
+        existingSession.setSlotBased(true);
+        existingSession.setMaxSlots(15);
+        existingSession.setAvailableSlots(15);
+        existingSession.setIsDraft(true);
+        existingSession.setSupportAdSplit(false);
+        existingSession.setCourtSession(ALL_DAY);
+        existingSession.setPanel("YOUTH");
+        existingSession.setJurisdiction("CROWN");
+        existingSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
+        existingSession.setCourtRoomName("Courtroom 01");
+        existingSession.setSessionDate(LocalDate.now().plusDays(1));
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0));
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 17, 0));
+        databaseSeeder.insertCourtSchedule(existingSession);
+
+        UUID newSessionId = UUID.randomUUID();
+        CourtSchedule newSession = RANDOM.nextObject(CourtSchedule.class);
+        newSession.setCourtScheduleId(newSessionId.toString());
+        newSession.setBusinessType("DVLA");
+        newSession.setSlotBased(true);
+        newSession.setMaxSlots(15);
+        newSession.setAvailableSlots(15);
+        newSession.setIsDraft(true);
+        newSession.setSupportAdSplit(false);
+        newSession.setCourtSession(AM_SESSION);
+        newSession.setPanel("YOUTH");
+        newSession.setJurisdiction("CROWN");
+        newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        newSession.setCourtRoomId("original-courtroom-id");
+        newSession.setSessionDate(existingSession.getSessionDate()); // Same date
+        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0));
+        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(newSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+        
+        // Parse JSON response
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+        
+        // Verify session is ineligible due to duplicate
+        assertThat("Response should contain ineligibleSessions", jsonResponse.containsKey("ineligibleSessions"), is(true));
+        boolean foundIneligibleDuplicateSession = jsonResponse.getJsonArray("ineligibleSessions").stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(item -> newSessionId.toString().equals(item.getString("courtScheduleId"))
+                        && item.getString("reason").contains("Duplicate session already exists"));
+        assertThat("Should find AM session with duplicate AD session in ineligible sessions", foundIneligibleDuplicateSession, is(true));
+    }
+
+    @Test
+    void shouldMarkADSessionAsIneligibleWhenDuplicateAMSessionExists() throws SQLException {
+        // Test that AD session is marked as ineligible when duplicate AM session exists
+        
+        UUID existingSessionId = UUID.randomUUID();
+        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
+        existingSession.setCourtScheduleId(existingSessionId.toString());
+        existingSession.setBusinessType("DVLA");
+        existingSession.setSlotBased(true);
+        existingSession.setMaxSlots(15);
+        existingSession.setAvailableSlots(15);
+        existingSession.setIsDraft(true);
+        existingSession.setSupportAdSplit(false);
+        existingSession.setCourtSession(AM_SESSION);
+        existingSession.setPanel("YOUTH");
+        existingSession.setJurisdiction("CROWN");
+        existingSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
+        existingSession.setCourtRoomName("Courtroom 01");
+        existingSession.setSessionDate(LocalDate.now().plusDays(1));
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0));
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(existingSession);
+
+        UUID newSessionId = UUID.randomUUID();
+        CourtSchedule newSession = RANDOM.nextObject(CourtSchedule.class);
+        newSession.setCourtScheduleId(newSessionId.toString());
+        newSession.setBusinessType("DVLA");
+        newSession.setSlotBased(true);
+        newSession.setMaxSlots(15);
+        newSession.setAvailableSlots(15);
+        newSession.setIsDraft(true);
+        newSession.setSupportAdSplit(false);
+        newSession.setCourtSession(ALL_DAY);
+        newSession.setPanel("YOUTH");
+        newSession.setJurisdiction("CROWN");
+        newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        newSession.setCourtRoomId("original-courtroom-id");
+        newSession.setSessionDate(existingSession.getSessionDate()); // Same date
+        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0));
+        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 17, 0));
+        databaseSeeder.insertCourtSchedule(newSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+        
+        // Parse JSON response
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+        
+        // Verify session is ineligible due to duplicate
+        assertThat("Response should contain ineligibleSessions", jsonResponse.containsKey("ineligibleSessions"), is(true));
+        boolean foundIneligibleDuplicateSession = jsonResponse.getJsonArray("ineligibleSessions").stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(item -> newSessionId.toString().equals(item.getString("courtScheduleId"))
+                        && item.getString("reason").contains("Duplicate session already exists"));
+        assertThat("Should find AD session with duplicate AM session in ineligible sessions", foundIneligibleDuplicateSession, is(true));
+    }
 }

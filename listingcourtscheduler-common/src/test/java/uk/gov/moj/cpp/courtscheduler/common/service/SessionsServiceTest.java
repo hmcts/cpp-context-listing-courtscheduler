@@ -2268,6 +2268,7 @@ class SessionsServiceTest {
                         .withIsDraft(true)
                         .withBusinessType("DVLA")
                         .withCourtSession(AM_SESSION)
+                        .withSessionDate(LocalDate.now().plusDays(1))
                         .withPanel("Adult")
                         .withMaxSlots(25)
                         .withMaxDuration(0)
@@ -2286,6 +2287,7 @@ class SessionsServiceTest {
         final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
                 .withId(courtRoomId)
                 .withOucodeUUID(courtCentreId)
+                .withCourtRoomName("Test Courtroom")
                 .build();
 
         final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
@@ -2305,6 +2307,7 @@ class SessionsServiceTest {
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList())).thenReturn(List.of(crownSession, magistratesSession));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester))).thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(any(), any(), any(), anyList(), anyString())).thenReturn(emptyList());
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eq(crownSessionId))).thenReturn(persistedCrownSession);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
@@ -2341,6 +2344,7 @@ class SessionsServiceTest {
                         .withIsDraft(true)
                         .withBusinessType("DVLA")
                         .withCourtSession(AM_SESSION)
+                        .withSessionDate(LocalDate.now().plusDays(1))
                         .withPanel("Adult")
                         .withMaxSlots(25)
                         .withMaxDuration(0)
@@ -2359,6 +2363,7 @@ class SessionsServiceTest {
         final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
                 .withId(courtRoomId)
                 .withOucodeUUID(correctCourtCentreId)
+                .withCourtRoomName("Test Courtroom")
                 .build();
 
         final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
@@ -2378,6 +2383,7 @@ class SessionsServiceTest {
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList())).thenReturn(List.of(correctCourtCentreSession, wrongCourtCentreSession));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester))).thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(any(), any(), any(), anyList(), anyString())).thenReturn(emptyList());
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eq(correctCourtCentreSessionId))).thenReturn(persistedCorrectCourtCentreSession);
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
@@ -2413,6 +2419,7 @@ class SessionsServiceTest {
                         .withIsDraft(true)
                         .withBusinessType("DVLA")
                         .withCourtSession(AM_SESSION)
+                        .withSessionDate(LocalDate.now().plusDays(1))
                         .withPanel("Adult")
                         .withMaxSlots(25)
                         .withMaxDuration(0)
@@ -2427,6 +2434,7 @@ class SessionsServiceTest {
                         .withIsDraft(false)
                         .withBusinessType("DVLA")
                         .withCourtSession(AM_SESSION)
+                        .withSessionDate(LocalDate.now().plusDays(1))
                         .withPanel("Adult")
                         .withMaxSlots(25)
                         .withMaxDuration(0)
@@ -2436,6 +2444,7 @@ class SessionsServiceTest {
         final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
                 .withId(courtRoomId)
                 .withOucodeUUID(courtCentreId)
+                .withCourtRoomName("Test Courtroom")
                 .build();
 
         final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
@@ -2463,6 +2472,7 @@ class SessionsServiceTest {
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList())).thenReturn(List.of(session1, session2));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester))).thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(any(), any(), any(), anyList(), anyString())).thenReturn(emptyList());
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eq(sessionId1))).thenReturn(persistedSession1);
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eq(sessionId2))).thenReturn(persistedSession2);
@@ -2479,5 +2489,332 @@ class SessionsServiceTest {
         assertTrue(response.getEligibleSessions().stream().anyMatch(s -> s.getCourtScheduleId().equals(sessionId1)));
         assertTrue(response.getEligibleSessions().stream().anyMatch(s -> s.getCourtScheduleId().equals(sessionId2)));
         verify(courtScheduleRepository, times(2)).update(any(), any(), any());
+    }
+
+    @Test
+    void shouldMarkAMSessionAsIneligibleWhenDuplicateAMSessionExists() {
+        // Given
+        final String sessionId = randomUUID().toString();
+        final String courtRoomId = "courtroom-id-123";
+        final String courtCentreId = "court-centre-id-123";
+        final String courtRoomName = "Courtroom 01";
+        final LocalDate sessionDate = LocalDate.now().plusDays(1);
+        final String businessType = "DVLA";
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = 
+                uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                        .withCourtScheduleId(sessionId)
+                        .withJurisdiction("CROWN")
+                        .withCourtHouseId(courtCentreId)
+                        .withIsDraft(true)
+                        .withBusinessType(businessType)
+                        .withCourtSession(AM_SESSION)
+                        .withSessionDate(sessionDate)
+                        .withPanel("Adult")
+                        .withMaxSlots(25)
+                        .withMaxDuration(0)
+                        .withAllDaySplit(false)
+                        .build();
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withCourtRoomName(courtRoomName)
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(sessionId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        // Mock duplicate AM session found
+        final CourtSchedule duplicateSession = new CourtSchedule();
+        duplicateSession.setCourtScheduleId(randomUUID().toString());
+        duplicateSession.setCourtRoomName(courtRoomName);
+        duplicateSession.setSessionDate(sessionDate);
+        duplicateSession.setBusinessType(businessType);
+        duplicateSession.setCourtSession(AM_SESSION);
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList())).thenReturn(List.of(session));
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester))).thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
+                eq(courtRoomName), eq(sessionDate), eq(businessType), anyList(), eq(sessionId)))
+                .thenReturn(List.of(duplicateSession));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(0, response.getEligibleSessions().size());
+        assertEquals(1, response.getIneligibleSessions().size());
+        assertTrue(response.getIneligibleSessions().stream().anyMatch(s -> 
+                s.getCourtScheduleId().equals(sessionId) && 
+                s.getReason().contains("Duplicate session already exists")));
+        verify(courtScheduleRepository, never()).update(any(), any(), any());
+    }
+
+    @Test
+    void shouldMarkAMSessionAsIneligibleWhenDuplicateADSessionExists() {
+        // Given
+        final String sessionId = randomUUID().toString();
+        final String courtRoomId = "courtroom-id-123";
+        final String courtCentreId = "court-centre-id-123";
+        final String courtRoomName = "Courtroom 01";
+        final LocalDate sessionDate = LocalDate.now().plusDays(1);
+        final String businessType = "DVLA";
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = 
+                uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                        .withCourtScheduleId(sessionId)
+                        .withJurisdiction("CROWN")
+                        .withCourtHouseId(courtCentreId)
+                        .withIsDraft(true)
+                        .withBusinessType(businessType)
+                        .withCourtSession(AM_SESSION)
+                        .withSessionDate(sessionDate)
+                        .withPanel("Adult")
+                        .withMaxSlots(25)
+                        .withMaxDuration(0)
+                        .withAllDaySplit(false)
+                        .build();
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withCourtRoomName(courtRoomName)
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(sessionId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        // Mock duplicate AD session found
+        final CourtSchedule duplicateSession = new CourtSchedule();
+        duplicateSession.setCourtScheduleId(randomUUID().toString());
+        duplicateSession.setCourtRoomName(courtRoomName);
+        duplicateSession.setSessionDate(sessionDate);
+        duplicateSession.setBusinessType(businessType);
+        duplicateSession.setCourtSession(ALL_DAY);
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList())).thenReturn(List.of(session));
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester))).thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
+                eq(courtRoomName), eq(sessionDate), eq(businessType), anyList(), eq(sessionId)))
+                .thenReturn(List.of(duplicateSession));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(0, response.getEligibleSessions().size());
+        assertEquals(1, response.getIneligibleSessions().size());
+        assertTrue(response.getIneligibleSessions().stream().anyMatch(s -> 
+                s.getCourtScheduleId().equals(sessionId) && 
+                s.getReason().contains("Duplicate session already exists")));
+        verify(courtScheduleRepository, never()).update(any(), any(), any());
+    }
+
+    @Test
+    void shouldMarkPMSessionAsIneligibleWhenDuplicatePMSessionExists() {
+        // Given
+        final String sessionId = randomUUID().toString();
+        final String courtRoomId = "courtroom-id-123";
+        final String courtCentreId = "court-centre-id-123";
+        final String courtRoomName = "Courtroom 01";
+        final LocalDate sessionDate = LocalDate.now().plusDays(1);
+        final String businessType = "DVLA";
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = 
+                uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                        .withCourtScheduleId(sessionId)
+                        .withJurisdiction("CROWN")
+                        .withCourtHouseId(courtCentreId)
+                        .withIsDraft(true)
+                        .withBusinessType(businessType)
+                        .withCourtSession(PM_SESSION)
+                        .withSessionDate(sessionDate)
+                        .withPanel("Adult")
+                        .withMaxSlots(25)
+                        .withMaxDuration(0)
+                        .withAllDaySplit(false)
+                        .build();
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withCourtRoomName(courtRoomName)
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(sessionId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        // Mock duplicate PM session found
+        final CourtSchedule duplicateSession = new CourtSchedule();
+        duplicateSession.setCourtScheduleId(randomUUID().toString());
+        duplicateSession.setCourtRoomName(courtRoomName);
+        duplicateSession.setSessionDate(sessionDate);
+        duplicateSession.setBusinessType(businessType);
+        duplicateSession.setCourtSession(PM_SESSION);
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList())).thenReturn(List.of(session));
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester))).thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
+                eq(courtRoomName), eq(sessionDate), eq(businessType), anyList(), eq(sessionId)))
+                .thenReturn(List.of(duplicateSession));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(0, response.getEligibleSessions().size());
+        assertEquals(1, response.getIneligibleSessions().size());
+        assertTrue(response.getIneligibleSessions().stream().anyMatch(s -> 
+                s.getCourtScheduleId().equals(sessionId) && 
+                s.getReason().contains("Duplicate session already exists")));
+        verify(courtScheduleRepository, never()).update(any(), any(), any());
+    }
+
+    @Test
+    void shouldMarkADSessionAsIneligibleWhenDuplicateAMSessionExists() {
+        // Given
+        final String sessionId = randomUUID().toString();
+        final String courtRoomId = "courtroom-id-123";
+        final String courtCentreId = "court-centre-id-123";
+        final String courtRoomName = "Courtroom 01";
+        final LocalDate sessionDate = LocalDate.now().plusDays(1);
+        final String businessType = "DVLA";
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = 
+                uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                        .withCourtScheduleId(sessionId)
+                        .withJurisdiction("CROWN")
+                        .withCourtHouseId(courtCentreId)
+                        .withIsDraft(true)
+                        .withBusinessType(businessType)
+                        .withCourtSession(ALL_DAY)
+                        .withSessionDate(sessionDate)
+                        .withPanel("Adult")
+                        .withMaxSlots(25)
+                        .withMaxDuration(0)
+                        .withAllDaySplit(false)
+                        .build();
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withCourtRoomName(courtRoomName)
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(sessionId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        // Mock duplicate AM session found
+        final CourtSchedule duplicateSession = new CourtSchedule();
+        duplicateSession.setCourtScheduleId(randomUUID().toString());
+        duplicateSession.setCourtRoomName(courtRoomName);
+        duplicateSession.setSessionDate(sessionDate);
+        duplicateSession.setBusinessType(businessType);
+        duplicateSession.setCourtSession(AM_SESSION);
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList())).thenReturn(List.of(session));
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester))).thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
+                eq(courtRoomName), eq(sessionDate), eq(businessType), anyList(), eq(sessionId)))
+                .thenReturn(List.of(duplicateSession));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(0, response.getEligibleSessions().size());
+        assertEquals(1, response.getIneligibleSessions().size());
+        assertTrue(response.getIneligibleSessions().stream().anyMatch(s -> 
+                s.getCourtScheduleId().equals(sessionId) && 
+                s.getReason().contains("Duplicate session already exists")));
+        verify(courtScheduleRepository, never()).update(any(), any(), any());
+    }
+
+    @Test
+    void shouldAllowAssignmentWhenNoDuplicateSessionExists() {
+        // Given
+        final String sessionId = randomUUID().toString();
+        final String courtRoomId = "courtroom-id-123";
+        final String courtCentreId = "court-centre-id-123";
+        final String courtRoomName = "Courtroom 01";
+        final LocalDate sessionDate = LocalDate.now().plusDays(1);
+        final String businessType = "DVLA";
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = 
+                uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                        .withCourtScheduleId(sessionId)
+                        .withJurisdiction("CROWN")
+                        .withCourtHouseId(courtCentreId)
+                        .withIsDraft(true)
+                        .withBusinessType(businessType)
+                        .withCourtSession(AM_SESSION)
+                        .withSessionDate(sessionDate)
+                        .withPanel("Adult")
+                        .withMaxSlots(25)
+                        .withMaxDuration(0)
+                        .withAllDaySplit(false)
+                        .build();
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withCourtRoomName(courtRoomName)
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(sessionId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        final CourtSchedule persistedSession = getPersistedCourtSchedule(sessionId, businessType);
+        persistedSession.setJurisdiction("CROWN");
+        persistedSession.setCourtHouseId(courtCentreId);
+        persistedSession.setIsDraft(true);
+        persistedSession.setCourtSession(AM_SESSION);
+        persistedSession.setPanel("Adult");
+        persistedSession.setSupportAdSplit(false);
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList())).thenReturn(List.of(session));
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester))).thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
+                eq(courtRoomName), eq(sessionDate), eq(businessType), anyList(), eq(sessionId)))
+                .thenReturn(emptyList());
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(businessType), eq(requester))).thenReturn(returnBusinessTypeObject(businessType, true));
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eq(sessionId))).thenReturn(persistedSession);
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1, response.getEligibleSessions().size());
+        assertEquals(0, response.getIneligibleSessions().size());
+        assertTrue(response.getEligibleSessions().stream().anyMatch(s -> s.getCourtScheduleId().equals(sessionId)));
+        verify(courtScheduleRepository, times(1)).update(any(), any(), any());
     }
 }
