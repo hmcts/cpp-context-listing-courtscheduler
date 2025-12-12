@@ -8,8 +8,14 @@ import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.*;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.EXACT_HEARING_START_DATETIME_IS_IN_BAD_FORMAT;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_AFTER_END_DATE;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
+
 import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
 import uk.gov.justice.services.common.converter.LocalDates;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
@@ -56,6 +62,13 @@ public class HearingSlotsApiValidator {
             return getMessage(RequestParameterConstant.SESSION_END_DATE.getLabel());
         } else if (isInvalidDateFormat(hearingSlotRequestParam.sessionEndDate())) {
             return getMessage(format(END_DATE_IS_IN_BAD_FORMAT, hearingSlotRequestParam.sessionEndDate()));
+        }
+
+        // Validate startDate <= endDate
+        final var start = LocalDates.from(hearingSlotRequestParam.sessionStartDate());
+        final var end = LocalDates.from(hearingSlotRequestParam.sessionEndDate());
+        if (end.isBefore(start)) {
+            return getMessage(START_DATE_AFTER_END_DATE);
         }
 
         if (isNotBlank(hearingSlotRequestParam.hearingStartTime())) {
@@ -105,7 +118,7 @@ public class HearingSlotsApiValidator {
 
         return EMPTY_JSON_OBJECT;
     }
-  
+
     public JsonObject listHearingSlotsValidation(final List<HearingSlot> hearingSlots) {
 
         LOGGER.info("Validating list Hearing Slots input : {}", hearingSlots);
@@ -132,7 +145,7 @@ public class HearingSlotsApiValidator {
     private boolean invalidDuration(RequestedCourtSchedule schedule, CourtSchedule cs) {
         return !cs.isSlotBased() && isNull(schedule.getDurationInMinutes());
     }
-  
+
     private boolean isInvalidDateFormat(final String date) {
         try {
             LocalDates.from(date);
