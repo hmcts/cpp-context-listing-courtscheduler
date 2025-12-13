@@ -286,8 +286,13 @@ public class CourtSchedulerApi {
         uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response = 
                 sessionsService.assignCourtroom(request, requester);
 
+        // Convert errorGroups list to JsonArray
+        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomErrorGroup> listConverter = 
+                new ListToJsonArrayConverter<>();
+        final javax.json.JsonArray errorGroupsArray = listConverter.convert(response.getErrorGroups());
+
         return enveloper.withMetadataFrom(envelope, "courtscheduler.assign.courtroom")
-                .apply(objectToJsonObjectConverter.convert(response));
+                .apply(errorGroupsArray);
     }
 
     @Handles("courtscheduler.update.hearing.slots")

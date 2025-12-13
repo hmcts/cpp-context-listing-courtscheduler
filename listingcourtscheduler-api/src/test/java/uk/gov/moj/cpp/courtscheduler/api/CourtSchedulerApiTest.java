@@ -724,12 +724,12 @@ class CourtSchedulerApiTest {
                 .build();
 
         AssignCourtroomResponse assignCourtroomResponse = new AssignCourtroomResponse();
+        assignCourtroomResponse.setErrorGroups(new ArrayList<>());
 
         when(assignCourtroomRequestConverter.convert(any(JsonObject.class))).thenReturn(assignCourtroomRequest);
         when(sessionsApiValidator.getAssignCourtroomValidation(any(AssignCourtroomRequest.class), any(Requester.class))).thenReturn(EMPTY_JSON_OBJECT);
         when(sessionsService.assignCourtroom(any(AssignCourtroomRequest.class), any(Requester.class))).thenReturn(assignCourtroomResponse);
         when(enveloper.withMetadataFrom(assignCourtroomJsonEnvelope, requestName)).thenReturn(function);
-        when(objectToJsonObjectConverter.convert(any(AssignCourtroomResponse.class))).thenReturn(createObjectBuilder().build());
 
         // When
         courtSchedulerApi.assignCourtroom(assignCourtroomJsonEnvelope);
@@ -739,7 +739,6 @@ class CourtSchedulerApiTest {
         verify(sessionsApiValidator, atLeastOnce()).getAssignCourtroomValidation(any(AssignCourtroomRequest.class), any(Requester.class));
         verify(sessionsService, atLeastOnce()).assignCourtroom(any(AssignCourtroomRequest.class), any(Requester.class));
         verify(enveloper, atLeastOnce()).withMetadataFrom(assignCourtroomJsonEnvelope, requestName);
-        verify(objectToJsonObjectConverter, atLeastOnce()).convert(any(AssignCourtroomResponse.class));
     }
 
     @Test
