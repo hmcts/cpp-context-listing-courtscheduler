@@ -2070,7 +2070,7 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldAssignCourtroomToMultipleEligibleSessions() throws SQLException {
         // Draft with/without hearings - eligible
-        // Assigned without hearings - eligible
+        // Assigned without hearings - not eligible
         
         UUID draftSessionId = UUID.randomUUID();
         CourtSchedule draftSession = RANDOM.nextObject(CourtSchedule.class);
@@ -2112,7 +2112,7 @@ class CourtSchedulerIT extends AbstractIT {
         draftSessionNoHearings.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 9, 0));
         draftSessionNoHearings.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(draftSessionNoHearings);
-
+    // Assigned session -  NOT eligible
         UUID assignedSessionId = UUID.randomUUID();
         CourtSchedule assignedSession = RANDOM.nextObject(CourtSchedule.class);
         assignedSession.setCourtScheduleId(assignedSessionId.toString());
@@ -2125,6 +2125,8 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setCourtSession(AM_SESSION);
         assignedSession.setPanel("YOUTH");
         assignedSession.setCourtRoomId("original-courtroom-id");
+        assignedSession.setJurisdiction("CROWN");
+        assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0));
         assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(assignedSession);
@@ -2141,13 +2143,44 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
-        // Parse JSON response - should be an array of error groups
+        // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
-        javax.json.JsonArray jsonResponseArray = jsonReader.readArray();
+        JsonObject jsonResponse = jsonReader.readObject();
         jsonReader.close();
         
-        // All sessions should be successfully assigned (no error groups)
-        assertThat("Response should be an empty array (no errors)", jsonResponseArray.size(), is(0));
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+        
+        // Draft sessions should be successfully assigned (not in any error group)
+        boolean draftSessionInErrorGroup = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    return sessions.stream()
+                            .map(s -> s.asJsonObject())
+                            .anyMatch(s -> draftSession.getCourtScheduleId().equals(s.getString("courtScheduleId"))
+                                    || draftSessionNoHearings.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                });
+        assertThat("Draft sessions should not be in any error group", draftSessionInErrorGroup, is(false));
+        
+        // Assigned session should be in error group
+        boolean foundAssignedSessionInErrorGroup = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if ("Cannot assign courtroom to an assigned session".equals(error)) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> assignedSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find assigned session in error group", foundAssignedSessionInErrorGroup, is(true));
     }
 
     @Test
@@ -2189,10 +2222,14 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
-        // Parse JSON response - should be an array of error groups
+        // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
-        javax.json.JsonArray jsonResponseArray = jsonReader.readArray();
+        JsonObject jsonResponse = jsonReader.readObject();
         jsonReader.close();
+        
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
         
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -2249,10 +2286,14 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
-        // Parse JSON response - should be an array of error groups
+        // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
-        javax.json.JsonArray jsonResponseArray = jsonReader.readArray();
+        JsonObject jsonResponse = jsonReader.readObject();
         jsonReader.close();
+        
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
         
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -2359,10 +2400,14 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
-        // Parse JSON response - should be an array of error groups
+        // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
-        javax.json.JsonArray jsonResponseArray = jsonReader.readArray();
+        JsonObject jsonResponse = jsonReader.readObject();
         jsonReader.close();
+        
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
         
         // Verify ineligible session is in error group
         boolean foundIneligibleSession = jsonResponseArray.stream()
@@ -2406,7 +2451,7 @@ class CourtSchedulerIT extends AbstractIT {
         crownSession.setSupportAdSplit(false);
         crownSession.setCourtSession(AM_SESSION);
         crownSession.setPanel("YOUTH");
-        crownSession.setCourtRoomId("original-courtroom-id");
+        crownSession.setCourtRoomId("original-courtroom-id-crown");
         crownSession.setJurisdiction("CROWN");
         crownSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         crownSession.setSessionStartTime(DateUtils.localDateToDateWithTime(crownSession.getSessionDate(), 9, 0));
@@ -2424,7 +2469,7 @@ class CourtSchedulerIT extends AbstractIT {
         magistratesSession.setSupportAdSplit(false);
         magistratesSession.setCourtSession(AM_SESSION);
         magistratesSession.setPanel("YOUTH");
-        magistratesSession.setCourtRoomId("original-courtroom-id");
+        magistratesSession.setCourtRoomId("original-courtroom-id-mags");
         magistratesSession.setJurisdiction("MAGISTRATES");
         magistratesSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         magistratesSession.setSessionStartTime(DateUtils.localDateToDateWithTime(magistratesSession.getSessionDate(), 9, 0));
@@ -2442,10 +2487,14 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
-        // Parse JSON response - should be an array of error groups
+        // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
-        javax.json.JsonArray jsonResponseArray = jsonReader.readArray();
+        JsonObject jsonResponse = jsonReader.readObject();
         jsonReader.close();
+        
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
         
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -2528,10 +2577,14 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
-        // Parse JSON response - should be an array of error groups
+        // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
-        javax.json.JsonArray jsonResponseArray = jsonReader.readArray();
+        JsonObject jsonResponse = jsonReader.readObject();
         jsonReader.close();
+        
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
         
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -2617,10 +2670,14 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
-        // Parse JSON response - should be an array of error groups
+        // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
-        javax.json.JsonArray jsonResponseArray = jsonReader.readArray();
+        JsonObject jsonResponse = jsonReader.readObject();
         jsonReader.close();
+        
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
         
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -2695,10 +2752,14 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
-        // Parse JSON response - should be an array of error groups
+        // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
-        javax.json.JsonArray jsonResponseArray = jsonReader.readArray();
+        JsonObject jsonResponse = jsonReader.readObject();
         jsonReader.close();
+        
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
         
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -2773,17 +2834,31 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
         
-        // Parse JSON response
+        // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
         JsonObject jsonResponse = jsonReader.readObject();
         jsonReader.close();
         
-        // Verify session is ineligible due to duplicate
-        assertThat("Response should contain ineligibleSessions", jsonResponse.containsKey("ineligibleSessions"), is(true));
-        boolean foundIneligibleDuplicateSession = jsonResponse.getJsonArray("ineligibleSessions").stream()
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+        
+        // Verify session is in error group due to duplicate
+        boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
                 .map(item -> item.asJsonObject())
-                .anyMatch(item -> newSessionId.toString().equals(item.getString("courtScheduleId"))
-                        && item.getString("reason").contains("Duplicate session already exists"));
-        assertThat("Should find AD session with duplicate AM session in ineligible sessions", foundIneligibleDuplicateSession, is(true));
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if (error.contains("Duplicate session already exists")) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> newSessionId.toString().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find AD session with duplicate AM session in error group", foundIneligibleDuplicateSession, is(true));
     }
 }

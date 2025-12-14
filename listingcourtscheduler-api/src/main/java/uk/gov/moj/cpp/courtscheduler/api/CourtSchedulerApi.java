@@ -44,6 +44,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
@@ -85,6 +86,7 @@ public class CourtSchedulerApi {
     protected static final String RESULTS = "results";
     private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
     private static final String ORGANISATION_UNIT_HMI_STATUS = "organisationUnitHMIStatus";
+    private static final String ERROR_GROUPS = "errorGroups";
     @Inject
     private Enveloper enveloper;
     @Inject
@@ -286,13 +288,16 @@ public class CourtSchedulerApi {
         uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response = 
                 sessionsService.assignCourtroom(request, requester);
 
-        // Convert errorGroups list to JsonArray
+        // Convert AssignCourtroomResponse to JSON
+        // The schema expects a direct array of error groups, so extract errorGroups and convert to JsonArray
         final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomErrorGroup> listConverter = 
                 new ListToJsonArrayConverter<>();
-        final javax.json.JsonArray errorGroupsArray = listConverter.convert(response.getErrorGroups());
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.assign.courtroom")
-                .apply(errorGroupsArray);
+        final JsonValue errorGroupsArray = response.getErrorGroups().isEmpty() 
+                ? JsonValue.EMPTY_JSON_ARRAY 
+                : listConverter.convert(response.getErrorGroups());
+        
+        // Use envelopeFor to wrap the array (though schema expects direct array, framework may need wrapping)
+        return envelopeFor(envelope, errorGroupsArray, ERROR_GROUPS);
     }
 
     @Handles("courtscheduler.update.hearing.slots")

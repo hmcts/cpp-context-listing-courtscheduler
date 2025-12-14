@@ -35,25 +35,7 @@ import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleDeleteResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
-import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.Session;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.*;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
@@ -816,29 +798,15 @@ public class SessionsService {
         return courtScheduleRepository.getCourtSchedulesByIdList(requestParam.getCourtScheduleIds());
     }
 
-    @Transactional
+//    @Transactional
     public uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse assignCourtroom(
             final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request, final Requester requester) {
-
-        final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response =
-                new uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse();
-
-        if (isEmpty(request.getCourtScheduleIds())) {
-            return response;
-        }
 
         // Get all sessions by IDs
         final List<CourtSchedule> sessions = courtScheduleRepository.getCourtSchedulesByIdList(request.getCourtScheduleIds());
         final Map<String, CourtSchedule> sessionMap = sessions.stream()
                 .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, s -> s));
 
-        // Get all allocated listings to check for hearings
-        final List<String> sessionIds = request.getCourtScheduleIds();
-        final List<AllocatedListingEachBooked> allAllocatedListings =
-                allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(sessionIds);
-        final Map<String, List<AllocatedListingEachBooked>> allocatedListingsBySessionId =
-                allAllocatedListings.stream()
-                        .collect(Collectors.groupingBy(AllocatedListingEachBooked::getCourtScheduleId));
 
         // Get courtroom details
         final Optional<CourtRoom> courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(
@@ -854,9 +822,11 @@ public class SessionsService {
                                 return convertToView(notFoundSession);
                             })
                             .toList();
-            response.setErrorGroups(List.of(
-                    new uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomErrorGroup(
-                            notFoundSessions, "Courtroom not found")));
+            final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response = 
+                    new uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse();
+            final List<uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomErrorGroup> errorGroups = List.of(
+                    new uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomErrorGroup(notFoundSessions, "Courtroom not found"));
+            response.setErrorGroups(errorGroups);
             return response;
         }
 
@@ -931,31 +901,9 @@ public class SessionsService {
         // Apply courtroom to eligible sessions and track failures
         for (final CourtSchedule session : eligibleSessions) {
             try {
-                final UpdateCourtSchedule updateRequest = new UpdateCourtSchedule.UpdateCourtScheduleBuilder()
-                        .withCourtScheduleId(session.getCourtScheduleId())
-                        .withCourtRoomId(request.getCourtRoomId())
-                        .withBusinessType(session.getBusinessType())
-                        .withSessionType(session.getCourtSession())
-                        .withPanel(session.getPanel())
-                        .withMaxSlots(session.getMaxSlots())
-                        .withMaxDuration(session.getMaxDuration())
-                        .withMaxDurationForMorning(session.getMaxDurationForMorning())
-                        .withMaxDurationForAfternoon(session.getMaxDurationForAfternoon())
-                        .withAllDaySplit(session.isAllDaySplit())
-                        .withSessionStartTime(session.getSessionStartTime() != null
-                                ? sessionTimeFormatter(session.getSessionStartTime()) : null)
-                        .withSessionEndTime(session.getSessionEndTime() != null
-                                ? sessionTimeFormatter(session.getSessionEndTime()) : null)
-                        .withIsOverbookingAllowed(session.isOverbookingAllowed())
-                        .withJurisdiction(session.getJurisdiction() != null ? session.getJurisdiction() : "MAGISTRATES")
-                        .withIsDraft(false) // Assigned means isDraft set to false
-                        .build();
+                assignCourtroomToSession(session.getCourtScheduleId(), request.getCourtRoomId(), courtRoom.get());
 
-                final Result result = update(updateRequest, requester);
-
-                if (!result.isSuccess()) {
-                    sessionsWithErrors.add(Pair.of(session, result.getMsg()));
-                }
+                // Success - no error to add
             } catch (Exception e) {
                 logger.error("Failed to assign courtroom to session {}: {}",
                         session.getCourtScheduleId(), e.getMessage());
@@ -984,9 +932,49 @@ public class SessionsService {
             errorGroups.add(new uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomErrorGroup(sessionViews, entry.getKey()));
         }
 
+        final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response = 
+                new uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse();
         response.setErrorGroups(errorGroups);
         return response;
     }
+
+    /**
+     * Assigns a courtroom to a session by updating only the courtroomId and isDraft fields.
+     * No other validations are performed - this is a direct update operation.
+     *
+     * @param courtScheduleId The ID of the court schedule to update
+     * @param courtRoomId The new courtroom ID to assign
+     * @param courtRoom The courtroom details (already retrieved)
+     */
+    private void assignCourtroomToSession(final String courtScheduleId, 
+                                          final String courtRoomId, 
+                                          final CourtRoom courtRoom) {
+        // Retrieve the persisted entity
+        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = 
+                courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
+        
+        if (isNull(persistedCourtSchedule)) {
+            throw new RuntimeException("Session not found: " + courtScheduleId);
+        }
+
+        // Update only courtroomId and isDraft fields
+        persistedCourtSchedule.setCourtRoomId(courtRoomId);
+        persistedCourtSchedule.setIsDraft(false); // Assigned means isDraft set to false
+        
+        // Update courtroom-related fields from the courtRoom object
+        persistedCourtSchedule.setOuCode(courtRoom.getOucode());
+        persistedCourtSchedule.setCourtRoomName(courtRoom.getCourtroomName());
+        persistedCourtSchedule.setCourtRoomNumber(courtRoom.getCppCourtRoomId());
+        persistedCourtSchedule.setCourtHouseName(courtRoom.getOucodeL3Name());
+        persistedCourtSchedule.setOperationalUnit(courtRoom.getOucodeL2Code());
+        
+        // Update timestamp
+        persistedCourtSchedule.setUpdatedOn(Calendar.getInstance().getTime());
+        
+        // Save the changes directly via repository
+        courtScheduleRepository.save(persistedCourtSchedule);
+    }
+
 
     private uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView convertToView(final CourtSchedule session) {
         return new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView.CourtScheduleViewBuilder()
