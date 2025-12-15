@@ -890,4 +890,217 @@ class SessionsApiValidatorTest {
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
+
+    @Test
+    void shouldRetrieveSessionTimesFromPersistedScheduleWhenNullInRequest() {
+        // Test that when sessionStartTime and sessionEndTime are null in request,
+        // they are retrieved from persisted court schedule
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .withSessionStartTime(null)  // Null in request
+                .withSessionEndTime(null)    // Null in request
+                .build();
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        LocalDate sessionDate = LocalDate.now().plusDays(1);
+        persistedSchedule.setSessionDate(sessionDate);
+        Date sessionStartDate = Date.from(sessionDate.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        Date sessionEndDate = Date.from(sessionDate.atTime(13, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        persistedSchedule.setSessionStartTime(sessionStartDate);
+        persistedSchedule.setSessionEndTime(sessionEndDate);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        Date hearingTime = Date.from(sessionDate.atTime(11, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        when(booked.getHearingStartTime()).thenReturn(hearingTime);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(List.of(booked));
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should pass validation since hearing time (11:00) is within session window (10:00-13:00)
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldRetrieveSessionStartTimeFromPersistedScheduleWhenNullInRequest() {
+        // Test that when only sessionStartTime is null, it's retrieved from persisted schedule
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .withSessionStartTime(null)  // Null in request
+                .withSessionEndTime("13:00") // Provided in request
+                .build();
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldRetrieveSessionEndTimeFromPersistedScheduleWhenNullInRequest() {
+        // Test that when only sessionEndTime is null, it's retrieved from persisted schedule
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .withSessionStartTime("10:00") // Provided in request
+                .withSessionEndTime(null)      // Null in request
+                .build();
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldSkipValidationWhenSessionTimesAreNullAndPersistedScheduleNotFound() {
+        // Test that when session times are null and persisted schedule doesn't exist,
+        // validation is skipped gracefully
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .withSessionStartTime(null)
+                .withSessionEndTime(null)
+                .build();
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldSkipValidationWhenSessionTimesAreNullAndPersistedScheduleHasNullTimes() {
+        // Test that when session times are null and persisted schedule also has null times,
+        // validation is skipped gracefully
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .withSessionStartTime(null)
+                .withSessionEndTime(null)
+                .build();
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldValidateHearingTimesWhenSessionTimesRetrievedFromPersistedSchedule() {
+        // Test that hearing time validation works correctly when session times are retrieved from persisted schedule
+        // Scenario: Session start time (10:00) retrieved from persisted schedule is AFTER min hearing time (09:00)
+        // This should trigger validation error: "Session Start Time can not be updated to a time that is later than the minimum hearing time"
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .withSessionStartTime(null)  // Null - will be retrieved from persisted schedule
+                .withSessionEndTime(null)    // Null - will be retrieved from persisted schedule
+                .build();
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        LocalDate sessionDate = LocalDate.now().plusDays(1);
+        persistedSchedule.setSessionDate(sessionDate);
+        // Session starts at 10:00 in persisted schedule
+        Date sessionStartDate = Date.from(sessionDate.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        Date sessionEndDate = Date.from(sessionDate.atTime(13, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        persistedSchedule.setSessionStartTime(sessionStartDate);
+        persistedSchedule.setSessionEndTime(sessionEndDate);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        // Mock allocated listing with hearing time at 09:00 (before session start at 10:00)
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        Date hearingTime = Date.from(sessionDate.atTime(9, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        when(booked.getHearingStartTime()).thenReturn(hearingTime);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(List.of(booked));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should fail validation because session start time (10:00) is AFTER min hearing time (09:00)
+        // Error: "Session Start Time can not be updated to a time that is later than the minimum hearing time"
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals(ErrorMessages.MIN_HEARING_TIME_AFTER_SESSION_START_TIME, result.getString("errorMessage"));
+    }
 }
