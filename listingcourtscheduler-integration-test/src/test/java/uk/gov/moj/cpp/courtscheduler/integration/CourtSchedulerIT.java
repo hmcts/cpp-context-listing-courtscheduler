@@ -2240,7 +2240,7 @@ class CourtSchedulerIT extends AbstractIT {
         draftSession.setIsDraft(true); // Draft session
         draftSession.setSupportAdSplit(false);
         draftSession.setCourtSession(AM_SESSION);
-        draftSession.setPanel("YOUTH");
+        draftSession.setPanel("ADULT");
         draftSession.setCourtRoomId("original-courtroom-id");
         draftSession.setJurisdiction("CROWN");
         draftSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
@@ -2263,7 +2263,7 @@ class CourtSchedulerIT extends AbstractIT {
         draftSessionNoHearings.setIsDraft(true); // Draft session without hearings
         draftSessionNoHearings.setSupportAdSplit(false);
         draftSessionNoHearings.setCourtSession(AM_SESSION);
-        draftSessionNoHearings.setPanel("YOUTH");
+        draftSessionNoHearings.setPanel("ADULT");
         draftSessionNoHearings.setCourtRoomId("original-courtroom-id");
         draftSessionNoHearings.setJurisdiction("CROWN");
         draftSessionNoHearings.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
@@ -2281,7 +2281,7 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setIsDraft(false); // Assigned session without hearings
         assignedSession.setSupportAdSplit(false);
         assignedSession.setCourtSession(AM_SESSION);
-        assignedSession.setPanel("YOUTH");
+        assignedSession.setPanel("ADULT");
         assignedSession.setCourtRoomId("original-courtroom-id");
         assignedSession.setJurisdiction("CROWN");
         assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
@@ -2356,7 +2356,7 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setHasHearingsBooked(true);
         assignedSession.setSupportAdSplit(false);
         assignedSession.setCourtSession(AM_SESSION);
-        assignedSession.setPanel("YOUTH");
+        assignedSession.setPanel("ADULT");
         assignedSession.setCourtRoomId("original-courtroom-id");
         assignedSession.setJurisdiction("CROWN");
         assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
@@ -2423,7 +2423,7 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setHasHearingsBooked(false);
         assignedSession.setSupportAdSplit(false);
         assignedSession.setCourtSession(AM_SESSION);
-        assignedSession.setPanel("YOUTH");
+        assignedSession.setPanel("ADULT");
         assignedSession.setCourtRoomId("original-courtroom-id");
         assignedSession.setJurisdiction("CROWN");
         assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
@@ -2486,7 +2486,7 @@ class CourtSchedulerIT extends AbstractIT {
         session.setIsDraft(true);
         session.setSupportAdSplit(false);
         session.setCourtSession(AM_SESSION);
-        session.setPanel("YOUTH");
+        session.setPanel("ADULT");
         databaseSeeder.insertCourtSchedule(session);
 
         String assignCourtroomPayload = getPayload("assign-courtroom.json");
@@ -2515,7 +2515,7 @@ class CourtSchedulerIT extends AbstractIT {
         eligibleSession.setIsDraft(true); // Draft - eligible
         eligibleSession.setSupportAdSplit(false);
         eligibleSession.setCourtSession(AM_SESSION);
-        eligibleSession.setPanel("YOUTH");
+        eligibleSession.setPanel("ADULT");
         eligibleSession.setCourtRoomId("original-courtroom-id");
         eligibleSession.setJurisdiction("CROWN");
         eligibleSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
@@ -2534,7 +2534,7 @@ class CourtSchedulerIT extends AbstractIT {
         ineligibleSession.setHasHearingsBooked(true);
         ineligibleSession.setSupportAdSplit(false);
         ineligibleSession.setCourtSession(AM_SESSION);
-        ineligibleSession.setPanel("YOUTH");
+        ineligibleSession.setPanel("ADULT");
         ineligibleSession.setCourtRoomId("original-courtroom-id");
         ineligibleSession.setJurisdiction("CROWN");
         ineligibleSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
@@ -2626,7 +2626,7 @@ class CourtSchedulerIT extends AbstractIT {
         magistratesSession.setIsDraft(true);
         magistratesSession.setSupportAdSplit(false);
         magistratesSession.setCourtSession(AM_SESSION);
-        magistratesSession.setPanel("YOUTH");
+        magistratesSession.setPanel("ADULT");
         magistratesSession.setCourtRoomId("original-courtroom-id-mags");
         magistratesSession.setJurisdiction("MAGISTRATES");
         magistratesSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
@@ -2698,7 +2698,7 @@ class CourtSchedulerIT extends AbstractIT {
         correctCourtCentreSession.setIsDraft(true);
         correctCourtCentreSession.setSupportAdSplit(false);
         correctCourtCentreSession.setCourtSession(AM_SESSION);
-        correctCourtCentreSession.setPanel("YOUTH");
+        correctCourtCentreSession.setPanel("ADULT");
         correctCourtCentreSession.setCourtRoomId("original-courtroom-id");
         correctCourtCentreSession.setJurisdiction("CROWN");
         correctCourtCentreSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
@@ -2716,7 +2716,7 @@ class CourtSchedulerIT extends AbstractIT {
         wrongCourtCentreSession.setIsDraft(true);
         wrongCourtCentreSession.setSupportAdSplit(false);
         wrongCourtCentreSession.setCourtSession(AM_SESSION);
-        wrongCourtCentreSession.setPanel("YOUTH");
+        wrongCourtCentreSession.setPanel("ADULT");
         wrongCourtCentreSession.setCourtRoomId("original-courtroom-id");
         wrongCourtCentreSession.setJurisdiction("CROWN");
         wrongCourtCentreSession.setCourtHouseId("different-court-centre-id-12345");
@@ -2788,7 +2788,7 @@ class CourtSchedulerIT extends AbstractIT {
         existingSession.setIsDraft(true);
         existingSession.setSupportAdSplit(false);
         existingSession.setCourtSession(AM_SESSION);
-        existingSession.setPanel("YOUTH");
+        existingSession.setPanel("ADULT");
         existingSession.setJurisdiction("CROWN");
         existingSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
@@ -2808,7 +2808,7 @@ class CourtSchedulerIT extends AbstractIT {
         newSession.setIsDraft(true);
         newSession.setSupportAdSplit(false);
         newSession.setCourtSession(AM_SESSION);
-        newSession.setPanel("YOUTH");
+        newSession.setPanel("ADULT");
         newSession.setJurisdiction("CROWN");
         newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         newSession.setCourtRoomId("original-courtroom-id");
@@ -2870,7 +2870,7 @@ class CourtSchedulerIT extends AbstractIT {
         existingSession.setIsDraft(true);
         existingSession.setSupportAdSplit(false);
         existingSession.setCourtSession(ALL_DAY);
-        existingSession.setPanel("YOUTH");
+        existingSession.setPanel("ADULT");
         existingSession.setJurisdiction("CROWN");
         existingSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
@@ -2890,7 +2890,7 @@ class CourtSchedulerIT extends AbstractIT {
         newSession.setIsDraft(true);
         newSession.setSupportAdSplit(false);
         newSession.setCourtSession(AM_SESSION);
-        newSession.setPanel("YOUTH");
+        newSession.setPanel("ADULT");
         newSession.setJurisdiction("CROWN");
         newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         newSession.setCourtRoomId("original-courtroom-id");
@@ -2952,7 +2952,7 @@ class CourtSchedulerIT extends AbstractIT {
         existingSession.setIsDraft(true);
         existingSession.setSupportAdSplit(false);
         existingSession.setCourtSession(AM_SESSION);
-        existingSession.setPanel("YOUTH");
+        existingSession.setPanel("ADULT");
         existingSession.setJurisdiction("CROWN");
         existingSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
@@ -2972,7 +2972,7 @@ class CourtSchedulerIT extends AbstractIT {
         newSession.setIsDraft(true);
         newSession.setSupportAdSplit(false);
         newSession.setCourtSession(ALL_DAY);
-        newSession.setPanel("YOUTH");
+        newSession.setPanel("ADULT");
         newSession.setJurisdiction("CROWN");
         newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         newSession.setCourtRoomId("original-courtroom-id");
