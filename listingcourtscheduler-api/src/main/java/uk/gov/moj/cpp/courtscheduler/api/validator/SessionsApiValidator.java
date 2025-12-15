@@ -33,6 +33,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SE
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils.updateTotalBooked;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
@@ -413,8 +414,56 @@ public class SessionsApiValidator {
         if (allocatedListings.isEmpty()) {
             return EMPTY_JSON_OBJECT;
         }
-        LocalTime sessionStartTime = parse(params.getSessionStartTime(), TIME_FORMATTER);
-        LocalTime sessionEndTime = parse(params.getSessionEndTime(), TIME_FORMATTER);
+
+        String[] sessionTimes = retrieveSessionTimes(params);
+        if (sessionTimes == null) {
+            return EMPTY_JSON_OBJECT;
+        }
+
+        return validateHearingTimesAgainstSessionTimes(sessionTimes[0], sessionTimes[1], allocatedListings);
+    }
+
+    private String[] retrieveSessionTimes(SessionValidationParams params) {
+        String sessionStartTimeStr = params.getSessionStartTime();
+        String sessionEndTimeStr = params.getSessionEndTime();
+
+        if (isNull(sessionStartTimeStr) || isNull(sessionEndTimeStr)) {
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
+                    courtScheduleRepository.retrieveCourtScheduleWithListingById(params.getCourtScheduleId());
+            if (isNull(persistedCourtSchedule)) {
+                return null;
+            }
+            sessionStartTimeStr = retrieveSessionStartTime(sessionStartTimeStr, persistedCourtSchedule);
+            sessionEndTimeStr = retrieveSessionEndTime(sessionEndTimeStr, persistedCourtSchedule);
+        }
+
+        if (isNull(sessionStartTimeStr) || isNull(sessionEndTimeStr)) {
+            return null;
+        }
+
+        return new String[]{sessionStartTimeStr, sessionEndTimeStr};
+    }
+
+    private String retrieveSessionStartTime(String sessionStartTimeStr,
+                                            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
+        if (isNull(sessionStartTimeStr) && nonNull(persistedCourtSchedule.getSessionStartTime())) {
+            return sessionTimeFormatter(persistedCourtSchedule.getSessionStartTime());
+        }
+        return sessionStartTimeStr;
+    }
+
+    private String retrieveSessionEndTime(String sessionEndTimeStr,
+                                          uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
+        if (isNull(sessionEndTimeStr) && nonNull(persistedCourtSchedule.getSessionEndTime())) {
+            return sessionTimeFormatter(persistedCourtSchedule.getSessionEndTime());
+        }
+        return sessionEndTimeStr;
+    }
+
+    private JsonObject validateHearingTimesAgainstSessionTimes(String sessionStartTimeStr, String sessionEndTimeStr,
+                                                               List<AllocatedListingEachBooked> allocatedListings) {
+        LocalTime sessionStartTime = parse(sessionStartTimeStr, TIME_FORMATTER);
+        LocalTime sessionEndTime = parse(sessionEndTimeStr, TIME_FORMATTER);
         LocalTime minHearingTime = getMinHearingTime(allocatedListings);
         if (minHearingTime != null && sessionStartTime.isAfter(minHearingTime)) {
             return buildErrorResponse(ErrorMessages.MIN_HEARING_TIME_AFTER_SESSION_START_TIME);
