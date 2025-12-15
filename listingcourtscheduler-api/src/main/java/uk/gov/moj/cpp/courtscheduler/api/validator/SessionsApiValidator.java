@@ -414,7 +414,15 @@ public class SessionsApiValidator {
             return EMPTY_JSON_OBJECT;
         }
 
-        // Get session times from params, or retrieve from persisted court schedule if null
+        String[] sessionTimes = retrieveSessionTimes(params);
+        if (sessionTimes == null) {
+            return EMPTY_JSON_OBJECT;
+        }
+
+        return validateHearingTimesAgainstSessionTimes(sessionTimes[0], sessionTimes[1], allocatedListings);
+    }
+
+    private String[] retrieveSessionTimes(SessionValidationParams params) {
         String sessionStartTimeStr = params.getSessionStartTime();
         String sessionEndTimeStr = params.getSessionEndTime();
 
@@ -422,21 +430,37 @@ public class SessionsApiValidator {
             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
                     courtScheduleRepository.retrieveCourtScheduleWithListingById(params.getCourtScheduleId());
             if (isNull(persistedCourtSchedule)) {
-                return EMPTY_JSON_OBJECT;
+                return null;
             }
-            if (isNull(sessionStartTimeStr) && nonNull(persistedCourtSchedule.getSessionStartTime())) {
-                sessionStartTimeStr = sessionTimeFormatter(persistedCourtSchedule.getSessionStartTime());
-            }
-            if (isNull(sessionEndTimeStr) && nonNull(persistedCourtSchedule.getSessionEndTime())) {
-                sessionEndTimeStr = sessionTimeFormatter(persistedCourtSchedule.getSessionEndTime());
-            }
+            sessionStartTimeStr = retrieveSessionStartTime(sessionStartTimeStr, persistedCourtSchedule);
+            sessionEndTimeStr = retrieveSessionEndTime(sessionEndTimeStr, persistedCourtSchedule);
         }
 
-        // If still null after trying to retrieve from database, skip validation
         if (isNull(sessionStartTimeStr) || isNull(sessionEndTimeStr)) {
-            return EMPTY_JSON_OBJECT;
+            return null;
         }
 
+        return new String[]{sessionStartTimeStr, sessionEndTimeStr};
+    }
+
+    private String retrieveSessionStartTime(String sessionStartTimeStr,
+                                            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
+        if (isNull(sessionStartTimeStr) && nonNull(persistedCourtSchedule.getSessionStartTime())) {
+            return sessionTimeFormatter(persistedCourtSchedule.getSessionStartTime());
+        }
+        return sessionStartTimeStr;
+    }
+
+    private String retrieveSessionEndTime(String sessionEndTimeStr,
+                                          uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
+        if (isNull(sessionEndTimeStr) && nonNull(persistedCourtSchedule.getSessionEndTime())) {
+            return sessionTimeFormatter(persistedCourtSchedule.getSessionEndTime());
+        }
+        return sessionEndTimeStr;
+    }
+
+    private JsonObject validateHearingTimesAgainstSessionTimes(String sessionStartTimeStr, String sessionEndTimeStr,
+                                                               List<AllocatedListingEachBooked> allocatedListings) {
         LocalTime sessionStartTime = parse(sessionStartTimeStr, TIME_FORMATTER);
         LocalTime sessionEndTime = parse(sessionEndTimeStr, TIME_FORMATTER);
         LocalTime minHearingTime = getMinHearingTime(allocatedListings);
