@@ -33,6 +33,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SE
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils.updateTotalBooked;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
@@ -412,8 +413,32 @@ public class SessionsApiValidator {
         if (allocatedListings.isEmpty()) {
             return EMPTY_JSON_OBJECT;
         }
-        LocalTime sessionStartTime = parse(params.getSessionStartTime(), TIME_FORMATTER);
-        LocalTime sessionEndTime = parse(params.getSessionEndTime(), TIME_FORMATTER);
+
+        // Get session times from params, or retrieve from persisted court schedule if null
+        String sessionStartTimeStr = params.getSessionStartTime();
+        String sessionEndTimeStr = params.getSessionEndTime();
+
+        if (isNull(sessionStartTimeStr) || isNull(sessionEndTimeStr)) {
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
+                    courtScheduleRepository.retrieveCourtScheduleWithListingById(params.getCourtScheduleId());
+            if (isNull(persistedCourtSchedule)) {
+                return EMPTY_JSON_OBJECT;
+            }
+            if (isNull(sessionStartTimeStr) && nonNull(persistedCourtSchedule.getSessionStartTime())) {
+                sessionStartTimeStr = sessionTimeFormatter(persistedCourtSchedule.getSessionStartTime());
+            }
+            if (isNull(sessionEndTimeStr) && nonNull(persistedCourtSchedule.getSessionEndTime())) {
+                sessionEndTimeStr = sessionTimeFormatter(persistedCourtSchedule.getSessionEndTime());
+            }
+        }
+
+        // If still null after trying to retrieve from database, skip validation
+        if (isNull(sessionStartTimeStr) || isNull(sessionEndTimeStr)) {
+            return EMPTY_JSON_OBJECT;
+        }
+
+        LocalTime sessionStartTime = parse(sessionStartTimeStr, TIME_FORMATTER);
+        LocalTime sessionEndTime = parse(sessionEndTimeStr, TIME_FORMATTER);
         LocalTime minHearingTime = getMinHearingTime(allocatedListings);
         if (minHearingTime != null && sessionStartTime.isAfter(minHearingTime)) {
             return buildErrorResponse(ErrorMessages.MIN_HEARING_TIME_AFTER_SESSION_START_TIME);
