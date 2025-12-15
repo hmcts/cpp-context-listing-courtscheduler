@@ -798,7 +798,6 @@ public class SessionsService {
         return courtScheduleRepository.getCourtSchedulesByIdList(requestParam.getCourtScheduleIds());
     }
 
-//    @Transactional
     public uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse assignCourtroom(
             final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request, final Requester requester) {
 
