@@ -1,6 +1,22 @@
 package uk.gov.moj.cpp.courtscheduler.integration.performance;
 
-import static java.util.Arrays.asList;
+import org.junit.jupiter.api.Test;
+import uk.gov.justice.services.test.utils.core.http.RequestParams;
+import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.integration.AbstractIT;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder.RuleData;
+
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -10,27 +26,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule_.unavailabilities;
-
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-import uk.gov.justice.services.test.utils.core.http.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.integration.AbstractIT;
-import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder.RuleData;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-
-import org.junit.jupiter.api.Test;
 
 class JudiciaryAvailabilityBatchIT extends AbstractIT {
 
@@ -41,7 +36,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
     private static final int EXPECTED_RESULTS = 20;
 
     @Test
-    void findbatchJudiciaryAvailability() throws Exception {
+    void findBatchJudiciaryAvailability() throws Exception {
         final String courtHouseId = randomUUID().toString();
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 5); // Monday
         final LocalDate queryEndDate = LocalDate.of(2026, 1, 9); // Friday
@@ -99,6 +94,8 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
             final LocalDate unavailableStart = LocalDate.of(2026, 1, 20);
             final LocalDate unavailableEnd = LocalDate.of(2026, 1, 25);
             final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
+            unavail.setStartDate(unavailableStart);
+            unavail.setEndDate(unavailableEnd);
             List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
             unavailabilities.add(unavail);
             allRules.add(new RuleData(
@@ -158,6 +155,8 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     List.of("Thursday", "Friday")
             ));
             final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
+            unavail.setStartDate(queryStartDate);
+            unavail.setEndDate(queryEndDate);
             List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
             unavailabilities.add(unavail);
             // Create 1 unavailable rule that makes them unavailable during the query range
