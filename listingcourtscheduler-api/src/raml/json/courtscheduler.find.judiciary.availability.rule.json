@@ -44,8 +44,13 @@
     "surname": "Algazy",
     "judiciaryType": "Recorder",
     "personId": "141340",
-    "emailAddress": "Recorder.Algazy@ejudiciary.net",
-    "specialisms": ["MURDER","ATTEMPTED_MURDER"]
-  }]
+    "emailAddress": "Recorder.Algazy@ejudiciary.net"
+  }],
+  "specialisms": [
+    {
+      "judiciaryId": "223e4567-e89b-12d3-a456-426614174001",
+      "specialisms": ["MURDER","ATTEMPTED_MURDER"]
+    }
+  ]
 }
 

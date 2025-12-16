@@ -88,6 +88,8 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageNumber(1);
         response.setPageSize(20);
         response.setJudiciaries(Arrays.asList(judiciary));
+        response.setSpecialisms(Arrays.asList(specialism));
+
         final JsonObject result = converter.convert(response);
 
         assertNotNull(result);
@@ -129,6 +131,11 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         final JsonArray judiciariesArray = result.getJsonArray("judiciaries");
         assertNotNull(judiciariesArray);
         assertThat(judiciariesArray.size(), is(1));
+
+        // Verify specialisms array
+        final JsonArray specialismsArray = result.getJsonArray("specialisms");
+        assertNotNull(specialismsArray);
+        assertThat(specialismsArray.size(), is(1));
     }
 
     @Test
@@ -139,6 +146,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageNumber(1);
         response.setPageSize(20);
         response.setJudiciaries(null);
+        response.setSpecialisms(null);
 
         final JsonObject result = converter.convert(response);
 
@@ -150,6 +158,9 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         final JsonArray judiciariesArray = result.getJsonArray("judiciaries");
         assertNotNull(judiciariesArray);
         assertThat(judiciariesArray.size(), is(0));
+        final JsonArray specialismsArray = result.getJsonArray("specialisms");
+        assertNotNull(specialismsArray);
+        assertThat(specialismsArray.size(), is(0));
     }
 
     @Test

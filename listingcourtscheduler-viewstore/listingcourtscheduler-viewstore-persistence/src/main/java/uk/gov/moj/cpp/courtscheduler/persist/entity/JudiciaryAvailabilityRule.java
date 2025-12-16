@@ -39,7 +39,7 @@ public class JudiciaryAvailabilityRule {
     @Column(name = "court_house_id", nullable = false, length = 100)
     private String courtHouseId;
 
-    @OneToMany(mappedBy = "rule", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.REMOVE})
+    @OneToMany(mappedBy = "rule", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.List<JudiciaryUnavailability> unavailabilities = new java.util.ArrayList<>();
 
     @Column(name = "from_date", nullable = false)

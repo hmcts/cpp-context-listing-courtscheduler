@@ -45,20 +45,28 @@ import javax.json.JsonObject;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static javax.json.Json.createObjectBuilder;
 
 @SuppressWarnings({"squid:S1312", "squid:S2629","squid:S6813","squid:S112"})
 @ApplicationScoped
 public class ReferenceDataService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataService.class);
+    private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
 
     private static final String REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME = "referencedata.query.public-holidays";
     private static final String REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME = "referencedata.query.rota-business-types";
     private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME = "referencedata.query.cp-rota-courtroom-mappings";
     private static final String REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME = "referencedata.query.judiciaries";
     private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME = "referencedata.query.courtroom-session-allocations";
+    private static final String REFERENCEDATA_QUERY_JUDICIARY_SPECIALISMS_NAME = "referencedata.query.judiciary-specialisms";
     private static final String PUBLIC_HOLIDAYS = "publicHolidays";
     private static final String DATE = "date";
     private static final String CP_ROTA_COURT_ROOM_MAPPINGS = "cpRotaCourtRoomMappings";
@@ -287,7 +295,7 @@ public class ReferenceDataService {
         return judiciaries;
     }
 
-    public List<Judiciary> getJudiciariesWithSpecialismByIds(final List<String> judiciaryIds, final Requester requester) {
+    public List<Judiciary> getJudiciariesByIds(final List<String> judiciaryIds, final Requester requester) {
         if (judiciaryIds == null || judiciaryIds.isEmpty()) {
             return emptyList();
         }
@@ -297,7 +305,6 @@ public class ReferenceDataService {
 
         final JsonObject params = createObjectBuilder()
                 .add("ids", idsParam)
-                .add("withSpecialism", true)
                 .build();
 
         final JsonEnvelope envelope = envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME).build(), params);
@@ -313,6 +320,30 @@ public class ReferenceDataService {
         });
 
         return judiciaries;
+    }
+
+    public List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism> getSpecialismsByJudiciaryIds(final List<String> judiciaryIds, final Requester requester) {
+        if (isEmpty(judiciaryIds)) {
+            return emptyList();
+        }
+        final String idsParam = String.join(",", judiciaryIds);
+        final JsonObject params = createObjectBuilder().add("judiciaryIds", idsParam).build();
+        final JsonEnvelope envelope = envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_JUDICIARY_SPECIALISMS_NAME).build(), params);
+
+        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+
+        // Deserialize directly to strongly typed response using ObjectMapper
+        try {
+            // Convert JsonObject to JsonNode for Jackson deserialization
+            final com.fasterxml.jackson.databind.JsonNode jsonNode = objectMapper.readTree(payload.toString());
+            final uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismsResponse response =
+                    objectMapper.treeToValue(jsonNode, uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismsResponse.class);
+            return response.getJudiciarySpecialisms() != null ? response.getJudiciarySpecialisms() : emptyList();
+        } catch (JsonProcessingException e) {
+            LOGGER.warn("Failed to deserialize judiciary specialisms response, falling back to manual parsing: {}", e.getMessage());
+            // Fallback to manual parsing if deserialization fails
+            throw new RuntimeException(e);
+        }
     }
 
     public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsMap(final Requester requester) {
@@ -361,22 +392,6 @@ public class ReferenceDataService {
     }
 
     private Judiciary toJudiciary(JsonObject jsonObject) {
-        final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType> specialisms = new ArrayList<>();
-        JsonObjects.getJsonArray(jsonObject, "specialisms").ifPresent(specialismsJsonArray -> {
-            for (JsonValue specialismValue : specialismsJsonArray) {
-                final String specialismString = specialismValue.getValueType() == JsonValue.ValueType.STRING
-                        ? ((javax.json.JsonString) specialismValue).getString()
-                        : specialismValue.toString();
-                try {
-                    final uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType specialismType =
-                            uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.valueOf(specialismString);
-                    specialisms.add(specialismType);
-                } catch (IllegalArgumentException e) {
-                    LOGGER.warn("Unknown specialism value received from referencedata service: {}", specialismString);
-                }
-            }
-        });
-
         return Judiciary.JudiciaryBuilder.aJudiciary()
                 .withId(getStringOrElse(jsonObject, "id", null))
                 .withCpUserId(getStringOrElse(jsonObject, "cpUserId", null))
@@ -394,7 +409,6 @@ public class ReferenceDataService {
                 .withValidTo(getStringOrElse(jsonObject, "validTo", null))
                 .withTitlePrefix(getStringOrElse(jsonObject, "titlePrefix", null))
                 .withTitlePrefixWelsh(getStringOrElse(jsonObject, "titlePrefixWelsh", null))
-                .withSpecialisms(specialisms)
                 .build();
     }
 
@@ -410,6 +424,32 @@ public class ReferenceDataService {
                 .withValidFrom(getStringOrElse(jsonObject, "validFrom", null))
                 .withValidTo(getStringOrElse(jsonObject, "validTo", null))
                 .build();
+    }
+
+    private uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism toJudiciarySpecialism(final JsonObject jsonObject) {
+        final String judiciaryId = jsonObject.getString("judiciaryId", null);
+        if (judiciaryId == null) {
+            return null;
+        }
+
+        final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType> specialismTypes = new ArrayList<>();
+        JsonObjects.getJsonArray(jsonObject, "specialisms").ifPresent(specialismsJsonArray -> {
+            for (JsonValue specialismValue : specialismsJsonArray) {
+                // The specialism is a string (enum value), not an object
+                final String specialismString = specialismValue.getValueType() == JsonValue.ValueType.STRING
+                        ? ((javax.json.JsonString) specialismValue).getString()
+                        : specialismValue.toString();
+                try {
+                    final uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType specialismType =
+                            uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.valueOf(specialismString);
+                    specialismTypes.add(specialismType);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.warn("Unknown specialism value received from referencedata service: {}", specialismString);
+                }
+            }
+        });
+
+        return new uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism(judiciaryId, specialismTypes);
     }
 
     private String getStringOrElse(final JsonObject jsonObject, final String key, final String defaultValue) {

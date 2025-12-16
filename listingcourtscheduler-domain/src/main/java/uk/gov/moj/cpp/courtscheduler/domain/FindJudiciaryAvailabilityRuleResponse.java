@@ -10,6 +10,7 @@ public class FindJudiciaryAvailabilityRuleResponse {
     private Integer pageNumber;
     private Integer pageSize;
     private List<Judiciary> judiciaries;
+    private List<JudiciarySpecialism> specialisms;
 
     public FindJudiciaryAvailabilityRuleResponse() {
     }
@@ -61,6 +62,14 @@ public class FindJudiciaryAvailabilityRuleResponse {
         this.judiciaries = judiciaries;
     }
 
+    public List<JudiciarySpecialism> getSpecialisms() {
+        return this.specialisms;
+    }
+
+    public void setSpecialisms(List<JudiciarySpecialism> specialisms) {
+        this.specialisms = specialisms;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -74,12 +83,13 @@ public class FindJudiciaryAvailabilityRuleResponse {
                 Objects.equals(this.totalCount, that.totalCount) &&
                 Objects.equals(this.pageNumber, that.pageNumber) &&
                 Objects.equals(this.pageSize, that.pageSize) &&
-                Objects.equals(this.judiciaries, that.judiciaries);
+                Objects.equals(this.judiciaries, that.judiciaries) &&
+                Objects.equals(this.specialisms, that.specialisms);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.rules, this.totalCount, this.pageNumber, this.pageSize, this.judiciaries);
+        return Objects.hash(this.rules, this.totalCount, this.pageNumber, this.pageSize, this.judiciaries, this.specialisms);
     }
 
     @Override
@@ -90,6 +100,7 @@ public class FindJudiciaryAvailabilityRuleResponse {
                 ", pageNumber=" + this.pageNumber +
                 ", pageSize=" + this.pageSize +
                 ", judiciaries=" + this.judiciaries +
+                ", specialisms=" + this.specialisms +
                 '}';
     }
 }

@@ -23,7 +23,6 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConver
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeRecalculateAvailabilityConverter;
@@ -35,12 +34,14 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleC
 import uk.gov.moj.cpp.courtscheduler.api.converter.DeleteJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciaryAvailabilityRuleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
@@ -158,6 +159,8 @@ public class CourtSchedulerApi {
     private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
     @Inject
     private AddJudiciaryAvailabilityRuleConverter addJudiciaryAvailabilityRuleConverter;
+    @Inject
+    private UpdateJudiciaryAvailabilityRuleConverter updateJudiciaryAvailabilityRuleConverter;
     @Inject
     private DeleteJudiciaryAvailabilityRuleConverter deleteJudiciaryAvailabilityRuleConverter;
     @Inject
@@ -433,7 +436,7 @@ public class CourtSchedulerApi {
     }
 
     @Handles("courtscheduler.export.allocated_listings")
-    public JsonEnvelope exportAlloctedListings(final JsonEnvelope envelope) {
+    public JsonEnvelope exportAllocatedListings(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.export.allocated_listings requested : {}", requestFromApiJsonObject);
 
@@ -552,6 +555,33 @@ public class CourtSchedulerApi {
         judiciaryAvailabilityService.addJudiciaryAvailabilityRule(request);
 
         return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.add.availability.rule").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.judiciary.update.availability.rule")
+    public JsonEnvelope updateJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.update.availability.rule requested : {}", requestFromApiJsonObject);
+
+        // Extract ruleId from request payload
+        final String ruleId = requestFromApiJsonObject.containsKey("ruleId") ?
+                requestFromApiJsonObject.getString("ruleId") : null;
+
+        UpdateJudiciaryAvailabilityRuleRequest request = updateJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+
+        // Set ruleId from payload if not already set by converter
+        if (ruleId != null && (request.getRuleId() == null || request.getRuleId().isEmpty())) {
+            request.setRuleId(ruleId);
+        }
+
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(request);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        judiciaryAvailabilityService.updateJudiciaryAvailabilityRule(request);
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.update.availability.rule").apply(createObjectBuilder().build());
     }
 
     @Handles("courtscheduler.judiciary.find.availability")

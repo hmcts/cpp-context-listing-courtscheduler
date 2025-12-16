@@ -675,8 +675,12 @@ protocols: [ HTTP, HTTPS ]
         description: Optional page number for pagination. Default is 1
         type: integer
         required: false
-      withJudiciary:
+      withJudiciaries:
         description: Optional flag to include judiciaries in response. Default is true
+        type: boolean
+        required: false
+      withSpecialisms:
+        description: Optional flag to include specialisms in response. Default is true
         type: boolean
         required: false
     responses:
@@ -701,6 +705,22 @@ protocols: [ HTTP, HTTPS ]
       application/vnd.courtscheduler.judiciary.delete.availability.rule+json:
         schema: !include json/schema/courtscheduler.judiciary.delete.availability.rule.json
         example: !include json/courtscheduler.judiciary.delete.availability.rule.json
+    responses:
+      202:
+        description: OK
+
+  put:
+    description: |
+      Update judiciary availability rule. The ruleId is included in the request payload.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.judiciary.update.availability.rule+json
+          name: courtscheduler.judiciary.update.availability.rule
+      ...
+    body:
+      application/vnd.courtscheduler.judiciary.update.availability.rule+json:
+        schema: !include json/schema/courtscheduler.judiciary.update.availability.rule.json
+        example: !include json/courtscheduler.judiciary.update.availability.rule.json
     responses:
       202:
         description: OK

@@ -32,7 +32,7 @@ class FindJudiciaryAvailabilityRuleConverterTest {
                 .add("judiciaryId", judiciaryId)
                 .add("pageSize", 10)
                 .add("pageNumber", 2)
-                .add("withJudiciary", true)
+                .add("withJudiciaries", true)
                 .build();
 
         FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
@@ -44,7 +44,7 @@ class FindJudiciaryAvailabilityRuleConverterTest {
         assertThat(result.getJudiciaryId(), is(judiciaryId));
         assertThat(result.getPageSize(), is(10));
         assertThat(result.getPageNumber(), is(2));
-        assertThat(result.getWithJudiciary(), is(true));
+        assertThat(result.getWithJudiciaries(), is(true));
     }
 
     @Test
@@ -63,7 +63,7 @@ class FindJudiciaryAvailabilityRuleConverterTest {
         assertThat(result.getJudiciaryId(), is(nullValue()));
         assertThat(result.getPageSize(), is(20)); // Default value
         assertThat(result.getPageNumber(), is(1)); // Default value
-        assertThat(result.getWithJudiciary(), is(true)); // Default value
+        assertThat(result.getWithJudiciaries(), is(true)); // Default value
     }
 
     @Test
@@ -81,7 +81,7 @@ class FindJudiciaryAvailabilityRuleConverterTest {
     }
 
     @Test
-    void shouldUseDefaultWithJudiciaryWhenNotProvided() {
+    void shouldUseDefaultWithJudiciariesWhenNotProvided() {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
@@ -90,21 +90,21 @@ class FindJudiciaryAvailabilityRuleConverterTest {
         FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getWithJudiciary(), is(true));
+        assertThat(result.getWithJudiciaries(), is(true));
     }
 
     @Test
-    void shouldHandleNullWithJudiciary() {
+    void shouldHandleNullWithJudiciaries() {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
-                .addNull("withJudiciary")
+                .addNull("withJudiciaries")
                 .build();
 
         FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getWithJudiciary(), is(true));
+        assertThat(result.getWithJudiciaries(), is(true));
     }
 
     @Test
@@ -170,18 +170,58 @@ class FindJudiciaryAvailabilityRuleConverterTest {
     }
 
     @Test
-    void shouldConvertJsonObjectWithWithJudiciaryFalse() {
+    void shouldConvertJsonObjectWithWithJudiciariesFalse() {
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
-                .add("withJudiciary", false)
+                .add("withJudiciaries", false)
                 .build();
 
         FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getWithJudiciary(), is(false));
+        assertThat(result.getWithJudiciaries(), is(false));
     }
 
+    @Test
+    void shouldConvertJsonObjectWithWithSpecialisms() {
+        JsonObject jsonObject = Json.createObjectBuilder()
+                .add("startDate", "2026-01-01")
+                .add("endDate", "2026-01-31")
+                .add("withSpecialisms", true)
+                .build();
+
+        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+
+        assertNotNull(result);
+        assertThat(result.getWithSpecialisms(), is(true));
+    }
+
+    @Test
+    void shouldUseDefaultWithSpecialismsWhenNotProvided() {
+        JsonObject jsonObject = Json.createObjectBuilder()
+                .add("startDate", "2026-01-01")
+                .add("endDate", "2026-01-31")
+                .build();
+
+        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+
+        assertNotNull(result);
+        assertThat(result.getWithSpecialisms(), is(true));
+    }
+
+    @Test
+    void shouldHandleNullWithSpecialisms() {
+        JsonObject jsonObject = Json.createObjectBuilder()
+                .add("startDate", "2026-01-01")
+                .add("endDate", "2026-01-31")
+                .addNull("withSpecialisms")
+                .build();
+
+        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+
+        assertNotNull(result);
+        assertThat(result.getWithSpecialisms(), is(true));
+    }
 }
 

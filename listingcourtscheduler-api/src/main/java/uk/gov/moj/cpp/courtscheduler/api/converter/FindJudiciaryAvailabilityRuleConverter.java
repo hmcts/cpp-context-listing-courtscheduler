@@ -12,12 +12,14 @@ public class FindJudiciaryAvailabilityRuleConverter implements Converter<JsonObj
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int DEFAULT_PAGE_NUMBER = 1;
-    private static final boolean DEFAULT_WITH_JUDICIARY = true;
+    private static final boolean DEFAULT_WITH_JUDICIARIES = true;
+    private static final boolean DEFAULT_WITH_SPECIALISMS = true;
     public static final String COURT_HOUSE_ID = "courtHouseId";
     public static final String JUDICIARY_ID = "judiciaryId";
     public static final String PAGE_SIZE = "pageSize";
     public static final String PAGE_NUMBER = "pageNumber";
-    public static final String WITH_JUDICIARY = "withJudiciary";
+    public static final String WITH_JUDICIARIES = "withJudiciaries";
+    public static final String WITH_SPECIALISMS = "withSpecialisms";
 
     @Override
     public FindJudiciaryAvailabilityRuleRequest convert(final JsonObject jsonObject) {
@@ -47,10 +49,16 @@ public class FindJudiciaryAvailabilityRuleConverter implements Converter<JsonObj
             request.setPageNumber(DEFAULT_PAGE_NUMBER);
         }
 
-        if (jsonObject.containsKey(WITH_JUDICIARY) && !jsonObject.isNull(WITH_JUDICIARY)) {
-            request.setWithJudiciary(jsonObject.getBoolean(WITH_JUDICIARY));
+        if (jsonObject.containsKey(WITH_JUDICIARIES) && !jsonObject.isNull(WITH_JUDICIARIES)) {
+            request.setWithJudiciaries(jsonObject.getBoolean(WITH_JUDICIARIES));
         } else {
-            request.setWithJudiciary(DEFAULT_WITH_JUDICIARY);
+            request.setWithJudiciaries(DEFAULT_WITH_JUDICIARIES);
+        }
+
+        if (jsonObject.containsKey(WITH_SPECIALISMS) && !jsonObject.isNull(WITH_SPECIALISMS)) {
+            request.setWithSpecialisms(jsonObject.getBoolean(WITH_SPECIALISMS));
+        } else {
+            request.setWithSpecialisms(DEFAULT_WITH_SPECIALISMS);
         }
 
         return request;
