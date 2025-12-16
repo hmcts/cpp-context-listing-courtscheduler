@@ -2099,8 +2099,12 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldCreateCourtSchedulesForMonthlyFrequencyWithYearBoundary() {
         // Given - Start date in December, end date in March next year
-        final LocalDate startDate = LocalDate.now().withMonth(12).withDayOfMonth(15);
-        final LocalDate endDate = LocalDate.now().withYear(startDate.getYear() + 1).withMonth(3).withDayOfMonth(15);
+        // If December 15th is in the past, use next year's December 15th
+        LocalDate startDate = LocalDate.now().withMonth(12).withDayOfMonth(15);
+        if (startDate.isBefore(now())) {
+            startDate = startDate.plusYears(1);
+        }
+        final LocalDate endDate = startDate.withYear(startDate.getYear() + 1).withMonth(3).withDayOfMonth(15);
 
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
                 "create-court-schedule-monthly-frequency.json",
