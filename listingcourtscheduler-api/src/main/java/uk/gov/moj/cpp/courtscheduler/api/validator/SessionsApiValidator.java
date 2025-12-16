@@ -14,6 +14,7 @@ import static java.util.stream.Collectors.toSet;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_AFTER_END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
@@ -106,6 +107,10 @@ public class SessionsApiValidator {
         if (repeatFrequency == EVERY_MONTH) {
             JsonObject err = validateMonthlyCrownIndexForRequest(createSessionRequestParam);
             if (err != EMPTY_JSON_OBJECT) return err;
+        }
+
+        if (patternEndDate != null && patternEndDate.isBefore(patternStartDate)) {
+            return buildErrorResponse(START_DATE_AFTER_END_DATE);
         }
 
         if (patternStartDate.isBefore(ChronoLocalDate.from(LocalDateTime.now()))) {

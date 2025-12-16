@@ -2,12 +2,17 @@ package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_AFTER_END_DATE;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.ALL_DAY_SPLIT;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.BUSINESS_TYPE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_CENTRE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_ROOM;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.DURATION;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.INDEX;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.IS_DRAFT;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.IS_OVERBOOKING_ALLOWED;
@@ -19,7 +24,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.REPE
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.SESSION_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.SESSION_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.SESSION_TYPE;
+import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.START_DATE;
 
+import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
@@ -28,9 +35,11 @@ import uk.gov.moj.cpp.courtscheduler.domain.Session;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
@@ -125,11 +134,34 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
     }
 
     private RepeatPattern convertRepeatPattern(JsonObject jsonObject) {
+        final String startDateStr = jsonObject.getString(START_DATE.getLabel());
+        final String endDateStr = jsonObject.getString(END_DATE.getLabel(), null);
+
+        final LocalDate startDate = parseDateOrThrow(startDateStr, true);
+        final LocalDate endDate = endDateStr != null ? parseDateOrThrow(endDateStr, false) : null;
+
+        if (endDate != null && endDate.isBefore(startDate)) {
+            throw new ValidationException(Json.createObjectBuilder()
+                    .add(ERROR_MESSAGE, START_DATE_AFTER_END_DATE)
+                    .build());
+        }
+
         return RepeatPattern.RepeatPatternBuilder.repeatPattern()
                 .withFrequency(RepeatFrequency.valueOf(jsonObject.getString(RequestParameterConstant.REPEAT_FREQUENCY.getLabel()).trim().toUpperCase()))
                 .withRepeatFor(jsonObject.getInt(RequestParameterConstant.REPEAT_FOR.getLabel()))
-                .withStartDate(LocalDate.parse(jsonObject.getString(RequestParameterConstant.START_DATE.getLabel()), DateTimeFormatter.ISO_DATE))
-                .withEndDate(LocalDate.parse(jsonObject.getString(RequestParameterConstant.END_DATE.getLabel()), DateTimeFormatter.ISO_DATE))
+                .withStartDate(startDate)
+                .withEndDate(endDate)
                 .build();
+    }
+
+    private LocalDate parseDateOrThrow(final String date, final boolean isStart) {
+        try {
+            return LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
+        } catch (DateTimeParseException ex) {
+            final String message = isStart ? START_DATE_IS_IN_BAD_FORMAT : END_DATE_IS_IN_BAD_FORMAT;
+            throw new ValidationException(Json.createObjectBuilder()
+                    .add(ERROR_MESSAGE, String.format(message, date))
+                    .build());
+        }
     }
 }
