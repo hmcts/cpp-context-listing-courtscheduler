@@ -128,6 +128,12 @@ public class SessionsApiValidator {
             return isDraftValidationResult;
         }
 
+        // Validate panel - YOUTH is not allowed for CROWN jurisdiction
+        final JsonObject panelValidationResult = validatePanelForJurisdiction(createSessionRequestParam);
+        if (panelValidationResult != EMPTY_JSON_OBJECT) {
+            return panelValidationResult;
+        }
+
         //if the request is coming from validate endpoint, this object should be populated
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
             LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
@@ -607,10 +613,10 @@ public class SessionsApiValidator {
             return courtRoomValidation;
         }
 
-        // Validate isDraft can only be supplied when jurisdiction is CROWN
+        // Validate isDraft can only be true when jurisdiction is CROWN - reject if true for MAGISTRATES, silently accept false
         Boolean isDraft = updateCourtSchedule.getIsDraft();
-        if (nonNull(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
-            return buildErrorResponse("isDraft can only be supplied when jurisdiction is CROWN");
+        if (nonNull(isDraft) && TRUE.equals(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("isDraft can only be true when jurisdiction is CROWN");
         }
 
         // Validate that if CROWN and database isDraft = false, it can't be changed to isDraft = true
@@ -620,6 +626,12 @@ public class SessionsApiValidator {
             if (nonNull(persistedCourtSchedule) && FALSE.equals(persistedCourtSchedule.getIsDraft())) {
                 return buildErrorResponse("Cannot change isDraft from false to true for CROWN jurisdiction sessions");
             }
+        }
+
+        // Validate panel - YOUTH is not allowed for CROWN jurisdiction
+        String panel = updateCourtSchedule.getPanel();
+        if (nonNull(panel) && "YOUTH".equalsIgnoreCase(panel) && CROWN.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("YOUTH panel is not allowed for CROWN jurisdiction sessions. Only ADULT panel is allowed.");
         }
 
         SessionValidationParams params = getSessionValidationParams(updateCourtSchedule);
@@ -695,9 +707,41 @@ public class SessionsApiValidator {
         String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
         Boolean isDraft = session.isDraft();
 
-        // isDraft can only be supplied for CROWN jurisdiction
-        if (nonNull(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
-            return buildErrorResponse("isDraft can only be supplied for CROWN jurisdiction sessions");
+        // isDraft can only be true for CROWN jurisdiction - reject if true for MAGISTRATES, silently accept false
+        if (nonNull(isDraft) && TRUE.equals(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("isDraft can only be true for CROWN jurisdiction sessions");
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validatePanelForJurisdiction(final CreateSessionRequestParam createSessionRequestParam) {
+        // Validate sessions in the list
+        for (Session session : createSessionRequestParam.getSessionList()) {
+            JsonObject error = validateSessionPanel(session);
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+
+        // Validate sessionToBeAdded if present
+        if (nonNull(createSessionRequestParam.getSessionToBeAdded())) {
+            JsonObject error = validateSessionPanel(createSessionRequestParam.getSessionToBeAdded());
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateSessionPanel(final Session session) {
+        if (session == null) {
+            return EMPTY_JSON_OBJECT;
+        }
+
+        String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
+        String panel = session.getPanelType();
+
+        // YOUTH panel is not allowed for CROWN jurisdiction - only ADULT is allowed
+        if (nonNull(panel) && "YOUTH".equalsIgnoreCase(panel) && CROWN.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("YOUTH panel is not allowed for CROWN jurisdiction sessions. Only ADULT panel is allowed.");
         }
 
         return EMPTY_JSON_OBJECT;
