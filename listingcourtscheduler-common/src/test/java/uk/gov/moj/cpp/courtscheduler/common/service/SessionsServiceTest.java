@@ -53,6 +53,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
@@ -90,6 +92,7 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.json.JsonObject;
+import javax.json.JsonArray;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -2248,5 +2251,430 @@ class SessionsServiceTest {
         assertTrue(result.isSuccess());
         assertEquals(20, updateCourtSchedule.getAvailableSlots()); // 25 - 5 = 20
         verify(courtScheduleRepository, times(1)).update(any(), any(), any());
+    }
+
+    @Test
+    void shouldAssignCourtroomToEligibleDraftSessions() {
+        // Given
+        final String courtScheduleId1 = randomUUID().toString();
+        final String courtScheduleId2 = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session1 = createDomainCourtSchedule(
+                courtScheduleId1, "CROWN", courtCentreId, true);
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session2 = createDomainCourtSchedule(
+                courtScheduleId2, "CROWN", courtCentreId, true);
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withCourtRoomName("Courtroom 1")
+                .withOucode("OU001")
+                .withCppCourtRoomId(1)
+                .withOucodeL3Name("Court House 1")
+                .withOucodeL2Code("OU001")
+                .build();
+
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedSession1 = 
+                createPersistedCourtSchedule(courtScheduleId1);
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedSession2 = 
+                createPersistedCourtSchedule(courtScheduleId2);
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(courtScheduleId1, courtScheduleId2))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(List.of(session1, session2));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString()))
+                .thenReturn(emptyList());
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId1))
+                .thenReturn(persistedSession1);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId2))
+                .thenReturn(persistedSession2);
+        doAnswer(invocation -> null).when(courtScheduleRepository).save(any());
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertTrue(response.getErrorGroups().isEmpty(), "No error groups expected for successful assignment");
+        verify(courtScheduleRepository, times(2)).retrieveCourtScheduleWithListingById(anyString());
+        verify(courtScheduleRepository, times(2)).save(any());
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtroomNotFound() {
+        // Given
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(emptyList());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.empty());
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1, response.getErrorGroups().size());
+        assertEquals("Courtroom not found", response.getErrorGroups().get(0).getError());
+        assertEquals(1, response.getErrorGroups().get(0).getSessions().size());
+        assertEquals(courtScheduleId, response.getErrorGroups().get(0).getSessions().get(0).getCourtScheduleId());
+        verify(courtScheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnErrorWhenSessionNotFound() {
+        // Given
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(emptyList());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(courtRoom));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1, response.getErrorGroups().size());
+        assertEquals("Session not found", response.getErrorGroups().get(0).getError());
+        assertEquals(1, response.getErrorGroups().get(0).getSessions().size());
+        assertEquals(courtScheduleId, response.getErrorGroups().get(0).getSessions().get(0).getCourtScheduleId());
+        verify(courtScheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnErrorForNonCrownJurisdictionSessions() {
+        // Given
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = createDomainCourtSchedule(
+                courtScheduleId, "MAGISTRATES", courtCentreId, true);
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(List.of(session));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+                .thenReturn(returnBusinessTypeObject("DVLA", true));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1, response.getErrorGroups().size());
+        assertEquals("assign.courtroom endpoint is only valid for CROWN jurisdiction sessions", 
+                response.getErrorGroups().get(0).getError());
+        assertEquals(1, response.getErrorGroups().get(0).getSessions().size());
+        verify(courtScheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtCentreMismatch() {
+        // Given
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String sessionCourtCentreId = randomUUID().toString();
+        final String differentCourtCentreId = randomUUID().toString();
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = createDomainCourtSchedule(
+                courtScheduleId, "CROWN", sessionCourtCentreId, true);
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(differentCourtCentreId)
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(List.of(session));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+                .thenReturn(returnBusinessTypeObject("DVLA", true));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1, response.getErrorGroups().size());
+        assertEquals("The new courtroom must belong to the same court centre as the session", 
+                response.getErrorGroups().get(0).getError());
+        assertEquals(1, response.getErrorGroups().get(0).getSessions().size());
+        verify(courtScheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnErrorForAssignedSessions() {
+        // Given
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = createDomainCourtSchedule(
+                courtScheduleId, "CROWN", courtCentreId, false); // isDraft = false means assigned
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(List.of(session));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(any(), any(), anyString(), anyList(), anyString()))
+                .thenReturn(emptyList());
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+                .thenReturn(returnBusinessTypeObject("DVLA", true));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1, response.getErrorGroups().size());
+        assertEquals("Cannot assign courtroom to an assigned session", 
+                response.getErrorGroups().get(0).getError());
+        assertEquals(1, response.getErrorGroups().get(0).getSessions().size());
+        verify(courtScheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnErrorForDuplicateSessions() {
+        // Given
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.now();
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = createDomainCourtSchedule(
+                courtScheduleId, "CROWN", courtCentreId, true);
+        session.setSessionDate(sessionDate);
+        session.setCourtSession(AM_SESSION);
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withCourtRoomName("Courtroom 1")
+                .build();
+
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule duplicateSession = 
+                new uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(List.of(session));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
+                eq("Courtroom 1"), eq(sessionDate), anyString(), anyList(), eq(courtScheduleId)))
+                .thenReturn(List.of(duplicateSession));
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+                .thenReturn(returnBusinessTypeObject("DVLA", true));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1, response.getErrorGroups().size());
+        assertTrue(response.getErrorGroups().get(0).getError().contains("Duplicate session already exists"));
+        assertEquals(1, response.getErrorGroups().get(0).getSessions().size());
+        verify(courtScheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldHandleMixedEligibleAndIneligibleSessions() {
+        // Given
+        final String eligibleSessionId = randomUUID().toString();
+        final String ineligibleSessionId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule eligibleSession = createDomainCourtSchedule(
+                eligibleSessionId, "CROWN", courtCentreId, true); // Draft - eligible
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule ineligibleSession = createDomainCourtSchedule(
+                ineligibleSessionId, "CROWN", courtCentreId, false); // Assigned - not eligible
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withCourtRoomName("Courtroom 1")
+                .withOucode("OU001")
+                .withCppCourtRoomId(1)
+                .withOucodeL3Name("Court House 1")
+                .withOucodeL2Code("OU001")
+                .build();
+
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedEligibleSession = 
+                createPersistedCourtSchedule(eligibleSessionId);
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(eligibleSessionId, ineligibleSessionId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(List.of(eligibleSession, ineligibleSession));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString()))
+                .thenReturn(emptyList());
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eligibleSessionId))
+                .thenReturn(persistedEligibleSession);
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+                .thenReturn(returnBusinessTypeObject("DVLA", true));
+        doAnswer(invocation -> null).when(courtScheduleRepository).save(any());
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1, response.getErrorGroups().size());
+        assertEquals("Cannot assign courtroom to an assigned session", 
+                response.getErrorGroups().get(0).getError());
+        assertEquals(1, response.getErrorGroups().get(0).getSessions().size());
+        assertEquals(ineligibleSessionId, response.getErrorGroups().get(0).getSessions().get(0).getCourtScheduleId());
+        // Eligible session should be successfully assigned
+        verify(courtScheduleRepository, times(1)).save(any());
+    }
+
+    @Test
+    void shouldHandleExceptionDuringAssignment() {
+        // Given
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = createDomainCourtSchedule(
+                courtScheduleId, "CROWN", courtCentreId, true);
+
+        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withCourtRoomName("Courtroom 1")
+                .withOucode("OU001")
+                .withCppCourtRoomId(1)
+                .withOucodeL3Name("Court House 1")
+                .withOucodeL2Code("OU001")
+                .build();
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(List.of(session));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.of(courtRoom));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString()))
+                .thenReturn(emptyList());
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenThrow(new RuntimeException("Database error"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+                .thenReturn(returnBusinessTypeObject("DVLA", true));
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1, response.getErrorGroups().size());
+        assertTrue(response.getErrorGroups().get(0).getError().contains("Failed to assign courtroom"));
+        assertEquals(1, response.getErrorGroups().get(0).getSessions().size());
+    }
+
+    // Helper methods for creating test data
+    private uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule createDomainCourtSchedule(
+            final String courtScheduleId, final String jurisdiction, 
+            final String courtHouseId, final boolean isDraft) {
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = 
+                new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule();
+        session.setCourtScheduleId(courtScheduleId);
+        session.setJurisdiction(jurisdiction);
+        session.setCourtHouseId(courtHouseId);
+        session.setIsDraft(isDraft);
+        session.setBusinessType("DVLA");
+        session.setCourtSession(AM_SESSION);
+        session.setSessionDate(LocalDate.now());
+        return session;
+    }
+
+    private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule createPersistedCourtSchedule(
+            final String courtScheduleId) {
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedSession = 
+                new uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule();
+        persistedSession.setCourtScheduleId(courtScheduleId);
+        persistedSession.setCourtRoomId("original-courtroom-id");
+        persistedSession.setIsDraft(true);
+        persistedSession.setBusinessType("DVLA");
+        persistedSession.setUpdatedOn(Calendar.getInstance().getTime());
+        return persistedSession;
     }
 }
