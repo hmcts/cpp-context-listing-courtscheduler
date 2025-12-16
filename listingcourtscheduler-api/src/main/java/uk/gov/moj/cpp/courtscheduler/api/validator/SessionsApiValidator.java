@@ -47,6 +47,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionValidationParams;
+//import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -237,7 +238,7 @@ public class SessionsApiValidator {
             return buildErrorResponse("Court Schedule Ids cannot be empty");
         }
 
-        List<CourtSchedule> courtSchedules = courtScheduleRepository.findByCourtScheduleIds(courtScheduleIds);
+        List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules = courtScheduleRepository.findByCourtScheduleIds(courtScheduleIds);
         boolean firstIsSlotBased = courtSchedules.get(0).isSlotBased();
 
         JsonObject missingIdError = validateMissingCourtScheduleIds(courtScheduleIds, courtSchedules);
@@ -263,13 +264,13 @@ public class SessionsApiValidator {
         return missingIds.isEmpty() ? EMPTY_JSON_OBJECT : buildErrorResponse("Court Schedule Ids not found: " + missingIds);
     }
 
-    private JsonObject validateScheduleTypeConsistency(List<CourtSchedule> courtSchedules, boolean firstIsSlotBased) {
+    private JsonObject validateScheduleTypeConsistency(List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules, boolean firstIsSlotBased) {
         boolean allSameType = courtSchedules.stream()
                 .allMatch(schedule -> schedule.isSlotBased() == firstIsSlotBased);
         return allSameType ? EMPTY_JSON_OBJECT : buildErrorResponse("All court schedules should be either slot-based or duration-based");
     }
 
-    private JsonObject validateSlotBasedAvailability(List<CourtSchedule> courtSchedules, List<String> courtScheduleIds) {
+    private JsonObject validateSlotBasedAvailability(List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules, List<String> courtScheduleIds) {
         Map<String, Integer> allocatedListingsMapByCourtScheduleId = allocatedListingService.getAllocatedListingsByCourtScheduleId(courtScheduleIds);
         for (Map.Entry<String, Integer> entry : allocatedListingsMapByCourtScheduleId.entrySet()) {
             String courtScheduleId = entry.getKey();
@@ -277,7 +278,7 @@ public class SessionsApiValidator {
             int maxSlots = courtSchedules.stream()
                     .filter(schedule -> schedule.getCourtScheduleId().equals(courtScheduleId))
                     .findFirst()
-                    .map(CourtSchedule::getMaxSlots)
+                    .map(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule::getMaxSlots)
                     .orElse(0);
             if (totalBooked >= maxSlots) {
                 return buildErrorResponse("Court Schedule Id: " + courtScheduleId + " is fully booked");
@@ -286,7 +287,7 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateDurationBasedAvailability(List<CourtSchedule> courtSchedules, Integer requestedDuration) {
+    private JsonObject validateDurationBasedAvailability(List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules, Integer requestedDuration) {
         if (requestedDuration == null || requestedDuration < 1) {
             return buildErrorResponse("Duration is mandatory and should be greater than 0");
         }
@@ -296,7 +297,7 @@ public class SessionsApiValidator {
             return buildErrorResponse("Not enough available durations for all court schedules");
         }
 
-        for (CourtSchedule cs : courtSchedules) {
+        for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs : courtSchedules) {
             if (TRUE.equals(cs.getSupportAdSplit())) {
                 final AtomicInteger totalBookedForMorning = new AtomicInteger(0);
                 final AtomicInteger totalBookedForAfternoon = new AtomicInteger(0);
@@ -653,7 +654,7 @@ public class SessionsApiValidator {
                 updateCourtSchedule.getSessionEndTime());
     }
 
-    public JsonObject getAssignCourtroomValidation(final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request) {
+    public JsonObject getAssignCourtroomValidation(final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request, final Requester requester) {
         if (isNull(request.getCourtScheduleIds()) || request.getCourtScheduleIds().isEmpty()) {
             return buildErrorResponse("At least one court schedule ID must be provided");
         }
