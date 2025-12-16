@@ -122,6 +122,12 @@ public class SessionsApiValidator {
             return result;
         }
 
+        // Validate isDraft can only be true for CROWN jurisdiction
+        final JsonObject isDraftValidationResult = validateIsDraftForJurisdiction(createSessionRequestParam);
+        if (isDraftValidationResult != EMPTY_JSON_OBJECT) {
+            return isDraftValidationResult;
+        }
+
         //if the request is coming from validate endpoint, this object should be populated
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
             LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
@@ -660,6 +666,38 @@ public class SessionsApiValidator {
 
         if (isNull(request.getCourtRoomId()) || request.getCourtRoomId().trim().isEmpty()) {
             return buildErrorResponse("Courtroom ID must be provided");
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateIsDraftForJurisdiction(final CreateSessionRequestParam createSessionRequestParam) {
+        // Validate sessions in the list
+        for (Session session : createSessionRequestParam.getSessionList()) {
+            JsonObject error = validateSessionIsDraft(session);
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+
+        // Validate sessionToBeAdded if present
+        if (nonNull(createSessionRequestParam.getSessionToBeAdded())) {
+            JsonObject error = validateSessionIsDraft(createSessionRequestParam.getSessionToBeAdded());
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateSessionIsDraft(final Session session) {
+        if (session == null) {
+            return EMPTY_JSON_OBJECT;
+        }
+
+        String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
+        Boolean isDraft = session.isDraft();
+
+        // isDraft can only be supplied for CROWN jurisdiction
+        if (nonNull(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("isDraft can only be supplied for CROWN jurisdiction sessions");
         }
 
         return EMPTY_JSON_OBJECT;
