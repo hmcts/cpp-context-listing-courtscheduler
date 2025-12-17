@@ -177,6 +177,57 @@ class JudiciaryAssignmentServiceTest {
         }
     }
 
+    @Test
+    void shouldSkipValidationsWhenSkipValidationsIsTrue() {
+        final String judiciaryId = "missing-judiciary";
+        final String sessionId = "missing-session";
+
+        // Even though judiciary and session don't exist, with skipValidations=true, should not fail or log
+        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
+                .addJudiciary(JudiciaryAssignment.builder()
+                        .withJudiciaryId(judiciaryId)
+                        .addSessionId(sessionId)
+                        .build())
+                .withSkipValidations(true)
+                .build();
+
+        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.empty());
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of());
+
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, requester, EXECUTION_ID);
+
+        // Should not record failures or log errors when skipValidations is true
+        assertEquals(1, response.getRequestedAssignments());
+        assertEquals(0, response.getSuccessfulAssignments());
+        assertEquals(0, response.getFailures().size());
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
+    }
+
+    @Test
+    void shouldSkipValidationsAndStillAssignWhenJudiciaryAndSessionExist() {
+        final String judiciaryId = "judiciary-1";
+        final String sessionId = "session-1";
+
+        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
+                .addJudiciary(JudiciaryAssignment.builder()
+                        .withJudiciaryId(judiciaryId)
+                        .addSessionId(sessionId)
+                        .build())
+                .withSkipValidations(true)
+                .build();
+
+        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
+
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, requester, EXECUTION_ID);
+
+        assertEquals(1, response.getRequestedAssignments());
+        assertEquals(1, response.getSuccessfulAssignments());
+        assertTrue(response.getFailures().isEmpty());
+        verify(courtScheduleJudiciaryRepository).save(any());
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
+    }
+
     private enum MissingLogType {
         JUDICIARY,
         SESSION

@@ -55,5 +55,59 @@ class AssignJudiciariesApiValidatorTest {
         final JsonObject result = validator.validate(null);
         assertEquals("At least one judiciary assignment must be supplied", result.getString("errorMessage"));
     }
+
+    @Test
+    void shouldSkipValidationWhenSkipValidationsIsTrue() {
+        // Even with invalid assignment (empty judiciaryId), validation should pass when skipValidations is true
+        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
+                .withJudiciaryId("")
+                .withSessionIds(List.of("not-a-uuid"))
+                .build();
+        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
+                .addJudiciary(assignment)
+                .withSkipValidations(true)
+                .build();
+
+        final JsonObject result = validator.validate(request);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldPerformValidationWhenSkipValidationsIsFalse() {
+        // With invalid assignment and skipValidations false, validation should fail
+        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
+                .withJudiciaryId("")
+                .withSessionIds(List.of("not-a-uuid"))
+                .build();
+        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
+                .addJudiciary(assignment)
+                .withSkipValidations(false)
+                .build();
+
+        final JsonObject result = validator.validate(request);
+
+        assertTrue(result.containsKey("errorMessage"));
+        final String message = result.getString("errorMessage");
+        assertTrue(message.contains("Judiciary id is mandatory"));
+    }
+
+    @Test
+    void shouldPerformValidationWhenSkipValidationsIsNotSet() {
+        // When skipValidations is not set, should default to false and perform validation
+        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
+                .withJudiciaryId("")
+                .withSessionIds(List.of("not-a-uuid"))
+                .build();
+        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
+                .addJudiciary(assignment)
+                .build();
+
+        final JsonObject result = validator.validate(request);
+
+        assertTrue(result.containsKey("errorMessage"));
+        final String message = result.getString("errorMessage");
+        assertTrue(message.contains("Judiciary id is mandatory"));
+    }
 }
 

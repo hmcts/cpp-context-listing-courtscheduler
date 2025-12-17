@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
@@ -43,6 +44,53 @@ class AssignJudiciariesRequestConverterTest {
         final AssignJudiciariesRequest request = converter.convert(Json.createObjectBuilder().build());
 
         assertTrue(request.getJudiciaries().isEmpty());
+    }
+
+    @Test
+    void shouldConvertSkipValidationsWhenTrue() {
+        final JsonObject payload = Json.createObjectBuilder()
+                .add("judiciaries", Json.createArrayBuilder()
+                        .add(Json.createObjectBuilder()
+                                .add("judiciaryId", "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                                .add("sessionIds", Json.createArrayBuilder()
+                                        .add("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111"))))
+                .add("skipValidations", true)
+                .build();
+
+        final AssignJudiciariesRequest request = converter.convert(payload);
+
+        assertTrue(request.isSkipValidations());
+    }
+
+    @Test
+    void shouldConvertSkipValidationsWhenFalse() {
+        final JsonObject payload = Json.createObjectBuilder()
+                .add("judiciaries", Json.createArrayBuilder()
+                        .add(Json.createObjectBuilder()
+                                .add("judiciaryId", "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                                .add("sessionIds", Json.createArrayBuilder()
+                                        .add("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111"))))
+                .add("skipValidations", false)
+                .build();
+
+        final AssignJudiciariesRequest request = converter.convert(payload);
+
+        assertFalse(request.isSkipValidations());
+    }
+
+    @Test
+    void shouldDefaultSkipValidationsToFalseWhenNotProvided() {
+        final JsonObject payload = Json.createObjectBuilder()
+                .add("judiciaries", Json.createArrayBuilder()
+                        .add(Json.createObjectBuilder()
+                                .add("judiciaryId", "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                                .add("sessionIds", Json.createArrayBuilder()
+                                        .add("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111"))))
+                .build();
+
+        final AssignJudiciariesRequest request = converter.convert(payload);
+
+        assertFalse(request.isSkipValidations());
     }
 }
 

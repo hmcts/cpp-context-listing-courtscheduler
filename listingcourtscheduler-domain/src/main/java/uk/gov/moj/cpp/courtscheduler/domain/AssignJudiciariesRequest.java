@@ -7,6 +7,7 @@ import java.util.Objects;
 public class AssignJudiciariesRequest {
 
     private List<JudiciaryAssignment> judiciaries = new ArrayList<>();
+    private boolean skipValidations = false;
 
     public AssignJudiciariesRequest() {
         // default constructor
@@ -24,12 +25,21 @@ public class AssignJudiciariesRequest {
         this.judiciaries = judiciaries;
     }
 
+    public boolean isSkipValidations() {
+        return skipValidations;
+    }
+
+    public void setSkipValidations(final boolean skipValidations) {
+        this.skipValidations = skipValidations;
+    }
+
     public static AssignJudiciariesRequestBuilder builder() {
         return new AssignJudiciariesRequestBuilder();
     }
 
     public static final class AssignJudiciariesRequestBuilder {
         private final List<JudiciaryAssignment> judiciaries = new ArrayList<>();
+        private boolean skipValidations = false;
 
         private AssignJudiciariesRequestBuilder() {
         }
@@ -49,8 +59,15 @@ public class AssignJudiciariesRequest {
             return this;
         }
 
+        public AssignJudiciariesRequestBuilder withSkipValidations(final boolean skipValidations) {
+            this.skipValidations = skipValidations;
+            return this;
+        }
+
         public AssignJudiciariesRequest build() {
-            return new AssignJudiciariesRequest(new ArrayList<>(judiciaries));
+            final AssignJudiciariesRequest request = new AssignJudiciariesRequest(new ArrayList<>(judiciaries));
+            request.setSkipValidations(skipValidations);
+            return request;
         }
     }
 }

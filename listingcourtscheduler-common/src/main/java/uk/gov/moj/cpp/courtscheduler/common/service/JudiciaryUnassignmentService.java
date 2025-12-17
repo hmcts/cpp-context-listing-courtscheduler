@@ -48,7 +48,12 @@ public class JudiciaryUnassignmentService {
 
     @Transactional(REQUIRES_NEW)
     public void unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds, final String executionId) {
-        LOGGER.info("unassignJudiciary: attempting to unassign judiciaries from sessions : {}", judiciaryToSessionIds);
+        unassignJudiciary(judiciaryToSessionIds, executionId, false);
+    }
+
+    @Transactional(REQUIRES_NEW)
+    public void unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds, final String executionId, final boolean skipValidations) {
+        LOGGER.info("unassignJudiciary: attempting to unassign judiciaries from sessions : {} (skipValidations: {})", judiciaryToSessionIds, skipValidations);
 
         final Set<String> missingSessionIds = new LinkedHashSet<>();
         final Set<String> missingJudiciaryIds = new LinkedHashSet<>();
@@ -59,34 +64,38 @@ public class JudiciaryUnassignmentService {
             final String judiciaryId = entry.getKey();
             final List<String> sessionIds = entry.getValue();
 
-            // Check if judiciary exists in any assignment
-            final List<CourtScheduleJudiciary> judiciaryAssignments = courtScheduleJudiciaryRepository.findByJudiciaryId(judiciaryId);
-            final boolean judiciaryExists = !judiciaryAssignments.isEmpty();
+            // Check if judiciary exists in any assignment (skip if skipValidations is true)
+            if (!skipValidations) {
+                final List<CourtScheduleJudiciary> judiciaryAssignments = courtScheduleJudiciaryRepository.findByJudiciaryId(judiciaryId);
+                final boolean judiciaryExists = !judiciaryAssignments.isEmpty();
 
-            if (!judiciaryExists) {
-                missingJudiciaryIds.add(judiciaryId);
-                LOGGER.warn("unassignJudiciary: Judiciary ID {} not found for unassign judiciary operation", judiciaryId);
-                continue;
+                if (!judiciaryExists) {
+                    missingJudiciaryIds.add(judiciaryId);
+                    LOGGER.warn("unassignJudiciary: Judiciary ID {} not found for unassign judiciary operation", judiciaryId);
+                    continue;
+                }
             }
 
             for (String courtScheduleId : sessionIds) {
                 LOGGER.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
 
-                // Check if session (court schedule) exists
+                // Check if session (court schedule) exists (skip if skipValidations is true)
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
-                if (courtSchedule == null) {
+                if (!skipValidations && courtSchedule == null) {
                     missingSessionIds.add(courtScheduleId);
                     LOGGER.warn("unassignJudiciary: Session ID {} not found for unassign judiciary operation", courtScheduleId);
                     continue;
                 }
 
-                // Check if there are allocated listings for this court schedule
-                final Map<String, Integer> allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(singletonList(courtScheduleId));
-                if (allocatedListings.containsKey(courtScheduleId) && allocatedListings.get(courtScheduleId) > 0) {
-                    allocatedListingSessionIds.add(courtScheduleId);
-                    final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has allocated listings", judiciaryId, courtScheduleId);
-                    LOGGER.warn("unassignJudiciary: {}", errorMessage);
-                    continue;
+                // Check if there are allocated listings for this court schedule (skip if skipValidations is true)
+                if (!skipValidations) {
+                    final Map<String, Integer> allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(singletonList(courtScheduleId));
+                    if (allocatedListings.containsKey(courtScheduleId) && allocatedListings.get(courtScheduleId) > 0) {
+                        allocatedListingSessionIds.add(courtScheduleId);
+                        final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has allocated listings", judiciaryId, courtScheduleId);
+                        LOGGER.warn("unassignJudiciary: {}", errorMessage);
+                        continue;
+                    }
                 }
 
                 // Find the CourtScheduleJudiciary entity
@@ -114,15 +123,18 @@ public class JudiciaryUnassignmentService {
         }
 
         entityManager.flush();
-        logMissingReferences(missingJudiciaryIds, missingSessionIds, allocatedListingSessionIds, missingCourtScheduleJudiciaryIds, executionId);
+        // Skip logging missing references if skipValidations is true
+        if (!skipValidations) {
+            logMissingReferences(missingJudiciaryIds, missingSessionIds, allocatedListingSessionIds, missingCourtScheduleJudiciaryIds, executionId);
+        }
         LOGGER.info("unassignJudiciary: successfully completed unassigning judiciaries from sessions");
     }
 
     private void logMissingReferences(final Set<String> missingJudiciaryIds,
-                                     final Set<String> missingSessionIds,
-                                     final Set<String> allocatedListingSessionIds,
-                                     final Set<String> missingCourtScheduleJudiciaryIds,
-                                     final String executionId) {
+                                      final Set<String> missingSessionIds,
+                                      final Set<String> allocatedListingSessionIds,
+                                      final Set<String> missingCourtScheduleJudiciaryIds,
+                                      final String executionId) {
         if (!missingJudiciaryIds.isEmpty()) {
             final String joined = String.join(", ", missingJudiciaryIds);
             LOGGER.warn("Missing judiciary ids for unassignment: {}", joined);

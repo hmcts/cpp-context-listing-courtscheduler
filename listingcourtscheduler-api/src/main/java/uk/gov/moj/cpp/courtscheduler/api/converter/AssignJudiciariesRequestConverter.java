@@ -19,6 +19,7 @@ public class AssignJudiciariesRequestConverter {
     private static final String JUDICIARIES = "judiciaries";
     private static final String JUDICIARY_ID = "judiciaryId";
     private static final String SESSION_IDS = "sessionIds";
+    private static final String SKIP_VALIDATIONS = "skipValidations";
 
     public AssignJudiciariesRequest convert(final JsonObject payload) {
         if (payload == null || !payload.containsKey(JUDICIARIES)) {
@@ -33,8 +34,11 @@ public class AssignJudiciariesRequestConverter {
                 .map(this::toAssignment)
                 .collect(Collectors.toList());
 
+        final boolean skipValidations = payload.containsKey(SKIP_VALIDATIONS) && payload.getBoolean(SKIP_VALIDATIONS);
+
         return AssignJudiciariesRequest.builder()
                 .withJudiciaries(assignments)
+                .withSkipValidations(skipValidations)
                 .build();
     }
 

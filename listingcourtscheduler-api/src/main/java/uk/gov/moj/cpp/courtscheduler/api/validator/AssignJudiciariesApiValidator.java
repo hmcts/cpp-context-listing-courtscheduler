@@ -20,6 +20,11 @@ import javax.json.JsonObject;
 public class AssignJudiciariesApiValidator {
 
     public JsonObject validate(final AssignJudiciariesRequest request) {
+        // Skip validation if skipValidations flag is set to true
+        if (request != null && request.isSkipValidations()) {
+            return EMPTY_JSON_OBJECT;
+        }
+
         final List<String> errors = new ArrayList<>();
 
         if (request == null || isEmpty(request.getJudiciaries())) {

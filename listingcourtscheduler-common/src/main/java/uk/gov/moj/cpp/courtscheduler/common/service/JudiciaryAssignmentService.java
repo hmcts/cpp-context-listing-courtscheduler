@@ -65,6 +65,7 @@ public class JudiciaryAssignmentService {
     public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
                                                        final Requester requester,
                                                        final String executionId) {
+        final boolean skipValidations = request != null && request.isSkipValidations();
         final List<JudiciaryAssignment> assignments = Optional.ofNullable(request)
                 .map(AssignJudiciariesRequest::getJudiciaries)
                 .orElse(emptyList());
@@ -103,26 +104,35 @@ public class JudiciaryAssignmentService {
                 continue;
             }
             final String judiciaryId = assignment.getJudiciaryId();
-            final Optional<Judiciary> judiciaryOptional = referenceDataMapperService.findById(requester, judiciaryId);
 
-            if (judiciaryOptional.isEmpty()) {
-                missingJudiciaryIds.add(judiciaryId);
-                for (final String sessionId : sessionIds) {
-                    requestedAssignments++;
-                    failures.add(buildFailure(judiciaryId, sessionId, AssignmentFailureReason.JUDICIARY_NOT_FOUND));
+            // Skip judiciary existence check if skipValidations is true
+            Optional<Judiciary> judiciaryOptional = referenceDataMapperService.findById(requester, judiciaryId);
+            if (!skipValidations && judiciaryOptional.isEmpty()) {
+                    missingJudiciaryIds.add(judiciaryId);
+                    for (final String sessionId : sessionIds) {
+                        requestedAssignments++;
+                        failures.add(buildFailure(judiciaryId, sessionId, AssignmentFailureReason.JUDICIARY_NOT_FOUND));
+                    }
+                    continue;
                 }
-                continue;
-            }
 
-            final Judiciary judiciary = judiciaryOptional.get();
+            final Judiciary judiciary = judiciaryOptional.orElse(null);
             for (final String sessionId : sessionIds) {
                 requestedAssignments++;
                 final CourtSchedule schedule = sessionsById.get(sessionId);
-                if (schedule == null) {
+
+                // Skip session existence check if skipValidations is true
+                if (!skipValidations && schedule == null) {
                     missingSessionIds.add(sessionId);
                     failures.add(buildFailure(judiciaryId, sessionId, AssignmentFailureReason.SESSION_NOT_FOUND));
                     continue;
                 }
+
+                // If skipValidations is true and judiciary or schedule is null, skip assignment
+                if (skipValidations && (judiciary == null || schedule == null)) {
+                    continue;
+                }
+
                 final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, now);
                 try {
                     courtScheduleJudiciaryRepository.save(CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciary));
@@ -139,7 +149,10 @@ public class JudiciaryAssignmentService {
             }
         }
 
-        logMissingReferences(missingJudiciaryIds, missingSessionIds, executionId);
+        // Skip logging missing references if skipValidations is true
+        if (!skipValidations) {
+            logMissingReferences(missingJudiciaryIds, missingSessionIds, executionId);
+        }
 
         return AssignJudiciariesResponse.builder()
                 .withRequestedAssignments(requestedAssignments)
