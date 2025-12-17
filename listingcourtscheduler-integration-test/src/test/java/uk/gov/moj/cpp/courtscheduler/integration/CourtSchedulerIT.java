@@ -14,6 +14,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -55,6 +56,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Date;
 import java.util.List;
@@ -2064,10 +2066,11 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         assertThat("Court schedules should be created", courtSchedules.size(), is(greaterThan(0)));
 
-        // Verify court schedule is created with index 5 (should fallback to 4 if 5th doesn't exist)
+        // Verify court schedule is created with index 5 (no session created if 5th doesn't exist in month)
         final CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
     }
+
 
     @Test
     void shouldCreateCourtSchedulesForMonthlyFrequencyWithRandomStartDate() {
@@ -2121,6 +2124,49 @@ class CourtSchedulerIT extends AbstractIT {
         // Verify court schedules are created across year boundary
         final CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
+    }
+
+    @Test
+    void shouldNotCreateSessionWhen5thFridayDoesNotExistInMonth() {
+        // Given - Test with months where 5th Friday doesn't exist (e.g., February 2026 has only 4 Fridays)
+        // We'll use a date range that includes both months with 5 Fridays and months without
+        LocalDate startDate = LocalDate.of(2026, 1, 1); // January 2026 - has 5 Fridays
+        LocalDate endDate = LocalDate.of(2026, 3, 31); // March 2026 - includes February (4 Fridays) and March (5 Fridays)
+
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
+                "create-court-schedule-monthly-frequency-different-index.json",
+                startDate,
+                endDate
+        );
+
+        // When
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        // Then
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Wait for processing and verify court schedules are created
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+
+        // January 2026: First Friday is Jan 2, so 5th Friday is Jan 2 + 28 days = Jan 30 (exists)
+        // February 2026: First Friday is Feb 6, so 5th Friday is Feb 6 + 28 days = Mar 6 (next month - doesn't exist in Feb)
+        // March 2026: First Friday is Mar 6, so 5th Friday is Mar 6 + 28 days = Apr 3 (next month - doesn't exist in Mar)
+        // So we should only get sessions for January (1 session)
+        assertThat("Only sessions for months with 5th Friday should be created",
+                courtSchedules.size(), is(greaterThanOrEqualTo(1)));
+
+        // Verify all created sessions are from months that have 5th Friday
+        for (CourtSchedule schedule : courtSchedules) {
+            LocalDate sessionDate = schedule.getSessionDate();
+            // Verify the session date is actually a Friday and is the 5th Friday of that month
+            assertThat("Session date should be a Friday", sessionDate.getDayOfWeek(), is(DayOfWeek.FRIDAY));
+
+            // Calculate which occurrence this Friday is in the month
+            LocalDate firstOfMonth = sessionDate.withDayOfMonth(1);
+            LocalDate firstFriday = firstOfMonth.with(TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY));
+            long weekNumber = ChronoUnit.WEEKS.between(firstFriday, sessionDate);
+            assertThat("Session should be on the 5th Friday", weekNumber, is(4L)); // 0-indexed, so 4 means 5th
+        }
     }
 
     private String prepareCreateCourtSchedulePayloadWithDates(final String fileName, final LocalDate startDate, final LocalDate endDate) {

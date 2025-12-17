@@ -262,8 +262,30 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenDraftIsDuplicateWithInPayload() {
 
-        final List<Session> sessionList = Arrays.asList(createAMSession(), createDraftSession());
-        final Session sessionToBeAdded = createDraftSession();
+        // Create draft sessions with CROWN jurisdiction to pass draft validation
+        final Session draftSession1 = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIsDraft(true)
+                .withJurisdiction("CROWN")
+                .build();
+        final Session draftSession2 = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIsDraft(true)
+                .withJurisdiction("CROWN")
+                .build();
+
+        final List<Session> sessionList = Arrays.asList(createAMSession(), draftSession1);
+        final Session sessionToBeAdded = draftSession2;
 
 
         LocalDate futureDate = LocalDate.now().plusDays(1);
@@ -581,7 +603,167 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
         assertTrue(result.containsKey("errorMessage"));
-        assertEquals("isDraft can only be supplied when jurisdiction is CROWN", result.getString("errorMessage"));
+        assertEquals("isDraft can only be true when jurisdiction is CROWN", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldAcceptIsDraftFalseForMagistratesJurisdiction() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withIsDraft(false)
+                .withMaxSlots(10)
+                .build();
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("BUSINESS_TYPE", "MAGISTRATES", true, false);
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(updateCourtSchedule.getCourtScheduleId(), 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should accept isDraft=false for MAGISTRATES silently
+        assertTrue(result.isEmpty() || !result.containsKey("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenYouthPanelIsSuppliedForCrownJurisdictionInCreate() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("YOUTH")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+
+        stubCrownCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "CROWN", true, false);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertTrue(result.getString("errorMessage").contains("YOUTH panel is not allowed for CROWN jurisdiction"));
+    }
+
+    @Test
+    void shouldAcceptAdultPanelForCrownJurisdictionInCreate() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+
+        stubCrownCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "CROWN", true, false);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        // Should accept ADULT panel for CROWN
+        assertTrue(result.isEmpty() || !result.containsKey("errorMessage"));
+    }
+
+    @Test
+    void shouldAcceptYouthPanelForMagistratesJurisdictionInCreate() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("YOUTH")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction("MAGISTRATES")
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        // Should accept YOUTH panel for MAGISTRATES
+        assertTrue(result.isEmpty() || !result.containsKey("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenYouthPanelIsSuppliedForCrownJurisdictionInUpdate() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("YOUTH")
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withMaxSlots(10)
+                .build();
+
+        stubCrownCourtRoomAvailable(courtRoomId);
+        stubBusinessType("BUSINESS_TYPE", "CROWN", true, false);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
+                .thenReturn(new CourtSchedule());
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertTrue(result.getString("errorMessage").contains("YOUTH panel is not allowed for CROWN jurisdiction"));
+    }
+
+    @Test
+    void shouldAcceptAdultPanelForCrownJurisdictionInUpdate() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withMaxSlots(10)
+                .build();
+
+        stubCrownCourtRoomAvailable(courtRoomId);
+        stubBusinessType("BUSINESS_TYPE", "CROWN", true, false);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
+                .thenReturn(new CourtSchedule());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(updateCourtSchedule.getCourtScheduleId(), 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should accept ADULT panel for CROWN
+        assertTrue(result.isEmpty() || !result.containsKey("errorMessage"));
     }
 
     @Test

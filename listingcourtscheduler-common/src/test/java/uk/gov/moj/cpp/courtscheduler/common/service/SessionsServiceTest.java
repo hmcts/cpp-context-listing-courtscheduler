@@ -1525,19 +1525,88 @@ class SessionsServiceTest {
                         .build()
         );
 
+        // When
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+
+        // Then
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
+    }
+
+    @Test
+    void shouldNotCreateSessionWhen5thOccurrenceDoesNotExistInMonth() {
+        // Given - February 2024 has only 4 Fridays, so index 5 should not create a session
+        final LocalDate startDate = LocalDate.of(2024, 2, 1); // February 1st, 2024
+        final LocalDate endDate = LocalDate.of(2024, 2, 29); // February 29th, 2024 (leap year)
+        final int repeatFor = 1; // Every month
+
+        final Set<DayOfWeek> fridayOnly = new HashSet<>(Arrays.asList(DayOfWeek.FRIDAY));
+        final List<Session> sessions = Arrays.asList(
+                Session.SessionBuilder.session()
+                        .withRepeatDays(fridayOnly)
+                        .withSlotsOrDuration(20)
+                        .withBusinessType("TRL")
+                        .withCourtCentreId("court-centre-index5")
+                        .withCourtRoomId("court-room-index5")
+                        .withSessionType("AM")
+                        .withPanelType("Adult")
+                        .withIndex(5) // Fifth Friday - February 2024 only has 4 Fridays
+                        .build()
+        );
+
+        // When
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+
+        // Then - verify that saveCourtSchedules is called, but with an empty list or list without February session
+        ArgumentCaptor<List<CourtSchedule>> captor = ArgumentCaptor.forClass(List.class);
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(captor.capture());
+        
+        // February 2024 has 4 Fridays (2nd, 9th, 16th, 23rd), so no session should be created for index 5
+        List<CourtSchedule> savedSchedules = captor.getValue();
+        assertTrue(savedSchedules == null || savedSchedules.isEmpty(), 
+                "No sessions should be created when 5th occurrence doesn't exist");
+    }
+
+    @Test
+    void shouldCreateSessionWhen5thOccurrenceExistsInMonth() {
+        // Given - March 2024 has 5 Fridays (1st, 8th, 15th, 22nd, 29th), so index 5 should create a session on the 5th Friday (29th)
+        final LocalDate startDate = LocalDate.of(2024, 3, 1); // March 1st, 2024
+        final LocalDate endDate = LocalDate.of(2024, 3, 31); // March 31st, 2024
+        final int repeatFor = 1; // Every month
+
+        final Set<DayOfWeek> fridayOnly = new HashSet<>(Arrays.asList(DayOfWeek.FRIDAY));
+        final List<Session> sessions = Arrays.asList(
+                Session.SessionBuilder.session()
+                        .withRepeatDays(fridayOnly)
+                        .withSlotsOrDuration(20)
+                        .withBusinessType("TRL")
+                        .withCourtCentreId("court-centre-index5-exists")
+                        .withCourtRoomId("court-room-index5-exists")
+                        .withSessionType("AM")
+                        .withPanelType("Adult")
+                        .withIndex(5) // Fifth Friday - March 2024 has 5 Fridays (1st, 8th, 15th, 22nd, 29th)
+                        .build()
+        );
+
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(false);
         given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-6", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-index5-exists", requester)).willReturn(Optional.of(courtRoom));
 
         // When
         sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
 
-        // Then
-        verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
+        // Then - verify that saveCourtSchedules is called with exactly one session (5th Friday = March 29th)
+        ArgumentCaptor<List<CourtSchedule>> captor2 = ArgumentCaptor.forClass(List.class);
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(captor2.capture());
+        
+        List<CourtSchedule> savedSchedules = captor2.getValue();
+        assertNotNull(savedSchedules, "Sessions should be created when 5th occurrence exists");
+        assertEquals(1, savedSchedules.size(), "Exactly one session should be created for 5th Friday in March 2024");
+        assertEquals(LocalDate.of(2024, 3, 29), savedSchedules.get(0).getSessionDate(), 
+                "Session should be created on 5th Friday (March 29th, 2024)");
     }
 
     @Test
