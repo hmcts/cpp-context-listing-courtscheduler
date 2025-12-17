@@ -6,36 +6,18 @@ import java.util.List;
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 public class AssignCourtroomResponse {
 
-    private List<CourtScheduleView> eligibleSessions = new ArrayList<>();
-    private List<IneligibleSession> ineligibleSessions = new ArrayList<>();
-    private List<FailedSession> failedSessions = new ArrayList<>();
+    private List<AssignCourtroomErrorGroup> errorGroups = new ArrayList<>();
 
     public AssignCourtroomResponse() {
         // Intentionally empty - fields are initialized at declaration
     }
 
-    public List<CourtScheduleView> getEligibleSessions() {
-        return eligibleSessions;
+    public List<AssignCourtroomErrorGroup> getErrorGroups() {
+        return errorGroups;
     }
 
-    public void setEligibleSessions(final List<CourtScheduleView> eligibleSessions) {
-        this.eligibleSessions = eligibleSessions;
-    }
-
-    public List<IneligibleSession> getIneligibleSessions() {
-        return ineligibleSessions;
-    }
-
-    public void setIneligibleSessions(final List<IneligibleSession> ineligibleSessions) {
-        this.ineligibleSessions = ineligibleSessions;
-    }
-
-    public List<FailedSession> getFailedSessions() {
-        return failedSessions;
-    }
-
-    public void setFailedSessions(final List<FailedSession> failedSessions) {
-        this.failedSessions = failedSessions;
+    public void setErrorGroups(final List<AssignCourtroomErrorGroup> errorGroups) {
+        this.errorGroups = errorGroups != null ? errorGroups : new ArrayList<>();
     }
 }
 

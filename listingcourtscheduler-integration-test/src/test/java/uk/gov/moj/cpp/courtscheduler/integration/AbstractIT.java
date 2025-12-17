@@ -4,12 +4,7 @@ import static java.util.UUID.fromString;
 import static org.apache.commons.collections.MapUtils.isEmpty;
 import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
 import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.requestParams;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataCourtRoomSessionAllocations;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.*;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.http.HeaderConstants;
@@ -78,6 +73,7 @@ public abstract class AbstractIT extends RestClient {
     protected static void setupReferenceDataStubs() {
         stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types.json");
+        stubGetCpCourtRooms("referencedata.get.ou-courtrooms.json");
     }
 
     protected ObjectMapper mapper = new ObjectMapper();

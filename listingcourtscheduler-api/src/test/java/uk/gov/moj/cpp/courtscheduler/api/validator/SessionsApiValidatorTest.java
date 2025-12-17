@@ -122,6 +122,21 @@ class SessionsApiValidatorTest {
     }
 
     @Test
+    void shouldReturnErrorWhenPatternStartDateAfterEndDate() {
+        LocalDate startDate = LocalDate.now().plusDays(5);
+        LocalDate endDate = startDate.minusDays(1);
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(startDate);
+        when(repeatPattern.getEndDate()).thenReturn(endDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals("Start date must be on or before end date", result.getString("errorMessage"));
+    }
+
+    @Test
     void shouldReturnErrorWhenFrequencyIsEveryWeekAndEndDateIsNull() throws JsonProcessingException {
         LocalDate futureDate = LocalDate.now().plusDays(1);
 

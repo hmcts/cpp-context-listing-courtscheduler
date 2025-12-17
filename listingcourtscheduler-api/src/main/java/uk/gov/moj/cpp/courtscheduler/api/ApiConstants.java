@@ -5,6 +5,7 @@ public class ApiConstants {
     public static final String START_DATE_IS_IN_BAD_FORMAT = "Start Date: %s is in bad format";
     public static final String START_DATE_IS_INVALID = "Start Date: %s is invalid";
     public static final String END_DATE_IS_IN_BAD_FORMAT = "End Date: %s is in bad format";
+    public static final String START_DATE_AFTER_END_DATE = "Start date must be on or before end date";
     public static final String EXACT_HEARING_START_DATETIME_IS_IN_BAD_FORMAT = "Exact Hearing Start DateTime: %s is in bad format";
     public static final String MANDATORY_SEARCH_CRITERIA = "Mandatory Search Criteria ";
     public static final String CANNOT_BE_NULL = " cannot be null";

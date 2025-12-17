@@ -2102,8 +2102,12 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldCreateCourtSchedulesForMonthlyFrequencyWithYearBoundary() {
         // Given - Start date in December, end date in March next year
-        final LocalDate startDate = LocalDate.now().withMonth(12).withDayOfMonth(15);
-        final LocalDate endDate = LocalDate.now().withYear(startDate.getYear() + 1).withMonth(3).withDayOfMonth(15);
+        // If December 15th is in the past, use next year's December 15th
+        LocalDate startDate = LocalDate.now().withMonth(12).withDayOfMonth(15);
+        if (startDate.isBefore(now())) {
+            startDate = startDate.plusYears(1);
+        }
+        final LocalDate endDate = startDate.withYear(startDate.getYear() + 1).withMonth(3).withDayOfMonth(15);
 
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
                 "create-court-schedule-monthly-frequency.json",
@@ -2274,8 +2278,8 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldAssignCourtroomToMultipleEligibleSessions() throws SQLException {
         // Draft with/without hearings - eligible
-        // Assigned without hearings - eligible
-
+        // Assigned without hearings - not eligible
+        
         UUID draftSessionId = UUID.randomUUID();
         CourtSchedule draftSession = RANDOM.nextObject(CourtSchedule.class);
         draftSession.setCourtScheduleId(draftSessionId.toString());
@@ -2286,8 +2290,10 @@ class CourtSchedulerIT extends AbstractIT {
         draftSession.setIsDraft(true); // Draft session
         draftSession.setSupportAdSplit(false);
         draftSession.setCourtSession(AM_SESSION);
-        draftSession.setPanel("YOUTH");
+        draftSession.setPanel("ADULT");
         draftSession.setCourtRoomId("original-courtroom-id");
+        draftSession.setJurisdiction("CROWN");
+        draftSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0));
         draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(draftSession);
@@ -2307,12 +2313,14 @@ class CourtSchedulerIT extends AbstractIT {
         draftSessionNoHearings.setIsDraft(true); // Draft session without hearings
         draftSessionNoHearings.setSupportAdSplit(false);
         draftSessionNoHearings.setCourtSession(AM_SESSION);
-        draftSessionNoHearings.setPanel("YOUTH");
+        draftSessionNoHearings.setPanel("ADULT");
         draftSessionNoHearings.setCourtRoomId("original-courtroom-id");
+        draftSessionNoHearings.setJurisdiction("CROWN");
+        draftSessionNoHearings.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         draftSessionNoHearings.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 9, 0));
         draftSessionNoHearings.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(draftSessionNoHearings);
-
+    // Assigned session -  NOT eligible
         UUID assignedSessionId = UUID.randomUUID();
         CourtSchedule assignedSession = RANDOM.nextObject(CourtSchedule.class);
         assignedSession.setCourtScheduleId(assignedSessionId.toString());
@@ -2323,8 +2331,10 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setIsDraft(false); // Assigned session without hearings
         assignedSession.setSupportAdSplit(false);
         assignedSession.setCourtSession(AM_SESSION);
-        assignedSession.setPanel("YOUTH");
+        assignedSession.setPanel("ADULT");
         assignedSession.setCourtRoomId("original-courtroom-id");
+        assignedSession.setJurisdiction("CROWN");
+        assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0));
         assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(assignedSession);
@@ -2340,18 +2350,51 @@ class CourtSchedulerIT extends AbstractIT {
         final String responsePayload = response.readEntity(String.class);
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+        
+        // Parse JSON response - should be an object with errorGroups array
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
 
-        // Verify response contains eligible sessions
-        assertThat(responsePayload, containsString("eligibleSessions"));
-        assertThat(responsePayload, containsString(draftSession.getCourtScheduleId()));
-        assertThat(responsePayload, containsString(draftSessionNoHearings.getCourtScheduleId()));
-        assertThat(responsePayload, containsString(assignedSession.getCourtScheduleId()));
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+
+        // Draft sessions should be successfully assigned (not in any error group)
+        boolean draftSessionInErrorGroup = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    return sessions.stream()
+                            .map(s -> s.asJsonObject())
+                            .anyMatch(s -> draftSession.getCourtScheduleId().equals(s.getString("courtScheduleId"))
+                                    || draftSessionNoHearings.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                });
+        assertThat("Draft sessions should not be in any error group", draftSessionInErrorGroup, is(false));
+
+        // Assigned session should be in error group
+        boolean foundAssignedSessionInErrorGroup = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if ("Cannot assign courtroom to an assigned session".equals(error)) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> assignedSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find assigned session in error group", foundAssignedSessionInErrorGroup, is(true));
     }
 
     @Test
-    void shouldNotAssignCourtroomToAssignedSessionWithHearings() throws SQLException {
-        //Assigned with hearings - NOT eligible
-
+    void shouldNotAssignCourtroomToAssignedSession() throws SQLException {
+        // Assigned session - NOT eligible (Business Rule 5: applies to all assigned sessions regardless of hearings)
+        
         UUID assignedSessionId = UUID.randomUUID();
         CourtSchedule assignedSession = RANDOM.nextObject(CourtSchedule.class);
         assignedSession.setCourtScheduleId(assignedSessionId.toString());
@@ -2363,8 +2406,10 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setHasHearingsBooked(true);
         assignedSession.setSupportAdSplit(false);
         assignedSession.setCourtSession(AM_SESSION);
-        assignedSession.setPanel("YOUTH");
+        assignedSession.setPanel("ADULT");
         assignedSession.setCourtRoomId("original-courtroom-id");
+        assignedSession.setJurisdiction("CROWN");
+        assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0));
         assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(assignedSession);
@@ -2384,11 +2429,97 @@ class CourtSchedulerIT extends AbstractIT {
         final String responsePayload = response.readEntity(String.class);
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+        
+        // Parse JSON response - should be an object with errorGroups array
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
 
-        // Verify response contains ineligible sessions
-        assertThat(responsePayload, containsString("ineligibleSessions"));
-        assertThat(responsePayload, containsString(assignedSession.getCourtScheduleId()));
-        assertThat(responsePayload, containsString("Cannot assign courtroom to an assigned session with hearings"));
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+
+        // Find the error group with the expected error message
+        boolean foundErrorGroup = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if ("Cannot assign courtroom to an assigned session".equals(error)) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> assignedSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find assigned session in error group", foundErrorGroup, is(true));
+    }
+
+    @Test
+    void shouldNotAssignCourtroomToAssignedSessionWithoutHearings() throws SQLException {
+        // Assigned session without hearings - NOT eligible (Business Rule 5: applies to all assigned sessions)
+
+        UUID assignedSessionId = UUID.randomUUID();
+        CourtSchedule assignedSession = RANDOM.nextObject(CourtSchedule.class);
+        assignedSession.setCourtScheduleId(assignedSessionId.toString());
+        assignedSession.setBusinessType("DVLA");
+        assignedSession.setSlotBased(true);
+        assignedSession.setMaxSlots(15);
+        assignedSession.setAvailableSlots(15);
+        assignedSession.setIsDraft(false); // Assigned session
+        assignedSession.setHasHearingsBooked(false);
+        assignedSession.setSupportAdSplit(false);
+        assignedSession.setCourtSession(AM_SESSION);
+        assignedSession.setPanel("ADULT");
+        assignedSession.setCourtRoomId("original-courtroom-id");
+        assignedSession.setJurisdiction("CROWN");
+        assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0));
+        assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(assignedSession);
+
+        // No hearings attached to this session
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", assignedSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", assignedSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+
+        // Parse JSON response - should be an object with errorGroups array
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+
+        // Find the error group with the expected error message
+        boolean foundErrorGroup = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if ("Cannot assign courtroom to an assigned session".equals(error)) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> assignedSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find assigned session without hearings in error group", foundErrorGroup, is(true));
     }
 
     @Test
@@ -2405,7 +2536,7 @@ class CourtSchedulerIT extends AbstractIT {
         session.setIsDraft(true);
         session.setSupportAdSplit(false);
         session.setCourtSession(AM_SESSION);
-        session.setPanel("YOUTH");
+        session.setPanel("ADULT");
         databaseSeeder.insertCourtSchedule(session);
 
         String assignCourtroomPayload = getPayload("assign-courtroom.json");
@@ -2434,8 +2565,10 @@ class CourtSchedulerIT extends AbstractIT {
         eligibleSession.setIsDraft(true); // Draft - eligible
         eligibleSession.setSupportAdSplit(false);
         eligibleSession.setCourtSession(AM_SESSION);
-        eligibleSession.setPanel("YOUTH");
+        eligibleSession.setPanel("ADULT");
         eligibleSession.setCourtRoomId("original-courtroom-id");
+        eligibleSession.setJurisdiction("CROWN");
+        eligibleSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         eligibleSession.setSessionStartTime(DateUtils.localDateToDateWithTime(eligibleSession.getSessionDate(), 9, 0));
         eligibleSession.setSessionEndTime(DateUtils.localDateToDateWithTime(eligibleSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(eligibleSession);
@@ -2451,8 +2584,10 @@ class CourtSchedulerIT extends AbstractIT {
         ineligibleSession.setHasHearingsBooked(true);
         ineligibleSession.setSupportAdSplit(false);
         ineligibleSession.setCourtSession(AM_SESSION);
-        ineligibleSession.setPanel("YOUTH");
+        ineligibleSession.setPanel("ADULT");
         ineligibleSession.setCourtRoomId("original-courtroom-id");
+        ineligibleSession.setJurisdiction("CROWN");
+        ineligibleSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         ineligibleSession.setSessionStartTime(DateUtils.localDateToDateWithTime(ineligibleSession.getSessionDate(), 9, 0));
         ineligibleSession.setSessionEndTime(DateUtils.localDateToDateWithTime(ineligibleSession.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(ineligibleSession);
@@ -2472,11 +2607,466 @@ class CourtSchedulerIT extends AbstractIT {
         final String responsePayload = response.readEntity(String.class);
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+        
+        // Parse JSON response - should be an object with errorGroups array
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
 
-        // Verify response contains both eligible and ineligible sessions
-        assertThat(responsePayload, containsString("eligibleSessions"));
-        assertThat(responsePayload, containsString("ineligibleSessions"));
-        assertThat(responsePayload, containsString(eligibleSession.getCourtScheduleId()));
-        assertThat(responsePayload, containsString(ineligibleSession.getCourtScheduleId()));
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify ineligible session is in error group
+        boolean foundIneligibleSession = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if ("Cannot assign courtroom to an assigned session".equals(error)) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> ineligibleSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find ineligible session in error group", foundIneligibleSession, is(true));
+
+        // Eligible session should be successfully assigned (not in any error group)
+        boolean eligibleSessionInErrorGroup = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    return sessions.stream()
+                            .map(s -> s.asJsonObject())
+                            .anyMatch(s -> eligibleSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                });
+        assertThat("Eligible session should not be in any error group", eligibleSessionInErrorGroup, is(false));
+    }
+
+    @Test
+    void shouldMarkNonCrownSessionsAsIneligible() throws SQLException {
+        // Test that MAGISTRATES sessions are marked as ineligible
+
+        UUID crownSessionId = UUID.randomUUID();
+        CourtSchedule crownSession = RANDOM.nextObject(CourtSchedule.class);
+        crownSession.setCourtScheduleId(crownSessionId.toString());
+        crownSession.setBusinessType("DVLA");
+        crownSession.setSlotBased(true);
+        crownSession.setMaxSlots(15);
+        crownSession.setAvailableSlots(15);
+        crownSession.setIsDraft(true);
+        crownSession.setSupportAdSplit(false);
+        crownSession.setCourtSession(AM_SESSION);
+        crownSession.setPanel("YOUTH");
+        crownSession.setCourtRoomId("original-courtroom-id-crown");
+        crownSession.setJurisdiction("CROWN");
+        crownSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        crownSession.setSessionStartTime(DateUtils.localDateToDateWithTime(crownSession.getSessionDate(), 9, 0));
+        crownSession.setSessionEndTime(DateUtils.localDateToDateWithTime(crownSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(crownSession);
+
+        UUID magistratesSessionId = UUID.randomUUID();
+        CourtSchedule magistratesSession = RANDOM.nextObject(CourtSchedule.class);
+        magistratesSession.setCourtScheduleId(magistratesSessionId.toString());
+        magistratesSession.setBusinessType("DVLA");
+        magistratesSession.setSlotBased(true);
+        magistratesSession.setMaxSlots(15);
+        magistratesSession.setAvailableSlots(15);
+        magistratesSession.setIsDraft(true);
+        magistratesSession.setSupportAdSplit(false);
+        magistratesSession.setCourtSession(AM_SESSION);
+        magistratesSession.setPanel("ADULT");
+        magistratesSession.setCourtRoomId("original-courtroom-id-mags");
+        magistratesSession.setJurisdiction("MAGISTRATES");
+        magistratesSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        magistratesSession.setSessionStartTime(DateUtils.localDateToDateWithTime(magistratesSession.getSessionDate(), 9, 0));
+        magistratesSession.setSessionEndTime(DateUtils.localDateToDateWithTime(magistratesSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(magistratesSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", crownSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", magistratesSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+
+        // Parse JSON response - should be an object with errorGroups array
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+
+        // Verify MAGISTRATES session is in error group
+        boolean foundIneligibleMagistratesSession = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if ("assign.courtroom endpoint is only valid for CROWN jurisdiction sessions".equals(error)) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> magistratesSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find MAGISTRATES session in error group with correct reason", foundIneligibleMagistratesSession, is(true));
+
+        // CROWN session should be successfully assigned (not in any error group)
+        boolean crownSessionInErrorGroup = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    return sessions.stream()
+                            .map(s -> s.asJsonObject())
+                            .anyMatch(s -> crownSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                });
+        assertThat("CROWN session should not be in any error group", crownSessionInErrorGroup, is(false));
+    }
+
+    @Test
+    void shouldMarkSessionsWithWrongCourtCentreAsIneligible() throws SQLException {
+        // Test that sessions with different court centre than courtroom are marked as ineligible
+
+        UUID correctCourtCentreSessionId = UUID.randomUUID();
+        CourtSchedule correctCourtCentreSession = RANDOM.nextObject(CourtSchedule.class);
+        correctCourtCentreSession.setCourtScheduleId(correctCourtCentreSessionId.toString());
+        correctCourtCentreSession.setBusinessType("DVLA");
+        correctCourtCentreSession.setSlotBased(true);
+        correctCourtCentreSession.setMaxSlots(15);
+        correctCourtCentreSession.setAvailableSlots(15);
+        correctCourtCentreSession.setIsDraft(true);
+        correctCourtCentreSession.setSupportAdSplit(false);
+        correctCourtCentreSession.setCourtSession(AM_SESSION);
+        correctCourtCentreSession.setPanel("ADULT");
+        correctCourtCentreSession.setCourtRoomId("original-courtroom-id");
+        correctCourtCentreSession.setJurisdiction("CROWN");
+        correctCourtCentreSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        correctCourtCentreSession.setSessionStartTime(DateUtils.localDateToDateWithTime(correctCourtCentreSession.getSessionDate(), 9, 0));
+        correctCourtCentreSession.setSessionEndTime(DateUtils.localDateToDateWithTime(correctCourtCentreSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(correctCourtCentreSession);
+
+        UUID wrongCourtCentreSessionId = UUID.randomUUID();
+        CourtSchedule wrongCourtCentreSession = RANDOM.nextObject(CourtSchedule.class);
+        wrongCourtCentreSession.setCourtScheduleId(wrongCourtCentreSessionId.toString());
+        wrongCourtCentreSession.setBusinessType("DVLA");
+        wrongCourtCentreSession.setSlotBased(true);
+        wrongCourtCentreSession.setMaxSlots(15);
+        wrongCourtCentreSession.setAvailableSlots(15);
+        wrongCourtCentreSession.setIsDraft(true);
+        wrongCourtCentreSession.setSupportAdSplit(false);
+        wrongCourtCentreSession.setCourtSession(AM_SESSION);
+        wrongCourtCentreSession.setPanel("ADULT");
+        wrongCourtCentreSession.setCourtRoomId("original-courtroom-id");
+        wrongCourtCentreSession.setJurisdiction("CROWN");
+        wrongCourtCentreSession.setCourtHouseId("different-court-centre-id-12345");
+        wrongCourtCentreSession.setSessionStartTime(DateUtils.localDateToDateWithTime(wrongCourtCentreSession.getSessionDate(), 9, 0));
+        wrongCourtCentreSession.setSessionEndTime(DateUtils.localDateToDateWithTime(wrongCourtCentreSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(wrongCourtCentreSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", correctCourtCentreSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", wrongCourtCentreSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+
+        // Parse JSON response - should be an object with errorGroups array
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+
+        // Verify session with wrong court centre is in error group
+        boolean foundIneligibleWrongCourtCentreSession = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if ("The new courtroom must belong to the same court centre as the session".equals(error)) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> wrongCourtCentreSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find session with wrong court centre in error group with correct reason", foundIneligibleWrongCourtCentreSession, is(true));
+
+        // Session with correct court centre should be successfully assigned (not in any error group)
+        boolean correctCourtCentreSessionInErrorGroup = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    return sessions.stream()
+                            .map(s -> s.asJsonObject())
+                            .anyMatch(s -> correctCourtCentreSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                });
+        assertThat("Session with correct court centre should not be in any error group", correctCourtCentreSessionInErrorGroup, is(false));
+    }
+
+    @Test
+    void shouldMarkAMSessionAsIneligibleWhenDuplicateAMSessionExists() throws SQLException {
+        // Test that AM session is marked as ineligible when duplicate AM session exists
+
+        UUID existingSessionId = UUID.randomUUID();
+        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
+        existingSession.setCourtScheduleId(existingSessionId.toString());
+        existingSession.setBusinessType("DVLA");
+        existingSession.setSlotBased(true);
+        existingSession.setMaxSlots(15);
+        existingSession.setAvailableSlots(15);
+        existingSession.setIsDraft(true);
+        existingSession.setSupportAdSplit(false);
+        existingSession.setCourtSession(AM_SESSION);
+        existingSession.setPanel("ADULT");
+        existingSession.setJurisdiction("CROWN");
+        existingSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
+        existingSession.setCourtRoomName("Courtroom 01");
+        existingSession.setSessionDate(LocalDate.now().plusDays(1));
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0));
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(existingSession);
+
+        UUID newSessionId = UUID.randomUUID();
+        CourtSchedule newSession = RANDOM.nextObject(CourtSchedule.class);
+        newSession.setCourtScheduleId(newSessionId.toString());
+        newSession.setBusinessType("DVLA");
+        newSession.setSlotBased(true);
+        newSession.setMaxSlots(15);
+        newSession.setAvailableSlots(15);
+        newSession.setIsDraft(true);
+        newSession.setSupportAdSplit(false);
+        newSession.setCourtSession(AM_SESSION);
+        newSession.setPanel("ADULT");
+        newSession.setJurisdiction("CROWN");
+        newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        newSession.setCourtRoomId("original-courtroom-id");
+        newSession.setSessionDate(existingSession.getSessionDate()); // Same date
+        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0));
+        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(newSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+
+        // Parse JSON response - should be an object with errorGroups array
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+
+        // Verify session is in error group due to duplicate
+        boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if (error.contains("Duplicate session already exists")) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> newSessionId.toString().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find session with duplicate in error group", foundIneligibleDuplicateSession, is(true));
+    }
+
+    @Test
+    void shouldMarkAMSessionAsIneligibleWhenDuplicateADSessionExists() throws SQLException {
+        // Test that AM session is marked as ineligible when duplicate AD session exists
+
+        UUID existingSessionId = UUID.randomUUID();
+        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
+        existingSession.setCourtScheduleId(existingSessionId.toString());
+        existingSession.setBusinessType("DVLA");
+        existingSession.setSlotBased(true);
+        existingSession.setMaxSlots(15);
+        existingSession.setAvailableSlots(15);
+        existingSession.setIsDraft(true);
+        existingSession.setSupportAdSplit(false);
+        existingSession.setCourtSession(ALL_DAY);
+        existingSession.setPanel("ADULT");
+        existingSession.setJurisdiction("CROWN");
+        existingSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
+        existingSession.setCourtRoomName("Courtroom 01");
+        existingSession.setSessionDate(LocalDate.now().plusDays(1));
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0));
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 17, 0));
+        databaseSeeder.insertCourtSchedule(existingSession);
+
+        UUID newSessionId = UUID.randomUUID();
+        CourtSchedule newSession = RANDOM.nextObject(CourtSchedule.class);
+        newSession.setCourtScheduleId(newSessionId.toString());
+        newSession.setBusinessType("DVLA");
+        newSession.setSlotBased(true);
+        newSession.setMaxSlots(15);
+        newSession.setAvailableSlots(15);
+        newSession.setIsDraft(true);
+        newSession.setSupportAdSplit(false);
+        newSession.setCourtSession(AM_SESSION);
+        newSession.setPanel("ADULT");
+        newSession.setJurisdiction("CROWN");
+        newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        newSession.setCourtRoomId("original-courtroom-id");
+        newSession.setSessionDate(existingSession.getSessionDate()); // Same date
+        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0));
+        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(newSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+
+        // Parse JSON response - should be an object with errorGroups array
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+
+        // Verify session is in error group due to duplicate
+        boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if (error.contains("Duplicate session already exists")) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> newSessionId.toString().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find AM session with duplicate AD session in error group", foundIneligibleDuplicateSession, is(true));
+    }
+
+    @Test
+    void shouldMarkADSessionAsIneligibleWhenDuplicateAMSessionExists() throws SQLException {
+        // Test that AD session is marked as ineligible when duplicate AM session exists
+
+        UUID existingSessionId = UUID.randomUUID();
+        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
+        existingSession.setCourtScheduleId(existingSessionId.toString());
+        existingSession.setBusinessType("DVLA");
+        existingSession.setSlotBased(true);
+        existingSession.setMaxSlots(15);
+        existingSession.setAvailableSlots(15);
+        existingSession.setIsDraft(true);
+        existingSession.setSupportAdSplit(false);
+        existingSession.setCourtSession(AM_SESSION);
+        existingSession.setPanel("ADULT");
+        existingSession.setJurisdiction("CROWN");
+        existingSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
+        existingSession.setCourtRoomName("Courtroom 01");
+        existingSession.setSessionDate(LocalDate.now().plusDays(1));
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0));
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(existingSession);
+
+        UUID newSessionId = UUID.randomUUID();
+        CourtSchedule newSession = RANDOM.nextObject(CourtSchedule.class);
+        newSession.setCourtScheduleId(newSessionId.toString());
+        newSession.setBusinessType("DVLA");
+        newSession.setSlotBased(true);
+        newSession.setMaxSlots(15);
+        newSession.setAvailableSlots(15);
+        newSession.setIsDraft(true);
+        newSession.setSupportAdSplit(false);
+        newSession.setCourtSession(ALL_DAY);
+        newSession.setPanel("ADULT");
+        newSession.setJurisdiction("CROWN");
+        newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        newSession.setCourtRoomId("original-courtroom-id");
+        newSession.setSessionDate(existingSession.getSessionDate()); // Same date
+        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0));
+        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 17, 0));
+        databaseSeeder.insertCourtSchedule(newSession);
+
+        String assignCourtroomPayload = getPayload("assign-courtroom.json");
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", newSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+
+        // Parse JSON response - should be an object with errorGroups array
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+
+        // Verify session is in error group due to duplicate
+        boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
+                .map(item -> item.asJsonObject())
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if (error.contains("Duplicate session already exists")) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> newSessionId.toString().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find AD session with duplicate AM session in error group", foundIneligibleDuplicateSession, is(true));
     }
 }
