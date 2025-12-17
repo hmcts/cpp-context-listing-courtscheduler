@@ -601,10 +601,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Response deleteResponse = deleteCommand(JUDICIARY_RESOURCE_URL, DELETE_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, deletePayload);
         assertThat(deleteResponse.getStatus(), is(ACCEPTED.getStatusCode()));
 
-        // Verify the rule is deleted by checking availability again
-        // Wait a bit for the deletion to be processed
-        Thread.sleep(100);
-
         requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
         responseData = poll(requestParams)
                 .with()
@@ -996,7 +992,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
     }
 
     @Test
-    void shouldFindJudiciaryAvailabilityRulesWithSpecialisms() throws Exception {
+    void shouldFindJudiciaryAvailabilityRule() throws Exception {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
@@ -1038,49 +1034,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final JsonArray rules = jsonObject.getJsonArray("rules");
         assertTrue(rules.size() > 0, "Should find at least one rule");
 
-    }
-
-    @Test
-    void shouldFindJudiciaryAvailabilityRulesWithSpecialismsAlwaysReturned() throws Exception {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
-
-        databaseSeeder.insertJudiciaryAvailabilityRule(
-                ruleId,
-                judiciaryId,
-                courtHouseId,
-                Collections.emptyList(),
-                startDate,
-                endDate,
-                RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
-        );
-
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
-
-        final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
-        final ResponseData responseData = poll(requestParams)
-                .with()
-                .timeout(30L, SECONDS)
-                .pollInterval(50L, MILLISECONDS)
-                .pollDelay(0L, MILLISECONDS)
-                .until();
-
-        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
-
-        final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertTrue(jsonObject.containsKey("specialisms"), "Should always contain specialisms node");
-        final JsonArray specialisms = jsonObject.getJsonArray("specialisms");
-        // Specialisms are always returned (may be empty if no specialisms found)
-        assertNotNull(specialisms);
     }
 
     @Test
@@ -1127,15 +1080,13 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         final JsonArray rules = jsonObject.getJsonArray("rules");
         assertTrue(rules.size() > 0, "Should find at least one rule");
-        
+
         // Verify the rule contains the expected judiciary ID
         final JsonObject rule = rules.getJsonObject(0);
         assertThat(rule.getString("judiciaryId"), is(judiciaryId));
-        
-        // Verify both judiciaries and specialisms nodes are present
+
         assertTrue(jsonObject.containsKey("judiciaries"), "Should contain judiciaries node");
-        assertTrue(jsonObject.containsKey("specialisms"), "Should contain specialisms node");
-        
+
         final JsonArray judiciaries = jsonObject.getJsonArray("judiciaries");
 
         // Verify judiciaries structure and content
@@ -1151,7 +1102,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertTrue(judiciary.containsKey("forenames"), "Judiciary should have forenames");
         assertTrue(judiciary.containsKey("judiciaryType"), "Judiciary should have judiciaryType");
         assertTrue(judiciary.containsKey("specialisms"), "Judiciary should have specialisms");
-        
+
     }
 
     @Test
@@ -1234,9 +1185,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         // Update the rule with ruleId is in the payload
         final Response updateResponse = putCommand(JUDICIARY_RESOURCE_URL, UPDATE_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, updatePayload);
         assertThat(updateResponse.getStatus(), is(ACCEPTED.getStatusCode()));
-
-        // Wait a bit for the update to be processed
-        Thread.sleep(100);
 
         // Verify the rule is updated by checking availability in the new date range
         // February 2026: 2nd Wednesday = Feb 11, 3rd Thursday = Feb 19
