@@ -3,20 +3,52 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 import java.time.LocalDate;
 import java.util.Objects;
 
-/**
- * Request for finding judiciary availability.
- */
-public class FindJudiciaryAvailabilityRequest extends BaseJudiciaryAvailabilityRuleRequest {
+public class FindJudiciaryAvailabilityRequest {
+
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private String courtHouseId; // Optional
+    private String judiciaryId; // Optional
 
     public FindJudiciaryAvailabilityRequest() {
-        super();
     }
 
     public FindJudiciaryAvailabilityRequest(LocalDate startDate, LocalDate endDate, String courtHouseId, String judiciaryId) {
-        super();
         this.startDate = startDate;
         this.endDate = endDate;
         this.courtHouseId = courtHouseId;
+        this.judiciaryId = judiciaryId;
+    }
+
+    public LocalDate getStartDate() {
+        return this.startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return this.endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public String getCourtHouseId() {
+        return this.courtHouseId;
+    }
+
+    public void setCourtHouseId(String courtHouseId) {
+        this.courtHouseId = courtHouseId;
+    }
+
+    public String getJudiciaryId() {
+        return this.judiciaryId;
+    }
+
+    public void setJudiciaryId(String judiciaryId) {
         this.judiciaryId = judiciaryId;
     }
 
@@ -28,27 +60,25 @@ public class FindJudiciaryAvailabilityRequest extends BaseJudiciaryAvailabilityR
         if (o == null || this.getClass() != o.getClass()) {
             return false;
         }
-        FindJudiciaryAvailabilityRequest that = (FindJudiciaryAvailabilityRequest) o;
-        // Only compare fields that are actually used (not ruleId)
-        return Objects.equals(startDate, that.startDate) &&
-                Objects.equals(endDate, that.endDate) &&
-                Objects.equals(courtHouseId, that.courtHouseId) &&
-                Objects.equals(judiciaryId, that.judiciaryId);
+        final FindJudiciaryAvailabilityRequest that = (FindJudiciaryAvailabilityRequest) o;
+        return Objects.equals(this.startDate, that.startDate) &&
+                Objects.equals(this.endDate, that.endDate) &&
+                Objects.equals(this.courtHouseId, that.courtHouseId) &&
+                Objects.equals(this.judiciaryId, that.judiciaryId);
     }
 
     @Override
     public int hashCode() {
-        // Only hash fields that are actually used (not ruleId)
-        return Objects.hash(startDate, endDate, courtHouseId, judiciaryId);
+        return Objects.hash(this.startDate, this.endDate, this.courtHouseId, this.judiciaryId);
     }
 
     @Override
     public String toString() {
         return "FindJudiciaryAvailabilityRequest{" +
-                "startDate=" + startDate +
-                ", endDate=" + endDate +
-                ", courtHouseId='" + courtHouseId + '\'' +
-                ", judiciaryId='" + judiciaryId + '\'' +
+                "startDate=" + this.startDate +
+                ", endDate=" + this.endDate +
+                ", courtHouseId='" + this.courtHouseId + '\'' +
+                ", judiciaryId='" + this.judiciaryId + '\'' +
                 '}';
     }
 }

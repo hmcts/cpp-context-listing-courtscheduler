@@ -488,7 +488,7 @@ public class DatabaseSeeder {
                     ruleStmt.setDate(4, Date.valueOf(rule.fromDate));
                     ruleStmt.setDate(5, Date.valueOf(rule.toDate));
                     if (rule.recurringType != null) {
-                        ruleStmt.setString(6, rule.recurringType.toUpperCase());
+                        ruleStmt.setString(6, rule.recurringType);
                     } else {
                         ruleStmt.setNull(6, Types.VARCHAR);
                     }
@@ -498,7 +498,7 @@ public class DatabaseSeeder {
                     // Prepare repeat days for batch
                     for (String dayOfWeek : rule.repeatDays) {
                         repeatDaysStmt.setString(1, rule.ruleId);
-                        repeatDaysStmt.setString(2, dayOfWeek.toUpperCase());
+                        repeatDaysStmt.setString(2, dayOfWeek);
                         repeatDaysStmt.setInt(3, 0); // Default index is 0
                         repeatDaysStmt.addBatch();
                     }
@@ -506,10 +506,6 @@ public class DatabaseSeeder {
                     // If availabilityType is UNAVAILABLE, create a corresponding JudiciaryUnavailability record
                     if (rule.unavailabilities != null && !rule.unavailabilities.isEmpty()) {
                         for(final JudiciaryUnavailabilityRequest request : rule.unavailabilities) {
-                            // Skip unavailability records without startDate (from_date has NOT NULL constraint)
-                            if (request.getStartDate() == null || request.getEndDate() == null) {
-                                continue;
-                            }
                             final String unavailabilityId = java.util.UUID.randomUUID().toString();
                             unavailabilityStmt.setString(1, unavailabilityId);
                             unavailabilityStmt.setString(2, rule.ruleId);

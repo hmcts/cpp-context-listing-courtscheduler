@@ -29,8 +29,8 @@ public class JudiciaryUnavailability {
     @Column(name = "id", nullable = false, length = 100)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "availability_rule_id")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "availability_rule_id", nullable = false)
     private JudiciaryAvailabilityRule rule;
 
     @Column(name = "from_date", nullable = false)

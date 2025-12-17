@@ -36,7 +36,6 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.DeleteJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
@@ -66,7 +65,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
@@ -171,8 +169,6 @@ class CourtSchedulerApiTest {
     private ListHearingSlotConverter listHearingSlotConverter;
     @Mock
     private DeleteJudiciaryAvailabilityRuleConverter deleteJudiciaryAvailabilityRuleConverter;
-    @Mock
-    private UpdateJudiciaryAvailabilityRuleConverter updateJudiciaryAvailabilityRuleConverter;
     @Mock
     private JudiciaryAvailabilityService judiciaryAvailabilityService;
     @Mock
@@ -524,7 +520,7 @@ class CourtSchedulerApiTest {
         when(enveloper.withMetadataFrom(exportAllocatedListingsEnvelope, requestName)).thenReturn(function);
         when(miService.getAllocatedListings(miFilterCriteriaRequestParamConverter.convert(jsonObject))).thenReturn(Collections.emptyList());
 
-        courtSchedulerApi.exportAllocatedListings(exportAllocatedListingsEnvelope);
+        courtSchedulerApi.exportAlloctedListings(exportAllocatedListingsEnvelope);
 
         verify(miService, atLeastOnce()).getAllocatedListings(miFilterCriteriaRequestParamConverter.convert(jsonObject));
         verify(enveloper, atLeastOnce()).withMetadataFrom(exportAllocatedListingsEnvelope, requestName);
@@ -763,164 +759,6 @@ class CourtSchedulerApiTest {
         verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
         verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRule(any(DeleteJudiciaryAvailabilityRuleRequest.class));
         verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).deleteJudiciaryAvailabilityRule(any());
-    }
-
-    @Test
-    void shouldUpdateJudiciaryAvailabilityRule() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-02-01")
-                .add("endDate", "2026-02-28")
-                .add("recurringType", "WEEKLY")
-                .add("sessionType", "AM")
-                .add("repeatDays", createArrayBuilder()
-                        .add(createObjectBuilder()
-                                .add("day", "MONDAY")
-                                .build())
-                        .build())
-                .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule";
-        final JsonEnvelope updateEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
-
-        when(this.enveloper.withMetadataFrom(updateEnvelope, requestName)).thenReturn(function);
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class)))
-                .thenReturn(EMPTY_JSON_OBJECT);
-
-        courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(updateEnvelope, requestName);
-        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
-        verify(judiciaryAvailabilityService).updateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
-    }
-
-    @Test
-    void shouldUpdateJudiciaryAvailabilityRuleWithRuleIdFromRequestParameter() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        // ruleId in payload (from path parameter)
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-02-01")
-                .add("endDate", "2026-02-28")
-                .add("repeatDays", createArrayBuilder()
-                        .add("MONDAY")
-                        .build())
-                .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule";
-        final JsonEnvelope updateEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        // Request without ruleId initially
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
-
-        when(this.enveloper.withMetadataFrom(updateEnvelope, requestName)).thenReturn(function);
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class)))
-                .thenReturn(EMPTY_JSON_OBJECT);
-
-        courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope);
-
-        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
-        verify(judiciaryAvailabilityService).updateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
-    }
-
-    @Test
-    void shouldThrowValidationExceptionWhenUpdateValidationFails() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-02-01")
-                .add("endDate", "2026-02-28")
-                .add("repeatDays", createArrayBuilder()
-                        .add("MONDAY")
-                        .build())
-                .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule";
-        final JsonEnvelope updateEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
-
-        JsonObject validationError = createObjectBuilder()
-                .add("errorMessage", "ruleId cannot be blank")
-                .build();
-
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class)))
-                .thenReturn(validationError);
-
-        assertThrows(ValidationException.class, () ->
-                courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope));
-
-        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
-        verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).updateJudiciaryAvailabilityRule(any());
-    }
-
-    @Test
-    void shouldUpdateJudiciaryAvailabilityRuleWithUnAvailabilities() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-02-01")
-                .add("endDate", "2026-02-28")
-                .add("recurringType", "WEEKLY")
-                .add("repeatDays", createArrayBuilder()
-                        .add("MONDAY")
-                        .build())
-                .add("unavailabilities", createArrayBuilder()
-                        .add(createObjectBuilder()
-                                .add("startDate", "2026-02-10")
-                                .add("endDate", "2026-02-12")
-                                .add("reason", "ANNUAL_LEAVE")
-                                .build())
-                        .build())
-                .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule";
-        final JsonEnvelope updateEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
-
-        when(this.enveloper.withMetadataFrom(updateEnvelope, requestName)).thenReturn(function);
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class)))
-                .thenReturn(EMPTY_JSON_OBJECT);
-
-        courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope);
-
-        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
-        verify(judiciaryAvailabilityService).updateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {

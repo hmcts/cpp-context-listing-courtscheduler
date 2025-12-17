@@ -84,17 +84,7 @@
           "validFrom": {"type": "string"},
           "validTo": {"type": "string"},
           "emailAddress": {"type": "string"},
-          "cpUserId": {"type": "string"}
-        },
-        "required": ["id", "surname"]
-      }
-    },
-    "specialisms": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "judiciaryId": {"$ref": "#/definitions/uuid"},
+          "cpUserId": {"type": "string"},
           "specialisms": {
             "type": "array",
             "items": {
@@ -103,11 +93,11 @@
             }
           }
         },
-        "required": ["judiciaryId", "specialisms"]
+        "required": ["id", "surname"]
       }
     }
   },
-  "required": ["rules", "totalCount", "pageNumber", "pageSize", "judiciaries", "specialisms"],
+  "required": ["rules", "totalCount", "pageNumber", "pageSize", "judiciaries"],
   "definitions": {
     "uuid": {
       "type": "string",
