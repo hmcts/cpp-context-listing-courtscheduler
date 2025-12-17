@@ -2,39 +2,34 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 
 import java.util.Objects;
 
-public class DeleteJudiciaryAvailabilityRuleRequest {
-
-    private String ruleId;
-
-    public String getRuleId() {
-        return this.ruleId;
-    }
-
-    public void setRuleId(String ruleId) {
-        this.ruleId = ruleId;
-    }
+/**
+ * Request for deleting judiciary availability rule.
+ */
+public class DeleteJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabilityRuleRequest {
 
     @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
-        if (o == null || this.getClass() != o.getClass()) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        final DeleteJudiciaryAvailabilityRuleRequest that = (DeleteJudiciaryAvailabilityRuleRequest) o;
-        return Objects.equals(this.ruleId, that.ruleId);
+        DeleteJudiciaryAvailabilityRuleRequest that = (DeleteJudiciaryAvailabilityRuleRequest) o;
+        // Only compare ruleId (other fields from base class are not used)
+        return Objects.equals(ruleId, that.ruleId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.ruleId);
+        // Only hash ruleId (other fields from base class are not used)
+        return Objects.hash(ruleId);
     }
 
     @Override
     public String toString() {
         return "DeleteJudiciaryAvailabilityRuleRequest{" +
-                "ruleId='" + this.ruleId + '\'' +
+                "ruleId='" + ruleId + '\'' +
                 '}';
     }
 }

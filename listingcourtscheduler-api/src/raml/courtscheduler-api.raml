@@ -704,3 +704,19 @@ protocols: [ HTTP, HTTPS ]
     responses:
       202:
         description: OK
+
+  put:
+    description: |
+      Update judiciary availability rule. The ruleId is included in the request payload.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.judiciary.update.availability.rule+json
+          name: courtscheduler.judiciary.update.availability.rule
+      ...
+    body:
+      application/vnd.courtscheduler.judiciary.update.availability.rule+json:
+        schema: !include json/schema/courtscheduler.judiciary.update.availability.rule.json
+        example: !include json/courtscheduler.judiciary.update.availability.rule.json
+    responses:
+      202:
+        description: OK

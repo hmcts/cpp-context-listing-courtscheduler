@@ -40,13 +40,14 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
     private static final String JUDICIARY_RESOURCE_URL = "/judiciary-availability";
     private static final String ADD_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.add.availability.rule+json";
+    private static final String UPDATE_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.update.availability.rule+json";
     private static final String DELETE_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.delete.availability.rule+json";
     private static final String FIND_AVAILABILITY_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.find.availability+json";
     private static final String FIND_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.find.availability.rule+json";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
 
     @Test
-    void shouldAddAvailabilityMonthyEverySecondTuesday() {
+    void shouldAddAvailabilityMonthlyEverySecondTuesday() {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         final LocalDate startDate = LocalDate.of(2026, 1, 1);
@@ -1151,6 +1152,154 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertTrue(judiciary.containsKey("judiciaryType"), "Judiciary should have judiciaryType");
         assertTrue(judiciary.containsKey("specialisms"), "Judiciary should have specialisms");
         
+    }
+
+    @Test
+    void shouldUpdateJudiciaryAvailabilityRule() throws Exception {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final LocalDate originalStartDate = LocalDate.of(2026, 1, 1);
+        final LocalDate originalEndDate = LocalDate.of(2026, 1, 31);
+
+        // Insert an initial rule via database seeder
+        databaseSeeder.insertJudiciaryAvailabilityRule(
+                ruleId,
+                judiciaryId,
+                courtHouseId,
+                new ArrayList<>(),
+                originalStartDate,
+                originalEndDate,
+                RecurringType.WEEKLY,
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
+        );
+
+        // Verify the original rule exists by finding availability
+        final LocalDate queryStartDate = LocalDate.of(2026, 1, 5); // Monday
+        final LocalDate queryEndDate = LocalDate.of(2026, 1, 9); // Friday
+
+        Map<String, Object> queryParams = new HashMap<>();
+        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
+        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("judiciaryId", judiciaryId);
+
+        RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        ResponseData responseData = poll(requestParams)
+                .with()
+                .timeout(30L, SECONDS)
+                .pollInterval(50L, MILLISECONDS)
+                .pollDelay(0L, MILLISECONDS)
+                .until();
+
+        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should be available before update");
+
+        // Update the rule with new dates, repeat days and unavailabilities
+        final LocalDate updatedStartDate = LocalDate.of(2026, 2, 1);
+        final LocalDate updatedEndDate = LocalDate.of(2026, 2, 28);
+        final LocalDate unavailabilityStartDate = LocalDate.of(2026, 2, 10);
+        final LocalDate unavailabilityEndDate = LocalDate.of(2026, 2, 15);
+
+        final String updatePayload = Json.createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", updatedStartDate.format(DATE_FORMATTER))
+                .add("endDate", updatedEndDate.format(DATE_FORMATTER))
+                .add("recurringType", RecurringType.MONTHLY.name())
+                .add("sessionType", SessionType.AM.name())
+                .add("repeatDays", Json.createArrayBuilder()
+                        .add(Json.createObjectBuilder()
+                                .add("day", AvailabilityDayOfWeek.WEDNESDAY.name())
+                                .add("index", 2)
+                                .build())
+                        .add(Json.createObjectBuilder()
+                                .add("day", AvailabilityDayOfWeek.THURSDAY.name())
+                                .add("index", 3)
+                                .build())
+                        .build())
+                .add("unavailabilities", Json.createArrayBuilder()
+                        .add(Json.createObjectBuilder()
+                                .add("startDate", unavailabilityStartDate.format(DATE_FORMATTER))
+                                .add("endDate", unavailabilityEndDate.format(DATE_FORMATTER))
+                                .add("reason", "ANNUAL_LEAVE")
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        // Update the rule with ruleId is in the payload
+        final Response updateResponse = putCommand(JUDICIARY_RESOURCE_URL, UPDATE_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, updatePayload);
+        assertThat(updateResponse.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Wait a bit for the update to be processed
+        Thread.sleep(100);
+
+        // Verify the rule is updated by checking availability in the new date range
+        // February 2026: 2nd Wednesday = Feb 11, 3rd Thursday = Feb 19
+        // Note: Feb 10-15 is marked as unavailable, so we'll check around Feb 19 (3rd Thursday)
+        queryParams = new HashMap<>();
+        queryParams.put("startDate", LocalDate.of(2026, 2, 18).format(DATE_FORMATTER));
+        queryParams.put("endDate", LocalDate.of(2026, 2, 20).format(DATE_FORMATTER));
+        queryParams.put("judiciaryId", judiciaryId);
+
+        requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        responseData = poll(requestParams)
+                .with()
+                .timeout(30L, SECONDS)
+                .pollInterval(50L, MILLISECONDS)
+                .pollDelay(0L, MILLISECONDS)
+                .until();
+
+        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should be available in updated date range (3rd Thursday)");
+
+        // Verify unavailabilities are working - judiciary should NOT be available during unavailability period
+        // Feb 10-15 is marked as unavailable, and Feb 11 is the 2nd Wednesday (which would normally be available)
+        queryParams = new HashMap<>();
+        queryParams.put("startDate", unavailabilityStartDate.format(DATE_FORMATTER));
+        queryParams.put("endDate", unavailabilityEndDate.format(DATE_FORMATTER));
+        queryParams.put("judiciaryId", judiciaryId);
+
+        requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        responseData = poll(requestParams)
+                .with()
+                .timeout(30L, SECONDS)
+                .pollInterval(50L, MILLISECONDS)
+                .pollDelay(0L, MILLISECONDS)
+                .until();
+
+        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available during unavailability period (Feb 10-15)");
+
+        // Verify the rule is not available in the old date range
+        queryParams = new HashMap<>();
+        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
+        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("judiciaryId", judiciaryId);
+
+        requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        responseData = poll(requestParams)
+                .with()
+                .timeout(30L, SECONDS)
+                .pollInterval(50L, MILLISECONDS)
+                .pollDelay(0L, MILLISECONDS)
+                .until();
+
+        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available in old date range after update");
     }
 }
 

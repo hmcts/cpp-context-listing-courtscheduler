@@ -4,16 +4,16 @@ import java.util.Objects;
 import java.util.StringJoiner;
 
 /**
- * Request for adding judiciary availability rule.
+ * Request for updating judiciary availability rule.
  */
-public class AddJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabilityRuleWithDetailsRequest {
+public class UpdateJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabilityRuleWithDetailsRequest {
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
-        AddJudiciaryAvailabilityRuleRequest that = (AddJudiciaryAvailabilityRuleRequest) o;
+        UpdateJudiciaryAvailabilityRuleRequest that = (UpdateJudiciaryAvailabilityRuleRequest) o;
         return recurringType == that.recurringType &&
                 Objects.equals(repeatDays, that.repeatDays) &&
                 sessionType == that.sessionType &&
@@ -27,7 +27,8 @@ public class AddJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabili
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", AddJudiciaryAvailabilityRuleRequest.class.getSimpleName() + "[", "]")
+        return new StringJoiner(", ", UpdateJudiciaryAvailabilityRuleRequest.class.getSimpleName() + "[", "]")
+                .add("ruleId='" + ruleId + "'")
                 .add("judiciaryId='" + judiciaryId + "'")
                 .add("courtHouseId='" + courtHouseId + "'")
                 .add("startDate=" + startDate)
@@ -39,4 +40,7 @@ public class AddJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabili
                 .toString();
     }
 }
+
+
+
 
