@@ -685,14 +685,7 @@ public class SessionsService {
             return nthOccurrence;
         }
 
-        // If index is 5 and the month doesn't have 5 occurrences, fallback to index 4
-        if (index == 5) {
-            LocalDate fourthOccurrence = firstOccurrence.plusWeeks(3);
-            if (fourthOccurrence.getMonth() == firstDayOfMonth.getMonth()) {
-                return fourthOccurrence;
-            }
-        }
-
+        // If the nth occurrence doesn't exist in the month, return null (no session created for this month)
         return null;
     }
 

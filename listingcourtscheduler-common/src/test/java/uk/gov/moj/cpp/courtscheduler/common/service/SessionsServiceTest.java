@@ -1521,7 +1521,7 @@ class SessionsServiceTest {
                         .withCourtRoomId("court-room-6")
                         .withSessionType("AM")
                         .withPanelType("Adult")
-                        .withIndex(5) // Fifth occurrence of Sunday (should fallback to 4th if not available)
+                        .withIndex(5) // Fifth occurrence of Sunday (no session created if 5th doesn't exist in month)
                         .build()
         );
 
