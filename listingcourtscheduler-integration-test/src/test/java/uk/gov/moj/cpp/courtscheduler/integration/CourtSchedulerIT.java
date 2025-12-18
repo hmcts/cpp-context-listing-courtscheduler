@@ -40,7 +40,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.localDateToDa
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.getUtcTimeStringForDate;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
-import org.junit.jupiter.api.Disabled;
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
@@ -68,6 +67,7 @@ import java.util.UUID;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
+import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -380,6 +380,22 @@ class CourtSchedulerIT extends AbstractIT {
         final String errorResponseMessage = response.readEntity(String.class);
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         assertThat(errorResponseMessage, is("{\"error\":\"All day split flag should be sent for All Day(AD) session\"}"));
+    }
+
+    @Test
+    void shouldReturn400WhenCourtroomDoesNotBelongToCourtCentreInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-wrong-court-centre.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturn400WhenCourtroomDoesNotBelongToCourtCentreInValidateCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-wrong-court-centre.json");
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
     }
 
     @Test
@@ -1797,11 +1813,6 @@ class CourtSchedulerIT extends AbstractIT {
         crownWithListings.setActive(true);
         databaseSeeder.insertCourtSchedule(crownWithListings);
 
-        // Create allocated listing for CROWN schedule
-        final UUID crownHearingId = UUID.randomUUID();
-        final UUID crownBookingId = UUID.randomUUID();
-        final AllocatedListing crownAllocatedListing = createAllocatedListing(crownWithListings, crownHearingId, crownBookingId, 60, "10:00");
-
         // Try to delete both schedules with allocated listings
         // Create JSON payload with both IDs
         String deleteWithListingsPayload = "{\"sessions\": [\"" + magistratesWithListingsId + "\", \"" + crownWithListingsId + "\"]}";
@@ -2190,90 +2201,6 @@ class CourtSchedulerIT extends AbstractIT {
         }
     }
 
-    @Disabled// Test
-    void shouldReturnErrorWhenMonthlyFrequencySessionWithIndexIsDuplicate() throws SQLException {
-        // Given - Create an existing session on 4th Friday of January 2026
-        UUID existingSessionId = UUID.randomUUID();
-        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
-        existingSession.setCourtScheduleId(existingSessionId.toString());
-        existingSession.setBusinessType("LGT");
-        existingSession.setSlotBased(false);
-        existingSession.setMaxDuration(300);
-        existingSession.setAvailableDuration(300);
-        existingSession.setIsDraft(true);
-        existingSession.setSupportAdSplit(false);
-        existingSession.setCourtSession("AD");
-        existingSession.setPanel("ADULT");
-        existingSession.setJurisdiction("CROWN");
-        existingSession.setCourtHouseId("fac329cc-fc03-337c-b911-55f4d013d090");
-        existingSession.setCourtRoomId("dd84788e-004e-3119-9ba1-8ba99497fb34");
-        existingSession.setSessionDate(LocalDate.of(2026, 1, 22)); // 4th Friday of January 2026
-        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 10, 0));
-        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 12, 0));
-        databaseSeeder.insertCourtSchedule(existingSession);
-
-        // When - Try to create a new monthly frequency session with index 4 (4th Friday) that would create a session on the same date
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
-        LocalDate endDate = LocalDate.of(2026, 6, 30);
-
-        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
-                "create-court-schedule-monthly-frequency-different-index.json",
-                startDate,
-                endDate
-        );
-
-        // Replace index to 4 (4th Friday) in the payload
-        String payloadWithIndex4 = createCourtSchedulePayload.replace("\"index\": 5", "\"index\": 4");
-
-        final Response response = postCommand(BASE_RESOURCE_URL + VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, payloadWithIndex4);
-
-        // Then - Should return error indicating duplicate
-        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
-        final String responseBody = response.readEntity(String.class);
-        assertThat(responseBody, containsString("duplicate"));
-    }
-
-    @Disabled// Test
-    void shouldNotReturnErrorWhenMonthlyFrequencySessionWithIndexIsNotDuplicate() throws SQLException {
-        // Given - Create an existing session on 1st Friday of January 2026
-        UUID existingSessionId = UUID.randomUUID();
-        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
-        existingSession.setCourtScheduleId(existingSessionId.toString());
-        existingSession.setBusinessType("LGT");
-        existingSession.setSlotBased(false);
-        existingSession.setMaxDuration(300);
-        existingSession.setAvailableDuration(300);
-        existingSession.setIsDraft(true);
-        existingSession.setSupportAdSplit(false);
-        existingSession.setCourtSession("AD");
-        existingSession.setPanel("ADULT");
-        existingSession.setJurisdiction("CROWN");
-        existingSession.setCourtHouseId("fac329cc-fc03-337c-b911-55f4d013d090");
-        existingSession.setCourtRoomId("dd84788e-004e-3119-9ba1-8ba99497fb34");
-        existingSession.setSessionDate(LocalDate.of(2026, 1, 1)); // 1st Friday of January 2026
-        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 10, 0));
-        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 12, 0));
-        databaseSeeder.insertCourtSchedule(existingSession);
-
-        // When - Try to create a new monthly frequency session with index 4 (4th Friday) that would create a session on Jan 22 (different date)
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
-        LocalDate endDate = LocalDate.of(2026, 6, 30);
-
-        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
-                "create-court-schedule-monthly-frequency-different-index.json",
-                startDate,
-                endDate
-        );
-
-        // Replace index to 4 (4th Friday) in the payload
-        String payloadWithIndex4 = createCourtSchedulePayload.replace("\"index\": 5", "\"index\": 4");
-
-        final Response response = postCommand(BASE_RESOURCE_URL + VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, payloadWithIndex4);
-
-        // Then - Should not return error as dates don't match (1st Friday vs 4th Friday)
-        assertThat(response.getStatus(), is(OK.getStatusCode()));
-    }
-
     private String prepareCreateCourtSchedulePayloadWithDates(final String fileName, final LocalDate startDate, final LocalDate endDate) {
         return getPayload(fileName)
                 .replace("START_DATE", startDate.format(ofPattern("yyyy-MM-dd")))
@@ -2483,7 +2410,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Draft sessions should be successfully assigned (not in any error group)
         boolean draftSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
@@ -2495,7 +2422,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Assigned session should be in error group
         boolean foundAssignedSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
@@ -2562,7 +2489,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Find the error group with the expected error message
         boolean foundErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
@@ -2626,7 +2553,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Find the error group with the expected error message
         boolean foundErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
@@ -2737,7 +2664,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify ineligible session is in error group
         boolean foundIneligibleSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
@@ -2752,7 +2679,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Eligible session should be successfully assigned (not in any error group)
         boolean eligibleSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
@@ -2827,7 +2754,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify MAGISTRATES session is in error group
         boolean foundIneligibleMagistratesSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("assign.courtroom endpoint is only valid for CROWN jurisdiction sessions".equals(error)) {
@@ -2842,7 +2769,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // CROWN session should be successfully assigned (not in any error group)
         boolean crownSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
@@ -2917,7 +2844,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify session with wrong court centre is in error group
         boolean foundIneligibleWrongCourtCentreSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("The new courtroom must belong to the same court centre as the session".equals(error)) {
@@ -2932,7 +2859,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Session with correct court centre should be successfully assigned (not in any error group)
         boolean correctCourtCentreSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
@@ -3010,7 +2937,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify session is in error group due to duplicate
         boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if (error.contains("Duplicate session already exists")) {
@@ -3092,7 +3019,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify session is in error group due to duplicate
         boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if (error.contains("Duplicate session already exists")) {
@@ -3174,7 +3101,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify session is in error group due to duplicate
         boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if (error.contains("Duplicate session already exists")) {

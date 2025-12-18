@@ -202,12 +202,24 @@ public class SessionsApiValidator {
         if (courtRoomOpt.isEmpty()) {
             return buildErrorResponse(COURTROOM_NOT_FOUND + session.getCourtRoomId());
         }
+        // Validate that the courtroom belongs to the specified court centre (courtCentreId)
+        final CourtRoom courtRoom = courtRoomOpt.get();
+        final String sessionCourtCentreId = session.getCourtCentreId();
+        final String courtRoomCourtCentreId = courtRoom.getOucodeUUID();
+
+        if (isNull(sessionCourtCentreId) || isNull(courtRoomCourtCentreId)
+                || !sessionCourtCentreId.equals(courtRoomCourtCentreId)) {
+            return buildErrorResponse("The courtroom must belong to the same court centre as specified in courtCentreId");
+        }
+
         return EMPTY_JSON_OBJECT;
     }
 
     private static boolean isDurationBasedWithValidDuration(final Session session, final BusinessType businessType) {
-        //if slot based based, then its ok. otherwise if its all day split, morning/afternoon duration should be supplied,for regular allday duraton should be supplied
-        return businessType.isSlot() || (allDaySplitWithValidDuration(session) || hasValidDuration(session));
+        // If slot based, then it's fine. Otherwise:
+        // - For all-day split AD sessions, both maxDurationForMorning and maxDurationForAfternoon must be supplied.
+        // - For regular (non-split) duration-based sessions, a positive slotsOrDuration must be supplied.
+        return businessType.isSlot() || allDaySplitWithValidDuration(session) || hasValidDuration(session);
     }
 
     private static boolean hasValidDuration(final Session session) {
@@ -215,7 +227,10 @@ public class SessionsApiValidator {
     }
 
     private static boolean allDaySplitWithValidDuration(final Session session) {
-        return ALL_DAY.equals(session.getSessionType()) && session.isAllDaySplit() && (nonNull(session.getMaxDurationForMorning()) && nonNull(session.getMaxDurationForAfternoon()));
+        return ALL_DAY.equals(session.getSessionType())
+                && Boolean.TRUE.equals(session.isAllDaySplit())
+                && nonNull(session.getMaxDurationForMorning())
+                && nonNull(session.getMaxDurationForAfternoon());
     }
 
     private JsonObject validateMonthlyCrownIndexForRequest(CreateSessionRequestParam requestParam) {
@@ -399,6 +414,12 @@ public class SessionsApiValidator {
                 }
             }
         }
+        // For validate-create, also enforce business type / courtroom / court-centre rules
+        JsonObject businessTypeAndCourtRoomValidationResult = validateSessionBusinessTypeAndCourtRoom(sessionToBeAdded, requester);
+        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
+            return businessTypeAndCourtRoomValidationResult;
+        }
+
         return validateSessionToBeAdded(sessionToBeAdded, requester);
     }
 

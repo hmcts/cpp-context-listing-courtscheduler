@@ -90,12 +90,20 @@ class SessionsApiValidatorTest {
 
     private void stubMagCourtRoomAvailable(String courtRoomId) {
         lenient().when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
-                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
+                .thenReturn(Optional.of(
+                        CourtRoom.CourtRoomBuilder.aCourtRoom()
+                                .withCourtRoomId(courtRoomId)
+                                .withOucodeUUID(courtCentreId)
+                                .build()));
     }
 
     private void stubCrownCourtRoomAvailable(String courtRoomId) {
         lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
-                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
+                .thenReturn(Optional.of(
+                        CourtRoom.CourtRoomBuilder.aCourtRoom()
+                                .withCourtRoomId(courtRoomId)
+                                .withOucodeUUID(courtCentreId)
+                                .build()));
     }
 
     private void stubBusinessType(String code, String jurisdiction, boolean slot, boolean duration) {
@@ -237,7 +245,6 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        //mockReferenceData(false, "321");
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
@@ -249,12 +256,10 @@ class SessionsApiValidatorTest {
         LocalDate futureDate = LocalDate.now().plusDays(1);
         final Session sessionToBeAdded = createAMSession();
         final List<Session> sessionList = List.of(createPMSession());
-        final List<CourtSchedule> clashingAllDaySession = List.of(createCourtScheduleFromSession(sessionToBeAdded, "AM"));
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
         when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
-//        when(courtScheduleRepository.getSimilarSessions(any(), any(), any(), any(), any())).thenReturn(clashingAllDaySession);
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
@@ -262,7 +267,10 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        //mockReferenceData(true, courtRoomId);
+        // Business type exists and matches jurisdiction; courtroom exists and belongs to correct court centre
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        stubMagCourtRoomAvailable(courtRoomId);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Duration should be set for this session", result.getString("errorMessage"));
@@ -288,7 +296,6 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        //mockReferenceData(true, courtRoomId);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
@@ -336,18 +343,10 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        //mockReferenceData(true, courtRoomId);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
     }
-
-   /* private void mockReferenceData(boolean slotBased, String courtRoomId) {
-        String typeDescription = slotBased ? "DVLA" : "TRL";
-        BusinessType bt = new BusinessType(randomUUID().toString(), 1, typeDescription, typeDescription, slotBased, !slotBased, "MAGISTRATES");
-        when(referenceDataCache.getRotaBusinessTypeByCode(typeDescription, requester)).thenReturn(Optional.of(bt));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(new uk.gov.moj.cpp.courtscheduler.domain.CourtRoom()));
-    }*/
 
     @Test
     void shouldReturnEmptyJsonObjectWhenValidationIsSuccessful() {
@@ -362,7 +361,8 @@ class SessionsApiValidatorTest {
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(new uk.gov.moj.cpp.courtscheduler.domain.CourtRoom()));
+        // Courtroom exists and belongs to the same court centre as the session
+        stubMagCourtRoomAvailable(courtRoomId);
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
@@ -445,6 +445,44 @@ class SessionsApiValidatorTest {
     }
 
     @Test
+    void shouldReturnErrorWhenCourtRoomDoesNotBelongToCourtCentreForMagistratesInCreate() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        String mismatchedCourtCentreId = randomUUID().toString();
+
+        Session session = session()
+                .withCourtCentreId(mismatchedCourtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
+                .withSlotsOrDuration(20)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+
+        // Courtroom exists but belongs to a different court centre
+        CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId) // different from mismatchedCourtCentreId
+                .build();
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(courtRoom));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals("The courtroom must belong to the same court centre as specified in courtCentreId",
+                result.getString("errorMessage"));
+    }
+
+    @Test
     void shouldReturnErrorWhenCpCourtRoomNotFoundForCrown() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
         Session session = session()
@@ -472,6 +510,58 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtRoomDoesNotBelongToCourtCentreForMagistratesInValidateCreate() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        String mismatchedCourtCentreId = randomUUID().toString();
+
+        // Existing session (valid)
+        Session existingSession = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
+                .withSlotsOrDuration(20)
+                .build();
+
+        // Session to be added (invalid centre-room combination)
+        Session sessionToBeAdded = session()
+                .withCourtCentreId(mismatchedCourtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("PM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.TUESDAY))
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
+                .withSlotsOrDuration(20)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(existingSession));
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+
+        CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId) // valid for existing, invalid for sessionToBeAdded
+                .build();
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(courtRoom));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals("The courtroom must belong to the same court centre as specified in courtCentreId",
+                result.getString("errorMessage"));
     }
 
     private Session createDraftSession() {

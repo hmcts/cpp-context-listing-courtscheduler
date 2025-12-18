@@ -11,10 +11,9 @@
       "jurisdiction": "MAGISTRATES"
     }
   ],
-  "sessionToBeAdded":
-  {
+  "sessionToBeAdded": {
     "courtCentreId": "49db2271-1941-3847-a7fb-dbd92b035e40",
-    "courtRoomId": "41a41156-0ca9-3352-999e-8d26274bb1aa",
+    "courtRoomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c",
     "sessionType": "AD",
     "businessType": "TRL",
     "duration": 360,
@@ -30,3 +29,11 @@
     "endDate": "END_DATE"
   }
 }
+
+
+
+
+
+
+
+

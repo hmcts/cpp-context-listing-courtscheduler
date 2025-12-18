@@ -1,7 +1,7 @@
 {
   "sessions": [
     {
-      "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
+      "courtCentreId": "22c69328-70af-3e27-80c5-1a79e24903d2",
       "courtRoomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c",
       "sessionType": "AD",
       "businessType": "TRL",
@@ -13,7 +13,7 @@
   ],
   "sessionToBeAdded":
   {
-    "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
+    "courtCentreId": "49db2271-1941-3847-a7fb-dbd92b035e40",
     "courtRoomId": "41a41156-0ca9-3352-999e-8d26274bb1aa",
     "sessionType": "AD",
     "businessType": "TRL",

@@ -70,10 +70,10 @@
       "oneOf": [
         {
           "allOf": [
-            {
-              "properties": {
-                "jurisdiction": { "enum": ["CROWN"] }
-              }
+        {
+          "properties": {
+            "jurisdiction": { "enum": ["CROWN"] }
+          }
             },
             {
               "required": ["isDraft"]
