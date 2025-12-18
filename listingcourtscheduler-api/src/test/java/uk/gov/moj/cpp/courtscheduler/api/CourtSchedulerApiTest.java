@@ -35,6 +35,7 @@ import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.DeleteJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
@@ -65,6 +66,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
@@ -169,6 +171,8 @@ class CourtSchedulerApiTest {
     private JsonEnvelope envelope;
     @Mock
     private ListHearingSlotConverter listHearingSlotConverter;
+    @Mock
+    private AddJudiciaryAvailabilityRuleConverter addJudiciaryAvailabilityRuleConverter;
     @Mock
     private DeleteJudiciaryAvailabilityRuleConverter deleteJudiciaryAvailabilityRuleConverter;
     @Mock
@@ -763,6 +767,78 @@ class CourtSchedulerApiTest {
         verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
         verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRule(any(DeleteJudiciaryAvailabilityRuleRequest.class));
         verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).deleteJudiciaryAvailabilityRule(any());
+    }
+
+    @Test
+    void shouldAddJudiciaryAvailabilityRule() {
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", "2026-01-01")
+                .add("endDate", "2026-01-31")
+                .add("recurringType", "WEEKLY")
+                .add("sessionType", "AM")
+                .add("repeatDays", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("day", "Monday")
+                                .build())
+                        .build())
+                .build();
+        final String requestName = "courtscheduler.judiciary.add.availability.rule";
+        final JsonEnvelope addEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
+        request.setJudiciaryId(judiciaryId);
+        request.setCourtHouseId(courtHouseId);
+
+        when(this.enveloper.withMetadataFrom(addEnvelope, requestName)).thenReturn(function);
+        when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        courtSchedulerApi.addJudiciaryAvailabilityRule(addEnvelope);
+
+        verify(enveloper, atLeastOnce()).withMetadataFrom(addEnvelope, requestName);
+        verify(addJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityService).addJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class));
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenAddJudiciaryAvailabilityRuleHasInvalidData() {
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", "2026-01-01")
+                .add("endDate", "2026-01-31")
+                .add("repeatDays", createArrayBuilder()
+                        .add("Monday")
+                        .build())
+                .build();
+        final String requestName = "courtscheduler.judiciary.add.availability.rule";
+        final JsonEnvelope addEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
+        request.setJudiciaryId(judiciaryId);
+        request.setCourtHouseId(courtHouseId);
+
+        final JsonObject validationError = createObjectBuilder()
+                .add("errorMessage", "judiciaryId cannot be null")
+                .build();
+
+        when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class)))
+                .thenReturn(validationError);
+
+        assertThrows(ValidationException.class, () -> courtSchedulerApi.addJudiciaryAvailabilityRule(addEnvelope));
+
+        verify(addJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).addJudiciaryAvailabilityRule(any());
     }
 
     @Test
