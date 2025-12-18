@@ -30,6 +30,10 @@
           }
         }
       }
+    },
+    "skipValidations": {
+      "type": "boolean",
+      "description": "If true, skip all validations for this request. Defaults to false."
     }
   }
 }

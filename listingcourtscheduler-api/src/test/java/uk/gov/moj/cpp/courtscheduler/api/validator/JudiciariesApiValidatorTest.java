@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.validator;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
@@ -247,6 +248,68 @@ class JudiciariesApiValidatorTest {
 
         final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldSkipValidationWhenSkipValidationsIsTrue() {
+        // Even with invalid payload (missing sessionIds), validation should pass when skipValidations is true
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", "judge-456")
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payload = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .add("skipValidations", true)
+                .build();
+
+        final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldPerformValidationWhenSkipValidationsIsFalse() {
+        // With invalid payload and skipValidations false, validation should fail
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", "judge-456")
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payload = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .add("skipValidations", false)
+                .build();
+
+        final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
+        assertFalse(result.isEmpty());
+        assertEquals("sessionIds array must contain at least one item in judiciaries[0]", result.getString(ERROR_MESSAGE));
+    }
+
+    @Test
+    void shouldPerformValidationWhenSkipValidationsIsNotProvided() {
+        // When skipValidations is not provided, should default to false and perform validation
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", "judge-456")
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payload = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+
+        final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
+        assertFalse(result.isEmpty());
+        assertEquals("sessionIds array must contain at least one item in judiciaries[0]", result.getString(ERROR_MESSAGE));
+    }
+
+    @Test
+    void shouldReturnErrorWhenPayloadIsNull() {
+        final JsonObject result = judiciariesApiValidator.validateUnassignJudiciaryRequest(null);
+        assertFalse(result.isEmpty());
+        assertEquals("Request payload is required", result.getString(ERROR_MESSAGE));
     }
 }
 

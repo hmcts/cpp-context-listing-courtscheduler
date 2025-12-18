@@ -96,22 +96,36 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.delete.response.json
             example: !include json/courtscheduler.delete.response.json
 
-/judiciary/assign:
+/session:
   post:
     description: |
-      Assign a judiciary to one or more existing court sessions.
+      Assign or unassign a judiciary from court sessions.
       ...
       (mapping):
           requestType: application/vnd.courtscheduler.assign-judiciary+json
           name: courtscheduler.assign-judiciary
+      (mapping):
+          requestType: application/vnd.courtscheduler.unassign.judiciary+json
+          name: courtscheduler.unassign.judiciary
       ...
     body:
       application/vnd.courtscheduler.assign-judiciary+json:
         schema: !include json/schema/courtscheduler.assign-judiciary.json
         example: !include json/courtscheduler.assign-judiciary.json
+      application/vnd.courtscheduler.unassign.judiciary+json:
+        schema: !include json/schema/courtscheduler.unassign.judiciary.json
+        example: !include json/courtscheduler.unassign.judiciary.json
     responses:
       202:
         description: Request accepted for processing.
+      400:
+        description: Bad Request - Cannot unassign judiciary (has allocated listings or not found)
+        body:
+          application/json:
+            example: |
+              {
+                "errorMessage": "Cannot unassign judiciary judge-456 from courtSchedule schedule-123: court schedule has allocated listings"
+              }
 
 /courtschedule/search.court-schedules-by-id:
   description: |
@@ -182,7 +196,7 @@ protocols: [ HTTP, HTTPS ]
             name: courtscheduler.get.hearing.slots
         (mapping):
             responseType: application/vnd.courtscheduler.get.hearing.ids+json
-            name: courtscheduler.get.hearing.ids      
+            name: courtscheduler.get.hearing.ids
         ...
     queryParameters:
       panel:
@@ -519,32 +533,6 @@ protocols: [ HTTP, HTTPS ]
     responses:
       202:
         description: Request Accepted
-
-/session:
-  post:
-    description: |
-      Unassign a judiciary from a court schedule. This operation will remove the judiciary assignment if the court schedule has no allocated listings.
-        ...
-        (mapping):
-            requestType: application/vnd.courtscheduler.unassign.judiciary+json
-            name: courtscheduler.unassign.judiciary
-        ...
-    body:
-      application/vnd.courtscheduler.unassign.judiciary+json:
-        schema: !include json/schema/courtscheduler.unassign.judiciary.json
-        example: !include json/courtscheduler.unassign.judiciary.json
-    responses:
-      202:
-        description: Request Accepted - Judiciary unassigned successfully
-      400:
-        description: Bad Request - Cannot unassign judiciary (has allocated listings or not found)
-        body:
-          application/json:
-            example: |
-              {
-                "errorMessage": "Cannot unassign judiciary judge-456 from courtSchedule schedule-123: court schedule has allocated listings"
-              }
-
 
 /validate:
   description: |

@@ -18,9 +18,19 @@ public class JudiciariesApiValidator {
     private static final String JUDICIARIES = "judiciaries";
     private static final String SESSIONIDS = "sessionIds";
     private static final String JUDICIARY_ID = "judiciaryId";
+    private static final String SKIP_VALIDATIONS = "skipValidations";
 
     public JsonObject validateUnassignJudiciaryRequest(final JsonObject payload) {
         LOGGER.info("Validating unassign judiciary request : {}", payload);
+
+        if (payload == null) {
+            return getMessage("Request payload is required");
+        }
+
+        // Skip validation if skipValidations flag is set to true
+        if (payload.containsKey(SKIP_VALIDATIONS) && payload.getBoolean(SKIP_VALIDATIONS)) {
+            return EMPTY_JSON_OBJECT;
+        }
 
         final JsonArray judiciaries = payload.getJsonArray(JUDICIARIES);
 
