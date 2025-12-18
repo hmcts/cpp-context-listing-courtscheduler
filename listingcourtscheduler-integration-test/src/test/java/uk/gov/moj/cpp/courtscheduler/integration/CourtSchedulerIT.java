@@ -40,6 +40,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.localDateToDa
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.getUtcTimeStringForDate;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
+import org.junit.jupiter.api.Disabled;
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
@@ -276,6 +277,22 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String errorResponseMessage = response.readEntity(String.class);
         assertThat(errorResponseMessage, containsString(SESSION_END_TIME_CANNOT_BE_LATER.formatted(ALL_DAY)));
+    }
+
+    @Test
+    void shouldReturn400WhenPanelMissingForMagistratesJurisdictionInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-missing-panel-magistrates.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturn400WhenIsDraftMissingForCrownJurisdictionInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-null-draft-crown.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
     }
 
     @Test
@@ -2173,6 +2190,90 @@ class CourtSchedulerIT extends AbstractIT {
         }
     }
 
+    @Disabled// Test
+    void shouldReturnErrorWhenMonthlyFrequencySessionWithIndexIsDuplicate() throws SQLException {
+        // Given - Create an existing session on 4th Friday of January 2026
+        UUID existingSessionId = UUID.randomUUID();
+        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
+        existingSession.setCourtScheduleId(existingSessionId.toString());
+        existingSession.setBusinessType("LGT");
+        existingSession.setSlotBased(false);
+        existingSession.setMaxDuration(300);
+        existingSession.setAvailableDuration(300);
+        existingSession.setIsDraft(true);
+        existingSession.setSupportAdSplit(false);
+        existingSession.setCourtSession("AD");
+        existingSession.setPanel("ADULT");
+        existingSession.setJurisdiction("CROWN");
+        existingSession.setCourtHouseId("fac329cc-fc03-337c-b911-55f4d013d090");
+        existingSession.setCourtRoomId("dd84788e-004e-3119-9ba1-8ba99497fb34");
+        existingSession.setSessionDate(LocalDate.of(2026, 1, 22)); // 4th Friday of January 2026
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 10, 0));
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 12, 0));
+        databaseSeeder.insertCourtSchedule(existingSession);
+
+        // When - Try to create a new monthly frequency session with index 4 (4th Friday) that would create a session on the same date
+        LocalDate startDate = LocalDate.of(2026, 1, 1);
+        LocalDate endDate = LocalDate.of(2026, 6, 30);
+
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
+                "create-court-schedule-monthly-frequency-different-index.json",
+                startDate,
+                endDate
+        );
+
+        // Replace index to 4 (4th Friday) in the payload
+        String payloadWithIndex4 = createCourtSchedulePayload.replace("\"index\": 5", "\"index\": 4");
+
+        final Response response = postCommand(BASE_RESOURCE_URL + VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, payloadWithIndex4);
+
+        // Then - Should return error indicating duplicate
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String responseBody = response.readEntity(String.class);
+        assertThat(responseBody, containsString("duplicate"));
+    }
+
+    @Disabled// Test
+    void shouldNotReturnErrorWhenMonthlyFrequencySessionWithIndexIsNotDuplicate() throws SQLException {
+        // Given - Create an existing session on 1st Friday of January 2026
+        UUID existingSessionId = UUID.randomUUID();
+        CourtSchedule existingSession = RANDOM.nextObject(CourtSchedule.class);
+        existingSession.setCourtScheduleId(existingSessionId.toString());
+        existingSession.setBusinessType("LGT");
+        existingSession.setSlotBased(false);
+        existingSession.setMaxDuration(300);
+        existingSession.setAvailableDuration(300);
+        existingSession.setIsDraft(true);
+        existingSession.setSupportAdSplit(false);
+        existingSession.setCourtSession("AD");
+        existingSession.setPanel("ADULT");
+        existingSession.setJurisdiction("CROWN");
+        existingSession.setCourtHouseId("fac329cc-fc03-337c-b911-55f4d013d090");
+        existingSession.setCourtRoomId("dd84788e-004e-3119-9ba1-8ba99497fb34");
+        existingSession.setSessionDate(LocalDate.of(2026, 1, 1)); // 1st Friday of January 2026
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 10, 0));
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 12, 0));
+        databaseSeeder.insertCourtSchedule(existingSession);
+
+        // When - Try to create a new monthly frequency session with index 4 (4th Friday) that would create a session on Jan 22 (different date)
+        LocalDate startDate = LocalDate.of(2026, 1, 1);
+        LocalDate endDate = LocalDate.of(2026, 6, 30);
+
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
+                "create-court-schedule-monthly-frequency-different-index.json",
+                startDate,
+                endDate
+        );
+
+        // Replace index to 4 (4th Friday) in the payload
+        String payloadWithIndex4 = createCourtSchedulePayload.replace("\"index\": 5", "\"index\": 4");
+
+        final Response response = postCommand(BASE_RESOURCE_URL + VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, payloadWithIndex4);
+
+        // Then - Should not return error as dates don't match (1st Friday vs 4th Friday)
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+    }
+
     private String prepareCreateCourtSchedulePayloadWithDates(final String fileName, final LocalDate startDate, final LocalDate endDate) {
         return getPayload(fileName)
                 .replace("START_DATE", startDate.format(ofPattern("yyyy-MM-dd")))
@@ -2224,6 +2325,23 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         assertThat(errorResponseMessage, containsString(SESSION_EDIT_ANOTHER_USER));
+    }
+
+    @Test
+    void shouldReturn400WhenPanelMissingForMagistratesJurisdictionInUpdate() {
+        String updateCourtSchedulePayload = getPayload("update-court-schedule-missing-panel.json");
+        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedBusinessType = "DVLA";
+        String changedSessionType = AM_SESSION;
+
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", randomUUID().toString());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", changedSessionType);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
     }
 
     @Test

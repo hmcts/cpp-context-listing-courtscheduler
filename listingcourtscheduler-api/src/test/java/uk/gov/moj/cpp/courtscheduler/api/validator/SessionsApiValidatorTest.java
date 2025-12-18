@@ -202,15 +202,35 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenSessionTypeIsDuplicateWithRequest() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
-        final List<Session> sessionList = Arrays.asList(session().withSessionType("AM").
-                withRepeatDays(Set.of(DayOfWeek.MONDAY)).withCourtCentreId("123")
-                .withCourtRoomId("321").withBusinessType("TRL").withSlotsOrDuration(20) .build(), session().withSessionType("PM")
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY)).withCourtCentreId("123")
-                .withCourtRoomId("321").withBusinessType("TRL").withSlotsOrDuration(20).build());
+        final List<Session> sessionList = Arrays.asList(
+                session().withSessionType("AM")
+                        .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                        .withCourtCentreId("123")
+                        .withCourtRoomId("321")
+                        .withBusinessType("TRL")
+                        .withPanelType("ADULT")
+                        .withSlotsOrDuration(20)
+                        .build(),
+                session().withSessionType("PM")
+                        .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                        .withCourtCentreId("123")
+                        .withCourtRoomId("321")
+                        .withBusinessType("TRL")
+                        .withPanelType("ADULT")
+                        .withSlotsOrDuration(20)
+                        .build()
+        );
         when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
 
-        final Session sessionToBeAdded = session().withSessionType("AM").withRepeatDays(Set.of(DayOfWeek.MONDAY)).withCourtCentreId("123")
-                .withCourtRoomId("321").withBusinessType("TRL").withSlotsOrDuration(20).build();
+        final Session sessionToBeAdded = session()
+                .withSessionType("AM")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withCourtCentreId("123")
+                .withCourtRoomId("321")
+                .withBusinessType("TRL")
+                .withPanelType("ADULT")
+                .withSlotsOrDuration(20)
+                .build();
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(repeatPattern.getStartDate()).thenReturn(futureDate);
@@ -435,6 +455,7 @@ class SessionsApiValidatorTest {
                 .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.MONDAY))
                 .withJurisdiction("CROWN")
+                .withIsDraft(true)
                 .withSlotsOrDuration(60)
                 .build();
 
@@ -601,6 +622,63 @@ class SessionsApiValidatorTest {
     }
 
     @Test
+    void shouldReturnErrorWhenIsDraftIsMissingForCrownJurisdictionInCreate() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withSlotsOrDuration(20)
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction("CROWN")
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+
+        stubCrownCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "CROWN", true, false);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("isDraft is mandatory for CROWN jurisdiction sessions", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenPanelIsMissingForMagistratesJurisdictionInCreate() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withSlotsOrDuration(20)
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", MAGISTRATES.getJurisdiction(), true, false);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("panel is mandatory for MAGISTRATES jurisdiction sessions", result.getString("errorMessage"));
+    }
+
+    @Test
     void shouldReturnErrorWhenIsDraftIsSuppliedWithMagistratesJurisdiction() {
         UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
                 .withCourtScheduleId(randomUUID().toString())
@@ -619,6 +697,25 @@ class SessionsApiValidatorTest {
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("isDraft can only be true when jurisdiction is CROWN", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenIsDraftIsMissingForCrownJurisdictionInUpdate() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withJurisdiction("CROWN")
+                .withMaxSlots(10)
+                .build();
+
+        stubCrownCourtRoomAvailable(courtRoomId);
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("isDraft is mandatory for CROWN jurisdiction sessions", result.getString("errorMessage"));
     }
 
     @Test
@@ -643,6 +740,25 @@ class SessionsApiValidatorTest {
 
         // Should accept isDraft=false for MAGISTRATES silently
         assertTrue(result.isEmpty() || !result.containsKey("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenPanelIsMissingForMagistratesJurisdictionInUpdate() {
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("BUSINESS_TYPE")
+                .withSessionType("AM")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(10)
+                .build();
+
+        stubMagCourtRoomAvailable(courtRoomId);
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals("panel is mandatory for MAGISTRATES jurisdiction sessions", result.getString("errorMessage"));
     }
 
     @Test

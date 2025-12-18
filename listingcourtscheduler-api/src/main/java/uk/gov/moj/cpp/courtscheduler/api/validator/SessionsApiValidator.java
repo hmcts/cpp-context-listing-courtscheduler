@@ -148,7 +148,7 @@ public class SessionsApiValidator {
                 return addSessionValidationResult;
             }
             LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
-            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor());
+            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor(), repeatFrequency);
         }
 
         final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
@@ -368,6 +368,8 @@ public class SessionsApiValidator {
     private JsonObject validateAddedSessionPayload(final CreateSessionRequestParam createSessionRequestParam, final Requester requester) {
         final Session sessionToBeAdded = createSessionRequestParam.getSessionToBeAdded();
         final Set<DayOfWeek> repeatDaysToBeAdded = new HashSet<>(sessionToBeAdded.getRepeatDays());
+        final RepeatFrequency repeatFrequency = createSessionRequestParam.getRepeatPattern().getFrequency();
+
         for(Session session : createSessionRequestParam.getSessionList()) {
             LOGGER.info("getSessionsCreateValidation getSessionList not null");
             boolean match = session.getCourtCentreId().equals(sessionToBeAdded.getCourtCentreId()) &&
@@ -376,7 +378,22 @@ public class SessionsApiValidator {
             LOGGER.info("getSessionsCreateValidation match value : {}", match);
             if(match){
                 Set<DayOfWeek> repeatDays = new HashSet<>(session.getRepeatDays());
-                if(repeatDaysToBeAdded.stream().anyMatch(repeatDays::contains) && isSessionTypeDuplicateOrNotValidForAllDay(session,sessionToBeAdded)) {
+                boolean hasOverlappingRepeatDays = repeatDaysToBeAdded.stream().anyMatch(repeatDays::contains);
+
+                if(hasOverlappingRepeatDays && isSessionTypeDuplicateOrNotValidForAllDay(session,sessionToBeAdded)) {
+                    // For EVERY_MONTH frequency we also need to respect the index (nth occurrence in month).
+                    // Sessions with different indexes (e.g. 4th Friday vs 5th Friday) will never fall on the same date,
+                    // so they should not be treated as duplicates here. Persisted duplicates are still handled by
+                    // validateSessionIntegrity which uses the index-aware monthly logic.
+                    if (repeatFrequency == EVERY_MONTH) {
+                        Integer existingIndex = session.getIndex();
+                        Integer newIndex = sessionToBeAdded.getIndex();
+
+                        if (existingIndex != null && newIndex != null && !existingIndex.equals(newIndex)) {
+                            // Different monthly index -> not a duplicate within this request, skip
+                            continue;
+                        }
+                    }
                     LOGGER.info("getSessionsCreateValidation DUPLICATE_SESSIONS");
                     return buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS);
                 }
@@ -621,6 +638,10 @@ public class SessionsApiValidator {
 
         // Validate isDraft can only be true when jurisdiction is CROWN - reject if true for MAGISTRATES, silently accept false
         Boolean isDraft = updateCourtSchedule.getIsDraft();
+        // For CROWN jurisdiction, isDraft must be explicitly supplied (true or false)
+        if (CROWN.equalsIgnoreCase(jurisdiction) && isNull(isDraft)) {
+            return buildErrorResponse("isDraft is mandatory for CROWN jurisdiction sessions");
+        }
         if (nonNull(isDraft) && TRUE.equals(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
             return buildErrorResponse("isDraft can only be true when jurisdiction is CROWN");
         }
@@ -636,6 +657,11 @@ public class SessionsApiValidator {
 
         // Validate panel - YOUTH is not allowed for CROWN jurisdiction
         String panel = updateCourtSchedule.getPanel();
+        // For MAGISTRATES jurisdiction, panel is mandatory
+        if (MAGISTRATES.equalsIgnoreCase(jurisdiction)
+                && (isNull(panel) || panel.trim().isEmpty())) {
+            return buildErrorResponse("panel is mandatory for MAGISTRATES jurisdiction sessions");
+        }
         if (nonNull(panel) && "YOUTH".equalsIgnoreCase(panel) && CROWN.equalsIgnoreCase(jurisdiction)) {
             return buildErrorResponse("YOUTH panel is not allowed for CROWN jurisdiction sessions. Only ADULT panel is allowed.");
         }
@@ -713,6 +739,11 @@ public class SessionsApiValidator {
         String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
         Boolean isDraft = session.isDraft();
 
+        // For CROWN jurisdiction, isDraft must be explicitly supplied (true or false)
+        if (CROWN.equalsIgnoreCase(jurisdiction) && isNull(isDraft)) {
+            return buildErrorResponse("isDraft is mandatory for CROWN jurisdiction sessions");
+        }
+
         // isDraft can only be true for CROWN jurisdiction - reject if true for MAGISTRATES, silently accept false
         if (nonNull(isDraft) && TRUE.equals(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
             return buildErrorResponse("isDraft can only be true for CROWN jurisdiction sessions");
@@ -744,6 +775,12 @@ public class SessionsApiValidator {
 
         String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
         String panel = session.getPanelType();
+
+        // For MAGISTRATES jurisdiction, panel is mandatory
+        if (MAGISTRATES.equalsIgnoreCase(jurisdiction)
+                && (isNull(panel) || panel.trim().isEmpty())) {
+            return buildErrorResponse("panel is mandatory for MAGISTRATES jurisdiction sessions");
+        }
 
         // YOUTH panel is not allowed for CROWN jurisdiction - only ADULT is allowed
         if (nonNull(panel) && "YOUTH".equalsIgnoreCase(panel) && CROWN.equalsIgnoreCase(jurisdiction)) {
