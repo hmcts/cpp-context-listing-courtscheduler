@@ -22,13 +22,13 @@ class FindJudiciaryAvailabilityConverterTest {
 
     @Test
     void shouldConvertJsonObjectWithAllParameters() {
-        final String courtHouseId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
+                .add("courtCentreId", courtCentreId)
                 .add("judiciaryId", judiciaryId)
                 .build();
 
@@ -37,7 +37,7 @@ class FindJudiciaryAvailabilityConverterTest {
         assertNotNull(result);
         assertThat(result.getStartDate().toString(), is("2026-01-01"));
         assertThat(result.getEndDate().toString(), is("2026-01-31"));
-        assertThat(result.getCourtHouseId(), is(courtHouseId));
+        assertThat(result.getCourtHouseId(), is(courtCentreId));
         assertThat(result.getJudiciaryId(), is(judiciaryId));
     }
 
@@ -58,19 +58,19 @@ class FindJudiciaryAvailabilityConverterTest {
     }
 
     @Test
-    void shouldConvertJsonObjectWithOnlyCourtHouseId() {
-        final String courtHouseId = randomUUID().toString();
+    void shouldConvertJsonObjectWithOnlyCourtCentreId() {
+        final String courtCentreId = randomUUID().toString();
         
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
+                .add("courtCentreId", courtCentreId)
                 .build();
 
         FindJudiciaryAvailabilityRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getCourtHouseId(), is(courtHouseId));
+        assertThat(result.getCourtHouseId(), is(courtCentreId));
         assertThat(result.getJudiciaryId(), is(nullValue()));
     }
 

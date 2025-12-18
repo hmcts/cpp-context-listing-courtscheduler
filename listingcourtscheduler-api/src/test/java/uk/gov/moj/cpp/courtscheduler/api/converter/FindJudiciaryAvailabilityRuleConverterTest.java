@@ -22,13 +22,13 @@ class FindJudiciaryAvailabilityRuleConverterTest {
 
     @Test
     void shouldConvertJsonObjectWithAllParameters() {
-        final String courtHouseId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
+                .add("courtCentreId", courtCentreId)
                 .add("judiciaryId", judiciaryId)
                 .add("pageSize", 10)
                 .add("pageNumber", 2)
@@ -40,7 +40,7 @@ class FindJudiciaryAvailabilityRuleConverterTest {
         assertNotNull(result);
         assertThat(result.getStartDate().toString(), is("2026-01-01"));
         assertThat(result.getEndDate().toString(), is("2026-01-31"));
-        assertThat(result.getCourtHouseId(), is(courtHouseId));
+        assertThat(result.getCourtHouseId(), is(courtCentreId));
         assertThat(result.getJudiciaryId(), is(judiciaryId));
         assertThat(result.getPageSize(), is(10));
         assertThat(result.getPageNumber(), is(2));
@@ -136,19 +136,19 @@ class FindJudiciaryAvailabilityRuleConverterTest {
     }
 
     @Test
-    void shouldConvertJsonObjectWithOnlyCourtHouseId() {
-        final String courtHouseId = randomUUID().toString();
+    void shouldConvertJsonObjectWithOnlyCourtCentreId() {
+        final String courtCentreId = randomUUID().toString();
         
         JsonObject jsonObject = Json.createObjectBuilder()
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
+                .add("courtCentreId", courtCentreId)
                 .build();
 
         FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getCourtHouseId(), is(courtHouseId));
+        assertThat(result.getCourtHouseId(), is(courtCentreId));
         assertThat(result.getJudiciaryId(), is(nullValue()));
     }
 

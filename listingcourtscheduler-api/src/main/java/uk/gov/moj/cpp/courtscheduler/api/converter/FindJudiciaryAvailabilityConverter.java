@@ -10,7 +10,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
 public class FindJudiciaryAvailabilityConverter implements Converter<JsonObject, FindJudiciaryAvailabilityRequest> {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
-    public static final String COURT_HOUSE_ID = "courtHouseId";
+    public static final String COURT_CENTRE_ID = "courtCentreId";
     public static final String JUDICIARY_ID = "judiciaryId";
 
     @Override
@@ -20,8 +20,8 @@ public class FindJudiciaryAvailabilityConverter implements Converter<JsonObject,
         request.setStartDate(LocalDate.parse(jsonObject.getString("startDate"), FindJudiciaryAvailabilityConverter.DATE_FORMATTER));
         request.setEndDate(LocalDate.parse(jsonObject.getString("endDate"), FindJudiciaryAvailabilityConverter.DATE_FORMATTER));
 
-        if (jsonObject.containsKey(COURT_HOUSE_ID) && !jsonObject.isNull(COURT_HOUSE_ID)) {
-            request.setCourtHouseId(jsonObject.getString(COURT_HOUSE_ID));
+        if (jsonObject.containsKey(COURT_CENTRE_ID) && !jsonObject.isNull(COURT_CENTRE_ID)) {
+            request.setCourtHouseId(jsonObject.getString(COURT_CENTRE_ID));
         }
 
         if (jsonObject.containsKey(JUDICIARY_ID) && !jsonObject.isNull(JUDICIARY_ID)) {

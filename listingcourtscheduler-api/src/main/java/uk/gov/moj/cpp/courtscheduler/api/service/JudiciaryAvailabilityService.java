@@ -414,7 +414,8 @@ public class JudiciaryAvailabilityService {
             return null;
         }
         try {
-            return DayOfWeek.valueOf(dayName.name());
+            // Convert title case enum name (e.g., "Monday") to uppercase for java.time.DayOfWeek (e.g., "MONDAY")
+            return DayOfWeek.valueOf(dayName.name().toUpperCase());
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid day name: {}", dayName);
             return null;

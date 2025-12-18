@@ -20,14 +20,14 @@
         "oneOf": [
           {
             "type": "string",
-            "enum": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+            "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
           },
           {
             "type": "object",
             "properties": {
               "day": {
                 "type": "string",
-                "enum": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+                "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
               },
               "index": {"type": "integer"}
             },

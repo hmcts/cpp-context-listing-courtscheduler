@@ -13,7 +13,7 @@ public class FindJudiciaryAvailabilityRuleConverter implements Converter<JsonObj
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int DEFAULT_PAGE_NUMBER = 1;
     private static final boolean DEFAULT_WITH_JUDICIARY = true;
-    public static final String COURT_HOUSE_ID = "courtHouseId";
+    public static final String COURT_CENTRE_ID = "courtCentreId";
     public static final String JUDICIARY_ID = "judiciaryId";
     public static final String PAGE_SIZE = "pageSize";
     public static final String PAGE_NUMBER = "pageNumber";
@@ -26,8 +26,8 @@ public class FindJudiciaryAvailabilityRuleConverter implements Converter<JsonObj
         request.setStartDate(LocalDate.parse(jsonObject.getString("startDate"), FindJudiciaryAvailabilityRuleConverter.DATE_FORMATTER));
         request.setEndDate(LocalDate.parse(jsonObject.getString("endDate"), FindJudiciaryAvailabilityRuleConverter.DATE_FORMATTER));
 
-        if (jsonObject.containsKey(COURT_HOUSE_ID) && !jsonObject.isNull(COURT_HOUSE_ID)) {
-            request.setCourtHouseId(jsonObject.getString(COURT_HOUSE_ID));
+        if (jsonObject.containsKey(COURT_CENTRE_ID) && !jsonObject.isNull(COURT_CENTRE_ID)) {
+            request.setCourtHouseId(jsonObject.getString(COURT_CENTRE_ID));
         }
 
         if (jsonObject.containsKey(JUDICIARY_ID) && !jsonObject.isNull(JUDICIARY_ID)) {

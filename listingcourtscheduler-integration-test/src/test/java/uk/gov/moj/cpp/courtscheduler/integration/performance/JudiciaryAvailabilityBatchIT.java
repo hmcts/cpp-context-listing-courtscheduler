@@ -180,7 +180,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put("courtCentreId", courtHouseId);
 
         final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)

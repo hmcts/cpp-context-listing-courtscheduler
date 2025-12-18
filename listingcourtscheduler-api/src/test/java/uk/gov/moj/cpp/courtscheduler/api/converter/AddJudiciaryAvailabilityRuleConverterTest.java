@@ -33,8 +33,8 @@ class AddJudiciaryAvailabilityRuleConverterTest {
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.MONDAY.name())
-                        .add(AvailabilityDayOfWeek.TUESDAY.name()))
+                        .add(AvailabilityDayOfWeek.Monday.name())
+                        .add(AvailabilityDayOfWeek.Tuesday.name()))
                 .build();
 
         AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
@@ -45,9 +45,9 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         assertThat(result.getStartDate().toString(), is("2026-01-01"));
         assertThat(result.getEndDate().toString(), is("2026-01-31"));
         assertThat(result.getRepeatDays().size(), is(2));
-        assertThat(result.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.MONDAY));
+        assertThat(result.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.Monday));
         assertThat(result.getRepeatDays().get(0).getIndex(), is(nullValue()));
-        assertThat(result.getRepeatDays().get(1).getDayOfWeek(), is(AvailabilityDayOfWeek.TUESDAY));
+        assertThat(result.getRepeatDays().get(1).getDayOfWeek(), is(AvailabilityDayOfWeek.Tuesday));
         assertThat(result.getRepeatDays().get(1).getIndex(), is(nullValue()));
     }
 
@@ -64,10 +64,10 @@ class AddJudiciaryAvailabilityRuleConverterTest {
                 .add("recurringType", RecurringType.MONTHLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("day", AvailabilityDayOfWeek.TUESDAY.name())
+                                .add("day", AvailabilityDayOfWeek.Tuesday.name())
                                 .add("index", 2))
                         .add(Json.createObjectBuilder()
-                                .add("day", AvailabilityDayOfWeek.WEDNESDAY.name())
+                                .add("day", AvailabilityDayOfWeek.Wednesday.name())
                                 .add("index", 3)))
                 .build();
 
@@ -77,9 +77,9 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         assertThat(result.getJudiciaryId(), is(judiciaryId));
         assertThat(result.getRecurringType(), is(RecurringType.MONTHLY));
         assertThat(result.getRepeatDays().size(), is(2));
-        assertThat(result.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.TUESDAY));
+        assertThat(result.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.Tuesday));
         assertThat(result.getRepeatDays().get(0).getIndex(), is(2));
-        assertThat(result.getRepeatDays().get(1).getDayOfWeek(), is(AvailabilityDayOfWeek.WEDNESDAY));
+        assertThat(result.getRepeatDays().get(1).getDayOfWeek(), is(AvailabilityDayOfWeek.Wednesday));
         assertThat(result.getRepeatDays().get(1).getIndex(), is(3));
     }
 
@@ -96,7 +96,7 @@ class AddJudiciaryAvailabilityRuleConverterTest {
                 .add("repeatDays", Json.createArrayBuilder()
                         .add("Monday")
                         .add(Json.createObjectBuilder()
-                                .add("day", AvailabilityDayOfWeek.WEDNESDAY.name())
+                                .add("day", AvailabilityDayOfWeek.Wednesday.name())
                                 .add("index", 1)))
                 .build();
 
@@ -104,9 +104,9 @@ class AddJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(2));
-        assertThat(result.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.MONDAY));
+        assertThat(result.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.Monday));
         assertThat(result.getRepeatDays().get(0).getIndex(), is(nullValue()));
-        assertThat(result.getRepeatDays().get(1).getDayOfWeek(), is(AvailabilityDayOfWeek.WEDNESDAY));
+        assertThat(result.getRepeatDays().get(1).getDayOfWeek(), is(AvailabilityDayOfWeek.Wednesday));
         assertThat(result.getRepeatDays().get(1).getIndex(), is(1));
     }
 
@@ -141,14 +141,14 @@ class AddJudiciaryAvailabilityRuleConverterTest {
                 .add("endDate", "2026-01-31")
                 .add("repeatDays", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("day", AvailabilityDayOfWeek.FRIDAY.name())))
+                                .add("day", AvailabilityDayOfWeek.Friday.name())))
                 .build();
 
         AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(1));
-        assertThat(result.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.FRIDAY));
+        assertThat(result.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.Friday));
         assertThat(result.getRepeatDays().get(0).getIndex(), is(nullValue()));
     }
 }

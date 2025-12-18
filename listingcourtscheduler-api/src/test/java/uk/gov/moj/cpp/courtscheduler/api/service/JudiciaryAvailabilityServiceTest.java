@@ -114,7 +114,7 @@ class JudiciaryAvailabilityServiceTest {
 
         // Create rule: Available on Monday and Tuesday
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday), null);
         
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
                 .thenReturn(Collections.singletonList(rule));
@@ -137,7 +137,7 @@ class JudiciaryAvailabilityServiceTest {
 
         // Create rule: Available on Monday, but Unavailable on Tuesday
         JudiciaryAvailabilityRule availableRule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday), null);
         final LocalDate unavailableDate = LocalDate.of(2026, 1, 6); //Tuesday
         createUnavailableRule(availableRule, unavailableDate, unavailableDate);
         
@@ -198,7 +198,7 @@ class JudiciaryAvailabilityServiceTest {
 
         // Rule: 2nd Tuesday of each month
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.TUESDAY), RecurringType.MONTHLY);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Tuesday), RecurringType.MONTHLY);
         rule.getRepeatDays().get(0).setIndex(2);
         
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
@@ -225,7 +225,7 @@ class JudiciaryAvailabilityServiceTest {
         // So Friday IS in the range. Let's use Wednesday only
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 1), 
-                Arrays.asList(AvailabilityDayOfWeek.WEDNESDAY), null);
+                Arrays.asList(AvailabilityDayOfWeek.Wednesday), null);
         
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
                 .thenReturn(Collections.singletonList(rule));
@@ -258,9 +258,9 @@ class JudiciaryAvailabilityServiceTest {
         String judiciaryId2 = randomUUID().toString();
         
         JudiciaryAvailabilityRule rule1 = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday), null);
         JudiciaryAvailabilityRule rule2 = createRule(judiciaryId2,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.TUESDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Tuesday), null);
         
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
                 .thenReturn(Arrays.asList(rule1, rule2));
@@ -283,7 +283,7 @@ class JudiciaryAvailabilityServiceTest {
 
         // Available on Monday and Tuesday
         JudiciaryAvailabilityRule availableRule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday), null);
         // Unavailable on Tuesday (should remove Tuesday)
         LocalDate unavailableDate = LocalDate.of(2026, 1, 6);//Tuesday
         createUnavailableRule(availableRule, unavailableDate, unavailableDate);
@@ -306,8 +306,8 @@ class JudiciaryAvailabilityServiceTest {
         request.setRecurringType(RecurringType.WEEKLY);
         
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.TUESDAY, 1));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Tuesday, 1));
         request.setRepeatDays(repeatDays);
         
         return request;
@@ -398,9 +398,9 @@ class JudiciaryAvailabilityServiceTest {
         request.setWithJudiciary(false);
 
         JudiciaryAvailabilityRule rule1 = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday), null);
         JudiciaryAvailabilityRule rule2 = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.TUESDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Tuesday), null);
 
         java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 new java.util.AbstractMap.SimpleEntry<>(2, Arrays.asList(rule1, rule2));
@@ -432,7 +432,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setWithJudiciary(false);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday), null);
 
         java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 new java.util.AbstractMap.SimpleEntry<>(1, Collections.singletonList(rule));
@@ -462,7 +462,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setWithJudiciary(true);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday), null);
 
         java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 new java.util.AbstractMap.SimpleEntry<>(1, Collections.singletonList(rule));
@@ -504,7 +504,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setWithJudiciary(true);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday), null);
 
         java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 new java.util.AbstractMap.SimpleEntry<>(1, Collections.singletonList(rule));
@@ -561,7 +561,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setWithJudiciary(false);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday), null);
 
         java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 new java.util.AbstractMap.SimpleEntry<>(1, Collections.singletonList(rule));
@@ -590,9 +590,9 @@ class JudiciaryAvailabilityServiceTest {
         request.setWithJudiciary(true);
 
         JudiciaryAvailabilityRule rule1 = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday), null);
         JudiciaryAvailabilityRule rule2 = createRule(judiciaryId2,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.TUESDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Tuesday), null);
 
         java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 new java.util.AbstractMap.SimpleEntry<>(2, Arrays.asList(rule1, rule2));
@@ -639,7 +639,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setPageNumber(1);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday), null);
 
         java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 new java.util.AbstractMap.SimpleEntry<>(1, Collections.singletonList(rule));
@@ -665,7 +665,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setPageNumber(1);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
-                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.MONDAY), null);
+                startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday), null);
 
         java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 new java.util.AbstractMap.SimpleEntry<>(1, Collections.singletonList(rule));
@@ -692,14 +692,14 @@ class JudiciaryAvailabilityServiceTest {
         request.setSessionType(SessionType.AM);
         
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.WEDNESDAY, null));
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.THURSDAY, 2));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Wednesday, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Thursday, 2));
         request.setRepeatDays(repeatDays);
 
         // Create existing rule
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY), RecurringType.WEEKLY);
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
         existingRule.setId(ruleId);
         existingRule.setSessionType(SessionType.AD);
 
@@ -720,8 +720,8 @@ class JudiciaryAvailabilityServiceTest {
         assertThat(updated.getRecurringType(), is(RecurringType.MONTHLY));
         assertThat(updated.getSessionType(), is(SessionType.AM));
         assertThat(updated.getRepeatDays().size(), is(2));
-        assertThat(updated.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.WEDNESDAY));
-        assertThat(updated.getRepeatDays().get(1).getDayOfWeek(), is(AvailabilityDayOfWeek.THURSDAY));
+        assertThat(updated.getRepeatDays().get(0).getDayOfWeek(), is(AvailabilityDayOfWeek.Wednesday));
+        assertThat(updated.getRepeatDays().get(1).getDayOfWeek(), is(AvailabilityDayOfWeek.Thursday));
         assertThat(updated.getRepeatDays().get(1).getIndex(), is(2));
     }
 
@@ -737,7 +737,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setRecurringType(RecurringType.WEEKLY);
         
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.FRIDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Friday, null));
         request.setRepeatDays(repeatDays);
 
         List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
@@ -756,7 +756,7 @@ class JudiciaryAvailabilityServiceTest {
 
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY), RecurringType.WEEKLY);
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
         existingRule.setId(ruleId);
 
         when(repository.findBy(ruleId)).thenReturn(existingRule);
@@ -784,7 +784,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setRepeatDays(Arrays.asList(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null)));
+        request.setRepeatDays(Arrays.asList(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.updateJudiciaryAvailabilityRule(request));
@@ -802,7 +802,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setRepeatDays(Arrays.asList(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null)));
+        request.setRepeatDays(Arrays.asList(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.updateJudiciaryAvailabilityRule(request));
@@ -821,7 +821,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setRepeatDays(Arrays.asList(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null)));
+        request.setRepeatDays(Arrays.asList(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)));
 
         when(repository.findBy(ruleId)).thenReturn(null);
 
@@ -846,12 +846,12 @@ class JudiciaryAvailabilityServiceTest {
         request.setSessionType(null);
         
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null));
         request.setRepeatDays(repeatDays);
 
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY), RecurringType.WEEKLY);
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
         existingRule.setId(ruleId);
         existingRule.setSessionType(SessionType.PM);
 
@@ -879,13 +879,13 @@ class JudiciaryAvailabilityServiceTest {
         request.setRecurringType(RecurringType.WEEKLY);
         
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null));
         request.setRepeatDays(repeatDays);
         request.setUnavailabilities(new ArrayList<>());
 
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY), RecurringType.WEEKLY);
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
         existingRule.setId(ruleId);
         // Add an existing unavailability
         createUnavailableRule(existingRule, LocalDate.of(2026, 1, 10), LocalDate.of(2026, 1, 15));
@@ -914,13 +914,13 @@ class JudiciaryAvailabilityServiceTest {
         request.setRecurringType(RecurringType.WEEKLY);
         
         List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
-        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.MONDAY, null));
+        repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null));
         request.setRepeatDays(repeatDays);
         request.setUnavailabilities(null);
 
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY), RecurringType.WEEKLY);
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
         existingRule.setId(ruleId);
         createUnavailableRule(existingRule, LocalDate.of(2026, 1, 10), LocalDate.of(2026, 1, 15));
 
@@ -950,7 +950,7 @@ class JudiciaryAvailabilityServiceTest {
 
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY), RecurringType.WEEKLY);
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
         existingRule.setId(ruleId);
 
         when(repository.findBy(ruleId)).thenReturn(existingRule);

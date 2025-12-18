@@ -780,7 +780,7 @@ class CourtSchedulerApiTest {
                 .add("sessionType", "AM")
                 .add("repeatDays", createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("day", "MONDAY")
+                                .add("day", "Monday")
                                 .build())
                         .build())
                 .build();
@@ -818,7 +818,7 @@ class CourtSchedulerApiTest {
                 .add("startDate", "2026-02-01")
                 .add("endDate", "2026-02-28")
                 .add("repeatDays", createArrayBuilder()
-                        .add("MONDAY")
+                        .add("Monday")
                         .build())
                 .build();
         final String requestName = "courtscheduler.judiciary.update.availability.rule";
@@ -853,7 +853,7 @@ class CourtSchedulerApiTest {
                 .add("startDate", "2026-02-01")
                 .add("endDate", "2026-02-28")
                 .add("repeatDays", createArrayBuilder()
-                        .add("MONDAY")
+                        .add("Monday")
                         .build())
                 .build();
         final String requestName = "courtscheduler.judiciary.update.availability.rule";
@@ -893,7 +893,7 @@ class CourtSchedulerApiTest {
                 .add("endDate", "2026-02-28")
                 .add("recurringType", "WEEKLY")
                 .add("repeatDays", createArrayBuilder()
-                        .add("MONDAY")
+                        .add("Monday")
                         .build())
                 .add("unavailabilities", createArrayBuilder()
                         .add(createObjectBuilder()

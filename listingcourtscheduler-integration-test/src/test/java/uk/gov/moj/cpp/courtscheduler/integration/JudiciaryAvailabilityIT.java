@@ -56,7 +56,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         // Add availability rule: Monthly, every 2nd Tuesday
         final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
         final JsonObjectBuilder dayObjectBuilder = Json.createObjectBuilder()
-                .add("day", AvailabilityDayOfWeek.TUESDAY.name())
+                .add("day", AvailabilityDayOfWeek.Tuesday.name())
                 .add("index", 2);
         repeatDaysBuilder.add(dayObjectBuilder);
         
@@ -81,7 +81,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put("courtCentreId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
         final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
@@ -115,11 +115,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("endDate", endDate.format(DATE_FORMATTER))
                 .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.MONDAY.name())
-                        .add(AvailabilityDayOfWeek.TUESDAY.name())
-                        .add(AvailabilityDayOfWeek.WEDNESDAY.name())
-                        .add(AvailabilityDayOfWeek.THURSDAY.name())
-                        .add(AvailabilityDayOfWeek.FRIDAY.name()))
+                        .add(AvailabilityDayOfWeek.Monday.name())
+                        .add(AvailabilityDayOfWeek.Tuesday.name())
+                        .add(AvailabilityDayOfWeek.Wednesday.name())
+                        .add(AvailabilityDayOfWeek.Thursday.name())
+                        .add(AvailabilityDayOfWeek.Friday.name()))
                 .build()
                 .toString();
 
@@ -166,8 +166,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("endDate", endDate.format(DATE_FORMATTER))
                 .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.TUESDAY.name())
-                        .add(AvailabilityDayOfWeek.THURSDAY.name()))
+                        .add(AvailabilityDayOfWeek.Tuesday.name())
+                        .add(AvailabilityDayOfWeek.Thursday.name()))
                 .build()
                 .toString();
 
@@ -217,11 +217,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("endDate", endDate.format(DATE_FORMATTER))
                 .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.MONDAY.name())
-                        .add(AvailabilityDayOfWeek.TUESDAY.name())
-                        .add(AvailabilityDayOfWeek.WEDNESDAY.name())
-                        .add(AvailabilityDayOfWeek.THURSDAY.name())
-                        .add(AvailabilityDayOfWeek.FRIDAY.name()))
+                        .add(AvailabilityDayOfWeek.Monday.name())
+                        .add(AvailabilityDayOfWeek.Tuesday.name())
+                        .add(AvailabilityDayOfWeek.Wednesday.name())
+                        .add(AvailabilityDayOfWeek.Thursday.name())
+                        .add(AvailabilityDayOfWeek.Friday.name()))
                 .add("unavailabilities", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
                                 .add("startDate", unavailabilityStartDate.format(DATE_FORMATTER))
@@ -326,11 +326,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("endDate", endDate.format(DATE_FORMATTER))
                 .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.MONDAY.name())
-                        .add(AvailabilityDayOfWeek.TUESDAY.name())
-                        .add(AvailabilityDayOfWeek.WEDNESDAY.name())
-                        .add(AvailabilityDayOfWeek.THURSDAY.name())
-                        .add(AvailabilityDayOfWeek.FRIDAY.name()))
+                        .add(AvailabilityDayOfWeek.Monday.name())
+                        .add(AvailabilityDayOfWeek.Tuesday.name())
+                        .add(AvailabilityDayOfWeek.Wednesday.name())
+                        .add(AvailabilityDayOfWeek.Thursday.name())
+                        .add(AvailabilityDayOfWeek.Friday.name()))
                 .add("unavailabilities", unavailabilitiesBuilder)
                 .build()
                 .toString();
@@ -459,11 +459,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("endDate", endDate.format(DATE_FORMATTER))
                 .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.MONDAY.name())
-                        .add(AvailabilityDayOfWeek.TUESDAY.name())
-                        .add(AvailabilityDayOfWeek.WEDNESDAY.name())
-                        .add(AvailabilityDayOfWeek.THURSDAY.name())
-                        .add(AvailabilityDayOfWeek.FRIDAY.name()))
+                        .add(AvailabilityDayOfWeek.Monday.name())
+                        .add(AvailabilityDayOfWeek.Tuesday.name())
+                        .add(AvailabilityDayOfWeek.Wednesday.name())
+                        .add(AvailabilityDayOfWeek.Thursday.name())
+                        .add(AvailabilityDayOfWeek.Friday.name()))
                 .add("unavailabilities", unavailabilitiesBuilder)
                 .build()
                 .toString();
@@ -566,7 +566,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY, AvailabilityDayOfWeek.WEDNESDAY, AvailabilityDayOfWeek.THURSDAY, AvailabilityDayOfWeek.FRIDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday, AvailabilityDayOfWeek.Wednesday, AvailabilityDayOfWeek.Thursday, AvailabilityDayOfWeek.Friday)
         );
 
         // Verify the rule exists by finding availability
@@ -643,7 +643,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
         );
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -654,7 +654,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.WEDNESDAY, AvailabilityDayOfWeek.THURSDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Wednesday, AvailabilityDayOfWeek.Thursday)
         );
 
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
@@ -703,7 +703,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
@@ -744,7 +744,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
@@ -796,7 +796,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
@@ -839,7 +839,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
@@ -848,7 +848,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put("courtCentreId", courtHouseId);
 
         final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -887,7 +887,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
@@ -938,7 +938,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -949,7 +949,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.TUESDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Tuesday)
         );
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -960,7 +960,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.WEDNESDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Wednesday)
         );
 
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
@@ -1007,7 +1007,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         // Stub the specialisms response
@@ -1052,7 +1052,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 startDate,
                 endDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         // Stub the specialisms response
@@ -1122,7 +1122,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 originalStartDate,
                 originalEndDate,
                 RecurringType.WEEKLY,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
+                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
         );
 
         // Verify the original rule exists by finding availability
@@ -1164,11 +1164,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("sessionType", SessionType.AM.name())
                 .add("repeatDays", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("day", AvailabilityDayOfWeek.WEDNESDAY.name())
+                                .add("day", AvailabilityDayOfWeek.Wednesday.name())
                                 .add("index", 2)
                                 .build())
                         .add(Json.createObjectBuilder()
-                                .add("day", AvailabilityDayOfWeek.THURSDAY.name())
+                                .add("day", AvailabilityDayOfWeek.Thursday.name())
                                 .add("index", 3)
                                 .build())
                         .build())

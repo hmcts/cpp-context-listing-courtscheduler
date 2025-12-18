@@ -6,11 +6,11 @@
   "recurringType": "MONTHLY",
   "repeatDays": [
     {
-      "day": "TUESDAY",
+      "day": "Tuesday",
       "index": 2
     },
     {
-      "day": "WEDNESDAY",
+      "day": "Wednesday",
       "index": 3
     }
   ],
