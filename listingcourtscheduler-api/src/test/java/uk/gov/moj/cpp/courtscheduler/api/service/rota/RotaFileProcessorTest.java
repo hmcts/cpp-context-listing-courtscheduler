@@ -53,6 +53,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -502,8 +503,8 @@ class RotaFileProcessorTest {
                 .thenReturn(judiciaryMap);
 
         // Mock RotaCourtScheduleHelper
-        Map<String, List<UUID>> courtScheduleMap = new HashMap<>();
-        courtScheduleMap.put("listing-1", List.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
+        Map<String, Set<UUID>> courtScheduleMap = new HashMap<>();
+        courtScheduleMap.put("listing-1", Set.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
         when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
                 .thenReturn(courtScheduleMap);
 
@@ -600,7 +601,7 @@ class RotaFileProcessorTest {
 
         when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
         when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
-                .thenReturn(Map.of("listing-1", List.of(UUID.fromString(courtSchedule.getCourtScheduleId()))));
+                .thenReturn(Map.of("listing-1", Set.of(UUID.fromString(courtSchedule.getCourtScheduleId()))));
 
         // when
         rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
@@ -702,7 +703,7 @@ class RotaFileProcessorTest {
         when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), any(), anyString()))
                 .thenReturn(Map.of("judge-1", UUID.fromString(judiciary.getId())));
         when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
-                .thenReturn(Map.of("listing-1", List.of(UUID.randomUUID())));
+                .thenReturn(Map.of("listing-1", Set.of(UUID.randomUUID())));
         when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
                 .thenReturn(Map.of(judiciary.getId(), List.of(UUID.randomUUID())));
 
@@ -908,7 +909,7 @@ class RotaFileProcessorTest {
 
         when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
         when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
-                .thenReturn(Map.of("listing-1", List.of(UUID.fromString(matchingSchedule.getCourtScheduleId()))));
+                .thenReturn(Map.of("listing-1", Set.of(UUID.fromString(matchingSchedule.getCourtScheduleId()))));
 
         // when
         rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);

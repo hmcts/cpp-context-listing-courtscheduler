@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.DELIMITER;
@@ -26,6 +27,7 @@ import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -56,15 +58,15 @@ public class RotaCourtScheduleHelper {
     private RotaProcessLogService rotaProcessLogService;
 
     /**
-     * Creates a map of court listing profile IDs to lists of CourtSchedule UUIDs.
+     * Creates a map of court listing profile IDs to sets of CourtSchedule UUIDs.
      * Queries the repository using panel, sessionDate, session, and courtRoomId from each court listing.
      *
      * @param records     the parsed rota file records
      * @param requester   the requester for making reference data queries
      * @param executionId the execution ID for logging purposes
-     * @return a map of court listing profile IDs to lists of CourtSchedule UUIDs
+     * @return a map of court listing profile IDs to sets of CourtSchedule UUIDs
      */
-    public Map<String, List<UUID>> createCourtScheduleMap(final Map<RotaPayload, Map<String, Map<String, String>>> records,
+    public Map<String, Set<UUID>> createCourtScheduleMap(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                           final Requester requester,
                                                           final String executionId) {
         if (isEmptyRecords(records)) {
@@ -78,7 +80,7 @@ public class RotaCourtScheduleHelper {
             return Collections.emptyMap();
         }
 
-        final Map<String, List<UUID>> courtScheduleMap = new ConcurrentHashMap<>();
+        final Map<String, Set<UUID>> courtScheduleMap = new ConcurrentHashMap<>();
         final Map<String, String> missingReferenceDataMappingMap = new ConcurrentHashMap<>();
 
         courtListings.forEach((listingProfileId, listingProfile) -> {
@@ -102,7 +104,7 @@ public class RotaCourtScheduleHelper {
                                      final Map<String, String> listingProfile,
                                      final Requester requester,
                                      final String executionId,
-                                     final Map<String, List<UUID>> courtScheduleMap,
+                                     final Map<String, Set<UUID>> courtScheduleMap,
                                      final Map<String, String> missingReferenceDataMappingMap) {
         final String panel = listingProfile.get(PANEL);
         final String sessionDateStr = listingProfile.get(SESSION_DATE);
@@ -127,9 +129,9 @@ public class RotaCourtScheduleHelper {
 
         final List<CourtSchedule> courtSchedules = findCourtSchedule(courtRoom, sessionDate, session, panel);
         if (isNotEmpty(courtSchedules)) {
-            final List<UUID> courtScheduleIds = courtSchedules.stream()
+            final Set<UUID> courtScheduleIds = courtSchedules.stream()
                     .map(cs -> UUID.fromString(cs.getCourtScheduleId()))
-                    .toList();
+                    .collect(toSet());
             courtScheduleMap.put(listingProfileId, courtScheduleIds);
             logger.debug("Mapped court listing profile {} to {} court schedule(s)",
                     listingProfileId, courtScheduleIds.size());
@@ -199,11 +201,7 @@ public class RotaCourtScheduleHelper {
         }
         
         // If requested session is PM, also match AD
-        if (PM_SESSION.equals(requestedSession) && ALL_DAY.equals(courtScheduleSession)) {
-            return true;
-        }
-        
-        return false;
+        return PM_SESSION.equals(requestedSession) && ALL_DAY.equals(courtScheduleSession);
     }
 
     private void logMissingReferenceData(final Map<String, String> missingReferenceDataMappingMap, final String executionId) {

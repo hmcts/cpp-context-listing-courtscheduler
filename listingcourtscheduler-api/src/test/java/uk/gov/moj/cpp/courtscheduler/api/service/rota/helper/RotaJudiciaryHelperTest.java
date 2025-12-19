@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -275,7 +276,7 @@ class RotaJudiciaryHelperTest {
         final UUID judiciaryUuid = UUID.fromString(judiciaryId);
 
         final Map<String, UUID> judiciaryMap = Map.of(justiceId, judiciaryUuid);
-        final Map<String, List<UUID>> courtScheduleMap = Map.of(courtListingProfileId, List.of(sessionId1, sessionId2));
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(sessionId1, sessionId2));
 
         final Map<String, Map<String, String>> schedules = new HashMap<>();
         final Map<String, String> schedule = new HashMap<>();
@@ -315,7 +316,7 @@ class RotaJudiciaryHelperTest {
     void shouldReturnEmptyMap_WhenNoSchedulesInRecords() {
         // given
         final Map<String, UUID> judiciaryMap = Map.of("justice-1", UUID.randomUUID());
-        final Map<String, List<UUID>> courtScheduleMap = Map.of("listing-1", List.of(UUID.randomUUID()));
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of("listing-1", Set.of(UUID.randomUUID()));
 
         // when
         final Map<String, List<UUID>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
@@ -329,7 +330,7 @@ class RotaJudiciaryHelperTest {
     void shouldReturnEmptyMap_WhenCourtScheduleMapIsEmpty() {
         // given
         final Map<String, UUID> judiciaryMap = Map.of("justice-1", UUID.randomUUID());
-        final Map<String, List<UUID>> courtScheduleMap = Collections.emptyMap();
+        final Map<String, Set<UUID>> courtScheduleMap = Collections.emptyMap();
 
         final Map<String, Map<String, String>> schedules = new HashMap<>();
         schedules.put("schedule-1", Map.of(ROTA_JUDICIARY_ID, "justice-1", COURT_LISTING_PROFILE_ID, "listing-1"));
@@ -352,7 +353,7 @@ class RotaJudiciaryHelperTest {
         final UUID differentJudiciaryUuid = UUID.randomUUID();
 
         final Map<String, UUID> judiciaryMap = Map.of("different-justice", differentJudiciaryUuid);
-        final Map<String, List<UUID>> courtScheduleMap = Map.of(courtListingProfileId, List.of(sessionId));
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(sessionId));
 
         final Map<String, Map<String, String>> schedules = new HashMap<>();
         final Map<String, String> schedule = new HashMap<>();

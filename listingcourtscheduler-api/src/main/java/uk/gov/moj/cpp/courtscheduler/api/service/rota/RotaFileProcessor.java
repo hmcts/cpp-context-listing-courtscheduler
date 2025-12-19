@@ -23,6 +23,7 @@ import java.io.ByteArrayInputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.ejb.Stateless;
@@ -168,7 +169,7 @@ public class RotaFileProcessor {
         final Map<String, UUID> justiceIdJudiciaryIdMap = rotaJudiciaryHelper.createJudiciaryMap(records, requester, executionId);
         logger.info("Created judiciary map with {} entries for blob: {}", justiceIdJudiciaryIdMap.size(), blobName);
 
-        final Map<String, List<UUID>> courtListingProfileIdListOfCourscheduleIdMap =
+        final Map<String, Set<UUID>> courtListingProfileIdListOfCourscheduleIdMap =
                 rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
         logger.info("Created court schedule map with {} entries for blob: {}",
                 courtListingProfileIdListOfCourscheduleIdMap.size(), blobName);
