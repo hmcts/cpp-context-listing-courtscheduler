@@ -267,7 +267,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
-        // Business type exists and matches jurisdiction; courtroom exists and belongs to correct court centre
+        // Business type stub needed for sessionToBeAdded validation
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);

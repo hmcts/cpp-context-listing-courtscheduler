@@ -128,6 +128,18 @@ public class SessionsApiValidator {
             return result;
         }
 
+        // Validate isDraft can only be true for CROWN jurisdiction
+        final JsonObject isDraftValidationResult = validateIsDraftForJurisdiction(createSessionRequestParam);
+        if (isDraftValidationResult != EMPTY_JSON_OBJECT) {
+            return isDraftValidationResult;
+        }
+
+        // Validate panel - YOUTH is not allowed for CROWN jurisdiction
+        final JsonObject panelValidationResult = validatePanelForJurisdiction(createSessionRequestParam);
+        if (panelValidationResult != EMPTY_JSON_OBJECT) {
+            return panelValidationResult;
+        }
+
         //if the request is coming from validate endpoint, this object should be populated
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
             LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
@@ -160,6 +172,11 @@ public class SessionsApiValidator {
     }
 
     private JsonObject validateSessionBusinessTypeAndCourtRoom(Session session, Requester requester) {
+        // Check allDaySplit for AD sessions first - this validation should happen early
+        if (ALL_DAY.equals(session.getSessionType()) && isNull(session.isAllDaySplit())) {
+            return buildErrorResponse(ErrorMessages.ALL_DAY_SPLIT_MANDATORY_FOR_AD_SESSION);
+        }
+
         Optional<BusinessType> businessTypeOpt = referenceDataCache.getRotaBusinessTypeByCode(session.getBusinessType(), requester);
         if (businessTypeOpt.isEmpty()) {
             return buildErrorResponse(BUSINESS_TYPE_NOT_FOUND + session.getBusinessType());
@@ -167,13 +184,17 @@ public class SessionsApiValidator {
         BusinessType businessType = businessTypeOpt.get();
 
         String sessionJurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
-        String businessTypeJurisdiction = nonNull(businessType.getJurisdiction()) ? businessType.getJurisdiction() : MAGISTRATES.getJurisdiction();
+        String businessTypeJurisdiction = businessType.getJurisdiction(); // Can be null - business types without jurisdiction are allowed for both
 
-        if (MAGISTRATES.equalsIgnoreCase(sessionJurisdiction) && !MAGISTRATES.equalsIgnoreCase(businessTypeJurisdiction)) {
-            return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
-        }
-        if (CROWN.equalsIgnoreCase(sessionJurisdiction) && !CROWN.equalsIgnoreCase(businessTypeJurisdiction)) {
-            return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
+        // If business type has a jurisdiction set, it must match the session jurisdiction
+        // If business type jurisdiction is null, it's allowed for both CROWN and MAGISTRATES
+        if (nonNull(businessTypeJurisdiction)) {
+            if (MAGISTRATES.equalsIgnoreCase(sessionJurisdiction) && !MAGISTRATES.equalsIgnoreCase(businessTypeJurisdiction)) {
+                return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
+            }
+            if (CROWN.equalsIgnoreCase(sessionJurisdiction) && !CROWN.equalsIgnoreCase(businessTypeJurisdiction)) {
+                return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
+            }
         }
 
         if (!isDurationBasedWithValidDuration(session, businessType)) {
@@ -181,15 +202,47 @@ public class SessionsApiValidator {
         }
 
         Optional<CourtRoom> courtRoomOpt;
+        Optional<CourtRoom> courtRoomFromOtherSourceOpt;
         if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
             courtRoomOpt = referenceDataCache.getCpCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
+            // Check if courtroom exists in Rota (MAGISTRATES) - if so, court centre jurisdiction doesn't match
+            courtRoomFromOtherSourceOpt = referenceDataCache.getRotaCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
         } else {
             courtRoomOpt = referenceDataCache.getRotaCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
+            // Check if courtroom exists in CP (CROWN) - if so, court centre jurisdiction doesn't match
+            courtRoomFromOtherSourceOpt = referenceDataCache.getCpCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
         }
 
         if (courtRoomOpt.isEmpty()) {
+            // If not found in primary source, check if it exists in the other source (wrong jurisdiction)
+            if (courtRoomFromOtherSourceOpt.isPresent()) {
+                if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
+                    return buildErrorResponse("The courtroom belongs to a court centre with MAGISTRATES jurisdiction, which does not match the session jurisdiction CROWN");
+                } else {
+                    return buildErrorResponse("The courtroom belongs to a court centre with CROWN jurisdiction, which does not match the session jurisdiction MAGISTRATES");
+                }
+            }
             return buildErrorResponse(COURTROOM_NOT_FOUND + session.getCourtRoomId());
         }
+        // Validate that the courtroom belongs to the specified court centre (courtCentreId)
+        final CourtRoom courtRoom = courtRoomOpt.get();
+        final String sessionCourtCentreId = session.getCourtCentreId();
+        final String courtRoomCourtCentreId = courtRoom.getOucodeUUID();
+
+        if (isNull(sessionCourtCentreId) || isNull(courtRoomCourtCentreId)
+                || !sessionCourtCentreId.equals(courtRoomCourtCentreId)) {
+            return buildErrorResponse("The courtroom must belong to the same court centre as specified in courtCentreId");
+        }
+
+        //check for the jurisdiction match between the courtroom/courthouse and the session
+        String oucode = courtRoom.getOucode();
+        if (nonNull(oucode)) {
+            if ((oucode.startsWith("B") && CROWN.equalsIgnoreCase(sessionJurisdiction))
+                || (oucode.startsWith("C") && MAGISTRATES.equalsIgnoreCase(sessionJurisdiction))) {
+                return buildErrorResponse("The courtroom jurisdiction does nto match with session  jurisdiction");
+            }
+        }
+
         return EMPTY_JSON_OBJECT;
     }
 
@@ -369,6 +422,11 @@ public class SessionsApiValidator {
                     return buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS);
                 }
             }
+        }
+        // For validate-create, also enforce business type / courtroom / court-centre rules
+        JsonObject businessTypeAndCourtRoomValidationResult = validateSessionBusinessTypeAndCourtRoom(sessionToBeAdded, requester);
+        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
+            return businessTypeAndCourtRoomValidationResult;
         }
         return validateSessionToBeAdded(sessionToBeAdded, requester);
     }
