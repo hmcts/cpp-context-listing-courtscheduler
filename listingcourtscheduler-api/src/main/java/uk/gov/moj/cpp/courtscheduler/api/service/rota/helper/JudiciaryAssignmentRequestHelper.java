@@ -45,6 +45,7 @@ public class JudiciaryAssignmentRequestHelper {
 
         return AssignJudiciariesRequest.builder()
                 .withJudiciaries(assignments)
+                .withSkipValidations(true)
                 .build();
     }
 

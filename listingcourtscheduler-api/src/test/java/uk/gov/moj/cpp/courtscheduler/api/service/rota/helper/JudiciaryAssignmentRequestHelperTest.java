@@ -192,6 +192,20 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(result.getJudiciaries().get(0).getSessionIds().get(1), is("6ba7b810-9dad-11d1-80b4-00c04fd430c8"));
     }
 
+    @Test
+    void shouldSetSkipValidationsToTrue_WhenBuildingRequest() {
+        // given
+        final Map<String, List<UUID>> judiciaryAssignmentMap = new HashMap<>();
+        judiciaryAssignmentMap.put(judiciaryId1, List.of(sessionId1));
+
+        // when
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(judiciaryAssignmentMap);
+
+        // then
+        assertThat(result, is(notNullValue()));
+        assertThat(result.isSkipValidations(), is(true));
+    }
+
     // ============================================================================
     // Tests for convertToUnassignmentMap
     // ============================================================================
