@@ -23,6 +23,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSIN
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_LATER_THAN_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency.EVERY_MONTH;
@@ -48,7 +49,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionValidationParams;
-//import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -607,6 +607,18 @@ public class SessionsApiValidator {
             return courtRoomValidation;
         }
 
+        // Validate courtroom belongs to the same court house as the original session
+        JsonObject courtHouseValidation = validateCourtRoomBelongsToSameCourtHouse(updateCourtSchedule, requester);
+        if (!courtHouseValidation.isEmpty()) {
+            return courtHouseValidation;
+        }
+
+        // Validate that session is not in the past
+        JsonObject pastSessionValidation = validateSessionNotInPast(updateCourtSchedule);
+        if (!pastSessionValidation.isEmpty()) {
+            return pastSessionValidation;
+        }
+
         // Validate isDraft can only be supplied when jurisdiction is CROWN
         Boolean isDraft = updateCourtSchedule.getIsDraft();
         if (nonNull(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
@@ -639,6 +651,72 @@ public class SessionsApiValidator {
         if (courtRoomOpt.isEmpty()) {
             return buildErrorResponse(COURTROOM_NOT_FOUND + courtRoomId);
         }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateCourtRoomBelongsToSameCourtHouse(final UpdateCourtSchedule updateCourtSchedule, final Requester requester) {
+        // Retrieve the persisted court schedule to get the original court house ID
+        CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+        if (isNull(persistedCourtSchedule)) {
+            // If persisted schedule doesn't exist, skip this validation (will be caught by other validations)
+            return EMPTY_JSON_OBJECT;
+        }
+
+        String originalCourtHouseId = persistedCourtSchedule.getCourtHouseId();
+        if (isNull(originalCourtHouseId) || originalCourtHouseId.trim().isEmpty()) {
+            // If original court house ID is not available, skip this validation
+            return EMPTY_JSON_OBJECT;
+        }
+
+        // Check if courtroom ID is being changed
+        String newCourtRoomId = updateCourtSchedule.getCourtRoomId();
+        String originalCourtRoomId = persistedCourtSchedule.getCourtRoomId();
+        if (isNull(newCourtRoomId) || newCourtRoomId.equalsIgnoreCase(originalCourtRoomId)) {
+            // If courtroom is not being changed, no need to validate
+            return EMPTY_JSON_OBJECT;
+        }
+
+        // Retrieve the new courtroom from reference data
+        Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(updateCourtSchedule.getJurisdiction())
+                ? referenceDataCache.getCpCourtRoomByCourtRoomId(newCourtRoomId, requester)
+                : referenceDataCache.getRotaCourtRoomByCourtRoomId(newCourtRoomId, requester);
+
+        if (courtRoomOpt.isEmpty()) {
+            // Courtroom not found - this will be caught by validateCourtRoomForJurisdiction
+            return EMPTY_JSON_OBJECT;
+        }
+
+        CourtRoom newCourtRoom = courtRoomOpt.get();
+        String newCourtHouseId = newCourtRoom.getOucodeUUID();
+
+        // Validate that the new courtroom belongs to the same court house
+        if (isNull(newCourtHouseId) || !newCourtHouseId.equals(originalCourtHouseId)) {
+            return buildErrorResponse("Courtroom must belong to the same court house where the session was created. Original court house ID: " + originalCourtHouseId);
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateSessionNotInPast(final UpdateCourtSchedule updateCourtSchedule) {
+        // Retrieve the persisted court schedule to get the session date
+        CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+        if (isNull(persistedCourtSchedule)) {
+            // If persisted schedule doesn't exist, skip this validation (will be caught by other validations)
+            return EMPTY_JSON_OBJECT;
+        }
+
+        LocalDate sessionDate = persistedCourtSchedule.getSessionDate();
+        if (isNull(sessionDate)) {
+            // If session date is not available, skip this validation
+            return EMPTY_JSON_OBJECT;
+        }
+
+        // Check if session date is before today
+        LocalDate today = LocalDate.now();
+        if (sessionDate.isBefore(today)) {
+            return buildErrorResponse(SESSION_IN_PAST_CANNOT_BE_EDITED);
+        }
+
         return EMPTY_JSON_OBJECT;
     }
 

@@ -1118,4 +1118,374 @@ class SessionsApiValidatorTest {
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.MIN_HEARING_TIME_AFTER_SESSION_START_TIME, result.getString("errorMessage"));
     }
+
+    @Test
+    void shouldRejectUpdateWhenCourtroomBelongsToDifferentCourtHouse() {
+        // Test that updating to a courtroom from a different court house should be rejected
+        final String courtScheduleId = randomUUID().toString();
+        final String originalCourtRoomId = randomUUID().toString();
+        final String newCourtRoomId = randomUUID().toString();
+        final String originalCourtHouseId = randomUUID().toString();
+        final String differentCourtHouseId = randomUUID().toString();
+
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(newCourtRoomId) // Different courtroom
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule with original court house ID
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setCourtRoomId(originalCourtRoomId);
+        persistedSchedule.setCourtHouseId(originalCourtHouseId);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        // Mock new courtroom with different court house ID
+        CourtRoom newCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(newCourtRoomId)
+                .withOucodeUUID(differentCourtHouseId) // Different court house
+                .build();
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(newCourtRoomId), eq(requester)))
+                .thenReturn(Optional.of(newCourtRoom));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertTrue(result.getString("errorMessage").contains("Courtroom must belong to the same court house"));
+        assertTrue(result.getString("errorMessage").contains(originalCourtHouseId));
+    }
+
+    @Test
+    void shouldAcceptUpdateWhenCourtroomBelongsToSameCourtHouse() {
+        // Test that updating to a courtroom from the same court house should be accepted
+        final String courtScheduleId = randomUUID().toString();
+        final String originalCourtRoomId = randomUUID().toString();
+        final String newCourtRoomId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(newCourtRoomId) // Different courtroom but same court house
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule with court house ID
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setCourtRoomId(originalCourtRoomId);
+        persistedSchedule.setCourtHouseId(courtHouseId);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        // Mock new courtroom with same court house ID
+        CourtRoom newCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(newCourtRoomId)
+                .withOucodeUUID(courtHouseId) // Same court house
+                .build();
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(newCourtRoomId), eq(requester)))
+                .thenReturn(Optional.of(newCourtRoom));
+
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should pass court house validation (may fail other validations, but not court house check)
+        // We check that the error is NOT about court house
+        if (result.containsKey("errorMessage")) {
+            assertTrue(!result.getString("errorMessage").contains("Courtroom must belong to the same court house"));
+        }
+    }
+
+    @Test
+    void shouldAcceptUpdateWhenCourtroomIsNotChanged() {
+        // Test that when courtroom ID is not changed, court house validation is skipped
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId) // Same courtroom
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule with same courtroom ID
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setCourtRoomId(courtRoomId); // Same courtroom ID
+        persistedSchedule.setCourtHouseId(courtHouseId);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should pass validation since courtroom is not changed
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldSkipCourtHouseValidationWhenPersistedScheduleNotFound() {
+        // Test that when persisted schedule doesn't exist, court house validation is skipped
+        final String courtScheduleId = randomUUID().toString();
+        final String newCourtRoomId = randomUUID().toString();
+
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(newCourtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule as null (not found)
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(null);
+
+        stubMagCourtRoomAvailable(newCourtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should skip court house validation (may fail other validations, but not court house check)
+        // We check that the error is NOT about court house
+        if (result.containsKey("errorMessage")) {
+            assertTrue(!result.getString("errorMessage").contains("Courtroom must belong to the same court house"));
+        }
+    }
+
+    @Test
+    void shouldRejectUpdateWhenCourtroomBelongsToDifferentCourtHouseForCrown() {
+        // Test that updating to a courtroom from a different court house should be rejected for CROWN jurisdiction
+        final String courtScheduleId = randomUUID().toString();
+        final String originalCourtRoomId = randomUUID().toString();
+        final String newCourtRoomId = randomUUID().toString();
+        final String originalCourtHouseId = randomUUID().toString();
+        final String differentCourtHouseId = randomUUID().toString();
+
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(newCourtRoomId) // Different courtroom
+                .withBusinessType("GEN")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule with original court house ID
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setCourtRoomId(originalCourtRoomId);
+        persistedSchedule.setCourtHouseId(originalCourtHouseId);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        // Mock new courtroom with different court house ID for CROWN
+        CourtRoom newCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(newCourtRoomId)
+                .withOucodeUUID(differentCourtHouseId) // Different court house
+                .build();
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(newCourtRoomId), eq(requester)))
+                .thenReturn(Optional.of(newCourtRoom));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertTrue(result.getString("errorMessage").contains("Courtroom must belong to the same court house"));
+        assertTrue(result.getString("errorMessage").contains(originalCourtHouseId));
+    }
+
+    @Test
+    void shouldRejectUpdateWhenSessionIsInPast() {
+        // Test that updating a session with a date in the past should be rejected
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule with a date in the past
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setSessionDate(LocalDate.now().minusDays(1)); // Yesterday
+        persistedSchedule.setCourtRoomId(courtRoomId);
+        persistedSchedule.setCourtHouseId(randomUUID().toString());
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        stubMagCourtRoomAvailable(courtRoomId);
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldAcceptUpdateWhenSessionIsToday() {
+        // Test that updating a session with today's date should be accepted
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule with today's date
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setSessionDate(LocalDate.now()); // Today
+        persistedSchedule.setCourtRoomId(courtRoomId);
+        persistedSchedule.setCourtHouseId(randomUUID().toString());
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should pass past session validation (may fail other validations, but not past session check)
+        if (result.containsKey("errorMessage")) {
+            assertTrue(!result.getString("errorMessage").contains(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED));
+        }
+    }
+
+    @Test
+    void shouldAcceptUpdateWhenSessionIsInFuture() {
+        // Test that updating a session with a future date should be accepted
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule with a future date
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setSessionDate(LocalDate.now().plusDays(1)); // Tomorrow
+        persistedSchedule.setCourtRoomId(courtRoomId);
+        persistedSchedule.setCourtHouseId(randomUUID().toString());
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should pass past session validation (may fail other validations, but not past session check)
+        if (result.containsKey("errorMessage")) {
+            assertTrue(!result.getString("errorMessage").contains(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED));
+        }
+    }
+
+    @Test
+    void shouldSkipPastSessionValidationWhenPersistedScheduleNotFound() {
+        // Test that when persisted schedule doesn't exist, past session validation is skipped
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("DVLA")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("MAGISTRATES")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule as null (not found)
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(null);
+
+        stubMagCourtRoomAvailable(courtRoomId);
+        stubBusinessType("DVLA", "MAGISTRATES", true, false);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList());
+        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(java.util.Map.of(courtScheduleId, 0));
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Should skip past session validation (may fail other validations, but not past session check)
+        if (result.containsKey("errorMessage")) {
+            assertTrue(!result.getString("errorMessage").contains(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED));
+        }
+    }
+
+    @Test
+    void shouldRejectUpdateWhenSessionIsInPastForCrown() {
+        // Test that updating a CROWN session with a date in the past should be rejected
+        final String courtScheduleId = randomUUID().toString();
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("GEN")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withMaxSlots(20)
+                .build();
+
+        // Mock persisted court schedule with a date in the past
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setSessionDate(LocalDate.now().minusDays(1)); // Yesterday
+        persistedSchedule.setCourtRoomId(courtRoomId);
+        persistedSchedule.setCourtHouseId(randomUUID().toString());
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        stubCrownCourtRoomAvailable(courtRoomId);
+
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        assertTrue(result.containsKey("errorMessage"));
+        assertEquals(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED, result.getString("errorMessage"));
+    }
 }
