@@ -23,6 +23,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSIN
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_LATER_THAN_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency.EVERY_MONTH;
@@ -127,18 +128,6 @@ public class SessionsApiValidator {
             return result;
         }
 
-        // Validate isDraft can only be true for CROWN jurisdiction
-        final JsonObject isDraftValidationResult = validateIsDraftForJurisdiction(createSessionRequestParam);
-        if (isDraftValidationResult != EMPTY_JSON_OBJECT) {
-            return isDraftValidationResult;
-        }
-
-        // Validate panel - YOUTH is not allowed for CROWN jurisdiction
-        final JsonObject panelValidationResult = validatePanelForJurisdiction(createSessionRequestParam);
-        if (panelValidationResult != EMPTY_JSON_OBJECT) {
-            return panelValidationResult;
-        }
-
         //if the request is coming from validate endpoint, this object should be populated
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
             LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
@@ -147,7 +136,7 @@ public class SessionsApiValidator {
                 return addSessionValidationResult;
             }
             LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
-            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor(), repeatFrequency);
+            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor());
         }
 
         final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
@@ -178,17 +167,13 @@ public class SessionsApiValidator {
         BusinessType businessType = businessTypeOpt.get();
 
         String sessionJurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
-        String businessTypeJurisdiction = businessType.getJurisdiction(); // Can be null - business types without jurisdiction are allowed for both
+        String businessTypeJurisdiction = nonNull(businessType.getJurisdiction()) ? businessType.getJurisdiction() : MAGISTRATES.getJurisdiction();
 
-        // If business type has a jurisdiction set, it must match the session jurisdiction
-        // If business type jurisdiction is null, it's allowed for both CROWN and MAGISTRATES
-        if (nonNull(businessTypeJurisdiction)) {
-            if (MAGISTRATES.equalsIgnoreCase(sessionJurisdiction) && !MAGISTRATES.equalsIgnoreCase(businessTypeJurisdiction)) {
-                return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
-            }
-            if (CROWN.equalsIgnoreCase(sessionJurisdiction) && !CROWN.equalsIgnoreCase(businessTypeJurisdiction)) {
-                return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
-            }
+        if (MAGISTRATES.equalsIgnoreCase(sessionJurisdiction) && !MAGISTRATES.equalsIgnoreCase(businessTypeJurisdiction)) {
+            return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
+        }
+        if (CROWN.equalsIgnoreCase(sessionJurisdiction) && !CROWN.equalsIgnoreCase(businessTypeJurisdiction)) {
+            return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
         }
 
         if (!isDurationBasedWithValidDuration(session, businessType)) {
@@ -196,54 +181,21 @@ public class SessionsApiValidator {
         }
 
         Optional<CourtRoom> courtRoomOpt;
-        Optional<CourtRoom> courtRoomFromOtherSourceOpt;
         if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
             courtRoomOpt = referenceDataCache.getCpCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
-            // Check if courtroom exists in Rota (MAGISTRATES) - if so, court centre jurisdiction doesn't match
-            courtRoomFromOtherSourceOpt = referenceDataCache.getRotaCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
         } else {
             courtRoomOpt = referenceDataCache.getRotaCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
-            // Check if courtroom exists in CP (CROWN) - if so, court centre jurisdiction doesn't match
-            courtRoomFromOtherSourceOpt = referenceDataCache.getCpCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
         }
 
         if (courtRoomOpt.isEmpty()) {
-            // If not found in primary source, check if it exists in the other source (wrong jurisdiction)
-            if (courtRoomFromOtherSourceOpt.isPresent()) {
-                if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
-                    return buildErrorResponse("The courtroom belongs to a court centre with MAGISTRATES jurisdiction, which does not match the session jurisdiction CROWN");
-                } else {
-                    return buildErrorResponse("The courtroom belongs to a court centre with CROWN jurisdiction, which does not match the session jurisdiction MAGISTRATES");
-                }
-            }
             return buildErrorResponse(COURTROOM_NOT_FOUND + session.getCourtRoomId());
         }
-        // Validate that the courtroom belongs to the specified court centre (courtCentreId)
-        final CourtRoom courtRoom = courtRoomOpt.get();
-        final String sessionCourtCentreId = session.getCourtCentreId();
-        final String courtRoomCourtCentreId = courtRoom.getOucodeUUID();
-
-        if (isNull(sessionCourtCentreId) || isNull(courtRoomCourtCentreId)
-                || !sessionCourtCentreId.equals(courtRoomCourtCentreId)) {
-            return buildErrorResponse("The courtroom must belong to the same court centre as specified in courtCentreId");
-        }
-
-        //check for the jurisdiction match between the courtroom/courthouse and the session
-        final String ouCode = courtRoom.getOucode();
-        if (nonNull(ouCode) && ((ouCode.startsWith("B") && CROWN.equalsIgnoreCase(sessionJurisdiction))
-                || (ouCode.startsWith("C") && MAGISTRATES.equalsIgnoreCase(sessionJurisdiction)))) {
-                return buildErrorResponse("The courtroom jurisdiction does not match with session jurisdiction");
-            }
-
-
         return EMPTY_JSON_OBJECT;
     }
 
     private static boolean isDurationBasedWithValidDuration(final Session session, final BusinessType businessType) {
-        // If slot based, then it's fine. Otherwise:
-        // - For all-day split AD sessions, both maxDurationForMorning and maxDurationForAfternoon must be supplied.
-        // - For regular (non-split) duration-based sessions, a positive slotsOrDuration must be supplied.
-        return businessType.isSlot() || allDaySplitWithValidDuration(session) || hasValidDuration(session);
+        //if slot based based, then its ok. otherwise if its all day split, morning/afternoon duration should be supplied,for regular allday duraton should be supplied
+        return businessType.isSlot() || (allDaySplitWithValidDuration(session) || hasValidDuration(session));
     }
 
     private static boolean hasValidDuration(final Session session) {
@@ -251,10 +203,7 @@ public class SessionsApiValidator {
     }
 
     private static boolean allDaySplitWithValidDuration(final Session session) {
-        return ALL_DAY.equals(session.getSessionType())
-                && Boolean.TRUE.equals(session.isAllDaySplit())
-                && nonNull(session.getMaxDurationForMorning())
-                && nonNull(session.getMaxDurationForAfternoon());
+        return ALL_DAY.equals(session.getSessionType()) && session.isAllDaySplit() && (nonNull(session.getMaxDurationForMorning()) && nonNull(session.getMaxDurationForAfternoon()));
     }
 
     private JsonObject validateMonthlyCrownIndexForRequest(CreateSessionRequestParam requestParam) {
@@ -407,8 +356,6 @@ public class SessionsApiValidator {
     private JsonObject validateAddedSessionPayload(final CreateSessionRequestParam createSessionRequestParam, final Requester requester) {
         final Session sessionToBeAdded = createSessionRequestParam.getSessionToBeAdded();
         final Set<DayOfWeek> repeatDaysToBeAdded = new HashSet<>(sessionToBeAdded.getRepeatDays());
-        final RepeatFrequency repeatFrequency = createSessionRequestParam.getRepeatPattern().getFrequency();
-
         for(Session session : createSessionRequestParam.getSessionList()) {
             LOGGER.info("getSessionsCreateValidation getSessionList not null");
             boolean match = session.getCourtCentreId().equals(sessionToBeAdded.getCourtCentreId()) &&
@@ -417,33 +364,12 @@ public class SessionsApiValidator {
             LOGGER.info("getSessionsCreateValidation match value : {}", match);
             if(match){
                 Set<DayOfWeek> repeatDays = new HashSet<>(session.getRepeatDays());
-                boolean hasOverlappingRepeatDays = repeatDaysToBeAdded.stream().anyMatch(repeatDays::contains);
-
-                if(hasOverlappingRepeatDays && isSessionTypeDuplicateOrNotValidForAllDay(session,sessionToBeAdded)) {
-                    // For EVERY_MONTH frequency we also need to respect the index (nth occurrence in month).
-                    // Sessions with different indexes (e.g. 4th Friday vs 5th Friday) will never fall on the same date,
-                    // so they should not be treated as duplicates here. Persisted duplicates are still handled by
-                    // validateSessionIntegrity which uses the index-aware monthly logic.
-                    if (repeatFrequency == EVERY_MONTH) {
-                        Integer existingIndex = session.getIndex();
-                        Integer newIndex = sessionToBeAdded.getIndex();
-
-                        if (existingIndex != null && newIndex != null && !existingIndex.equals(newIndex)) {
-                            // Different monthly index -> not a duplicate within this request, skip
-                            continue;
-                        }
-                    }
+                if(repeatDaysToBeAdded.stream().anyMatch(repeatDays::contains) && isSessionTypeDuplicateOrNotValidForAllDay(session,sessionToBeAdded)) {
                     LOGGER.info("getSessionsCreateValidation DUPLICATE_SESSIONS");
                     return buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS);
                 }
             }
         }
-        // For validate-create, also enforce business type / courtroom / court-centre rules
-        JsonObject businessTypeAndCourtRoomValidationResult = validateSessionBusinessTypeAndCourtRoom(sessionToBeAdded, requester);
-        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
-            return businessTypeAndCourtRoomValidationResult;
-        }
-
         return validateSessionToBeAdded(sessionToBeAdded, requester);
     }
 
@@ -682,6 +608,19 @@ public class SessionsApiValidator {
         }
 
         // Validate isDraft can only be true when jurisdiction is CROWN - reject if true for MAGISTRATES, silently accept false
+        // Validate courtroom belongs to the same court house as the original session
+        JsonObject courtHouseValidation = validateCourtRoomBelongsToSameCourtHouse(updateCourtSchedule, requester);
+        if (!courtHouseValidation.isEmpty()) {
+            return courtHouseValidation;
+        }
+
+        // Validate that session is not in the past
+        JsonObject pastSessionValidation = validateSessionNotInPast(updateCourtSchedule);
+        if (!pastSessionValidation.isEmpty()) {
+            return pastSessionValidation;
+        }
+
+        // Validate isDraft can only be supplied when jurisdiction is CROWN
         Boolean isDraft = updateCourtSchedule.getIsDraft();
         // For CROWN jurisdiction, isDraft must be explicitly supplied (true or false)
         if (CROWN.equalsIgnoreCase(jurisdiction) && isNull(isDraft)) {
@@ -728,6 +667,72 @@ public class SessionsApiValidator {
         if (courtRoomOpt.isEmpty()) {
             return buildErrorResponse(COURTROOM_NOT_FOUND + courtRoomId);
         }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateCourtRoomBelongsToSameCourtHouse(final UpdateCourtSchedule updateCourtSchedule, final Requester requester) {
+        // Retrieve the persisted court schedule to get the original court house ID
+        CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+        if (isNull(persistedCourtSchedule)) {
+            // If persisted schedule doesn't exist, skip this validation (will be caught by other validations)
+            return EMPTY_JSON_OBJECT;
+        }
+
+        String originalCourtHouseId = persistedCourtSchedule.getCourtHouseId();
+        if (isNull(originalCourtHouseId) || originalCourtHouseId.trim().isEmpty()) {
+            // If original court house ID is not available, skip this validation
+            return EMPTY_JSON_OBJECT;
+        }
+
+        // Check if courtroom ID is being changed
+        String newCourtRoomId = updateCourtSchedule.getCourtRoomId();
+        String originalCourtRoomId = persistedCourtSchedule.getCourtRoomId();
+        if (isNull(newCourtRoomId) || newCourtRoomId.equalsIgnoreCase(originalCourtRoomId)) {
+            // If courtroom is not being changed, no need to validate
+            return EMPTY_JSON_OBJECT;
+        }
+
+        // Retrieve the new courtroom from reference data
+        Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(updateCourtSchedule.getJurisdiction())
+                ? referenceDataCache.getCpCourtRoomByCourtRoomId(newCourtRoomId, requester)
+                : referenceDataCache.getRotaCourtRoomByCourtRoomId(newCourtRoomId, requester);
+
+        if (courtRoomOpt.isEmpty()) {
+            // Courtroom not found - this will be caught by validateCourtRoomForJurisdiction
+            return EMPTY_JSON_OBJECT;
+        }
+
+        CourtRoom newCourtRoom = courtRoomOpt.get();
+        String newCourtHouseId = newCourtRoom.getOucodeUUID();
+
+        // Validate that the new courtroom belongs to the same court house
+        if (isNull(newCourtHouseId) || !newCourtHouseId.equals(originalCourtHouseId)) {
+            return buildErrorResponse("Courtroom must belong to the same court house where the session was created. Original court house ID: " + originalCourtHouseId);
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateSessionNotInPast(final UpdateCourtSchedule updateCourtSchedule) {
+        // Retrieve the persisted court schedule to get the session date
+        CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+        if (isNull(persistedCourtSchedule)) {
+            // If persisted schedule doesn't exist, skip this validation (will be caught by other validations)
+            return EMPTY_JSON_OBJECT;
+        }
+
+        LocalDate sessionDate = persistedCourtSchedule.getSessionDate();
+        if (isNull(sessionDate)) {
+            // If session date is not available, skip this validation
+            return EMPTY_JSON_OBJECT;
+        }
+
+        // Check if session date is before today
+        LocalDate today = LocalDate.now();
+        if (sessionDate.isBefore(today)) {
+            return buildErrorResponse(SESSION_IN_PAST_CANNOT_BE_EDITED);
+        }
+
         return EMPTY_JSON_OBJECT;
     }
 
