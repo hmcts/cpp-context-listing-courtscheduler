@@ -531,13 +531,18 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldUpdateCourtSchedule() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("DVLA");
         expected.setSupportAdSplit(false);
+        expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY))); // Set to future date to avoid past session validation
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "DVLA";
         String changedSessionType = "AM";
         String changedPanel = "YOUTH";
@@ -556,14 +561,18 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldUpdateCourtScheduleAllDaySplit() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("TRL");
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
         expected.setSupportAdSplit(true);
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "TRL";
         String changedSessionType = "AD";
         String changedPanel = "YOUTH";
@@ -595,15 +604,19 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldUpdateCourtScheduleIsOverbookingAllowed() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("TRL");
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
         expected.setSupportAdSplit(true);
         expected.setIsOverbookingAllowed(false);
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-is-overbooking-allowed.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "TRL";
         String changedSessionType = "AD";
         String changedPanel = "YOUTH";
@@ -635,14 +648,18 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldUpdateCourtScheduleAllDaySplitWithoutGivenSessionStartAndEndTime() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("TRL");
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
         expected.setSupportAdSplit(true);
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split-without-session-start-end-time.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "TRL";
         String changedSessionType = "AD";
         String changedPanel = "YOUTH";
@@ -699,15 +716,21 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldGet400WhenUpdatingCourtScheduleWithInvalidMinHearingTime() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("TRL");
         expected.setSupportAdSplit(true);
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(LocalDate.now(), 10, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(LocalDate.now(), 17, 0));
+        LocalDate futureDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        expected.setSessionDate(futureDate); // Set to future date to avoid past session validation
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(futureDate, 10, 0));
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(futureDate, 17, 0));
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split-invalid-session-start-time.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "TRL";
         String changedSessionType = "AD";
         String changedPanel = "YOUTH";
@@ -733,15 +756,21 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldGet400WhenUpdatingCourtScheduleWithInvalidMaxHearingTime() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("TRL");
         expected.setSupportAdSplit(true);
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(LocalDate.now(), 10, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(LocalDate.now(), 17, 0));
+        LocalDate futureDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        expected.setSessionDate(futureDate); // Set to future date to avoid past session validation
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(futureDate, 10, 0));
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(futureDate, 17, 0));
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split-invalid-session-start-time.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "TRL";
         String changedSessionType = "AD";
         String changedPanel = "YOUTH";
@@ -770,6 +799,7 @@ class CourtSchedulerIT extends AbstractIT {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("DVLA");
         expected.setSupportAdSplit(false);
@@ -777,6 +807,7 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setIsDraft(true); // Set as draft to allow editing
         expected.setHasHearingsBooked(true); // Set to true since we'll create allocated listings
         expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         expected.setCourtSession("AM"); // Set initial session type to match update
         expected.setPanel("YOUTH"); // Set initial panel to match update
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
@@ -813,6 +844,8 @@ class CourtSchedulerIT extends AbstractIT {
         // the system retrieves session times from persisted schedule and validates hearing times
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("DVLA");
         expected.setSupportAdSplit(false);
@@ -820,13 +853,15 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
         expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0));
         expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         // Create allocated listing with hearing time AFTER session end time (15:00 is after 13:00)
         createAllocatedListing(expected, UUID.randomUUID(), UUID.randomUUID(), 60, "15:00");
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "DVLA";
         String changedSessionType = "AM";
         String changedPanel = "YOUTH";
@@ -853,18 +888,22 @@ class CourtSchedulerIT extends AbstractIT {
         // validation passes without needing to retrieve session times
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("DVLA");
         expected.setSupportAdSplit(false);
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
         expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0));
         expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         // No allocated listings created
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "DVLA";
         String changedSessionType = "AM";
         String changedPanel = "YOUTH";
@@ -887,6 +926,8 @@ class CourtSchedulerIT extends AbstractIT {
         // the system retrieves session times from persisted schedule and validates min hearing time
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("DVLA");
         expected.setSupportAdSplit(false);
@@ -894,13 +935,15 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
         expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0));
         expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         // Create allocated listing with hearing time BEFORE session start time (09:00 is before 10:00)
         createAllocatedListing(expected, UUID.randomUUID(), UUID.randomUUID(), 60, "09:00");
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "DVLA";
         String changedSessionType = "AM";
         String changedPanel = "YOUTH";
@@ -925,12 +968,16 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldGet400WhenUpdatingCourtScheduleWithNonDurationBasedBusinessType() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("TRL");
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "TRL";
         String changedSessionType = "AD";
         String changedPanel = "YOUTH";
@@ -980,14 +1027,19 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldUpdateCourtScheduleWithValidDurationBasedBusinessType() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("TRL");
         expected.setSupportAdSplit(true);
         expected.setCourtSession(ALL_DAY);
+        expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY))); // Set to future date to avoid past session validation
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "TRL";
         String changedSessionType = "AD";
         String changedPanel = "YOUTH";
@@ -1010,13 +1062,18 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldNotUpdateCourtScheduleIfTotalBookedExceedsMaxDurationOrSlot() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("DVLA");
         expected.setSupportAdSplit(false);
+        expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY))); // Set to future date to avoid past session validation
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "DVLA";
         String changedSessionType = "AM";
         String changedPanel = "YOUTH";
@@ -1054,13 +1111,17 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
+        courtSchedule.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        courtSchedule.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 90, "10:00");
         createAllocatedListing(courtSchedule, hearingIdForAfternoon, bookingIdForAfternoon, 60, "14:00");
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "TRL";
         String changedSessionType = "AD";
         String changedPanel = "YOUTH";
@@ -1104,13 +1165,17 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
+        courtSchedule.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
+        courtSchedule.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         createAllocatedListing(courtSchedule, hearingIdForMorning, bookingIdForMorning, 90, "10:00");
         createAllocatedListing(courtSchedule, hearingIdForAfternoon, bookingIdForAfternoon, 60, "14:00");
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule-all-day-split.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
         String changedBusinessType = "TRL";
         String changedSessionType = "AD";
         String changedPanel = "YOUTH";
@@ -2137,6 +2202,8 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldPreventCourtroomChangeWhenHearingsExistAndAssigned() throws SQLException {
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("DVLA");
         expected.setSlotBased(true);
@@ -2147,7 +2214,9 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSupportAdSplit(false);
         expected.setCourtSession(AM_SESSION);
         expected.setPanel("YOUTH");
-        expected.setCourtRoomId("original-courtroom-id");
+        expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID
+        expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
+        expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY))); // Set to future date to avoid past session validation
         expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 9, 0));
         expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(expected);
@@ -2158,10 +2227,10 @@ class CourtSchedulerIT extends AbstractIT {
         createAllocatedListing(expected, hearingId, bookingId, 15, "10:00");
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
-        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Different courtroom
+        String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation
         String changedBusinessType = "DVLA";
         String changedSessionType = expected.getCourtSession();
-        String changedPanel = expected.getPanel();
+        String changedPanel = "ADULT"; // Change panel to trigger SESSION_EDIT_ANOTHER_USER validation when hearings exist
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", expected.getCourtScheduleId());
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
@@ -2195,6 +2264,7 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtSession(AM_SESSION);
         expected.setPanel("YOUTH");
         expected.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
+        expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY))); // Set to future date to avoid past session validation
         expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 9, 0));
         expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(expected);
@@ -2233,7 +2303,7 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldAssignCourtroomToMultipleEligibleSessions() throws SQLException {
         // Draft with/without hearings - eligible
         // Assigned without hearings - not eligible
-        
+
         UUID draftSessionId = UUID.randomUUID();
         CourtSchedule draftSession = RANDOM.nextObject(CourtSchedule.class);
         draftSession.setCourtScheduleId(draftSessionId.toString());
@@ -2274,7 +2344,7 @@ class CourtSchedulerIT extends AbstractIT {
         draftSessionNoHearings.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 9, 0));
         draftSessionNoHearings.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 13, 0));
         databaseSeeder.insertCourtSchedule(draftSessionNoHearings);
-    // Assigned session -  NOT eligible
+        // Assigned session -  NOT eligible
         UUID assignedSessionId = UUID.randomUUID();
         CourtSchedule assignedSession = RANDOM.nextObject(CourtSchedule.class);
         assignedSession.setCourtScheduleId(assignedSessionId.toString());
@@ -2304,7 +2374,7 @@ class CourtSchedulerIT extends AbstractIT {
         final String responsePayload = response.readEntity(String.class);
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
-        
+
         // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
         JsonObject jsonResponse = jsonReader.readObject();
@@ -2348,7 +2418,7 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldNotAssignCourtroomToAssignedSession() throws SQLException {
         // Assigned session - NOT eligible (Business Rule 5: applies to all assigned sessions regardless of hearings)
-        
+
         UUID assignedSessionId = UUID.randomUUID();
         CourtSchedule assignedSession = RANDOM.nextObject(CourtSchedule.class);
         assignedSession.setCourtScheduleId(assignedSessionId.toString());
@@ -2383,7 +2453,7 @@ class CourtSchedulerIT extends AbstractIT {
         final String responsePayload = response.readEntity(String.class);
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
-        
+
         // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
         JsonObject jsonResponse = jsonReader.readObject();
@@ -2561,7 +2631,7 @@ class CourtSchedulerIT extends AbstractIT {
         final String responsePayload = response.readEntity(String.class);
 
         assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
-        
+
         // Parse JSON response - should be an object with errorGroups array
         JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
         JsonObject jsonResponse = jsonReader.readObject();
