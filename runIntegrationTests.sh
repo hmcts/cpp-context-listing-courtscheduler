@@ -36,7 +36,7 @@ buildDeployAndTest() {
   deployWiremock
   deployWarsForContextsWithoutServiceModule
   healthchecksForContextsWithoutServiceModule
-#  integrationTests
+  integrationTests
 }
 
 buildDeployAndTest

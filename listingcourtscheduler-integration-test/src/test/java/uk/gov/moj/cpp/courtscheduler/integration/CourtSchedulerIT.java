@@ -399,6 +399,28 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldReturn400WhenCrownSessionUsesMagistratesCourtroomInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-crown-with-magistrates-courtroom.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString("court centre with MAGISTRATES jurisdiction"));
+        assertThat(errorResponseMessage, containsString("does not match the session jurisdiction CROWN"));
+    }
+
+    @Test
+    void shouldReturn400WhenCrownSessionUsesMagistratesCourtroomInValidateCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-crown-with-magistrates-courtroom.json");
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString("court centre with MAGISTRATES jurisdiction"));
+        assertThat(errorResponseMessage, containsString("does not match the session jurisdiction CROWN"));
+    }
+
+    @Test
     void shouldReturn400WhenAllDaySplitHasInsufficientSessionDuration() throws SQLException {
         final CourtSchedule courtScheduleDuration = RANDOM.nextObject(CourtSchedule.class);
         final Integer maxDurationForMorning = 120;
@@ -1356,7 +1378,7 @@ class CourtSchedulerIT extends AbstractIT {
         createAllocatedListing(courtSchedule, hearingId, bookingId, 60, "10:00");
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.search.courtschedules.by.id.json");
-        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_SCHEDULE_ID", courtScheduleId.toString());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_SCHEDULE_ID", courtScheduleId);
         Map<String, Object> map = mapper.readValue(getCourtScheduleRequestParams, new TypeReference<>() {
         });
 
@@ -1813,6 +1835,12 @@ class CourtSchedulerIT extends AbstractIT {
         crownWithListings.setActive(true);
         databaseSeeder.insertCourtSchedule(crownWithListings);
 
+        // Create allocated listing for CROWN schedule
+        final UUID crownHearingId = UUID.randomUUID();
+        final UUID crownBookingId = UUID.randomUUID();
+        createAllocatedListing(crownWithListings, crownHearingId, crownBookingId, 60, "10:00");
+
+
         // Try to delete both schedules with allocated listings
         // Create JSON payload with both IDs
         String deleteWithListingsPayload = "{\"sessions\": [\"" + magistratesWithListingsId + "\", \"" + crownWithListingsId + "\"]}";
@@ -2259,12 +2287,11 @@ class CourtSchedulerIT extends AbstractIT {
         String updateCourtSchedulePayload = getPayload("update-court-schedule-missing-panel.json");
         String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
         String changedBusinessType = "DVLA";
-        String changedSessionType = AM_SESSION;
 
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", randomUUID().toString());
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
-        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", changedSessionType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", AM_SESSION);
 
         final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
 

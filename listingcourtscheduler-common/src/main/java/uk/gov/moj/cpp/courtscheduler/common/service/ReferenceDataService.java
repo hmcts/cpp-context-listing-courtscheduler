@@ -200,7 +200,14 @@ public class ReferenceDataService {
     }
 
     public Map<String, BusinessType> getRotaBusinessTypesMap(final Requester requester) {
-        return getRotaBusinessTypes(requester).stream().collect(Collectors.toMap(BusinessType::getTypeCode, b -> b));
+        return getRotaBusinessTypes(requester).stream().collect(Collectors.toMap(
+                BusinessType::getTypeCode,
+                b -> b,
+                (existing, replacement) -> {
+                    LOGGER.warn("Duplicate business type code found: {}. Keeping the first occurrence.", existing.getTypeCode());
+                    return existing;
+                }
+        ));
     }
 
     public Map<UUID, CourtRoom> getCourtRoomsMap(final Requester requester) {

@@ -564,6 +564,83 @@ class SessionsApiValidatorTest {
                 result.getString("errorMessage"));
     }
 
+    @Test
+    void shouldReturnErrorWhenCrownSessionUsesMagistratesCourtRoom() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withSlotsOrDuration(60)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        
+        // Courtroom not found in CP (CROWN) but found in Rota (MAGISTRATES) - jurisdiction mismatch
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        
+        CourtRoom rotaCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .build();
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(rotaCourtRoom));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals("The courtroom belongs to a court centre with MAGISTRATES jurisdiction, which does not match the session jurisdiction CROWN",
+                result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenMagistratesSessionUsesCrownCourtRoom() {
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
+                .withSlotsOrDuration(20)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        
+        // Courtroom not found in Rota (MAGISTRATES) but found in CP (CROWN) - jurisdiction mismatch
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        
+        CourtRoom cpCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .build();
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(cpCourtRoom));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        assertEquals("The courtroom belongs to a court centre with CROWN jurisdiction, which does not match the session jurisdiction MAGISTRATES",
+                result.getString("errorMessage"));
+    }
+
     private Session createDraftSession() {
         return createDraftSession("AM", "DVLA", "ADULT", true);
     }
