@@ -498,7 +498,9 @@ public class DatabaseSeeder {
                     // Prepare repeat days for batch
                     for (String dayOfWeek : rule.repeatDays) {
                         repeatDaysStmt.setString(1, rule.ruleId);
-                        repeatDaysStmt.setString(2, dayOfWeek.toUpperCase());
+                        // Convert to title case to match enum (e.g., "Friday" not "FRIDAY")
+                        final String dayOfWeekTitleCase = dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase();
+                        repeatDaysStmt.setString(2, dayOfWeekTitleCase);
                         repeatDaysStmt.setInt(3, 0); // Default index is 0
                         repeatDaysStmt.addBatch();
                     }

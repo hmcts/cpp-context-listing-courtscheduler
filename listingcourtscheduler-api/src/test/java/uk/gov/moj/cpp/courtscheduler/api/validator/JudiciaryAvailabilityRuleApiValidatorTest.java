@@ -176,8 +176,6 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Wednesday, null));
         repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Thursday, null));
         repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Friday, null));
-        //repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Tuesday, null));
-        //repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay("Sunday", null));
         this.request.setRepeatDays(repeatDays);
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
@@ -200,10 +198,11 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldReturnEmptyJsonObjectForValidDeleteRequest() {
-        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(UUID.randomUUID().toString());
+        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
+        deleteRequest.setRuleId(UUID.randomUUID().toString());
+        deleteRequest.setJudiciaryId(UUID.randomUUID().toString());
 
-        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(request);
+        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
 
         MatcherAssert.assertThat(result, CoreMatchers.is(JsonValue.EMPTY_JSON_OBJECT));
     }
@@ -218,10 +217,10 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenRuleIdIsBlank() {
-        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
-        request.setRuleId("");
+        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
+        deleteRequest.setRuleId("");
 
-        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(request);
+        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
 
         Assertions.assertFalse(result.isEmpty());
         Assertions.assertTrue(result.getString("errorMessage").contains("ruleId"));
@@ -229,13 +228,37 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenRuleIdIsNull() {
-        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(null);
+        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
+        deleteRequest.setRuleId(null);
 
-        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(request);
+        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
 
         Assertions.assertFalse(result.isEmpty());
         Assertions.assertTrue(result.getString("errorMessage").contains("ruleId"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenJudiciaryIdIsBlankForDelete() {
+        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
+        deleteRequest.setRuleId(UUID.randomUUID().toString());
+        deleteRequest.setJudiciaryId("");
+
+        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
+
+        Assertions.assertFalse(result.isEmpty());
+        Assertions.assertTrue(result.getString("errorMessage").contains("judiciaryId"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenJudiciaryIdIsNullForDelete() {
+        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
+        deleteRequest.setRuleId(UUID.randomUUID().toString());
+        deleteRequest.setJudiciaryId(null);
+
+        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
+
+        Assertions.assertFalse(result.isEmpty());
+        Assertions.assertTrue(result.getString("errorMessage").contains("judiciaryId"));
     }
 }
 

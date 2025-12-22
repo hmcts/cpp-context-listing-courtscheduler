@@ -29,8 +29,8 @@ import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 
 class JudiciaryAvailabilityBatchIT extends AbstractIT {
 
-    private static final String JUDICIARY_RESOURCE_URL = "/judiciary-availability";
-    private static final String FIND_AVAILABILITY_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.find.availability+json";
+    private static final String JUDICIARIES_AVAILABILITY = "/judiciaries/availability";
+    private static final String RESPONSE_TYPE = "application/json";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
     private static final int TOTAL_JUDICIARIES = 10000;
     private static final int EXPECTED_RESULTS = 20;
@@ -179,9 +179,9 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtCentreId", courtHouseId);
+        queryParams.put("courtHouseId", courtHouseId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(60L, SECONDS) // Increased timeout for large dataset

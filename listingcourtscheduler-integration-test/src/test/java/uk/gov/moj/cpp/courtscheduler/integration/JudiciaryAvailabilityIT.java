@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -38,12 +37,12 @@ import org.junit.jupiter.api.Test;
 
 class JudiciaryAvailabilityIT extends AbstractIT {
 
-    private static final String JUDICIARY_RESOURCE_URL = "/judiciary-availability";
-    private static final String ADD_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.add.availability.rule+json";
-    private static final String UPDATE_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.update.availability.rule+json";
-    private static final String DELETE_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.delete.availability.rule+json";
-    private static final String FIND_AVAILABILITY_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.find.availability+json";
-    private static final String FIND_AVAILABILITY_RULE_CONTENT_TYPE = "application/vnd.courtscheduler.judiciary.find.availability.rule+json";
+    private static final String AVAILABILITY_RULES_ADD = "/judiciaries/availability-rules/add";
+    private static final String AVAILABILITY_RULES_UPDATE = "/judiciaries/availability-rules/update";
+    private static final String AVAILABILITY_RULES_DELETE = "/judiciaries/availability-rules/delete";
+    private static final String AVAILABILITY_RULES = "/judiciaries/availability-rules";
+    private static final String JUDICIARIES_AVAILABILITY = "/judiciaries/availability";
+    private static final String RESPONSE_TYPE = "application/json";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
 
     @Test
@@ -71,8 +70,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .build()
                 .toString();
 
-        final Response response = postCommand(JUDICIARY_RESOURCE_URL, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
-        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        final Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, requestPayload);
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
 
         // Verify by finding availability for a date range that includes 2nd Tuesday
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
@@ -81,10 +80,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtCentreId", courtHouseId);
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -123,8 +122,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .build()
                 .toString();
 
-        final Response response = postCommand(JUDICIARY_RESOURCE_URL, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
-        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        final Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, requestPayload);
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
 
         // Verify by finding availability
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 5); // Monday
@@ -133,9 +132,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -171,8 +171,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .build()
                 .toString();
 
-        final Response response = postCommand(JUDICIARY_RESOURCE_URL, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
-        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        final Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, requestPayload);
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
 
         // Verify by finding availability
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 6); // Tuesday
@@ -181,9 +181,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -230,16 +231,17 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .build()
                 .toString();
 
-        Response response = postCommand(JUDICIARY_RESOURCE_URL, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, payload);
-        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, payload);
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
 
         // Verify: Query during unavailable period should not return this judiciary
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", unavailabilityStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", unavailabilityEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -258,9 +260,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> ruleQueryParams = new HashMap<>();
         ruleQueryParams.put("startDate", startDate.format(DATE_FORMATTER));
         ruleQueryParams.put("endDate", endDate.format(DATE_FORMATTER));
-        ruleQueryParams.put("judiciaryId", judiciaryId);
+        ruleQueryParams.put("courtHouseId", courtHouseId);
 
-        final RequestParams ruleRequestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, ruleQueryParams);
+        final RequestParams ruleRequestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, ruleQueryParams);
         final ResponseData ruleResponseData = poll(ruleRequestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -335,8 +337,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .build()
                 .toString();
 
-        Response response = postCommand(JUDICIARY_RESOURCE_URL, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, payload);
-        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, payload);
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
 
         // Verify: Query for a Tuesday should not return this judiciary
         final LocalDate queryStartDate = LocalDate.of(2026, 1, 6); // Tuesday
@@ -345,9 +347,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -367,7 +370,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         queryParams.put("startDate", mondayDate.format(DATE_FORMATTER));
         queryParams.put("endDate", mondayDate.format(DATE_FORMATTER));
 
-        final RequestParams mondayRequestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams mondayRequestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData mondayResponseData = poll(mondayRequestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -385,9 +388,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> ruleQueryParams = new HashMap<>();
         ruleQueryParams.put("startDate", startDate.format(DATE_FORMATTER));
         ruleQueryParams.put("endDate", endDate.format(DATE_FORMATTER));
-        ruleQueryParams.put("judiciaryId", judiciaryId);
+        ruleQueryParams.put("courtHouseId", courtHouseId);
 
-        final RequestParams ruleRequestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, ruleQueryParams);
+        final RequestParams ruleRequestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, ruleQueryParams);
         final ResponseData ruleResponseData = poll(ruleRequestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -468,8 +471,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .build()
                 .toString();
 
-        Response response = postCommand(JUDICIARY_RESOURCE_URL, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, payload);
-        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, payload);
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
 
         // Verify: Query for 2nd Monday should not return this judiciary
         // January 2026: 1st Monday is Jan 5, 2nd Monday is Jan 12
@@ -477,9 +480,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", secondMonday.format(DATE_FORMATTER));
         queryParams.put("endDate", secondMonday.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -498,9 +502,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> ruleQueryParams = new HashMap<>();
         ruleQueryParams.put("startDate", startDate.format(DATE_FORMATTER));
         ruleQueryParams.put("endDate", endDate.format(DATE_FORMATTER));
-        ruleQueryParams.put("judiciaryId", judiciaryId);
+        ruleQueryParams.put("courtHouseId", courtHouseId);
 
-        final RequestParams ruleRequestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, ruleQueryParams);
+        final RequestParams ruleRequestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, ruleQueryParams);
         final ResponseData ruleResponseData = poll(ruleRequestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -533,8 +537,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate firstMonday = LocalDate.of(2026, 1, 5); // 1st Monday
         queryParams.put("startDate", firstMonday.format(DATE_FORMATTER));
         queryParams.put("endDate", firstMonday.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
 
-        final RequestParams firstMondayRequestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams firstMondayRequestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData firstMondayResponseData = poll(firstMondayRequestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -576,9 +581,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -594,14 +600,15 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         // Delete the rule
         final String deletePayload = Json.createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
                 .add("ruleId", ruleId)
                 .build()
                 .toString();
 
-        final Response deleteResponse = deleteCommand(JUDICIARY_RESOURCE_URL, DELETE_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, deletePayload);
-        assertThat(deleteResponse.getStatus(), is(ACCEPTED.getStatusCode()));
+        final Response deleteResponse = postCommand(AVAILABILITY_RULES_DELETE, RESPONSE_TYPE, SYSTEM_USER_ID, deletePayload);
+        assertThat(deleteResponse.getStatus(), is(OK.getStatusCode()));
 
-        requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -663,10 +670,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("pageSize", 10);
         queryParams.put("pageNumber", 1);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -712,8 +720,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -754,8 +763,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
         queryParams.put("withJudiciary", true);
+        queryParams.put("courtHouseId", courtHouseId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -805,9 +815,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("withJudiciary", false);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -848,9 +859,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtCentreId", courtHouseId);
+        queryParams.put("courtHouseId", courtHouseId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -896,9 +907,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -969,10 +981,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("pageSize", 2);
         queryParams.put("pageNumber", 2);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -1019,8 +1032,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -1065,9 +1079,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
         queryParams.put("withJudiciary", true);
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        final RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -1132,9 +1147,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("courtHouseId", courtHouseId);
         queryParams.put("judiciaryId", judiciaryId);
 
-        RequestParams requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         ResponseData responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -1183,8 +1199,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .toString();
 
         // Update the rule with ruleId is in the payload
-        final Response updateResponse = putCommand(JUDICIARY_RESOURCE_URL, UPDATE_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, updatePayload);
-        assertThat(updateResponse.getStatus(), is(ACCEPTED.getStatusCode()));
+        final Response updateResponse = postCommand(AVAILABILITY_RULES_UPDATE, RESPONSE_TYPE, SYSTEM_USER_ID, updatePayload);
+        assertThat(updateResponse.getStatus(), is(OK.getStatusCode()));
 
         // Verify the rule is updated by checking availability in the new date range
         // February 2026: 2nd Wednesday = Feb 11, 3rd Thursday = Feb 19
@@ -1192,9 +1208,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         queryParams = new HashMap<>();
         queryParams.put("startDate", LocalDate.of(2026, 2, 18).format(DATE_FORMATTER));
         queryParams.put("endDate", LocalDate.of(2026, 2, 20).format(DATE_FORMATTER));
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put("courtHouseId", courtHouseId);
 
-        requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -1213,9 +1229,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         queryParams = new HashMap<>();
         queryParams.put("startDate", unavailabilityStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", unavailabilityEndDate.format(DATE_FORMATTER));
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put("courtHouseId", courtHouseId);
 
-        requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)
@@ -1233,9 +1249,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
         queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put("courtHouseId", courtHouseId);
 
-        requestParams = getRequestParams(JUDICIARY_RESOURCE_URL, FIND_AVAILABILITY_CONTENT_TYPE, SYSTEM_USER_ID, queryParams);
+        requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         responseData = poll(requestParams)
                 .with()
                 .timeout(30L, SECONDS)

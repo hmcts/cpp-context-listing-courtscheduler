@@ -620,35 +620,107 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.validate.session.availability.response.json
             example: !include json/courtscheduler.validate.session.availability.response.json
 
-/judiciary-availability:
-  description: |
-    Add judiciary availability rule
-  post:
+/judiciaries/availability-rules:
+  get:
     description: |
+      Find judiciary availability rules.
       ...
       (mapping):
-          requestType: application/vnd.courtscheduler.judiciary.add.availability.rule+json
-          name: courtscheduler.judiciary.add.availability.rule
+        responseType: application/json
+        name: courtscheduler.judiciary.find.availability.rule
+      ...
+    queryParameters:
+      startDate:
+        description: Start date of the search range (Not in past)
+        type: string
+        required: true
+      endDate:
+        description: End date of the search range (Not in past)
+        type: string
+        required: true
+      courtCentreId:
+        description: Optional court centre ID to filter by
+        type: string
+        required: false
+      pageSize:
+        description: Optional page size for pagination. Default is 20
+        type: integer
+        required: false
+      pageNumber:
+        description: Optional page number for pagination. Default is 1
+        type: integer
+        required: false
+      withJudiciary:
+        description: Optional flag to include judiciaries in response. Default is true
+        type: boolean
+        required: false
+
+    responses:
+      200:
+        body:
+          application/json:
+            schema: !include json/schema/courtscheduler.find.judiciary.availability.rule.json
+            example: !include json/courtscheduler.find.judiciary.availability.rule.json
+
+/judiciaries/availability-rules/add:
+  post:
+    description: |
+      Add judiciary availability rule.
+      ...
+      (mapping):
+        requestType: application/json
+        name: courtscheduler.judiciary.add.availability.rule
       ...
     body:
-      application/vnd.courtscheduler.judiciary.add.availability.rule+json:
+      application/json:
         schema: !include json/schema/courtscheduler.judiciary.add.availability.rule.json
         example: !include json/courtscheduler.judiciary.add.availability.rule.json
     responses:
-      202:
+      200:
         description: OK
 
-  get:
+/judiciaries/availability-rules/update:
+  post:
     description: |
-      Find available judiciaries based on date range and rules, or find availability rules from the database with pagination.
-      The response type determines which operation is performed.
+      Update judiciary availability rule.
       ...
       (mapping):
-          responseType: application/vnd.courtscheduler.judiciary.find.availability+json
+        requestType: application/json
+        name: courtscheduler.judiciary.update.availability.rule
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.update.availability.rule.json
+        example: !include json/courtscheduler.judiciary.update.availability.rule.json
+    responses:
+      200:
+        description: OK
+
+/judiciaries/availability-rules/delete:
+  post:
+    description: |
+      Delete judiciary availability rule.
+      ...
+      (mapping):
+        requestType: application/json
+        name: courtscheduler.judiciary.delete.availability.rule
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.delete.availability.rule.json
+        example: !include json/courtscheduler.judiciary.delete.availability.rule.json
+    responses:
+      200:
+        description: OK
+
+
+/judiciaries/availability:
+  get:
+    description: |
+      ...
+      (mapping):
+          responseType: application/json
           name: courtscheduler.judiciary.find.availability
-        (mapping):
-            responseType: application/vnd.courtscheduler.judiciary.find.availability.rule+json
-            name: courtscheduler.judiciary.find.availability.rule
       ...
     queryParameters:
       startDate:
@@ -661,10 +733,6 @@ protocols: [ HTTP, HTTPS ]
         required: true
       courtCentreId:
         description: Optional court centre ID to filter by
-        type: string
-        required: false
-      judiciaryId:
-        description: Optional judiciary ID to filter by
         type: string
         required: false
       pageSize:
@@ -682,41 +750,6 @@ protocols: [ HTTP, HTTPS ]
     responses:
       200:
         body:
-          application/vnd.courtscheduler.judiciary.find.availability+json:
+          application/json:
             schema: !include json/schema/courtscheduler.find.judiciary.availability.json
             example: !include json/courtscheduler.find.judiciary.availability.json
-          application/vnd.courtscheduler.judiciary.find.availability.rule+json:
-            schema: !include json/schema/courtscheduler.find.judiciary.availability.rule.json
-            example: !include json/courtscheduler.find.judiciary.availability.rule.json
-
-  delete:
-    description: |
-      Delete judiciary availability rule
-      ...
-      (mapping):
-          requestType: application/vnd.courtscheduler.judiciary.delete.availability.rule+json
-          name: courtscheduler.judiciary.delete.availability.rule
-      ...
-    body:
-      application/vnd.courtscheduler.judiciary.delete.availability.rule+json:
-        schema: !include json/schema/courtscheduler.judiciary.delete.availability.rule.json
-        example: !include json/courtscheduler.judiciary.delete.availability.rule.json
-    responses:
-      202:
-        description: OK
-
-  put:
-    description: |
-      Update judiciary availability rule. The ruleId is included in the request payload.
-      ...
-      (mapping):
-          requestType: application/vnd.courtscheduler.judiciary.update.availability.rule+json
-          name: courtscheduler.judiciary.update.availability.rule
-      ...
-    body:
-      application/vnd.courtscheduler.judiciary.update.availability.rule+json:
-        schema: !include json/schema/courtscheduler.judiciary.update.availability.rule.json
-        example: !include json/courtscheduler.judiciary.update.availability.rule.json
-    responses:
-      202:
-        description: OK

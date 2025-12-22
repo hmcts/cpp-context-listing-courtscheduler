@@ -14,7 +14,6 @@ public class UpdateJudiciaryAvailabilityRuleConverter extends BaseJudiciaryAvail
     public UpdateJudiciaryAvailabilityRuleRequest convert(JsonObject jsonObject) {
         UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
 
-        // ruleId comes from request payload - try "ruleId" first, then "id" as fallback
         if (hasField(jsonObject, RULE_ID)) {
             request.setRuleId(jsonObject.getString(RULE_ID));
         } else if (hasField(jsonObject, ID)) {

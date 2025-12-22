@@ -9,11 +9,11 @@ import java.util.Objects;
  */
 public abstract class BaseJudiciaryAvailabilityRuleRequest {
     
-    protected String ruleId; // Used by Update and Delete
-    protected String judiciaryId; // Used by Find and Update
-    protected String courtHouseId; // Used by Find and Update
-    protected LocalDate startDate; // Used by Find and Update
-    protected LocalDate endDate; // Used by Find and Update
+    protected String ruleId;
+    protected String judiciaryId;
+    protected String courtHouseId;
+    protected LocalDate startDate;
+    protected LocalDate endDate;
 
     public String getRuleId() {
         return ruleId;

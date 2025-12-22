@@ -92,7 +92,7 @@ import javax.json.JsonValue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+@SuppressWarnings("squid:S1874")
 @CustomServiceComponent("Courtscheduler.API")
 public class CourtSchedulerApi {
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtSchedulerApi.class.getName());
@@ -101,6 +101,9 @@ public class CourtSchedulerApi {
     protected static final String RESULTS = "results";
     private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
     private static final String ORGANISATION_UNIT_HMI_STATUS = "organisationUnitHMIStatus";
+    private static final String RULE_ID = "ruleId";
+    private static final String JUDICIARY_ID = "judiciaryId";
+
     @Inject
     private Enveloper enveloper;
     @Inject
@@ -346,7 +349,7 @@ public class CourtSchedulerApi {
 
         final HearingSlotSearchAndBookResponse hearingSlotSearchAndBookResponse = slotsUpdateService.searchAndBook(hearingSlotSearchRequest);
 
-        JsonObject responseObject =  Json.createObjectBuilder()
+        JsonObject responseObject = Json.createObjectBuilder()
                 .add(RequestParameterConstant.HEARING_SLOTS.getLabel(),
                         objectToJsonObjectConverter.convert(hearingSlotSearchAndBookResponse))
                 .build();
@@ -540,55 +543,11 @@ public class CourtSchedulerApi {
         return envelopeFor(envelope, resJsonObj, ORGANISATION_UNIT_HMI_STATUS);
     }
 
-    @Handles("courtscheduler.judiciary.add.availability.rule")
-    public JsonEnvelope addJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.judiciary.add.availability.rule requested : {}", requestFromApiJsonObject);
-        
-        AddJudiciaryAvailabilityRuleRequest request = addJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
-        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRule(request);
-
-        if (!validate.isEmpty()) {
-            throw new ValidationException(validate);
-        }
-
-        judiciaryAvailabilityService.addJudiciaryAvailabilityRule(request);
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.add.availability.rule").apply(createObjectBuilder().build());
-    }
-
-    @Handles("courtscheduler.judiciary.update.availability.rule")
-    public JsonEnvelope updateJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.judiciary.update.availability.rule requested : {}", requestFromApiJsonObject);
-        
-        // Extract ruleId from request payload
-        final String ruleId = requestFromApiJsonObject.containsKey("ruleId") ? 
-                requestFromApiJsonObject.getString("ruleId") : null;
-        
-        UpdateJudiciaryAvailabilityRuleRequest request = updateJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
-        
-        // Set ruleId from payload if not already set by converter
-        if (ruleId != null && (request.getRuleId() == null || request.getRuleId().isEmpty())) {
-            request.setRuleId(ruleId);
-        }
-        
-        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(request);
-
-        if (!validate.isEmpty()) {
-            throw new ValidationException(validate);
-        }
-
-        judiciaryAvailabilityService.updateJudiciaryAvailabilityRule(request);
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.update.availability.rule").apply(createObjectBuilder().build());
-    }
-
     @Handles("courtscheduler.judiciary.find.availability")
     public JsonEnvelope findJudiciaryAvailability(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.judiciary.find.availability requested : {}", requestFromApiJsonObject);
-        
+
         FindJudiciaryAvailabilityRequest request = findJudiciaryAvailabilityConverter.convert(requestFromApiJsonObject);
         FindJudiciaryAvailabilityResponse response = judiciaryAvailabilityService.findJudiciaryAvailability(request);
 
@@ -606,12 +565,63 @@ public class CourtSchedulerApi {
                 .apply(createObjectBuilder().add("availableJudiciaries", result).build());
     }
 
+    @Handles("courtscheduler.judiciary.find.availability.rule")
+    public JsonEnvelope findJudiciaryAvailabilityRules(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.find.availability.rule requested : {}", requestFromApiJsonObject);
+
+        FindJudiciaryAvailabilityRuleRequest request = findJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+        FindJudiciaryAvailabilityRuleResponse response = judiciaryAvailabilityService.findJudiciaryAvailabilityRules(request, requester);
+
+        final JsonObject responseObject = findJudiciaryAvailabilityRuleResponseConverter.convert(response);
+
+        return enveloper
+                .withMetadataFrom(envelope, "courtscheduler.judiciary.find.availability.rule")
+                .apply(responseObject);
+    }
+
+    @Handles("courtscheduler.judiciary.add.availability.rule")
+    public JsonEnvelope addJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.add.availability.rule requested : {}", requestFromApiJsonObject);
+
+        AddJudiciaryAvailabilityRuleRequest request = addJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRule(request);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        judiciaryAvailabilityService.addJudiciaryAvailabilityRule(request);
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.add.availability.rule").apply(createObjectBuilder().build());
+    }
+
+    @Handles("courtscheduler.judiciary.update.availability.rule")
+    public JsonEnvelope updateJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.update.availability.rule requested : {}", requestFromApiJsonObject);
+
+        UpdateJudiciaryAvailabilityRuleRequest request = updateJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(request);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        judiciaryAvailabilityService.updateJudiciaryAvailabilityRule(request);
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.update.availability.rule").apply(createObjectBuilder().build());
+    }
+
     @Handles("courtscheduler.judiciary.delete.availability.rule")
     public JsonEnvelope deleteJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.judiciary.delete.availability.rule requested : {}", requestFromApiJsonObject);
-        
+
         DeleteJudiciaryAvailabilityRuleRequest request = deleteJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+
         JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRule(request);
 
         if (!validate.isEmpty()) {
@@ -623,20 +633,7 @@ public class CourtSchedulerApi {
         return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.delete.availability.rule").apply(createObjectBuilder().build());
     }
 
-    @Handles("courtscheduler.judiciary.find.availability.rule")
-    public JsonEnvelope findJudiciaryAvailabilityRules(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.judiciary.find.availability.rule requested : {}", requestFromApiJsonObject);
-        
-        FindJudiciaryAvailabilityRuleRequest request = findJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
-        FindJudiciaryAvailabilityRuleResponse response = judiciaryAvailabilityService.findJudiciaryAvailabilityRules(request, requester);
 
-        final JsonObject responseObject = findJudiciaryAvailabilityRuleResponseConverter.convert(response);
-
-        return enveloper
-                .withMetadataFrom(envelope, "courtscheduler.judiciary.find.availability.rule")
-                .apply(responseObject);
-    }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {
         JsonObject build = createObjectBuilder().add(key, jsonValue).build();

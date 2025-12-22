@@ -78,8 +78,7 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
         for (JsonValue jsonValue : repeatDaysArray) {
             if (jsonValue.getValueType() == JsonValue.ValueType.STRING) {
                 String dayOfWeek = jsonValue.toString().replace("\"", "");
-                // Convert to title case: "monday" -> "Monday", "MONDAY" -> "Monday"
-                String titleCase = dayOfWeek.length() > 0 
+                String titleCase = dayOfWeek.length() > 0
                     ? dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase()
                     : dayOfWeek;
                 repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(
@@ -87,8 +86,6 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
             } else if (jsonValue.getValueType() == JsonValue.ValueType.OBJECT) {
                 JsonObject dayObject = (JsonObject) jsonValue;
                 String dayOfWeek = dayObject.getString(DAY);
-                // Convert to title case: "monday" -> "Monday", "MONDAY" -> "Monday"
-                // Handle empty string edge case
                 String titleCase = dayOfWeek.length() > 0 
                     ? dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase()
                     : dayOfWeek;
