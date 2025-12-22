@@ -9,6 +9,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 
@@ -42,6 +43,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
     private static final String AVAILABILITY_RULES_DELETE = "/judiciaries/availability-rules/delete";
     private static final String AVAILABILITY_RULES = "/judiciaries/availability-rules";
     private static final String JUDICIARIES_AVAILABILITY = "/judiciaries/availability";
+    private static final String JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES = "/judiciaries/{judiciaryId}/availability-rules/{ruleId}";
     private static final String RESPONSE_TYPE = "application/json";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
 
@@ -1264,6 +1266,142 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
         assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available in old date range after update");
+    }
+
+    @Test
+    void shouldGetJudiciaryAvailabilityRule() throws Exception {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+
+        // Insert a rule via database seeder
+        databaseSeeder.insertJudiciaryAvailabilityRule(
+                ruleId,
+                judiciaryId,
+                courtHouseId,
+                new ArrayList<>(),
+                startDate,
+                endDate,
+                RecurringType.WEEKLY,
+                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
+        );
+
+        // Get the rule
+        final Map<String, Object> queryParams = new HashMap<>();
+        queryParams.put("withJudiciary", false);
+
+        final String getUrl = JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES
+                .replace("{judiciaryId}", judiciaryId)
+                .replace("{ruleId}", ruleId);
+        final RequestParams requestParams = getRequestParams(getUrl, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
+        final ResponseData responseData = poll(requestParams)
+                .with()
+                .timeout(30L, SECONDS)
+                .pollInterval(50L, MILLISECONDS)
+                .pollDelay(0L, MILLISECONDS)
+                .until();
+
+        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        assertNotNull(jsonObject.getJsonObject("rule"), "Response should contain rule");
+        final JsonObject rule = jsonObject.getJsonObject("rule");
+        assertThat(rule.getString("id"), is(ruleId));
+        assertThat(rule.getString("judiciaryId"), is(judiciaryId));
+        assertThat(rule.getString("courtHouseId"), is(courtHouseId));
+        assertThat(rule.getString("startDate"), is(startDate.format(DATE_FORMATTER)));
+        assertThat(rule.getString("endDate"), is(endDate.format(DATE_FORMATTER)));
+        assertThat(rule.getString("recurringType"), is("WEEKLY"));
+    }
+
+    @Test
+    void shouldGetJudiciaryAvailabilityRuleWithJudiciary() throws Exception {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = "7e2f843e-d639-40b3-8611-8015f3a13333"; // Use ID from stubbed judiciaries
+        final String courtHouseId = randomUUID().toString();
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+
+        // Insert a rule via database seeder
+        databaseSeeder.insertJudiciaryAvailabilityRule(
+                ruleId,
+                judiciaryId,
+                courtHouseId,
+                new ArrayList<>(),
+                startDate,
+                endDate,
+                RecurringType.MONTHLY,
+                Arrays.asList(AvailabilityDayOfWeek.Wednesday)
+        );
+
+        // Get the rule with judiciary
+        final Map<String, Object> queryParams = new HashMap<>();
+        queryParams.put("withJudiciary", true);
+
+        final String getUrl = JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES
+                .replace("{judiciaryId}", judiciaryId)
+                .replace("{ruleId}", ruleId);
+        final RequestParams requestParams = getRequestParams(getUrl, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
+        final ResponseData responseData = poll(requestParams)
+                .with()
+                .timeout(30L, SECONDS)
+                .pollInterval(50L, MILLISECONDS)
+                .pollDelay(0L, MILLISECONDS)
+                .until();
+
+        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        assertNotNull(jsonObject.getJsonObject("rule"), "Response should contain rule");
+        final JsonObject rule = jsonObject.getJsonObject("rule");
+        assertThat(rule.getString("id"), is(ruleId));
+        assertThat(rule.getString("recurringType"), is("MONTHLY"));
+
+        // Judiciary may be null if not found in reference data service, but structure should be present
+        assertTrue(jsonObject.containsKey("judiciary"), "Response should contain judiciary field");
+    }
+
+    @Test
+    void shouldGetJudiciaryAvailabilityRuleWithDefaultWithJudiciary() throws Exception {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = "7e2f843e-d639-40b3-8611-8015f3a13333"; // Use ID from stubbed judiciaries
+        final String courtHouseId = randomUUID().toString();
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+
+        // Insert a rule via database seeder
+        databaseSeeder.insertJudiciaryAvailabilityRule(
+                ruleId,
+                judiciaryId,
+                courtHouseId,
+                new ArrayList<>(),
+                startDate,
+                endDate,
+                RecurringType.WEEKLY,
+                Arrays.asList(AvailabilityDayOfWeek.Friday)
+        );
+
+        // Get the rule without specifying withJudiciary (should default to true)
+        final String getUrl = JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES
+                .replace("{judiciaryId}", judiciaryId)
+                .replace("{ruleId}", ruleId);
+        final RequestParams requestParams = getRequestParams(getUrl, RESPONSE_TYPE, SYSTEM_USER_ID, new HashMap<>());
+        final ResponseData responseData = poll(requestParams)
+                .with()
+                .timeout(30L, SECONDS)
+                .pollInterval(50L, MILLISECONDS)
+                .pollDelay(0L, MILLISECONDS)
+                .until();
+
+        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        assertNotNull(jsonObject.getJsonObject("rule"), "Response should contain rule");
+        final JsonObject rule = jsonObject.getJsonObject("rule");
+        assertThat(rule.getString("id"), is(ruleId));
+        assertTrue(jsonObject.containsKey("judiciary"), "Response should contain judiciary field (default withJudiciary=true)");
     }
 }
 

@@ -11,6 +11,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
@@ -43,6 +45,7 @@ import org.slf4j.LoggerFactory;
 public class JudiciaryAvailabilityService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryAvailabilityService.class.getName());
+    public static final String JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND = "Judiciary availability rule with id {} not found";
 
     @Inject
     private JudiciaryAvailabilityRuleRepository repository;
@@ -75,7 +78,7 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
         if (entity == null) {
-            LOGGER.warn("Judiciary availability rule with id {} not found", request.getRuleId());
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
             throw new IllegalArgumentException("Judiciary availability rule with id " + request.getRuleId() + " not found");
         }
 
@@ -103,7 +106,7 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
         if (entity == null) {
-            LOGGER.warn("Judiciary availability rule with id {} not found", request.getRuleId());
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
             throw new IllegalArgumentException("Judiciary availability rule with id " + request.getRuleId() + " not found");
         }
 
@@ -194,6 +197,36 @@ public class JudiciaryAvailabilityService {
         response.setJudiciaries(judiciaries);
 
         return response;
+    }
+
+    public GetJudiciaryAvailabilityRuleResponse getJudiciaryAvailabilityRule(final GetJudiciaryAvailabilityRuleRequest request, final Requester requester) {
+        LOGGER.info("Getting judiciary availability rule for ruleId: {}", request.getRuleId());
+
+        if (request.getRuleId() == null || request.getRuleId().isEmpty()) {
+            throw new IllegalArgumentException("Rule ID is required");
+        }
+
+        final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
+        if (entity == null) {
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
+            throw new IllegalArgumentException("Judiciary availability rule with id " + request.getRuleId() + " not found");
+        }
+
+        final JudiciaryAvailabilityRuleResponse ruleResponse = convertToResponse(entity);
+
+        // Fetch judiciary if requested
+        final boolean withJudiciary = Boolean.TRUE.equals(request.getWithJudiciary());
+        Judiciary judiciary = null;
+        if (withJudiciary && requester != null && entity.getJudiciaryId() != null) {
+            final List<String> judiciaryIdList = List.of(entity.getJudiciaryId());
+            final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesWithSpecialismByIds(judiciaryIdList, requester);
+            if (!fetchedJudiciaries.isEmpty()) {
+                judiciary = fetchedJudiciaries.get(0);
+                LOGGER.info("Fetched judiciary for ruleId {}", request.getRuleId());
+            }
+        }
+
+        return new GetJudiciaryAvailabilityRuleResponse(ruleResponse, judiciary);
     }
 
     private JudiciaryAvailabilityRuleResponse convertToResponse(final JudiciaryAvailabilityRule entity) {

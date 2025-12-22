@@ -42,6 +42,11 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateJudiciaryAvailabilityRu
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleResponseConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleResponseConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.GetJudiciaryAvailabilityRuleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.GetJudiciaryAvailabilityRuleResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
@@ -72,6 +77,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
@@ -187,11 +194,15 @@ class CourtSchedulerApiTest {
     @Mock
     private UpdateJudiciaryAvailabilityRuleConverter updateJudiciaryAvailabilityRuleConverter;
     @Mock
+    private FindJudiciaryAvailabilityConverter findJudiciaryAvailabilityConverter;
+    @Mock
     private FindJudiciaryAvailabilityRuleConverter findJudiciaryAvailabilityRuleConverter;
     @Mock
     private FindJudiciaryAvailabilityRuleResponseConverter findJudiciaryAvailabilityRuleResponseConverter;
     @Mock
-    private FindJudiciaryAvailabilityConverter findJudiciaryAvailabilityConverter;
+    private GetJudiciaryAvailabilityRuleConverter getJudiciaryAvailabilityRuleConverter;
+    @Mock
+    private GetJudiciaryAvailabilityRuleResponseConverter getJudiciaryAvailabilityRuleResponseConverter;
     @Mock
     private JudiciaryAvailabilityService judiciaryAvailabilityService;
     @Mock
@@ -743,8 +754,8 @@ class CourtSchedulerApiTest {
         final JsonEnvelope deleteEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
         DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId); 
-        request.setJudiciaryId(judiciaryId); 
+        request.setRuleId(ruleId);
+        request.setJudiciaryId(judiciaryId);
 
         when(this.enveloper.withMetadataFrom(deleteEnvelope, requestName)).thenReturn(function);
         when(deleteJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
@@ -771,8 +782,8 @@ class CourtSchedulerApiTest {
         final JsonEnvelope deleteEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
         DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId); 
-        request.setJudiciaryId(judiciaryId); 
+        request.setRuleId(ruleId);
+        request.setJudiciaryId(judiciaryId);
 
         // This test verifies that validation exceptions are still thrown when validator returns an error
         JsonObject validationError = createObjectBuilder()
@@ -812,7 +823,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope addEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
         AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
-        request.setJudiciaryId(judiciaryId); 
+        request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
 
         when(this.enveloper.withMetadataFrom(addEnvelope, requestName)).thenReturn(function);
@@ -845,7 +856,7 @@ class CourtSchedulerApiTest {
         final JsonEnvelope addEnvelope = createEnvelope(requestName, jsonPayloadObject);
 
         AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
-        request.setJudiciaryId(judiciaryId); 
+        request.setJudiciaryId(judiciaryId);
         // courtHouseId not set to trigger validation error
 
         final JsonObject validationError = createObjectBuilder()
@@ -1039,7 +1050,7 @@ class CourtSchedulerApiTest {
         request.setStartDate(LocalDate.of(2026, 1, 1));
         request.setEndDate(LocalDate.of(2026, 1, 31));
         request.setCourtHouseId(courtHouseId);
-        request.setJudiciaryId(judiciaryId); 
+        request.setJudiciaryId(judiciaryId);
         request.setPageSize(10);
         request.setPageNumber(1);
         request.setWithJudiciary(true);
@@ -1094,7 +1105,7 @@ class CourtSchedulerApiTest {
         request.setStartDate(LocalDate.of(2026, 1, 1));
         request.setEndDate(LocalDate.of(2026, 1, 31));
         request.setCourtHouseId(courtHouseId);
-        request.setJudiciaryId(judiciaryId); 
+        request.setJudiciaryId(judiciaryId);
         request.setPageSize(20);
         request.setPageNumber(1);
 
@@ -1141,7 +1152,7 @@ class CourtSchedulerApiTest {
         request.setStartDate(LocalDate.of(2026, 1, 1));
         request.setEndDate(LocalDate.of(2026, 1, 31));
         request.setCourtHouseId(courtHouseId);
-        request.setJudiciaryId(judiciaryId); 
+        request.setJudiciaryId(judiciaryId);
         request.setPageSize(5);
         request.setPageNumber(2);
         request.setWithJudiciary(false);
@@ -1330,5 +1341,90 @@ class CourtSchedulerApiTest {
         return new HearingSlotSearchAndBookResponse(hearingId, "432c067d-eaca-4ce5-ad90-a366ef3e4bb6", "001c067d-eaca-4ce5-ad90-a366ef3e4bb6",
                 sessionStartTime.toString(), 20,
                 List.of(CourtScheduleJudiciary.judiciary().withCourtScheduleId("432c067d-eaca-4ce5-ad90-a366ef3e4bb6").withJudiciaryId(randomUUID().toString()).build()));
+    }
+
+    @Test
+    void shouldGetJudiciaryAvailabilityRule() {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        // ruleId is a path parameter, may be included in payload by framework
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("withJudiciary", true)
+                .build();
+        final String requestName = "courtscheduler.judiciary.get.availability.rule";
+        final JsonEnvelope getEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setWithJudiciary(true);
+
+        final JudiciaryAvailabilityRuleResponse ruleResponse = new JudiciaryAvailabilityRuleResponse();
+        ruleResponse.setId(ruleId);
+        ruleResponse.setJudiciaryId(judiciaryId);
+
+        final uk.gov.moj.cpp.courtscheduler.domain.Judiciary judiciary = new uk.gov.moj.cpp.courtscheduler.domain.Judiciary();
+        judiciary.setId(judiciaryId);
+        judiciary.setSurname("Smith");
+
+        final GetJudiciaryAvailabilityRuleResponse serviceResponse = new GetJudiciaryAvailabilityRuleResponse(ruleResponse, judiciary);
+        final JsonObject responseJsonObject = createObjectBuilder()
+                .add("rule", createObjectBuilder().build())
+                .add("judiciary", createObjectBuilder().build())
+                .build();
+
+        when(this.enveloper.withMetadataFrom(getEnvelope, requestName)).thenReturn(function);
+        when(getJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityService.getJudiciaryAvailabilityRule(any(GetJudiciaryAvailabilityRuleRequest.class), any(Requester.class)))
+                .thenReturn(serviceResponse);
+        when(getJudiciaryAvailabilityRuleResponseConverter.convert(any(GetJudiciaryAvailabilityRuleResponse.class)))
+                .thenReturn(responseJsonObject);
+
+        courtSchedulerApi.getJudiciaryAvailabilityRule(getEnvelope);
+
+        verify(enveloper, atLeastOnce()).withMetadataFrom(getEnvelope, requestName);
+        verify(getJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
+        verify(judiciaryAvailabilityService).getJudiciaryAvailabilityRule(any(GetJudiciaryAvailabilityRuleRequest.class), eq(requester));
+        verify(getJudiciaryAvailabilityRuleResponseConverter).convert(any(GetJudiciaryAvailabilityRuleResponse.class));
+    }
+
+    @Test
+    void shouldGetJudiciaryAvailabilityRuleWithoutJudiciary() {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        // ruleId is a path parameter, may be included in payload by framework
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("withJudiciary", false)
+                .build();
+        final String requestName = "courtscheduler.judiciary.get.availability.rule";
+        final JsonEnvelope getEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setWithJudiciary(false);
+
+        final JudiciaryAvailabilityRuleResponse ruleResponse = new JudiciaryAvailabilityRuleResponse();
+        ruleResponse.setId(ruleId);
+        ruleResponse.setJudiciaryId(judiciaryId);
+
+        final GetJudiciaryAvailabilityRuleResponse serviceResponse = new GetJudiciaryAvailabilityRuleResponse(ruleResponse, null);
+        final JsonObject responseJsonObject = createObjectBuilder()
+                .add("rule", createObjectBuilder().build())
+                .addNull("judiciary")
+                .build();
+
+        when(this.enveloper.withMetadataFrom(getEnvelope, requestName)).thenReturn(function);
+        when(getJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityService.getJudiciaryAvailabilityRule(any(GetJudiciaryAvailabilityRuleRequest.class), any(Requester.class)))
+                .thenReturn(serviceResponse);
+        when(getJudiciaryAvailabilityRuleResponseConverter.convert(any(GetJudiciaryAvailabilityRuleResponse.class)))
+                .thenReturn(responseJsonObject);
+
+        courtSchedulerApi.getJudiciaryAvailabilityRule(getEnvelope);
+
+        verify(getJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
+        verify(judiciaryAvailabilityService).getJudiciaryAvailabilityRule(any(GetJudiciaryAvailabilityRuleRequest.class), eq(requester));
+        verify(getJudiciaryAvailabilityRuleResponseConverter).convert(any(GetJudiciaryAvailabilityRuleResponse.class));
     }
 }

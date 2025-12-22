@@ -19,6 +19,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
@@ -963,6 +965,152 @@ class JudiciaryAvailabilityServiceTest {
         JudiciaryAvailabilityRule updated = captor.getValue();
         // Should clear existing repeat days when null is provided
         assertThat(updated.getRepeatDays().size(), is(0));
+    }
+
+    @Test
+    void shouldGetJudiciaryAvailabilityRule() {
+        final String ruleId = randomUUID().toString();
+        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setWithJudiciary(false);
+
+        JudiciaryAvailabilityRule rule = createRule(judiciaryId,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
+        rule.setId(ruleId);
+
+        when(repository.findBy(ruleId)).thenReturn(rule);
+
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request, requester);
+
+        assertNotNull(response);
+        assertNotNull(response.getRule());
+        assertThat(response.getRule().getId(), is(ruleId));
+        assertThat(response.getJudiciary(), is(org.hamcrest.Matchers.nullValue()));
+        verify(repository).findBy(ruleId);
+        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void shouldGetJudiciaryAvailabilityRuleWithJudiciary() {
+        final String ruleId = randomUUID().toString();
+        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setWithJudiciary(true);
+
+        JudiciaryAvailabilityRule rule = createRule(judiciaryId,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
+        rule.setId(ruleId);
+
+        final Judiciary judiciary = new Judiciary();
+        judiciary.setId(judiciaryId);
+        judiciary.setSurname("Smith");
+
+        when(repository.findBy(ruleId)).thenReturn(rule);
+        when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester)))
+                .thenReturn(Arrays.asList(judiciary));
+
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request, requester);
+
+        assertNotNull(response);
+        assertNotNull(response.getRule());
+        assertThat(response.getRule().getId(), is(ruleId));
+        assertNotNull(response.getJudiciary());
+        assertThat(response.getJudiciary().getId(), is(judiciaryId));
+        assertThat(response.getJudiciary().getSurname(), is("Smith"));
+        verify(repository).findBy(ruleId);
+        verify(referenceDataService).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.argThat(list -> list.size() == 1 && list.contains(judiciaryId)), org.mockito.ArgumentMatchers.eq(requester));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenGetRuleNotFound() {
+        final String ruleId = randomUUID().toString();
+        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+
+        when(repository.findBy(ruleId)).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            service.getJudiciaryAvailabilityRule(request, requester);
+        });
+
+        assertThat(exception.getMessage(), is("Judiciary availability rule with id " + ruleId + " not found"));
+        verify(repository).findBy(ruleId);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenGetRuleIdIsNull() {
+        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            service.getJudiciaryAvailabilityRule(request, requester);
+        });
+
+        assertThat(exception.getMessage(), is("Rule ID is required"));
+        verify(repository, org.mockito.Mockito.never()).findBy(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenGetRuleIdIsEmpty() {
+        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
+        request.setRuleId("");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            service.getJudiciaryAvailabilityRule(request, requester);
+        });
+
+        assertThat(exception.getMessage(), is("Rule ID is required"));
+        verify(repository, org.mockito.Mockito.never()).findBy(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void shouldGetJudiciaryAvailabilityRuleWithNullRequester() {
+        final String ruleId = randomUUID().toString();
+        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setWithJudiciary(true);
+
+        JudiciaryAvailabilityRule rule = createRule(judiciaryId,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
+        rule.setId(ruleId);
+
+        when(repository.findBy(ruleId)).thenReturn(rule);
+
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request, null);
+
+        assertNotNull(response);
+        assertNotNull(response.getRule());
+        assertThat(response.getRule().getId(), is(ruleId));
+        assertThat(response.getJudiciary(), is(org.hamcrest.Matchers.nullValue()));
+        verify(repository).findBy(ruleId);
+        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void shouldGetJudiciaryAvailabilityRuleWithNullJudiciaryId() {
+        final String ruleId = randomUUID().toString();
+        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setWithJudiciary(true);
+
+        JudiciaryAvailabilityRule rule = createRule(null,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
+        rule.setId(ruleId);
+
+        when(repository.findBy(ruleId)).thenReturn(rule);
+
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request, requester);
+
+        assertNotNull(response);
+        assertNotNull(response.getRule());
+        assertThat(response.getRule().getId(), is(ruleId));
+        assertThat(response.getJudiciary(), is(org.hamcrest.Matchers.nullValue()));
+        verify(repository).findBy(ruleId);
+        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
     }
 }
 

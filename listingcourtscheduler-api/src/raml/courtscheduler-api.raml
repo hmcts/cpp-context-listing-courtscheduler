@@ -662,6 +662,29 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.find.judiciary.availability.rule.json
             example: !include json/courtscheduler.find.judiciary.availability.rule.json
 
+/judiciaries/{judiciaryId}/availability-rules/{ruleId}:
+  get:
+    description: |
+      Get a single judiciary availability rule by ruleId
+      ...
+      (mapping):
+            responseType: application/json
+            name: courtscheduler.judiciary.get.availability.rule
+      ...
+    queryParameters:
+      withJudiciary:
+        description: Include judiciary details in response
+        type: boolean
+        required: false
+        default: true
+    responses:
+      200:
+        description: OK
+        body:
+          application/json:
+            schema: !include json/schema/courtscheduler.judiciary.get.availability.rule.json
+            example: !include json/courtscheduler.judiciary.get.availability.rule.json
+
 /judiciaries/availability-rules/add:
   post:
     description: |

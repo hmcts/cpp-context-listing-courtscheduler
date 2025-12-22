@@ -41,20 +41,5 @@ public class FindJudiciaryAvailabilityRuleResponseConverter extends BaseJudiciar
                 .build();
     }
 
-    private JsonObject convertRule(final JudiciaryAvailabilityRuleResponse rule) {
-        JsonObjectBuilder ruleBuilder = Json.createObjectBuilder()
-                .add("id", rule.getId())
-                .add("judiciaryId", rule.getJudiciaryId())
-                .add("courtHouseId", rule.getCourtHouseId())
-                .add("startDate", rule.getStartDate().toString())
-                .add("endDate", rule.getEndDate().toString())
-                .add("repeatDays", convertRepeatDaysToJson(rule.getRepeatDays()))
-                .add("unavailabilities", convertUnavailabilitiesToJson(rule.getUnavailabilities()));
-
-        addOptionalEnumField(ruleBuilder, "recurringType", rule.getRecurringType());
-        addOptionalEnumField(ruleBuilder, "sessionType", rule.getSessionType());
-
-        return ruleBuilder.build();
-    }
 }
 

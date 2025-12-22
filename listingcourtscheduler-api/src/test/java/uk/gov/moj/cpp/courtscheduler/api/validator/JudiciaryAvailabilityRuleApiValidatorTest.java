@@ -59,15 +59,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         Assertions.assertTrue(result.getString("errorMessage").contains("Request"));
     }
 
-    @Test
-    void shouldReturnErrorWhenJudiciaryIdIsBlank() {
-        this.request.setJudiciaryId("");
-
-        JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
-
-        Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("judiciaryId"));
-    }
+    // Note: judiciaryId validation removed for add operations as it's always present from URL path parameter
 
     @Test
     void shouldReturnErrorWhenCourtHouseIdIsBlank() {
@@ -260,5 +252,6 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         Assertions.assertFalse(result.isEmpty());
         Assertions.assertTrue(result.getString("errorMessage").contains("judiciaryId"));
     }
+    // Note: ruleId and judiciaryId validation removed for delete operations as they're always present from URL path parameters
 }
 

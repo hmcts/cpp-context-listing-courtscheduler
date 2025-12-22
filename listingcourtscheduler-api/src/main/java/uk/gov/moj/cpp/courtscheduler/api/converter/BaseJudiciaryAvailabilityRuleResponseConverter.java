@@ -5,9 +5,11 @@ import java.util.List;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
+import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
+import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
 
 /**
@@ -73,5 +75,25 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
         if (value != null) {
             builder.add(fieldName, value.name());
         }
+    }
+
+    /**
+     * Converts a single JudiciaryAvailabilityRuleResponse to JSON object.
+     * This method is shared by both Find and Get converters.
+     */
+    protected JsonObject convertRule(final JudiciaryAvailabilityRuleResponse rule) {
+        JsonObjectBuilder ruleBuilder = Json.createObjectBuilder()
+                .add("id", rule.getId())
+                .add("judiciaryId", rule.getJudiciaryId())
+                .add("courtHouseId", rule.getCourtHouseId())
+                .add(START_DATE, rule.getStartDate().toString())
+                .add(END_DATE, rule.getEndDate().toString())
+                .add("repeatDays", convertRepeatDaysToJson(rule.getRepeatDays()))
+                .add("unavailabilities", convertUnavailabilitiesToJson(rule.getUnavailabilities()));
+
+        addOptionalEnumField(ruleBuilder, "recurringType", rule.getRecurringType());
+        addOptionalEnumField(ruleBuilder, "sessionType", rule.getSessionType());
+
+        return ruleBuilder.build();
     }
 }

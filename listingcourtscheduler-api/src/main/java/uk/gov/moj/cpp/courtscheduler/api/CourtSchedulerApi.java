@@ -36,6 +36,8 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConv
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleResponseConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.GetJudiciaryAvailabilityRuleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.GetJudiciaryAvailabilityRuleResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciaryAvailabilityRuleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
@@ -176,6 +178,10 @@ public class CourtSchedulerApi {
     private JudiciaryAvailabilityRuleApiValidator judiciaryAvailabilityRuleApiValidator;
     @Inject
     private FindJudiciaryAvailabilityRuleResponseConverter findJudiciaryAvailabilityRuleResponseConverter;
+    @Inject
+    private GetJudiciaryAvailabilityRuleConverter getJudiciaryAvailabilityRuleConverter;
+    @Inject
+    private GetJudiciaryAvailabilityRuleResponseConverter getJudiciaryAvailabilityRuleResponseConverter;
 
 
     @Handles("courtscheduler.create")
@@ -633,7 +639,20 @@ public class CourtSchedulerApi {
         return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.delete.availability.rule").apply(createObjectBuilder().build());
     }
 
+    @Handles("courtscheduler.judiciary.get.availability.rule")
+    public JsonEnvelope getJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.get.availability.rule requested : {}", requestFromApiJsonObject);
 
+        uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleRequest request = getJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+        uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse response = judiciaryAvailabilityService.getJudiciaryAvailabilityRule(request, requester);
+
+        final JsonObject responseObject = getJudiciaryAvailabilityRuleResponseConverter.convert(response);
+
+        return enveloper
+                .withMetadataFrom(envelope, "courtscheduler.judiciary.get.availability.rule")
+                .apply(responseObject);
+    }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {
         JsonObject build = createObjectBuilder().add(key, jsonValue).build();
