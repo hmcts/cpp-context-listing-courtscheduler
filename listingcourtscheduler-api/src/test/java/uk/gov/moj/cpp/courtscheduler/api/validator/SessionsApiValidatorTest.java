@@ -95,6 +95,9 @@ class SessionsApiValidatorTest {
                                 .withCourtRoomId(courtRoomId)
                                 .withOucodeUUID(courtCentreId)
                                 .build()));
+        // Explicitly stub CP source to return empty for MAGISTRATES jurisdiction
+        lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.empty());
     }
 
     private void stubCrownCourtRoomAvailable(String courtRoomId) {
@@ -104,6 +107,9 @@ class SessionsApiValidatorTest {
                                 .withCourtRoomId(courtRoomId)
                                 .withOucodeUUID(courtCentreId)
                                 .build()));
+        // Explicitly stub Rota source to return empty for CROWN jurisdiction
+        lenient().when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+                .thenReturn(Optional.empty());
     }
 
     private void stubBusinessType(String code, String jurisdiction, boolean slot, boolean duration) {
@@ -1495,6 +1501,10 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
+        // Mock that persisted schedule is not found (returns null)
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(null);
+
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
                 .thenReturn(emptyList());
         when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
@@ -1524,6 +1534,13 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
+
+        // Mock persisted schedule with null session times
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setSessionStartTime(null);
+        persistedSchedule.setSessionEndTime(null);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
                 .thenReturn(emptyList());
