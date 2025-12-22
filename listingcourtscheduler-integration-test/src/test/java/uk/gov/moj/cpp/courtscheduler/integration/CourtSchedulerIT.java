@@ -421,6 +421,28 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldReturn400WhenMagistratesSessionUsesCrownCourtroomInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-magistrates-with-crown-courtroom.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        // When courtroom is found in primary source but has wrong oucode, oucode validation catches it
+        assertThat(errorResponseMessage, containsString("The courtroom jurisdiction does nto match with session  jurisdiction"));
+    }
+
+    @Test
+    void shouldReturn400WhenMagistratesSessionUsesCrownCourtroomInValidateCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-magistrates-with-crown-courtroom.json");
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        // When courtroom is found in primary source but has wrong oucode, oucode validation catches it
+        assertThat(errorResponseMessage, containsString("The courtroom jurisdiction does nto match with session  jurisdiction"));
+    }
+
+    @Test
     void shouldReturn400WhenAllDaySplitHasInsufficientSessionDuration() throws SQLException {
         final CourtSchedule courtScheduleDuration = RANDOM.nextObject(CourtSchedule.class);
         final Integer maxDurationForMorning = 120;
