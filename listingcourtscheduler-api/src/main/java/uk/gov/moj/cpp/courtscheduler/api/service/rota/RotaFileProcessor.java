@@ -23,6 +23,7 @@ import java.io.ByteArrayInputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.ejb.Stateless;
@@ -107,16 +108,14 @@ public class RotaFileProcessor {
         }
 
         final long processStart = System.nanoTime();
+
         final ParseResult parseResult = parseFileContent(blobName, blobByteArray);
         final Map<RotaPayload, Map<String, Map<String, String>>> records = parseResult.records();
         final String executionId = parseResult.executionId();
         final RotaFileProcessHistory rotaFileProcessHistory = parseResult.rotaFileProcessHistory();
-        final long processEnd = System.nanoTime();
-
-        logProcessingTime(blobName, processStart, processEnd);
-        logger.info("Rota file parsed successfully for blob: {} - parsed {} record types", blobName, records.size());
 
         final ProcessingMaps processingMaps = createProcessingMaps(records, requester, executionId, blobName);
+
         final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb = queryDatabaseForCourtScheduleIds(
                 processingMaps.judiciaryCourtScheduleMapFromRotaFeed(), blobName);
 
@@ -128,6 +127,10 @@ public class RotaFileProcessor {
                 blobName);
 
         updateFileProcessHistory(rotaFileProcessHistory, blobName);
+
+        final long processEnd = System.nanoTime();
+        logProcessingTime(blobName, processStart, processEnd);
+        logger.info("Rota file parsed successfully for blob: {} - parsed {} record types", blobName, records.size());
     }
 
     /**
@@ -166,7 +169,7 @@ public class RotaFileProcessor {
         final Map<String, UUID> justiceIdJudiciaryIdMap = rotaJudiciaryHelper.createJudiciaryMap(records, requester, executionId);
         logger.info("Created judiciary map with {} entries for blob: {}", justiceIdJudiciaryIdMap.size(), blobName);
 
-        final Map<String, List<UUID>> courtListingProfileIdListOfCourscheduleIdMap =
+        final Map<String, Set<UUID>> courtListingProfileIdListOfCourscheduleIdMap =
                 rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
         logger.info("Created court schedule map with {} entries for blob: {}",
                 courtListingProfileIdListOfCourscheduleIdMap.size(), blobName);
@@ -374,7 +377,7 @@ public class RotaFileProcessor {
     private void processJudiciaryUnassignments(final Map<String, List<UUID>> judiciaryUnAssignmentMap,
                                                final String executionId) {
         final Map<String, List<String>> unassignMap = judiciaryAssignmentRequestHelper.convertToUnassignmentMap(judiciaryUnAssignmentMap);
-        judiciaryUnassignmentService.unassignJudiciary(unassignMap, executionId);
+        judiciaryUnassignmentService.unassignJudiciary(unassignMap, executionId, true);
     }
 
     // ============================================================================

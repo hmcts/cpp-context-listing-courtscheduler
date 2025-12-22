@@ -117,7 +117,7 @@ public class RotaJudiciaryHelper {
      *
      * @param records          the parsed rota file records
      * @param judiciaryMap     the map of judiciary IDs to Judiciary UUIDs
-     * @param courtScheduleMap the map of court listing profile IDs to lists of CourtSchedule UUIDs
+     * @param courtScheduleMap the map of court listing profile IDs to sets of CourtSchedule UUIDs
      * @param requester        the requester for making reference data queries
      * @param executionId      the execution ID for logging purposes
      * @return a map of judiciary IDs to lists of CourtSchedule UUIDs
@@ -125,7 +125,7 @@ public class RotaJudiciaryHelper {
     public Map<String, List<UUID>> createJudiciaryCourtScheduleMap(
             final Map<RotaPayload, Map<String, Map<String, String>>> records,
             final Map<String, UUID> judiciaryMap,
-            final Map<String, List<UUID>> courtScheduleMap,
+            final Map<String, Set<UUID>> courtScheduleMap,
             final Requester requester,
             final String executionId) {
         final List<CourtScheduleJudiciary> scheduleJudiciaryList = createScheduleJudiciaryList(records, requester, executionId);
@@ -157,7 +157,7 @@ public class RotaJudiciaryHelper {
                     return;
                 }
 
-                final List<UUID> scheduleIds = courtScheduleMap.get(courtListingProfileId);
+                final Set<UUID> scheduleIds = courtScheduleMap.get(courtListingProfileId);
                 if (scheduleIds == null || scheduleIds.isEmpty()) {
                     logger.debug("Skipping schedule - no court schedule found for courtListingProfileId: {}",
                             courtListingProfileId);

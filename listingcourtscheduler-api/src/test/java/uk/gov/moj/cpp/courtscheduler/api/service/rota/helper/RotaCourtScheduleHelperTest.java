@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -118,19 +119,19 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(List.of(courtSchedule));
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result.size(), is(1));
         assertThat(result.containsKey(listingProfileId), is(true));
         assertThat(result.get(listingProfileId).size(), is(1));
-        assertThat(result.get(listingProfileId).get(0), is(UUID.fromString(courtSchedule.getCourtScheduleId())));
+        assertThat(result.get(listingProfileId).contains(UUID.fromString(courtSchedule.getCourtScheduleId())), is(true));
     }
 
     @Test
     void shouldReturnEmptyMap_WhenRecordsIsNull() {
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(null, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(null, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -141,7 +142,7 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldReturnEmptyMap_WhenRecordsIsEmpty() {
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(emptyMap(), requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(emptyMap(), requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -154,7 +155,7 @@ class RotaCourtScheduleHelperTest {
         records.put(RotaPayload.MAGISTRATES, new HashMap<>());
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -174,7 +175,7 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -194,7 +195,7 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -218,7 +219,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(null);
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -244,7 +245,7 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(null);
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -275,7 +276,7 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(Collections.emptyList());
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -321,12 +322,12 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(List.of(matchingSchedule, nonMatchingSchedule));
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result.size(), is(1));
         assertThat(result.get(listingProfileId).size(), is(1));
-        assertThat(result.get(listingProfileId).get(0), is(UUID.fromString(matchingSchedule.getCourtScheduleId())));
+        assertThat(result.get(listingProfileId).contains(UUID.fromString(matchingSchedule.getCourtScheduleId())), is(true));
     }
 
     @Test
@@ -361,12 +362,12 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(List.of(adSchedule));
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result.size(), is(1));
         assertThat(result.get(listingProfileId).size(), is(1));
-        assertThat(result.get(listingProfileId).get(0), is(UUID.fromString(adSchedule.getCourtScheduleId())));
+        assertThat(result.get(listingProfileId).contains(UUID.fromString(adSchedule.getCourtScheduleId())), is(true));
     }
 
     @Test
@@ -401,12 +402,12 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(List.of(adSchedule));
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result.size(), is(1));
         assertThat(result.get(listingProfileId).size(), is(1));
-        assertThat(result.get(listingProfileId).get(0), is(UUID.fromString(adSchedule.getCourtScheduleId())));
+        assertThat(result.get(listingProfileId).contains(UUID.fromString(adSchedule.getCourtScheduleId())), is(true));
     }
 
     @Test
@@ -441,7 +442,7 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(List.of(amSchedule));
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -479,12 +480,12 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(List.of(adSchedule));
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result.size(), is(1));
         assertThat(result.get(listingProfileId).size(), is(1));
-        assertThat(result.get(listingProfileId).get(0), is(UUID.fromString(adSchedule.getCourtScheduleId())));
+        assertThat(result.get(listingProfileId).contains(UUID.fromString(adSchedule.getCourtScheduleId())), is(true));
     }
 
     @Test
@@ -519,7 +520,7 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(List.of(amSchedule));
 
         // when
-        final Map<String, List<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
