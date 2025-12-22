@@ -236,12 +236,11 @@ public class SessionsApiValidator {
 
         //check for the jurisdiction match between the courtroom/courthouse and the session
         String oucode = courtRoom.getOucode();
-        if (nonNull(oucode)) {
-            if ((oucode.startsWith("B") && CROWN.equalsIgnoreCase(sessionJurisdiction))
-                || (oucode.startsWith("C") && MAGISTRATES.equalsIgnoreCase(sessionJurisdiction))) {
+        if (nonNull(oucode) && ((oucode.startsWith("B") && CROWN.equalsIgnoreCase(sessionJurisdiction))
+                || (oucode.startsWith("C") && MAGISTRATES.equalsIgnoreCase(sessionJurisdiction)))) {
                 return buildErrorResponse("The courtroom jurisdiction does nto match with session  jurisdiction");
             }
-        }
+
 
         return EMPTY_JSON_OBJECT;
     }
@@ -479,7 +478,7 @@ public class SessionsApiValidator {
         }
 
         String[] sessionTimes = retrieveSessionTimes(params);
-        if (sessionTimes == null) {
+        if (sessionTimes.length == 0) {
             return EMPTY_JSON_OBJECT;
         }
 
@@ -494,14 +493,14 @@ public class SessionsApiValidator {
             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
                     courtScheduleRepository.retrieveCourtScheduleWithListingById(params.getCourtScheduleId());
             if (isNull(persistedCourtSchedule)) {
-                return null;
+                return new String[0];
             }
             sessionStartTimeStr = retrieveSessionStartTime(sessionStartTimeStr, persistedCourtSchedule);
             sessionEndTimeStr = retrieveSessionEndTime(sessionEndTimeStr, persistedCourtSchedule);
         }
 
         if (isNull(sessionStartTimeStr) || isNull(sessionEndTimeStr)) {
-            return null;
+            return new String[0];
         }
 
         return new String[]{sessionStartTimeStr, sessionEndTimeStr};
