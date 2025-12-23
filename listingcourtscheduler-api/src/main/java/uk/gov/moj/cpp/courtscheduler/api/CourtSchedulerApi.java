@@ -215,7 +215,7 @@ public class CourtSchedulerApi {
         LOGGER.info("courtscheduler.assign-judiciary requested : {}", payload);
 
         final AssignJudiciariesRequest requestDto = assignJudiciariesRequestConverter.convert(payload);
-        final JsonObject validation = assignJudiciariesApiValidator.validate(requestDto);
+        final JsonObject validation = assignJudiciariesApiValidator.validate(requestDto, requester);
 
         if (!validation.isEmpty()) {
             throw new ValidationException(validation);
