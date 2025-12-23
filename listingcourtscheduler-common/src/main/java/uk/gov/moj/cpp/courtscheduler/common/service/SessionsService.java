@@ -152,10 +152,10 @@ public class SessionsService {
         String businessTypeJurisdiction = updatedBusinessType.getJurisdiction();
         if (nonNull(businessTypeJurisdiction)) {
             if (MAGISTRATES.equalsIgnoreCase(persistedJurisdiction) && !MAGISTRATES.equalsIgnoreCase(businessTypeJurisdiction)) {
-                return new Result("Invalid business type", false);
+                return new Result("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + persistedJurisdiction, false);
             }
             if (CROWN.equalsIgnoreCase(persistedJurisdiction) && !CROWN.equalsIgnoreCase(businessTypeJurisdiction)) {
-                return new Result("Invalid business type", false);
+                return new Result("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + persistedJurisdiction, false);
             }
         }
         
