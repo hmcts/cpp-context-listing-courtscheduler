@@ -46,6 +46,8 @@ public class JudiciaryAvailabilityService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryAvailabilityService.class.getName());
     public static final String JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND = "Judiciary availability rule with id {} not found";
+    private static final String UNAVAILABILITY_PREFIX = "Unavailability ";
+    private static final String WOULD_AFFECT = " would affect ";
 
     @Inject
     private JudiciaryAvailabilityRuleRepository repository;
@@ -53,6 +55,8 @@ public class JudiciaryAvailabilityService {
     private ReferenceDataService referenceDataService;
     @Inject
     private EntityManager entityManager;
+    @Inject
+    private uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
     public void addJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Adding judiciary availability rule: {}", request);
@@ -548,6 +552,314 @@ public class JudiciaryAvailabilityService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         return new ArrayList<>(judiciaryIds);
+    }
+
+    /**
+     * Validates an add judiciary availability rule request.
+     * Returns a list of validation error messages. Empty list means validation passed.
+     */
+    public List<String> validateAddJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
+        final List<String> errors = new ArrayList<>();
+        
+        validateDateRangeMaxThreeYears(request, errors);
+        validateFutureDatesForCreation(request, errors);
+        validateUnavailabilityDateRanges(request, errors);
+        validateUnavailabilityOverlaps(request, errors);
+        validateOverlappingRules(request, null, errors);
+        validateUnavailabilityAffectsAssignedSessions(request, errors);
+        
+        return errors;
+    }
+
+    private void validateDateRangeMaxThreeYears(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final List<String> errors) {
+        if (request.getStartDate() != null && request.getEndDate() != null) {
+            final long yearsBetween = java.time.temporal.ChronoUnit.YEARS.between(request.getStartDate(), request.getEndDate());
+            if (yearsBetween > 3) {
+                errors.add("Date range cannot exceed 3 years");
+            }
+        }
+    }
+
+    private void validateFutureDatesForCreation(final AddJudiciaryAvailabilityRuleRequest request, final List<String> errors) {
+        final LocalDate today = LocalDate.now();
+        if (request.getStartDate() != null && request.getStartDate().isBefore(today)) {
+            errors.add("Start date must be in the future during creation");
+        }
+        if (request.getEndDate() != null && request.getEndDate().isBefore(today)) {
+            errors.add("End date must be in the future during creation");
+        }
+    }
+
+    private void validateUnavailabilityDateRanges(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final List<String> errors) {
+        if (request.getUnavailabilities() == null || request.getUnavailabilities().isEmpty()) {
+            return;
+        }
+        
+        for (int i = 0; i < request.getUnavailabilities().size(); i++) {
+            final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest unavailability = 
+                    request.getUnavailabilities().get(i);
+            if (unavailability.getStartDate() != null && unavailability.getEndDate() != null) {
+                if (request.getStartDate() != null && unavailability.getStartDate().isBefore(request.getStartDate())) {
+                    errors.add(UNAVAILABILITY_PREFIX + (i + 1) + " start date must be within availability date range");
+                }
+                if (request.getEndDate() != null && unavailability.getEndDate().isAfter(request.getEndDate())) {
+                    errors.add(UNAVAILABILITY_PREFIX + (i + 1) + " end date must be within availability date range");
+                }
+            }
+        }
+    }
+
+    private void validateUnavailabilityOverlaps(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final List<String> errors) {
+        if (request.getUnavailabilities() == null || request.getUnavailabilities().isEmpty()) {
+            return;
+        }
+        
+        for (int i = 0; i < request.getUnavailabilities().size(); i++) {
+            for (int j = i + 1; j < request.getUnavailabilities().size(); j++) {
+                final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest u1 = 
+                        request.getUnavailabilities().get(i);
+                final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest u2 = 
+                        request.getUnavailabilities().get(j);
+                if (doDateRangesOverlap(u1.getStartDate(), u1.getEndDate(), u2.getStartDate(), u2.getEndDate())) {
+                    errors.add("Unavailabilities cannot overlap");
+                    return;
+                }
+            }
+        }
+    }
+
+    private void validateOverlappingRules(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final String excludeRuleId, final List<String> errors) {
+        if (request.getJudiciaryId() == null || request.getStartDate() == null || request.getEndDate() == null) {
+            return;
+        }
+        
+        final List<JudiciaryAvailabilityRule> overlappingRules = repository.findRulesByDateRange(
+                request.getStartDate(),
+                request.getEndDate(),
+                null, // courtHouseId - check all court houses
+                request.getJudiciaryId()
+        );
+        
+        final List<JudiciaryAvailabilityRule> rulesToCheck = excludeRuleId != null
+                ? overlappingRules.stream()
+                        .filter(rule -> !rule.getId().equals(excludeRuleId))
+                        .toList()
+                : overlappingRules;
+        
+        for (final JudiciaryAvailabilityRule existingRule : rulesToCheck) {
+            if (hasOverlappingRepeatPattern(request, existingRule)) {
+                errors.add("A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern");
+                return;
+            }
+        }
+    }
+
+    private void validateUnavailabilityAffectsAssignedSessions(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final List<String> errors) {
+        if (request.getJudiciaryId() == null || request.getStartDate() == null || request.getEndDate() == null) {
+            return;
+        }
+        
+        if (request.getUnavailabilities() == null || request.getUnavailabilities().isEmpty()) {
+            return;
+        }
+        
+        for (final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest unavailability : 
+                request.getUnavailabilities()) {
+            if (unavailability.getStartDate() != null && unavailability.getEndDate() != null) {
+                final List<String> affectedSessions = courtScheduleJudiciaryRepository
+                        .findCourtScheduleIdsByJudiciaryAndDateRange(
+                                request.getJudiciaryId(),
+                                unavailability.getStartDate(),
+                                unavailability.getEndDate()
+                        );
+                if (!affectedSessions.isEmpty()) {
+                    errors.add("Adding unavailability from " + unavailability.getStartDate() + 
+                            " to " + unavailability.getEndDate() + 
+                            WOULD_AFFECT + affectedSessions.size() + 
+                            " already assigned session(s). Please review the assigned sessions before proceeding.");
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * Validates an update judiciary availability rule request.
+     * Returns a list of validation error messages. Empty list means validation passed.
+     */
+    public List<String> validateUpdateJudiciaryAvailabilityRule(final UpdateJudiciaryAvailabilityRuleRequest request) {
+        final List<String> errors = new ArrayList<>();
+        
+        if (validateRuleIdForUpdate(request, errors)) {
+            return errors;
+        }
+        
+        final JudiciaryAvailabilityRule existingRule = repository.findBy(request.getRuleId());
+        if (validateExistingRule(request, existingRule, errors)) {
+            return errors;
+        }
+        
+        validateDateRangeMaxThreeYears(request, errors);
+        validateChangedDatesForUpdate(request, existingRule, errors);
+        validateDateRangeChangesAffectAssignedSessions(request, existingRule, errors);
+        validateUnavailabilityDateRanges(request, errors);
+        validateUnavailabilityOverlaps(request, errors);
+        validateOverlappingRules(request, request.getRuleId(), errors);
+        validateUnavailabilityAffectsAssignedSessions(request, errors);
+        
+        return errors;
+    }
+
+    private boolean validateRuleIdForUpdate(final UpdateJudiciaryAvailabilityRuleRequest request, final List<String> errors) {
+        if (request.getRuleId() == null || request.getRuleId().isEmpty()) {
+            errors.add("Rule ID is required for update");
+            return true;
+        }
+        return false;
+    }
+
+    private boolean validateExistingRule(final UpdateJudiciaryAvailabilityRuleRequest request, 
+                                         final JudiciaryAvailabilityRule existingRule, 
+                                         final List<String> errors) {
+        if (existingRule == null) {
+            errors.add("Judiciary availability rule with id " + request.getRuleId() + " not found");
+            return true;
+        }
+        return false;
+    }
+
+    private void validateChangedDatesForUpdate(final UpdateJudiciaryAvailabilityRuleRequest request,
+                                               final JudiciaryAvailabilityRule existingRule,
+                                               final List<String> errors) {
+        final LocalDate today = LocalDate.now();
+        final boolean startDateChanged = !existingRule.getFromDate().equals(request.getStartDate());
+        final boolean endDateChanged = !existingRule.getToDate().equals(request.getEndDate());
+        
+        if (startDateChanged && request.getStartDate() != null && request.getStartDate().isBefore(today)) {
+            errors.add("If start date is changed, it must be in the future");
+        }
+        if (endDateChanged && request.getEndDate() != null && request.getEndDate().isBefore(today)) {
+            errors.add("If end date is changed, it must be in the future");
+        }
+    }
+
+    private void validateDateRangeChangesAffectAssignedSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
+                                                                 final JudiciaryAvailabilityRule existingRule,
+                                                                 final List<String> errors) {
+        if (request.getJudiciaryId() == null) {
+            return;
+        }
+        
+        final boolean startDateChanged = !existingRule.getFromDate().equals(request.getStartDate());
+        final boolean endDateChanged = !existingRule.getToDate().equals(request.getEndDate());
+        
+        if (!startDateChanged && !endDateChanged) {
+            return;
+        }
+        
+        final LocalDate oldStart = existingRule.getFromDate();
+        final LocalDate oldEnd = existingRule.getToDate();
+        final LocalDate newStart = request.getStartDate();
+        final LocalDate newEnd = request.getEndDate();
+        
+        if (startDateChanged && newStart != null && newStart.isAfter(oldStart)) {
+            validateStartDateChangeAffectsSessions(request, oldStart, newStart, errors);
+        }
+        
+        if (endDateChanged && newEnd != null && newEnd.isBefore(oldEnd)) {
+            validateEndDateChangeAffectsSessions(request, oldEnd, newEnd, errors);
+        }
+    }
+
+    private void validateStartDateChangeAffectsSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
+                                                        final LocalDate oldStart,
+                                                        final LocalDate newStart,
+                                                        final List<String> errors) {
+        final List<String> affectedSessions = courtScheduleJudiciaryRepository
+                .findCourtScheduleIdsByJudiciaryAndDateRange(
+                        request.getJudiciaryId(),
+                        oldStart,
+                        newStart.minusDays(1)
+                );
+        if (!affectedSessions.isEmpty()) {
+            errors.add("Changing start date from " + oldStart + " to " + newStart + 
+                    WOULD_AFFECT + affectedSessions.size() + 
+                    " already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding.");
+        }
+    }
+
+    private void validateEndDateChangeAffectsSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
+                                                      final LocalDate oldEnd,
+                                                      final LocalDate newEnd,
+                                                      final List<String> errors) {
+        final List<String> affectedSessions = courtScheduleJudiciaryRepository
+                .findCourtScheduleIdsByJudiciaryAndDateRange(
+                        request.getJudiciaryId(),
+                        newEnd.plusDays(1),
+                        oldEnd
+                );
+        if (!affectedSessions.isEmpty()) {
+            errors.add("Changing end date from " + oldEnd + " to " + newEnd + 
+                    WOULD_AFFECT + affectedSessions.size() + 
+                    " already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding.");
+        }
+    }
+
+
+    /**
+     * Checks if two date ranges overlap.
+     */
+    private boolean doDateRangesOverlap(final LocalDate start1, final LocalDate end1, 
+                                       final LocalDate start2, final LocalDate end2) {
+        if (start1 == null || end1 == null || start2 == null || end2 == null) {
+            return false;
+        }
+        // Two ranges overlap if: start1 <= end2 AND start2 <= end1
+        return !start1.isAfter(end2) && !start2.isAfter(end1);
+    }
+
+    /**
+     * Checks if a request has an overlapping repeat pattern with an existing rule.
+     * This checks if the repeat days and recurring type would cause conflicts.
+     */
+    private boolean hasOverlappingRepeatPattern(
+            final BaseJudiciaryAvailabilityRuleWithDetailsRequest request,
+            final JudiciaryAvailabilityRule existingRule) {
+        
+        // If both have the same recurring type
+        if (request.getRecurringType() != null && existingRule.getRecurringType() != null) {
+            if (!request.getRecurringType().equals(existingRule.getRecurringType())) {
+                return false; // Different recurring types don't conflict
+            }
+        } else if (request.getRecurringType() != existingRule.getRecurringType()) {
+            return false; // One has recurring type, the other doesn't
+        }
+        
+        // Check if they have overlapping repeat days
+        if (request.getRepeatDays() != null && !request.getRepeatDays().isEmpty() &&
+            existingRule.getRepeatDays() != null && !existingRule.getRepeatDays().isEmpty()) {
+            
+            // Extract day names from request
+            final Set<AvailabilityDayOfWeek> requestDays = request.getRepeatDays().stream()
+                    .map(JudiciaryAvailabilityRuleRepeatDay::getDayOfWeek)
+                    .collect(Collectors.toSet());
+            
+            // Extract day names from existing rule
+            final Set<AvailabilityDayOfWeek> existingDays = existingRule.getRepeatDays().stream()
+                    .map(uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay::getDayOfWeek)
+                    .collect(Collectors.toSet());
+            
+            // Check if there's any overlap in days
+            final Set<AvailabilityDayOfWeek> intersection = new HashSet<>(requestDays);
+            intersection.retainAll(existingDays);
+            
+            // If there's overlap in days and same recurring type, they conflict
+            return !intersection.isEmpty();
+        }
+        
+        // If one has repeat days and the other doesn't, they might still conflict
+        // For simplicity, we consider any overlap in date range with same judiciary as a conflict
+        return true;
     }
 }
 

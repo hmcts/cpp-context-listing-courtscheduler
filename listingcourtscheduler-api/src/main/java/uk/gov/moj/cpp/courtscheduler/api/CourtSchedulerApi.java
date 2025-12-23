@@ -58,6 +58,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
+import uk.gov.moj.cpp.courtscheduler.api.validator.UnprocessableEntityException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
@@ -104,7 +105,11 @@ public class CourtSchedulerApi {
     private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
     private static final String ORGANISATION_UNIT_HMI_STATUS = "organisationUnitHMIStatus";
     private static final String RULE_ID = "ruleId";
-    private static final String JUDICIARY_ID = "judiciaryId";
+    public static final String VALIDATION_RESULT = "validationResult";
+    public static final String STATUS = "status";
+    public static final String VALIDATION_ERROR = "validationError";
+    public static final String FAILURE = "FAILURE";
+    public static final String SUCCESS = "SUCCESS";
 
     @Inject
     private Enveloper enveloper;
@@ -652,6 +657,82 @@ public class CourtSchedulerApi {
         return enveloper
                 .withMetadataFrom(envelope, "courtscheduler.judiciary.get.availability.rule")
                 .apply(responseObject);
+    }
+
+    @Handles("courtscheduler.judiciary.add.availability.rule.validate")
+    public JsonEnvelope validateAddJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.add.availability.rule.validate requested : {}", requestFromApiJsonObject);
+
+        AddJudiciaryAvailabilityRuleRequest request = addJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
+
+        if (!validate.isEmpty()) {
+            // Return validation failure response
+            // UnprocessableEntityException expects errorMessage at root level, but we also need validationResult structure
+            // So we include both for compatibility
+            final String errorMessage = validate.getString(ERROR_MESSAGE);
+            final JsonObject validationResult = createObjectBuilder()
+                    .add(ERROR_MESSAGE, errorMessage)
+                    .add(VALIDATION_RESULT, createObjectBuilder()
+                            .add(STATUS, FAILURE)
+                            .add(VALIDATION_ERROR, errorMessage)
+                            .build())
+                    .build();
+            throw new UnprocessableEntityException(validationResult);
+        }
+
+        // Return validation success response
+        final JsonObject validationResult = createObjectBuilder()
+                .add(VALIDATION_RESULT, createObjectBuilder()
+                        .add(STATUS, SUCCESS)
+                        .build())
+                .build();
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.add.availability.rule.validate").apply(validationResult);
+    }
+
+    @Handles("courtscheduler.judiciary.update.availability.rule.validate")
+    public JsonEnvelope validateUpdateJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.update.availability.rule.validate requested : {}", requestFromApiJsonObject);
+
+        // Extract ruleId from request payload
+        final String ruleId = requestFromApiJsonObject.containsKey(CourtSchedulerApi.RULE_ID) ?
+                requestFromApiJsonObject.getString(CourtSchedulerApi.RULE_ID) : null;
+
+        UpdateJudiciaryAvailabilityRuleRequest request = updateJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+
+        // Set ruleId from payload if not already set by converter
+        if (ruleId != null && (request.getRuleId() == null || request.getRuleId().isEmpty())) {
+            request.setRuleId(ruleId);
+        }
+
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
+
+        if (!validate.isEmpty()) {
+            // Return validation failure response
+            // UnprocessableEntityException expects errorMessage at root level, but we also need validationResult structure
+            // So we include both for compatibility
+            final String errorMessage = validate.getString(ERROR_MESSAGE);
+            final JsonObject validationResult = createObjectBuilder()
+                    .add(ERROR_MESSAGE, errorMessage)
+                    .add(VALIDATION_RESULT, createObjectBuilder()
+                            .add(STATUS, FAILURE)
+                            .add(VALIDATION_ERROR, errorMessage)
+                            .build())
+                    .build();
+            throw new UnprocessableEntityException(validationResult);
+        }
+
+        // Return validation success response
+        final JsonObject validationResult = createObjectBuilder()
+                .add(VALIDATION_RESULT, createObjectBuilder()
+                        .add(STATUS, SUCCESS)
+                        .build())
+                .build();
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.update.availability.rule.validate").apply(validationResult);
     }
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {

@@ -776,3 +776,57 @@ protocols: [ HTTP, HTTPS ]
           application/json:
             schema: !include json/schema/courtscheduler.find.judiciary.availability.json
             example: !include json/courtscheduler.find.judiciary.availability.json
+
+/judiciaries/availability-rules/validate-add:
+  post:
+    description: |
+      Validate judiciary availability rule for creation.
+      ...
+      (mapping):
+          requestType: application/json
+          name: courtscheduler.judiciary.add.availability.rule.validate
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.add.availability.rule.json
+        example: !include json/courtscheduler.judiciary.add.availability.rule.json
+    responses:
+      200:
+        description: Validation successful
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/validate-update:
+  post:
+    description: |
+      Validate judiciary availability rule for update.
+      ...
+      (mapping):
+          requestType: application/json
+          name: courtscheduler.judiciary.update.availability.rule.validate
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.update.availability.rule.json
+        example: !include json/courtscheduler.judiciary.update.availability.rule.json
+    responses:
+      200:
+        description: Validation successful
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json

@@ -13,6 +13,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleWithDet
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
+import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 
 import java.util.List;
 
@@ -23,6 +24,8 @@ import org.slf4j.LoggerFactory;
 
 public class JudiciaryAvailabilityRuleApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryAvailabilityRuleApiValidator.class.getName());
+    private static final String REQUEST_FIELD = "Request";
+    private static final String RULE_ID_FIELD = "ruleId";
 
     public JsonObject validateAddJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Validating AddJudiciaryAvailabilityRule input : {}", request);
@@ -37,11 +40,11 @@ public class JudiciaryAvailabilityRuleApiValidator {
     public JsonObject validateDeleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Validating DeleteJudiciaryAvailabilityRule input : {}", request);
         if (request == null) {
-            return getMessage("Request");
+            return getMessage(REQUEST_FIELD);
         }
 
         if (isBlank(request.getRuleId())) {
-            return getMessage("ruleId");
+            return getMessage(RULE_ID_FIELD);
         }
 
         if (isBlank(request.getJudiciaryId())) {
@@ -53,11 +56,11 @@ public class JudiciaryAvailabilityRuleApiValidator {
 
     private JsonObject validateRequestWithDetails(final BaseJudiciaryAvailabilityRuleRequest request, final boolean validateRuleId, final boolean validateJudiciaryId) {
         if (request == null) {
-            return getMessage("Request");
+            return getMessage(REQUEST_FIELD);
         }
 
         if (validateRuleId && isBlank(request.getRuleId())) {
-            return getMessage("ruleId");
+            return getMessage(RULE_ID_FIELD);
         }
 
         if (validateJudiciaryId && isBlank(request.getJudiciaryId())) {
@@ -121,6 +124,73 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();
+    }
+
+    private JsonObject validateRequestNotNull(final Object request) {
+        if (request == null) {
+            return getMessage(REQUEST_FIELD);
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    public JsonObject validateAddJudiciaryAvailabilityRuleForValidationEndpoint(final AddJudiciaryAvailabilityRuleRequest request, 
+                                                                                final JudiciaryAvailabilityService service) {
+        LOGGER.info("Validating AddJudiciaryAvailabilityRule for validation endpoint: {}", request);
+
+        JsonObject validation = validateRequestNotNull(request);
+        if (!validation.isEmpty()) {
+            return validation;
+        }
+
+        validation = validateBaseFields(request);
+        if (!validation.isEmpty()) {
+            return validation;
+        }
+
+        validation = validateRepeatDays(request.getRepeatDays());
+        if (!validation.isEmpty()) {
+            return validation;
+        }
+
+        // Call service validation for business rules
+        final List<String> businessErrors = service.validateAddJudiciaryAvailabilityRule(request);
+        if (!businessErrors.isEmpty()) {
+            return buildErrorResponse(String.join("; ", businessErrors));
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    public JsonObject validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(final UpdateJudiciaryAvailabilityRuleRequest request,
+                                                                                    final JudiciaryAvailabilityService service) {
+        LOGGER.info("Validating UpdateJudiciaryAvailabilityRule for validation endpoint: {}", request);
+
+        JsonObject validation = validateRequestNotNull(request);
+        if (!validation.isEmpty()) {
+            return validation;
+        }
+
+        if (isBlank(request.getRuleId())) {
+            return getMessage(RULE_ID_FIELD);
+        }
+
+        validation = validateBaseFields(request);
+        if (!validation.isEmpty()) {
+            return validation;
+        }
+
+        validation = validateRepeatDays(request.getRepeatDays());
+        if (!validation.isEmpty()) {
+            return validation;
+        }
+
+        // Call service validation for business rules
+        final List<String> businessErrors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        if (!businessErrors.isEmpty()) {
+            return buildErrorResponse(String.join("; ", businessErrors));
+        }
+
+        return EMPTY_JSON_OBJECT;
     }
 }
 

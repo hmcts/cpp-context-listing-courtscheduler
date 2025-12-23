@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
+import static io.netty.handler.codec.http.HttpResponseStatus.UNPROCESSABLE_ENTITY;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -41,10 +42,14 @@ class JudiciaryAvailabilityIT extends AbstractIT {
     private static final String AVAILABILITY_RULES_ADD = "/judiciaries/availability-rules/add";
     private static final String AVAILABILITY_RULES_UPDATE = "/judiciaries/availability-rules/update";
     private static final String AVAILABILITY_RULES_DELETE = "/judiciaries/availability-rules/delete";
+    private static final String AVAILABILITY_RULES_VALIDATE_ADD = "/judiciaries/availability-rules/validate-add";
+    private static final String AVAILABILITY_RULES_VALIDATE_UPDATE = "/judiciaries/availability-rules/validate-update";
     private static final String AVAILABILITY_RULES = "/judiciaries/availability-rules";
     private static final String JUDICIARIES_AVAILABILITY = "/judiciaries/availability";
     private static final String JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES = "/judiciaries/{judiciaryId}/availability-rules/{ruleId}";
     private static final String RESPONSE_TYPE = "application/json";
+    private static final String ADD_AVAILABILITY_RULE_CONTENT_TYPE = "application/json";
+    private static final String UPDATE_AVAILABILITY_RULE_CONTENT_TYPE = "application/json";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
 
     @Test
@@ -1402,6 +1407,153 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final JsonObject rule = jsonObject.getJsonObject("rule");
         assertThat(rule.getString("id"), is(ruleId));
         assertTrue(jsonObject.containsKey("judiciary"), "Response should contain judiciary field (default withJudiciary=true)");
+    }
+
+    @Test
+    void shouldReturnSuccessWhenValidatingAddJudiciaryAvailabilityRule() {
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final LocalDate startDate = LocalDate.now().plusDays(1);
+        final LocalDate endDate = LocalDate.now().plusDays(31);
+
+        final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
+        repeatDaysBuilder.add(AvailabilityDayOfWeek.Monday.name());
+
+        final String requestPayload = Json.createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", startDate.format(DATE_FORMATTER))
+                .add("endDate", endDate.format(DATE_FORMATTER))
+                .add("recurringType", RecurringType.WEEKLY.name())
+                .add("repeatDays", repeatDaysBuilder)
+                .add("sessionType", SessionType.AD.name())
+                .build()
+                .toString();
+
+        final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_ADD, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String responseString = response.readEntity(String.class);
+        final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
+        final JsonObject validationResult = responseJson.getJsonObject("validationResult");
+        assertThat(validationResult.getString("status"), is("SUCCESS"));
+    }
+
+    @Test
+    void shouldReturnFailureWhenValidatingAddJudiciaryAvailabilityRuleWithPastDates() {
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final LocalDate startDate = LocalDate.now().minusDays(5); // Past date
+        final LocalDate endDate = LocalDate.now().plusDays(31);
+
+        final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
+        repeatDaysBuilder.add(AvailabilityDayOfWeek.Monday.name());
+
+        final String requestPayload = Json.createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", startDate.format(DATE_FORMATTER))
+                .add("endDate", endDate.format(DATE_FORMATTER))
+                .add("recurringType", RecurringType.WEEKLY.name())
+                .add("repeatDays", repeatDaysBuilder)
+                .add("sessionType", SessionType.AD.name())
+                .build()
+                .toString();
+
+        final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_ADD, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
+
+        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY.code()));
+        final String responseString = response.readEntity(String.class);
+        assertTrue(responseString.contains("future") || responseString.contains("validationError"));
+    }
+
+    @Test
+    void shouldReturnSuccessWhenValidatingUpdateJudiciaryAvailabilityRule() throws Exception {
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final String ruleId = randomUUID().toString();
+        final LocalDate startDate = LocalDate.now().plusDays(1);
+        final LocalDate endDate = LocalDate.now().plusDays(31);
+
+        // First, create a rule in the database
+        databaseSeeder.insertJudiciaryAvailabilityRule(
+                ruleId,
+                judiciaryId,
+                courtHouseId,
+                Collections.emptyList(),
+                startDate,
+                endDate,
+                RecurringType.WEEKLY,
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
+        );
+
+        // Now validate an update
+        final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
+        repeatDaysBuilder.add(AvailabilityDayOfWeek.Monday.name());
+
+        final String requestPayload = Json.createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", startDate.format(DATE_FORMATTER))
+                .add("endDate", endDate.format(DATE_FORMATTER))
+                .add("recurringType", RecurringType.WEEKLY.name())
+                .add("repeatDays", repeatDaysBuilder)
+                .add("sessionType", SessionType.AD.name())
+                .build()
+                .toString();
+
+        final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_UPDATE, UPDATE_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String responseString = response.readEntity(String.class);
+        final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
+        final JsonObject validationResult = responseJson.getJsonObject("validationResult");
+        assertThat(validationResult.getString("status"), is("SUCCESS"));
+    }
+
+    @Test
+    void shouldReturnFailureWhenValidatingUpdateJudiciaryAvailabilityRuleWithChangedStartDateInPast() throws Exception {
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final String ruleId = randomUUID().toString();
+        final LocalDate originalStartDate = LocalDate.now().plusDays(10);
+        final LocalDate newStartDate = LocalDate.now().minusDays(5); // Changed to past date
+        final LocalDate endDate = LocalDate.now().plusDays(31);
+
+        // First, create a rule in the database
+        databaseSeeder.insertJudiciaryAvailabilityRule(
+                ruleId,
+                judiciaryId,
+                courtHouseId,
+                Collections.emptyList(),
+                originalStartDate,
+                endDate,
+                RecurringType.WEEKLY,
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
+        );
+
+        // Now validate an update with changed start date in past
+        final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
+        repeatDaysBuilder.add(AvailabilityDayOfWeek.Monday.name());
+
+        final String requestPayload = Json.createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", newStartDate.format(DATE_FORMATTER))
+                .add("endDate", endDate.format(DATE_FORMATTER))
+                .add("recurringType", RecurringType.WEEKLY.name())
+                .add("repeatDays", repeatDaysBuilder)
+                .add("sessionType", SessionType.AD.name())
+                .build()
+                .toString();
+
+        final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_UPDATE, UPDATE_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
+
+        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY.code()));
+        final String responseString = response.readEntity(String.class);
+        assertTrue(responseString.contains("future") || responseString.contains("validationError"));
     }
 }
 

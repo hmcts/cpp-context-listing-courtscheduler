@@ -38,6 +38,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConv
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.DeleteJudiciaryAvailabilityRuleConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
@@ -69,6 +70,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciaryAvailabilityRuleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.UnprocessableEntityException;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
@@ -1426,5 +1428,143 @@ class CourtSchedulerApiTest {
         verify(getJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
         verify(judiciaryAvailabilityService).getJudiciaryAvailabilityRule(any(GetJudiciaryAvailabilityRuleRequest.class), eq(requester));
         verify(getJudiciaryAvailabilityRuleResponseConverter).convert(any(GetJudiciaryAvailabilityRuleResponse.class));
+    }
+
+    @Test
+    void shouldReturnSuccessWhenAddJudiciaryAvailabilityValidationPasses() {
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", LocalDate.now().plusDays(1).toString())
+                .add("endDate", LocalDate.now().plusDays(31).toString())
+                .add("repeatDays", createArrayBuilder()
+                        .add("Monday")
+                        .build())
+                .build();
+        final String requestName = "courtscheduler.judiciary.add.availability.rule.validate";
+        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest request =
+                new uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest();
+        request.setJudiciaryId(judiciaryId);
+        request.setCourtHouseId(courtHouseId);
+
+        when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(), any()))
+                .thenReturn(EMPTY_JSON_OBJECT);
+        when(enveloper.withMetadataFrom(validationEnvelope, requestName)).thenReturn(function);
+        when(function.apply(any(JsonObject.class))).thenReturn(validationEnvelope);
+
+        courtSchedulerApi.validateAddJudiciaryAvailabilityRule(validationEnvelope);
+
+        verify(addJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(), any());
+        verify(enveloper).withMetadataFrom(validationEnvelope, requestName);
+    }
+
+    @Test
+    void shouldReturnFailureWhenAddJudiciaryAvailabilityValidationFails() {
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", LocalDate.now().plusDays(1).toString())
+                .add("endDate", LocalDate.now().plusDays(31).toString())
+                .add("repeatDays", createArrayBuilder()
+                        .add("Monday")
+                        .build())
+                .build();
+        final String requestName = "courtscheduler.judiciary.add.availability.rule.validate";
+        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest request =
+                new uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest();
+        request.setJudiciaryId(judiciaryId);
+        request.setCourtHouseId(courtHouseId);
+
+        final JsonObject validationError = createObjectBuilder()
+                .add("errorMessage", "Date range cannot exceed 3 years")
+                .build();
+
+        when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(), any()))
+                .thenReturn(validationError);
+
+        assertThrows(UnprocessableEntityException.class, () ->
+                courtSchedulerApi.validateAddJudiciaryAvailabilityRule(validationEnvelope));
+    }
+
+    @Test
+    void shouldReturnSuccessWhenUpdateJudiciaryAvailabilityValidationPasses() {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", LocalDate.now().plusDays(1).toString())
+                .add("endDate", LocalDate.now().plusDays(31).toString())
+                .add("repeatDays", createArrayBuilder()
+                        .add("Monday")
+                        .build())
+                .build();
+        final String requestName = "courtscheduler.judiciary.update.availability.rule.validate";
+        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setJudiciaryId(judiciaryId);
+        request.setCourtHouseId(courtHouseId);
+
+        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(), any()))
+                .thenReturn(EMPTY_JSON_OBJECT);
+        when(enveloper.withMetadataFrom(validationEnvelope, requestName)).thenReturn(function);
+        when(function.apply(any(JsonObject.class))).thenReturn(validationEnvelope);
+
+        courtSchedulerApi.validateUpdateJudiciaryAvailabilityRule(validationEnvelope);
+
+        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(), any());
+        verify(enveloper).withMetadataFrom(validationEnvelope, requestName);
+    }
+
+    @Test
+    void shouldReturnFailureWhenUpdateJudiciaryAvailabilityValidationFails() {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .add("courtHouseId", courtHouseId)
+                .add("startDate", LocalDate.now().plusDays(1).toString())
+                .add("endDate", LocalDate.now().plusDays(31).toString())
+                .add("repeatDays", createArrayBuilder()
+                        .add("Monday")
+                        .build())
+                .build();
+        final String requestName = "courtscheduler.judiciary.update.availability.rule.validate";
+        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setJudiciaryId(judiciaryId);
+        request.setCourtHouseId(courtHouseId);
+
+        final JsonObject validationError = createObjectBuilder()
+                .add("errorMessage", "If start date is changed, it must be in the future")
+                .build();
+
+        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(), any()))
+                .thenReturn(validationError);
+
+        assertThrows(UnprocessableEntityException.class, () ->
+                courtSchedulerApi.validateUpdateJudiciaryAvailabilityRule(validationEnvelope));
     }
 }

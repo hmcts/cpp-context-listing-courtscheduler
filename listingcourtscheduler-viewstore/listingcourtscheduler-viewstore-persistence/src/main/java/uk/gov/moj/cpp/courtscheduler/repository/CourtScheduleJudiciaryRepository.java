@@ -115,4 +115,32 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 .setParameter("numberOfDays", numberOfDays)
                 .executeUpdate();
     }
+
+    /**
+     * Find court schedule IDs where a judiciary is assigned within a date range.
+     * Returns a list of court schedule IDs that have the specified judiciary assigned
+     * and whose session date falls within the given date range.
+     */
+    public List<String> findCourtScheduleIdsByJudiciaryAndDateRange(
+            final String judiciaryId,
+            final LocalDate startDate,
+            final LocalDate endDate) {
+        final String query = "SELECT DISTINCT cs.id " +
+                "FROM court_schedule cs " +
+                "INNER JOIN court_schedule_judiciary csj ON cs.id = csj.court_schedule_id " +
+                "WHERE csj.judiciary_id = :judiciaryId " +
+                "AND cs.session_start BETWEEN :startDate AND :endDate " +
+                "AND cs.active = true " +
+                "AND csj.active = true";
+        
+        @SuppressWarnings("unchecked")
+        final List<String> result = entityManager()
+                .createNativeQuery(query)
+                .setParameter("judiciaryId", judiciaryId)
+                .setParameter("startDate", startDate)
+                .setParameter("endDate", endDate)
+                .getResultList();
+        
+        return result;
+    }
 }
