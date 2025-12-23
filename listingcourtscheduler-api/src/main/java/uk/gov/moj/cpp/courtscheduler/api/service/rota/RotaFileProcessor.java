@@ -5,6 +5,7 @@ import static java.util.Optional.empty;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.CourtScheduleJudiciaryQueryHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryAssignmentRequestHelper;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleData;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleMapComparator;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaCourtScheduleHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaFileUtility;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import javax.ejb.Stateless;
 import javax.ejb.TransactionAttribute;
@@ -116,11 +118,14 @@ public class RotaFileProcessor {
 
         final ProcessingMaps processingMaps = createProcessingMaps(records, requester, executionId, blobName);
 
+        final Map<String, List<UUID>> rotaFeedMapForQuery = extractCourtScheduleIdsMap(
+                processingMaps.judiciaryCourtScheduleMapFromRotaFeed());
         final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb = queryDatabaseForCourtScheduleIds(
-                processingMaps.judiciaryCourtScheduleMapFromRotaFeed(), blobName);
+                rotaFeedMapForQuery, blobName);
 
         processJudiciaryAssignmentsAndUnassignments(
                 processingMaps.judiciaryCourtScheduleMapFromRotaFeed(),
+                rotaFeedMapForQuery,
                 judiciaryCourtScheduleIdsFromDb,
                 requester,
                 executionId,
@@ -174,13 +179,28 @@ public class RotaFileProcessor {
         logger.info("Created court schedule map with {} entries for blob: {}",
                 courtListingProfileIdListOfCourscheduleIdMap.size(), blobName);
 
-        final Map<String, List<UUID>> judiciaryIdListOfCourtScheduleIdMapFromRotaFeed =
+        final Map<String, JudiciaryCourtScheduleData> judiciaryIdListOfCourtScheduleIdMapFromRotaFeed =
                 rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
                         records, justiceIdJudiciaryIdMap, courtListingProfileIdListOfCourscheduleIdMap, requester, executionId);
         logger.info("Created judiciary court schedule map with {} entries for blob: {}",
                 judiciaryIdListOfCourtScheduleIdMapFromRotaFeed.size(), blobName);
 
         return new ProcessingMaps(judiciaryIdListOfCourtScheduleIdMapFromRotaFeed);
+    }
+
+    /**
+     * Extracts court schedule IDs map from the judiciary court schedule data map.
+     *
+     * @param judiciaryCourtScheduleDataMap the map containing JudiciaryCourtScheduleData records
+     * @return map of judiciary IDs to lists of court schedule UUIDs
+     */
+    private Map<String, List<UUID>> extractCourtScheduleIdsMap(
+            final Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleDataMap) {
+        return judiciaryCourtScheduleDataMap.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().courtScheduleIds()
+                ));
     }
 
     /**
@@ -208,30 +228,76 @@ public class RotaFileProcessor {
     /**
      * Processes judiciary assignments and unassignments based on differences between rota feed and database.
      *
-     * @param judiciaryCourtScheduleMapFromRotaFeed the map from rota feed
-     * @param judiciaryCourtScheduleIdsFromDb        the map from database
-     * @param requester                               the requester for making service calls
-     * @param executionId                             the execution ID for logging
-     * @param blobName                                the name of the blob file
+     * @param judiciaryCourtScheduleDataMapFromRotaFeed the map from rota feed with full data
+     * @param rotaFeedMapForQuery the map from rota feed with just IDs for comparison
+     * @param judiciaryCourtScheduleIdsFromDb the map from database
+     * @param requester the requester for making service calls
+     * @param executionId the execution ID for logging
+     * @param blobName the name of the blob file
      */
     private void processJudiciaryAssignmentsAndUnassignments(
-            final Map<String, List<UUID>> judiciaryCourtScheduleMapFromRotaFeed,
+            final Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleDataMapFromRotaFeed,
+            final Map<String, List<UUID>> rotaFeedMapForQuery,
             final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb,
             final Requester requester,
             final String executionId,
             final String blobName) {
-        final Map<String, List<UUID>> judiciaryAssignmentMap = mapComparator.findMissingCourtScheduleIdsInDB(
-                judiciaryCourtScheduleMapFromRotaFeed, judiciaryCourtScheduleIdsFromDb);
+        final Map<String, List<UUID>> judiciaryAssignmentIdsMap = mapComparator.findMissingCourtScheduleIdsInDB(
+                rotaFeedMapForQuery, judiciaryCourtScheduleIdsFromDb);
         logger.info("Found missing court schedule IDs for {} judiciary IDs for blob: {}",
-                judiciaryAssignmentMap.size(), blobName);
+                judiciaryAssignmentIdsMap.size(), blobName);
 
         final Map<String, List<UUID>> judiciaryUnAssignmentMap = mapComparator.findMissingCourtScheduleIdsInRotaFeed(
-                judiciaryCourtScheduleIdsFromDb, judiciaryCourtScheduleMapFromRotaFeed);
+                judiciaryCourtScheduleIdsFromDb, rotaFeedMapForQuery);
         logger.info("Found court schedule IDs in database missing in rota feed for {} judiciary IDs for blob: {}",
                 judiciaryUnAssignmentMap.size(), blobName);
 
-        executeJudiciaryAssignments(judiciaryAssignmentMap, requester, executionId, blobName);
+        final Map<String, JudiciaryCourtScheduleData> judiciaryAssignmentDataMap =
+                buildAssignmentDataMap(judiciaryAssignmentIdsMap, judiciaryCourtScheduleDataMapFromRotaFeed);
+
         executeJudiciaryUnassignments(judiciaryUnAssignmentMap, executionId, blobName);
+        executeJudiciaryAssignments(judiciaryAssignmentDataMap, requester, executionId, blobName);
+    }
+
+    /**
+     * Builds assignment data map by filtering schedule IDs from the original data map.
+     *
+     * @param judiciaryAssignmentIdsMap map of judiciary IDs to schedule IDs that need assignment
+     * @param judiciaryCourtScheduleDataMapFromRotaFeed the original data map with all schedule information
+     * @return filtered assignment data map
+     */
+    private Map<String, JudiciaryCourtScheduleData> buildAssignmentDataMap(
+            final Map<String, List<UUID>> judiciaryAssignmentIdsMap,
+            final Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleDataMapFromRotaFeed) {
+        return judiciaryAssignmentIdsMap.entrySet().stream()
+                .filter(entry -> judiciaryCourtScheduleDataMapFromRotaFeed.containsKey(entry.getKey()))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> filterScheduleData(
+                                judiciaryCourtScheduleDataMapFromRotaFeed.get(entry.getKey()),
+                                entry.getValue())
+                ));
+    }
+
+    /**
+     * Filters schedule data to only include the schedule IDs that need to be assigned.
+     *
+     * @param originalData the original schedule data
+     * @param scheduleIdsToAssign the schedule IDs that need to be assigned
+     * @return filtered JudiciaryCourtScheduleData
+     */
+    private JudiciaryCourtScheduleData filterScheduleData(
+            final JudiciaryCourtScheduleData originalData,
+            final List<UUID> scheduleIdsToAssign) {
+        final List<UUID> filteredScheduleIds = originalData.courtScheduleIds().stream()
+                .filter(scheduleIdsToAssign::contains)
+                .collect(Collectors.toList());
+        return new JudiciaryCourtScheduleData(
+                filteredScheduleIds,
+                originalData.position(),
+                originalData.isBenchChairman(),
+                originalData.isDeputy()
+        );
     }
 
     /**
@@ -242,17 +308,18 @@ public class RotaFileProcessor {
      * @param executionId            the execution ID for logging
      * @param blobName               the name of the blob file
      */
-    private void executeJudiciaryAssignments(final Map<String, List<UUID>> judiciaryAssignmentMap,
-                                             final Requester requester,
-                                             final String executionId,
-                                             final String blobName) {
-        if (judiciaryAssignmentMap.isEmpty()) {
+    private void executeJudiciaryAssignments(
+            final Map<String, JudiciaryCourtScheduleData> judiciaryAssignmentDataMap,
+            final Requester requester,
+            final String executionId,
+            final String blobName) {
+        if (judiciaryAssignmentDataMap.isEmpty()) {
             logger.debug("Skipping judiciary assignment - no assignments to process for blob: {}", blobName);
             return;
         }
 
         final AssignJudiciariesResponse assignResponse = processJudiciaryAssignments(
-                judiciaryAssignmentMap, requester, executionId);
+                judiciaryAssignmentDataMap, requester, executionId);
         logger.info("Assigned judiciaries for blob: {} - requested: {}, successful: {}, failures: {}",
                 blobName, assignResponse.getRequestedAssignments(), assignResponse.getSuccessfulAssignments(),
                 assignResponse.getFailures().size());
@@ -361,10 +428,11 @@ public class RotaFileProcessor {
      * @param executionId          the execution ID for logging
      * @return the assignment response
      */
-    private AssignJudiciariesResponse processJudiciaryAssignments(final Map<String, List<UUID>> judiciaryAssignmentMap,
-                                                                  final Requester requester,
-                                                                  final String executionId) {
-        final var assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(judiciaryAssignmentMap);
+    private AssignJudiciariesResponse processJudiciaryAssignments(
+            final Map<String, JudiciaryCourtScheduleData> judiciaryAssignmentDataMap,
+            final Requester requester,
+            final String executionId) {
+        final var assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(judiciaryAssignmentDataMap);
         return judiciaryAssignmentService.assignJudiciaries(assignRequest, requester, executionId);
     }
 
@@ -401,6 +469,6 @@ public class RotaFileProcessor {
      *
      * @param judiciaryCourtScheduleMapFromRotaFeed the map of judiciary IDs to court schedule IDs from rota feed
      */
-    private record ProcessingMaps(Map<String, List<UUID>> judiciaryCourtScheduleMapFromRotaFeed) {
+    private record ProcessingMaps(Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleMapFromRotaFeed) {
     }
 }

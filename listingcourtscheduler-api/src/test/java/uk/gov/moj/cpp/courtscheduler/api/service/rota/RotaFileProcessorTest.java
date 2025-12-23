@@ -30,6 +30,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.CourtScheduleJudiciaryQueryHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryAssignmentRequestHelper;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleData;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleMapComparator;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaCourtScheduleHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaFileUtility;
@@ -50,6 +51,7 @@ import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 
 import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -332,22 +334,29 @@ class RotaFileProcessorTest {
 
         // Setup assignment map to ensure assignJudiciaries is called
         final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
-        final Map<String, List<UUID>> assignmentMap = new HashMap<>();
-        assignmentMap.put(judiciary.getId(), List.of(sessionId1));
+        final Map<String, List<UUID>> assignmentIdsMap = new HashMap<>();
+        assignmentIdsMap.put(judiciary.getId(), List.of(sessionId1));
         when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
-                .thenReturn(assignmentMap);
+                .thenReturn(assignmentIdsMap);
         when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
                 .thenReturn(emptyMap());
+
+        final Map<String, JudiciaryCourtScheduleData> assignmentDataMap = new HashMap<>();
+        assignmentDataMap.put(judiciary.getId(), new JudiciaryCourtScheduleData(
+                List.of(sessionId1), "CHAIR", true, false));
 
         final AssignJudiciariesRequest assignRequest = AssignJudiciariesRequest.builder()
                 .withJudiciaries(List.of(
                         uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
                                 .withJudiciaryId(judiciary.getId())
                                 .withSessionIds(List.of(sessionId1.toString()))
+                                .withPosition("CHAIR")
+                                .withIsBenchChairman(true)
+                                .withIsDeputy(false)
                                 .build()
                 ))
                 .build();
-        when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentMap))
+        when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentDataMap))
                 .thenReturn(assignRequest);
 
         final AssignJudiciariesResponse assignResponse = AssignJudiciariesResponse.builder()
@@ -509,8 +518,9 @@ class RotaFileProcessorTest {
                 .thenReturn(courtScheduleMap);
 
         // Mock RotaJudiciaryHelper for judiciary court schedule map
-        Map<String, List<UUID>> rotaFeedMap = new HashMap<>();
-        rotaFeedMap.put(judiciary.getId(), List.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
+        Map<String, JudiciaryCourtScheduleData> rotaFeedMap = new HashMap<>();
+        rotaFeedMap.put(judiciary.getId(), new JudiciaryCourtScheduleData(
+                List.of(UUID.fromString(courtSchedule.getCourtScheduleId())), "CHAIR", true, false));
         when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
                 .thenReturn(rotaFeedMap);
 
@@ -705,7 +715,8 @@ class RotaFileProcessorTest {
         when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
                 .thenReturn(Map.of("listing-1", Set.of(UUID.randomUUID())));
         when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
-                .thenReturn(Map.of(judiciary.getId(), List.of(UUID.randomUUID())));
+                .thenReturn(Map.of(judiciary.getId(), new JudiciaryCourtScheduleData(
+                        List.of(UUID.randomUUID()), "CHAIR", true, false)));
 
         // when
         rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
@@ -757,7 +768,7 @@ class RotaFileProcessorTest {
         when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
                 .thenReturn(emptyMap());
         when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
-                .thenReturn(emptyMap());
+                .thenReturn(Collections.emptyMap());
 
         // when
         rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
@@ -932,28 +943,40 @@ class RotaFileProcessorTest {
         final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
         final UUID sessionId2 = randomUUID();
 
-        final Map<String, List<UUID>> rotaFeedMap = new HashMap<>();
-        rotaFeedMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
+        // Override the mock to return data with both session IDs
+        final Map<String, JudiciaryCourtScheduleData> rotaFeedDataMap = new HashMap<>();
+        rotaFeedDataMap.put(judiciary.getId(), new JudiciaryCourtScheduleData(
+                List.of(sessionId1, sessionId2), "CHAIR", true, false));
+        when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+                .thenReturn(rotaFeedDataMap);
+
         final Map<String, List<UUID>> dbMap = new HashMap<>();
-        final Map<String, List<UUID>> assignmentMap = new HashMap<>();
-        assignmentMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
+        final Map<String, List<UUID>> assignmentIdsMap = new HashMap<>();
+        assignmentIdsMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
 
         when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
                 .thenReturn(dbMap);
         when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
-                .thenReturn(assignmentMap);
+                .thenReturn(assignmentIdsMap);
         when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
                 .thenReturn(emptyMap());
+
+        final Map<String, JudiciaryCourtScheduleData> assignmentDataMap = new HashMap<>();
+        assignmentDataMap.put(judiciary.getId(), new JudiciaryCourtScheduleData(
+                List.of(sessionId1, sessionId2), "CHAIR", true, false));
 
         final AssignJudiciariesRequest assignRequest = AssignJudiciariesRequest.builder()
                 .withJudiciaries(List.of(
                         uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
                                 .withJudiciaryId(judiciary.getId())
                                 .withSessionIds(List.of(sessionId1.toString(), sessionId2.toString()))
+                                .withPosition("CHAIR")
+                                .withIsBenchChairman(true)
+                                .withIsDeputy(false)
                                 .build()
                 ))
                 .build();
-        when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentMap))
+        when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentDataMap))
                 .thenReturn(assignRequest);
 
         final AssignJudiciariesResponse assignResponse = AssignJudiciariesResponse.builder()
@@ -1081,31 +1104,43 @@ class RotaFileProcessorTest {
         final UUID sessionId2 = randomUUID();
         final UUID sessionId3 = randomUUID();
 
-        final Map<String, List<UUID>> rotaFeedMap = new HashMap<>();
-        rotaFeedMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
+        // Override the mock to return data with both session IDs
+        final Map<String, JudiciaryCourtScheduleData> rotaFeedDataMap = new HashMap<>();
+        rotaFeedDataMap.put(judiciary.getId(), new JudiciaryCourtScheduleData(
+                List.of(sessionId1, sessionId2), "CHAIR", true, false));
+        when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+                .thenReturn(rotaFeedDataMap);
+
         final Map<String, List<UUID>> dbMap = new HashMap<>();
         dbMap.put(judiciary.getId(), List.of(sessionId3));
-        final Map<String, List<UUID>> assignmentMap = new HashMap<>();
-        assignmentMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
         final Map<String, List<UUID>> unassignmentMap = new HashMap<>();
         unassignmentMap.put(judiciary.getId(), List.of(sessionId3));
 
         when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
                 .thenReturn(dbMap);
+        final Map<String, List<UUID>> assignmentIdsMap = new HashMap<>();
+        assignmentIdsMap.put(judiciary.getId(), List.of(sessionId1, sessionId2));
         when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
-                .thenReturn(assignmentMap);
+                .thenReturn(assignmentIdsMap);
         when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
                 .thenReturn(unassignmentMap);
+
+        final Map<String, JudiciaryCourtScheduleData> assignmentDataMap = new HashMap<>();
+        assignmentDataMap.put(judiciary.getId(), new JudiciaryCourtScheduleData(
+                List.of(sessionId1, sessionId2), "CHAIR", true, false));
 
         final AssignJudiciariesRequest assignRequest = AssignJudiciariesRequest.builder()
                 .withJudiciaries(List.of(
                         uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
                                 .withJudiciaryId(judiciary.getId())
                                 .withSessionIds(List.of(sessionId1.toString(), sessionId2.toString()))
+                                .withPosition("CHAIR")
+                                .withIsBenchChairman(true)
+                                .withIsDeputy(false)
                                 .build()
                 ))
                 .build();
-        when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentMap))
+        when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentDataMap))
                 .thenReturn(assignRequest);
 
         final Map<String, List<String>> convertedMap = new HashMap<>();
@@ -1141,30 +1176,51 @@ class RotaFileProcessorTest {
         final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
         final UUID sessionId2 = randomUUID();
 
-        final Map<String, List<UUID>> assignmentMap = new HashMap<>();
-        assignmentMap.put(judiciaryId1, List.of(sessionId1));
-        assignmentMap.put(judiciaryId2, List.of(sessionId2));
+        // Override the mock to return data for both judiciaries
+        final Map<String, JudiciaryCourtScheduleData> rotaFeedDataMap = new HashMap<>();
+        rotaFeedDataMap.put(judiciaryId1, new JudiciaryCourtScheduleData(
+                List.of(sessionId1), "CHAIR", true, false));
+        rotaFeedDataMap.put(judiciaryId2, new JudiciaryCourtScheduleData(
+                List.of(sessionId2), "CHAIR", true, false));
+        when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+                .thenReturn(rotaFeedDataMap);
+
+        final Map<String, List<UUID>> assignmentIdsMap = new HashMap<>();
+        assignmentIdsMap.put(judiciaryId1, List.of(sessionId1));
+        assignmentIdsMap.put(judiciaryId2, List.of(sessionId2));
 
         when(courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(anyMap()))
                 .thenReturn(emptyMap());
         when(mapComparator.findMissingCourtScheduleIdsInDB(anyMap(), anyMap()))
-                .thenReturn(assignmentMap);
+                .thenReturn(assignmentIdsMap);
         when(mapComparator.findMissingCourtScheduleIdsInRotaFeed(anyMap(), anyMap()))
                 .thenReturn(emptyMap());
+
+        final Map<String, JudiciaryCourtScheduleData> assignmentDataMap = new HashMap<>();
+        assignmentDataMap.put(judiciaryId1, new JudiciaryCourtScheduleData(
+                List.of(sessionId1), "CHAIR", true, false));
+        assignmentDataMap.put(judiciaryId2, new JudiciaryCourtScheduleData(
+                List.of(sessionId2), "CHAIR", true, false));
 
         final AssignJudiciariesRequest assignRequest = AssignJudiciariesRequest.builder()
                 .withJudiciaries(List.of(
                         uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
                                 .withJudiciaryId(judiciaryId1)
                                 .withSessionIds(List.of(sessionId1.toString()))
+                                .withPosition("CHAIR")
+                                .withIsBenchChairman(true)
+                                .withIsDeputy(false)
                                 .build(),
                         uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
                                 .withJudiciaryId(judiciaryId2)
                                 .withSessionIds(List.of(sessionId2.toString()))
+                                .withPosition("CHAIR")
+                                .withIsBenchChairman(true)
+                                .withIsDeputy(false)
                                 .build()
                 ))
                 .build();
-        when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentMap))
+        when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentDataMap))
                 .thenReturn(assignRequest);
 
         final AssignJudiciariesResponse assignResponse = AssignJudiciariesResponse.builder()
