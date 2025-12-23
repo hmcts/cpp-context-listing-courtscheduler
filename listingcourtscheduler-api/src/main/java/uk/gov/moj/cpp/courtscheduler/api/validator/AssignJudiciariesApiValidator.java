@@ -30,11 +30,20 @@ import javax.json.JsonObject;
 @ApplicationScoped
 public class AssignJudiciariesApiValidator {
 
-    @Inject
     private ReferenceDataMapperService referenceDataMapperService;
+    private CourtScheduleRepository courtScheduleRepository;
+
+    // Protected no-arg constructor required for CDI proxy creation
+    protected AssignJudiciariesApiValidator() {
+        // CDI will use the @Inject constructor for actual injection
+    }
 
     @Inject
-    private CourtScheduleRepository courtScheduleRepository;
+    public AssignJudiciariesApiValidator(final ReferenceDataMapperService referenceDataMapperService,
+                                         final CourtScheduleRepository courtScheduleRepository) {
+        this.referenceDataMapperService = referenceDataMapperService;
+        this.courtScheduleRepository = courtScheduleRepository;
+    }
 
     public JsonObject validate(final AssignJudiciariesRequest request, final Requester requester) {
         // Skip validation if skipValidations flag is set to true

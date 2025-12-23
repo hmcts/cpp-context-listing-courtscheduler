@@ -1820,7 +1820,8 @@ class CourtSchedulerIT extends AbstractIT {
         final CourtSchedule courtSchedule = createTestCourtSchedule();
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        final String judiciaryId = randomUUID().toString();
+        // Use a judiciary ID from the stubbed reference data (from referencedata.judiciaries.json)
+        final String judiciaryId = "9ac02e8d-ee90-3da6-8d3e-0dd0af2cb976";
 
         // Call assign endpoint with skipValidations=false
         final String requestPayload = createObjectBuilder()
@@ -1841,7 +1842,7 @@ class CourtSchedulerIT extends AbstractIT {
                 SYSTEM_USER_ID,
                 requestPayload);
 
-        // Should still return ACCEPTED (service processes but may record failures if judiciary not found)
+        // Should return ACCEPTED when validation passes (judiciary exists in reference data)
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
@@ -1886,7 +1887,8 @@ class CourtSchedulerIT extends AbstractIT {
         final CourtSchedule courtSchedule = createTestCourtSchedule();
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        final String judiciaryId = randomUUID().toString();
+        // Use a judiciary ID from the stubbed reference data (from referencedata.judiciaries.json)
+        final String judiciaryId = "9ac02e8d-ee90-3da6-8d3e-0dd0af2cb976";
 
         // Call assign endpoint without skipValidations (should default to false)
         final String requestPayload = createObjectBuilder()
@@ -1906,7 +1908,7 @@ class CourtSchedulerIT extends AbstractIT {
                 SYSTEM_USER_ID,
                 requestPayload);
 
-        // Should return ACCEPTED (defaults to skipValidations=false, but service processes the request)
+        // Should return ACCEPTED when validation passes (judiciary exists in reference data, defaults to skipValidations=false)
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
