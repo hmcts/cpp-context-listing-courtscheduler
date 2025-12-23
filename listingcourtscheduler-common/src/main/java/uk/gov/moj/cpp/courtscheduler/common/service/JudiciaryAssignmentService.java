@@ -45,9 +45,6 @@ import org.slf4j.LoggerFactory;
 public class JudiciaryAssignmentService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryAssignmentService.class);
-    private static final String DEFAULT_POSITION = "CHAIR";
-    private static final String LEFT_WINGER = "LEFT_WINGER";
-    private static final String RIGHT_WINGER = "RIGHT_WINGER";
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -133,7 +130,7 @@ public class JudiciaryAssignmentService {
                     continue;
                 }
 
-                final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, now);
+                final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, now, assignment);
                 try {
                     courtScheduleJudiciaryRepository.save(CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciary));
                     successfulAssignments++;
@@ -177,10 +174,9 @@ public class JudiciaryAssignmentService {
     private CourtScheduleJudiciary buildCourtScheduleJudiciary(final Judiciary judiciary,
                                                                final CourtSchedule schedule,
                                                                final String sessionId,
-                                                               final Date timestamp) {
+                                                               final Date timestamp,
+                                                               final JudiciaryAssignment assignment) {
         final String rotaJudiciaryId = firstNonEmpty(judiciary.getCpUserId(), judiciary.getId());
-        final String position = DEFAULT_POSITION;
-        final boolean isBenchChair = !(LEFT_WINGER.equals(position) || RIGHT_WINGER.equals(position));
 
         return CourtScheduleJudiciary.judiciary()
                 .withCourtScheduleId(sessionId)
@@ -192,9 +188,9 @@ public class JudiciaryAssignmentService {
                 .withSurname(nonNullOrDefault(judiciary.getSurname()))
                 .withEmailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
                 .withJudiciaryType(nonNullOrDefault(judiciary.getJudiciaryType()))
-                .withPosition(position)
-                .withIsBenchChairman(isBenchChair)
-                .withIsDeputy(!isBenchChair)
+                .withPosition(assignment.getPosition())
+                .withIsBenchChairman(assignment.getIsBenchChairman())
+                .withIsDeputy(assignment.getIsDeputy())
                 .withCreatedOn(timestamp)
                 .withUpdatedOn(timestamp)
                 .withActive(true)

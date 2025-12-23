@@ -60,6 +60,14 @@ public class AssignJudiciariesApiValidator {
                 final int assignmentIndex = index;
                 assignment.getSessionIds().forEach(sessionId -> validateSessionId(assignmentIndex, sessionId, errors));
             }
+
+            if (assignment.getIsDeputy() == null) {
+                errors.add(message(index, "isDeputy is mandatory"));
+            }
+
+            if (assignment.getIsBenchChairman() == null) {
+                errors.add(message(index, "isBenchChairman is mandatory"));
+            }
         }
     }
 
