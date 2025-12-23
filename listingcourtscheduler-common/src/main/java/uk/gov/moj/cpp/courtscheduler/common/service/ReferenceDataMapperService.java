@@ -89,7 +89,14 @@ public class ReferenceDataMapperService {
     public void loadBusinessTypeMap(final Requester requester) {
         businessTypeMap = referenceDataCache.getRotaBusinessTypes(requester)
                 .stream()
-                .collect(Collectors.toMap(BusinessType::getTypeCode, Function.identity()));
+                .collect(Collectors.toMap(
+                        BusinessType::getTypeCode,
+                        Function.identity(),
+                        (existing, replacement) -> {
+                            logger.warn("Duplicate business type code found: {}. Keeping the first occurrence.", existing.getTypeCode());
+                            return existing;
+                        }
+                ));
     }
 
     public void clearReferenceDataInMemory() {

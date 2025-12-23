@@ -1,21 +1,19 @@
 {
   "sessions": [
     {
-      "courtCentreId": "22c69328-70af-3e27-80c5-1a79e24903d2",
+      "courtCentreId": "49db2271-1941-3847-a7fb-dbd92b035e40",
       "courtRoomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c",
       "sessionType": "AM",
       "businessType": "TRL",
       "duration": 20,
-      "panel": "ADULT",
+      "panel": "YOUTH",
       "repeatDays": [
-        "Friday"
+        "Monday"
       ],
       "sessionStartTime": "10:00",
       "sessionEndTime": "12:00",
       "isOverbookingAllowed": true,
-      "isDraft": false,
-      "jurisdiction": "MAGISTRATES",
-      "index": 5
+      "jurisdiction": "MAGISTRATES"
     }
   ],
   "repeatPattern": {
@@ -25,3 +23,23 @@
     "endDate": "END_DATE"
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

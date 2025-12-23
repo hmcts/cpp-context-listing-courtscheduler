@@ -83,9 +83,12 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
                     .withMaxDurationForMorning(jsonObject.getInt(MAX_DURATION_FOR_MORNING.getLabel(), 0))
                     .withMaxDurationForAfternoon(jsonObject.getInt(MAX_DURATION_FOR_AFTERNOON.getLabel(), 0))
                     .withJurisdiction(jsonObject.getString(JURISDICTION.getLabel()))
-                    .withIsDraft(jsonObject.getBoolean(IS_DRAFT.getLabel(), false))
                     .withIndex(jsonObject.containsKey(INDEX.getLabel()) ? jsonObject.getInt(INDEX.getLabel()) : null)
                     .withJurisdiction(jsonObject.containsKey(JURISDICTION.getLabel()) ? jsonObject.getString(JURISDICTION.getLabel()) : MAGISTRATES.getJurisdiction());
+
+            if (!isNull(jsonObject.get(IS_DRAFT.getLabel()))) {
+                sessionBuilder.withIsDraft(jsonObject.getBoolean(IS_DRAFT.getLabel()));
+            }
 
             if (!isNull(jsonObject.get(IS_OVERBOOKING_ALLOWED.getLabel()))) {
                 sessionBuilder.withIsOverbookingAllowed(jsonObject.getBoolean(IS_OVERBOOKING_ALLOWED.getLabel()));
@@ -112,9 +115,12 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
                 .withRepeatDays(DayOfWeekConverter.convert(jsonObject.getJsonArray(REPEAT_DAYS.getLabel())))
                 .withMaxDurationForMorning(jsonObject.getInt(MAX_DURATION_FOR_MORNING.getLabel(), -1))
                 .withMaxDurationForAfternoon(jsonObject.getInt(MAX_DURATION_FOR_AFTERNOON.getLabel(), -1))
-                .withIsDraft(jsonObject.getBoolean(IS_DRAFT.getLabel(), false))
                 .withIndex(jsonObject.containsKey(INDEX.getLabel()) ? jsonObject.getInt(INDEX.getLabel()) : null)
                 .withJurisdiction(jsonObject.containsKey(JURISDICTION.getLabel()) ? jsonObject.getString(JURISDICTION.getLabel()) : MAGISTRATES.getJurisdiction());
+
+        if (!isNull(jsonObject.get(IS_DRAFT.getLabel()))) {
+            sessionBuilder.withIsDraft(jsonObject.getBoolean(IS_DRAFT.getLabel()));
+        }
 
         if (!isNull(jsonObject.get(ALL_DAY_SPLIT.getLabel()))) {
             sessionBuilder.withAllDaySplit(jsonObject.getBoolean(ALL_DAY_SPLIT.getLabel()));

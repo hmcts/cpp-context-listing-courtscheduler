@@ -63,16 +63,22 @@
     "courtRoomId",
     "courtSession",
     "businessType",
-    "panel",
     "jurisdiction"
   ],
   "allOf": [
     {
       "oneOf": [
         {
+          "allOf": [
+        {
           "properties": {
             "jurisdiction": { "enum": ["CROWN"] }
           }
+            },
+            {
+              "required": ["isDraft"]
+            }
+          ]
         },
         {
           "allOf": [
@@ -85,6 +91,9 @@
               "not": {
                 "required": ["isDraft"]
               }
+            },
+            {
+              "required": ["panel"]
             }
           ]
         }

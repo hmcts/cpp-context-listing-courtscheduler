@@ -128,6 +128,18 @@ public class SessionsApiValidator {
             return result;
         }
 
+        // Validate isDraft can only be true for CROWN jurisdiction
+        final JsonObject isDraftValidationResult = validateIsDraftForJurisdiction(createSessionRequestParam);
+        if (isDraftValidationResult != EMPTY_JSON_OBJECT) {
+            return isDraftValidationResult;
+        }
+
+        // Validate panel - YOUTH is not allowed for CROWN jurisdiction
+        final JsonObject panelValidationResult = validatePanelForJurisdiction(createSessionRequestParam);
+        if (panelValidationResult != EMPTY_JSON_OBJECT) {
+            return panelValidationResult;
+        }
+
         //if the request is coming from validate endpoint, this object should be populated
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
             LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
@@ -160,14 +172,46 @@ public class SessionsApiValidator {
     }
 
     private JsonObject validateSessionBusinessTypeAndCourtRoom(Session session, Requester requester) {
+        JsonObject allDaySplitError = validateAllDaySplitForSession(session);
+        if (allDaySplitError != EMPTY_JSON_OBJECT) {
+            return allDaySplitError;
+        }
+
         Optional<BusinessType> businessTypeOpt = referenceDataCache.getRotaBusinessTypeByCode(session.getBusinessType(), requester);
         if (businessTypeOpt.isEmpty()) {
             return buildErrorResponse(BUSINESS_TYPE_NOT_FOUND + session.getBusinessType());
         }
         BusinessType businessType = businessTypeOpt.get();
 
-        String sessionJurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
-        String businessTypeJurisdiction = nonNull(businessType.getJurisdiction()) ? businessType.getJurisdiction() : MAGISTRATES.getJurisdiction();
+        String sessionJurisdiction = getSessionJurisdiction(session);
+        JsonObject businessTypeJurisdictionError = validateBusinessTypeJurisdiction(sessionJurisdiction, businessType);
+        if (businessTypeJurisdictionError != EMPTY_JSON_OBJECT) {
+            return businessTypeJurisdictionError;
+        }
+
+        if (!isDurationBasedWithValidDuration(session, businessType)) {
+            return buildErrorResponse("Duration should be supplied for duration-based business type " + session.getBusinessType());
+        }
+
+        return validateCourtRoomForSession(session, sessionJurisdiction, requester);
+    }
+
+    private JsonObject validateAllDaySplitForSession(Session session) {
+        if (ALL_DAY.equals(session.getSessionType()) && isNull(session.isAllDaySplit())) {
+            return buildErrorResponse(ErrorMessages.ALL_DAY_SPLIT_MANDATORY_FOR_AD_SESSION);
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private String getSessionJurisdiction(Session session) {
+        return nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
+    }
+
+    private JsonObject validateBusinessTypeJurisdiction(String sessionJurisdiction, BusinessType businessType) {
+        String businessTypeJurisdiction = businessType.getJurisdiction();
+        if (isNull(businessTypeJurisdiction)) {
+            return EMPTY_JSON_OBJECT; // Null jurisdiction is allowed for both CROWN and MAGISTRATES
+        }
 
         if (MAGISTRATES.equalsIgnoreCase(sessionJurisdiction) && !MAGISTRATES.equalsIgnoreCase(businessTypeJurisdiction)) {
             return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
@@ -175,22 +219,89 @@ public class SessionsApiValidator {
         if (CROWN.equalsIgnoreCase(sessionJurisdiction) && !CROWN.equalsIgnoreCase(businessTypeJurisdiction)) {
             return buildErrorResponse("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + sessionJurisdiction);
         }
+        return EMPTY_JSON_OBJECT;
+    }
 
-        if (!isDurationBasedWithValidDuration(session, businessType)) {
-            return buildErrorResponse("Duration should be supplied for duration-based business type " + session.getBusinessType());
+    private JsonObject validateCourtRoomForSession(Session session, String sessionJurisdiction, Requester requester) {
+        CourtRoomRetrievalResult retrievalResult = retrieveCourtRoomByJurisdiction(session.getCourtRoomId(), sessionJurisdiction, requester);
+        
+        JsonObject jurisdictionMismatchError = validateCourtRoomJurisdictionMismatch(retrievalResult, sessionJurisdiction, session.getCourtRoomId());
+        if (jurisdictionMismatchError != EMPTY_JSON_OBJECT) {
+            return jurisdictionMismatchError;
         }
 
-        Optional<CourtRoom> courtRoomOpt;
-        if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
-            courtRoomOpt = referenceDataCache.getCpCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
-        } else {
-            courtRoomOpt = referenceDataCache.getRotaCourtRoomByCourtRoomId(session.getCourtRoomId(), requester);
-        }
-
-        if (courtRoomOpt.isEmpty()) {
+        if (retrievalResult.getPrimaryCourtRoom().isEmpty()) {
             return buildErrorResponse(COURTROOM_NOT_FOUND + session.getCourtRoomId());
         }
+
+        CourtRoom courtRoom = retrievalResult.getPrimaryCourtRoom().get();
+        JsonObject courtCentreError = validateCourtRoomBelongsToCourtCentre(session.getCourtCentreId(), courtRoom);
+        if (courtCentreError != EMPTY_JSON_OBJECT) {
+            return courtCentreError;
+        }
+
+        return validateCourtRoomOucodeJurisdiction(courtRoom, sessionJurisdiction);
+    }
+
+    private CourtRoomRetrievalResult retrieveCourtRoomByJurisdiction(String courtRoomId, String sessionJurisdiction, Requester requester) {
+        if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
+            return new CourtRoomRetrievalResult(
+                    referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester),
+                    referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)
+            );
+        } else {
+            return new CourtRoomRetrievalResult(
+                    referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester),
+                    referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)
+            );
+        }
+    }
+
+    private JsonObject validateCourtRoomJurisdictionMismatch(CourtRoomRetrievalResult retrievalResult, String sessionJurisdiction, String courtRoomId) {
+        if (retrievalResult.getPrimaryCourtRoom().isEmpty() && retrievalResult.getOtherSourceCourtRoom().isPresent()) {
+            if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
+                return buildErrorResponse("The courtroom belongs to a court centre with MAGISTRATES jurisdiction, which does not match the session jurisdiction CROWN");
+            } else {
+                return buildErrorResponse("The courtroom belongs to a court centre with CROWN jurisdiction, which does not match the session jurisdiction MAGISTRATES");
+            }
+        }
         return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateCourtRoomBelongsToCourtCentre(String sessionCourtCentreId, CourtRoom courtRoom) {
+        String courtRoomCourtCentreId = courtRoom.getOucodeUUID();
+        if (isNull(sessionCourtCentreId) || isNull(courtRoomCourtCentreId)
+                || !sessionCourtCentreId.equals(courtRoomCourtCentreId)) {
+            return buildErrorResponse("The courtroom must belong to the same court centre as specified in courtCentreId");
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateCourtRoomOucodeJurisdiction(CourtRoom courtRoom, String sessionJurisdiction) {
+        String oucode = courtRoom.getOucode();
+        if (nonNull(oucode) && ((oucode.startsWith("B") && CROWN.equalsIgnoreCase(sessionJurisdiction))
+                || (oucode.startsWith("C") && MAGISTRATES.equalsIgnoreCase(sessionJurisdiction)))) {
+            return buildErrorResponse("The courtroom jurisdiction does nto match with session  jurisdiction");
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private static class CourtRoomRetrievalResult {
+        private final Optional<CourtRoom> primaryCourtRoom;
+        private final Optional<CourtRoom> otherSourceCourtRoom;
+
+        CourtRoomRetrievalResult(Optional<CourtRoom> primaryCourtRoom, Optional<CourtRoom> otherSourceCourtRoom) {
+            this.primaryCourtRoom = primaryCourtRoom;
+            this.otherSourceCourtRoom = otherSourceCourtRoom;
+        }
+
+        Optional<CourtRoom> getPrimaryCourtRoom() {
+            return primaryCourtRoom;
+        }
+
+        Optional<CourtRoom> getOtherSourceCourtRoom() {
+            return otherSourceCourtRoom;
+        }
     }
 
     private static boolean isDurationBasedWithValidDuration(final Session session, final BusinessType businessType) {
@@ -370,6 +481,11 @@ public class SessionsApiValidator {
                 }
             }
         }
+        // For validate-create, also enforce business type / courtroom / court-centre rules
+        JsonObject businessTypeAndCourtRoomValidationResult = validateSessionBusinessTypeAndCourtRoom(sessionToBeAdded, requester);
+        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
+            return businessTypeAndCourtRoomValidationResult;
+        }
         return validateSessionToBeAdded(sessionToBeAdded, requester);
     }
 
@@ -421,7 +537,7 @@ public class SessionsApiValidator {
         }
 
         String[] sessionTimes = retrieveSessionTimes(params);
-        if (sessionTimes == null) {
+        if (sessionTimes.length == 0) {
             return EMPTY_JSON_OBJECT;
         }
 
@@ -436,14 +552,14 @@ public class SessionsApiValidator {
             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
                     courtScheduleRepository.retrieveCourtScheduleWithListingById(params.getCourtScheduleId());
             if (isNull(persistedCourtSchedule)) {
-                return null;
+                return new String[0];
             }
             sessionStartTimeStr = retrieveSessionStartTime(sessionStartTimeStr, persistedCourtSchedule);
             sessionEndTimeStr = retrieveSessionEndTime(sessionEndTimeStr, persistedCourtSchedule);
         }
 
         if (isNull(sessionStartTimeStr) || isNull(sessionEndTimeStr)) {
-            return null;
+            return new String[0];
         }
 
         return new String[]{sessionStartTimeStr, sessionEndTimeStr};
@@ -607,6 +723,7 @@ public class SessionsApiValidator {
             return courtRoomValidation;
         }
 
+        // Validate isDraft can only be true when jurisdiction is CROWN - reject if true for MAGISTRATES, silently accept false
         // Validate courtroom belongs to the same court house as the original session
         JsonObject courtHouseValidation = validateCourtRoomBelongsToSameCourtHouse(updateCourtSchedule, requester);
         if (!courtHouseValidation.isEmpty()) {
@@ -621,8 +738,12 @@ public class SessionsApiValidator {
 
         // Validate isDraft can only be supplied when jurisdiction is CROWN
         Boolean isDraft = updateCourtSchedule.getIsDraft();
-        if (nonNull(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
-            return buildErrorResponse("isDraft can only be supplied when jurisdiction is CROWN");
+        // For CROWN jurisdiction, isDraft must be explicitly supplied (true or false)
+        if (CROWN.equalsIgnoreCase(jurisdiction) && isNull(isDraft)) {
+            return buildErrorResponse("isDraft is mandatory for CROWN jurisdiction sessions");
+        }
+        if (nonNull(isDraft) && TRUE.equals(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("isDraft can only be true when jurisdiction is CROWN");
         }
 
         // Validate that if CROWN and database isDraft = false, it can't be changed to isDraft = true
@@ -632,6 +753,17 @@ public class SessionsApiValidator {
             if (nonNull(persistedCourtSchedule) && FALSE.equals(persistedCourtSchedule.getIsDraft())) {
                 return buildErrorResponse("Cannot change isDraft from false to true for CROWN jurisdiction sessions");
             }
+        }
+
+        // Validate panel - YOUTH is not allowed for CROWN jurisdiction
+        String panel = updateCourtSchedule.getPanel();
+        // For MAGISTRATES jurisdiction, panel is mandatory
+        if (MAGISTRATES.equalsIgnoreCase(jurisdiction)
+                && (isNull(panel) || panel.trim().isEmpty())) {
+            return buildErrorResponse("panel is mandatory for MAGISTRATES jurisdiction sessions");
+        }
+        if (nonNull(panel) && "YOUTH".equalsIgnoreCase(panel) && CROWN.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("YOUTH panel is not allowed for CROWN jurisdiction sessions. Only ADULT panel is allowed.");
         }
 
         SessionValidationParams params = getSessionValidationParams(updateCourtSchedule);
@@ -744,6 +876,81 @@ public class SessionsApiValidator {
 
         if (isNull(request.getCourtRoomId()) || request.getCourtRoomId().trim().isEmpty()) {
             return buildErrorResponse("Courtroom ID must be provided");
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateIsDraftForJurisdiction(final CreateSessionRequestParam createSessionRequestParam) {
+        // Validate sessions in the list
+        for (Session session : createSessionRequestParam.getSessionList()) {
+            JsonObject error = validateSessionIsDraft(session);
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+
+        // Validate sessionToBeAdded if present
+        if (nonNull(createSessionRequestParam.getSessionToBeAdded())) {
+            JsonObject error = validateSessionIsDraft(createSessionRequestParam.getSessionToBeAdded());
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateSessionIsDraft(final Session session) {
+        if (session == null) {
+            return EMPTY_JSON_OBJECT;
+        }
+
+        String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
+        Boolean isDraft = session.isDraft();
+
+        // For CROWN jurisdiction, isDraft must be explicitly supplied (true or false)
+        if (CROWN.equalsIgnoreCase(jurisdiction) && isNull(isDraft)) {
+            return buildErrorResponse("isDraft is mandatory for CROWN jurisdiction sessions");
+        }
+
+        // isDraft can only be true for CROWN jurisdiction - reject if true for MAGISTRATES, silently accept false
+        if (nonNull(isDraft) && TRUE.equals(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("isDraft can only be true for CROWN jurisdiction sessions");
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validatePanelForJurisdiction(final CreateSessionRequestParam createSessionRequestParam) {
+        // Validate sessions in the list
+        for (Session session : createSessionRequestParam.getSessionList()) {
+            JsonObject error = validateSessionPanel(session);
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+
+        // Validate sessionToBeAdded if present
+        if (nonNull(createSessionRequestParam.getSessionToBeAdded())) {
+            JsonObject error = validateSessionPanel(createSessionRequestParam.getSessionToBeAdded());
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateSessionPanel(final Session session) {
+        if (session == null) {
+            return EMPTY_JSON_OBJECT;
+        }
+
+        String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
+        String panel = session.getPanelType();
+
+        // For MAGISTRATES jurisdiction, panel is mandatory
+        if (MAGISTRATES.equalsIgnoreCase(jurisdiction)
+                && (isNull(panel) || panel.trim().isEmpty())) {
+            return buildErrorResponse("panel is mandatory for MAGISTRATES jurisdiction sessions");
+        }
+
+        // YOUTH panel is not allowed for CROWN jurisdiction - only ADULT is allowed
+        if (nonNull(panel) && "YOUTH".equalsIgnoreCase(panel) && CROWN.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("YOUTH panel is not allowed for CROWN jurisdiction sessions. Only ADULT panel is allowed.");
         }
 
         return EMPTY_JSON_OBJECT;

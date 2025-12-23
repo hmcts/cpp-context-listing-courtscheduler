@@ -674,14 +674,7 @@ public class SessionsService {
             return nthOccurrence;
         }
 
-        // If index is 5 and the month doesn't have 5 occurrences, fallback to index 4
-        if (index == 5) {
-            LocalDate fourthOccurrence = firstOccurrence.plusWeeks(3);
-            if (fourthOccurrence.getMonth() == firstDayOfMonth.getMonth()) {
-                return fourthOccurrence;
-            }
-        }
-
+        // If the nth occurrence doesn't exist in the month, return null (no session created for this month)
         return null;
     }
 
@@ -755,6 +748,10 @@ public class SessionsService {
     }
 
     public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor) {
+        return validateSessionIntegrity(session, startDate, endDate, repeatFor, null);
+    }
+
+    public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor, final RepeatFrequency frequency) {
         logger.info("validateSessionIntegrity to check session integrity");
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessionsToCompare = courtScheduleRepository
                 .getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate);
@@ -762,7 +759,13 @@ public class SessionsService {
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
             logger.debug("validateSessionIntegrity sessionToCompare : {}", sessionToCompare);
             //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
-            if (validatedWeeklyFrequency(session, sessionToCompare, startDate, endDate, repeatFor)) {
+            boolean isDuplicate = false;
+            if (frequency == RepeatFrequency.EVERY_MONTH && session.getIndex() != null) {
+                isDuplicate = validatedMonthlyFrequency(session, sessionToCompare, startDate, endDate, repeatFor);
+            } else {
+                isDuplicate = validatedWeeklyFrequency(session, sessionToCompare, startDate, endDate, repeatFor);
+            }
+            if (isDuplicate) {
                 return buildErrorResponse(format(ErrorMessages.DUPLICATE_SESSIONS, sessionToCompare.getCourtScheduleId()));
             }
         }
@@ -780,16 +783,59 @@ public class SessionsService {
                 LocalDate sessionDateCandidate = startDate.plusWeeks(weekNumber).with(TemporalAdjusters.nextOrSame(dayOfWeek));
                 logger.debug("validatedWeeklyFrequency sessionDateCandidate : {}", sessionDateCandidate);
                 logger.debug("validatedWeeklyFrequency sessionToCompare.getSessionDate : {}", sessionToCompare.getSessionDate());
-                if (session.getCourtCentreId().equals(sessionToCompare.getCourtHouseId()) &&
-                        session.getCourtRoomId().equals(sessionToCompare.getCourtRoomId()) &&
-                        session.getBusinessType().equals(sessionToCompare.getBusinessType()) &&
+                if (StringUtils.equals(session.getCourtCentreId(), sessionToCompare.getCourtHouseId()) &&
+                        StringUtils.equals(session.getCourtRoomId(), sessionToCompare.getCourtRoomId()) &&
+                        StringUtils.equals(session.getBusinessType(), sessionToCompare.getBusinessType()) &&
                         session.getRepeatDays().contains(DayOfWeek.of(sessionToCompare.getSessionDate().getDayOfWeek().getValue())) &&
-                        sessionToCompare.getSessionDate().equals(sessionDateCandidate)) {
+                        sessionDateCandidate.equals(sessionToCompare.getSessionDate())) {
                     logger.debug("validatedWeeklyFrequency condition met");
-                    violated = session.getSessionType().equals(sessionToCompare.getCourtSession()) || session.getSessionType().equals("AD") || sessionToCompare.getCourtSession().equals("AD");
+                    violated = StringUtils.equals(session.getSessionType(), sessionToCompare.getCourtSession()) || 
+                            StringUtils.equals(session.getSessionType(), "AD") || 
+                            StringUtils.equals(sessionToCompare.getCourtSession(), "AD");
                 }
             }
 
+        }
+        return violated;
+    }
+
+    private boolean validatedMonthlyFrequency(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare,
+                                             LocalDate startDate, LocalDate endDate, Integer repeatFor) {
+        //Method validates the hearing slots available for the EVERY_MONTH frequency considering repeatFor, repeatDays, and index parameter
+        //Calculates the actual dates that would be created (e.g., 4th Friday of each month) and checks for conflicts
+        boolean violated = false;
+        LocalDate currentDate = startDate;
+
+        while (!currentDate.isAfter(endDate)) {
+            LocalDate monthStart = currentDate.withDayOfMonth(1);
+            LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+            if (monthEnd.isAfter(endDate)) {
+                monthEnd = endDate;
+            }
+
+            for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
+                LocalDate sessionDateCandidate = findNthOccurrenceOfDayInMonth(dayOfWeek, monthStart, session.getIndex());
+
+                if (sessionDateCandidate != null && !sessionDateCandidate.isAfter(endDate) &&
+                        !sessionDateCandidate.isAfter(monthEnd) &&
+                        !sessionDateCandidate.isBefore(monthStart)) {
+                    logger.debug("validatedMonthlyFrequency sessionDateCandidate : {}", sessionDateCandidate);
+                    logger.debug("validatedMonthlyFrequency sessionToCompare.getSessionDate : {}", sessionToCompare.getSessionDate());
+                    if (StringUtils.equals(session.getCourtCentreId(), sessionToCompare.getCourtHouseId()) &&
+                            StringUtils.equals(session.getCourtRoomId(), sessionToCompare.getCourtRoomId()) &&
+                            StringUtils.equals(session.getBusinessType(), sessionToCompare.getBusinessType()) &&
+                            sessionDateCandidate.equals(sessionToCompare.getSessionDate())) {
+                        logger.debug("validatedMonthlyFrequency condition met");
+                        violated = StringUtils.equals(session.getSessionType(), sessionToCompare.getCourtSession()) || 
+                                StringUtils.equals(session.getSessionType(), "AD") || 
+                                StringUtils.equals(sessionToCompare.getCourtSession(), "AD");
+                        if (violated) {
+                            return true; // Early return on first duplicate found
+                        }
+                    }
+                }
+            }
+            currentDate = currentDate.plusMonths(repeatFor).withDayOfMonth(1);
         }
         return violated;
     }

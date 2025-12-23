@@ -36,14 +36,31 @@
           "isDraft": {"type": "boolean"},
           "jurisdiction": {"type": "string", "enum": ["CROWN", "MAGISTRATES"]}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "repeatDays", "jurisdiction" ],
-        "oneOf": [
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "repeatDays", "jurisdiction" ],
+        "allOf": [
           {
-            "properties": { "jurisdiction": { "enum": ["CROWN"] } },
+        "oneOf": [
+              {
+                "allOf": [
+          {
+                    "properties": { "jurisdiction": { "enum": ["CROWN"] } }
+                  },
+                  {
             "required": ["isDraft"]
+                  }
+                ]
           },
+              {
+                "allOf": [
           {
             "properties": { "jurisdiction": { "enum": ["MAGISTRATES"] } }
+                  },
+                  {
+                    "required": ["panel"]
+                  }
+                ]
+              }
+            ]
           }
         ]
       }
@@ -82,14 +99,31 @@
           "isDraft": {"type": "boolean"},
           "jurisdiction": {"type": "string", "enum": ["CROWN", "MAGISTRATES"]}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "jurisdiction"],
-        "oneOf": [
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "jurisdiction"],
+        "allOf": [
           {
-            "properties": { "jurisdiction": { "enum": ["CROWN"] } },
+        "oneOf": [
+              {
+                "allOf": [
+          {
+                    "properties": { "jurisdiction": { "enum": ["CROWN"] } }
+                  },
+                  {
             "required": ["isDraft"]
+                  }
+                ]
           },
+              {
+                "allOf": [
           {
             "properties": { "jurisdiction": { "enum": ["MAGISTRATES"] } }
+                  },
+                  {
+                    "required": ["panel"]
+                  }
+                ]
+              }
+            ]
           }
         ]
     }

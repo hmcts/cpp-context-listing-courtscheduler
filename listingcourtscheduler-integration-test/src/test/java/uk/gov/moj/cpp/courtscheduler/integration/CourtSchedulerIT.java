@@ -14,6 +14,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -55,6 +56,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Date;
 import java.util.List;
@@ -65,6 +67,7 @@ import java.util.UUID;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
+import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -277,6 +280,22 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldReturn400WhenPanelMissingForMagistratesJurisdictionInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-missing-panel-magistrates.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturn400WhenIsDraftMissingForCrownJurisdictionInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-null-draft-crown.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
     void shouldCreateDurationBasedScheduleForAllDaySplitSlot() {
         final Integer maxDurationForMorningSlot1 = 120;
         final Integer maxDurationForAfternoonSlot1 = 60;
@@ -361,6 +380,66 @@ class CourtSchedulerIT extends AbstractIT {
         final String errorResponseMessage = response.readEntity(String.class);
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         assertThat(errorResponseMessage, is("{\"error\":\"All day split flag should be sent for All Day(AD) session\"}"));
+    }
+
+    @Test
+    void shouldReturn400WhenCourtroomDoesNotBelongToCourtCentreInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-wrong-court-centre.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturn400WhenCourtroomDoesNotBelongToCourtCentreInValidateCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-wrong-court-centre.json");
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturn400WhenCrownSessionUsesMagistratesCourtroomInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-crown-with-magistrates-courtroom.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString("court centre with MAGISTRATES jurisdiction"));
+        assertThat(errorResponseMessage, containsString("does not match the session jurisdiction CROWN"));
+    }
+
+    @Test
+    void shouldReturn400WhenCrownSessionUsesMagistratesCourtroomInValidateCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-crown-with-magistrates-courtroom.json");
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString("court centre with MAGISTRATES jurisdiction"));
+        assertThat(errorResponseMessage, containsString("does not match the session jurisdiction CROWN"));
+    }
+
+    @Test
+    void shouldReturn400WhenMagistratesSessionUsesCrownCourtroomInCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-magistrates-with-crown-courtroom.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        // When courtroom is found in primary source but has wrong oucode, oucode validation catches it
+        assertThat(errorResponseMessage, containsString("The courtroom jurisdiction does nto match with session  jurisdiction"));
+    }
+
+    @Test
+    void shouldReturn400WhenMagistratesSessionUsesCrownCourtroomInValidateCreate() {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("validate-create-court-schedule-magistrates-with-crown-courtroom.json");
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        // When courtroom is found in primary source but has wrong oucode, oucode validation catches it
+        assertThat(errorResponseMessage, containsString("The courtroom jurisdiction does nto match with session  jurisdiction"));
     }
 
     @Test
@@ -1386,7 +1465,7 @@ class CourtSchedulerIT extends AbstractIT {
         createAllocatedListing(courtSchedule, hearingId, bookingId, 60, "10:00");
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.search.courtschedules.by.id.json");
-        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_SCHEDULE_ID", courtScheduleId.toString());
+        getCourtScheduleRequestParams = getCourtScheduleRequestParams.replace("COURT_SCHEDULE_ID", courtScheduleId);
         Map<String, Object> map = mapper.readValue(getCourtScheduleRequestParams, new TypeReference<>() {
         });
 
@@ -1846,7 +1925,8 @@ class CourtSchedulerIT extends AbstractIT {
         // Create allocated listing for CROWN schedule
         final UUID crownHearingId = UUID.randomUUID();
         final UUID crownBookingId = UUID.randomUUID();
-        final AllocatedListing crownAllocatedListing = createAllocatedListing(crownWithListings, crownHearingId, crownBookingId, 60, "10:00");
+        createAllocatedListing(crownWithListings, crownHearingId, crownBookingId, 60, "10:00");
+
 
         // Try to delete both schedules with allocated listings
         // Create JSON payload with both IDs
@@ -2129,10 +2209,11 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
         assertThat("Court schedules should be created", courtSchedules.size(), is(greaterThan(0)));
 
-        // Verify court schedule is created with index 5 (should fallback to 4 if 5th doesn't exist)
+        // Verify court schedule is created with index 5 (no session created if 5th doesn't exist in month)
         final CourtSchedule courtSchedule = courtSchedules.get(0);
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
     }
+
 
     @Test
     void shouldCreateCourtSchedulesForMonthlyFrequencyWithRandomStartDate() {
@@ -2192,6 +2273,49 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
     }
 
+    @Test
+    void shouldNotCreateSessionWhen5thFridayDoesNotExistInMonth() {
+        // Given - Test with months where 5th Friday doesn't exist (e.g., February 2026 has only 4 Fridays)
+        // We'll use a date range that includes both months with 5 Fridays and months without
+        LocalDate startDate = LocalDate.of(2026, 1, 1); // January 2026 - has 5 Fridays
+        LocalDate endDate = LocalDate.of(2026, 3, 31); // March 2026 - includes February (4 Fridays) and March (5 Fridays)
+
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
+                "create-court-schedule-monthly-frequency-different-index.json",
+                startDate,
+                endDate
+        );
+
+        // When
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        // Then
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Wait for processing and verify court schedules are created
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+
+        // January 2026: First Friday is Jan 2, so 5th Friday is Jan 2 + 28 days = Jan 30 (exists)
+        // February 2026: First Friday is Feb 6, so 5th Friday is Feb 6 + 28 days = Mar 6 (next month - doesn't exist in Feb)
+        // March 2026: First Friday is Mar 6, so 5th Friday is Mar 6 + 28 days = Apr 3 (next month - doesn't exist in Mar)
+        // So we should only get sessions for January (1 session)
+        assertThat("Only sessions for months with 5th Friday should be created",
+                courtSchedules.size(), is(greaterThanOrEqualTo(1)));
+
+        // Verify all created sessions are from months that have 5th Friday
+        for (CourtSchedule schedule : courtSchedules) {
+            LocalDate sessionDate = schedule.getSessionDate();
+            // Verify the session date is actually a Friday and is the 5th Friday of that month
+            assertThat("Session date should be a Friday", sessionDate.getDayOfWeek(), is(DayOfWeek.FRIDAY));
+
+            // Calculate which occurrence this Friday is in the month
+            LocalDate firstOfMonth = sessionDate.withDayOfMonth(1);
+            LocalDate firstFriday = firstOfMonth.with(TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY));
+            long weekNumber = ChronoUnit.WEEKS.between(firstFriday, sessionDate);
+            assertThat("Session should be on the 5th Friday", weekNumber, is(4L)); // 0-indexed, so 4 means 5th
+        }
+    }
+
     private String prepareCreateCourtSchedulePayloadWithDates(final String fileName, final LocalDate startDate, final LocalDate endDate) {
         return getPayload(fileName)
                 .replace("START_DATE", startDate.format(ofPattern("yyyy-MM-dd")))
@@ -2247,6 +2371,22 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         assertThat(errorResponseMessage, containsString(SESSION_EDIT_ANOTHER_USER));
+    }
+
+    @Test
+    void shouldReturn400WhenPanelMissingForMagistratesJurisdictionInUpdate() {
+        String updateCourtSchedulePayload = getPayload("update-court-schedule-missing-panel.json");
+        String changedCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // picked from referencedata.rota-courtrooms.json file
+        String changedBusinessType = "DVLA";
+
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", randomUUID().toString());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", changedCourtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", changedBusinessType);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", AM_SESSION);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
     }
 
     @Test
@@ -2389,7 +2529,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Draft sessions should be successfully assigned (not in any error group)
         boolean draftSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
@@ -2401,7 +2541,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Assigned session should be in error group
         boolean foundAssignedSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
@@ -2468,7 +2608,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Find the error group with the expected error message
         boolean foundErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
@@ -2532,7 +2672,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Find the error group with the expected error message
         boolean foundErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
@@ -2643,7 +2783,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify ineligible session is in error group
         boolean foundIneligibleSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
@@ -2658,7 +2798,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Eligible session should be successfully assigned (not in any error group)
         boolean eligibleSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
@@ -2733,7 +2873,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify MAGISTRATES session is in error group
         boolean foundIneligibleMagistratesSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("assign.courtroom endpoint is only valid for CROWN jurisdiction sessions".equals(error)) {
@@ -2748,7 +2888,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // CROWN session should be successfully assigned (not in any error group)
         boolean crownSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
@@ -2823,7 +2963,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify session with wrong court centre is in error group
         boolean foundIneligibleWrongCourtCentreSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("The new courtroom must belong to the same court centre as the session".equals(error)) {
@@ -2838,7 +2978,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Session with correct court centre should be successfully assigned (not in any error group)
         boolean correctCourtCentreSessionInErrorGroup = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
@@ -2916,7 +3056,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify session is in error group due to duplicate
         boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if (error.contains("Duplicate session already exists")) {
@@ -2998,7 +3138,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify session is in error group due to duplicate
         boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if (error.contains("Duplicate session already exists")) {
@@ -3080,7 +3220,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify session is in error group due to duplicate
         boolean foundIneligibleDuplicateSession = jsonResponseArray.stream()
-                .map(item -> item.asJsonObject())
+                .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if (error.contains("Duplicate session already exists")) {
