@@ -906,7 +906,12 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("BUSINESS_TYPE", "MAGISTRATES", true, false);
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
+                .thenReturn(persistedSchedule);
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(updateCourtSchedule.getCourtScheduleId(), 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1035,8 +1040,11 @@ class SessionsApiValidatorTest {
 
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType("BUSINESS_TYPE", "CROWN", true, false);
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setJurisdiction("CROWN"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
-                .thenReturn(new CourtSchedule());
+                .thenReturn(persistedSchedule);
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1059,9 +1067,12 @@ class SessionsApiValidatorTest {
 
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType("BUSINESS_TYPE", "CROWN", true, false);
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setJurisdiction("CROWN"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
-                .thenReturn(new CourtSchedule());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+                .thenReturn(persistedSchedule);
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(updateCourtSchedule.getCourtScheduleId(), 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1129,6 +1140,8 @@ class SessionsApiValidatorTest {
 
         CourtSchedule persistedCourtSchedule = new CourtSchedule();
         persistedCourtSchedule.setIsDraft(false);
+        persistedCourtSchedule.setJurisdiction("CROWN"); // Match the update request jurisdiction
+        persistedCourtSchedule.setSlotBased(true); // Set slotBased to avoid NPE
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedCourtSchedule);
@@ -1154,7 +1167,12 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("BUSINESS_TYPE", "MAGISTRATES", true, false);
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1178,8 +1196,12 @@ class SessionsApiValidatorTest {
 
         CourtSchedule persistedCourtSchedule = new CourtSchedule();
         persistedCourtSchedule.setIsDraft(false);
+        persistedCourtSchedule.setJurisdiction("CROWN"); // Match the update request jurisdiction
+        persistedCourtSchedule.setSlotBased(true); // Set slotBased to avoid NPE
 
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedCourtSchedule);
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
@@ -1205,10 +1227,12 @@ class SessionsApiValidatorTest {
 
         CourtSchedule persistedCourtSchedule = new CourtSchedule();
         persistedCourtSchedule.setIsDraft(true);
+        persistedCourtSchedule.setJurisdiction("CROWN"); // Match the update request jurisdiction
+        persistedCourtSchedule.setSlotBased(true); // Set slotBased to avoid NPE
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedCourtSchedule);
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
@@ -1404,6 +1428,8 @@ class SessionsApiValidatorTest {
         Date sessionEndDate = Date.from(sessionDate.atTime(13, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
         persistedSchedule.setSessionStartTime(sessionStartDate);
         persistedSchedule.setSessionEndTime(sessionEndDate);
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
@@ -1414,7 +1440,7 @@ class SessionsApiValidatorTest {
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
                 .thenReturn(List.of(booked));
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1442,9 +1468,15 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
+        Date sessionStartDate = Date.from(LocalDate.now().plusDays(1).atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        persistedSchedule.setSessionStartTime(sessionStartDate);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1471,9 +1503,15 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
+        Date sessionEndDate = Date.from(LocalDate.now().plusDays(1).atTime(13, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        persistedSchedule.setSessionEndTime(sessionEndDate);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1505,11 +1543,6 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(null);
 
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
-
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
@@ -1539,12 +1572,12 @@ class SessionsApiValidatorTest {
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setSessionStartTime(null);
         persistedSchedule.setSessionEndTime(null);
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1664,6 +1697,8 @@ class SessionsApiValidatorTest {
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setCourtRoomId(originalCourtRoomId);
         persistedSchedule.setCourtHouseId(courtHouseId);
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
@@ -1676,9 +1711,7 @@ class SessionsApiValidatorTest {
                 .thenReturn(Optional.of(newCourtRoom));
 
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1711,14 +1744,14 @@ class SessionsApiValidatorTest {
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setCourtRoomId(courtRoomId); // Same courtroom ID
         persistedSchedule.setCourtHouseId(courtHouseId);
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1749,10 +1782,6 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(newCourtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1786,10 +1815,15 @@ class SessionsApiValidatorTest {
         CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setCourtRoomId(originalCourtRoomId);
         persistedSchedule.setCourtHouseId(originalCourtHouseId);
+        persistedSchedule.setJurisdiction("CROWN"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
-        // Mock new courtroom with different court house ID for CROWN
+        stubCrownCourtRoomAvailable(newCourtRoomId);
+        stubBusinessType("GEN", "CROWN", true, false);
+        
+        // Override with courtroom that has different court house ID for CROWN
         CourtRoom newCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
                 .withCourtRoomId(newCourtRoomId)
                 .withOucodeUUID(differentCourtHouseId) // Different court house
@@ -1853,14 +1887,14 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSessionDate(LocalDate.now()); // Today
         persistedSchedule.setCourtRoomId(courtRoomId);
         persistedSchedule.setCourtHouseId(randomUUID().toString());
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1890,14 +1924,14 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1)); // Tomorrow
         persistedSchedule.setCourtRoomId(courtRoomId);
         persistedSchedule.setCourtHouseId(randomUUID().toString());
+        persistedSchedule.setJurisdiction("MAGISTRATES"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
                 .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
@@ -1928,10 +1962,6 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
-                .thenReturn(emptyList());
-        when(allocatedListingService.getTotalBookedPerCourtScheduleIds(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1960,6 +1990,8 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSessionDate(LocalDate.now().minusDays(1)); // Yesterday
         persistedSchedule.setCourtRoomId(courtRoomId);
         persistedSchedule.setCourtHouseId(randomUUID().toString());
+        persistedSchedule.setJurisdiction("CROWN"); // Match the update request jurisdiction
+        persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 

@@ -805,7 +805,7 @@ class SessionsServiceTest {
 
         Result result = sessionsService.update(updateCourtSchedule, requester);
 
-        assertEquals("Invalid business type", result.getMsg());
+        assertEquals("Business Type jurisdiction CROWN does not match session jurisdiction MAGISTRATES", result.getMsg());
     }
 
     @Test
