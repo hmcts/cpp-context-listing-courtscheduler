@@ -2,8 +2,11 @@
   "courtScheduleId": "COURT_SCHEDULE_ID",
   "courtRoomId": "COURT_ROOM_ID",
   "courtSession": "SESSION_TYPE",
-  "businessType": "BUSINESS_TYPE",
+  "businessType": "INVALID_BT",
   "panel": "PANEL",
   "jurisdiction": "MAGISTRATES",
   "maxSlots": 10
 }
+
+
+

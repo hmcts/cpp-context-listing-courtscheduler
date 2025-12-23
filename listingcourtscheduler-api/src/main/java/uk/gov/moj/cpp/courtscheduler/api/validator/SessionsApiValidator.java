@@ -517,10 +517,25 @@ public class SessionsApiValidator {
         } else if (sessionToBeAdded && ObjectUtils.isEmpty(params.getSlotsOrDuration())) {
             return buildErrorResponse(ErrorMessages.DURATION_NOT_FOUND_FOR_REGULAR_SESSION);
         } else if (!sessionToBeAdded) {
-            final Map<String, Integer> totalBookedMap = allocatedListingService.getTotalBookedPerCourtScheduleIds(List.of(params.getCourtScheduleId()));
-            final int totalBooked = totalBookedMap.getOrDefault(params.getCourtScheduleId(), 0);
-            if (params.getSlotsOrDuration() < totalBooked) {
-                return buildErrorResponse(ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED);
+            // For updates, check if session is slot-based or duration-based
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedScheduleForValidation = 
+                    courtScheduleRepository.retrieveCourtScheduleWithListingById(params.getCourtScheduleId());
+            if (nonNull(persistedScheduleForValidation) && nonNull(params.getSlotsOrDuration())) {
+                if (persistedScheduleForValidation.isSlotBased()) {
+                    // For slot-based sessions, check slots
+                    final Map<String, Integer> allocatedListingsMap = allocatedListingService.getAllocatedListingsByCourtScheduleId(List.of(params.getCourtScheduleId()));
+                    final int totalBookedSlots = allocatedListingsMap.getOrDefault(params.getCourtScheduleId(), 0);
+                    if (params.getSlotsOrDuration() < totalBookedSlots) {
+                        return buildErrorResponse(ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED);
+                    }
+                } else {
+                    // For duration-based sessions, check duration
+                    final Map<String, Integer> totalBookedMap = allocatedListingService.getTotalBookedPerCourtScheduleIds(List.of(params.getCourtScheduleId()));
+                    final int totalBooked = totalBookedMap.getOrDefault(params.getCourtScheduleId(), 0);
+                    if (params.getSlotsOrDuration() < totalBooked) {
+                        return buildErrorResponse(ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED);
+                    }
+                }
             }
         }
         return EMPTY_JSON_OBJECT;
@@ -717,6 +732,18 @@ public class SessionsApiValidator {
             return buildErrorResponse("Jurisdiction must be either MAGISTRATES or CROWN");
         }
 
+        // Check if jurisdiction is being changed - jurisdiction cannot be changed
+        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = 
+                courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+        if (nonNull(persistedCourtSchedule)) {
+            String persistedJurisdiction = nonNull(persistedCourtSchedule.getJurisdiction())
+                    ? persistedCourtSchedule.getJurisdiction()
+                    : MAGISTRATES.getJurisdiction();
+            if (!persistedJurisdiction.equalsIgnoreCase(jurisdiction)) {
+                return buildErrorResponse("Jurisdiction cannot be changed");
+            }
+        }
+
         // Validate courtroom source matches jurisdiction
         JsonObject courtRoomValidation = validateCourtRoomForJurisdiction(updateCourtSchedule, requester);
         if (!courtRoomValidation.isEmpty()) {
@@ -748,8 +775,6 @@ public class SessionsApiValidator {
 
         // Validate that if CROWN and database isDraft = false, it can't be changed to isDraft = true
         if (CROWN.equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && TRUE.equals(isDraft)) {
-            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
-                    courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
             if (nonNull(persistedCourtSchedule) && FALSE.equals(persistedCourtSchedule.getIsDraft())) {
                 return buildErrorResponse("Cannot change isDraft from false to true for CROWN jurisdiction sessions");
             }
