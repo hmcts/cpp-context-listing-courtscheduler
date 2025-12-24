@@ -122,7 +122,7 @@ public class RotaJudiciaryHelper {
      * @param executionId      the execution ID for logging purposes
      * @return a map of judiciary IDs to lists of CourtSchedule UUIDs
      */
-    public Map<String, List<UUID>> createJudiciaryCourtScheduleMap(
+    public Map<String, JudiciaryCourtScheduleData> createJudiciaryCourtScheduleMap(
             final Map<RotaPayload, Map<String, Map<String, String>>> records,
             final Map<String, UUID> judiciaryMap,
             final Map<String, Set<UUID>> courtScheduleMap,
@@ -140,7 +140,7 @@ public class RotaJudiciaryHelper {
             return Collections.emptyMap();
         }
 
-        final Map<String, List<UUID>> judiciaryCourtScheduleMap = new ConcurrentHashMap<>();
+        final Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleMap = new ConcurrentHashMap<>();
 
         scheduleJudiciaryList.forEach(schedule -> {
             try {
@@ -164,22 +164,64 @@ public class RotaJudiciaryHelper {
                     return;
                 }
 
-                judiciaryCourtScheduleMap.computeIfAbsent(judiciaryId, k -> new ArrayList<>()).addAll(scheduleIds);
+                final JudiciaryCourtScheduleData scheduleData = createScheduleData(schedule, scheduleIds);
+                judiciaryCourtScheduleMap.compute(judiciaryId, (key, existingData) ->
+                        mergeScheduleData(existingData, scheduleData));
 
-                logger.debug("Mapped judiciaryId {} to {} court schedule(s) with listingProfileId: {}",
-                        judiciaryId, scheduleIds.size(), courtListingProfileId);
+                logger.debug("Mapped judiciaryId {} to {} court schedule(s) with listingProfileId: {}, position: {}, isBenchChairman: {}, isDeputy: {}",
+                        judiciaryId, scheduleIds.size(), courtListingProfileId,
+                        scheduleData.position(), scheduleData.isBenchChairman(), scheduleData.isDeputy());
             } catch (final Exception ex) {
                 logger.error("Error processing schedule for judiciary court schedule map: {}", ex.getMessage(), ex);
             }
         });
 
         final int totalSchedules = judiciaryCourtScheduleMap.values().stream()
-                .mapToInt(List::size)
+                .mapToInt(data -> data.courtScheduleIds().size())
                 .sum();
         logger.debug("Created judiciary court schedule map with {} entries and {} total court schedules from {} schedule judiciary entries",
                 judiciaryCourtScheduleMap.size(), totalSchedules, scheduleJudiciaryList.size());
 
         return judiciaryCourtScheduleMap;
+    }
+
+    /**
+     * Creates a JudiciaryCourtScheduleData from a schedule and schedule IDs.
+     *
+     * @param schedule the court schedule judiciary
+     * @param scheduleIds the set of schedule UUIDs
+     * @return JudiciaryCourtScheduleData object
+     */
+    private JudiciaryCourtScheduleData createScheduleData(final CourtScheduleJudiciary schedule, final Set<UUID> scheduleIds) {
+        return new JudiciaryCourtScheduleData(
+                new ArrayList<>(scheduleIds),
+                schedule.getPosition(),
+                schedule.getBenchChairman(),
+                schedule.getDeputy()
+        );
+    }
+
+    /**
+     * Merges new schedule data with existing data, preserving metadata from the first schedule.
+     *
+     * @param existingData the existing data (may be null)
+     * @param newData the new schedule data to merge
+     * @return merged JudiciaryCourtScheduleData
+     */
+    private JudiciaryCourtScheduleData mergeScheduleData(final JudiciaryCourtScheduleData existingData,
+                                                         final JudiciaryCourtScheduleData newData) {
+        if (existingData == null) {
+            return newData;
+        }
+        // Merge schedule IDs with existing data, preserving metadata from first schedule
+        final List<UUID> mergedScheduleIds = new ArrayList<>(existingData.courtScheduleIds());
+        mergedScheduleIds.addAll(newData.courtScheduleIds());
+        return new JudiciaryCourtScheduleData(
+                mergedScheduleIds,
+                existingData.position(),
+                existingData.isBenchChairman(),
+                existingData.isDeputy()
+        );
     }
 
     // ============================================================================

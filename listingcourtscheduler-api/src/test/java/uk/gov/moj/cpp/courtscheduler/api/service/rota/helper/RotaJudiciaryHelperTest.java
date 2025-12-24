@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 import static java.util.Collections.emptyMap;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -25,6 +26,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleData;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
@@ -296,20 +298,28 @@ class RotaJudiciaryHelperTest {
         final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
                 .withJudiciaryId(judiciaryId)
                 .withCourtListingProfileId(courtListingProfileId)
+                .withPosition("CHAIR")
+                .withIsBenchChairman(true)
+                .withIsDeputy(false)
                 .build();
 
         when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(courtScheduleJudiciary);
 
         // when
-        final Map<String, List<UUID>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+        final Map<String, JudiciaryCourtScheduleData> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
                 records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
         assertThat(result.size(), is(1));
         assertThat(result.containsKey(judiciaryId), is(true));
-        assertThat(result.get(judiciaryId).size(), is(2));
-        assertThat(result.get(judiciaryId).contains(sessionId1), is(true));
-        assertThat(result.get(judiciaryId).contains(sessionId2), is(true));
+        final JudiciaryCourtScheduleData data = result.get(judiciaryId);
+        assertThat(data, is(notNullValue()));
+        assertThat(data.courtScheduleIds().size(), is(2));
+        assertThat(data.courtScheduleIds().contains(sessionId1), is(true));
+        assertThat(data.courtScheduleIds().contains(sessionId2), is(true));
+        assertThat(data.position(), is("CHAIR"));
+        assertThat(data.isBenchChairman(), is(true));
+        assertThat(data.isDeputy(), is(false));
     }
 
     @Test
@@ -319,7 +329,7 @@ class RotaJudiciaryHelperTest {
         final Map<String, Set<UUID>> courtScheduleMap = Map.of("listing-1", Set.of(UUID.randomUUID()));
 
         // when
-        final Map<String, List<UUID>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+        final Map<String, JudiciaryCourtScheduleData> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
                 records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
@@ -337,7 +347,7 @@ class RotaJudiciaryHelperTest {
         records.put(SCHEDULE, schedules);
 
         // when
-        final Map<String, List<UUID>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+        final Map<String, JudiciaryCourtScheduleData> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
                 records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
@@ -371,7 +381,7 @@ class RotaJudiciaryHelperTest {
                 .thenReturn(Optional.of(judiciary));
 
         // when
-        final Map<String, List<UUID>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+        final Map<String, JudiciaryCourtScheduleData> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
                 records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
