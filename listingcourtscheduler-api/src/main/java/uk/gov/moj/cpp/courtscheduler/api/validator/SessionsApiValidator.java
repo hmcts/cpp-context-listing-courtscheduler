@@ -148,7 +148,7 @@ public class SessionsApiValidator {
                 return addSessionValidationResult;
             }
             LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
-            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor());
+            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor(), repeatFrequency);
         }
 
         final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
