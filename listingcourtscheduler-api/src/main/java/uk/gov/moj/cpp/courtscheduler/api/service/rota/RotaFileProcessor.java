@@ -160,12 +160,14 @@ public class RotaFileProcessor {
 
     /**
      * Creates all processing maps required for judiciary and court schedule processing.
+     * This includes the judiciary map, court schedule map, and the judiciary court schedule map
+     * which contains full assignment data including position, isBenchChairman, and isDeputy.
      *
      * @param records      the parsed rota file records
      * @param requester    the requester for making service calls
      * @param executionId  the execution ID for logging
      * @param blobName     the name of the blob file
-     * @return ProcessingMaps containing all created maps
+     * @return ProcessingMaps containing the judiciary court schedule map with full assignment data
      */
     private ProcessingMaps createProcessingMaps(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                  final Requester requester,
@@ -190,9 +192,12 @@ public class RotaFileProcessor {
 
     /**
      * Extracts court schedule IDs map from the judiciary court schedule data map.
+     * This creates a simplified map containing only the court schedule IDs, which is used
+     * for database queries and comparison operations.
      *
      * @param judiciaryCourtScheduleDataMap the map containing JudiciaryCourtScheduleData records
-     * @return map of judiciary IDs to lists of court schedule UUIDs
+     *                                      with full assignment metadata (position, isBenchChairman, isDeputy)
+     * @return map of judiciary IDs to lists of court schedule UUIDs (metadata is excluded)
      */
     private Map<String, List<UUID>> extractCourtScheduleIdsMap(
             final Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleDataMap) {
@@ -205,8 +210,11 @@ public class RotaFileProcessor {
 
     /**
      * Queries the database for court schedule IDs by judiciary IDs.
+     * This method uses only the court schedule IDs (not the full assignment metadata)
+     * to query existing assignments in the database.
      *
-     * @param judiciaryCourtScheduleMapFromRotaFeed the map from rota feed
+     * @param judiciaryCourtScheduleMapFromRotaFeed the map from rota feed containing
+     *                                               judiciary IDs to lists of court schedule UUIDs
      * @param blobName                               the name of the blob file
      * @return map of judiciary IDs to court schedule IDs from database
      */
@@ -227,10 +235,14 @@ public class RotaFileProcessor {
 
     /**
      * Processes judiciary assignments and unassignments based on differences between rota feed and database.
+     * Compares the rota feed data with database records to identify:
+     * - Assignments: court schedules in rota feed but not in database
+     * - Unassignments: court schedules in database but not in rota feed
      *
-     * @param judiciaryCourtScheduleDataMapFromRotaFeed the map from rota feed with full data
-     * @param rotaFeedMapForQuery the map from rota feed with just IDs for comparison
-     * @param judiciaryCourtScheduleIdsFromDb the map from database
+     * @param judiciaryCourtScheduleDataMapFromRotaFeed the map from rota feed with full assignment data
+     *                                                   including position, isBenchChairman, and isDeputy
+     * @param rotaFeedMapForQuery the map from rota feed with just court schedule IDs for comparison
+     * @param judiciaryCourtScheduleIdsFromDb the map from database containing existing assignments
      * @param requester the requester for making service calls
      * @param executionId the execution ID for logging
      * @param blobName the name of the blob file
@@ -261,10 +273,14 @@ public class RotaFileProcessor {
 
     /**
      * Builds assignment data map by filtering schedule IDs from the original data map.
+     * Only includes the schedule IDs that need to be assigned, while preserving
+     * the assignment metadata (position, isBenchChairman, isDeputy) from the original data.
      *
      * @param judiciaryAssignmentIdsMap map of judiciary IDs to schedule IDs that need assignment
      * @param judiciaryCourtScheduleDataMapFromRotaFeed the original data map with all schedule information
-     * @return filtered assignment data map
+     *                                                  including assignment metadata
+     * @return filtered assignment data map containing only the schedules to be assigned,
+     *         with metadata preserved from the original data
      */
     private Map<String, JudiciaryCourtScheduleData> buildAssignmentDataMap(
             final Map<String, List<UUID>> judiciaryAssignmentIdsMap,
@@ -281,10 +297,12 @@ public class RotaFileProcessor {
 
     /**
      * Filters schedule data to only include the schedule IDs that need to be assigned.
+     * Preserves all assignment metadata (position, isBenchChairman, isDeputy) from the original data.
      *
-     * @param originalData the original schedule data
-     * @param scheduleIdsToAssign the schedule IDs that need to be assigned
-     * @return filtered JudiciaryCourtScheduleData
+     * @param originalData the original schedule data containing all court schedule IDs and metadata
+     * @param scheduleIdsToAssign the schedule IDs that need to be assigned (subset of original IDs)
+     * @return filtered JudiciaryCourtScheduleData containing only the specified schedule IDs
+     *         with all original metadata preserved
      */
     private JudiciaryCourtScheduleData filterScheduleData(
             final JudiciaryCourtScheduleData originalData,
@@ -302,11 +320,14 @@ public class RotaFileProcessor {
 
     /**
      * Executes judiciary assignments if there are any to process.
+     * The assignment data includes court schedule IDs along with assignment metadata
+     * (position, isBenchChairman, isDeputy) which will be persisted to the database.
      *
-     * @param judiciaryAssignmentMap the map of assignments to process
-     * @param requester              the requester for making service calls
-     * @param executionId            the execution ID for logging
-     * @param blobName               the name of the blob file
+     * @param judiciaryAssignmentDataMap the map of assignments to process, containing
+     *                                   court schedule IDs and assignment metadata
+     * @param requester                  the requester for making service calls
+     * @param executionId                the execution ID for logging
+     * @param blobName                   the name of the blob file
      */
     private void executeJudiciaryAssignments(
             final Map<String, JudiciaryCourtScheduleData> judiciaryAssignmentDataMap,
@@ -422,11 +443,14 @@ public class RotaFileProcessor {
 
     /**
      * Processes judiciary assignments by building the request and calling the assignment service.
+     * The assignment data includes court schedule IDs and assignment metadata (position,
+     * isBenchChairman, isDeputy) which are included in the assignment request.
      *
-     * @param judiciaryAssignmentMap map of judiciary IDs to court schedule UUIDs
-     * @param requester            the requester for making service calls
-     * @param executionId          the execution ID for logging
-     * @return the assignment response
+     * @param judiciaryAssignmentDataMap map of judiciary IDs to JudiciaryCourtScheduleData
+     *                                   containing court schedule UUIDs and assignment metadata
+     * @param requester                  the requester for making service calls
+     * @param executionId                the execution ID for logging
+     * @return the assignment response containing success/failure information
      */
     private AssignJudiciariesResponse processJudiciaryAssignments(
             final Map<String, JudiciaryCourtScheduleData> judiciaryAssignmentDataMap,
@@ -466,8 +490,12 @@ public class RotaFileProcessor {
 
     /**
      * Container for processing maps used during rota file processing.
+     * Contains the judiciary court schedule map with full assignment data including
+     * court schedule IDs, position, isBenchChairman, and isDeputy.
      *
-     * @param judiciaryCourtScheduleMapFromRotaFeed the map of judiciary IDs to court schedule IDs from rota feed
+     * @param judiciaryCourtScheduleMapFromRotaFeed the map of judiciary IDs to JudiciaryCourtScheduleData
+     *                                               from rota feed, containing court schedule IDs
+     *                                               and assignment metadata (position, isBenchChairman, isDeputy)
      */
     private record ProcessingMaps(Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleMapFromRotaFeed) {
     }
