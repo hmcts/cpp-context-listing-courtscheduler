@@ -668,12 +668,9 @@ public class CourtSchedulerApi {
         JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
 
         if (!validate.isEmpty()) {
-            // Return validation failure response
-            // UnprocessableEntityException expects errorMessage at root level, but we also need validationResult structure
-            // So we include both for compatibility
+            // Return validation failure response according to schema
             final String errorMessage = validate.getString(ERROR_MESSAGE);
             final JsonObject validationResult = createObjectBuilder()
-                    .add(ERROR_MESSAGE, errorMessage)
                     .add(VALIDATION_RESULT, createObjectBuilder()
                             .add(STATUS, FAILURE)
                             .add(VALIDATION_ERROR, errorMessage)
@@ -712,11 +709,8 @@ public class CourtSchedulerApi {
 
         if (!validate.isEmpty()) {
             // Return validation failure response
-            // UnprocessableEntityException expects errorMessage at root level, but we also need validationResult structure
-            // So we include both for compatibility
             final String errorMessage = validate.getString(ERROR_MESSAGE);
             final JsonObject validationResult = createObjectBuilder()
-                    .add(ERROR_MESSAGE, errorMessage)
                     .add(VALIDATION_RESULT, createObjectBuilder()
                             .add(STATUS, FAILURE)
                             .add(VALIDATION_ERROR, errorMessage)

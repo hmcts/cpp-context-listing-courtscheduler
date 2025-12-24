@@ -556,43 +556,63 @@ public class JudiciaryAvailabilityService {
 
     /**
      * Validates an add judiciary availability rule request.
-     * Returns a list of validation error messages. Empty list means validation passed.
+     * Returns the first validation error message encountered, or null if validation passed.
      */
-    public List<String> validateAddJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
-        final List<String> errors = new ArrayList<>();
+    public String validateAddJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
+        String error = validateDateRangeMaxThreeYears(request);
+        if (error != null) {
+            return error;
+        }
         
-        validateDateRangeMaxThreeYears(request, errors);
-        validateFutureDatesForCreation(request, errors);
-        validateUnavailabilityDateRanges(request, errors);
-        validateUnavailabilityOverlaps(request, errors);
-        validateOverlappingRules(request, null, errors);
-        validateUnavailabilityAffectsAssignedSessions(request, errors);
+        error = validateFutureDatesForCreation(request);
+        if (error != null) {
+            return error;
+        }
         
-        return errors;
+        error = validateUnavailabilityDateRanges(request);
+        if (error != null) {
+            return error;
+        }
+        
+        error = validateUnavailabilityOverlaps(request);
+        if (error != null) {
+            return error;
+        }
+        
+        error = validateOverlappingRules(request, null);
+        if (error != null) {
+            return error;
+        }
+        
+        error = validateUnavailabilityAffectsAssignedSessions(request);
+        
+        return error;
     }
 
-    private void validateDateRangeMaxThreeYears(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final List<String> errors) {
+    private String validateDateRangeMaxThreeYears(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
         if (request.getStartDate() != null && request.getEndDate() != null) {
             final long yearsBetween = java.time.temporal.ChronoUnit.YEARS.between(request.getStartDate(), request.getEndDate());
             if (yearsBetween > 3) {
-                errors.add("Date range cannot exceed 3 years");
+                return "Date range cannot exceed 3 years";
             }
         }
+        return null;
     }
 
-    private void validateFutureDatesForCreation(final AddJudiciaryAvailabilityRuleRequest request, final List<String> errors) {
+    private String validateFutureDatesForCreation(final AddJudiciaryAvailabilityRuleRequest request) {
         final LocalDate today = LocalDate.now();
         if (request.getStartDate() != null && request.getStartDate().isBefore(today)) {
-            errors.add("Start date must be in the future during creation");
+            return "Start date must be in the future during creation";
         }
         if (request.getEndDate() != null && request.getEndDate().isBefore(today)) {
-            errors.add("End date must be in the future during creation");
+            return "End date must be in the future during creation";
         }
+        return null;
     }
 
-    private void validateUnavailabilityDateRanges(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final List<String> errors) {
+    private String validateUnavailabilityDateRanges(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
         if (request.getUnavailabilities() == null || request.getUnavailabilities().isEmpty()) {
-            return;
+            return null;
         }
         
         for (int i = 0; i < request.getUnavailabilities().size(); i++) {
@@ -600,18 +620,19 @@ public class JudiciaryAvailabilityService {
                     request.getUnavailabilities().get(i);
             if (unavailability.getStartDate() != null && unavailability.getEndDate() != null) {
                 if (request.getStartDate() != null && unavailability.getStartDate().isBefore(request.getStartDate())) {
-                    errors.add(UNAVAILABILITY_PREFIX + (i + 1) + " start date must be within availability date range");
+                    return UNAVAILABILITY_PREFIX + (i + 1) + " start date must be within availability date range";
                 }
                 if (request.getEndDate() != null && unavailability.getEndDate().isAfter(request.getEndDate())) {
-                    errors.add(UNAVAILABILITY_PREFIX + (i + 1) + " end date must be within availability date range");
+                    return UNAVAILABILITY_PREFIX + (i + 1) + " end date must be within availability date range";
                 }
             }
         }
+        return null;
     }
 
-    private void validateUnavailabilityOverlaps(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final List<String> errors) {
+    private String validateUnavailabilityOverlaps(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
         if (request.getUnavailabilities() == null || request.getUnavailabilities().isEmpty()) {
-            return;
+            return null;
         }
         
         for (int i = 0; i < request.getUnavailabilities().size(); i++) {
@@ -621,16 +642,16 @@ public class JudiciaryAvailabilityService {
                 final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest u2 = 
                         request.getUnavailabilities().get(j);
                 if (doDateRangesOverlap(u1.getStartDate(), u1.getEndDate(), u2.getStartDate(), u2.getEndDate())) {
-                    errors.add("Unavailabilities cannot overlap");
-                    return;
+                    return "Unavailabilities cannot overlap";
                 }
             }
         }
+        return null;
     }
 
-    private void validateOverlappingRules(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final String excludeRuleId, final List<String> errors) {
+    private String validateOverlappingRules(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final String excludeRuleId) {
         if (request.getJudiciaryId() == null || request.getStartDate() == null || request.getEndDate() == null) {
-            return;
+            return null;
         }
         
         final List<JudiciaryAvailabilityRule> overlappingRules = repository.findRulesByDateRange(
@@ -648,19 +669,19 @@ public class JudiciaryAvailabilityService {
         
         for (final JudiciaryAvailabilityRule existingRule : rulesToCheck) {
             if (hasOverlappingRepeatPattern(request, existingRule)) {
-                errors.add("A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern");
-                return;
+                return "A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern";
             }
         }
+        return null;
     }
 
-    private void validateUnavailabilityAffectsAssignedSessions(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final List<String> errors) {
+    private String validateUnavailabilityAffectsAssignedSessions(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
         if (request.getJudiciaryId() == null || request.getStartDate() == null || request.getEndDate() == null) {
-            return;
+            return null;
         }
         
         if (request.getUnavailabilities() == null || request.getUnavailabilities().isEmpty()) {
-            return;
+            return null;
         }
         
         for (final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest unavailability : 
@@ -673,88 +694,108 @@ public class JudiciaryAvailabilityService {
                                 unavailability.getEndDate()
                         );
                 if (!affectedSessions.isEmpty()) {
-                    errors.add("Adding unavailability from " + unavailability.getStartDate() + 
+                    return "Adding unavailability from " + unavailability.getStartDate() + 
                             " to " + unavailability.getEndDate() + 
                             WOULD_AFFECT + affectedSessions.size() + 
-                            " already assigned session(s). Please review the assigned sessions before proceeding.");
-                    return;
+                            " already assigned session(s). Please review the assigned sessions before proceeding.";
                 }
             }
         }
+        return null;
     }
 
     /**
      * Validates an update judiciary availability rule request.
-     * Returns a list of validation error messages. Empty list means validation passed.
+     * Returns the first validation error message encountered, or null if validation passed.
      */
-    public List<String> validateUpdateJudiciaryAvailabilityRule(final UpdateJudiciaryAvailabilityRuleRequest request) {
-        final List<String> errors = new ArrayList<>();
-        
-        if (validateRuleIdForUpdate(request, errors)) {
-            return errors;
+    public String validateUpdateJudiciaryAvailabilityRule(final UpdateJudiciaryAvailabilityRuleRequest request) {
+        String error = validateRuleIdForUpdate(request);
+        if (error != null) {
+            return error;
         }
         
         final JudiciaryAvailabilityRule existingRule = repository.findBy(request.getRuleId());
-        if (validateExistingRule(request, existingRule, errors)) {
-            return errors;
+        error = validateExistingRule(request, existingRule);
+        if (error != null) {
+            return error;
         }
         
-        validateDateRangeMaxThreeYears(request, errors);
-        validateChangedDatesForUpdate(request, existingRule, errors);
-        validateDateRangeChangesAffectAssignedSessions(request, existingRule, errors);
-        validateUnavailabilityDateRanges(request, errors);
-        validateUnavailabilityOverlaps(request, errors);
-        validateOverlappingRules(request, request.getRuleId(), errors);
-        validateUnavailabilityAffectsAssignedSessions(request, errors);
+        error = validateDateRangeMaxThreeYears(request);
+        if (error != null) {
+            return error;
+        }
         
-        return errors;
+        error = validateChangedDatesForUpdate(request, existingRule);
+        if (error != null) {
+            return error;
+        }
+        
+        error = validateDateRangeChangesAffectAssignedSessions(request, existingRule);
+        if (error != null) {
+            return error;
+        }
+        
+        error = validateUnavailabilityDateRanges(request);
+        if (error != null) {
+            return error;
+        }
+        
+        error = validateUnavailabilityOverlaps(request);
+        if (error != null) {
+            return error;
+        }
+        
+        error = validateOverlappingRules(request, request.getRuleId());
+        if (error != null) {
+            return error;
+        }
+        
+        error = validateUnavailabilityAffectsAssignedSessions(request);
+        
+        return error;
     }
 
-    private boolean validateRuleIdForUpdate(final UpdateJudiciaryAvailabilityRuleRequest request, final List<String> errors) {
+    private String validateRuleIdForUpdate(final UpdateJudiciaryAvailabilityRuleRequest request) {
         if (request.getRuleId() == null || request.getRuleId().isEmpty()) {
-            errors.add("Rule ID is required for update");
-            return true;
+            return "Rule ID is required for update";
         }
-        return false;
+        return null;
     }
 
-    private boolean validateExistingRule(final UpdateJudiciaryAvailabilityRuleRequest request, 
-                                         final JudiciaryAvailabilityRule existingRule, 
-                                         final List<String> errors) {
+    private String validateExistingRule(final UpdateJudiciaryAvailabilityRuleRequest request, 
+                                         final JudiciaryAvailabilityRule existingRule) {
         if (existingRule == null) {
-            errors.add("Judiciary availability rule with id " + request.getRuleId() + " not found");
-            return true;
+            return "Judiciary availability rule with id " + request.getRuleId() + " not found";
         }
-        return false;
+        return null;
     }
 
-    private void validateChangedDatesForUpdate(final UpdateJudiciaryAvailabilityRuleRequest request,
-                                               final JudiciaryAvailabilityRule existingRule,
-                                               final List<String> errors) {
+    private String validateChangedDatesForUpdate(final UpdateJudiciaryAvailabilityRuleRequest request,
+                                               final JudiciaryAvailabilityRule existingRule) {
         final LocalDate today = LocalDate.now();
         final boolean startDateChanged = !existingRule.getFromDate().equals(request.getStartDate());
         final boolean endDateChanged = !existingRule.getToDate().equals(request.getEndDate());
         
         if (startDateChanged && request.getStartDate() != null && request.getStartDate().isBefore(today)) {
-            errors.add("If start date is changed, it must be in the future");
+            return "If start date is changed, it must be in the future";
         }
         if (endDateChanged && request.getEndDate() != null && request.getEndDate().isBefore(today)) {
-            errors.add("If end date is changed, it must be in the future");
+            return "If end date is changed, it must be in the future";
         }
+        return null;
     }
 
-    private void validateDateRangeChangesAffectAssignedSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
-                                                                 final JudiciaryAvailabilityRule existingRule,
-                                                                 final List<String> errors) {
+    private String validateDateRangeChangesAffectAssignedSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
+                                                                 final JudiciaryAvailabilityRule existingRule) {
         if (request.getJudiciaryId() == null) {
-            return;
+            return null;
         }
         
         final boolean startDateChanged = !existingRule.getFromDate().equals(request.getStartDate());
         final boolean endDateChanged = !existingRule.getToDate().equals(request.getEndDate());
         
         if (!startDateChanged && !endDateChanged) {
-            return;
+            return null;
         }
         
         final LocalDate oldStart = existingRule.getFromDate();
@@ -763,18 +804,24 @@ public class JudiciaryAvailabilityService {
         final LocalDate newEnd = request.getEndDate();
         
         if (startDateChanged && newStart != null && newStart.isAfter(oldStart)) {
-            validateStartDateChangeAffectsSessions(request, oldStart, newStart, errors);
+            String error = validateStartDateChangeAffectsSessions(request, oldStart, newStart);
+            if (error != null) {
+                return error;
+            }
         }
         
         if (endDateChanged && newEnd != null && newEnd.isBefore(oldEnd)) {
-            validateEndDateChangeAffectsSessions(request, oldEnd, newEnd, errors);
+            String error = validateEndDateChangeAffectsSessions(request, oldEnd, newEnd);
+            if (error != null) {
+                return error;
+            }
         }
+        return null;
     }
 
-    private void validateStartDateChangeAffectsSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
+    private String validateStartDateChangeAffectsSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
                                                         final LocalDate oldStart,
-                                                        final LocalDate newStart,
-                                                        final List<String> errors) {
+                                                        final LocalDate newStart) {
         final List<String> affectedSessions = courtScheduleJudiciaryRepository
                 .findCourtScheduleIdsByJudiciaryAndDateRange(
                         request.getJudiciaryId(),
@@ -782,16 +829,16 @@ public class JudiciaryAvailabilityService {
                         newStart.minusDays(1)
                 );
         if (!affectedSessions.isEmpty()) {
-            errors.add("Changing start date from " + oldStart + " to " + newStart + 
+            return "Changing start date from " + oldStart + " to " + newStart + 
                     WOULD_AFFECT + affectedSessions.size() + 
-                    " already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding.");
+                    " already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding.";
         }
+        return null;
     }
 
-    private void validateEndDateChangeAffectsSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
+    private String validateEndDateChangeAffectsSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
                                                       final LocalDate oldEnd,
-                                                      final LocalDate newEnd,
-                                                      final List<String> errors) {
+                                                      final LocalDate newEnd) {
         final List<String> affectedSessions = courtScheduleJudiciaryRepository
                 .findCourtScheduleIdsByJudiciaryAndDateRange(
                         request.getJudiciaryId(),
@@ -799,10 +846,11 @@ public class JudiciaryAvailabilityService {
                         oldEnd
                 );
         if (!affectedSessions.isEmpty()) {
-            errors.add("Changing end date from " + oldEnd + " to " + newEnd + 
+            return "Changing end date from " + oldEnd + " to " + newEnd + 
                     WOULD_AFFECT + affectedSessions.size() + 
-                    " already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding.");
+                    " already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding.";
         }
+        return null;
     }
 
 

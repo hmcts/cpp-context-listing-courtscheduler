@@ -15,9 +15,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import javax.json.JsonObject;
 
@@ -64,7 +62,7 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
 
     @Test
     void shouldReturnEmptyJsonObjectForValidAddRequest() {
-        when(service.validateAddJudiciaryAvailabilityRule(addRequest)).thenReturn(new ArrayList<>());
+        when(service.validateAddJudiciaryAvailabilityRule(addRequest)).thenReturn(null);
 
         JsonObject result = validator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(addRequest, service);
 
@@ -81,8 +79,8 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
 
     @Test
     void shouldReturnErrorWhenAddRequestHasBusinessRuleViolations() {
-        List<String> businessErrors = Arrays.asList("Date range cannot exceed 3 years");
-        when(service.validateAddJudiciaryAvailabilityRule(addRequest)).thenReturn(businessErrors);
+        String businessError = "Date range cannot exceed 3 years";
+        when(service.validateAddJudiciaryAvailabilityRule(addRequest)).thenReturn(businessError);
 
         JsonObject result = validator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(addRequest, service);
 
@@ -92,23 +90,20 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
 
     @Test
     void shouldReturnErrorWhenAddRequestHasMultipleBusinessRuleViolations() {
-        List<String> businessErrors = Arrays.asList(
-                "Date range cannot exceed 3 years",
-                "Start date must be in the future during creation"
-        );
-        when(service.validateAddJudiciaryAvailabilityRule(addRequest)).thenReturn(businessErrors);
+        // Since we now return only the first error, this test should check for the first error only
+        String businessError = "Date range cannot exceed 3 years";
+        when(service.validateAddJudiciaryAvailabilityRule(addRequest)).thenReturn(businessError);
 
         JsonObject result = validator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(addRequest, service);
 
         assertFalse(result.isEmpty());
         String errorMessage = result.getString("errorMessage");
         assertTrue(errorMessage.contains("3 years"));
-        assertTrue(errorMessage.contains("future"));
     }
 
     @Test
     void shouldReturnEmptyJsonObjectForValidUpdateRequest() {
-        when(service.validateUpdateJudiciaryAvailabilityRule(updateRequest)).thenReturn(new ArrayList<>());
+        when(service.validateUpdateJudiciaryAvailabilityRule(updateRequest)).thenReturn(null);
 
         JsonObject result = validator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(updateRequest, service);
 
@@ -135,8 +130,8 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
 
     @Test
     void shouldReturnErrorWhenUpdateRequestHasBusinessRuleViolations() {
-        List<String> businessErrors = Arrays.asList("If start date is changed, it must be in the future");
-        when(service.validateUpdateJudiciaryAvailabilityRule(updateRequest)).thenReturn(businessErrors);
+        String businessError = "If start date is changed, it must be in the future";
+        when(service.validateUpdateJudiciaryAvailabilityRule(updateRequest)).thenReturn(businessError);
 
         JsonObject result = validator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(updateRequest, service);
 
@@ -146,18 +141,15 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
 
     @Test
     void shouldReturnErrorWhenUpdateRequestHasMultipleBusinessRuleViolations() {
-        List<String> businessErrors = Arrays.asList(
-                "Date range cannot exceed 3 years",
-                "Unavailabilities cannot overlap"
-        );
-        when(service.validateUpdateJudiciaryAvailabilityRule(updateRequest)).thenReturn(businessErrors);
+        // Since we now return only the first error, this test should check for the first error only
+        String businessError = "Date range cannot exceed 3 years";
+        when(service.validateUpdateJudiciaryAvailabilityRule(updateRequest)).thenReturn(businessError);
 
         JsonObject result = validator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(updateRequest, service);
 
         assertFalse(result.isEmpty());
         String errorMessage = result.getString("errorMessage");
         assertTrue(errorMessage.contains("3 years"));
-        assertTrue(errorMessage.contains("overlap"));
     }
 }
 

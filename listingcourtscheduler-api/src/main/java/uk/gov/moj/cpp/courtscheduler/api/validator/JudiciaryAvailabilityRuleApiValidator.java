@@ -153,9 +153,9 @@ public class JudiciaryAvailabilityRuleApiValidator {
         }
 
         // Call service validation for business rules
-        final List<String> businessErrors = service.validateAddJudiciaryAvailabilityRule(request);
-        if (!businessErrors.isEmpty()) {
-            return buildErrorResponse(String.join("; ", businessErrors));
+        final String businessError = service.validateAddJudiciaryAvailabilityRule(request);
+        if (businessError != null) {
+            return buildErrorResponse(businessError);
         }
 
         return EMPTY_JSON_OBJECT;
@@ -185,9 +185,9 @@ public class JudiciaryAvailabilityRuleApiValidator {
         }
 
         // Call service validation for business rules
-        final List<String> businessErrors = service.validateUpdateJudiciaryAvailabilityRule(request);
-        if (!businessErrors.isEmpty()) {
-            return buildErrorResponse(String.join("; ", businessErrors));
+        final String businessError = service.validateUpdateJudiciaryAvailabilityRule(request);
+        if (businessError != null) {
+            return buildErrorResponse(businessError);
         }
 
         return EMPTY_JSON_OBJECT;

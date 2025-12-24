@@ -1,8 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.UUID.randomUUID;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
@@ -58,39 +60,39 @@ class JudiciaryAvailabilityValidationServiceTest {
     void shouldReturnNoErrorsForValidAddRequest() {
         AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(1), today.plusDays(31));
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
     void shouldReturnErrorWhenDateRangeExceeds3Years() {
         AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(1), today.plusDays(1).plusYears(4));
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("3 years")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Date range cannot exceed 3 years"));
     }
 
     @Test
     void shouldReturnErrorWhenStartDateIsInPastForAdd() {
         AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.minusDays(1), today.plusDays(31));
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("future") && e.contains("creation")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Start date must be in the future during creation"));
     }
 
     @Test
     void shouldReturnErrorWhenEndDateIsInPastForAdd() {
         AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(1), today.minusDays(1));
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("future") && e.contains("creation")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("End date must be in the future during creation"));
     }
 
     @Test
@@ -104,10 +106,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         unavailabilities.add(unavailability);
         request.setUnavailabilities(unavailabilities);
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("Unavailability") && e.contains("within")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Unavailability 1 start date must be within availability date range"));
     }
 
     @Test
@@ -121,10 +123,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         unavailabilities.add(unavailability);
         request.setUnavailabilities(unavailabilities);
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("Unavailability") && e.contains("within")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Unavailability 1 end date must be within availability date range"));
     }
 
     @Test
@@ -146,10 +148,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         
         request.setUnavailabilities(unavailabilities);
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("Unavailabilities cannot overlap")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Unavailabilities cannot overlap"));
     }
 
     @Test
@@ -170,10 +172,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(10), today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("one place at a time")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern"));
     }
 
     @Test
@@ -194,10 +196,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(10), today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         // Should not error because different days don't conflict
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
@@ -211,9 +213,9 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(1), today.plusDays(31), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
@@ -225,10 +227,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         existingRule.setId(ruleId);
         when(repository.findBy(ruleId)).thenReturn(existingRule);
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("changed") && e.contains("future")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("If start date is changed, it must be in the future"));
     }
 
     @Test
@@ -243,10 +245,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(pastDate, today.plusDays(31), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         // Should not error because date wasn't changed
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
@@ -258,20 +260,20 @@ class JudiciaryAvailabilityValidationServiceTest {
         existingRule.setId(ruleId);
         when(repository.findBy(ruleId)).thenReturn(existingRule);
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("changed") && e.contains("future")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("If end date is changed, it must be in the future"));
     }
 
     @Test
     void shouldReturnErrorWhenUpdateRuleIdIsNull() {
         UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(null, today.plusDays(1), today.plusDays(31));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("Rule ID is required")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Rule ID is required for update"));
     }
 
     @Test
@@ -281,10 +283,10 @@ class JudiciaryAvailabilityValidationServiceTest {
 
         when(repository.findBy(ruleId)).thenReturn(null);
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("not found")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Judiciary availability rule with id " + ruleId + " not found"));
     }
 
     @Test
@@ -311,10 +313,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(10), today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule, otherRule));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("one place at a time")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern"));
     }
 
     @Test
@@ -337,10 +339,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(10), today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule)); // Only current rule
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         // Should not error because only the current rule overlaps (which is expected)
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
@@ -359,11 +361,12 @@ class JudiciaryAvailabilityValidationServiceTest {
                 judiciaryId, today.plusDays(15), today.plusDays(20)))
                 .thenReturn(Arrays.asList("session1", "session2"));
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("unavailability") && 
-                e.contains("assigned session")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Adding unavailability from " + today.plusDays(15) + 
+                " to " + today.plusDays(20) + 
+                " would affect 2 already assigned session(s). Please review the assigned sessions before proceeding."));
     }
 
     @Test
@@ -385,9 +388,9 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(10), today.plusDays(40), null, judiciaryId))
                 .thenReturn(new ArrayList<>());
 
-        List<String> errors = service.validateAddJudiciaryAvailabilityRule(request);
+        String error = service.validateAddJudiciaryAvailabilityRule(request);
 
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
@@ -407,14 +410,11 @@ class JudiciaryAvailabilityValidationServiceTest {
                 judiciaryId, oldStart, newStart.minusDays(1)))
                 .thenReturn(Arrays.asList("session1", "session2"));
 
-        when(repository.findRulesByDateRange(newStart, today.plusDays(40), null, judiciaryId))
-                .thenReturn(Arrays.asList(existingRule));
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
-
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("start date") && 
-                e.contains("assigned session")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Changing start date from " + oldStart + " to " + newStart + 
+                " would affect 2 already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding."));
     }
 
     @Test
@@ -434,14 +434,11 @@ class JudiciaryAvailabilityValidationServiceTest {
                 judiciaryId, newEnd.plusDays(1), oldEnd))
                 .thenReturn(Arrays.asList("session1", "session2"));
 
-        when(repository.findRulesByDateRange(today.plusDays(10), newEnd, null, judiciaryId))
-                .thenReturn(Arrays.asList(existingRule));
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
-
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("end date") && 
-                e.contains("assigned session")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Changing end date from " + oldEnd + " to " + newEnd + 
+                " would affect 2 already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding."));
     }
 
     @Test
@@ -464,10 +461,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(newStart, today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         // Should not error because no sessions are affected
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
@@ -490,10 +487,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(10), newEnd, null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         // Should not error because no sessions are affected
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
@@ -521,11 +518,12 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(10), today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("unavailability") && 
-                e.contains("assigned session")));
+        assertThat(error, notNullValue());
+        assertThat(error, is("Adding unavailability from " + today.plusDays(15) + 
+                " to " + today.plusDays(20) + 
+                " would affect 2 already assigned session(s). Please review the assigned sessions before proceeding."));
     }
 
     @Test
@@ -553,10 +551,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(10), today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         // Should not error because no sessions are affected
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
@@ -573,10 +571,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(newStart, today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         // Should not error because moving start date backward doesn't remove any dates
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     @Test
@@ -593,10 +591,10 @@ class JudiciaryAvailabilityValidationServiceTest {
         when(repository.findRulesByDateRange(today.plusDays(10), newEnd, null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
-        List<String> errors = service.validateUpdateJudiciaryAvailabilityRule(request);
+        String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         // Should not error because moving end date forward doesn't remove any dates
-        assertTrue(errors.isEmpty());
+        assertThat(error, nullValue());
     }
 
     private AddJudiciaryAvailabilityRuleRequest createValidAddRequest(LocalDate startDate, LocalDate endDate) {
