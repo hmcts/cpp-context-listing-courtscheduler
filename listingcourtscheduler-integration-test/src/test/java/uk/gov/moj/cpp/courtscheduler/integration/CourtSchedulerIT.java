@@ -2370,7 +2370,7 @@ class CourtSchedulerIT extends AbstractIT {
         final String errorResponseMessage = response.readEntity(String.class);
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
-//        assertThat(errorResponseMessage, containsString(SESSION_EDIT_ANOTHER_USER));
+        assertThat(errorResponseMessage, containsString(SESSION_EDIT_ANOTHER_USER));
     }
 
     @Test
@@ -2541,8 +2541,8 @@ class CourtSchedulerIT extends AbstractIT {
         // Create a CROWN session initially
         UUID courtScheduleId = UUID.randomUUID();
         CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
-        String courtRoomId = "1c602697-6085-37c3-9977-706f4788d2bb"; // CROWN courtroom
-        String courtHouseId = "f8f5f4e8-2b1e-36f9-9653-3be2c84c4a13"; // CROWN court house
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // CROWN courtroom from CP source
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // CROWN court house from CP source
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("CRC"); // Use a CROWN business type initially
         expected.setJurisdiction("CROWN"); // Session has CROWN jurisdiction
@@ -2569,7 +2569,7 @@ class CourtSchedulerIT extends AbstractIT {
         // Should fail because APP has MAGISTRATES jurisdiction but session is CROWN
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String errorResponseMessage = response.readEntity(String.class);
-        assertThat(errorResponseMessage, containsString("Invalid business type"));
+        assertThat(errorResponseMessage, containsString("Business Type jurisdiction MAGISTRATES does not match session jurisdiction CROWN"));
     }
 
     @Test
