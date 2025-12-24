@@ -10,78 +10,104 @@ import javax.json.JsonObject;
 public class UpdateCourtScheduleConverter implements Converter<JsonObject, UpdateCourtSchedule> {
     private static final String CROWN = "CROWN";
     private static final String ADULT = "ADULT";
+    private static final String PANEL = "panel";
 
     @Override
     public UpdateCourtSchedule convert(final JsonObject jsonObject) {
-
         UpdateCourtSchedule.UpdateCourtScheduleBuilder courtScheduleBuilder = new UpdateCourtSchedule.UpdateCourtScheduleBuilder();
         String jurisdiction = jsonObject.getString("jurisdiction");
         
-        courtScheduleBuilder
+        setRequiredFields(courtScheduleBuilder, jsonObject, jurisdiction);
+        setPanelField(courtScheduleBuilder, jsonObject, jurisdiction);
+        setOptionalFields(courtScheduleBuilder, jsonObject);
+
+        return courtScheduleBuilder.build();
+    }
+
+    private void setRequiredFields(UpdateCourtSchedule.UpdateCourtScheduleBuilder builder, JsonObject jsonObject, String jurisdiction) {
+        builder
                 .withCourtScheduleId(jsonObject.getString("courtScheduleId"))
                 .withCourtRoomId(jsonObject.getString("courtRoomId"))
                 .withBusinessType(jsonObject.getString("businessType"))
                 .withSessionType(jsonObject.getString("courtSession"))
                 .withJurisdiction(jurisdiction);
+    }
 
-        // Handle panel based on jurisdiction
-        // For CROWN: panel is optional, but if supplied must be ADULT
-        // For MAGISTRATES: panel is mandatory (validation happens in validator)
+    private void setPanelField(UpdateCourtSchedule.UpdateCourtScheduleBuilder builder, JsonObject jsonObject, String jurisdiction) {
+        if (!hasPanel(jsonObject)) {
+            return;
+        }
+
         if (CROWN.equalsIgnoreCase(jurisdiction)) {
-            if (jsonObject.containsKey("panel") && !jsonObject.isNull("panel")) {
-                String panel = jsonObject.getString("panel");
-                if (panel != null && !panel.trim().isEmpty() && !ADULT.equalsIgnoreCase(panel)) {
-                    throw new ConverterException("For CROWN jurisdiction, panel must be ADULT if supplied");
-                }
-                // Only set panel if it's ADULT (optional for CROWN, so null/empty is fine)
-                if (panel != null && !panel.trim().isEmpty() && ADULT.equalsIgnoreCase(panel)) {
-                    courtScheduleBuilder.withPanel(panel);
-                }
-            }
-            // If panel key doesn't exist or is null, don't set it (optional for CROWN)
+            setPanelForCrown(builder, jsonObject);
         } else {
-            // For MAGISTRATES, set panel as before (validation happens in validator)
-            if (jsonObject.containsKey("panel") && !jsonObject.isNull("panel")) {
-                courtScheduleBuilder.withPanel(jsonObject.getString("panel"));
-            }
+            setPanelForMagistrates(builder, jsonObject);
         }
+    }
 
-        if (jsonObject.containsKey("maxSlots")) {
-            courtScheduleBuilder.withMaxSlots(jsonObject.getInt("maxSlots"));
+    private boolean hasPanel(JsonObject jsonObject) {
+        return jsonObject.containsKey(PANEL) && !jsonObject.isNull(PANEL);
+    }
+
+    private void setPanelForCrown(UpdateCourtSchedule.UpdateCourtScheduleBuilder builder, JsonObject jsonObject) {
+        String panel = jsonObject.getString(PANEL);
+        if (isInvalidCrownPanel(panel)) {
+            throw new ConverterException("For CROWN jurisdiction, panel must be ADULT if supplied");
         }
-
-        if (jsonObject.containsKey("maxDuration")) {
-            courtScheduleBuilder.withMaxDuration(jsonObject.getInt("maxDuration"));
+        if (isValidAdultPanel(panel)) {
+            builder.withPanel(panel);
         }
+    }
 
-        if (jsonObject.containsKey("allDaySplit")) {
-            courtScheduleBuilder.withAllDaySplit(jsonObject.getBoolean("allDaySplit"));
+    private boolean isInvalidCrownPanel(String panel) {
+        return panel != null && !panel.trim().isEmpty() && !ADULT.equalsIgnoreCase(panel);
+    }
+
+    private boolean isValidAdultPanel(String panel) {
+        return panel != null && !panel.trim().isEmpty() && ADULT.equalsIgnoreCase(panel);
+    }
+
+    private void setPanelForMagistrates(UpdateCourtSchedule.UpdateCourtScheduleBuilder builder, JsonObject jsonObject) {
+        builder.withPanel(jsonObject.getString(PANEL));
+    }
+
+    private void setOptionalFields(UpdateCourtSchedule.UpdateCourtScheduleBuilder builder, JsonObject jsonObject) {
+        setIntFieldIfPresent(builder, jsonObject, "maxSlots", builder::withMaxSlots);
+        setIntFieldIfPresent(builder, jsonObject, "maxDuration", builder::withMaxDuration);
+        setBooleanFieldIfPresent(builder, jsonObject, "allDaySplit", builder::withAllDaySplit);
+        setDurationFieldIfPresent(builder, jsonObject, MAX_DURATION_FOR_MORNING.getLabel(), builder::withMaxDurationForMorning);
+        setDurationFieldIfPresent(builder, jsonObject, MAX_DURATION_FOR_AFTERNOON.getLabel(), builder::withMaxDurationForAfternoon);
+        setStringFieldIfPresent(builder, jsonObject, "sessionStartTime", builder::withSessionStartTime);
+        setStringFieldIfPresent(builder, jsonObject, "sessionEndTime", builder::withSessionEndTime);
+        setBooleanFieldIfPresent(builder, jsonObject, "isOverbookingAllowed", builder::withIsOverbookingAllowed);
+        setBooleanFieldIfPresent(builder, jsonObject, "isDraft", builder::withIsDraft);
+    }
+
+    private void setIntFieldIfPresent(UpdateCourtSchedule.UpdateCourtScheduleBuilder builder, JsonObject jsonObject, 
+                                     String key, java.util.function.IntConsumer setter) {
+        if (jsonObject.containsKey(key)) {
+            setter.accept(jsonObject.getInt(key));
         }
+    }
 
-        if (jsonObject.containsKey(MAX_DURATION_FOR_MORNING.getLabel())) {
-            courtScheduleBuilder.withMaxDurationForMorning(jsonObject.getInt(MAX_DURATION_FOR_MORNING.getLabel(), -1));
+    private void setDurationFieldIfPresent(UpdateCourtSchedule.UpdateCourtScheduleBuilder builder, JsonObject jsonObject, 
+                                          String key, java.util.function.IntConsumer setter) {
+        if (jsonObject.containsKey(key)) {
+            setter.accept(jsonObject.getInt(key, -1));
         }
+    }
 
-        if (jsonObject.containsKey(MAX_DURATION_FOR_AFTERNOON.getLabel())) {
-            courtScheduleBuilder.withMaxDurationForAfternoon(jsonObject.getInt(MAX_DURATION_FOR_AFTERNOON.getLabel(), -1));
+    private void setStringFieldIfPresent(UpdateCourtSchedule.UpdateCourtScheduleBuilder builder, JsonObject jsonObject, 
+                                        String key, java.util.function.Consumer<String> setter) {
+        if (jsonObject.containsKey(key)) {
+            setter.accept(jsonObject.getString(key));
         }
+    }
 
-        if (jsonObject.containsKey("sessionStartTime")) {
-            courtScheduleBuilder.withSessionStartTime(jsonObject.getString("sessionStartTime"));
+    private void setBooleanFieldIfPresent(UpdateCourtSchedule.UpdateCourtScheduleBuilder builder, JsonObject jsonObject, 
+                                         String key, java.util.function.Consumer<Boolean> setter) {
+        if (jsonObject.containsKey(key)) {
+            setter.accept(jsonObject.getBoolean(key));
         }
-
-        if (jsonObject.containsKey("sessionEndTime")) {
-            courtScheduleBuilder.withSessionEndTime(jsonObject.getString("sessionEndTime"));
-        }
-
-        if (jsonObject.containsKey("isOverbookingAllowed")) {
-            courtScheduleBuilder.withIsOverbookingAllowed(jsonObject.getBoolean("isOverbookingAllowed"));
-        }
-
-        if (jsonObject.containsKey("isDraft")) {
-            courtScheduleBuilder.withIsDraft(jsonObject.getBoolean("isDraft"));
-        }
-
-        return courtScheduleBuilder.build();
     }
 }
