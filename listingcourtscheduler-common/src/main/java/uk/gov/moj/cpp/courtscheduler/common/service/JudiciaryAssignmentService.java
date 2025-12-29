@@ -71,21 +71,42 @@ public class JudiciaryAssignmentService {
             return AssignJudiciariesResponse.builder().build();
         }
 
+        final Map<String, CourtSchedule> sessionsById = fetchSessionsById(assignments);
+        final AssignmentResult result = processAssignments(assignments, sessionsById, requester, skipValidations);
+
+        if (skipValidations && executionId != null) {
+            logMissingReferences(result.missingJudiciaryIds(), result.missingSessionIds(), executionId);
+        }
+
+        return AssignJudiciariesResponse.builder()
+                .withRequestedAssignments(result.requestedAssignments())
+                .withSuccessfulAssignments(result.successfulAssignments())
+                .withFailures(result.failures())
+                .build();
+    }
+
+    private Map<String, CourtSchedule> fetchSessionsById(final List<JudiciaryAssignment> assignments) {
         final Set<String> allSessionIds = assignments.stream()
                 .filter(Objects::nonNull)
                 .flatMap(assignment -> sanitizeSessionIds(assignment.getSessionIds()).stream())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        final Map<String, CourtSchedule> sessionsById = allSessionIds.isEmpty()
-                ? Map.of()
-                : courtScheduleRepository.findByCourtScheduleIds(new ArrayList<>(allSessionIds))
+        if (allSessionIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return courtScheduleRepository.findByCourtScheduleIds(new ArrayList<>(allSessionIds))
                 .stream()
-                .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, Function.identity(), (existing, replacement) -> existing));
+                .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, Function.identity(),
+                        (existing, replacement) -> existing));
+    }
 
-        final Set<String> missingSessionIds = new LinkedHashSet<>(allSessionIds);
-        missingSessionIds.removeAll(sessionsById.keySet());
-
+    private AssignmentResult processAssignments(final List<JudiciaryAssignment> assignments,
+                                                final Map<String, CourtSchedule> sessionsById,
+                                                final Requester requester,
+                                                final boolean skipValidations) {
         final Set<String> missingJudiciaryIds = new LinkedHashSet<>();
+        final Set<String> missingSessionIds = new LinkedHashSet<>();
         final List<AssignmentFailure> failures = new ArrayList<>();
         final Date now = Calendar.getInstance().getTime();
 
@@ -96,66 +117,92 @@ public class JudiciaryAssignmentService {
             if (assignment == null) {
                 continue;
             }
+
             final List<String> sessionIds = sanitizeSessionIds(assignment.getSessionIds());
             if (sessionIds.isEmpty()) {
                 continue;
             }
+
             final String judiciaryId = assignment.getJudiciaryId();
+            final Judiciary judiciary = referenceDataMapperService.findById(requester, judiciaryId).orElse(null);
 
-            // Skip judiciary existence check if skipValidations is true
-            Optional<Judiciary> judiciaryOptional = referenceDataMapperService.findById(requester, judiciaryId);
-            if (!skipValidations && judiciaryOptional.isEmpty()) {
-                    missingJudiciaryIds.add(judiciaryId);
-                    for (final String sessionId : sessionIds) {
-                        requestedAssignments++;
-                        failures.add(buildFailure(judiciaryId, sessionId, AssignmentFailureReason.JUDICIARY_NOT_FOUND));
-                    }
-                    continue;
-                }
-
-            final Judiciary judiciary = judiciaryOptional.orElse(null);
             for (final String sessionId : sessionIds) {
                 requestedAssignments++;
                 final CourtSchedule schedule = sessionsById.get(sessionId);
 
-                // Skip session existence check if skipValidations is true
-                if (!skipValidations && schedule == null) {
-                    missingSessionIds.add(sessionId);
-                    failures.add(buildFailure(judiciaryId, sessionId, AssignmentFailureReason.SESSION_NOT_FOUND));
+                if (shouldSkipAssignment(skipValidations, judiciary, schedule)) {
+                    trackMissingData(skipValidations, judiciaryId, sessionId, judiciary, schedule,
+                            missingJudiciaryIds, missingSessionIds);
                     continue;
                 }
 
-                // If skipValidations is true and judiciary or schedule is null, skip assignment
-                if (skipValidations && (judiciary == null || schedule == null)) {
-                    continue;
-                }
-
-                final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, now, assignment);
-                try {
-                    courtScheduleJudiciaryRepository.save(CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciary));
+                final AssignmentAttempt attempt = attemptAssignment(judiciary, schedule, sessionId, now, assignment);
+                if (attempt.isSuccess()) {
                     successfulAssignments++;
-                } catch (Exception ex) {
-                    if (isDuplicateAssignment(ex)) {
-                        LOGGER.warn("Skipping duplicate judiciary assignment for judiciaryId {} and sessionId {}", judiciaryId, sessionId);
-                        failures.add(buildFailure(judiciaryId, sessionId, AssignmentFailureReason.DUPLICATE_ASSIGNMENT));
-                    } else {
-                        LOGGER.error("Unexpected error while assigning judiciary {} to session {}", judiciaryId, sessionId, ex);
-                        failures.add(buildFailure(judiciaryId, sessionId, AssignmentFailureReason.PERSISTENCE_ERROR));
-                    }
+                } else {
+                    failures.add(attempt.getFailure());
                 }
             }
         }
 
-        // Skip logging missing references if skipValidations is true
+        return new AssignmentResult(requestedAssignments, successfulAssignments, failures,
+                missingJudiciaryIds, missingSessionIds);
+    }
+
+    private boolean shouldSkipAssignment(final boolean skipValidations,
+                                         final Judiciary judiciary,
+                                         final CourtSchedule schedule) {
+        if (skipValidations && (judiciary == null || schedule == null)) {
+            return true;
+        }
+        // If not skipping validations, judiciary and schedule should exist (validated in validator)
+        // But we still check here as a safety measure
+        return judiciary == null || schedule == null;
+    }
+
+    private void trackMissingData(final boolean skipValidations,
+                                  final String judiciaryId,
+                                  final String sessionId,
+                                  final Judiciary judiciary,
+                                  final CourtSchedule schedule,
+                                  final Set<String> missingJudiciaryIds,
+                                  final Set<String> missingSessionIds) {
         if (!skipValidations) {
-            logMissingReferences(missingJudiciaryIds, missingSessionIds, executionId);
+            return;
         }
 
-        return AssignJudiciariesResponse.builder()
-                .withRequestedAssignments(requestedAssignments)
-                .withSuccessfulAssignments(successfulAssignments)
-                .withFailures(failures)
-                .build();
+        if (judiciary == null) {
+            missingJudiciaryIds.add(judiciaryId);
+        }
+        if (schedule == null) {
+            missingSessionIds.add(sessionId);
+        }
+    }
+
+    private AssignmentAttempt attemptAssignment(final Judiciary judiciary,
+                                                final CourtSchedule schedule,
+                                                final String sessionId,
+                                                final Date timestamp,
+                                                final JudiciaryAssignment assignment) {
+        final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, timestamp, assignment);
+        try {
+            courtScheduleJudiciaryRepository.save(CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciary));
+            return AssignmentAttempt.success();
+        } catch (Exception ex) {
+            return handleAssignmentException(ex, judiciary.getId(), sessionId);
+        }
+    }
+
+    private AssignmentAttempt handleAssignmentException(final Exception ex,
+                                                        final String judiciaryId,
+                                                        final String sessionId) {
+        if (isDuplicateAssignment(ex)) {
+            LOGGER.warn("Skipping duplicate judiciary assignment for judiciaryId {} and sessionId {}", judiciaryId, sessionId);
+            return AssignmentAttempt.failure(judiciaryId, sessionId, AssignmentFailureReason.DUPLICATE_ASSIGNMENT);
+        } else {
+            LOGGER.error("Unexpected error while assigning judiciary {} to session {}", judiciaryId, sessionId, ex);
+            return AssignmentAttempt.failure(judiciaryId, sessionId, AssignmentFailureReason.PERSISTENCE_ERROR);
+        }
     }
 
     private List<String> sanitizeSessionIds(final List<String> sessionIds) {
@@ -211,41 +258,6 @@ public class JudiciaryAssignmentService {
         return value == null ? "" : value;
     }
 
-    private AssignmentFailure buildFailure(final String judiciaryId,
-                                           final String sessionId,
-                                           final AssignmentFailureReason reason) {
-        return AssignmentFailure.builder()
-                .withJudiciaryId(judiciaryId)
-                .withSessionId(sessionId)
-                .withReason(reason)
-                .build();
-    }
-
-    private void logMissingReferences(final Set<String> missingJudiciaryIds,
-                                      final Set<String> missingSessionIds,
-                                      final String executionId) {
-        if (!missingJudiciaryIds.isEmpty()) {
-            final String joined = String.join(", ", missingJudiciaryIds);
-            LOGGER.warn("Missing judiciary ids for assignment: {}", joined);
-            final RotaProcessLog log = rotaProcessLog()
-                    .withExecutionId(executionId)
-                    .withErrorCode(MissingDataError.JUDICIARY_ID_NOT_FOUND_ASSIGNMENT.code())
-                    .withErrorText(MissingDataError.JUDICIARY_ID_NOT_FOUND_ASSIGNMENT.format(joined))
-                    .build();
-            rotaProcessLogService.saveRotaProcessLog(log);
-        }
-        if (!missingSessionIds.isEmpty()) {
-            final String joined = String.join(", ", missingSessionIds);
-            LOGGER.warn("Missing session ids for assignment: {}", joined);
-            final RotaProcessLog log = rotaProcessLog()
-                    .withExecutionId(executionId)
-                    .withErrorCode(MissingDataError.SESSION_ID_NOT_FOUND_ASSIGNMENT.code())
-                    .withErrorText(MissingDataError.SESSION_ID_NOT_FOUND_ASSIGNMENT.format(joined))
-                    .build();
-            rotaProcessLogService.saveRotaProcessLog(log);
-        }
-    }
-
     private boolean isDuplicateAssignment(final Throwable throwable) {
         Throwable current = throwable;
         while (current != null) {
@@ -261,6 +273,81 @@ public class JudiciaryAssignmentService {
             current = current.getCause();
         }
         return false;
+    }
+
+    /**
+     * Logs missing references to RotaProcessLog for monitoring purposes.
+     * This is only called when skipValidations=true to track data quality issues
+     * without failing the request.
+     */
+    private void logMissingReferences(final Set<String> missingJudiciaryIds,
+                                      final Set<String> missingSessionIds,
+                                      final String executionId) {
+        if (!missingJudiciaryIds.isEmpty()) {
+            final String joined = String.join(", ", missingJudiciaryIds);
+            LOGGER.warn("Missing judiciary ids for assignment (skipValidations=true): {}", joined);
+            final RotaProcessLog log = rotaProcessLog()
+                    .withExecutionId(executionId)
+                    .withErrorCode(MissingDataError.JUDICIARY_ID_NOT_FOUND_ASSIGNMENT.code())
+                    .withErrorText(MissingDataError.JUDICIARY_ID_NOT_FOUND_ASSIGNMENT.format(joined))
+                    .build();
+            rotaProcessLogService.saveRotaProcessLog(log);
+        }
+        if (!missingSessionIds.isEmpty()) {
+            final String joined = String.join(", ", missingSessionIds);
+            LOGGER.warn("Missing session ids for assignment (skipValidations=true): {}", joined);
+            final RotaProcessLog log = rotaProcessLog()
+                    .withExecutionId(executionId)
+                    .withErrorCode(MissingDataError.SESSION_ID_NOT_FOUND_ASSIGNMENT.code())
+                    .withErrorText(MissingDataError.SESSION_ID_NOT_FOUND_ASSIGNMENT.format(joined))
+                    .build();
+            rotaProcessLogService.saveRotaProcessLog(log);
+        }
+    }
+
+    /**
+     * Internal record to hold assignment processing results.
+     */
+    private record AssignmentResult(int requestedAssignments,
+                                    int successfulAssignments,
+                                    List<AssignmentFailure> failures,
+                                    Set<String> missingJudiciaryIds,
+                                    Set<String> missingSessionIds) {
+    }
+
+    /**
+     * Internal class to hold assignment attempt results.
+     */
+    private static class AssignmentAttempt {
+        private final boolean success;
+        private final AssignmentFailure failure;
+
+        private AssignmentAttempt(final boolean success, final AssignmentFailure failure) {
+            this.success = success;
+            this.failure = failure;
+        }
+
+        static AssignmentAttempt success() {
+            return new AssignmentAttempt(true, null);
+        }
+
+        static AssignmentAttempt failure(final String judiciaryId,
+                                         final String sessionId,
+                                         final AssignmentFailureReason reason) {
+            return new AssignmentAttempt(false, AssignmentFailure.builder()
+                    .withJudiciaryId(judiciaryId)
+                    .withSessionId(sessionId)
+                    .withReason(reason)
+                    .build());
+        }
+
+        boolean isSuccess() {
+            return success;
+        }
+
+        AssignmentFailure getFailure() {
+            return failure;
+        }
     }
 }
 
