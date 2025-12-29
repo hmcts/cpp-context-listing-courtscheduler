@@ -98,6 +98,7 @@ public class RotaFileProcessor {
             return;
         }
 
+        logger.info("Starting processing for blob: {}", blobName);
         final long processStart = System.nanoTime();
 
         final ParseResult parseResult = parseFileContent(blobName, blobByteArray);
@@ -105,16 +106,21 @@ public class RotaFileProcessor {
         final String executionId = parseResult.executionId();
         final RotaFileProcessHistory rotaFileProcessHistory = parseResult.rotaFileProcessHistory();
 
+        logger.info("Processing blob: {} with execution ID: {} - parsed {} record types", blobName, executionId, records.size());
+
         // Extract locations and resolve OU codes
         final var locations = rotaLocationPeriodHelper.getLocationFromRecords(records);
+        logger.info("Extracted {} location IDs from blob: {}", locations.size(), blobName);
         final var ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations, requester);
+        logger.info("Resolved {} OU codes for blob: {}", ouCodes.size(), blobName);
 
         // Get rota period dates and delete unallocated court schedule judiciaries
         final var rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
-        rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+        final int deletedCount = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
                 rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
                 ouCodes);
+        logger.info("Deleted {} unallocated court schedule judiciaries for blob: {}", deletedCount, blobName);
 
         final ProcessingMaps processingMaps = createProcessingMaps(records, requester, executionId, blobName);
 
@@ -214,6 +220,7 @@ public class RotaFileProcessor {
 
 
     private void uploadAndCleanup(final byte[] blobByteArray, final String blobName, final String leaseId) {
+        logger.info("Starting upload and cleanup for blob: {}", blobName);
         final long uploadStart = System.nanoTime();
         final long fileLength = blobByteArray.length;
         azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
@@ -222,8 +229,9 @@ public class RotaFileProcessor {
                 rotaFileUtility.convertNanosToMillis(uploadEnd - uploadStart));
 
         azureBlobClientService.releaseLease(blobName, leaseId, false);
+        logger.info("Released lease for blob: {}", blobName);
         azureBlobClientService.deleteFile(blobName, empty());
-        logger.info("Blob {} processed and cleaned up", blobName);
+        logger.info("Blob {} processed and cleaned up successfully", blobName);
     }
 
     // ============================================================================

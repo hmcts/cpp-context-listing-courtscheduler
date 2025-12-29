@@ -94,7 +94,7 @@ public class RotaCourtScheduleHelper {
 
         logMissingReferenceData(missingReferenceDataMappingMap, executionId);
 
-        logger.debug("Created court schedule map with {} entries from {} court listings",
+        logger.info("Created court schedule map with {} entries from {} court listings",
                 courtScheduleMap.size(), courtListings.size());
 
         return courtScheduleMap;
