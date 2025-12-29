@@ -5,5 +5,5 @@
   "businessType": "BUSINESS_TYPE",
   "panel": "PANEL",
   "jurisdiction": "MAGISTRATES",
-  "maxSlots": 10
+  "maxDuration": 10
 }

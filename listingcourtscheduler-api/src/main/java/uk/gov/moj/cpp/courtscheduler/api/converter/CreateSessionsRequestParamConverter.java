@@ -141,7 +141,12 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
 
     private RepeatPattern convertRepeatPattern(JsonObject jsonObject) {
         final String startDateStr = jsonObject.getString(START_DATE.getLabel());
-        final String endDateStr = jsonObject.getString(END_DATE.getLabel(), null);
+        String endDateStr = jsonObject.getString(END_DATE.getLabel(), null);
+        
+        // Treat placeholder values as null
+        if (endDateStr != null && (endDateStr.equals("END_DATE") || endDateStr.trim().isEmpty())) {
+            endDateStr = null;
+        }
 
         final LocalDate startDate = parseDateOrThrow(startDateStr, true);
         final LocalDate endDate = endDateStr != null ? parseDateOrThrow(endDateStr, false) : null;

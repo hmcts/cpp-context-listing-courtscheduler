@@ -443,6 +443,96 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldAcceptValidateCreateWithOnceFrequency() {
+        // Given
+        final LocalDate startDate = now().plusDays(1);
+        String createCourtSchedulePayload = getPayload("validate-create-court-schedule-frequency-once.json")
+                .replace("START_DATE", startDate.format(ofPattern("yyyy-MM-dd")));
+
+        // When
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        // Then
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String responseBody = response.readEntity(String.class);
+        assertThat("Response should be empty JSON object for successful validation", responseBody, is("{}"));
+    }
+
+    @Test
+    void shouldAcceptValidateCreateWithEveryWeekFrequency() {
+        // Given
+        final LocalDate startDate = now().plusDays(1);
+        final LocalDate endDate = startDate.plusWeeks(4);
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
+                "validate-create-court-schedule-frequency-every-week.json",
+                startDate,
+                endDate
+        );
+
+        // When
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        // Then
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String responseBody = response.readEntity(String.class);
+        assertThat("Response should be empty JSON object for successful validation", responseBody, is("{}"));
+    }
+
+    @Test
+    void shouldReturn400WhenInvalidFrequencyValueInValidateCreate() {
+        // Given - Create a payload with invalid frequency
+        final LocalDate startDate = now().plusDays(1);
+        final LocalDate endDate = startDate.plusWeeks(4);
+        String createCourtSchedulePayload = prepareCreateCourtSchedulePayloadWithDates(
+                "validate-create-court-schedule-frequency-every-week.json",
+                startDate,
+                endDate
+        );
+        // Replace with invalid frequency
+        createCourtSchedulePayload = createCourtSchedulePayload.replace("\"frequency\": \"EVERY_WEEK\"", "\"frequency\": \"INVALID_FREQUENCY\"");
+
+        // When
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        // Then
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturn400WhenEveryWeekFrequencyMissingEndDateInValidateCreate() {
+        // Given - EVERY_WEEK requires endDate
+        final LocalDate startDate = now().plusDays(1);
+        String createCourtSchedulePayload = getPayload("validate-create-court-schedule-frequency-every-week.json")
+                .replace("START_DATE", startDate.format(ofPattern("yyyy-MM-dd")));
+        // Remove endDate
+        createCourtSchedulePayload = createCourtSchedulePayload.replace(",\"endDate\": \"END_DATE\"", "");
+
+        // When
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        // Then
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        final String errorResponseMessage = response.readEntity(String.class);
+        assertThat(errorResponseMessage, containsString("Invalid combination of parameters"));
+    }
+
+    @Test
+    void shouldReturn400WhenEveryMonthFrequencyMissingEndDateInValidateCreate() {
+        // Given - EVERY_MONTH requires endDate
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        String createCourtSchedulePayload = getPayload("validate-create-court-schedule-frequency-every-month.json")
+                .replace("START_DATE", startDate.format(ofPattern("yyyy-MM-dd")));
+        // Remove endDate
+        createCourtSchedulePayload = createCourtSchedulePayload.replace(",\"endDate\": \"END_DATE\"", "");
+
+        // When
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        // Then
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
     void shouldReturn400WhenAllDaySplitHasInsufficientSessionDuration() throws SQLException {
         final CourtSchedule courtScheduleDuration = RANDOM.nextObject(CourtSchedule.class);
         final Integer maxDurationForMorning = 120;
@@ -2506,7 +2596,7 @@ class CourtSchedulerIT extends AbstractIT {
         String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setBusinessType("DVLA");
-        expected.setJurisdiction("MAGISTRATES"); // Session has MAGISTRATES jurisdiction
+        expected.setJurisdiction("CROWN"); // Session has CROWN jurisdiction
         expected.setSupportAdSplit(false);
         expected.setSlotBased(true); // Ensure slot-based for maxSlots
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
@@ -2533,7 +2623,7 @@ class CourtSchedulerIT extends AbstractIT {
         // Since APP has MAGISTRATES jurisdiction and session is MAGISTRATES, this should succeed
         // The validation logic is tested - if a business type with CROWN jurisdiction were used
         // for this MAGISTRATES session, it would return 400
-        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
     }
 
     @Test

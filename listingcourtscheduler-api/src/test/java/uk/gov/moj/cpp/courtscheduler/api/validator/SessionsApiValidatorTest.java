@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -52,9 +53,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class SessionsApiValidatorTest {
@@ -911,8 +914,6 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
                 .thenReturn(persistedSchedule);
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(updateCourtSchedule.getCourtScheduleId(), 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1072,8 +1073,6 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
                 .thenReturn(persistedSchedule);
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(updateCourtSchedule.getCourtScheduleId(), 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1172,8 +1171,6 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1201,8 +1198,6 @@ class SessionsApiValidatorTest {
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedCourtSchedule);
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
 
@@ -1232,8 +1227,6 @@ class SessionsApiValidatorTest {
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedCourtSchedule);
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
 
@@ -1440,8 +1433,6 @@ class SessionsApiValidatorTest {
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
                 .thenReturn(List.of(booked));
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1476,9 +1467,6 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
-
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
@@ -1510,9 +1498,6 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSessionEndTime(sessionEndDate);
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
-
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1576,9 +1561,6 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSlotBased(true); // Set slotBased to avoid NPE
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
-
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1711,8 +1693,6 @@ class SessionsApiValidatorTest {
                 .thenReturn(Optional.of(newCourtRoom));
 
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1751,8 +1731,6 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1894,8 +1872,6 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -1931,8 +1907,6 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
-        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(any()))
-                .thenReturn(java.util.Map.of(courtScheduleId, 0));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
@@ -2001,5 +1975,205 @@ class SessionsApiValidatorTest {
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED, result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldCallValidateSessionIntegrityWithEveryMonthFrequency() {
+        // Given
+        LocalDate startDate = LocalDate.now().plusDays(1);
+        LocalDate endDate = LocalDate.now().plusMonths(6);
+        Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AD")
+                .withBusinessType("FWT")
+                .withSlotsOrDuration(100)
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withIndex(4)
+                .withAllDaySplit(true)
+                .withMaxDurationForMorning(50)
+                .withMaxDurationForAfternoon(50)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(emptyList());
+        when(repeatPattern.getStartDate()).thenReturn(startDate);
+        when(repeatPattern.getEndDate()).thenReturn(endDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(repeatPattern.getRepeatFor()).thenReturn(1);
+
+        BusinessType businessType = new BusinessType("FWT", 1, "Description", "Category", false, true, "CROWN");
+        when(referenceDataCache.getRotaBusinessTypeByCode("FWT", requester)).thenReturn(Optional.of(businessType));
+        stubCrownCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        // When
+        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        // Then
+        ArgumentCaptor<RepeatFrequency> frequencyCaptor = ArgumentCaptor.forClass(RepeatFrequency.class);
+        verify(sessionsService).validateSessionIntegrity(
+                eq(sessionToBeAdded),
+                eq(startDate),
+                eq(endDate),
+                eq(1),
+                frequencyCaptor.capture()
+        );
+        assertEquals(RepeatFrequency.EVERY_MONTH, frequencyCaptor.getValue());
+    }
+
+    @Test
+    void shouldCallValidateSessionIntegrityWithEveryWeekFrequency() {
+        // Given
+        LocalDate startDate = LocalDate.now().plusDays(1);
+        LocalDate endDate = LocalDate.now().plusWeeks(4);
+        Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withSlotsOrDuration(100)
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY))
+                .withJurisdiction("MAGISTRATES")
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(emptyList());
+        when(repeatPattern.getStartDate()).thenReturn(startDate);
+        when(repeatPattern.getEndDate()).thenReturn(endDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
+        when(repeatPattern.getRepeatFor()).thenReturn(1);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", false, true, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        stubMagCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        // When
+        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        // Then
+        ArgumentCaptor<RepeatFrequency> frequencyCaptor = ArgumentCaptor.forClass(RepeatFrequency.class);
+        verify(sessionsService).validateSessionIntegrity(
+                eq(sessionToBeAdded),
+                eq(startDate),
+                eq(endDate),
+                eq(1),
+                frequencyCaptor.capture()
+        );
+        assertEquals(RepeatFrequency.EVERY_WEEK, frequencyCaptor.getValue());
+    }
+
+    @Test
+    void shouldCallValidateSessionIntegrityWithOnceFrequency() {
+        // Given
+        LocalDate startDate = LocalDate.now().plusDays(1);
+        Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("PM")
+                .withBusinessType("DVLA")
+                .withSlotsOrDuration(100)
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.TUESDAY))
+                .withJurisdiction("MAGISTRATES")
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(emptyList());
+        when(repeatPattern.getStartDate()).thenReturn(startDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getRepeatFor()).thenReturn(null);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", false, true, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        stubMagCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), nullable(LocalDate.class), nullable(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        // When
+        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        // Then
+        ArgumentCaptor<RepeatFrequency> frequencyCaptor = ArgumentCaptor.forClass(RepeatFrequency.class);
+        verify(sessionsService).validateSessionIntegrity(
+                eq(sessionToBeAdded),
+                eq(startDate),
+                eq((LocalDate) null),
+                eq((Integer) null),
+                frequencyCaptor.capture()
+        );
+        assertEquals(RepeatFrequency.ONCE, frequencyCaptor.getValue());
+    }
+
+    @Test
+    void shouldCallValidateSessionIntegrityWithCorrectParametersForMonthlyFrequencyWithIndex() {
+        // Given - This matches the curl request from the user
+        LocalDate startDate = LocalDate.of(2026, 1, 1);
+        LocalDate endDate = LocalDate.of(2026, 6, 30);
+        Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AD")
+                .withBusinessType("FWT")
+                .withSlotsOrDuration(100)
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withIndex(4)
+                .withAllDaySplit(true)
+                .withMaxDurationForMorning(50)
+                .withMaxDurationForAfternoon(50)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(emptyList());
+        when(repeatPattern.getStartDate()).thenReturn(startDate);
+        when(repeatPattern.getEndDate()).thenReturn(endDate);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(repeatPattern.getRepeatFor()).thenReturn(1);
+
+        BusinessType businessType = new BusinessType("FWT", 1, "Description", "Category", false, true, "CROWN");
+        when(referenceDataCache.getRotaBusinessTypeByCode("FWT", requester)).thenReturn(Optional.of(businessType));
+        stubCrownCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        // When
+        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+
+        // Then - Verify frequency is passed correctly
+        ArgumentCaptor<Session> sessionCaptor = ArgumentCaptor.forClass(Session.class);
+        ArgumentCaptor<LocalDate> startDateCaptor = ArgumentCaptor.forClass(LocalDate.class);
+        ArgumentCaptor<LocalDate> endDateCaptor = ArgumentCaptor.forClass(LocalDate.class);
+        ArgumentCaptor<Integer> repeatForCaptor = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<RepeatFrequency> frequencyCaptor = ArgumentCaptor.forClass(RepeatFrequency.class);
+
+        verify(sessionsService).validateSessionIntegrity(
+                sessionCaptor.capture(),
+                startDateCaptor.capture(),
+                endDateCaptor.capture(),
+                repeatForCaptor.capture(),
+                frequencyCaptor.capture()
+        );
+
+        assertEquals(sessionToBeAdded, sessionCaptor.getValue());
+        assertEquals(startDate, startDateCaptor.getValue());
+        assertEquals(endDate, endDateCaptor.getValue());
+        assertEquals(1, repeatForCaptor.getValue());
+        assertEquals(RepeatFrequency.EVERY_MONTH, frequencyCaptor.getValue());
+        assertEquals(4, sessionCaptor.getValue().getIndex());
     }
 }
