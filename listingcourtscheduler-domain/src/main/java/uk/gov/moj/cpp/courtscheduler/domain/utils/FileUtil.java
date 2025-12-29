@@ -118,6 +118,10 @@ public class FileUtil {
      * @return the file name prefix, or the original filename if timestamp not found
      */
     public static String getLJAFileNamePrefix(final String fileName) {
+        if (!fileName.contains(SNAPSHOT_NAME_PART)) {
+            return fileName.endsWith(".xml") ? fileName.substring(0, fileName.length() - 4) : fileName;
+        }
+
         final String timeStampAsString = getLJAFileTimeStampAsString(fileName);
         if (timeStampAsString == null) {
             return fileName;
@@ -128,6 +132,6 @@ public class FileUtil {
             return fileName;
         }
 
-        return fileName.substring(0, fileName.length() - timeStampAsString.length() - XML_NAME_PART.length());
+        return fileName.substring(0, (fileName.length() - (timeStampAsString.length() + XML_NAME_PART.length())));
     }
 }
