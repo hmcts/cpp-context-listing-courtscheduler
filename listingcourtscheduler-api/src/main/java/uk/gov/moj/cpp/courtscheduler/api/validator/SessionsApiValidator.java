@@ -517,10 +517,25 @@ public class SessionsApiValidator {
         } else if (sessionToBeAdded && ObjectUtils.isEmpty(params.getSlotsOrDuration())) {
             return buildErrorResponse(ErrorMessages.DURATION_NOT_FOUND_FOR_REGULAR_SESSION);
         } else if (!sessionToBeAdded) {
-            final Map<String, Integer> totalBookedMap = allocatedListingService.getTotalBookedPerCourtScheduleIds(List.of(params.getCourtScheduleId()));
-            final int totalBooked = totalBookedMap.getOrDefault(params.getCourtScheduleId(), 0);
-            if (params.getSlotsOrDuration() < totalBooked) {
-                return buildErrorResponse(ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED);
+            // For updates, check if session is slot-based or duration-based
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedScheduleForValidation = 
+                    courtScheduleRepository.retrieveCourtScheduleWithListingById(params.getCourtScheduleId());
+            if (nonNull(persistedScheduleForValidation) && nonNull(params.getSlotsOrDuration())) {
+                if (persistedScheduleForValidation.isSlotBased()) {
+                    // For slot-based sessions, check slots
+                    final Map<String, Integer> allocatedListingsMap = allocatedListingService.getAllocatedListingsByCourtScheduleId(List.of(params.getCourtScheduleId()));
+                    final int totalBookedSlots = allocatedListingsMap.getOrDefault(params.getCourtScheduleId(), 0);
+                    if (params.getSlotsOrDuration() < totalBookedSlots) {
+                        return buildErrorResponse(ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED);
+                    }
+                } else {
+                    // For duration-based sessions, check duration
+                    final Map<String, Integer> totalBookedMap = allocatedListingService.getTotalBookedPerCourtScheduleIds(List.of(params.getCourtScheduleId()));
+                    final int totalBooked = totalBookedMap.getOrDefault(params.getCourtScheduleId(), 0);
+                    if (params.getSlotsOrDuration() < totalBooked) {
+                        return buildErrorResponse(ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED);
+                    }
+                }
             }
         }
         return EMPTY_JSON_OBJECT;
@@ -708,66 +723,121 @@ public class SessionsApiValidator {
 
     public JsonObject getSessionsUpdateValidation (UpdateCourtSchedule
                                                            updateCourtSchedule, Requester requester){
-        // Validate jurisdiction
         String jurisdiction = updateCourtSchedule.getJurisdiction();
+        JsonObject error = validateJurisdiction(jurisdiction);
+        if (error != EMPTY_JSON_OBJECT) return error;
+
+        uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = 
+                courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+        
+        error = validateJurisdictionChange(jurisdiction, persistedCourtSchedule);
+        if (error != EMPTY_JSON_OBJECT) return error;
+
+        error = validateCourtRoomForJurisdiction(updateCourtSchedule, requester);
+        if (error != EMPTY_JSON_OBJECT) return error;
+
+        error = validateCourtRoomBelongsToSameCourtHouse(updateCourtSchedule, requester);
+        if (error != EMPTY_JSON_OBJECT) return error;
+
+        error = validateSessionNotInPast(updateCourtSchedule);
+        if (error != EMPTY_JSON_OBJECT) return error;
+
+        error = validateIsDraftForUpdate(jurisdiction, updateCourtSchedule.getIsDraft(), persistedCourtSchedule);
+        if (error != EMPTY_JSON_OBJECT) return error;
+
+        error = validatePanelForUpdate(jurisdiction, updateCourtSchedule.getPanel());
+        if (error != EMPTY_JSON_OBJECT) return error;
+
+        SessionValidationParams params = getSessionValidationParams(updateCourtSchedule);
+        return validateSession(params, false, requester);
+    }
+
+    private JsonObject validateJurisdiction(String jurisdiction) {
         if (isNull(jurisdiction) || jurisdiction.isEmpty()) {
             return buildErrorResponse("Jurisdiction is mandatory and must be either MAGISTRATES or CROWN");
         }
         if (!MAGISTRATES.equalsIgnoreCase(jurisdiction) && !CROWN.equalsIgnoreCase(jurisdiction)) {
             return buildErrorResponse("Jurisdiction must be either MAGISTRATES or CROWN");
         }
+        return EMPTY_JSON_OBJECT;
+    }
 
-        // Validate courtroom source matches jurisdiction
-        JsonObject courtRoomValidation = validateCourtRoomForJurisdiction(updateCourtSchedule, requester);
-        if (!courtRoomValidation.isEmpty()) {
-            return courtRoomValidation;
+    private JsonObject validateJurisdictionChange(String jurisdiction, 
+                                                   uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
+        if (isNull(persistedCourtSchedule)) {
+            return EMPTY_JSON_OBJECT;
         }
-
-        // Validate isDraft can only be true when jurisdiction is CROWN - reject if true for MAGISTRATES, silently accept false
-        // Validate courtroom belongs to the same court house as the original session
-        JsonObject courtHouseValidation = validateCourtRoomBelongsToSameCourtHouse(updateCourtSchedule, requester);
-        if (!courtHouseValidation.isEmpty()) {
-            return courtHouseValidation;
+        String persistedJurisdiction = nonNull(persistedCourtSchedule.getJurisdiction())
+                ? persistedCourtSchedule.getJurisdiction()
+                : MAGISTRATES.getJurisdiction();
+        if (!persistedJurisdiction.equalsIgnoreCase(jurisdiction)) {
+            return buildErrorResponse("Jurisdiction cannot be changed");
         }
+        return EMPTY_JSON_OBJECT;
+    }
 
-        // Validate that session is not in the past
-        JsonObject pastSessionValidation = validateSessionNotInPast(updateCourtSchedule);
-        if (!pastSessionValidation.isEmpty()) {
-            return pastSessionValidation;
+    private JsonObject validateIsDraftForUpdate(String jurisdiction, Boolean isDraft, 
+                                                 uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
+        if (CROWN.equalsIgnoreCase(jurisdiction)) {
+            JsonObject error = validateCrownIsDraft(isDraft);
+            if (error != EMPTY_JSON_OBJECT) return error;
+            
+            error = validateCrownIsDraftChange(isDraft, persistedCourtSchedule);
+            if (error != EMPTY_JSON_OBJECT) return error;
         }
+        
+        if (MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
+            JsonObject error = validateMagistratesIsDraft(isDraft);
+            if (error != EMPTY_JSON_OBJECT) return error;
+        }
+        
+        return EMPTY_JSON_OBJECT;
+    }
 
-        // Validate isDraft can only be supplied when jurisdiction is CROWN
-        Boolean isDraft = updateCourtSchedule.getIsDraft();
-        // For CROWN jurisdiction, isDraft must be explicitly supplied (true or false)
-        if (CROWN.equalsIgnoreCase(jurisdiction) && isNull(isDraft)) {
+    private JsonObject validateCrownIsDraft(Boolean isDraft) {
+        if (isNull(isDraft)) {
             return buildErrorResponse("isDraft is mandatory for CROWN jurisdiction sessions");
         }
-        if (nonNull(isDraft) && TRUE.equals(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateCrownIsDraftChange(Boolean isDraft, 
+                                                  uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
+        if (TRUE.equals(isDraft) && nonNull(persistedCourtSchedule) && FALSE.equals(persistedCourtSchedule.getIsDraft())) {
+            return buildErrorResponse("Cannot change isDraft from false to true for CROWN jurisdiction sessions");
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateMagistratesIsDraft(Boolean isDraft) {
+        if (nonNull(isDraft) && TRUE.equals(isDraft)) {
             return buildErrorResponse("isDraft can only be true when jurisdiction is CROWN");
         }
+        return EMPTY_JSON_OBJECT;
+    }
 
-        // Validate that if CROWN and database isDraft = false, it can't be changed to isDraft = true
-        if (CROWN.equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && TRUE.equals(isDraft)) {
-            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
-                    courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
-            if (nonNull(persistedCourtSchedule) && FALSE.equals(persistedCourtSchedule.getIsDraft())) {
-                return buildErrorResponse("Cannot change isDraft from false to true for CROWN jurisdiction sessions");
-            }
+    private JsonObject validatePanelForUpdate(String jurisdiction, String panel) {
+        if (MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
+            return validateMagistratesPanel(panel);
         }
+        if (CROWN.equalsIgnoreCase(jurisdiction)) {
+            return validateCrownPanel(panel);
+        }
+        return EMPTY_JSON_OBJECT;
+    }
 
-        // Validate panel - YOUTH is not allowed for CROWN jurisdiction
-        String panel = updateCourtSchedule.getPanel();
-        // For MAGISTRATES jurisdiction, panel is mandatory
-        if (MAGISTRATES.equalsIgnoreCase(jurisdiction)
-                && (isNull(panel) || panel.trim().isEmpty())) {
+    private JsonObject validateMagistratesPanel(String panel) {
+        if (isNull(panel) || panel.trim().isEmpty()) {
             return buildErrorResponse("panel is mandatory for MAGISTRATES jurisdiction sessions");
         }
-        if (nonNull(panel) && "YOUTH".equalsIgnoreCase(panel) && CROWN.equalsIgnoreCase(jurisdiction)) {
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateCrownPanel(String panel) {
+        if (nonNull(panel) && "YOUTH".equalsIgnoreCase(panel)) {
             return buildErrorResponse("YOUTH panel is not allowed for CROWN jurisdiction sessions. Only ADULT panel is allowed.");
         }
-
-        SessionValidationParams params = getSessionValidationParams(updateCourtSchedule);
-        return validateSession(params, false, requester);
+        return EMPTY_JSON_OBJECT;
     }
 
     private JsonObject validateCourtRoomForJurisdiction(final UpdateCourtSchedule updateCourtSchedule, final Requester requester) {

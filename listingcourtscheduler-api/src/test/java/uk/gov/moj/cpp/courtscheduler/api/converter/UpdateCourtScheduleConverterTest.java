@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 
@@ -82,5 +83,63 @@ class UpdateCourtScheduleConverterTest {
 
         assertEquals("MAGISTRATES", updateCourtSchedule.getJurisdiction());
         assertNull(updateCourtSchedule.getIsDraft());
+    }
+
+    @Test
+    void shouldConvertJsonObject_WithCrownJurisdictionWithoutPanel() {
+        // Panel is optional for CROWN jurisdiction
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add("courtScheduleId", UUID.randomUUID().toString())
+                .add("courtRoomId", "2")
+                .add("businessType", "BusType")
+                .add("courtSession", "AM")
+                .add("jurisdiction", "CROWN")
+                .add("isDraft", true)
+                .add("maxSlots", 1)
+                .build();
+
+        final UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(jsonObject);
+
+        assertEquals("CROWN", updateCourtSchedule.getJurisdiction());
+        assertNull(updateCourtSchedule.getPanel()); // Panel should be null when not supplied
+    }
+
+    @Test
+    void shouldConvertJsonObject_WithCrownJurisdictionAndAdultPanel() {
+        // CROWN with ADULT panel should work
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add("courtScheduleId", UUID.randomUUID().toString())
+                .add("courtRoomId", "2")
+                .add("businessType", "BusType")
+                .add("courtSession", "AM")
+                .add("panel", "ADULT")
+                .add("jurisdiction", "CROWN")
+                .add("isDraft", true)
+                .add("maxSlots", 1)
+                .build();
+
+        final UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(jsonObject);
+
+        assertEquals("CROWN", updateCourtSchedule.getJurisdiction());
+        assertEquals("ADULT", updateCourtSchedule.getPanel());
+    }
+
+    @Test
+    void shouldThrowException_WhenCrownJurisdictionHasNonAdultPanel() {
+        // CROWN with YOUTH panel should throw exception
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add("courtScheduleId", UUID.randomUUID().toString())
+                .add("courtRoomId", "2")
+                .add("businessType", "BusType")
+                .add("courtSession", "AM")
+                .add("panel", "YOUTH")
+                .add("jurisdiction", "CROWN")
+                .add("isDraft", true)
+                .add("maxSlots", 1)
+                .build();
+
+        assertThrows(ConverterException.class, () -> {
+            updateCourtScheduleConverter.convert(jsonObject);
+        });
     }
 }

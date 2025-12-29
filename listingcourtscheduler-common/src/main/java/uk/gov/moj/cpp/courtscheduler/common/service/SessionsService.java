@@ -127,8 +127,39 @@ public class SessionsService {
             return new Result(ErrorMessages.SESSION_NOT_FOUND, false);
         }
 
+        // Check if jurisdiction is being changed - jurisdiction cannot be changed
+        String persistedJurisdiction = nonNull(persistedCourtSchedule.getJurisdiction())
+                ? persistedCourtSchedule.getJurisdiction()
+                : MAGISTRATES.getJurisdiction();
+        
+        if (nonNull(updateCourtSchedule.getJurisdiction()) 
+                && !persistedJurisdiction.equalsIgnoreCase(updateCourtSchedule.getJurisdiction())) {
+            return new Result("Jurisdiction cannot be changed", false);
+        }
+
         final String persistedBusinessType = persistedCourtSchedule.getBusinessType();
-        if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType)) {
+        
+        // Check if the updated business type exists
+        Optional<BusinessType> updatedBusinessTypeOpt = referenceDataCache.getRotaBusinessTypeByCode(updateCourtSchedule.getBusinessType(), requester);
+        if (updatedBusinessTypeOpt.isEmpty()) {
+            return new Result("Invalid business type", false);
+        }
+        
+        BusinessType updatedBusinessType = updatedBusinessTypeOpt.get();
+        
+        // Check if business type jurisdiction matches the persisted jurisdiction
+        // (We've already validated that update jurisdiction, if provided, matches persisted)
+        String businessTypeJurisdiction = updatedBusinessType.getJurisdiction();
+        if (nonNull(businessTypeJurisdiction)) {
+            if (MAGISTRATES.equalsIgnoreCase(persistedJurisdiction) && !MAGISTRATES.equalsIgnoreCase(businessTypeJurisdiction)) {
+                return new Result("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + persistedJurisdiction, false);
+            }
+            if (CROWN.equalsIgnoreCase(persistedJurisdiction) && !CROWN.equalsIgnoreCase(businessTypeJurisdiction)) {
+                return new Result("Business Type jurisdiction " + businessTypeJurisdiction + " does not match session jurisdiction " + persistedJurisdiction, false);
+            }
+        }
+        
+        if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType, updatedBusinessType)) {
             return new Result(ErrorMessages.BUSINESS_TYPE_CHANGE_NOT_ALLOWED, false);
         }
 
@@ -190,12 +221,8 @@ public class SessionsService {
 
         final Optional<CourtRoom> courtRoom;
         if (nonNull(courtRoomId) && !courtRoomId.equalsIgnoreCase(persistedCourtSchedule.getCourtRoomId())) {
-            // Determine jurisdiction: use from updateCourtSchedule if available, otherwise from persistedCourtSchedule, otherwise default to MAGISTRATES
-            String jurisdiction = nonNull(updateCourtSchedule.getJurisdiction())
-                    ? updateCourtSchedule.getJurisdiction()
-                    : (nonNull(persistedCourtSchedule.getJurisdiction())
-                            ? persistedCourtSchedule.getJurisdiction()
-                            : MAGISTRATES.getJurisdiction());
+            // Use persisted jurisdiction (we've already validated that update jurisdiction, if provided, matches persisted)
+            String jurisdiction = persistedJurisdiction;
 
             if (CROWN.equalsIgnoreCase(jurisdiction)) {
                 courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
@@ -247,13 +274,12 @@ public class SessionsService {
                 !StringUtils.equals(updateCourtSchedule.getPanel(), persistedCourtSchedule.getPanel());
     }
 
-    private boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType) {
-        return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule, requester, persistedBusinessType);
+    private boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType, final BusinessType updatedBusinessType) {
+        return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule, requester, persistedBusinessType, updatedBusinessType);
     }
 
-    private boolean isBusinessTypeChangeAllowed(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessTypeCode) {
+    private boolean isBusinessTypeChangeAllowed(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessTypeCode, final BusinessType updatedBusinessType) {
         final BusinessType persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + persistedBusinessTypeCode));
-        final BusinessType updatedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(updateCourtSchedule.getBusinessType(), requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + updateCourtSchedule.getBusinessType()));
         return persistedBusinessType.isSlot() == updatedBusinessType.isSlot() && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
     }
 
