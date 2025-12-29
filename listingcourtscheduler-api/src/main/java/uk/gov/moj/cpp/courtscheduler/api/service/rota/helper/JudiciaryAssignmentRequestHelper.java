@@ -42,12 +42,14 @@ public class JudiciaryAssignmentRequestHelper {
     }
 
     /**
-     * Converts a map of judiciary IDs to lists of court schedule UUIDs into a map with String session IDs.
+     * Converts a map of judiciary IDs to lists of UUIDs into a map of judiciary IDs to lists of strings.
+     * This is used for unassignment operations where UUIDs need to be converted to strings.
      *
-     * @param judiciaryUnAssignmentMap map where key is judiciaryId (String) and value is list of court schedule UUIDs
-     * @return Map where key is judiciaryId (String) and value is list of session IDs (String)
+     * @param judiciaryUnAssignmentMap map where key is judiciaryId (String) and value is List of UUIDs
+     * @return map where key is judiciaryId (String) and value is List of String session IDs
      */
-    public Map<String, List<String>> convertToUnassignmentMap(final Map<String, List<UUID>> judiciaryUnAssignmentMap) {
+    public Map<String, List<String>> convertToUnassignmentMap(
+            final Map<String, List<UUID>> judiciaryUnAssignmentMap) {
         logger.debug("Converting unassignment map with {} entries", judiciaryUnAssignmentMap.size());
 
         return judiciaryUnAssignmentMap.entrySet().stream()
