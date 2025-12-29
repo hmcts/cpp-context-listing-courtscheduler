@@ -95,7 +95,6 @@ public class SessionsApiValidator {
     @Inject
     private AllocatedListingService allocatedListingService;
 
-    @SuppressWarnings("squid:MethodCyclomaticComplexity")
     public JsonObject getSessionsCreateValidation(final CreateSessionRequestParam createSessionRequestParam, final Requester requester) {
 
         final LocalDate patternStartDate = createSessionRequestParam.getRepeatPattern().getStartDate();
@@ -104,6 +103,30 @@ public class SessionsApiValidator {
 
         LOGGER.info("Validating CREATE Sessions input : {}", createSessionRequestParam);
 
+        JsonObject repeatPatternValidation = validateRepeatPattern(createSessionRequestParam, patternStartDate, patternEndDate, repeatFrequency);
+        if (repeatPatternValidation != EMPTY_JSON_OBJECT) {
+            return repeatPatternValidation;
+        }
+
+        JsonObject sessionValidation = validateSessionsBasicRules(createSessionRequestParam);
+        if (sessionValidation != EMPTY_JSON_OBJECT) {
+            return sessionValidation;
+        }
+
+        if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
+            return validateSessionToBeAddedPath(createSessionRequestParam, patternStartDate, patternEndDate, repeatFrequency, requester);
+        }
+
+        final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
+        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
+            return businessTypeAndCourtRoomValidationResult;
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateRepeatPattern(CreateSessionRequestParam createSessionRequestParam, LocalDate patternStartDate, 
+                                             LocalDate patternEndDate, RepeatFrequency repeatFrequency) {
         if (repeatFrequency == EVERY_MONTH) {
             JsonObject err = validateMonthlyCrownIndexForRequest(createSessionRequestParam);
             if (err != EMPTY_JSON_OBJECT) return err;
@@ -118,51 +141,49 @@ public class SessionsApiValidator {
             return getMessageForInvalidDate(patternStartDate.toString());
         }
 
-        if(repeatFrequency == EVERY_WEEK && patternEndDate == null) {
-            LOGGER.debug("getSessionsCreateValidation repeatFrequency EVERY_WEEK and patternEndDate null");
-            return getMessageForInvalidParameterCombination(EVERY_WEEK);
+        if (isRepeatFrequencyRequiringEndDate(repeatFrequency) && patternEndDate == null) {
+            LOGGER.debug("getSessionsCreateValidation repeatFrequency {} and patternEndDate null", repeatFrequency);
+            return getMessageForInvalidParameterCombination(repeatFrequency);
         }
 
-        if(repeatFrequency == EVERY_MONTH && patternEndDate == null) {
-            LOGGER.debug("getSessionsCreateValidation repeatFrequency EVERY_MONTH and patternEndDate null");
-            return getMessageForInvalidParameterCombination(EVERY_MONTH);
-        }
+        return EMPTY_JSON_OBJECT;
+    }
 
+    private boolean isRepeatFrequencyRequiringEndDate(RepeatFrequency repeatFrequency) {
+        return repeatFrequency == EVERY_WEEK || repeatFrequency == EVERY_MONTH;
+    }
+
+    private JsonObject validateSessionsBasicRules(CreateSessionRequestParam createSessionRequestParam) {
         final JsonObject result = validateSessionStartEndTime(createSessionRequestParam.getSessionList());
         if (result != null) {
             return result;
         }
 
-        // Validate isDraft can only be true for CROWN jurisdiction
         final JsonObject isDraftValidationResult = validateIsDraftForJurisdiction(createSessionRequestParam);
         if (isDraftValidationResult != EMPTY_JSON_OBJECT) {
             return isDraftValidationResult;
         }
 
-        // Validate panel - YOUTH is not allowed for CROWN jurisdiction
         final JsonObject panelValidationResult = validatePanelForJurisdiction(createSessionRequestParam);
         if (panelValidationResult != EMPTY_JSON_OBJECT) {
             return panelValidationResult;
         }
 
-        //if the request is coming from validate endpoint, this object should be populated
-        if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
-            LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
-            final JsonObject addSessionValidationResult = validateAddedSessionPayload(createSessionRequestParam,requester);
-            if(addSessionValidationResult != EMPTY_JSON_OBJECT){
-                return addSessionValidationResult;
-            }
-            LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
-            LOGGER.debug("getSessionsCreateValidation repeatFrequency: {}", repeatFrequency);
-            return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(),patternStartDate,patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor(), repeatFrequency);
-        }
-
-        final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
-        if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
-            return businessTypeAndCourtRoomValidationResult;
-        }
-
         return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateSessionToBeAddedPath(CreateSessionRequestParam createSessionRequestParam, 
+                                                    LocalDate patternStartDate, LocalDate patternEndDate, 
+                                                    RepeatFrequency repeatFrequency, Requester requester) {
+        LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
+        final JsonObject addSessionValidationResult = validateAddedSessionPayload(createSessionRequestParam, requester);
+        if(addSessionValidationResult != EMPTY_JSON_OBJECT){
+            return addSessionValidationResult;
+        }
+        LOGGER.debug("getSessionsCreateValidation addSessionValidationResult is empty");
+        LOGGER.debug("getSessionsCreateValidation repeatFrequency: {}", repeatFrequency);
+        return sessionsService.validateSessionIntegrity(createSessionRequestParam.getSessionToBeAdded(), 
+                patternStartDate, patternEndDate, createSessionRequestParam.getRepeatPattern().getRepeatFor(), repeatFrequency);
     }
 
     private JsonObject validateBusinessTypesAndCourtRooms(CreateSessionRequestParam requestParam, Requester requester) {
@@ -231,16 +252,17 @@ public class SessionsApiValidator {
     private JsonObject validateCourtRoomForSession(Session session, String sessionJurisdiction, Requester requester) {
         CourtRoomRetrievalResult retrievalResult = retrieveCourtRoomByJurisdiction(session.getCourtRoomId(), sessionJurisdiction, requester);
         
-        JsonObject jurisdictionMismatchError = validateCourtRoomJurisdictionMismatch(retrievalResult, sessionJurisdiction, session.getCourtRoomId());
+        JsonObject jurisdictionMismatchError = validateCourtRoomJurisdictionMismatch(retrievalResult, sessionJurisdiction);
         if (jurisdictionMismatchError != EMPTY_JSON_OBJECT) {
             return jurisdictionMismatchError;
         }
 
-        if (retrievalResult.getPrimaryCourtRoom().isEmpty()) {
+        Optional<CourtRoom> primaryCourtRoom = retrievalResult.getPrimaryCourtRoom();
+        if (!primaryCourtRoom.isPresent()) {
             return buildErrorResponse(COURTROOM_NOT_FOUND + session.getCourtRoomId());
         }
 
-        CourtRoom courtRoom = retrievalResult.getPrimaryCourtRoom().get();
+        CourtRoom courtRoom = primaryCourtRoom.get();
         JsonObject courtCentreError = validateCourtRoomBelongsToCourtCentre(session.getCourtCentreId(), courtRoom);
         if (courtCentreError != EMPTY_JSON_OBJECT) {
             return courtCentreError;
@@ -263,7 +285,7 @@ public class SessionsApiValidator {
         }
     }
 
-    private JsonObject validateCourtRoomJurisdictionMismatch(CourtRoomRetrievalResult retrievalResult, String sessionJurisdiction, String courtRoomId) {
+    private JsonObject validateCourtRoomJurisdictionMismatch(CourtRoomRetrievalResult retrievalResult, String sessionJurisdiction) {
         if (retrievalResult.getPrimaryCourtRoom().isEmpty() && retrievalResult.getOtherSourceCourtRoom().isPresent()) {
             if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
                 return buildErrorResponse("The courtroom belongs to a court centre with MAGISTRATES jurisdiction, which does not match the session jurisdiction CROWN");
