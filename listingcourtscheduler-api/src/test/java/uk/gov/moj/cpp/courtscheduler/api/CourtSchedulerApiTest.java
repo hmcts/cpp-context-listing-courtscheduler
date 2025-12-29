@@ -247,7 +247,7 @@ class CourtSchedulerApiTest {
         final AssignJudiciariesRequest requestDto = AssignJudiciariesRequest.builder().build();
 
         when(assignJudiciariesRequestConverter.convert(jsonObject)).thenReturn(requestDto);
-        when(assignJudiciariesApiValidator.validate(requestDto)).thenReturn(EMPTY_JSON_OBJECT);
+        when(assignJudiciariesApiValidator.validate(requestDto, requester)).thenReturn(EMPTY_JSON_OBJECT);
         when(enveloper.withMetadataFrom(envelope, requestName)).thenReturn(function);
         when(function.apply(any(JsonObject.class))).thenReturn(envelope);
 
@@ -275,7 +275,7 @@ class CourtSchedulerApiTest {
                 .build();
 
         when(assignJudiciariesRequestConverter.convert(jsonObjectWithSkipValidations)).thenReturn(requestDto);
-        when(assignJudiciariesApiValidator.validate(requestDto)).thenReturn(EMPTY_JSON_OBJECT);
+        when(assignJudiciariesApiValidator.validate(requestDto, requester)).thenReturn(EMPTY_JSON_OBJECT);
         when(enveloper.withMetadataFrom(envelope, requestName)).thenReturn(function);
         when(function.apply(any(JsonObject.class))).thenReturn(envelope);
 
@@ -293,7 +293,7 @@ class CourtSchedulerApiTest {
         final JsonObject validationError = createObjectBuilder().add("errorMessage", "invalid").build();
 
         when(assignJudiciariesRequestConverter.convert(jsonObject)).thenReturn(requestDto);
-        when(assignJudiciariesApiValidator.validate(requestDto)).thenReturn(validationError);
+        when(assignJudiciariesApiValidator.validate(requestDto, requester)).thenReturn(validationError);
 
         assertThrows(ValidationException.class, () -> courtSchedulerApi.assignJudiciary(envelope));
         verify(judiciaryAssignmentService, never()).assignJudiciaries(any(), any(), any());

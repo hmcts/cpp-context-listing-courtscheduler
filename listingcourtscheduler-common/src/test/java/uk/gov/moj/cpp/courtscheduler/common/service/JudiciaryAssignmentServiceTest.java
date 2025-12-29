@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,7 +17,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.AssignmentFailureReason;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -25,7 +25,6 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -67,11 +66,11 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(1, response.getSuccessfulAssignments());
         assertTrue(response.getFailures().isEmpty());
         verify(courtScheduleJudiciaryRepository).save(any());
-        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
     }
 
     @Test
-    void shouldRecordFailureWhenJudiciaryMissing() {
+    void shouldSkipAssignmentWhenJudiciaryMissing() {
+        // When judiciary is missing, service should skip the assignment (validation happens in validator layer)
         final String judiciaryId = "missing-judiciary";
         final String sessionId = "session-1";
 
@@ -80,28 +79,27 @@ class JudiciaryAssignmentServiceTest {
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
 
+        // Service skips assignment when judiciary is null (validation should have caught this in validator)
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(0, response.getSuccessfulAssignments());
-        assertEquals(1, response.getFailures().size());
-        assertEquals(AssignmentFailureReason.JUDICIARY_NOT_FOUND, response.getFailures().get(0).getReason());
+        assertEquals(0, response.getFailures().size()); // No failures recorded - validation happens in validator layer
 
         verify(courtScheduleJudiciaryRepository, never()).save(any());
-        verifyRotaLog(MissingLogType.JUDICIARY);
     }
 
     @Test
-    void shouldRecordFailureWhenSessionMissing() {
+    void shouldSkipAssignmentWhenSessionMissing() {
+        // When session is missing, service should skip the assignment (validation happens in validator layer)
         final String judiciaryId = "judiciary-1";
         when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of());
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, "unknown-session"), requester, EXECUTION_ID);
 
+        // Service skips assignment when session is null (validation should have caught this in validator)
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(0, response.getSuccessfulAssignments());
-        assertEquals(AssignmentFailureReason.SESSION_NOT_FOUND, response.getFailures().get(0).getReason());
-
-        verifyRotaLog(MissingLogType.SESSION);
+        assertEquals(0, response.getFailures().size()); // No failures recorded - validation happens in validator layer
     }
 
     @Test
@@ -118,7 +116,6 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(0, response.getSuccessfulAssignments());
         assertEquals(AssignmentFailureReason.DUPLICATE_ASSIGNMENT, response.getFailures().get(0).getReason());
-        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
     }
 
     @Test
@@ -135,6 +132,7 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(0, response.getSuccessfulAssignments());
         assertEquals(AssignmentFailureReason.PERSISTENCE_ERROR, response.getFailures().get(0).getReason());
+        verify(courtScheduleJudiciaryRepository).save(any());
     }
 
     private AssignJudiciariesRequest buildRequest(final String judiciaryId, final String sessionId) {
@@ -166,23 +164,12 @@ class JudiciaryAssignmentServiceTest {
         return courtSchedule;
     }
 
-    private void verifyRotaLog(final MissingLogType type) {
-        final ArgumentCaptor<RotaProcessLog> captor = ArgumentCaptor.forClass(RotaProcessLog.class);
-        verify(rotaProcessLogService).saveRotaProcessLog(captor.capture());
-        final RotaProcessLog log = captor.getValue();
-        if (type == MissingLogType.JUDICIARY) {
-            assertEquals("JUDICIARY_ID_NOT_FOUND_ASSIGNMENT", log.getErrorCode());
-        } else {
-            assertEquals("SESSION_ID_NOT_FOUND_ASSIGNMENT", log.getErrorCode());
-        }
-    }
-
     @Test
     void shouldSkipValidationsWhenSkipValidationsIsTrue() {
         final String judiciaryId = "missing-judiciary";
         final String sessionId = "missing-session";
 
-        // Even though judiciary and session don't exist, with skipValidations=true, should not fail or log
+        // Even though judiciary and session don't exist, with skipValidations=true, should not fail but should log
         final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
                 .addJudiciary(JudiciaryAssignment.builder()
                         .withJudiciaryId(judiciaryId)
@@ -196,11 +183,13 @@ class JudiciaryAssignmentServiceTest {
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, requester, EXECUTION_ID);
 
-        // Should not record failures or log errors when skipValidations is true
+        // Should not record failures when skipValidations is true (skips assignment silently)
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(0, response.getSuccessfulAssignments());
         assertEquals(0, response.getFailures().size());
-        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
+
+        // Should log missing references for monitoring purposes (both judiciary and session are missing)
+        verify(rotaProcessLogService, atLeastOnce()).saveRotaProcessLog(any());
     }
 
     @Test
@@ -225,12 +214,6 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(1, response.getSuccessfulAssignments());
         assertTrue(response.getFailures().isEmpty());
         verify(courtScheduleJudiciaryRepository).save(any());
-        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
-    }
-
-    private enum MissingLogType {
-        JUDICIARY,
-        SESSION
     }
 }
 

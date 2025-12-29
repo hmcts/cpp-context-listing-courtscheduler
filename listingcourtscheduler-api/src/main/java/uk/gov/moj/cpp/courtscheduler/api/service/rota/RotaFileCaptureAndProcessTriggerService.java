@@ -27,6 +27,8 @@ public class RotaFileCaptureAndProcessTriggerService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileCaptureAndProcessTriggerService.class);
     private static final String ROTA_PROCESS_OLD = "old";
+    private static final String IT_TEST_BLOB_PREFIX = "IT_Test_";
+    private static final String ORIGINAL_BLOB_PREFIX = "lja_";
 
     @Inject
     private ReferenceDataMapperService referenceDataMapperService;
@@ -39,9 +41,6 @@ public class RotaFileCaptureAndProcessTriggerService {
 
     @Inject
     private AzureBlobClientService azureBlobClientService;
-
-    private static final String IT_TEST_BLOB_PREFIX = "IT_Test_";
-    private static final String ORIGINAL_BLOB_PREFIX = "lja_";
 
     @Asynchronous
     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
