@@ -45,9 +45,6 @@ import org.slf4j.LoggerFactory;
 public class JudiciaryAssignmentService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryAssignmentService.class);
-    private static final String DEFAULT_POSITION = "CHAIR";
-    private static final String LEFT_WINGER = "LEFT_WINGER";
-    private static final String RIGHT_WINGER = "RIGHT_WINGER";
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -139,7 +136,7 @@ public class JudiciaryAssignmentService {
                     continue;
                 }
 
-                final AssignmentAttempt attempt = attemptAssignment(judiciary, schedule, sessionId, now);
+                final AssignmentAttempt attempt = attemptAssignment(judiciary, schedule, sessionId, now, assignment);
                 if (attempt.isSuccess()) {
                     successfulAssignments++;
                 } else {
@@ -185,8 +182,9 @@ public class JudiciaryAssignmentService {
     private AssignmentAttempt attemptAssignment(final Judiciary judiciary,
                                                 final CourtSchedule schedule,
                                                 final String sessionId,
-                                                final Date timestamp) {
-        final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, timestamp);
+                                                final Date timestamp,
+                                                final JudiciaryAssignment assignment) {
+        final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, timestamp, assignment);
         try {
             courtScheduleJudiciaryRepository.save(CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciary));
             return AssignmentAttempt.success();
@@ -223,10 +221,9 @@ public class JudiciaryAssignmentService {
     private CourtScheduleJudiciary buildCourtScheduleJudiciary(final Judiciary judiciary,
                                                                final CourtSchedule schedule,
                                                                final String sessionId,
-                                                               final Date timestamp) {
+                                                               final Date timestamp,
+                                                               final JudiciaryAssignment assignment) {
         final String rotaJudiciaryId = firstNonEmpty(judiciary.getCpUserId(), judiciary.getId());
-        final String position = DEFAULT_POSITION;
-        final boolean isBenchChair = !(LEFT_WINGER.equals(position) || RIGHT_WINGER.equals(position));
 
         return CourtScheduleJudiciary.judiciary()
                 .withCourtScheduleId(sessionId)
@@ -238,9 +235,9 @@ public class JudiciaryAssignmentService {
                 .withSurname(nonNullOrDefault(judiciary.getSurname()))
                 .withEmailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
                 .withJudiciaryType(nonNullOrDefault(judiciary.getJudiciaryType()))
-                .withPosition(position)
-                .withIsBenchChairman(isBenchChair)
-                .withIsDeputy(!isBenchChair)
+                .withPosition(assignment.getPosition())
+                .withIsBenchChairman(assignment.getIsBenchChairman())
+                .withIsDeputy(assignment.getIsDeputy())
                 .withCreatedOn(timestamp)
                 .withUpdatedOn(timestamp)
                 .withActive(true)

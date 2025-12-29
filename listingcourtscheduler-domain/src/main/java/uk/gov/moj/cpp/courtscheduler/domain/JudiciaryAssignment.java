@@ -8,6 +8,9 @@ public class JudiciaryAssignment {
 
     private String judiciaryId;
     private List<String> sessionIds = new ArrayList<>();
+    private Boolean isDeputy;
+    private Boolean isBenchChairman;
+    private String position;
 
     public JudiciaryAssignment() {
         // default constructor
@@ -34,6 +37,30 @@ public class JudiciaryAssignment {
         this.sessionIds = sessionIds;
     }
 
+    public Boolean getIsDeputy() {
+        return isDeputy;
+    }
+
+    public void setIsDeputy(final Boolean isDeputy) {
+        this.isDeputy = isDeputy;
+    }
+
+    public Boolean getIsBenchChairman() {
+        return isBenchChairman;
+    }
+
+    public void setIsBenchChairman(final Boolean isBenchChairman) {
+        this.isBenchChairman = isBenchChairman;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(final String position) {
+        this.position = position;
+    }
+
     public static JudiciaryAssignmentBuilder builder() {
         return new JudiciaryAssignmentBuilder();
     }
@@ -41,6 +68,9 @@ public class JudiciaryAssignment {
     public static final class JudiciaryAssignmentBuilder {
         private String judiciaryId;
         private final List<String> sessionIds = new ArrayList<>();
+        private Boolean isDeputy;
+        private Boolean isBenchChairman;
+        private String position;
 
         private JudiciaryAssignmentBuilder() {
         }
@@ -65,8 +95,27 @@ public class JudiciaryAssignment {
             return this;
         }
 
+        public JudiciaryAssignmentBuilder withIsDeputy(final Boolean isDeputy) {
+            this.isDeputy = isDeputy;
+            return this;
+        }
+
+        public JudiciaryAssignmentBuilder withIsBenchChairman(final Boolean isBenchChairman) {
+            this.isBenchChairman = isBenchChairman;
+            return this;
+        }
+
+        public JudiciaryAssignmentBuilder withPosition(final String position) {
+            this.position = position;
+            return this;
+        }
+
         public JudiciaryAssignment build() {
-            return new JudiciaryAssignment(judiciaryId, new ArrayList<>(sessionIds));
+            final JudiciaryAssignment assignment = new JudiciaryAssignment(judiciaryId, new ArrayList<>(sessionIds));
+            assignment.setIsDeputy(isDeputy);
+            assignment.setIsBenchChairman(isBenchChairman);
+            assignment.setPosition(position);
+            return assignment;
         }
     }
 }

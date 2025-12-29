@@ -137,6 +137,14 @@ public class AssignJudiciariesApiValidator {
             if (isValidUuidFormat(sessionId, errors)) {
                 validateSessionExists(index, sessionId, sessionsById, errors);
             }
+
+            if (assignment.getIsDeputy() == null) {
+                errors.add(message(index, "isDeputy is mandatory"));
+            }
+
+            if (assignment.getIsBenchChairman() == null) {
+                errors.add(message(index, "isBenchChairman is mandatory"));
+            }
         }
     }
 

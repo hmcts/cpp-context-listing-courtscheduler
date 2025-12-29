@@ -20,6 +20,9 @@ public class AssignJudiciariesRequestConverter {
     private static final String JUDICIARY_ID = "judiciaryId";
     private static final String SESSION_IDS = "sessionIds";
     private static final String SKIP_VALIDATIONS = "skipValidations";
+    private static final String IS_DEPUTY = "isDeputy";
+    private static final String IS_BENCH_CHAIRMAN = "isBenchChairman";
+    private static final String POSITION = "position";
 
     public AssignJudiciariesRequest convert(final JsonObject payload) {
         if (payload == null || !payload.containsKey(JUDICIARIES)) {
@@ -45,9 +48,18 @@ public class AssignJudiciariesRequestConverter {
     private JudiciaryAssignment toAssignment(final JsonObject jsonObject) {
         final String judiciaryId = jsonObject.getString(JUDICIARY_ID, null);
         final List<String> sessionIds = extractSessionIds(jsonObject.getJsonArray(SESSION_IDS));
+        final Boolean isDeputy = jsonObject.containsKey(IS_DEPUTY) && !jsonObject.isNull(IS_DEPUTY) 
+                ? jsonObject.getBoolean(IS_DEPUTY) : null;
+        final Boolean isBenchChairman = jsonObject.containsKey(IS_BENCH_CHAIRMAN) && !jsonObject.isNull(IS_BENCH_CHAIRMAN) 
+                ? jsonObject.getBoolean(IS_BENCH_CHAIRMAN) : null;
+        final String position = jsonObject.containsKey(POSITION) && !jsonObject.isNull(POSITION) 
+                ? jsonObject.getString(POSITION, null) : null;
         return JudiciaryAssignment.builder()
                 .withJudiciaryId(judiciaryId)
                 .withSessionIds(sessionIds)
+                .withIsDeputy(isDeputy)
+                .withIsBenchChairman(isBenchChairman)
+                .withPosition(position)
                 .build();
     }
 
