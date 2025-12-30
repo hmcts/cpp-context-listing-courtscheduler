@@ -786,14 +786,44 @@ public class SessionsApiValidator {
     private JsonObject validateUpdateIsDraft(UpdateCourtSchedule updateCourtSchedule, String jurisdiction) {
         Boolean isDraft = updateCourtSchedule.getIsDraft();
         
+        JsonObject crownMandatoryCheck = validateCrownIsDraftMandatory(jurisdiction, isDraft);
+        if (crownMandatoryCheck != EMPTY_JSON_OBJECT) {
+            return crownMandatoryCheck;
+        }
+        
+        JsonObject magistratesIsDraftCheck = validateMagistratesIsDraft(jurisdiction, isDraft);
+        if (magistratesIsDraftCheck != EMPTY_JSON_OBJECT) {
+            return magistratesIsDraftCheck;
+        }
+
+        JsonObject crownDraftChangeCheck = validateCrownDraftStateChange(updateCourtSchedule, jurisdiction, isDraft);
+        if (crownDraftChangeCheck != EMPTY_JSON_OBJECT) {
+            return crownDraftChangeCheck;
+        }
+
+        JsonObject crownDraftWithHearingsCheck = validateCrownDraftWithHearingsBooked(updateCourtSchedule, jurisdiction, isDraft);
+        if (crownDraftWithHearingsCheck != EMPTY_JSON_OBJECT) {
+            return crownDraftWithHearingsCheck;
+        }
+        
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateCrownIsDraftMandatory(String jurisdiction, Boolean isDraft) {
         if (CROWN.equalsIgnoreCase(jurisdiction) && isNull(isDraft)) {
             return buildErrorResponse("isDraft is mandatory for CROWN jurisdiction sessions");
         }
-        
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateMagistratesIsDraft(String jurisdiction, Boolean isDraft) {
         if (nonNull(isDraft) && TRUE.equals(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
             return buildErrorResponse("isDraft can only be true when jurisdiction is CROWN");
         }
+        return EMPTY_JSON_OBJECT;
+    }
 
+    private JsonObject validateCrownDraftStateChange(UpdateCourtSchedule updateCourtSchedule, String jurisdiction, Boolean isDraft) {
         if (CROWN.equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && TRUE.equals(isDraft)) {
             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
                     courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
@@ -801,8 +831,10 @@ public class SessionsApiValidator {
                 return buildErrorResponse("Cannot change isDraft from false to true for CROWN jurisdiction sessions");
             }
         }
+        return EMPTY_JSON_OBJECT;
+    }
 
-        // For CROWN draft sessions with hearings booked, prevent state change (isDraft from true to false)
+    private JsonObject validateCrownDraftWithHearingsBooked(UpdateCourtSchedule updateCourtSchedule, String jurisdiction, Boolean isDraft) {
         if (CROWN.equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && FALSE.equals(isDraft)) {
             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
                     courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
@@ -814,7 +846,6 @@ public class SessionsApiValidator {
                 }
             }
         }
-        
         return EMPTY_JSON_OBJECT;
     }
 
