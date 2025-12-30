@@ -53,6 +53,13 @@
           "courtroomId": 999,
           "courtroomName": "Courtroom 01",
           "venueId": 1
+        },
+        {
+          "id": "e06e1734-aa04-3ec0-b14c-400edab8b831",
+          "venueName": "TEST CROWN COURT",
+          "courtroomId": 1000,
+          "courtroomName": "Courtroom 02",
+          "venueId": 1
         }
       ]
     }

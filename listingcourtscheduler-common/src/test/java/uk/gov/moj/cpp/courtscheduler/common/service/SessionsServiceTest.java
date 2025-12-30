@@ -2871,8 +2871,6 @@ class SessionsServiceTest {
                 .thenReturn(List.of(session));
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
                 .thenReturn(Optional.of(courtRoom));
-        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(any(), any(), anyString(), anyList(), anyString()))
-                .thenReturn(emptyList());
         when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 

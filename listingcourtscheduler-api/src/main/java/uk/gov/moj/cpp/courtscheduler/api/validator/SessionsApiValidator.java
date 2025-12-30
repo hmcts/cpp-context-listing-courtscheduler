@@ -801,6 +801,19 @@ public class SessionsApiValidator {
                 return buildErrorResponse("Cannot change isDraft from false to true for CROWN jurisdiction sessions");
             }
         }
+
+        // For CROWN draft sessions with hearings booked, prevent state change (isDraft from true to false)
+        if (CROWN.equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && FALSE.equals(isDraft)) {
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
+                    courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+            if (nonNull(persistedCourtSchedule) && TRUE.equals(persistedCourtSchedule.getIsDraft())) {
+                List<AllocatedListingEachBooked> allocatedListings = allocatedListingService
+                        .getAllocatedListingEachBookedByCourtScheduleId(updateCourtSchedule.getCourtScheduleId());
+                if (!allocatedListings.isEmpty()) {
+                    return buildErrorResponse("Cannot assign state to a CROWN draft session with hearings booked");
+                }
+            }
+        }
         
         return EMPTY_JSON_OBJECT;
     }
@@ -857,8 +870,18 @@ public class SessionsApiValidator {
             return EMPTY_JSON_OBJECT;
         }
 
+        // For CROWN draft sessions with hearings booked, prevent courtroom assignment
+        String jurisdiction = updateCourtSchedule.getJurisdiction();
+        if (CROWN.equalsIgnoreCase(jurisdiction) && TRUE.equals(persistedCourtSchedule.getIsDraft())) {
+            List<AllocatedListingEachBooked> allocatedListings = allocatedListingService
+                    .getAllocatedListingEachBookedByCourtScheduleId(updateCourtSchedule.getCourtScheduleId());
+            if (!allocatedListings.isEmpty()) {
+                return buildErrorResponse("Cannot assign courtroom to a CROWN draft session with hearings booked");
+            }
+        }
+
         // Retrieve the new courtroom from reference data
-        Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(updateCourtSchedule.getJurisdiction())
+        Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(jurisdiction)
                 ? referenceDataCache.getCpCourtRoomByCourtRoomId(newCourtRoomId, requester)
                 : referenceDataCache.getRotaCourtRoomByCourtRoomId(newCourtRoomId, requester);
 
