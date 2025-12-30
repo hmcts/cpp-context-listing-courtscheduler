@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 
+import static java.lang.Boolean.FALSE;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.UUID.randomUUID;
@@ -85,6 +86,7 @@ class RotaDataEnricherTest {
 
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
+        final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
         final List<CourtSchedule> courtScheduleList = List.of(CourtSchedule.CourtScheduleBuilder.courtSchedule()
                 .withCourtSchedule(courtSchedule)
                 .withCourtScheduleId(courtScheduleId)
@@ -99,7 +101,7 @@ class RotaDataEnricherTest {
         final byte[] blobContent = givenBlobContent(file);
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, courtScheduleList, requester, randomUUID().toString());
+        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester, randomUUID().toString());
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
@@ -130,6 +132,7 @@ class RotaDataEnricherTest {
 
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
+        final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
         final List<CourtSchedule> courtScheduleList = List.of(CourtSchedule.CourtScheduleBuilder.courtSchedule()
                 .withCourtSchedule(courtSchedule)
                 .withCourtScheduleId(courtScheduleId)
@@ -145,7 +148,7 @@ class RotaDataEnricherTest {
 
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, courtScheduleList, requester, randomUUID().toString());
+        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester, randomUUID().toString());
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();

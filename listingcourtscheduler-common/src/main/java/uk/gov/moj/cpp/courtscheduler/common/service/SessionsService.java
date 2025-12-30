@@ -41,6 +41,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
@@ -53,7 +54,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -71,7 +74,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -95,6 +100,8 @@ public class SessionsService {
     private CourtScheduleRepository courtScheduleRepository;
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
+    @Inject
+    private CourtMigrationRepository courtMigrationRepository;
     @Inject
     private ReferenceDataCache referenceDataCache;
     @Inject
@@ -282,6 +289,45 @@ public class SessionsService {
         }
     }
 
+    public boolean isMigrated(final String ouCode) {
+        return courtMigrationRepository.findByOuCode(ouCode).isMigrated();
+    }
+
+    public boolean isMigratedByCourtCentreId(final String courtCentreId) {
+        return courtMigrationRepository.findByCourtCentreId(courtCentreId).isMigrated();
+    }
+
+    public Map<String, Boolean> migratedMapByOuCode() {
+        return courtMigrationRepository.findAll().stream()
+                .collect(Collectors.toMap(CourtSchedulerMigrationStatus::getOuCode, CourtSchedulerMigrationStatus::isMigrated));
+    }
+
+    public Result migrateOuCodes(OuCodeMigrateRequest ouCodeMigrateRequest) {
+        List<String> ouCodes = ouCodeMigrateRequest.getOuCodes();
+        boolean migrated = ouCodeMigrateRequest.isMigrated();
+        List<CourtSchedulerMigrationStatus> courtSchedulerMigrationStatusList = new ArrayList<>();
+        final AtomicBoolean isOuCodeNotPresent = new AtomicBoolean(false);
+
+        ouCodes.forEach(ouCode -> {
+            CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = courtMigrationRepository.findByOuCode(ouCode);
+            if (isNull(courtSchedulerMigrationStatus)) {
+                isOuCodeNotPresent.set(true);
+            }
+            courtSchedulerMigrationStatusList.add(courtSchedulerMigrationStatus);
+        });
+
+        if (isOuCodeNotPresent.get()) {
+            return new Result("One of the OuCode not present for migrate", false);
+        }
+
+        courtSchedulerMigrationStatusList.forEach(courtSchedulerMigrationStatus -> {
+            courtSchedulerMigrationStatus.setMigrated(migrated);
+            courtMigrationRepository.save(courtSchedulerMigrationStatus);
+        });
+
+        return Result.SUCCESS();
+    }
+
     @Transactional
     public Result ouCodesRecalculateAvailability(OuCodeRecalculateAvailabilityRequest request) {
 
@@ -351,12 +397,12 @@ public class SessionsService {
         }
 
         logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule");
-        final int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(slotAndScheduleInfo.newSlots(), slotAndScheduleInfo.newCourtScheduleJudiciaries(), courtScheduleIdsOfSavedSlots, ouCodes);
+        final int numberOfSavedJudiciarySchedules = saveJudiciarySchedule(slotAndScheduleInfo.newSlots(), slotAndScheduleInfo.newCourtScheduleJudiciaries(), courtScheduleIdsOfSavedSlots, false, ouCodes);
         logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedules: {}", numberOfSavedJudiciarySchedules);
 
-        logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule for existing slots");
-        final int numberOfSavedJudiciarySchedulesForExistingSlots = saveJudiciarySchedule(slotsForMigrated, slotAndScheduleInfo.courtScheduleJudiciariesForExistingSlots(), emptyList(), ouCodes);
-        logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedulesForExistingSlots: {}", numberOfSavedJudiciarySchedulesForExistingSlots);
+        logger.info("DD-15703:CourtScheduleRepository: before saveJudiciarySchedule for existing migrated slots");
+        final int numberOfSavedJudiciarySchedulesForMigratedExistingSlots = saveJudiciarySchedule(slotsForMigrated, slotAndScheduleInfo.courtScheduleJudiciariesForMigratedExistingSlots(), emptyList(), true, ouCodes);
+        logger.info("DD-15703:CourtScheduleRepository: after saveJudiciarySchedule with numberOfSavedJudiciarySchedulesForMigratedExistingSlots: {}", numberOfSavedJudiciarySchedulesForMigratedExistingSlots);
 
         logger.info("DD-15703:CourtScheduleRepository: before updateSlots");
         final int numberOfUpdatedSlots = updateSlots(slotAndScheduleInfo.slotsToUpdate(), businessTypeMap);
@@ -532,16 +578,17 @@ public class SessionsService {
     private int saveJudiciarySchedule(final Map<String, CourtSchedule> newRecords,
                                       final Collection<CourtScheduleJudiciary> scheduleJudiciaries,
                                       final List<String> courtScheduleIdsOfSavedSlots,
+                                      final boolean forMigrated,
                                       final List<String> ouCodes) {
 
         final AtomicInteger numberOfSavedJudiciaries = new AtomicInteger();
         scheduleJudiciaries.forEach(scheduleJudiciary -> {
             final CourtSchedule courtSchedule = newRecords.get(scheduleJudiciary.getCourtListingProfileId());
 
-            if (nonNull(courtSchedule) && (courtScheduleIdsOfSavedSlots.isEmpty() || courtScheduleIdsOfSavedSlots.contains(courtSchedule.getCourtScheduleId()))) {
+            if (nonNull(courtSchedule) && (forMigrated || courtScheduleIdsOfSavedSlots.contains(courtSchedule.getCourtScheduleId()))) {
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciaryEntity = CourtScheduleJudiciaryMapper.toEntity(scheduleJudiciary);
                 courtScheduleJudiciaryEntity.setUpdatedOn(Calendar.getInstance().getTime());
-                if (!courtScheduleIdsOfSavedSlots.isEmpty()) {
+                if (!forMigrated) {
                     courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
                 }
                 courtScheduleJudiciaryRepository.save(courtScheduleJudiciaryEntity);

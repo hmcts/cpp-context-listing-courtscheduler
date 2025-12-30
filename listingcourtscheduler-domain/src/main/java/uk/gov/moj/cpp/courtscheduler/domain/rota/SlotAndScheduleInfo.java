@@ -9,11 +9,11 @@ import java.util.Map;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-public record SlotAndScheduleInfo(List<String> existingSlotScheduleIds,
+public record SlotAndScheduleInfo(List<String> existingNonMigratedSlotScheduleIds,
                                   List<String> confirmedSlotIdsToDelete,
                                   Collection<CourtSchedule> slotsToUpdate,
                                   Collection<CourtScheduleJudiciary> newCourtScheduleJudiciaries,
-                                  Collection<CourtScheduleJudiciary> courtScheduleJudiciariesForExistingSlots,
+                                  Collection<CourtScheduleJudiciary> courtScheduleJudiciariesForMigratedExistingSlots,
                                   Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules,
                                   Map<String, CourtSchedule> newSlots,
                                   Map<String, Pair<String, String>> schedulesToUpdateMap) {

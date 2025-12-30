@@ -5,6 +5,8 @@ import static java.util.UUID.randomUUID;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +45,8 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConver
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ConverterException;
+import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
@@ -73,6 +77,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatusList;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
@@ -166,6 +171,8 @@ class CourtSchedulerApiTest {
     private UpdateCourtScheduleConverter updateCourtScheduleConverter;
     @Mock
     private CourtScheduleApiValidator courtScheduleApiValidator;
+    @Mock
+    private OuCodeMigrateConverter ouCodeMigrateConverter;
     @Mock
     private JudiciariesApiValidator judiciariesApiValidator;
     @Mock
@@ -624,6 +631,106 @@ class CourtSchedulerApiTest {
 
         verify(provisionalBookingService, atLeastOnce()).fetchProvisionalSlots(anyString());
         verify(enveloper, atLeastOnce()).withMetadataFrom(getProvisionalBookingEnvelope, requestName);
+    }
+
+    @Test
+    void shouldMigrateOuCodes() throws IOException {
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+        final OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        when(ouCodeMigrateConverter.convert(anyString())).thenReturn(ouCodeMigrateRequest);
+        when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
+        when(sessionsService.migrateOuCodes(any(OuCodeMigrateRequest.class))).thenReturn(Result.SUCCESS());
+        courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
+
+        verify(ouCodeMigrateConverter).convert(jsonObject.toString());
+        verify(sessionsService).migrateOuCodes(ouCodeMigrateRequest);
+        verify(enveloper, atLeastOnce()).withMetadataFrom(migrateOuCodeEnvelope, requestName);
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenMigrateOuCodesFails() throws IOException {
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+        final String errorMessage = "One of the OuCode not present for migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+        final OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        when(ouCodeMigrateConverter.convert(anyString())).thenReturn(ouCodeMigrateRequest);
+        when(sessionsService.migrateOuCodes(any(OuCodeMigrateRequest.class)))
+                .thenReturn(new Result(errorMessage, false));
+
+        final BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope));
+
+        assertThat(exception.getMessage(), is(errorMessage));
+        verify(ouCodeMigrateConverter).convert(jsonObject.toString());
+        verify(sessionsService).migrateOuCodes(ouCodeMigrateRequest);
+        verify(enveloper, never()).withMetadataFrom(any(), anyString());
+    }
+
+    @Test
+    void shouldPropagateConverterExceptionWhenConversionFails() throws IOException {
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+        final ConverterException converterException = new ConverterException("Conversion failed");
+        when(ouCodeMigrateConverter.convert(anyString())).thenThrow(converterException);
+
+        final ConverterException exception = assertThrows(ConverterException.class,
+                () -> courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope));
+
+        assertThat(exception, is(converterException));
+        verify(ouCodeMigrateConverter).convert(jsonObject.toString());
+        verify(sessionsService, never()).migrateOuCodes(any());
+        verify(enveloper, never()).withMetadataFrom(any(), anyString());
+    }
+
+    @Test
+    void shouldCallConverterWithCorrectPayload() throws IOException {
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+        final OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        when(ouCodeMigrateConverter.convert(jsonObject.toString())).thenReturn(ouCodeMigrateRequest);
+        when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
+        when(sessionsService.migrateOuCodes(any(OuCodeMigrateRequest.class))).thenReturn(Result.SUCCESS());
+
+        courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
+
+        final ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
+        verify(ouCodeMigrateConverter).convert(payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue(), is(jsonObject.toString()));
+    }
+
+    @Test
+    void shouldCallSessionsServiceWithConvertedRequest() throws IOException {
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+        final OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        ouCodeMigrateRequest.setMigrated(true);
+        when(ouCodeMigrateConverter.convert(anyString())).thenReturn(ouCodeMigrateRequest);
+        when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
+        when(sessionsService.migrateOuCodes(any(OuCodeMigrateRequest.class))).thenReturn(Result.SUCCESS());
+
+        courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
+
+        final ArgumentCaptor<OuCodeMigrateRequest> requestCaptor = ArgumentCaptor.forClass(OuCodeMigrateRequest.class);
+        verify(sessionsService).migrateOuCodes(requestCaptor.capture());
+        final OuCodeMigrateRequest capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest, is(ouCodeMigrateRequest));
+        assertThat(capturedRequest.isMigrated(), is(true));
     }
 
     @Test

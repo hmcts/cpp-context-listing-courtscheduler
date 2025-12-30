@@ -27,6 +27,7 @@ import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -66,6 +67,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
     private static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
     
     private static final String BEDFORD_SHIRE_MASTER_FILE_BASE_NAME = "IT_Test_lja_bedfordshire_rotaa_20240401T180039Z";
+    private static final String BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE = "B40IM00";
     private static final String COURT_SCHEDULE_MANUAL_ENTRIES_JSON = "court_schedule_manual_entries.json";
     private static final String ROTA_FILE_PROCESSOR_REQUEST_OLD = "rota-file-processor-request.json";
     private static final String ROTA_FILE_PROCESSOR_REQUEST_NEW = "rota-file-processor-request-new.json";
@@ -174,9 +176,10 @@ class NewRotaFileProcessorIT extends AbstractIT {
 
 
     private void processFullRotaFile(final String payloadFileName,
-                                     final int expectedNumberOfSlots, final int expectedNumberOfJudiciaries) throws IOException {
+                                     final int expectedNumberOfSlots, final int expectedNumberOfJudiciaries) throws IOException, SQLException {
         final Stopwatch stopwatch = Stopwatch.createStarted();
         final String finalMasterRotaFileName = uploadRotaFile();
+        insertCourtSchedulerMigrationStatus(List.of(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE));
         
         final String payloadAsJsonString = getPayload(payloadFileName);
         final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, ROTASL_PROCESS_ROTA_FILES_CONTENT_TYPE, 
@@ -306,6 +309,17 @@ class NewRotaFileProcessorIT extends AbstractIT {
     private void cleanJudiciaryTable() throws SQLException {
         logger.info("Cleaning court_schedule_judiciary table before second run");
         databaseSeeder.cleanCourtScheduleJudiciaryTable();
+        databaseSeeder.cleanMigrationStatusTable();
+    }
+    
+    private void insertCourtSchedulerMigrationStatus(final List<String> ouCodes) throws SQLException {
+        for (final String ouCode : ouCodes) {
+            final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+            courtSchedulerMigrationStatus.setOuCode(ouCode);
+            courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
+            courtSchedulerMigrationStatus.setMigrated(false);
+            databaseSeeder.insertCourtScheduleMigrationStatus(courtSchedulerMigrationStatus);
+        }
     }
     
     private static void assertDefaultStartTimeAndEndTime(final List<CourtSchedule> courtSchedules) {

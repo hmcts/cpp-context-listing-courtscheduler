@@ -46,7 +46,7 @@ public class JudiciaryUnassignmentService {
     @PersistenceContext(unitName = "courtscheduler-persistence-unit")
     private EntityManager entityManager;
 
-    @Transactional(REQUIRES_NEW)
+    @Transactional
     public void unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds, final String executionId) {
         unassignJudiciary(judiciaryToSessionIds, executionId, false);
     }
