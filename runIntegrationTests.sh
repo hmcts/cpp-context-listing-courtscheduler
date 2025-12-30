@@ -29,7 +29,7 @@ function runLiquibase {
 
 buildDeployAndTest() {
   loginToDockerContainerRegistry
-#  buildWarsForContextsWithoutServiceModule
+  buildWarsForContextsWithoutServiceModule
   undeployWarsFromDocker
   buildAndStartContainers
   runLiquibase
