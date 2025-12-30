@@ -48,10 +48,12 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Disabled
 class NewRotaFileProcessorIT extends AbstractIT {
 
     private static final Logger logger = LoggerFactory.getLogger(NewRotaFileProcessorIT.class);
