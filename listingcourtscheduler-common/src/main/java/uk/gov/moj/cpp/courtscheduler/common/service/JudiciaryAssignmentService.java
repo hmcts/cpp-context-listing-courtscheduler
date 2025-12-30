@@ -58,7 +58,7 @@ public class JudiciaryAssignmentService {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
-    @Transactional(REQUIRES_NEW)
+    @Transactional
     public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
                                                        final Requester requester,
                                                        final String executionId) {
