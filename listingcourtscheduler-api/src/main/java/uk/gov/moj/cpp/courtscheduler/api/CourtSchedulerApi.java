@@ -25,6 +25,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConve
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeRecalculateAvailabilityConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
@@ -60,6 +61,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatusList;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -144,6 +146,8 @@ public class CourtSchedulerApi {
     private UpdateCourtScheduleConverter updateCourtScheduleConverter;
     @Inject
     private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
+    @Inject
+    private OuCodeMigrateConverter ouCodeMigrateConverter;
     @Inject
     private OuCodeRecalculateAvailabilityConverter ouCodeRecalculateAvailabilityConverter;
     @Inject
@@ -485,6 +489,23 @@ public class CourtSchedulerApi {
 
         JsonObject responseObject = provisionalBookingService.fetchProvisionalSlots(bookingIds);
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
+    }
+
+    @Handles("courtscheduler.oucode.migrate")
+    public JsonEnvelope migrateOuCode(final JsonEnvelope envelope) {
+
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.oucode.migrate requested : {}", payload);
+
+        OuCodeMigrateRequest ouCodeMigrateRequest = ouCodeMigrateConverter.convert(payload.toString());
+
+        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
+
+        if (!result.isSuccess()) {
+            throw new BadRequestException(result.getMsg());
+        }
+
+        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
     }
 
     @Handles("courtscheduler.oucode.recalculate.availability")

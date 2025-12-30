@@ -9,6 +9,7 @@ import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 
 import java.sql.Connection;
@@ -66,6 +67,8 @@ public class DatabaseSeeder {
                     " WHERE  COURT_SCHEDULE_JUDICIARY.court_schedule_id = ? AND COURT_SCHEDULE_JUDICIARY.judiciary_id = ? " +
                     ";";
 
+    private static final String COURT_SCHEDULE_MIGRATION_STATUS_INSERT_SQL = "INSERT INTO courtscheduler_migration_status (" +
+            "oucode, court_centre_id, migrated, updated_on) VALUES(?, ?, ?, ?)";
     public static final String INSERT_PROVISIONAL_SLOTS_QRY = "INSERT INTO provisional_booking (booking_id, court_schedule_id, hearing_start_time) VALUES (?, ?, ?)";
     private static final String COURT_SCHEDULE_DELETE_SQL = "TRUNCATE TABLE court_schedule CASCADE";
     private static final String ALLOCATED_LISTING_DELETE_SQL = "TRUNCATE TABLE allocated_listings CASCADE";
@@ -73,6 +76,7 @@ public class DatabaseSeeder {
 
     private static final String COURT_SCHEDULE_JUDICIARY_DELETE_SQL = "TRUNCATE TABLE court_schedule_judiciary CASCADE";
     private static final String COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL = "DELETE FROM court_schedule_judiciary where court_listing_profile_id = ?";
+    private static final String MIGRATION_STATUS_DELETE_SQL = "TRUNCATE TABLE courtscheduler_migration_status CASCADE";
     private static final String ROTA_FILE_PROCESS_HISTORY_DELETE_SQL = "TRUNCATE TABLE rota_file_process_history CASCADE";
     private static final String ROTA_LOG_PROCESS_DELETE_SQL = "TRUNCATE TABLE rota_process_log CASCADE";
 
@@ -118,6 +122,13 @@ public class DatabaseSeeder {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
              final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL)) {
             preparedStatement.setString(1, listingProfileId);
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    public void cleanMigrationStatusTable() throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(MIGRATION_STATUS_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
@@ -342,6 +353,18 @@ public class DatabaseSeeder {
         }
     }
 
+    public void insertCourtScheduleMigrationStatus(CourtSchedulerMigrationStatus courtSchedulerMigrationStatus) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_MIGRATION_STATUS_INSERT_SQL)) {
+
+            preparedStatement.setObject(1, courtSchedulerMigrationStatus.getOuCode());
+            preparedStatement.setString(2, courtSchedulerMigrationStatus.getCourtCentreId());
+            preparedStatement.setBoolean(3, courtSchedulerMigrationStatus.isMigrated());
+            preparedStatement.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            preparedStatement.executeUpdate();
+        }
+    }
+
     public void bookSlots(final Collection<ProvisionalSlot> provisionalSlots, final String bookingId) {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
              final PreparedStatement stmt = connection.prepareStatement(INSERT_PROVISIONAL_SLOTS_QRY)) {
@@ -363,6 +386,7 @@ public class DatabaseSeeder {
         cleanAllocatedListingTable();
         cleanCourtScheduleTable();
         cleanCourtScheduleJudiciaryTable();
+        cleanMigrationStatusTable();
         cleanRotaFileProcessHistoryTable();
         cleanRotaProcessLogTable();
     }
