@@ -162,4 +162,36 @@ public class RotaFileUtility {
         
         return rotaFileProcessHistory;
     }
+
+    /**
+     * Logs the processing time for a blob file.
+     *
+     * @param logger       the logger instance to use
+     * @param blobName     the name of the blob file
+     * @param processStart the start time in nanoseconds
+     * @param processEnd   the end time in nanoseconds
+     */
+    public void logProcessingTime(final org.slf4j.Logger logger, final String blobName, 
+                                 final long processStart, final long processEnd) {
+        logger.info("PRF: Processing and parsing completed for blob {} in {} ms",
+                blobName, convertNanosToMillis(processEnd - processStart));
+    }
+
+    /**
+     * Updates the file process history with end date if history exists.
+     *
+     * @param logger                the logger instance to use
+     * @param rotaFileProcessHistory the file process history to update
+     * @param blobName              the name of the blob file
+     * @param rotaFileProcessHistoryService the service for updating file process history
+     */
+    public void updateFileProcessHistory(final org.slf4j.Logger logger,
+                                        final RotaFileProcessHistory rotaFileProcessHistory,
+                                        final String blobName,
+                                        final uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService rotaFileProcessHistoryService) {
+        if (rotaFileProcessHistory != null) {
+            rotaFileProcessHistoryService.update(rotaFileProcessHistory);
+            logger.info("Updated file process history with end date for blob: {}", blobName);
+        }
+    }
 }

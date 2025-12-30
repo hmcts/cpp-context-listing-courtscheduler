@@ -76,8 +76,13 @@ public class VenueCourtRoomHelper {
             final Integer venueId = Integer.parseInt(venueIdStr);
             final Venue venue = new Venue(locationId, venueId, venueName);
 
-            return referenceDataValidationService.validateAndFindVenue(venue, missingReferenceDataMappingMap, requester, executionId)
+            final CourtRoom courtRoom = referenceDataValidationService.validateAndFindVenue(venue, missingReferenceDataMappingMap, requester, executionId)
                     .orElse(null);
+            if (courtRoom != null) {
+                logger.info("Successfully validated venue and found court room - locationId: {}, venueId: {}, venueName: {}, courtRoomId: {}", 
+                        locationId, venueId, venueName, courtRoom.getCourtroomId());
+            }
+            return courtRoom;
         } catch (final NumberFormatException ex) {
             logger.warn("Invalid locationId or venueId format: locationId={}, venueId={}", locationIdStr, venueIdStr);
             return null;

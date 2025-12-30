@@ -6,7 +6,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
 
@@ -14,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Helper class for building judiciary assignment and unassignment requests.
+ * Helper class for building judiciary assignment requests.
  */
 @ApplicationScoped
 public class JudiciaryAssignmentRequestHelper {
@@ -29,34 +28,22 @@ public class JudiciaryAssignmentRequestHelper {
      */
     public AssignJudiciariesRequest buildAssignJudiciariesRequest(
             final Map<String, JudiciaryCourtScheduleData> judiciaryAssignmentDataMap) {
-        logger.debug("Building AssignJudiciariesRequest from map with {} entries", judiciaryAssignmentDataMap.size());
+        logger.info("Building AssignJudiciariesRequest from map with {} entries", judiciaryAssignmentDataMap.size());
 
         final List<JudiciaryAssignment> assignments = judiciaryAssignmentDataMap.entrySet().stream()
                 .map(entry -> buildJudiciaryAssignment(entry.getKey(), entry.getValue()))
                 .toList();
 
+        final int totalSessionIds = assignments.stream()
+                .mapToInt(a -> a.getSessionIds().size())
+                .sum();
+        logger.info("Built AssignJudiciariesRequest with {} judiciary assignments and {} total session IDs", 
+                assignments.size(), totalSessionIds);
+
         return AssignJudiciariesRequest.builder()
                 .withJudiciaries(assignments)
                 .withSkipValidations(true)
                 .build();
-    }
-
-    /**
-     * Converts a map of judiciary IDs to lists of court schedule UUIDs into a map with String session IDs.
-     *
-     * @param judiciaryUnAssignmentMap map where key is judiciaryId (String) and value is list of court schedule UUIDs
-     * @return Map where key is judiciaryId (String) and value is list of session IDs (String)
-     */
-    public Map<String, List<String>> convertToUnassignmentMap(final Map<String, List<UUID>> judiciaryUnAssignmentMap) {
-        logger.debug("Converting unassignment map with {} entries", judiciaryUnAssignmentMap.size());
-
-        return judiciaryUnAssignmentMap.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> entry.getValue().stream()
-                                .map(UUID::toString)
-                                .toList()
-                ));
     }
 
     /**

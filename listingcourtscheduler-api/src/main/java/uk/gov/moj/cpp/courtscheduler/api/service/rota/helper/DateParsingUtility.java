@@ -38,6 +38,7 @@ public class DateParsingUtility {
                 logger.warn("Date string does not match parsed date: {} != {}", sessionDateStr, formattedDate);
                 return null;
             }
+            logger.debug("Successfully parsed session date: {} to {}", sessionDateStr, parsedDate);
             return parsedDate;
         } catch (final Exception ex) {
             logger.warn("Failed to parse session date: {}", sessionDateStr, ex);

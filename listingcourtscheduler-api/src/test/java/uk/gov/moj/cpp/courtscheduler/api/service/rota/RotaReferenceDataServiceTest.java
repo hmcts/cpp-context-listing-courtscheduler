@@ -1,10 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
-import static java.util.Collections.emptyMap;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -20,16 +18,13 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.RO
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -310,207 +305,4 @@ class RotaReferenceDataServiceTest {
         assertThat(log.getErrorCode(), is(ROTA_PROCESSING_ERROR.code()));
     }
 
-    // ============================================================================
-    // Tests for getCourtRoomMappings
-    // ============================================================================
-
-    @Test
-    void shouldReturnCourtRoomMappings() {
-        // given
-        Map<UUID, CourtRoom> expectedMappings = new HashMap<>();
-        UUID courtRoomUuid1 = randomUUID();
-        UUID courtRoomUuid2 = randomUUID();
-        expectedMappings.put(courtRoomUuid1, courtRoom);
-        expectedMappings.put(courtRoomUuid2, courtRoom);
-
-        when(referenceDataMapperService.getCourtRoomsMap(requester)).thenReturn(expectedMappings);
-
-        // when
-        Map<UUID, CourtRoom> result = rotaReferenceDataService.getCourtRoomMappings(requester);
-
-        // then
-        assertThat(result, is(notNullValue()));
-        assertThat(result.size(), is(2));
-        assertTrue(result.containsKey(courtRoomUuid1));
-        assertTrue(result.containsKey(courtRoomUuid2));
-        verify(referenceDataMapperService).getCourtRoomsMap(requester);
-    }
-
-    @Test
-    void shouldReturnEmptyMap_WhenNoCourtRoomMappings() {
-        // given
-        when(referenceDataMapperService.getCourtRoomsMap(requester)).thenReturn(emptyMap());
-
-        // when
-        Map<UUID, CourtRoom> result = rotaReferenceDataService.getCourtRoomMappings(requester);
-
-        // then
-        assertThat(result, is(notNullValue()));
-        assertTrue(result.isEmpty());
-        verify(referenceDataMapperService).getCourtRoomsMap(requester);
-    }
-
-    // ============================================================================
-    // Tests for getBusinessTypeMappings
-    // ============================================================================
-
-    @Test
-    void shouldReturnBusinessTypeMappings() {
-        // given
-        Map<String, BusinessType> expectedMappings = new HashMap<>();
-        BusinessType businessType1 = BusinessType.BusinessTypeBuilder.aBusinessType()
-                .withTypeCode("DVLA")
-                .withTypeDescription("Driver and Vehicle Licensing Agency")
-                .build();
-        expectedMappings.put("DVLA", businessType1);
-
-        BusinessType businessType2 = BusinessType.BusinessTypeBuilder.aBusinessType()
-                .withTypeCode("CIVIL")
-                .withTypeDescription("Civil")
-                .build();
-        expectedMappings.put("CIVIL", businessType2);
-
-        when(referenceDataMapperService.getBusinessTypeMap(requester)).thenReturn(expectedMappings);
-
-        // when
-        Map<String, BusinessType> result = rotaReferenceDataService.getBusinessTypeMappings(requester);
-
-        // then
-        assertThat(result, is(notNullValue()));
-        assertThat(result.size(), is(2));
-        assertTrue(result.containsKey("DVLA"));
-        assertTrue(result.containsKey("CIVIL"));
-        verify(referenceDataMapperService).getBusinessTypeMap(requester);
-    }
-
-    @Test
-    void shouldReturnEmptyMap_WhenNoBusinessTypeMappings() {
-        // given
-        when(referenceDataMapperService.getBusinessTypeMap(requester)).thenReturn(emptyMap());
-
-        // when
-        Map<String, BusinessType> result = rotaReferenceDataService.getBusinessTypeMappings(requester);
-
-        // then
-        assertThat(result, is(notNullValue()));
-        assertTrue(result.isEmpty());
-        verify(referenceDataMapperService).getBusinessTypeMap(requester);
-    }
-
-    // ============================================================================
-    // Tests for validateAndFindSessionAllocation
-    // ============================================================================
-
-    @Test
-    void shouldReturnSessionAllocation_WhenFound() {
-        // given
-        String ouCode = "OU001";
-        Integer roomId = 123;
-        String listingSession = "AM";
-        String businessType = "DVLA";
-
-        CourtRoomSessionAllocation sessionAllocation = CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation()
-                .withOucode(ouCode)
-                .withCourtRoomId(roomId)
-                .withCourtSession(listingSession)
-                .withRotaBusinessTypeCode(businessType)
-                .build();
-
-        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                requester, ouCode, roomId, listingSession, businessType))
-                .thenReturn(Optional.of(sessionAllocation));
-
-        // when
-        Optional<CourtRoomSessionAllocation> result = rotaReferenceDataService.validateAndFindSessionAllocation(
-                requester, ouCode, roomId, listingSession, businessType);
-
-        // then
-        assertTrue(result.isPresent());
-        assertThat(result.get().getOucode(), is(ouCode));
-        assertThat(result.get().getCourtRoomId(), is(roomId));
-        verify(referenceDataMapperService).findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                requester, ouCode, roomId, listingSession, businessType);
-    }
-
-    @Test
-    void shouldReturnEmpty_WhenSessionAllocationNotFound() {
-        // given
-        String ouCode = "OU001";
-        Integer roomId = 123;
-        String listingSession = "AM";
-        String businessType = "DVLA";
-
-        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                requester, ouCode, roomId, listingSession, businessType))
-                .thenReturn(Optional.empty());
-
-        // when
-        Optional<CourtRoomSessionAllocation> result = rotaReferenceDataService.validateAndFindSessionAllocation(
-                requester, ouCode, roomId, listingSession, businessType);
-
-        // then
-        assertFalse(result.isPresent());
-        verify(referenceDataMapperService).findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                requester, ouCode, roomId, listingSession, businessType);
-    }
-
-    @Test
-    void shouldReturnEmpty_WhenOuCodeIsNull() {
-        // when
-        Optional<CourtRoomSessionAllocation> result = rotaReferenceDataService.validateAndFindSessionAllocation(
-                requester, null, 123, "AM", "DVLA");
-
-        // then
-        assertFalse(result.isPresent());
-        verify(referenceDataMapperService, never()).findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                any(), anyString(), any(), anyString(), anyString());
-    }
-
-    @Test
-    void shouldReturnEmpty_WhenRoomIdIsNull() {
-        // when
-        Optional<CourtRoomSessionAllocation> result = rotaReferenceDataService.validateAndFindSessionAllocation(
-                requester, "OU001", null, "AM", "DVLA");
-
-        // then
-        assertFalse(result.isPresent());
-        verify(referenceDataMapperService, never()).findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                any(), anyString(), any(), anyString(), anyString());
-    }
-
-    @Test
-    void shouldReturnEmpty_WhenListingSessionIsNull() {
-        // when
-        Optional<CourtRoomSessionAllocation> result = rotaReferenceDataService.validateAndFindSessionAllocation(
-                requester, "OU001", 123, null, "DVLA");
-
-        // then
-        assertFalse(result.isPresent());
-        verify(referenceDataMapperService, never()).findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                any(), anyString(), any(), anyString(), anyString());
-    }
-
-    @Test
-    void shouldReturnEmpty_WhenBusinessTypeIsNull() {
-        // when
-        Optional<CourtRoomSessionAllocation> result = rotaReferenceDataService.validateAndFindSessionAllocation(
-                requester, "OU001", 123, "AM", null);
-
-        // then
-        assertFalse(result.isPresent());
-        verify(referenceDataMapperService, never()).findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                any(), anyString(), any(), anyString(), anyString());
-    }
-
-    @Test
-    void shouldReturnEmpty_WhenAllParametersAreNull() {
-        // when
-        Optional<CourtRoomSessionAllocation> result = rotaReferenceDataService.validateAndFindSessionAllocation(
-                requester, null, null, null, null);
-
-        // then
-        assertFalse(result.isPresent());
-        verify(referenceDataMapperService, never()).findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                any(), anyString(), any(), anyString(), anyString());
-    }
 }

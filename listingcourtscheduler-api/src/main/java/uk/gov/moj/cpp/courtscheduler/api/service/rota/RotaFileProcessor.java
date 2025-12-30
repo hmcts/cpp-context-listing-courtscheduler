@@ -3,16 +3,14 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 import static java.util.Optional.empty;
 
 import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.CourtScheduleJudiciaryQueryHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryAssignmentRequestHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleData;
-import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleMapComparator;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaCourtScheduleHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaFileUtility;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaJudiciaryHelper;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaLocationPeriodHelper;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
-import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
@@ -21,12 +19,9 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 
 import java.io.ByteArrayInputStream;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import javax.ejb.Stateless;
 import javax.ejb.TransactionAttribute;
@@ -56,16 +51,7 @@ public class RotaFileProcessor {
     private RotaFileUtility rotaFileUtility;
 
     @Inject
-    private CourtScheduleJudiciaryQueryHelper courtScheduleJudiciaryQueryHelper;
-
-    @Inject
-    private JudiciaryCourtScheduleMapComparator mapComparator;
-
-    @Inject
     private JudiciaryAssignmentService judiciaryAssignmentService;
-
-    @Inject
-    private JudiciaryUnassignmentService judiciaryUnassignmentService;
 
     @Inject
     private RotaJudiciaryHelper rotaJudiciaryHelper;
@@ -75,6 +61,9 @@ public class RotaFileProcessor {
 
     @Inject
     private JudiciaryAssignmentRequestHelper judiciaryAssignmentRequestHelper;
+
+    @Inject
+    private RotaLocationPeriodHelper rotaLocationPeriodHelper;
 
     // ============================================================================
     // PUBLIC API METHODS
@@ -109,6 +98,7 @@ public class RotaFileProcessor {
             return;
         }
 
+        logger.info("Starting processing for blob: {}", blobName);
         final long processStart = System.nanoTime();
 
         final ParseResult parseResult = parseFileContent(blobName, blobByteArray);
@@ -116,25 +106,35 @@ public class RotaFileProcessor {
         final String executionId = parseResult.executionId();
         final RotaFileProcessHistory rotaFileProcessHistory = parseResult.rotaFileProcessHistory();
 
+        logger.info("Processing blob: {} with execution ID: {} - parsed {} record types", blobName, executionId, records.size());
+
+        // Extract locations and resolve OU codes
+        final var locations = rotaLocationPeriodHelper.getLocationFromRecords(records);
+        logger.info("Extracted {} location IDs from blob: {}", locations.size(), blobName);
+        final var ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations, requester);
+        logger.info("Resolved {} OU codes for blob: {}", ouCodes.size(), blobName);
+
+        // Get rota period dates and delete unallocated court schedule judiciaries
+        final var rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
+        final int deletedCount = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+                rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
+                rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
+                ouCodes);
+        logger.info("Deleted {} unallocated court schedule judiciaries for blob: {}", deletedCount, blobName);
+
         final ProcessingMaps processingMaps = createProcessingMaps(records, requester, executionId, blobName);
 
-        final Map<String, List<UUID>> rotaFeedMapForQuery = extractCourtScheduleIdsMap(
-                processingMaps.judiciaryCourtScheduleMapFromRotaFeed());
-        final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb = queryDatabaseForCourtScheduleIds(
-                rotaFeedMapForQuery, blobName);
-
-        processJudiciaryAssignmentsAndUnassignments(
+        // Execute judiciary assignments from the rota feed
+        executeJudiciaryAssignments(
                 processingMaps.judiciaryCourtScheduleMapFromRotaFeed(),
-                rotaFeedMapForQuery,
-                judiciaryCourtScheduleIdsFromDb,
                 requester,
                 executionId,
                 blobName);
 
-        updateFileProcessHistory(rotaFileProcessHistory, blobName);
+        rotaFileUtility.updateFileProcessHistory(logger, rotaFileProcessHistory, blobName, rotaFileProcessHistoryService);
 
         final long processEnd = System.nanoTime();
-        logProcessingTime(blobName, processStart, processEnd);
+        rotaFileUtility.logProcessingTime(logger, blobName, processStart, processEnd);
         logger.info("Rota file parsed successfully for blob: {} - parsed {} record types", blobName, records.size());
     }
 
@@ -191,134 +191,6 @@ public class RotaFileProcessor {
     }
 
     /**
-     * Extracts court schedule IDs map from the judiciary court schedule data map.
-     * This creates a simplified map containing only the court schedule IDs, which is used
-     * for database queries and comparison operations.
-     *
-     * @param judiciaryCourtScheduleDataMap the map containing JudiciaryCourtScheduleData records
-     *                                      with full assignment metadata (position, isBenchChairman, isDeputy)
-     * @return map of judiciary IDs to lists of court schedule UUIDs (metadata is excluded)
-     */
-    private Map<String, List<UUID>> extractCourtScheduleIdsMap(
-            final Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleDataMap) {
-        return judiciaryCourtScheduleDataMap.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> entry.getValue().courtScheduleIds()
-                ));
-    }
-
-    /**
-     * Queries the database for court schedule IDs by judiciary IDs.
-     * This method uses only the court schedule IDs (not the full assignment metadata)
-     * to query existing assignments in the database.
-     *
-     * @param judiciaryCourtScheduleMapFromRotaFeed the map from rota feed containing
-     *                                               judiciary IDs to lists of court schedule UUIDs
-     * @param blobName                               the name of the blob file
-     * @return map of judiciary IDs to court schedule IDs from database
-     */
-    private Map<String, List<UUID>> queryDatabaseForCourtScheduleIds(
-            final Map<String, List<UUID>> judiciaryCourtScheduleMapFromRotaFeed,
-            final String blobName) {
-        if (judiciaryCourtScheduleMapFromRotaFeed.isEmpty()) {
-            logger.debug("Skipping database query - no judiciary court schedule map entries for blob: {}", blobName);
-            return Collections.emptyMap();
-        }
-
-        final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb =
-                courtScheduleJudiciaryQueryHelper.queryCourtScheduleIdsByJudiciaryIds(judiciaryCourtScheduleMapFromRotaFeed);
-        logger.info("Queried court schedule IDs from database for {} judiciary IDs for blob: {}",
-                judiciaryCourtScheduleIdsFromDb.size(), blobName);
-        return judiciaryCourtScheduleIdsFromDb;
-    }
-
-    /**
-     * Processes judiciary assignments and unassignments based on differences between rota feed and database.
-     * Compares the rota feed data with database records to identify:
-     * - Assignments: court schedules in rota feed but not in database
-     * - Unassignments: court schedules in database but not in rota feed
-     *
-     * @param judiciaryCourtScheduleDataMapFromRotaFeed the map from rota feed with full assignment data
-     *                                                   including position, isBenchChairman, and isDeputy
-     * @param rotaFeedMapForQuery the map from rota feed with just court schedule IDs for comparison
-     * @param judiciaryCourtScheduleIdsFromDb the map from database containing existing assignments
-     * @param requester the requester for making service calls
-     * @param executionId the execution ID for logging
-     * @param blobName the name of the blob file
-     */
-    private void processJudiciaryAssignmentsAndUnassignments(
-            final Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleDataMapFromRotaFeed,
-            final Map<String, List<UUID>> rotaFeedMapForQuery,
-            final Map<String, List<UUID>> judiciaryCourtScheduleIdsFromDb,
-            final Requester requester,
-            final String executionId,
-            final String blobName) {
-        final Map<String, List<UUID>> judiciaryAssignmentIdsMap = mapComparator.findMissingCourtScheduleIdsInDB(
-                rotaFeedMapForQuery, judiciaryCourtScheduleIdsFromDb);
-        logger.info("Found missing court schedule IDs for {} judiciary IDs for blob: {}",
-                judiciaryAssignmentIdsMap.size(), blobName);
-
-        final Map<String, List<UUID>> judiciaryUnAssignmentMap = mapComparator.findMissingCourtScheduleIdsInRotaFeed(
-                judiciaryCourtScheduleIdsFromDb, rotaFeedMapForQuery);
-        logger.info("Found court schedule IDs in database missing in rota feed for {} judiciary IDs for blob: {}",
-                judiciaryUnAssignmentMap.size(), blobName);
-
-        final Map<String, JudiciaryCourtScheduleData> judiciaryAssignmentDataMap =
-                buildAssignmentDataMap(judiciaryAssignmentIdsMap, judiciaryCourtScheduleDataMapFromRotaFeed);
-
-        executeJudiciaryUnassignments(judiciaryUnAssignmentMap, executionId, blobName);
-        executeJudiciaryAssignments(judiciaryAssignmentDataMap, requester, executionId, blobName);
-    }
-
-    /**
-     * Builds assignment data map by filtering schedule IDs from the original data map.
-     * Only includes the schedule IDs that need to be assigned, while preserving
-     * the assignment metadata (position, isBenchChairman, isDeputy) from the original data.
-     *
-     * @param judiciaryAssignmentIdsMap map of judiciary IDs to schedule IDs that need assignment
-     * @param judiciaryCourtScheduleDataMapFromRotaFeed the original data map with all schedule information
-     *                                                  including assignment metadata
-     * @return filtered assignment data map containing only the schedules to be assigned,
-     *         with metadata preserved from the original data
-     */
-    private Map<String, JudiciaryCourtScheduleData> buildAssignmentDataMap(
-            final Map<String, List<UUID>> judiciaryAssignmentIdsMap,
-            final Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleDataMapFromRotaFeed) {
-        return judiciaryAssignmentIdsMap.entrySet().stream()
-                .filter(entry -> judiciaryCourtScheduleDataMapFromRotaFeed.containsKey(entry.getKey()))
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> filterScheduleData(
-                                judiciaryCourtScheduleDataMapFromRotaFeed.get(entry.getKey()),
-                                entry.getValue())
-                ));
-    }
-
-    /**
-     * Filters schedule data to only include the schedule IDs that need to be assigned.
-     * Preserves all assignment metadata (position, isBenchChairman, isDeputy) from the original data.
-     *
-     * @param originalData the original schedule data containing all court schedule IDs and metadata
-     * @param scheduleIdsToAssign the schedule IDs that need to be assigned (subset of original IDs)
-     * @return filtered JudiciaryCourtScheduleData containing only the specified schedule IDs
-     *         with all original metadata preserved
-     */
-    private JudiciaryCourtScheduleData filterScheduleData(
-            final JudiciaryCourtScheduleData originalData,
-            final List<UUID> scheduleIdsToAssign) {
-        final List<UUID> filteredScheduleIds = originalData.courtScheduleIds().stream()
-                .filter(scheduleIdsToAssign::contains)
-                .collect(Collectors.toList());
-        return new JudiciaryCourtScheduleData(
-                filteredScheduleIds,
-                originalData.position(),
-                originalData.isBenchChairman(),
-                originalData.isDeputy()
-        );
-    }
-
-    /**
      * Executes judiciary assignments if there are any to process.
      * The assignment data includes court schedule IDs along with assignment metadata
      * (position, isBenchChairman, isDeputy) which will be persisted to the database.
@@ -346,52 +218,9 @@ public class RotaFileProcessor {
                 assignResponse.getFailures().size());
     }
 
-    /**
-     * Executes judiciary unassignments if there are any to process.
-     *
-     * @param judiciaryUnAssignmentMap the map of unassignments to process
-     * @param executionId              the execution ID for logging
-     * @param blobName                 the name of the blob file
-     */
-    private void executeJudiciaryUnassignments(final Map<String, List<UUID>> judiciaryUnAssignmentMap,
-                                               final String executionId,
-                                               final String blobName) {
-        if (judiciaryUnAssignmentMap.isEmpty()) {
-            logger.debug("Skipping judiciary unassignment - no unassignments to process for blob: {}", blobName);
-            return;
-        }
-
-        processJudiciaryUnassignments(judiciaryUnAssignmentMap, executionId);
-        logger.info("Unassigned judiciaries for blob: {} - processed {} judiciary IDs",
-                blobName, judiciaryUnAssignmentMap.size());
-    }
-
-    /**
-     * Updates the file process history with end date if history exists.
-     *
-     * @param rotaFileProcessHistory the file process history to update
-     * @param blobName               the name of the blob file
-     */
-    private void updateFileProcessHistory(final RotaFileProcessHistory rotaFileProcessHistory, final String blobName) {
-        if (rotaFileProcessHistory != null) {
-            rotaFileProcessHistoryService.update(rotaFileProcessHistory);
-            logger.info("Updated file process history with end date for blob: {}", blobName);
-        }
-    }
-
-    /**
-     * Logs the processing time for a blob.
-     *
-     * @param blobName     the name of the blob file
-     * @param processStart the start time in nanoseconds
-     * @param processEnd   the end time in nanoseconds
-     */
-    private void logProcessingTime(final String blobName, final long processStart, final long processEnd) {
-        logger.info("{}Processing and parsing completed for blob {} in {} ms",
-                LOG_PREFIX_PRF, blobName, rotaFileUtility.convertNanosToMillis(processEnd - processStart));
-    }
 
     private void uploadAndCleanup(final byte[] blobByteArray, final String blobName, final String leaseId) {
+        logger.info("Starting upload and cleanup for blob: {}", blobName);
         final long uploadStart = System.nanoTime();
         final long fileLength = blobByteArray.length;
         azureBlobClientService.uploadProcessedFile(new ByteArrayInputStream(blobByteArray), fileLength, blobName, empty());
@@ -400,8 +229,9 @@ public class RotaFileProcessor {
                 rotaFileUtility.convertNanosToMillis(uploadEnd - uploadStart));
 
         azureBlobClientService.releaseLease(blobName, leaseId, false);
+        logger.info("Released lease for blob: {}", blobName);
         azureBlobClientService.deleteFile(blobName, empty());
-        logger.info("Blob {} processed and cleaned up", blobName);
+        logger.info("Blob {} processed and cleaned up successfully", blobName);
     }
 
     // ============================================================================
@@ -437,6 +267,7 @@ public class RotaFileProcessor {
         return records;
     }
 
+
     // ============================================================================
     // PRIVATE PROCESSING METHODS - Judiciary Assignment Processing
     // ============================================================================
@@ -458,18 +289,6 @@ public class RotaFileProcessor {
             final String executionId) {
         final var assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(judiciaryAssignmentDataMap);
         return judiciaryAssignmentService.assignJudiciaries(assignRequest, requester, executionId);
-    }
-
-    /**
-     * Processes judiciary unassignments by converting the map and calling the unassignment service.
-     *
-     * @param judiciaryUnAssignmentMap map of judiciary IDs to court schedule UUIDs
-     * @param executionId             the execution ID for logging
-     */
-    private void processJudiciaryUnassignments(final Map<String, List<UUID>> judiciaryUnAssignmentMap,
-                                               final String executionId) {
-        final Map<String, List<String>> unassignMap = judiciaryAssignmentRequestHelper.convertToUnassignmentMap(judiciaryUnAssignmentMap);
-        judiciaryUnassignmentService.unassignJudiciary(unassignMap, executionId, true);
     }
 
     // ============================================================================

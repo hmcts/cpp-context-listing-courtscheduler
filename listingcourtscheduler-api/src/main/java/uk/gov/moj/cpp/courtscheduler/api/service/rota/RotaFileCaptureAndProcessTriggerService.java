@@ -91,9 +91,14 @@ public class RotaFileCaptureAndProcessTriggerService {
     }
 
     private void loadReferenceData(final Requester requester) {
+        logger.info("Loading reference data for rota processing");
         referenceDataMapperService.loadCourtRooms(requester);
+        logger.info("Court rooms loaded");
         referenceDataMapperService.loadJudiciaries(requester);
+        logger.info("Judiciaries loaded");
         referenceDataMapperService.loadCourtRoomSessionAllocations(requester);
+        logger.info("Court room session allocations loaded");
         referenceDataMapperService.loadBusinessTypeMap(requester);
+        logger.info("Business type map loaded - reference data loading completed");
     }
 }

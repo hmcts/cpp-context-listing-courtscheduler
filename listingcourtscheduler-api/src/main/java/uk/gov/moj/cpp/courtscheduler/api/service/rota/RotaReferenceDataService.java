@@ -11,15 +11,12 @@ import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaPr
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -32,9 +29,6 @@ import org.slf4j.LoggerFactory;
  * This service groups together all reference data checks including:
  * - Judiciary identification and validation (by email)
  * - Venue identification and validation (by location ID, venue ID, and venue name)
- * - Court room mappings (location ID to OU code resolution)
- * - Business type mappings (business type validation)
- * - Session allocation validation (OU code, room ID, session, and business type)
  */
 @ApplicationScoped
 public class RotaReferenceDataService {
@@ -67,7 +61,8 @@ public class RotaReferenceDataService {
             final Optional<Judiciary> judiciaryOptional = referenceDataMapperService.findByEmail(requester, email);
 
             if (judiciaryOptional.isPresent()) {
-                logger.debug("Judiciary validation for email {} - found: {}", email, true);
+                logger.info("Judiciary validation successful for email: {} - found judiciary ID: {}", 
+                        email, judiciaryOptional.get().getId());
                 return judiciaryOptional;
             } else {
                 // Judiciary not found - don't log here, let caller aggregate
@@ -132,7 +127,9 @@ public class RotaReferenceDataService {
             final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(venue, safeExceptionMessages, requester);
 
             if (courtRoomOptional.isPresent()) {
-                logger.debug("Venue validated successfully - found court room: {}", courtRoomOptional.get().getCourtroomId());
+                logger.info("Venue validated successfully - locationId: {}, venueId: {}, venueName: {} - found court room: {}", 
+                        venue.getLocationId(), venue.getVenueId(), venue.getVenueName(), 
+                        courtRoomOptional.get().getCourtroomId());
                 return courtRoomOptional;
             } else {
                 // Venue not found - populate map if provided, otherwise log directly
@@ -180,74 +177,6 @@ public class RotaReferenceDataService {
         final String venueName = defaultIfBlank(venue.getVenueName(), "UNKNOWN_VENUE");
         final String venueId = venue.getVenueId() != null ? venue.getVenueId().toString() : "UNKNOWN_VENUE_ID";
         return format("%s - %s - %s", locationId, venueName, venueId);
-    }
-
-    /**
-     * Retrieves all court room mappings for location ID to OU code resolution.
-     * Used to map rota location IDs to organizational unit codes.
-     *
-     * @param requester the requester for making reference data queries
-     * @return Map of court room UUIDs to CourtRoom objects
-     */
-    public Map<UUID, CourtRoom> getCourtRoomMappings(final Requester requester) {
-        logger.debug("Retrieving court room mappings");
-        final Map<UUID, CourtRoom> courtRoomsMap = referenceDataMapperService.getCourtRoomsMap(requester);
-        logger.debug("Retrieved {} court room mappings", courtRoomsMap.size());
-        return courtRoomsMap;
-    }
-
-    /**
-     * Retrieves business type mappings for validation.
-     * Used to validate business types from the rota file.
-     *
-     * @param requester the requester for making reference data queries
-     * @return Map of business type codes to BusinessType objects
-     */
-    public Map<String, BusinessType> getBusinessTypeMappings(final Requester requester) {
-        logger.debug("Retrieving business type mappings");
-        final Map<String, BusinessType> businessTypesMap = referenceDataMapperService.getBusinessTypeMap(requester);
-        logger.debug("Retrieved {} business type mappings", businessTypesMap.size());
-        return businessTypesMap;
-    }
-
-    /**
-     * Validates and retrieves session allocation information.
-     * Checks if a session allocation exists for the given OU code, room ID, session, and business type.
-     *
-     * @param requester      the requester for making reference data queries
-     * @param ouCode         the organizational unit code
-     * @param roomId         the court room ID
-     * @param listingSession the listing session (e.g., "AM", "PM", "ALL_DAY")
-     * @param businessType   the business type code
-     * @return Optional containing the CourtRoomSessionAllocation if found, empty otherwise
-     */
-    public Optional<CourtRoomSessionAllocation> validateAndFindSessionAllocation(final Requester requester,
-                                                                                 final String ouCode,
-                                                                                 final Integer roomId,
-                                                                                 final String listingSession,
-                                                                                 final String businessType) {
-        if (ouCode == null || roomId == null || listingSession == null || businessType == null) {
-            logger.warn("Session allocation validation skipped - missing required parameters: ouCode={}, roomId={}, listingSession={}, businessType={}",
-                    ouCode, roomId, listingSession, businessType);
-            return empty();
-        }
-
-        logger.debug("Validating session allocation - ouCode: {}, roomId: {}, listingSession: {}, businessType: {}",
-                ouCode, roomId, listingSession, businessType);
-
-        final Optional<CourtRoomSessionAllocation> sessionAllocation =
-                referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                        requester, ouCode, roomId, listingSession, businessType);
-
-        if (sessionAllocation.isPresent()) {
-            logger.debug("Session allocation validated successfully - found allocation for ouCode: {}, roomId: {}",
-                    ouCode, roomId);
-        } else {
-            logger.debug("Session allocation not found - ouCode: {}, roomId: {}, listingSession: {}, businessType: {}",
-                    ouCode, roomId, listingSession, businessType);
-        }
-
-        return sessionAllocation;
     }
 }
 

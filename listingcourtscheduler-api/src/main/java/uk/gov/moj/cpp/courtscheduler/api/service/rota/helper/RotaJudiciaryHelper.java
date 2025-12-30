@@ -102,7 +102,7 @@ public class RotaJudiciaryHelper {
 
         logMissingJudiciaries(missingJudiciaryEmails, executionId);
 
-        logger.debug("Created judiciary map with {} entries ({} magistrates, {} district judges)",
+        logger.info("Created judiciary map with {} entries ({} magistrates, {} district judges)",
                 judiciaryMap.size(), magistrates.size(), districtJudges.size());
 
         return judiciaryMap;
@@ -179,7 +179,7 @@ public class RotaJudiciaryHelper {
         final int totalSchedules = judiciaryCourtScheduleMap.values().stream()
                 .mapToInt(data -> data.courtScheduleIds().size())
                 .sum();
-        logger.debug("Created judiciary court schedule map with {} entries and {} total court schedules from {} schedule judiciary entries",
+        logger.info("Created judiciary court schedule map with {} entries and {} total court schedules from {} schedule judiciary entries",
                 judiciaryCourtScheduleMap.size(), totalSchedules, scheduleJudiciaryList.size());
 
         return judiciaryCourtScheduleMap;
@@ -340,7 +340,7 @@ public class RotaJudiciaryHelper {
             }
         });
 
-        logger.debug("Created schedule judiciary list with {} entries from {} schedules",
+        logger.info("Created schedule judiciary list with {} entries from {} schedules",
                 scheduleJudiciaryList.size(), schedules.size());
 
         return scheduleJudiciaryList;
