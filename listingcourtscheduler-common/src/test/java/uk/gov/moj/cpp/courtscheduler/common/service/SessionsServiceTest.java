@@ -2919,7 +2919,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
                 .thenReturn(Optional.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
-                eq("Courtroom 1"), eq(sessionDate), anyString(), anyList(), eq(courtCentreId), eq(courtScheduleId)))
+                eq(courtRoomId), eq(sessionDate), anyString(), anyList(), eq(courtCentreId), eq(courtScheduleId)))
                 .thenReturn(List.of(duplicateSession));
         when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
