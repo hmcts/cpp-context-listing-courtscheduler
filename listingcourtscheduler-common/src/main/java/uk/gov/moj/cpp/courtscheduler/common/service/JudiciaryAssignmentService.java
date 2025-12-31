@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
-import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
@@ -223,7 +222,8 @@ public class JudiciaryAssignmentService {
                                                                final String sessionId,
                                                                final Date timestamp,
                                                                final JudiciaryAssignment assignment) {
-        final String rotaJudiciaryId = firstNonEmpty(judiciary.getCpUserId(), judiciary.getId());
+        final String rotaJudiciaryId = firstNonEmpty(assignment.getRotaJudiciaryId(), 
+                firstNonEmpty(judiciary.getCpUserId(), judiciary.getId()));
 
         return CourtScheduleJudiciary.judiciary()
                 .withCourtScheduleId(sessionId)

@@ -586,7 +586,7 @@ class RotaFileProcessorTest {
                     .thenReturn(Map.of("listing-1", Set.of(UUID.randomUUID())));
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
                     .thenReturn(Map.of(judiciary.getId(), List.of(new JudiciaryCourtScheduleData(
-                            List.of(UUID.randomUUID()), "CHAIR", true, false))));
+                            List.of(UUID.randomUUID()), null, "CHAIR", true, false))));
 
             // when
             rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
@@ -662,7 +662,7 @@ class RotaFileProcessorTest {
             final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
             final Map<String, JudiciaryCourtScheduleData> assignmentDataMap = new HashMap<>();
             assignmentDataMap.put(judiciary.getId(), new JudiciaryCourtScheduleData(
-                    List.of(sessionId1), "CHAIR", true, false));
+                    List.of(sessionId1), null, "CHAIR", true, false));
 
             final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciary.getId(), sessionId1);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
@@ -694,7 +694,7 @@ class RotaFileProcessorTest {
 
             final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
             rotaFeedDataMap.put(judiciary.getId(), List.of(new JudiciaryCourtScheduleData(
-                    List.of(sessionId1, sessionId2), "CHAIR", true, false)));
+                    List.of(sessionId1, sessionId2), null, "CHAIR", true, false)));
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
@@ -751,9 +751,9 @@ class RotaFileProcessorTest {
 
             final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
             rotaFeedDataMap.put(judiciaryId1, List.of(new JudiciaryCourtScheduleData(
-                    List.of(sessionId1), "CHAIR", true, false)));
+                    List.of(sessionId1), null, "CHAIR", true, false)));
             rotaFeedDataMap.put(judiciaryId2, List.of(new JudiciaryCourtScheduleData(
-                    List.of(sessionId2), "CHAIR", true, false)));
+                    List.of(sessionId2), null, "CHAIR", true, false)));
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
@@ -791,9 +791,9 @@ class RotaFileProcessorTest {
             final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
             // Same judiciary with multiple schedule data entries
             rotaFeedDataMap.put(judiciaryId1, List.of(
-                    new JudiciaryCourtScheduleData(List.of(sessionId1), "CHAIR", true, false),
-                    new JudiciaryCourtScheduleData(List.of(sessionId2), "LEFT_WINGER", false, true),
-                    new JudiciaryCourtScheduleData(List.of(sessionId3), "RIGHT_WINGER", false, false)
+                    new JudiciaryCourtScheduleData(List.of(sessionId1), null, "CHAIR", true, false),
+                    new JudiciaryCourtScheduleData(List.of(sessionId2), null, "LEFT_WINGER", false, true),
+                    new JudiciaryCourtScheduleData(List.of(sessionId3), null, "RIGHT_WINGER", false, false)
             ));
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
                     .thenReturn(rotaFeedDataMap);
@@ -835,7 +835,7 @@ class RotaFileProcessorTest {
 
             final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
             rotaFeedDataMap.put(judiciaryId1, List.of(new JudiciaryCourtScheduleData(
-                    List.of(sessionId1), "CHAIR", true, false)));
+                    List.of(sessionId1), null, "CHAIR", true, false)));
             rotaFeedDataMap.put("judiciary-2", Collections.emptyList()); // Empty list
             rotaFeedDataMap.put("judiciary-3", null); // Null list
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
@@ -1168,7 +1168,7 @@ class RotaFileProcessorTest {
         // Mock RotaJudiciaryHelper for judiciary court schedule map
         final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedMap = new HashMap<>();
         rotaFeedMap.put(judiciary.getId(), List.of(new JudiciaryCourtScheduleData(
-                List.of(UUID.fromString(courtSchedule.getCourtScheduleId())), "CHAIR", true, false)));
+                List.of(UUID.fromString(courtSchedule.getCourtScheduleId())), null, "CHAIR", true, false)));
         when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
                 .thenReturn(rotaFeedMap);
     }

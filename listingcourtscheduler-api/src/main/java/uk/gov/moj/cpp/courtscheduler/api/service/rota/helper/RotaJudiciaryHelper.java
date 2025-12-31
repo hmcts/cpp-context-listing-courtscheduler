@@ -287,6 +287,7 @@ public class RotaJudiciaryHelper {
     private JudiciaryCourtScheduleData createScheduleData(final CourtScheduleJudiciary schedule, final Set<UUID> scheduleIds) {
         return new JudiciaryCourtScheduleData(
                 new ArrayList<>(scheduleIds),
+                schedule.getRotaJudiciaryId(),
                 schedule.getPosition(),
                 schedule.getBenchChairman(),
                 schedule.getDeputy()

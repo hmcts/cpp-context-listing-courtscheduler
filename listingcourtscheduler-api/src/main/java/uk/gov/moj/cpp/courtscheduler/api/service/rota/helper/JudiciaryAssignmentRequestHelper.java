@@ -67,6 +67,7 @@ public class JudiciaryAssignmentRequestHelper {
                 .toList();
         return JudiciaryAssignment.builder()
                 .withJudiciaryId(judiciaryId)
+                .withRotaJudiciaryId(data.rotaJudiciaryId())
                 .withSessionIds(sessionIds)
                 .withPosition(data.position())
                 .withIsBenchChairman(data.isBenchChairman())
