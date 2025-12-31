@@ -937,13 +937,15 @@ public class SessionsService {
             final String sessionCourtSession = session.getCourtSession();
             final List<String> duplicateSessionTypes = getDuplicateSessionTypes(sessionCourtSession);
             
-            if (isNotEmpty(duplicateSessionTypes) && nonNull(courtRoomName) && nonNull(session.getSessionDate()) && nonNull(session.getBusinessType())) {
+            if (isNotEmpty(duplicateSessionTypes) && nonNull(courtRoomName) && nonNull(session.getSessionDate()) 
+                    && nonNull(session.getBusinessType()) && nonNull(session.getCourtHouseId())) {
                 final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> duplicateSessions = 
                         courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
                                 courtRoomName,
                                 session.getSessionDate(),
                                 session.getBusinessType(),
                                 duplicateSessionTypes,
+                                session.getCourtHouseId(),
                                 session.getCourtScheduleId());
                 
                 if (isNotEmpty(duplicateSessions)) {
