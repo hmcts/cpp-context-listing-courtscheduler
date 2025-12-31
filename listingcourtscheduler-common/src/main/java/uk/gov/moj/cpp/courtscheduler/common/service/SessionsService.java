@@ -933,15 +933,15 @@ public class SessionsService {
             }
 
             // Check for duplicate sessions
-            final String courtRoomName = courtRoom.get().getCourtroomName();
+            final String courtRoomId = request.getCourtRoomId();
             final String sessionCourtSession = session.getCourtSession();
             final List<String> duplicateSessionTypes = getDuplicateSessionTypes(sessionCourtSession);
             
-            if (isNotEmpty(duplicateSessionTypes) && nonNull(courtRoomName) && nonNull(session.getSessionDate()) 
+            if (isNotEmpty(duplicateSessionTypes) && nonNull(courtRoomId) && nonNull(session.getSessionDate()) 
                     && nonNull(session.getBusinessType()) && nonNull(session.getCourtHouseId())) {
                 final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> duplicateSessions = 
                         courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
-                                courtRoomName,
+                                courtRoomId,
                                 session.getSessionDate(),
                                 session.getBusinessType(),
                                 duplicateSessionTypes,
