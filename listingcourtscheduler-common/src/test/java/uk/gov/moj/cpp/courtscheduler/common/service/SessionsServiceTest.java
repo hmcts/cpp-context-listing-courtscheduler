@@ -2683,7 +2683,7 @@ class SessionsServiceTest {
                 .thenReturn(List.of(session1, session2));
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
                 .thenReturn(Optional.of(courtRoom));
-        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString()))
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId1))
                 .thenReturn(persistedSession1);
@@ -2919,7 +2919,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
                 .thenReturn(Optional.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
-                eq("Courtroom 1"), eq(sessionDate), anyString(), anyList(), eq(courtScheduleId)))
+                eq("Courtroom 1"), eq(sessionDate), anyString(), anyList(), eq(courtCentreId), eq(courtScheduleId)))
                 .thenReturn(List.of(duplicateSession));
         when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
@@ -2971,7 +2971,7 @@ class SessionsServiceTest {
                 .thenReturn(List.of(eligibleSession, ineligibleSession));
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
                 .thenReturn(Optional.of(courtRoom));
-        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString()))
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eligibleSessionId))
                 .thenReturn(persistedEligibleSession);
@@ -3023,7 +3023,7 @@ class SessionsServiceTest {
                 .thenReturn(List.of(session));
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
                 .thenReturn(Optional.of(courtRoom));
-        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString()))
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenThrow(new RuntimeException("Database error"));

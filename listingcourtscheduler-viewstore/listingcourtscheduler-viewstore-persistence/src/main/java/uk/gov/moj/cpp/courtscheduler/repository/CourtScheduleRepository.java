@@ -1961,11 +1961,13 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
     @Query(value = "SELECT entity from CourtSchedule entity where entity.courtRoomName = :courtRoomName " +
             "and entity.sessionDate = :sessionDate and entity.businessType = :businessType " +
             "and entity.courtSession IN (:courtSessions) and entity.active = true " +
+            "and entity.courtHouseId = :courtHouseId " +
             "and entity.courtScheduleId != :excludeCourtScheduleId")
     public abstract List<CourtSchedule> findDuplicateSessionsForAssignCourtroom(@QueryParam("courtRoomName") String courtRoomName,
                                                                                 @QueryParam(SESSION_DATE) LocalDate sessionDate,
                                                                                 @QueryParam(BUSINESS_TYPE) String businessType,
                                                                                 @QueryParam("courtSessions") List<String> courtSessions,
+                                                                                @QueryParam("courtHouseId") String courtHouseId,
                                                                                 @QueryParam("excludeCourtScheduleId") String excludeCourtScheduleId);
 
     public int deleteRedundantRotaData(final int numberOfDays) {
