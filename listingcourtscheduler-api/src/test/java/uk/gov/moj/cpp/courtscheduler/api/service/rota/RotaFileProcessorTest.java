@@ -30,6 +30,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryAssignmentRequestHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleData;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryScheduleAssignment;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaCourtScheduleHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaFileUtility;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaJudiciaryHelper;
@@ -773,6 +774,93 @@ class RotaFileProcessorTest {
 
             final AssignJudiciariesRequest capturedRequest = requestCaptor.getValue();
             assertThat(capturedRequest.getJudiciaries().size(), is(2));
+        }
+
+        @Test
+        @DisplayName("Should handle multiple schedule data entries for same judiciary")
+        void shouldHandleMultipleScheduleDataEntriesForSameJudiciary() {
+            // given
+            setupSuccessfulProcessing();
+            setupRecordsWithData();
+
+            final String judiciaryId1 = judiciary.getId();
+            final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
+            final UUID sessionId2 = randomUUID();
+            final UUID sessionId3 = randomUUID();
+
+            final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
+            // Same judiciary with multiple schedule data entries
+            rotaFeedDataMap.put(judiciaryId1, List.of(
+                    new JudiciaryCourtScheduleData(List.of(sessionId1), "CHAIR", true, false),
+                    new JudiciaryCourtScheduleData(List.of(sessionId2), "LEFT_WINGER", false, true),
+                    new JudiciaryCourtScheduleData(List.of(sessionId3), "RIGHT_WINGER", false, false)
+            ));
+            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+                    .thenReturn(rotaFeedDataMap);
+
+            final AssignJudiciariesRequest assignRequest = AssignJudiciariesRequest.builder()
+                    .withJudiciaries(List.of())
+                    .withSkipValidations(true)
+                    .build();
+            when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
+                    .thenReturn(assignRequest);
+
+            final AssignJudiciariesResponse assignResponse = createAssignResponse(3, 3);
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+                    .thenReturn(assignResponse);
+
+            // when
+            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+
+            // then
+            @SuppressWarnings("unchecked")
+            final ArgumentCaptor<List<JudiciaryScheduleAssignment>> listCaptor = 
+                    ArgumentCaptor.forClass(List.class);
+            verify(judiciaryAssignmentRequestHelper).buildAssignJudiciariesRequest(listCaptor.capture());
+            final List<JudiciaryScheduleAssignment> capturedList = listCaptor.getValue();
+            assertThat(capturedList.size(), is(3)); // Should have 3 assignments for same judiciary
+            // Verify all assignments are for the same judiciary
+            assertThat(capturedList.stream().allMatch(a -> a.judiciaryId().equals(judiciaryId1)), is(true));
+        }
+
+        @Test
+        @DisplayName("Should skip empty lists in assignment map")
+        void shouldSkipEmptyListsInAssignmentMap() {
+            // given
+            setupSuccessfulProcessing();
+            setupRecordsWithData();
+
+            final String judiciaryId1 = judiciary.getId();
+            final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
+
+            final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
+            rotaFeedDataMap.put(judiciaryId1, List.of(new JudiciaryCourtScheduleData(
+                    List.of(sessionId1), "CHAIR", true, false)));
+            rotaFeedDataMap.put("judiciary-2", Collections.emptyList()); // Empty list
+            rotaFeedDataMap.put("judiciary-3", null); // Null list
+            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+                    .thenReturn(rotaFeedDataMap);
+
+            final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciaryId1, sessionId1);
+            when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
+                    .thenReturn(assignRequest);
+
+            final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+                    .thenReturn(assignResponse);
+
+            // when
+            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+
+            // then
+            @SuppressWarnings("unchecked")
+            final ArgumentCaptor<List<JudiciaryScheduleAssignment>> listCaptor = 
+                    ArgumentCaptor.forClass(List.class);
+            verify(judiciaryAssignmentRequestHelper).buildAssignJudiciariesRequest(listCaptor.capture());
+            final List<JudiciaryScheduleAssignment> capturedList = listCaptor.getValue();
+            // Should only have 1 assignment (empty and null lists filtered out)
+            assertThat(capturedList.size(), is(1));
+            assertThat(capturedList.get(0).judiciaryId(), is(judiciaryId1));
         }
     }
 
