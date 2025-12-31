@@ -2664,31 +2664,32 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldAssignCourtroomToMultipleEligibleSessions() throws SQLException {
-        // Draft with/without hearings - eligible
+        // Draft without hearings - eligible
+        // Draft with hearings - not eligible
         // Assigned without hearings - not eligible
 
         UUID draftSessionId = UUID.randomUUID();
-        CourtSchedule draftSession = RANDOM.nextObject(CourtSchedule.class);
-        draftSession.setCourtScheduleId(draftSessionId.toString());
-        draftSession.setBusinessType("DVLA");
-        draftSession.setSlotBased(true);
-        draftSession.setMaxSlots(15);
-        draftSession.setAvailableSlots(15);
-        draftSession.setIsDraft(true); // Draft session
-        draftSession.setSupportAdSplit(false);
-        draftSession.setCourtSession(AM_SESSION);
-        draftSession.setPanel("ADULT");
-        draftSession.setCourtRoomId("original-courtroom-id");
-        draftSession.setJurisdiction("CROWN");
-        draftSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0));
-        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0));
-        databaseSeeder.insertCourtSchedule(draftSession);
+        CourtSchedule draftSessionWithHearing = RANDOM.nextObject(CourtSchedule.class);
+        draftSessionWithHearing.setCourtScheduleId(draftSessionId.toString());
+        draftSessionWithHearing.setBusinessType("DVLA");
+        draftSessionWithHearing.setSlotBased(true);
+        draftSessionWithHearing.setMaxSlots(15);
+        draftSessionWithHearing.setAvailableSlots(15);
+        draftSessionWithHearing.setIsDraft(true); // Draft session
+        draftSessionWithHearing.setSupportAdSplit(false);
+        draftSessionWithHearing.setCourtSession(AM_SESSION);
+        draftSessionWithHearing.setPanel("ADULT");
+        draftSessionWithHearing.setCourtRoomId("original-courtroom-id");
+        draftSessionWithHearing.setJurisdiction("CROWN");
+        draftSessionWithHearing.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        draftSessionWithHearing.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSessionWithHearing.getSessionDate(), 9, 0));
+        draftSessionWithHearing.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSessionWithHearing.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(draftSessionWithHearing);
 
-        // Create hearing for draft session (should still be eligible)
+        // Create hearing for draft session (not eligible)
         UUID hearingId1 = UUID.randomUUID();
         UUID bookingId1 = UUID.randomUUID();
-        createAllocatedListing(draftSession, hearingId1, bookingId1, 15, "10:00");
+        createAllocatedListing(draftSessionWithHearing, hearingId1, bookingId1, 15, "10:00");
 
         UUID draftSessionNoHearingsId = UUID.randomUUID();
         CourtSchedule draftSessionNoHearings = RANDOM.nextObject(CourtSchedule.class);
@@ -2728,7 +2729,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         String assignCourtroomPayload = getPayload("assign-courtroom-multiple-eligible-sessions.json");
         String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Different courtroom
-        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", draftSession.getCourtScheduleId());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", draftSessionWithHearing.getCourtScheduleId());
         assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_2", draftSessionNoHearings.getCourtScheduleId());
         assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_3", assignedSession.getCourtScheduleId());
         assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
@@ -2750,17 +2751,27 @@ class CourtSchedulerIT extends AbstractIT {
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
 
-        // Draft sessions should be successfully assigned (not in any error group)
-        boolean draftSessionInErrorGroup = jsonResponseArray.stream()
+        // Draft sessions with hearing should not be assigned
+        boolean draftSessionWithHearingInErrorGroup = jsonResponseArray.stream()
                 .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
                     javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
                             .map(s -> s.asJsonObject())
-                            .anyMatch(s -> draftSession.getCourtScheduleId().equals(s.getString("courtScheduleId"))
-                                    || draftSessionNoHearings.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                            .anyMatch(s -> draftSessionWithHearing.getCourtScheduleId().equals(s.getString("courtScheduleId")));
                 });
-        assertThat("Draft sessions should not be in any error group", draftSessionInErrorGroup, is(false));
+        assertThat("Draft sessions with hearing should not be eligible", draftSessionWithHearingInErrorGroup, is(true));        // Draft sessions should be successfully assigned (not in any error group)
+
+        // Draft sessions should be successfully assigned (not in any error group)
+        boolean draftSessionNoHearingInErrorGroup = jsonResponseArray.stream()
+                .map(JsonValue::asJsonObject)
+                .anyMatch(errorGroup -> {
+                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    return sessions.stream()
+                            .map(s -> s.asJsonObject())
+                            .anyMatch(s ->  draftSessionNoHearings.getCourtScheduleId().equals(s.getString("courtScheduleId")));
+                });
+        assertThat("Draft sessions with hearing should not be eligible", draftSessionNoHearingInErrorGroup, is(false));
 
         // Assigned session should be in error group
         boolean foundAssignedSessionInErrorGroup = jsonResponseArray.stream()
@@ -3455,5 +3466,172 @@ class CourtSchedulerIT extends AbstractIT {
                     return false;
                 });
         assertThat("Should find AD session with duplicate AM session in error group", foundIneligibleDuplicateSession, is(true));
+    }
+
+    @Test
+    void shouldReturn400WhenUpdatingCrownDraftSessionWithHearingsBookedToChangeCourtroom() throws SQLException {
+        // Given - CROWN draft session with hearings booked
+        UUID courtScheduleId = UUID.randomUUID();
+        CourtSchedule draftSession = RANDOM.nextObject(CourtSchedule.class);
+        String originalCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        String newCourtRoomId = "e06e1734-aa04-3ec0-b14c-400edab8b831"; // Different courtroom
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
+        
+        draftSession.setCourtScheduleId(courtScheduleId.toString());
+        draftSession.setBusinessType("FWT");
+        draftSession.setSlotBased(true);
+        draftSession.setMaxSlots(15);
+        draftSession.setAvailableSlots(10); // Some slots booked
+        draftSession.setIsDraft(true);
+        draftSession.setSupportAdSplit(false);
+        draftSession.setCourtSession(AM_SESSION);
+        draftSession.setPanel("ADULT");
+        draftSession.setJurisdiction("CROWN");
+        draftSession.setCourtRoomId(originalCourtRoomId);
+        draftSession.setCourtHouseId(courtHouseId);
+        draftSession.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
+        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0));
+        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(draftSession);
+
+        // Create allocated listing to simulate hearings booked
+        final UUID hearingId = UUID.randomUUID();
+        final UUID bookingId = UUID.randomUUID();
+        createAllocatedListing(draftSession, hearingId, bookingId, 60, "10:00");
+
+        // When - Try to update courtroom
+        String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", draftSession.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", newCourtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "FWT");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", AM_SESSION);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", "ADULT");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"jurisdiction\": \"MAGISTRATES\"", "\"jurisdiction\": \"CROWN\"");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"maxDuration\": 10", "\"maxSlots\": 15,\n  \"maxDuration\": 0,\n  \"isDraft\": true");
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        // Then - Should return 400 with error message
+        assertThat("Update response: " + responsePayload, response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        assertThat(responsePayload, containsString("Cannot assign courtroom to a CROWN draft session with hearings booked"));
+    }
+
+    @Test
+    void shouldReturn400WhenUpdatingCrownDraftSessionWithHearingsBookedToChangeState() throws SQLException {
+        // Given - CROWN draft session with hearings booked
+        UUID courtScheduleId = UUID.randomUUID();
+        CourtSchedule draftSession = RANDOM.nextObject(CourtSchedule.class);
+        String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
+        
+        draftSession.setCourtScheduleId(courtScheduleId.toString());
+        draftSession.setBusinessType("FWT");
+        draftSession.setSlotBased(true);
+        draftSession.setMaxSlots(15);
+        draftSession.setAvailableSlots(10); // Some slots booked
+        draftSession.setIsDraft(true);
+        draftSession.setSupportAdSplit(false);
+        draftSession.setCourtSession(AM_SESSION);
+        draftSession.setPanel("ADULT");
+        draftSession.setJurisdiction("CROWN");
+        draftSession.setCourtRoomId(courtRoomId);
+        draftSession.setCourtHouseId(courtHouseId);
+        draftSession.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
+        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0));
+        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(draftSession);
+
+        // Create allocated listing to simulate hearings booked
+        final UUID hearingId = UUID.randomUUID();
+        final UUID bookingId = UUID.randomUUID();
+        createAllocatedListing(draftSession, hearingId, bookingId, 60, "10:00");
+
+        // When - Try to change state from draft to assigned (isDraft: false)
+        String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", draftSession.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", courtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "FWT");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", AM_SESSION);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", "ADULT");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"jurisdiction\": \"MAGISTRATES\"", "\"jurisdiction\": \"CROWN\"");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"maxDuration\": 10", "\"maxSlots\": 15,\n  \"maxDuration\": 0,\n  \"isDraft\": false");
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        // Then - Should return 400 with error message
+        assertThat("Update response: " + responsePayload, response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        assertThat(responsePayload, containsString("Cannot assign state to a CROWN draft session with hearings booked"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenAssigningCourtroomToCrownDraftSessionWithHearingsBooked() throws SQLException {
+        // Given - CROWN draft session with hearings booked
+        UUID draftSessionId = UUID.randomUUID();
+        CourtSchedule draftSession = RANDOM.nextObject(CourtSchedule.class);
+        String originalCourtRoomId = "original-courtroom-id";
+        String newCourtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
+        String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
+        
+        draftSession.setCourtScheduleId(draftSessionId.toString());
+        draftSession.setBusinessType("FWT");
+        draftSession.setSlotBased(true);
+        draftSession.setMaxSlots(15);
+        draftSession.setAvailableSlots(10); // Some slots booked
+        draftSession.setIsDraft(true);
+        draftSession.setSupportAdSplit(false);
+        draftSession.setCourtSession(AM_SESSION);
+        draftSession.setPanel("ADULT");
+        draftSession.setJurisdiction("CROWN");
+        draftSession.setCourtRoomId(originalCourtRoomId);
+        draftSession.setCourtHouseId(courtHouseId);
+        draftSession.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
+        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0));
+        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0));
+        databaseSeeder.insertCourtSchedule(draftSession);
+
+        // Create allocated listing to simulate hearings booked
+        final UUID hearingId = UUID.randomUUID();
+        final UUID bookingId = UUID.randomUUID();
+        createAllocatedListing(draftSession, hearingId, bookingId, 60, "10:00");
+
+        // When - Try to assign courtroom via assign.courtroom endpoint
+        String assignCourtroomPayload = getPayload("assign-courtroom-CROWN-with-hearing.json");
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_SCHEDULE_ID_1", draftSessionId.toString());
+        assignCourtroomPayload = assignCourtroomPayload.replace("COURT_ROOM_ID", newCourtRoomId);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + ASSIGN_COURTROOM_URL, COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, assignCourtroomPayload);
+        final String responsePayload = response.readEntity(String.class);
+
+        // Then - Should return 200 with error group containing the error
+        assertThat("Assign courtroom response: " + responsePayload, response.getStatus(), is(OK.getStatusCode()));
+
+        // Parse JSON response
+        JsonReader jsonReader = Json.createReader(new StringReader(responsePayload));
+        JsonObject jsonResponse = jsonReader.readObject();
+        jsonReader.close();
+
+        // Verify response has errorGroups key
+        assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
+        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+
+        // Verify response is an array
+        assertThat("Response should be an array", jsonResponseArray, notNullValue());
+
+        // Find the error group with the expected error message
+        boolean foundErrorGroup = jsonResponseArray.stream()
+                .map(JsonValue::asJsonObject)
+                .anyMatch(errorGroup -> {
+                    String error = errorGroup.getString("error");
+                    if ("Cannot assign courtroom to a CROWN draft session with hearings booked".equals(error)) {
+                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        return sessions.stream()
+                                .map(s -> s.asJsonObject())
+                                .anyMatch(s -> draftSessionId.toString().equals(s.getString("courtScheduleId")));
+                    }
+                    return false;
+                });
+        assertThat("Should find draft session with hearings in error group", foundErrorGroup, is(true));
     }
 }

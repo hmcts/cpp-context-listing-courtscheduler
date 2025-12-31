@@ -786,14 +786,44 @@ public class SessionsApiValidator {
     private JsonObject validateUpdateIsDraft(UpdateCourtSchedule updateCourtSchedule, String jurisdiction) {
         Boolean isDraft = updateCourtSchedule.getIsDraft();
         
+        JsonObject crownMandatoryCheck = validateCrownIsDraftMandatory(jurisdiction, isDraft);
+        if (crownMandatoryCheck != EMPTY_JSON_OBJECT) {
+            return crownMandatoryCheck;
+        }
+        
+        JsonObject magistratesIsDraftCheck = validateMagistratesIsDraft(jurisdiction, isDraft);
+        if (magistratesIsDraftCheck != EMPTY_JSON_OBJECT) {
+            return magistratesIsDraftCheck;
+        }
+
+        JsonObject crownDraftChangeCheck = validateCrownDraftStateChange(updateCourtSchedule, jurisdiction, isDraft);
+        if (crownDraftChangeCheck != EMPTY_JSON_OBJECT) {
+            return crownDraftChangeCheck;
+        }
+
+        JsonObject crownDraftWithHearingsCheck = validateCrownDraftWithHearingsBooked(updateCourtSchedule, jurisdiction, isDraft);
+        if (crownDraftWithHearingsCheck != EMPTY_JSON_OBJECT) {
+            return crownDraftWithHearingsCheck;
+        }
+        
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateCrownIsDraftMandatory(String jurisdiction, Boolean isDraft) {
         if (CROWN.equalsIgnoreCase(jurisdiction) && isNull(isDraft)) {
             return buildErrorResponse("isDraft is mandatory for CROWN jurisdiction sessions");
         }
-        
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateMagistratesIsDraft(String jurisdiction, Boolean isDraft) {
         if (nonNull(isDraft) && TRUE.equals(isDraft) && MAGISTRATES.equalsIgnoreCase(jurisdiction)) {
             return buildErrorResponse("isDraft can only be true when jurisdiction is CROWN");
         }
+        return EMPTY_JSON_OBJECT;
+    }
 
+    private JsonObject validateCrownDraftStateChange(UpdateCourtSchedule updateCourtSchedule, String jurisdiction, Boolean isDraft) {
         if (CROWN.equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && TRUE.equals(isDraft)) {
             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
                     courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
@@ -801,7 +831,21 @@ public class SessionsApiValidator {
                 return buildErrorResponse("Cannot change isDraft from false to true for CROWN jurisdiction sessions");
             }
         }
-        
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private JsonObject validateCrownDraftWithHearingsBooked(UpdateCourtSchedule updateCourtSchedule, String jurisdiction, Boolean isDraft) {
+        if (CROWN.equalsIgnoreCase(jurisdiction) && nonNull(isDraft) && FALSE.equals(isDraft)) {
+            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule =
+                    courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+            if (nonNull(persistedCourtSchedule) && TRUE.equals(persistedCourtSchedule.getIsDraft())) {
+                List<AllocatedListingEachBooked> allocatedListings = allocatedListingService
+                        .getAllocatedListingEachBookedByCourtScheduleId(updateCourtSchedule.getCourtScheduleId());
+                if (!allocatedListings.isEmpty()) {
+                    return buildErrorResponse("Cannot assign state to a CROWN draft session with hearings booked");
+                }
+            }
+        }
         return EMPTY_JSON_OBJECT;
     }
 
@@ -857,8 +901,18 @@ public class SessionsApiValidator {
             return EMPTY_JSON_OBJECT;
         }
 
+        // For CROWN draft sessions with hearings booked, prevent courtroom assignment
+        String jurisdiction = updateCourtSchedule.getJurisdiction();
+        if (CROWN.equalsIgnoreCase(jurisdiction) && TRUE.equals(persistedCourtSchedule.getIsDraft())) {
+            List<AllocatedListingEachBooked> allocatedListings = allocatedListingService
+                    .getAllocatedListingEachBookedByCourtScheduleId(updateCourtSchedule.getCourtScheduleId());
+            if (!allocatedListings.isEmpty()) {
+                return buildErrorResponse("Cannot assign courtroom to a CROWN draft session with hearings booked");
+            }
+        }
+
         // Retrieve the new courtroom from reference data
-        Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(updateCourtSchedule.getJurisdiction())
+        Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(jurisdiction)
                 ? referenceDataCache.getCpCourtRoomByCourtRoomId(newCourtRoomId, requester)
                 : referenceDataCache.getRotaCourtRoomByCourtRoomId(newCourtRoomId, requester);
 

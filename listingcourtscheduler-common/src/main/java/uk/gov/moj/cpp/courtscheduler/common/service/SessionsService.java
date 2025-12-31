@@ -937,7 +937,7 @@ public class SessionsService {
             final String sessionCourtSession = session.getCourtSession();
             final List<String> duplicateSessionTypes = getDuplicateSessionTypes(sessionCourtSession);
             
-            if (isNotEmpty(duplicateSessionTypes)) {
+            if (isNotEmpty(duplicateSessionTypes) && nonNull(courtRoomName) && nonNull(session.getSessionDate()) && nonNull(session.getBusinessType())) {
                 final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> duplicateSessions = 
                         courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
                                 courtRoomName,
@@ -953,7 +953,7 @@ public class SessionsService {
             }
 
             // Eligibility check based on acceptance criteria:
-            // - Draft with hearings: YES (eligible)
+            // - Draft with hearings: NO (not eligible) - Business Rule: Cannot assign courtroom to draft session with hearings
             // - Draft without hearings: YES (eligible)
             // - Assigned with hearings: NO (not eligible) - Business Rule 5
             // - Assigned without hearings: NO (not eligible) - Business Rule 5
@@ -963,8 +963,19 @@ public class SessionsService {
             if (isAssigned) {
                 // Scenario 5: Assigned session - NOT eligible (regardless of hearings)
                 sessionsWithErrors.add(Pair.of(session, "Cannot assign courtroom to an assigned session"));
+            } else if (isDraft) {
+                // Check if draft session has hearings booked
+                List<AllocatedListingEachBooked> allocatedListings = allocatedListingRepository
+                        .getAllocatedListingsEachBookedByCourtScheduleId(List.of(session.getCourtScheduleId()));
+                if (!allocatedListings.isEmpty()) {
+                    // Draft session with hearings booked - NOT eligible
+                    sessionsWithErrors.add(Pair.of(session, "Cannot assign courtroom to a CROWN draft session with hearings booked"));
+                } else {
+                    // Draft without hearings - eligible
+                    eligibleSessions.add(session);
+                }
             } else {
-                // All other cases are eligible
+                // Draft without hearings - eligible
                 eligibleSessions.add(session);
             }
         }
@@ -994,8 +1005,15 @@ public class SessionsService {
         for (final Map.Entry<String, List<CourtSchedule>> entry : sessionsByError.entrySet()) {
             final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView> sessionViews = entry.getValue().stream()
                     .map(s -> {
-                        if (s.getBusinessType() != null) {
-                            s.setBusinessDescription(enrichBusinessDescription(s.getBusinessType(), requester));
+                        if (nonNull(s.getBusinessType())) {
+                            try {
+                                s.setBusinessDescription(enrichBusinessDescription(s.getBusinessType(), requester));
+                            } catch (RuntimeException e) {
+                                // If business type not found in reference data, set description to null
+                                // This allows the error group to be created even if reference data is incomplete
+                                logger.warn("Business type not found for session {}: {}", s.getCourtScheduleId(), s.getBusinessType());
+                                s.setBusinessDescription(null);
+                            }
                         }
                         return convertToView(s);
                     })

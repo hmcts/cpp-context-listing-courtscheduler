@@ -14,6 +14,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
@@ -2175,5 +2176,131 @@ class SessionsApiValidatorTest {
         assertEquals(1, repeatForCaptor.getValue());
         assertEquals(RepeatFrequency.EVERY_MONTH, frequencyCaptor.getValue());
         assertEquals(4, sessionCaptor.getValue().getIndex());
+    }
+
+    @Test
+    void shouldRejectCourtroomAssignmentForCrownDraftSessionWithHearingsBooked() {
+        // Given - CROWN draft session with hearings booked trying to change courtroom
+        final String courtScheduleId = randomUUID().toString();
+        final String originalCourtRoomId = randomUUID().toString();
+        final String newCourtRoomId = randomUUID().toString();
+        
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(newCourtRoomId)
+                .withBusinessType("FWT")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withMaxSlots(20)
+                .build();
+
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setCourtScheduleId(courtScheduleId);
+        persistedSchedule.setCourtRoomId(originalCourtRoomId);
+        persistedSchedule.setCourtHouseId(courtCentreId);
+        persistedSchedule.setIsDraft(true);
+        persistedSchedule.setJurisdiction("CROWN");
+        persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(List.of(booked));
+
+        stubCrownCourtRoomAvailable(newCourtRoomId);
+        stubBusinessType("FWT", "CROWN", true, false);
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Then
+        assertEquals("Cannot assign courtroom to a CROWN draft session with hearings booked", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldRejectStateChangeForCrownDraftSessionWithHearingsBooked() {
+        // Given - CROWN draft session with hearings booked trying to change state to assigned
+        final String courtScheduleId = randomUUID().toString();
+        
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(courtRoomId)
+                .withBusinessType("FWT")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(false) // Trying to change from draft to assigned
+                .withMaxSlots(20)
+                .build();
+
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setCourtScheduleId(courtScheduleId);
+        persistedSchedule.setCourtRoomId(courtRoomId);
+        persistedSchedule.setCourtHouseId(courtCentreId);
+        persistedSchedule.setIsDraft(true); // Currently draft
+        persistedSchedule.setJurisdiction("CROWN");
+        persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(List.of(booked));
+
+        stubCrownCourtRoomAvailable(courtRoomId);
+        stubBusinessType("FWT", "CROWN", true, false);
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Then
+        assertEquals("Cannot assign state to a CROWN draft session with hearings booked", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldAllowCourtroomAssignmentForCrownDraftSessionWithoutHearingsBooked() {
+        // Given - CROWN draft session without hearings booked trying to change courtroom
+        final String courtScheduleId = randomUUID().toString();
+        final String originalCourtRoomId = randomUUID().toString();
+        final String newCourtRoomId = randomUUID().toString();
+        
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId(newCourtRoomId)
+                .withBusinessType("FWT")
+                .withSessionType("AM")
+                .withPanel("ADULT")
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withMaxSlots(20)
+                .build();
+
+        CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setCourtScheduleId(courtScheduleId);
+        persistedSchedule.setCourtRoomId(originalCourtRoomId);
+        persistedSchedule.setCourtHouseId(courtCentreId);
+        persistedSchedule.setIsDraft(true);
+        persistedSchedule.setJurisdiction("CROWN");
+        persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
+        persistedSchedule.setSlotBased(true);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(emptyList()); // No hearings booked
+
+        stubCrownCourtRoomAvailable(newCourtRoomId);
+        stubBusinessType("FWT", "CROWN", true, false);
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+
+        // Then - Should pass validation (may have other validation errors, but not the hearings booked error)
+        if (result.containsKey("errorMessage")) {
+            assertTrue(!result.getString("errorMessage").contains("Cannot assign courtroom to a CROWN draft session with hearings booked"));
+        }
     }
 }
