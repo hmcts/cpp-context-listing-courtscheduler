@@ -7,6 +7,7 @@ import java.util.Objects;
 public class JudiciaryAssignment {
 
     private String judiciaryId;
+    private String rotaJudiciaryId;
     private List<String> sessionIds = new ArrayList<>();
     private Boolean isDeputy;
     private Boolean isBenchChairman;
@@ -61,12 +62,21 @@ public class JudiciaryAssignment {
         this.position = position;
     }
 
+    public String getRotaJudiciaryId() {
+        return rotaJudiciaryId;
+    }
+
+    public void setRotaJudiciaryId(final String rotaJudiciaryId) {
+        this.rotaJudiciaryId = rotaJudiciaryId;
+    }
+
     public static JudiciaryAssignmentBuilder builder() {
         return new JudiciaryAssignmentBuilder();
     }
 
     public static final class JudiciaryAssignmentBuilder {
         private String judiciaryId;
+        private String rotaJudiciaryId;
         private final List<String> sessionIds = new ArrayList<>();
         private Boolean isDeputy;
         private Boolean isBenchChairman;
@@ -110,11 +120,17 @@ public class JudiciaryAssignment {
             return this;
         }
 
+        public JudiciaryAssignmentBuilder withRotaJudiciaryId(final String rotaJudiciaryId) {
+            this.rotaJudiciaryId = rotaJudiciaryId;
+            return this;
+        }
+
         public JudiciaryAssignment build() {
             final JudiciaryAssignment assignment = new JudiciaryAssignment(judiciaryId, new ArrayList<>(sessionIds));
             assignment.setIsDeputy(isDeputy);
             assignment.setIsBenchChairman(isBenchChairman);
             assignment.setPosition(position);
+            assignment.setRotaJudiciaryId(rotaJudiciaryId);
             return assignment;
         }
     }

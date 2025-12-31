@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -145,6 +146,17 @@ class JudiciaryAssignmentServiceTest {
                 .build();
     }
 
+    private AssignJudiciariesRequest buildRequestWithRotaJudiciaryId(final String judiciaryId, final String sessionId, final String rotaJudiciaryId) {
+        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
+                .withJudiciaryId(judiciaryId)
+                .withRotaJudiciaryId(rotaJudiciaryId)
+                .addSessionId(sessionId)
+                .build();
+        return AssignJudiciariesRequest.builder()
+                .addJudiciary(assignment)
+                .build();
+    }
+
     private Judiciary buildJudiciary(final String judiciaryId) {
         final Judiciary judiciary = new Judiciary();
         judiciary.setId(judiciaryId);
@@ -214,6 +226,70 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(1, response.getSuccessfulAssignments());
         assertTrue(response.getFailures().isEmpty());
         verify(courtScheduleJudiciaryRepository).save(any());
+    }
+
+    @Test
+    void shouldUseRotaJudiciaryIdFromAssignment_WhenProvided() {
+        final String judiciaryId = "judiciary-1";
+        final String sessionId = "session-1";
+        final String rotaJudiciaryId = "rota-judge-123";
+
+        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
+
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(
+                buildRequestWithRotaJudiciaryId(judiciaryId, sessionId, rotaJudiciaryId), requester, EXECUTION_ID);
+
+        assertEquals(1, response.getRequestedAssignments());
+        assertEquals(1, response.getSuccessfulAssignments());
+        assertTrue(response.getFailures().isEmpty());
+        
+        // Verify that the saved CourtScheduleJudiciary has the rotaJudiciaryId from the assignment
+        verify(courtScheduleJudiciaryRepository).save(argThat(entity -> 
+                entity.getRotaJudiciaryId() != null && entity.getRotaJudiciaryId().equals(rotaJudiciaryId)));
+    }
+
+    @Test
+    void shouldFallbackToJudiciaryCpUserId_WhenRotaJudiciaryIdNotProvided() {
+        final String judiciaryId = "judiciary-1";
+        final String sessionId = "session-1";
+        final String cpUserId = "CP-" + judiciaryId;
+
+        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
+
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(
+                buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
+
+        assertEquals(1, response.getRequestedAssignments());
+        assertEquals(1, response.getSuccessfulAssignments());
+        assertTrue(response.getFailures().isEmpty());
+        
+        // Verify that the saved CourtScheduleJudiciary falls back to cpUserId when rotaJudiciaryId is null
+        verify(courtScheduleJudiciaryRepository).save(argThat(entity -> 
+                entity.getRotaJudiciaryId() != null && entity.getRotaJudiciaryId().equals(cpUserId)));
+    }
+
+    @Test
+    void shouldFallbackToJudiciaryId_WhenRotaJudiciaryIdAndCpUserIdNotProvided() {
+        final String judiciaryId = "judiciary-1";
+        final String sessionId = "session-1";
+        final Judiciary judiciary = buildJudiciary(judiciaryId);
+        judiciary.setCpUserId(null); // Clear cpUserId to test fallback to judiciaryId
+
+        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(judiciary));
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
+
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(
+                buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
+
+        assertEquals(1, response.getRequestedAssignments());
+        assertEquals(1, response.getSuccessfulAssignments());
+        assertTrue(response.getFailures().isEmpty());
+        
+        // Verify that the saved CourtScheduleJudiciary falls back to judiciaryId when rotaJudiciaryId and cpUserId are null
+        verify(courtScheduleJudiciaryRepository).save(argThat(entity -> 
+                entity.getRotaJudiciaryId() != null && entity.getRotaJudiciaryId().equals(judiciaryId)));
     }
 }
 

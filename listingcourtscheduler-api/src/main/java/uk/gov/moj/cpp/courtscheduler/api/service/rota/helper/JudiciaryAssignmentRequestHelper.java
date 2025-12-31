@@ -4,7 +4,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -21,22 +20,31 @@ public class JudiciaryAssignmentRequestHelper {
     private static final Logger logger = LoggerFactory.getLogger(JudiciaryAssignmentRequestHelper.class);
 
     /**
-     * Converts a map of judiciary IDs to JudiciaryCourtScheduleData into an AssignJudiciariesRequest.
+     * Converts a list of JudiciaryScheduleAssignment into an AssignJudiciariesRequest.
      *
-     * @param judiciaryAssignmentDataMap map where key is judiciaryId (String) and value is JudiciaryCourtScheduleData
+     * @param assignmentList list of JudiciaryScheduleAssignment containing judiciary IDs and schedule data
      * @return AssignJudiciariesRequest containing the judiciary assignments
      */
     public AssignJudiciariesRequest buildAssignJudiciariesRequest(
-            final Map<String, JudiciaryCourtScheduleData> judiciaryAssignmentDataMap) {
-        logger.info("Building AssignJudiciariesRequest from map with {} entries", judiciaryAssignmentDataMap.size());
+            final List<JudiciaryScheduleAssignment> assignmentList) {
+        if (assignmentList == null || assignmentList.isEmpty()) {
+            logger.debug("Building AssignJudiciariesRequest from empty list");
+            return AssignJudiciariesRequest.builder()
+                    .withJudiciaries(List.of())
+                    .withSkipValidations(true)
+                    .build();
+        }
 
-        final List<JudiciaryAssignment> assignments = judiciaryAssignmentDataMap.entrySet().stream()
-                .map(entry -> buildJudiciaryAssignment(entry.getKey(), entry.getValue()))
+        logger.info("Building AssignJudiciariesRequest from list with {} entries", assignmentList.size());
+
+        final List<JudiciaryAssignment> assignments = assignmentList.stream()
+                .map(assignment -> buildJudiciaryAssignment(assignment.judiciaryId(), assignment.scheduleData()))
                 .toList();
 
         final int totalSessionIds = assignments.stream()
-                .mapToInt(a -> a.getSessionIds().size())
+                .mapToInt(assignment -> assignment.getSessionIds().size())
                 .sum();
+
         logger.info("Built AssignJudiciariesRequest with {} judiciary assignments and {} total session IDs", 
                 assignments.size(), totalSessionIds);
 
@@ -59,6 +67,7 @@ public class JudiciaryAssignmentRequestHelper {
                 .toList();
         return JudiciaryAssignment.builder()
                 .withJudiciaryId(judiciaryId)
+                .withRotaJudiciaryId(data.rotaJudiciaryId())
                 .withSessionIds(sessionIds)
                 .withPosition(data.position())
                 .withIsBenchChairman(data.isBenchChairman())

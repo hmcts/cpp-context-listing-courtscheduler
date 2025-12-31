@@ -12,6 +12,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
@@ -244,6 +245,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
         assertEquals(expectedJudiciaries, courtScheduleJudiciaries.size(), 
                 format("%s should create %d court schedule judiciaries", runName, expectedJudiciaries));
         assertDefaultStartTimeAndEndTime(courtSchedules);
+        assertPositionAndRotaJudiciaryIdAreSet(courtScheduleJudiciaries, runName);
         logger.info("{} validation completed: {} court schedules, {} judiciaries", 
                 runName, courtSchedules.size(), courtScheduleJudiciaries.size());
     }
@@ -338,6 +340,29 @@ class NewRotaFileProcessorIT extends AbstractIT {
                 assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_END_TIME));
             }
         });
+    }
+
+    private static void assertPositionAndRotaJudiciaryIdAreSet(final List<CourtScheduleJudiciary> courtScheduleJudiciaries, final String runName) {
+        courtScheduleJudiciaries.forEach(judiciary -> {
+            assertNotNull(judiciary.getPosition(), 
+                    format("%s: position should not be null for judiciary with courtScheduleId=%s, judiciaryId=%s", 
+                            runName, judiciary.getId().getCourtScheduleId(), judiciary.getId().getJudiciaryId()));
+            assertNotNull(judiciary.getRotaJudiciaryId(), 
+                    format("%s: rotaJudiciaryId should not be null for judiciary with courtScheduleId=%s, judiciaryId=%s", 
+                            runName, judiciary.getId().getCourtScheduleId(), judiciary.getId().getJudiciaryId()));
+            
+            final String position = judiciary.getPosition();
+            final String rotaJudiciaryId = judiciary.getRotaJudiciaryId();
+            
+            assertTrue(!position.trim().isEmpty(), 
+                    format("%s: position should not be empty for judiciary with courtScheduleId=%s, judiciaryId=%s", 
+                            runName, judiciary.getId().getCourtScheduleId(), judiciary.getId().getJudiciaryId()));
+            assertTrue(!rotaJudiciaryId.trim().isEmpty(), 
+                    format("%s: rotaJudiciaryId should not be empty for judiciary with courtScheduleId=%s, judiciaryId=%s", 
+                            runName, judiciary.getId().getCourtScheduleId(), judiciary.getId().getJudiciaryId()));
+        });
+        
+        logger.info("{}: Validated position and rotaJudiciaryId for {} judiciaries", runName, courtScheduleJudiciaries.size());
     }
 }
 

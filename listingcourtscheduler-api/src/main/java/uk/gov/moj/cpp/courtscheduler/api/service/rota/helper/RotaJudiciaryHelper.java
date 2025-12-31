@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -113,16 +114,16 @@ public class RotaJudiciaryHelper {
     // ============================================================================
 
     /**
-     * Creates a map of judiciary IDs to lists of CourtSchedule UUIDs.
+     * Creates a map of judiciary IDs to lists of JudiciaryCourtScheduleData.
      *
      * @param records          the parsed rota file records
      * @param judiciaryMap     the map of judiciary IDs to Judiciary UUIDs
      * @param courtScheduleMap the map of court listing profile IDs to sets of CourtSchedule UUIDs
      * @param requester        the requester for making reference data queries
      * @param executionId      the execution ID for logging purposes
-     * @return a map of judiciary IDs to lists of CourtSchedule UUIDs
+     * @return a map of judiciary IDs to lists of JudiciaryCourtScheduleData
      */
-    public Map<String, JudiciaryCourtScheduleData> createJudiciaryCourtScheduleMap(
+    public Map<String, List<JudiciaryCourtScheduleData>> createJudiciaryCourtScheduleMap(
             final Map<RotaPayload, Map<String, Map<String, String>>> records,
             final Map<String, UUID> judiciaryMap,
             final Map<String, Set<UUID>> courtScheduleMap,
@@ -140,49 +141,140 @@ public class RotaJudiciaryHelper {
             return Collections.emptyMap();
         }
 
-        final Map<String, JudiciaryCourtScheduleData> judiciaryCourtScheduleMap = new ConcurrentHashMap<>();
+        final Map<String, List<String>> judiciaryCourtListingProfileMap = 
+                buildJudiciaryCourtListingProfileMap(scheduleJudiciaryList, judiciaryMap, courtScheduleMap);
+
+        // Create map with composite key (judiciaryId + courtListingProfileId) using judiciaryCourtListingProfileMap
+        final Map<String, JudiciaryCourtScheduleData> judiciaryCourtListingProfileScheduleMap = 
+                createJudiciaryCourtListingProfileScheduleMap(judiciaryCourtListingProfileMap, 
+                        scheduleJudiciaryList, courtScheduleMap);
+        logger.debug("Created judiciary court listing profile schedule map with {} composite key entries", 
+                judiciaryCourtListingProfileScheduleMap.size());
+
+        // Create final map with judiciaryId as key and List of JudiciaryCourtScheduleData as value
+        final Map<String, List<JudiciaryCourtScheduleData>> judiciaryCourtScheduleMap = 
+                createJudiciaryIdToScheduleDataListMap(judiciaryCourtListingProfileScheduleMap);
+
+        logJudiciaryCourtScheduleMapSummary(judiciaryCourtScheduleMap, scheduleJudiciaryList.size());
+
+        return judiciaryCourtScheduleMap;
+    }
+
+    /**
+     * Builds a map of judiciary IDs to lists of court listing profile IDs from schedule judiciary list.
+     *
+     * @param scheduleJudiciaryList the list of court schedule judiciary objects
+     * @param judiciaryMap          the map of judiciary IDs to Judiciary UUIDs
+     * @param courtScheduleMap      the map of court listing profile IDs to sets of CourtSchedule UUIDs
+     * @return a map of judiciary IDs to lists of court listing profile IDs
+     */
+    private Map<String, List<String>> buildJudiciaryCourtListingProfileMap(
+            final List<CourtScheduleJudiciary> scheduleJudiciaryList,
+            final Map<String, UUID> judiciaryMap,
+            final Map<String, Set<UUID>> courtScheduleMap) {
+        final Map<String, List<String>> judiciaryCourtListingProfileMap = new ConcurrentHashMap<>();
 
         scheduleJudiciaryList.forEach(schedule -> {
             try {
-                final String judiciaryId = schedule.getJudiciaryId();
-                final String courtListingProfileId = schedule.getCourtListingProfileId();
-
-                if (!isNotEmpty(judiciaryId) || !isNotEmpty(courtListingProfileId)) {
-                    logger.debug("Skipping schedule - missing judiciaryId or courtListingProfileId");
-                    return;
+                if (shouldProcessSchedule(schedule, judiciaryMap, courtScheduleMap)) {
+                    addCourtListingProfileToMap(judiciaryCourtListingProfileMap, schedule);
                 }
-
-                if (!judiciaryMap.containsValue(UUID.fromString(judiciaryId))) {
-                    logger.debug("Skipping schedule - judiciaryId {} not found in judiciaryMap", judiciaryId);
-                    return;
-                }
-
-                final Set<UUID> scheduleIds = courtScheduleMap.get(courtListingProfileId);
-                if (scheduleIds == null || scheduleIds.isEmpty()) {
-                    logger.debug("Skipping schedule - no court schedule found for courtListingProfileId: {}",
-                            courtListingProfileId);
-                    return;
-                }
-
-                final JudiciaryCourtScheduleData scheduleData = createScheduleData(schedule, scheduleIds);
-                judiciaryCourtScheduleMap.compute(judiciaryId, (key, existingData) ->
-                        mergeScheduleData(existingData, scheduleData));
-
-                logger.debug("Mapped judiciaryId {} to {} court schedule(s) with listingProfileId: {}, position: {}, isBenchChairman: {}, isDeputy: {}",
-                        judiciaryId, scheduleIds.size(), courtListingProfileId,
-                        scheduleData.position(), scheduleData.isBenchChairman(), scheduleData.isDeputy());
             } catch (final Exception ex) {
                 logger.error("Error processing schedule for judiciary court schedule map: {}", ex.getMessage(), ex);
             }
         });
 
+        return judiciaryCourtListingProfileMap;
+    }
+
+    /**
+     * Checks if a schedule should be processed based on validation criteria.
+     *
+     * @param schedule         the court schedule judiciary to validate
+     * @param judiciaryMap     the map of judiciary IDs to Judiciary UUIDs
+     * @param courtScheduleMap the map of court listing profile IDs to sets of CourtSchedule UUIDs
+     * @return true if the schedule should be processed, false otherwise
+     */
+    private boolean shouldProcessSchedule(
+            final CourtScheduleJudiciary schedule,
+            final Map<String, UUID> judiciaryMap,
+            final Map<String, Set<UUID>> courtScheduleMap) {
+        final String judiciaryId = schedule.getJudiciaryId();
+        final String courtListingProfileId = schedule.getCourtListingProfileId();
+
+        if (!isNotEmpty(judiciaryId) || !isNotEmpty(courtListingProfileId)) {
+            logger.debug("Skipping schedule - missing judiciaryId or courtListingProfileId");
+            return false;
+        }
+
+        if (!judiciaryMap.containsValue(UUID.fromString(judiciaryId))) {
+            logger.debug("Skipping schedule - judiciaryId {} not found in judiciaryMap", judiciaryId);
+            return false;
+        }
+
+        final Set<UUID> scheduleIds = courtScheduleMap.get(courtListingProfileId);
+        if (scheduleIds == null || scheduleIds.isEmpty()) {
+            logger.debug("Skipping schedule - no court schedule found for courtListingProfileId: {}", courtListingProfileId);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Adds a court listing profile ID to the judiciary court listing profile map.
+     *
+     * @param judiciaryCourtListingProfileMap the map to update
+     * @param schedule                       the court schedule judiciary containing the data
+     */
+    private void addCourtListingProfileToMap(
+            final Map<String, List<String>> judiciaryCourtListingProfileMap,
+            final CourtScheduleJudiciary schedule) {
+        final String judiciaryId = schedule.getJudiciaryId();
+        final String courtListingProfileId = schedule.getCourtListingProfileId();
+
+        judiciaryCourtListingProfileMap.compute(judiciaryId, (key, existingList) -> 
+                addToListIfNotPresent(existingList, courtListingProfileId));
+
+        logger.debug("Mapped judiciaryId {} to court schedule(s) with listingProfileId: {}, position: {}, isBenchChairman: {}, isDeputy: {}",
+                judiciaryId, courtListingProfileId,
+                schedule.getPosition(), schedule.getBenchChairman(), schedule.getDeputy());
+    }
+
+    /**
+     * Adds an item to a list if it's not already present, or creates a new list if the existing one is null.
+     *
+     * @param existingList the existing list, or null
+     * @param item         the item to add
+     * @return the list with the item added
+     */
+    private List<String> addToListIfNotPresent(final List<String> existingList, final String item) {
+        if (existingList == null) {
+            final List<String> newList = new ArrayList<>();
+            newList.add(item);
+            return newList;
+        }
+        if (!existingList.contains(item)) {
+            existingList.add(item);
+        }
+        return existingList;
+    }
+
+    /**
+     * Logs a summary of the created judiciary court schedule map.
+     *
+     * @param judiciaryCourtScheduleMap the created map
+     * @param scheduleJudiciaryCount     the count of schedule judiciary entries processed
+     */
+    private void logJudiciaryCourtScheduleMapSummary(
+            final Map<String, List<JudiciaryCourtScheduleData>> judiciaryCourtScheduleMap,
+            final int scheduleJudiciaryCount) {
         final int totalSchedules = judiciaryCourtScheduleMap.values().stream()
+                .flatMap(List::stream)
                 .mapToInt(data -> data.courtScheduleIds().size())
                 .sum();
         logger.info("Created judiciary court schedule map with {} entries and {} total court schedules from {} schedule judiciary entries",
-                judiciaryCourtScheduleMap.size(), totalSchedules, scheduleJudiciaryList.size());
-
-        return judiciaryCourtScheduleMap;
+                judiciaryCourtScheduleMap.size(), totalSchedules, scheduleJudiciaryCount);
     }
 
     /**
@@ -195,33 +287,194 @@ public class RotaJudiciaryHelper {
     private JudiciaryCourtScheduleData createScheduleData(final CourtScheduleJudiciary schedule, final Set<UUID> scheduleIds) {
         return new JudiciaryCourtScheduleData(
                 new ArrayList<>(scheduleIds),
+                schedule.getRotaJudiciaryId(),
                 schedule.getPosition(),
                 schedule.getBenchChairman(),
                 schedule.getDeputy()
         );
     }
 
+
     /**
-     * Merges new schedule data with existing data, preserving metadata from the first schedule.
+     * Creates a map with judiciaryId as key and List of JudiciaryCourtScheduleData as value from the composite key map.
+     * Optimized using groupingBy collector for better performance.
      *
-     * @param existingData the existing data (may be null)
-     * @param newData the new schedule data to merge
-     * @return merged JudiciaryCourtScheduleData
+     * @param judiciaryCourtListingProfileScheduleMap the map with composite key (judiciaryId|courtListingProfileId) and JudiciaryCourtScheduleData as value
+     * @return a map with judiciaryId as key and List of JudiciaryCourtScheduleData as value
      */
-    private JudiciaryCourtScheduleData mergeScheduleData(final JudiciaryCourtScheduleData existingData,
-                                                         final JudiciaryCourtScheduleData newData) {
-        if (existingData == null) {
-            return newData;
+    private Map<String, List<JudiciaryCourtScheduleData>> createJudiciaryIdToScheduleDataListMap(
+            final Map<String, JudiciaryCourtScheduleData> judiciaryCourtListingProfileScheduleMap) {
+        if (judiciaryCourtListingProfileScheduleMap == null || judiciaryCourtListingProfileScheduleMap.isEmpty()) {
+            logger.debug("No judiciary court listing profile schedule map provided to create judiciary ID to schedule data list map");
+            return new ConcurrentHashMap<>();
         }
-        // Merge schedule IDs with existing data, preserving metadata from first schedule
-        final List<UUID> mergedScheduleIds = new ArrayList<>(existingData.courtScheduleIds());
-        mergedScheduleIds.addAll(newData.courtScheduleIds());
-        return new JudiciaryCourtScheduleData(
-                mergedScheduleIds,
-                existingData.position(),
-                existingData.isBenchChairman(),
-                existingData.isDeputy()
-        );
+
+        final Map<String, List<JudiciaryCourtScheduleData>> resultMap = judiciaryCourtListingProfileScheduleMap.entrySet().stream()
+                .filter(entry -> {
+                    final String compositeKey = entry.getKey();
+                    final String[] parts = compositeKey.split("\\|", 2);
+                    if (parts.length != 2 || !isNotEmpty(parts[0])) {
+                        logger.debug("Invalid or empty composite key format: {}", compositeKey);
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.groupingBy(
+                        entry -> {
+                            final String[] parts = entry.getKey().split("\\|", 2);
+                            return parts[0];
+                        },
+                        ConcurrentHashMap::new,
+                        Collectors.mapping(
+                                Map.Entry::getValue,
+                                Collectors.toList()
+                        )
+                ));
+
+        logger.info("Created judiciary ID to schedule data list map with {} entries", resultMap.size());
+        return resultMap;
+    }
+
+    /**
+     * Creates a map with composite key (judiciaryId + courtListingProfileId) and JudiciaryCourtScheduleData as value.
+     * Optimized by pre-building a lookup map for schedule judiciary objects.
+     *
+     * @param judiciaryCourtListingProfileMap the map of judiciary IDs to lists of court listing profile IDs
+     * @param scheduleJudiciaryList the list of court schedule judiciary objects
+     * @param courtScheduleMap the map of court listing profile IDs to sets of CourtSchedule UUIDs
+     * @return a map with composite key (judiciaryId|courtListingProfileId) and JudiciaryCourtScheduleData as value
+     */
+    private Map<String, JudiciaryCourtScheduleData> createJudiciaryCourtListingProfileScheduleMap(
+            final Map<String, List<String>> judiciaryCourtListingProfileMap,
+            final List<CourtScheduleJudiciary> scheduleJudiciaryList,
+            final Map<String, Set<UUID>> courtScheduleMap) {
+        final Map<String, JudiciaryCourtScheduleData> resultMap = new ConcurrentHashMap<>();
+
+        if (judiciaryCourtListingProfileMap == null || judiciaryCourtListingProfileMap.isEmpty()) {
+            logger.debug("No judiciary court listing profile map provided to create composite key map");
+            return resultMap;
+        }
+
+        // Pre-build lookup map for O(1) access instead of O(n) stream search
+        final Map<String, CourtScheduleJudiciary> scheduleLookupMap = buildScheduleLookupMap(scheduleJudiciaryList);
+
+        judiciaryCourtListingProfileMap.forEach((judiciaryId, courtListingProfileIds) -> {
+            if (shouldProcessJudiciaryEntry(judiciaryId, courtListingProfileIds)) {
+                processCourtListingProfileIds(judiciaryId, courtListingProfileIds, scheduleLookupMap, 
+                        courtScheduleMap, resultMap);
+            }
+        });
+
+        logger.info("Created judiciary court listing profile schedule map with {} entries", resultMap.size());
+        return resultMap;
+    }
+
+    /**
+     * Checks if a judiciary entry should be processed.
+     *
+     * @param judiciaryId            the judiciary ID to validate
+     * @param courtListingProfileIds the list of court listing profile IDs
+     * @return true if the entry should be processed, false otherwise
+     */
+    private boolean shouldProcessJudiciaryEntry(final String judiciaryId, final List<String> courtListingProfileIds) {
+        return courtListingProfileIds != null 
+                && !courtListingProfileIds.isEmpty() 
+                && isNotEmpty(judiciaryId);
+    }
+
+    /**
+     * Processes court listing profile IDs for a judiciary and adds entries to the result map.
+     *
+     * @param judiciaryId            the judiciary ID
+     * @param courtListingProfileIds the list of court listing profile IDs to process
+     * @param scheduleLookupMap      the lookup map for schedule judiciary objects
+     * @param courtScheduleMap       the map of court listing profile IDs to sets of CourtSchedule UUIDs
+     * @param resultMap              the result map to populate
+     */
+    private void processCourtListingProfileIds(
+            final String judiciaryId,
+            final List<String> courtListingProfileIds,
+            final Map<String, CourtScheduleJudiciary> scheduleLookupMap,
+            final Map<String, Set<UUID>> courtScheduleMap,
+            final Map<String, JudiciaryCourtScheduleData> resultMap) {
+        courtListingProfileIds.forEach(courtListingProfileId -> {
+            try {
+                processCourtListingProfileEntry(judiciaryId, courtListingProfileId, scheduleLookupMap, 
+                        courtScheduleMap, resultMap);
+            } catch (final Exception ex) {
+                logger.error("Error creating composite key map entry for judiciaryId: {} and courtListingProfileId: {}: {}", 
+                        judiciaryId, courtListingProfileId, ex.getMessage(), ex);
+            }
+        });
+    }
+
+    /**
+     * Processes a single court listing profile entry and adds it to the result map if valid.
+     *
+     * @param judiciaryId       the judiciary ID
+     * @param courtListingProfileId the court listing profile ID
+     * @param scheduleLookupMap  the lookup map for schedule judiciary objects
+     * @param courtScheduleMap  the map of court listing profile IDs to sets of CourtSchedule UUIDs
+     * @param resultMap         the result map to populate
+     */
+    private void processCourtListingProfileEntry(
+            final String judiciaryId,
+            final String courtListingProfileId,
+            final Map<String, CourtScheduleJudiciary> scheduleLookupMap,
+            final Map<String, Set<UUID>> courtScheduleMap,
+            final Map<String, JudiciaryCourtScheduleData> resultMap) {
+        if (!isNotEmpty(courtListingProfileId)) {
+            logger.debug("Skipping - missing courtListingProfileId for judiciaryId: {}", judiciaryId);
+            return;
+        }
+
+        final String lookupKey = judiciaryId + "|" + courtListingProfileId;
+        final CourtScheduleJudiciary schedule = scheduleLookupMap.get(lookupKey);
+
+        if (schedule == null) {
+            logger.debug("No schedule found for judiciaryId: {} and courtListingProfileId: {}", 
+                    judiciaryId, courtListingProfileId);
+            return;
+        }
+
+        final Set<UUID> scheduleIds = courtScheduleMap.get(courtListingProfileId);
+        if (scheduleIds == null || scheduleIds.isEmpty()) {
+            logger.debug("No court schedule found for courtListingProfileId: {}", courtListingProfileId);
+            return;
+        }
+
+        final JudiciaryCourtScheduleData scheduleData = createScheduleData(schedule, scheduleIds);
+        resultMap.put(lookupKey, scheduleData);
+
+        logger.debug("Created map entry with composite key {} for judiciaryId: {} and courtListingProfileId: {}",
+                lookupKey, judiciaryId, courtListingProfileId);
+    }
+
+    /**
+     * Builds a lookup map for schedule judiciary objects using composite key (judiciaryId|courtListingProfileId).
+     *
+     * @param scheduleJudiciaryList the list of court schedule judiciary objects
+     * @return a map with composite key and CourtScheduleJudiciary as value
+     */
+    private Map<String, CourtScheduleJudiciary> buildScheduleLookupMap(
+            final List<CourtScheduleJudiciary> scheduleJudiciaryList) {
+        final Map<String, CourtScheduleJudiciary> lookupMap = new ConcurrentHashMap<>();
+        
+        if (scheduleJudiciaryList == null || scheduleJudiciaryList.isEmpty()) {
+            return lookupMap;
+        }
+
+        scheduleJudiciaryList.forEach(schedule -> {
+            final String judiciaryId = schedule.getJudiciaryId();
+            final String courtListingProfileId = schedule.getCourtListingProfileId();
+            
+            if (isNotEmpty(judiciaryId) && isNotEmpty(courtListingProfileId)) {
+                final String key = judiciaryId + "|" + courtListingProfileId;
+                lookupMap.put(key, schedule);
+            }
+        });
+
+        return lookupMap;
     }
 
     // ============================================================================

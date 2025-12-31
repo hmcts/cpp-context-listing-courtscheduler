@@ -204,8 +204,8 @@ class RotaFileUtilityTest {
         String fileName = "test_rota_20240115T120000Z.xml";
         byte[] content = "rota file content".getBytes();
         OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
-        // For non-snapshot files, getLJAFileNamePrefix returns filename without .xml extension
-        String fileNamePrefix = "test_rota_20240115T120000Z";
+        // For non-snapshot files, getLJAFileNamePrefix returns prefix (everything before timestamp)
+        String fileNamePrefix = "test_rota_";
 
         RotaFileProcessHistory mockHistory = new RotaFileProcessHistory();
         mockHistory.setExecutionId("rota-execution-id");
@@ -242,8 +242,9 @@ class RotaFileUtilityTest {
         // given
         String fileName = "invalid_filename_without_timestamp.xml";
         byte[] content = "test content".getBytes();
-        // For files without timestamp, getLJAFileNamePrefix returns filename without .xml extension
-        String fileNamePrefix = "invalid_filename_without_timestamp";
+        // For files without timestamp, getLJAFileNamePrefix returns original filename
+        // (because generated timestamp is not in filename)
+        String fileNamePrefix = "invalid_filename_without_timestamp.xml";
         // getLJAFileTimeStampAsString returns current timestamp when no timestamp found in filename
         // So we need to use any(OffsetDateTime.class) to match the dynamically generated timestamp
 
