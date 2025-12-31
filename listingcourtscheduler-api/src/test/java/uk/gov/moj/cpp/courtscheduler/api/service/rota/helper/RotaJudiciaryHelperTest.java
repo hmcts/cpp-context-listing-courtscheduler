@@ -34,6 +34,7 @@ import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryBuilder
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -304,14 +305,16 @@ class RotaJudiciaryHelperTest {
         when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(courtScheduleJudiciary);
 
         // when
-        final Map<String, JudiciaryCourtScheduleData> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+        final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
                 records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
         assertThat(result.size(), is(1));
         assertThat(result.containsKey(judiciaryId), is(true));
-        final JudiciaryCourtScheduleData data = result.get(judiciaryId);
-        assertThat(data, is(notNullValue()));
+        final List<JudiciaryCourtScheduleData> dataList = result.get(judiciaryId);
+        assertThat(dataList, is(notNullValue()));
+        assertThat(dataList.size(), is(1));
+        final JudiciaryCourtScheduleData data = dataList.get(0);
         assertThat(data.courtScheduleIds().size(), is(2));
         assertThat(data.courtScheduleIds().contains(sessionId1), is(true));
         assertThat(data.courtScheduleIds().contains(sessionId2), is(true));
@@ -327,7 +330,7 @@ class RotaJudiciaryHelperTest {
         final Map<String, Set<UUID>> courtScheduleMap = Map.of("listing-1", Set.of(UUID.randomUUID()));
 
         // when
-        final Map<String, JudiciaryCourtScheduleData> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+        final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
                 records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
@@ -345,7 +348,7 @@ class RotaJudiciaryHelperTest {
         records.put(SCHEDULE, schedules);
 
         // when
-        final Map<String, JudiciaryCourtScheduleData> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+        final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
                 records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
@@ -379,7 +382,7 @@ class RotaJudiciaryHelperTest {
                 .thenReturn(Optional.of(judiciary));
 
         // when
-        final Map<String, JudiciaryCourtScheduleData> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+        final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
                 records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
