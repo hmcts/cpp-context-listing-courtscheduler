@@ -95,6 +95,8 @@ public class RotaFileProcessorService {
 
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
+    private static final String XML_NAME_PART = ".xml";
+    private static final int TIMESTAMP_STRING_LENGTH = 16;
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
@@ -159,7 +161,7 @@ public class RotaFileProcessorService {
         // Create rota_file_process_history record for master rota files (same as snapshot files)
         if (!fileName.contains(SNAPSHOT_NAME_PART)) {
             logger.info("DD-15703:processMasterRotaFile: before rotaFileProcessHistoryRepository.save");
-            final String fileNamePrefix = fileName.endsWith(".xml") ? fileName.substring(0, fileName.length() - 4) : fileName;
+            final String fileNamePrefix = fileName.endsWith(".xml") ? fileName.substring(0, fileName.length() - (TIMESTAMP_STRING_LENGTH + XML_NAME_PART.length())) : fileName;
             final OffsetDateTime fileDateTime = rotaPeriodStartDate.atStartOfDay().atOffset(ZoneOffset.UTC);
             executionId = randomUUID().toString();
             rotaFileProcessHistory = rotaFileProcessHistoryService.save(fileNamePrefix, fileDateTime, content, executionId);

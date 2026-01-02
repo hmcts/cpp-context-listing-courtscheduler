@@ -752,7 +752,7 @@ class RotaFileProcessorServiceTest {
         rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
 
         // Verify that save is called for master rota file (not snapshot)
-        verify(rotaFileProcessHistoryService, atLeastOnce()).save(eq("lja_avonandsomerset_rota_20240314T160815Z"), any(), eq(blobByteArray), anyString());
+        verify(rotaFileProcessHistoryService, atLeastOnce()).save(eq("lja_avonandsomerset_rota_"), any(), eq(blobByteArray), anyString());
         // Verify that update is called after processing completes
         verify(rotaFileProcessHistoryService, atLeastOnce()).update(eq(savedHistory));
         // Verify that the executionId is used in processing
