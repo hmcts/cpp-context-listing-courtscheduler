@@ -24,6 +24,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.DateRange;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryScheduleEnricher;
@@ -162,7 +163,8 @@ public class RotaFileProcessorService {
         if (!fileName.contains(SNAPSHOT_NAME_PART)) {
             logger.info("DD-15703:processMasterRotaFile: before rotaFileProcessHistoryRepository.save");
             final String fileNamePrefix = fileName.endsWith(".xml") ? fileName.substring(0, fileName.length() - (TIMESTAMP_STRING_LENGTH + XML_NAME_PART.length())) : fileName;
-            final OffsetDateTime fileDateTime = rotaPeriodStartDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+            final OffsetDateTime fileDateTime = FileUtil.getLJAFileTimeStampAsOffsetDateTime(fileName);
+
             executionId = randomUUID().toString();
             rotaFileProcessHistory = rotaFileProcessHistoryService.save(fileNamePrefix, fileDateTime, content, executionId);
             logger.info("DD-15703:processMasterRotaFile: after rotaFileProcessHistoryRepository.save - executionId: {}", executionId);
