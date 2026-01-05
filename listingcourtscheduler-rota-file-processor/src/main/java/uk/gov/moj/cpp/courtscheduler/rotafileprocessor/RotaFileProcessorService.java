@@ -24,6 +24,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.DateRange;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryScheduleEnricher;
@@ -95,6 +96,8 @@ public class RotaFileProcessorService {
 
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
+    private static final String XML_NAME_PART = ".xml";
+    private static final int TIMESTAMP_STRING_LENGTH = 16;
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
@@ -159,8 +162,9 @@ public class RotaFileProcessorService {
         // Create rota_file_process_history record for master rota files (same as snapshot files)
         if (!fileName.contains(SNAPSHOT_NAME_PART)) {
             logger.info("DD-15703:processMasterRotaFile: before rotaFileProcessHistoryRepository.save");
-            final String fileNamePrefix = fileName.endsWith(".xml") ? fileName.substring(0, fileName.length() - 4) : fileName;
-            final OffsetDateTime fileDateTime = rotaPeriodStartDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+            final String fileNamePrefix = fileName.endsWith(".xml") ? fileName.substring(0, fileName.length() - (TIMESTAMP_STRING_LENGTH + XML_NAME_PART.length())) : fileName;
+            final OffsetDateTime fileDateTime = FileUtil.getLJAFileTimeStampAsOffsetDateTime(fileName);
+
             executionId = randomUUID().toString();
             rotaFileProcessHistory = rotaFileProcessHistoryService.save(fileNamePrefix, fileDateTime, content, executionId);
             logger.info("DD-15703:processMasterRotaFile: after rotaFileProcessHistoryRepository.save - executionId: {}", executionId);
