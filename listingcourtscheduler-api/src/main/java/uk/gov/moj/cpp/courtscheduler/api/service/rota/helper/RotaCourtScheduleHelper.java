@@ -1,14 +1,17 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 import static java.lang.String.format;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.DELIMITER;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.MISSING_COURT_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.BUSINESS_TYPE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PANEL;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION;
@@ -24,6 +27,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -82,17 +86,19 @@ public class RotaCourtScheduleHelper {
 
         final Map<String, Set<UUID>> courtScheduleMap = new ConcurrentHashMap<>();
         final Map<String, String> missingReferenceDataMappingMap = new ConcurrentHashMap<>();
+        final Map<String, List<String>> missingSessionsByOuCode = new ConcurrentHashMap<>();
 
         courtListings.forEach((listingProfileId, listingProfile) -> {
             try {
                 processCourtListing(listingProfileId, listingProfile, requester, executionId,
-                        courtScheduleMap, missingReferenceDataMappingMap);
+                        courtScheduleMap, missingReferenceDataMappingMap, missingSessionsByOuCode);
             } catch (final Exception ex) {
                 logger.error("Error processing court listing profile {}: {}", listingProfileId, ex.getMessage(), ex);
             }
         });
 
         logMissingReferenceData(missingReferenceDataMappingMap, executionId);
+        logMissingCourtSessions(missingSessionsByOuCode, executionId);
 
         logger.info("Created court schedule map with {} entries from {} court listings",
                 courtScheduleMap.size(), courtListings.size());
@@ -105,7 +111,8 @@ public class RotaCourtScheduleHelper {
                                      final Requester requester,
                                      final String executionId,
                                      final Map<String, Set<UUID>> courtScheduleMap,
-                                     final Map<String, String> missingReferenceDataMappingMap) {
+                                     final Map<String, String> missingReferenceDataMappingMap,
+                                     final Map<String, List<String>> missingSessionsByOuCode) {
         final String panel = listingProfile.get(PANEL);
         final String sessionDateStr = listingProfile.get(SESSION_DATE);
         final String session = listingProfile.get(SESSION);
@@ -138,6 +145,7 @@ public class RotaCourtScheduleHelper {
         } else {
             logger.debug("No court schedule found for listing profile {} with panel: {}, sessionDate: {}, session: {}, courtRoomId: {}",
                     listingProfileId, panel, sessionDate, session, courtRoom.getCourtroomId());
+            recordMissingSession(missingSessionsByOuCode, courtRoom, sessionDate, session, panel, listingProfile);
         }
     }
 
@@ -224,6 +232,54 @@ public class RotaCourtScheduleHelper {
                 );
             }
         }
+    }
+
+    private void logMissingCourtSessions(final Map<String, List<String>> missingSessionsByOuCode, final String executionId) {
+        if (!missingSessionsByOuCode.isEmpty() && isNotEmpty(executionId)) {
+            missingSessionsByOuCode.forEach((ouCode, sessions) -> {
+                final String sessionDetails = sessions.stream()
+                        .filter(org.apache.commons.lang3.StringUtils::isNotBlank)
+                        .distinct()
+                        .collect(joining(format(DELIMITER)));
+                if (isNotEmpty(sessionDetails)) {
+                    final String msg = MISSING_COURT_SESSION.format(ouCode, sessionDetails);
+                    logger.warn(msg);
+                    rotaProcessLogService.saveRotaProcessLog(
+                            rotaProcessLog()
+                                    .withExecutionId(executionId)
+                                    .withErrorCode(MISSING_COURT_SESSION.code())
+                                    .withErrorText(msg)
+                                    .build()
+                    );
+                }
+            });
+        }
+    }
+
+    private void recordMissingSession(final Map<String, List<String>> missingSessionsByOuCode,
+                                      final CourtRoom courtRoom,
+                                      final LocalDate sessionDate,
+                                      final String session,
+                                      final String panel,
+                                      final Map<String, String> listingProfile) {
+        final String ouCode = defaultIfBlank(courtRoom.getOucode(), "UNKNOWN_OUCODE");
+        final String courtHouseName = defaultIfBlank(courtRoom.getOucodeL3Name(), "UNKNOWN_COURTHOUSE");
+        final String courtRoomName = defaultIfBlank(courtRoom.getCourtroomName(), "UNKNOWN_COURTROOM");
+        final String businessType = defaultIfBlank(listingProfile.get(BUSINESS_TYPE), "UNKNOWN_BUSINESS_TYPE");
+        final String sessionStr = defaultIfBlank(session, "UNKNOWN_SESSION");
+        final String panelStr = defaultIfBlank(panel, "UNKNOWN_PANEL");
+        
+        final String sessionDetails = format("%s - %s - %s - %s - %s - %s",
+                sessionDate,
+                courtHouseName,
+                courtRoomName,
+                businessType,
+                sessionStr,
+                panelStr);
+        
+        missingSessionsByOuCode
+                .computeIfAbsent(ouCode, key -> new ArrayList<>())
+                .add(sessionDetails);
     }
 
     private boolean isEmptyRecords(final Map<RotaPayload, Map<String, Map<String, String>>> records) {
