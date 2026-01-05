@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,9 +26,11 @@ import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
 
@@ -37,7 +40,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -72,6 +74,9 @@ class RotaFilePartialProcessorTest {
 
     @Mock
     private BusinessTypeMatchingLogger businessTypeMatchingLogger;
+
+    @Mock
+    private RotaFileProcessHistoryService rotaFileProcessHistoryService;
 
     @Captor
     private ArgumentCaptor<List<String>> missingBusinessTypeCaptor;
@@ -112,7 +117,7 @@ class RotaFilePartialProcessorTest {
         doNothing().when(sessionsService).updateSlotsAndSchedules(any(uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
         when(allocatedListingService.getAllocatedListingsByCourtScheduleId(anyList())).thenReturn(emptyMap());
 
-        rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, nonMigratedOuCodes, businessTypeMap, migratedMap, randomUUID().toString());
+        rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, nonMigratedOuCodes, businessTypeMap, migratedMap, randomUUID().toString(), null, false);
 
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
         verify(businessTypeMatchingLogger, times(1)).logMissingBusinessType(missingBusinessTypeCaptor.capture(), anyString());
@@ -153,7 +158,7 @@ class RotaFilePartialProcessorTest {
         when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(partialStartDate), eq(partialEndDate), anyList())).thenReturn(0);
         when(allocatedListingService.getAllocatedListingsByCourtScheduleId(anyList())).thenReturn(emptyMap());
 
-        rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, emptyList(), businessTypeMap, migratedMap, randomUUID().toString());
+        rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), partialStartDate, partialEndDate, ouCodes, emptyList(), businessTypeMap, migratedMap, randomUUID().toString(), null, false);
 
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
         verify(businessTypeMatchingLogger, atLeastOnce()).logMissingBusinessType(missingBusinessTypeCaptor.capture(), anyString());
@@ -183,10 +188,56 @@ class RotaFilePartialProcessorTest {
 
         when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(partialStartDate), eq(partialEndDate), anyList())).thenReturn(0);
 
-        rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), startAndEndDate, ouCodes, emptyList(), businessTypeMap, migratedMap, randomUUID().toString());
+        rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, emptyList(), emptyList(), startAndEndDate, ouCodes, emptyList(), businessTypeMap, migratedMap, randomUUID().toString(), null, false);
 
         verify(sessionsService, atLeastOnce()).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
         verify(courtScheduleJudiciaryService, atLeastOnce()).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(partialStartDate), eq(partialEndDate), anyList());
+    }
+
+    @Test
+    void shouldUpdateProcessHistoryAfterFullRotaProcessingWhenLastDateRange() {
+        final Map<String, CourtSchedule> slots = new HashMap<>();
+        final Map<String, CourtSchedule> slotsForMigrated = new HashMap<>();
+        final LocalDate startDate = LocalDate.of(2024, 1, 1);
+        final LocalDate endDate = startDate.plusDays(6);
+        final List<String> ouCodes = List.of("OU1");
+        final Map<String, BusinessType> businessTypeMap = new HashMap<>();
+        final Map<String, Boolean> migratedMap = Map.of("OU1", false);
+        final RotaFileProcessHistory history = new RotaFileProcessHistory();
+
+        when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(startDate), eq(endDate), anyList())).thenReturn(0);
+        when(courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(eq(startDate), eq(endDate), anyList())).thenReturn(0);
+        when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
+        when(courtScheduleJudiciaryService.getAllocatedScheduleJudiciaryInfo(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(emptyList());
+        doNothing().when(sessionsService).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
+
+        rotaFilePartialProcessor.processFullRotaFile(slots, slotsForMigrated, emptyList(), emptyList(), startDate, endDate, ouCodes, ouCodes, businessTypeMap, migratedMap, randomUUID().toString(), history, true);
+
+        verify(rotaFileProcessHistoryService, times(1)).update(history);
+    }
+
+    @Test
+    void shouldNotUpdateProcessHistoryWhenNotLastDateRangeForSnapshotProcessing() {
+        final Map<String, CourtSchedule> slots = new HashMap<>();
+        final Map<String, CourtSchedule> slotsForMigrated = new HashMap<>();
+        final Map<String, LocalDate> startAndEndDate = Map.of(
+                START_DATE.getLabel(), LocalDate.of(2024, 1, 1),
+                END_DATE.getLabel(), LocalDate.of(2024, 1, 7)
+        );
+        final List<String> ouCodes = List.of("OU1");
+        final Map<String, BusinessType> businessTypeMap = new HashMap<>();
+        final Map<String, Boolean> migratedMap = Map.of("OU1", false);
+        final RotaFileProcessHistory history = new RotaFileProcessHistory();
+
+        when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(0);
+        when(courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(0);
+        when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
+        when(courtScheduleJudiciaryService.getAllocatedScheduleJudiciaryInfo(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(emptyList());
+        doNothing().when(sessionsService).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
+
+        rotaFilePartialProcessor.processSnapshotRotaFile(slots, slotsForMigrated, emptyList(), emptyList(), startAndEndDate, ouCodes, ouCodes, businessTypeMap, migratedMap, randomUUID().toString(), history, false);
+
+        verify(rotaFileProcessHistoryService, never()).update(history);
     }
 
     private List<BusinessType> getRotaBusinessTypes() throws JsonProcessingException {

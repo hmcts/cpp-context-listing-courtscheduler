@@ -7,6 +7,7 @@ import static java.util.Optional.empty;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.START_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJASnapshotFileNamePrefix;
@@ -28,6 +29,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryScheduleEnricher;
+import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.MissingReferenceDataMappingLogger;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.RotaDataEnricher;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
@@ -87,6 +89,9 @@ public class RotaFileProcessorService {
     private RotaFilePartialProcessor rotaFilePartialProcessor;
 
     @Inject
+    private MissingReferenceDataMappingLogger missingReferenceDataMappingLogger;
+
+    @Inject
     @Value(key ="rota.months.of.provisional.data.to.populate", defaultValue = "6")
     private String rotaMonthsOfProvisionalDataToPopulate;
 
@@ -130,7 +135,7 @@ public class RotaFileProcessorService {
 
     private void process(final String fileName, final byte[] content, final Requester requester) {
         RotaFileProcessHistory rotaFileProcessHistory = null;
-        String executionId = "";
+        String executionId = randomUUID().toString();
         if (fileName.contains(SNAPSHOT_NAME_PART)) {
             if (checkFileDateTimeFieldAndIfNewerVersionOfSnapshotFileProcessed(fileName)) {
                 return;
@@ -138,7 +143,6 @@ public class RotaFileProcessorService {
             logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.save");
             final OffsetDateTime fileDateTime = getLJASnapshotFileTimeStampAsOffsetDateTime(fileName);
             final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
-            executionId = randomUUID().toString();
             rotaFileProcessHistory = rotaFileProcessHistoryService.save(fileNamePrefix, fileDateTime, content, executionId);
             logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.save");
         }
@@ -181,12 +185,17 @@ public class RotaFileProcessorService {
         final List<String> migratedOuCodes = ouCodes.stream().filter(ouCode -> TRUE.equals(migratedMap.get(ouCode))).toList();
         logger.info("DD-15703:RotaFileProcessor: After getOuCodeFromCourtRoomMappingsByLocationId, ouCodes: {}, nonMigratedOuCodes: {}, migratedOuCodes: {}", ouCodes, nonMigratedOuCodes, migratedOuCodes);
 
+        // Shared maps for aggregating missing data across migrated and non-migrated processing
+        final Map<String, String> allMissingVenues = new ConcurrentHashMap<>();
+        final Map<String, String> allMissingJudiciaries = new ConcurrentHashMap<>();
+        final Map<String, List<String>> allMissingSessionsByOuCode = new ConcurrentHashMap<>();
+
         final long extractNonMigratedStart = System.nanoTime();
         final List<CourtSchedule> activeCourtSchedulesForNonMigratedOuCodesWithinRotaPeriod = sessionsService.getExtractedCourtSchedules(nonMigratedOuCodes, rotaPeriodStartDate, rotaPeriodEndDate);
         final long extractNonMigratedEnd = System.nanoTime();
         logger.info("PRF: Fetched existing non-migrated schedules: {} rows in {} ms", activeCourtSchedulesForNonMigratedOuCodesWithinRotaPeriod.size(), (extractNonMigratedEnd - extractNonMigratedStart) / 1_000_000);
         final long slotsNonMigratedStart = System.nanoTime();
-        final Map<String, CourtSchedule> slotsForNonMigrated = receiveSlots(records, rotaPeriodEndDate, migratedMap, FALSE, activeCourtSchedulesForNonMigratedOuCodesWithinRotaPeriod, requester, executionId);
+        final Map<String, CourtSchedule> slotsForNonMigrated = receiveSlots(records, rotaPeriodEndDate, migratedMap, FALSE, activeCourtSchedulesForNonMigratedOuCodesWithinRotaPeriod, requester, executionId, allMissingVenues);
         final long slotsNonMigratedEnd = System.nanoTime();
         logger.info("PRF: Enriched slots for non-migrated: {} entries in {} ms", slotsForNonMigrated.size(), (slotsNonMigratedEnd - slotsNonMigratedStart) / 1_000_000);
 
@@ -195,21 +204,32 @@ public class RotaFileProcessorService {
         final long extractMigratedEnd = System.nanoTime();
         logger.info("PRF: Fetched existing migrated schedules: {} rows in {} ms", activeCourtSchedulesForMigratedOuCodesWithinDateRange.size(), (extractMigratedEnd - extractMigratedStart) / 1_000_000);
         final long slotsMigratedStart = System.nanoTime();
-        final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(records, rotaPeriodEndDate, migratedMap, TRUE, activeCourtSchedulesForMigratedOuCodesWithinDateRange, requester, executionId);
+        final Map<String, CourtSchedule> slotsForMigrated = receiveSlots(records, rotaPeriodEndDate, migratedMap, TRUE, activeCourtSchedulesForMigratedOuCodesWithinDateRange, requester, executionId, allMissingVenues);
         final long slotsMigratedEnd = System.nanoTime();
         logger.info("PRF: Enriched slots for migrated: {} entries in {} ms", slotsForMigrated.size(), (slotsMigratedEnd - slotsMigratedStart) / 1_000_000);
         logger.info("received slots with slotsForNonMigrated size: {} of nonMigratedOuCodes: {} and slotsForMigrated: {} of migratedOuCodes: {}", slotsForNonMigrated.size(), nonMigratedOuCodes, slotsForMigrated.size(), migratedOuCodes);
 
         final long enrichNonMigratedStart = System.nanoTime();
-        final Collection<CourtScheduleJudiciary> schedulesForNonMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForNonMigrated, records, FALSE, activeCourtSchedulesForNonMigratedOuCodesWithinRotaPeriod, requester, executionId);
+        final Collection<CourtScheduleJudiciary> schedulesForNonMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForNonMigrated, records, FALSE, activeCourtSchedulesForNonMigratedOuCodesWithinRotaPeriod, requester, executionId, allMissingJudiciaries, allMissingSessionsByOuCode);
         final long enrichNonMigratedEnd = System.nanoTime();
         logger.info("PRF: Enriched judiciary schedules (non-migrated): {} in {} ms", schedulesForNonMigrated.size(), (enrichNonMigratedEnd - enrichNonMigratedStart) / 1_000_000);
         final long enrichMigratedStart = System.nanoTime();
-        final Collection<CourtScheduleJudiciary> schedulesForMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForMigrated, records, TRUE, activeCourtSchedulesForMigratedOuCodesWithinDateRange, requester, executionId);
+        final Collection<CourtScheduleJudiciary> schedulesForMigrated = judiciaryScheduleEnricher.enrichJudiciarySchedules(slotsForMigrated, records, TRUE, activeCourtSchedulesForMigratedOuCodesWithinDateRange, requester, executionId, allMissingJudiciaries, allMissingSessionsByOuCode);
         final long enrichMigratedEnd = System.nanoTime();
         logger.info("PRF: Enriched judiciary schedules (migrated): {} in {} ms", schedulesForMigrated.size(), (enrichMigratedEnd - enrichMigratedStart) / 1_000_000);
         logger.info("received schedules with schedules size: {} and schedulesForMigrated: {}", schedulesForNonMigrated.size(), schedulesForMigrated.size());
         logger.info("Enriched {} , saving it to DB..", slotsForNonMigrated.size());
+
+        // Aggregate and log missing data once per execution
+        if (!allMissingVenues.isEmpty() && isNotEmpty(executionId)) {
+            missingReferenceDataMappingLogger.logMissingVenueMessages(allMissingVenues, executionId);
+        }
+        if (!allMissingJudiciaries.isEmpty() && isNotEmpty(executionId)) {
+            missingReferenceDataMappingLogger.logJudiciaryMissingMessage(allMissingJudiciaries.values(), executionId);
+        }
+        if (!allMissingSessionsByOuCode.isEmpty() && isNotEmpty(executionId)) {
+            missingReferenceDataMappingLogger.logMissingCourtSessions(allMissingSessionsByOuCode, executionId);
+        }
 
         logger.info("DD-15703:RotaFileProcessor: Before checking for rota period");
         if (rotaPeriodStartDate.isBefore(LocalDate.now())) {
@@ -229,13 +249,15 @@ public class RotaFileProcessorService {
         if (fileName.contains(SNAPSHOT_NAME_PART)) {
             logger.info("DD-15703:RotaFileProcessor: Before  processSnapshotRotaFile");
             final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
-            for(final DateRange dateRange: dateRanges) {
+            for(int i = 0; i < dateRanges.size(); i++) {
+                final DateRange dateRange = dateRanges.get(i);
+                final boolean isLastDateRange = (i == dateRanges.size() - 1);
                 final Map<String, LocalDate> startAndEndDate = new HashMap<>();
                 startAndEndDate.put(START_DATE.getLabel(), dateRange.getStart());
                 startAndEndDate.put(END_DATE.getLabel(), dateRange.getEnd());
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
                 logger.info("Filtered Slots for Snapshot : {} within dateRange: {} - {}", filteredSlots.keySet(), dateRange.getStart(), dateRange.getEnd());
-                rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId);
+                rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId, rotaFileProcessHistory, isLastDateRange);
                 logger.info("snapshot rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
@@ -245,10 +267,12 @@ public class RotaFileProcessorService {
             logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
         } else {
             final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
-            for(final DateRange dateRange: dateRanges) {
+            for(int i = 0; i < dateRanges.size(); i++) {
+                final DateRange dateRange = dateRanges.get(i);
+                final boolean isLastDateRange = (i == dateRanges.size() - 1);
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
                 logger.info("Filtered Slots for Full Rota file : {}", filteredSlots.keySet());
-                rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId);
+                rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId, rotaFileProcessHistory, isLastDateRange);
                 logger.info("master rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
@@ -281,8 +305,9 @@ public class RotaFileProcessorService {
                                                     final Boolean migrated,
                                                     final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
                                                     final Requester requester,
-                                                    final String executionId) {
-        return rotaDataEnricher.enrichCourtListings(records, rotaPeriodEndDate, migratedMap, migrated, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester, executionId);
+                                                    final String executionId,
+                                                    final Map<String, String> missingReferenceDataMappingMap) {
+        return rotaDataEnricher.enrichCourtListings(records, rotaPeriodEndDate, migratedMap, migrated, activeCourtSchedulesByOuCodesWithinRotaPeriod, requester, executionId, missingReferenceDataMappingMap);
     }
 
     private List<String> getLocationFromRecords(final Map<RotaPayload, Map<String, Map<String, String>>> records) {

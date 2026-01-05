@@ -82,7 +82,7 @@ class RotaDataEnricherTest {
         final LocalDate rotaPeriodCutOffDate = LocalDate.of(2019, 12, 16);
         final RotaFileParser rotaFileParser = new RotaFileParser();
         setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
-        final Map<String,String> missingReferenceDataMappingMap = new HashMap();
+        final Map<String,String> missingReferenceDataMappingMap = new HashMap<>();
 
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
@@ -101,7 +101,7 @@ class RotaDataEnricherTest {
         final byte[] blobContent = givenBlobContent(file);
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester, randomUUID().toString());
+        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester, randomUUID().toString(), missingReferenceDataMappingMap);
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
@@ -128,7 +128,7 @@ class RotaDataEnricherTest {
         final LocalDate rotaPeriodCutOffDate = LocalDate.of(2019, 12, 16);
         final RotaFileParser rotaFileParser = new RotaFileParser();
         setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
-        final Map<String,String> missingReferenceDataMappingMap = new HashMap();
+        final Map<String,String> missingReferenceDataMappingMap = new HashMap<>();
 
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
@@ -148,7 +148,7 @@ class RotaDataEnricherTest {
 
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester, randomUUID().toString());
+        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester, randomUUID().toString(), missingReferenceDataMappingMap);
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
