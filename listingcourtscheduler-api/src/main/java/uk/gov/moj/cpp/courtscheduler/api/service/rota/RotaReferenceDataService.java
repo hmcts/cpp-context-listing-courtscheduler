@@ -4,6 +4,7 @@ import static java.lang.String.format;
 import static java.util.Optional.empty;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_ERR_MSG;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
@@ -49,9 +50,11 @@ public class RotaReferenceDataService {
      * @param requester   the requester for making reference data queries
      * @param email       the email address of the judiciary
      * @param executionId the execution ID for logging purposes (can be null)
+     * @param firstName   the first name of the judiciary (can be null)
+     * @param surname     the surname of the judiciary (can be null)
      * @return Optional containing the Judiciary if found, empty otherwise
      */
-    public Optional<Judiciary> validateAndFindJudiciaryByEmail(final Requester requester, final String email, final String executionId) {
+    public Optional<Judiciary> validateAndFindJudiciaryByEmail(final Requester requester, final String email, final String executionId, final String firstName, final String surname) {
         if (!isNotEmpty(email)) {
             logger.debug("Judiciary email is empty, returning empty Optional");
             return empty();
@@ -65,8 +68,18 @@ public class RotaReferenceDataService {
                         email, judiciaryOptional.get().getId());
                 return judiciaryOptional;
             } else {
-                // Judiciary not found - don't log here, let caller aggregate
+                // Judiciary not found - log error if firstName and surname are available
                 logger.warn("Judiciary not found for email: {}", email);
+                if (isNotEmpty(executionId) && isNotEmpty(firstName) && isNotEmpty(surname)) {
+                    final String errorMessage = JUDICIARY_ERR_MSG.format(firstName, surname, email);
+                    rotaProcessLogService.saveRotaProcessLog(
+                            rotaProcessLog()
+                                    .withExecutionId(executionId)
+                                    .withErrorCode(JUDICIARY_ERR_MSG.code())
+                                    .withErrorText(errorMessage)
+                                    .build()
+                    );
+                }
                 return empty();
             }
         } catch (final Exception ex) {

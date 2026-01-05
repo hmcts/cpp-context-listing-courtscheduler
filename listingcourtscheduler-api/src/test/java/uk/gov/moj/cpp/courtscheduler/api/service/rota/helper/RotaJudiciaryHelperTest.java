@@ -105,9 +105,9 @@ class RotaJudiciaryHelperTest {
         districtJudges.put(judgeId, Map.of(JUDGE_EMAIL, judgeEmail));
         records.put(DISTRICT_JUDGES, districtJudges);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(magistrateEmail), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(magistrateEmail), eq(executionId), any(), any()))
                 .thenReturn(Optional.of(judiciary));
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(judgeEmail), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(judgeEmail), eq(executionId), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         // when
@@ -128,7 +128,7 @@ class RotaJudiciaryHelperTest {
 
         // then
         assertThat(result, is(emptyMap()));
-        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(any(), anyString(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any());
     }
 
     @Test
@@ -138,7 +138,7 @@ class RotaJudiciaryHelperTest {
 
         // then
         assertThat(result, is(emptyMap()));
-        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(any(), anyString(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any());
     }
 
     @Test
@@ -154,7 +154,7 @@ class RotaJudiciaryHelperTest {
 
         // then
         assertThat(result, is(emptyMap()));
-        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(any(), anyString(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any());
     }
 
     @Test
@@ -166,7 +166,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(magistrateId, Map.of(MAGS_EMAIL, magistrateEmail));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(magistrateEmail), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(magistrateEmail), eq(executionId), any(), any()))
                 .thenReturn(Optional.empty());
 
         // when
@@ -225,7 +225,7 @@ class RotaJudiciaryHelperTest {
         judiciariesMap.put(rotaJusticeId, Map.of(JUDGE_EMAIL, email));
         schedule.put(ROTA_JUDICIARY_ID, rotaJusticeId);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         final Map<String, String> errors = new HashMap<>();
@@ -250,7 +250,7 @@ class RotaJudiciaryHelperTest {
         judiciariesMap.put(rotaJusticeId, Map.of(JUDGE_EMAIL, email, JUDGE_FORENAMES, "John", JUDGE_SURNAME, "Doe"));
         schedule.put(ROTA_JUDICIARY_ID, rotaJusticeId);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId), any(), any()))
                 .thenReturn(Optional.empty());
 
         final Map<String, String> errors = new HashMap<>();
@@ -291,7 +291,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
@@ -378,7 +378,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         // when
@@ -424,7 +424,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         final CourtScheduleJudiciary courtScheduleJudiciary1 = CourtScheduleJudiciary.judiciary()
@@ -487,7 +487,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                null, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -516,7 +516,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         // when
@@ -549,7 +549,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         // when
@@ -583,7 +583,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         // when
@@ -629,7 +629,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         final CourtScheduleJudiciary courtScheduleJudiciary1 = CourtScheduleJudiciary.judiciary()
@@ -706,7 +706,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString(), any(), any()))
                 .thenReturn(Optional.of(judiciary));
 
         final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()

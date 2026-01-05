@@ -207,8 +207,14 @@ public class RotaJudiciaryHelper {
             return false;
         }
 
-        if (!judiciaryMap.containsValue(UUID.fromString(judiciaryId))) {
-            logger.debug("Skipping schedule - judiciaryId {} not found in judiciaryMap", judiciaryId);
+        try {
+            final UUID judiciaryUuid = UUID.fromString(judiciaryId);
+            if (!judiciaryMap.containsValue(judiciaryUuid)) {
+                logger.debug("Skipping schedule - judiciaryId {} not found in judiciaryMap", judiciaryId);
+                return false;
+            }
+        } catch (final IllegalArgumentException ex) {
+            logger.debug("Skipping schedule - invalid judiciaryId format: {}", judiciaryId, ex);
             return false;
         }
 
@@ -537,7 +543,9 @@ public class RotaJudiciaryHelper {
                 return;
             }
 
-            referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId)
+            final String firstName = getOrElse(judiciaryData, MAGISTRATE_FORENAMES, JUDGE_FORENAMES);
+            final String surname = getOrElse(judiciaryData, MAGISTRATE_SURNAME, JUDGE_SURNAME);
+            referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId, firstName, surname)
                     .ifPresentOrElse(
                             judiciary -> {
                                 judiciaryMap.put(justiceId, UUID.fromString(judiciary.getId()));
@@ -669,7 +677,9 @@ public class RotaJudiciaryHelper {
             return;
         }
 
-        referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId)
+        final String firstName = schedule.get(FORENAMES);
+        final String surname = schedule.get(SURNAME);
+        referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId, firstName, surname)
                 .ifPresentOrElse(
                         judiciary -> populateScheduleWithJudiciaryData(schedule, judiciary),
                         () -> logJudiciaryNotFoundError(schedule, errors, email)
