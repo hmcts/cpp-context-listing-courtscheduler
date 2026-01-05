@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,14 +18,18 @@ import uk.gov.moj.cpp.courtscheduler.domain.AssignmentFailureReason;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.List;
 import java.util.Optional;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceException;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -42,7 +46,7 @@ class JudiciaryAssignmentServiceTest {
     private CourtScheduleRepository courtScheduleRepository;
 
     @Mock
-    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+    private EntityManager entityManager;
 
     @Mock
     private ReferenceDataMapperService referenceDataMapperService;
@@ -66,7 +70,8 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(1, response.getSuccessfulAssignments());
         assertTrue(response.getFailures().isEmpty());
-        verify(courtScheduleJudiciaryRepository).save(any());
+        verify(entityManager).persist(any());
+        verify(entityManager).flush();
     }
 
     @Test
@@ -85,7 +90,8 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(0, response.getSuccessfulAssignments());
         assertEquals(0, response.getFailures().size()); // No failures recorded - validation happens in validator layer
 
-        verify(courtScheduleJudiciaryRepository, never()).save(any());
+        verify(entityManager, never()).persist(any());
+        verify(entityManager, never()).flush();
     }
 
     @Test
@@ -110,7 +116,9 @@ class JudiciaryAssignmentServiceTest {
 
         when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
-        when(courtScheduleJudiciaryRepository.save(any())).thenThrow(new RuntimeException("duplicate key constraint"));
+        final PersistenceException persistenceException = new PersistenceException(
+                new SQLIntegrityConstraintViolationException("duplicate key constraint"));
+        doThrow(persistenceException).when(entityManager).persist(any());
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
 
@@ -126,14 +134,14 @@ class JudiciaryAssignmentServiceTest {
 
         when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
-        when(courtScheduleJudiciaryRepository.save(any())).thenThrow(new RuntimeException("connection lost"));
+        doThrow(new RuntimeException("connection lost")).when(entityManager).persist(any());
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
 
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(0, response.getSuccessfulAssignments());
         assertEquals(AssignmentFailureReason.PERSISTENCE_ERROR, response.getFailures().get(0).getReason());
-        verify(courtScheduleJudiciaryRepository).save(any());
+        verify(entityManager).persist(any());
     }
 
     private AssignJudiciariesRequest buildRequest(final String judiciaryId, final String sessionId) {
@@ -225,7 +233,8 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(1, response.getSuccessfulAssignments());
         assertTrue(response.getFailures().isEmpty());
-        verify(courtScheduleJudiciaryRepository).save(any());
+        verify(entityManager).persist(any());
+        verify(entityManager).flush();
     }
 
     @Test
@@ -245,8 +254,10 @@ class JudiciaryAssignmentServiceTest {
         assertTrue(response.getFailures().isEmpty());
         
         // Verify that the saved CourtScheduleJudiciary has the rotaJudiciaryId from the assignment
-        verify(courtScheduleJudiciaryRepository).save(argThat(entity -> 
-                entity.getRotaJudiciaryId() != null && entity.getRotaJudiciaryId().equals(rotaJudiciaryId)));
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> entityCaptor = 
+                ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class);
+        verify(entityManager).persist(entityCaptor.capture());
+        assertEquals(rotaJudiciaryId, entityCaptor.getValue().getRotaJudiciaryId());
     }
 
     @Test
@@ -266,8 +277,10 @@ class JudiciaryAssignmentServiceTest {
         assertTrue(response.getFailures().isEmpty());
         
         // Verify that the saved CourtScheduleJudiciary falls back to cpUserId when rotaJudiciaryId is null
-        verify(courtScheduleJudiciaryRepository).save(argThat(entity -> 
-                entity.getRotaJudiciaryId() != null && entity.getRotaJudiciaryId().equals(cpUserId)));
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> entityCaptor = 
+                ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class);
+        verify(entityManager).persist(entityCaptor.capture());
+        assertEquals(cpUserId, entityCaptor.getValue().getRotaJudiciaryId());
     }
 
     @Test
@@ -288,8 +301,10 @@ class JudiciaryAssignmentServiceTest {
         assertTrue(response.getFailures().isEmpty());
         
         // Verify that the saved CourtScheduleJudiciary falls back to judiciaryId when rotaJudiciaryId and cpUserId are null
-        verify(courtScheduleJudiciaryRepository).save(argThat(entity -> 
-                entity.getRotaJudiciaryId() != null && entity.getRotaJudiciaryId().equals(judiciaryId)));
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> entityCaptor = 
+                ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class);
+        verify(entityManager).persist(entityCaptor.capture());
+        assertEquals(judiciaryId, entityCaptor.getValue().getRotaJudiciaryId());
     }
 }
 

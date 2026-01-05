@@ -35,7 +35,11 @@ import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.transaction.Transactional;
+
+import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,10 +61,21 @@ public class JudiciaryAssignmentService {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
-    @Transactional
+    @PersistenceContext(unitName = "courtscheduler-persistence-unit")
+    private EntityManager entityManager;
+
+    @Transactional(REQUIRES_NEW)
     public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
                                                        final Requester requester,
                                                        final String executionId) {
+        return assignJudiciaries(request, requester, executionId, false);
+    }
+
+    @Transactional(REQUIRES_NEW)
+    public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
+                                                       final Requester requester,
+                                                       final String executionId,
+                                                       final boolean useRepository) {
         final boolean skipValidations = request != null && request.isSkipValidations();
         final List<JudiciaryAssignment> assignments = Optional.ofNullable(request)
                 .map(AssignJudiciariesRequest::getJudiciaries)
@@ -71,7 +86,7 @@ public class JudiciaryAssignmentService {
         }
 
         final Map<String, CourtSchedule> sessionsById = fetchSessionsById(assignments);
-        final AssignmentResult result = processAssignments(assignments, sessionsById, requester, skipValidations);
+        final AssignmentResult result = processAssignments(assignments, sessionsById, requester, skipValidations, useRepository);
 
         if (skipValidations && executionId != null) {
             logMissingReferences(result.missingJudiciaryIds(), result.missingSessionIds(), executionId);
@@ -103,7 +118,8 @@ public class JudiciaryAssignmentService {
     private AssignmentResult processAssignments(final List<JudiciaryAssignment> assignments,
                                                 final Map<String, CourtSchedule> sessionsById,
                                                 final Requester requester,
-                                                final boolean skipValidations) {
+                                                final boolean skipValidations,
+                                                final boolean useRepository) {
         final Set<String> missingJudiciaryIds = new LinkedHashSet<>();
         final Set<String> missingSessionIds = new LinkedHashSet<>();
         final List<AssignmentFailure> failures = new ArrayList<>();
@@ -135,7 +151,7 @@ public class JudiciaryAssignmentService {
                     continue;
                 }
 
-                final AssignmentAttempt attempt = attemptAssignment(judiciary, schedule, sessionId, now, assignment);
+                final AssignmentAttempt attempt = attemptAssignment(judiciary, schedule, sessionId, now, assignment, useRepository);
                 if (attempt.isSuccess()) {
                     successfulAssignments++;
                 } else {
@@ -182,14 +198,40 @@ public class JudiciaryAssignmentService {
                                                 final CourtSchedule schedule,
                                                 final String sessionId,
                                                 final Date timestamp,
-                                                final JudiciaryAssignment assignment) {
+                                                final JudiciaryAssignment assignment,
+                                                final boolean useRepository) {
         final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, timestamp, assignment);
         try {
-            courtScheduleJudiciaryRepository.save(CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciary));
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity = 
+                    CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciary);
+            
+            if (useRepository) {
+                persistEntityWithRepository(entity);
+            } else {
+                persistEntityWithEntityManager(entity);
+            }
+            
             return AssignmentAttempt.success();
         } catch (Exception ex) {
             return handleAssignmentException(ex, judiciary.getId(), sessionId);
         }
+    }
+
+    /**
+     * Persists entity using EntityManager - used for API calls.
+     * @Transactional(REQUIRES_NEW) on assignJudiciaries() ensures transaction is active.
+     */
+    private void persistEntityWithEntityManager(final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity) {
+        entityManager.persist(entity);
+        entityManager.flush();
+    }
+
+    /**
+     * Persists entity using repository - used for Rota processing.
+     * DeltaSpike's BeanManagedUserTransactionStrategy handles transaction management.
+     */
+    private void persistEntityWithRepository(final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity) {
+        courtScheduleJudiciaryRepository.save(entity);
     }
 
     private AssignmentAttempt handleAssignmentException(final Exception ex,

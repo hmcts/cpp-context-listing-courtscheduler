@@ -312,7 +312,7 @@ class RotaFileProcessorTest {
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -321,7 +321,7 @@ class RotaFileProcessorTest {
             // then
             // Verify processing completed successfully
             verify(rotaFileParser).parse(blobName, blobContent);
-            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId));
+            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true));
             verify(rotaFileUtility).logProcessingTime(any(), eq(blobName), anyLong(), anyLong());
             // Verify that updateFileProcessHistory utility method is called (which internally calls the service)
             verify(rotaFileUtility).updateFileProcessHistory(any(), any(RotaFileProcessHistory.class), eq(blobName), eq(rotaFileProcessHistoryService));
@@ -352,7 +352,7 @@ class RotaFileProcessorTest {
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(expectedExecutionId)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(expectedExecutionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -669,7 +669,7 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -679,7 +679,7 @@ class RotaFileProcessorTest {
             verify(rotaJudiciaryHelper).createJudiciaryMap(anyMap(), any(), eq(executionId));
             verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), any(), eq(executionId));
             verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), eq(executionId));
-            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId));
+            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true));
         }
 
         @Test
@@ -703,7 +703,7 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(2, 2);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -711,7 +711,7 @@ class RotaFileProcessorTest {
 
             // then
             final ArgumentCaptor<AssignJudiciariesRequest> requestCaptor = ArgumentCaptor.forClass(AssignJudiciariesRequest.class);
-            verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(requester), eq(executionId));
+            verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(requester), eq(executionId), eq(true));
 
             final AssignJudiciariesRequest capturedRequest = requestCaptor.getValue();
             assertThat(capturedRequest.getJudiciaries().size(), is(1));
@@ -734,7 +734,7 @@ class RotaFileProcessorTest {
             rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(judiciaryAssignmentService, never()).assignJudiciaries(any(), any(), anyString());
+            verify(judiciaryAssignmentService, never()).assignJudiciaries(any(), any(), anyString(), anyBoolean());
         }
 
         @Test
@@ -762,7 +762,7 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(2, 2);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -770,7 +770,7 @@ class RotaFileProcessorTest {
 
             // then
             final ArgumentCaptor<AssignJudiciariesRequest> requestCaptor = ArgumentCaptor.forClass(AssignJudiciariesRequest.class);
-            verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(requester), eq(executionId));
+            verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(requester), eq(executionId), eq(true));
 
             final AssignJudiciariesRequest capturedRequest = requestCaptor.getValue();
             assertThat(capturedRequest.getJudiciaries().size(), is(2));
@@ -806,7 +806,7 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(3, 3);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -846,7 +846,7 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when

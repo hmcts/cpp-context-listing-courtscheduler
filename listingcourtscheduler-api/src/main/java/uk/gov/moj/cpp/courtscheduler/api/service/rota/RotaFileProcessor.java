@@ -297,7 +297,8 @@ public class RotaFileProcessor {
             final Requester requester,
             final String executionId) {
         final var assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
-        return judiciaryAssignmentService.assignJudiciaries(assignRequest, requester, executionId);
+        // Use repository for Rota processing (useRepository = true)
+        return judiciaryAssignmentService.assignJudiciaries(assignRequest, requester, executionId, true);
     }
 
     // ============================================================================
