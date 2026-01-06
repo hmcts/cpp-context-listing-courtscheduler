@@ -70,7 +70,7 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(1, response.getSuccessfulAssignments());
         assertTrue(response.getFailures().isEmpty());
-        verify(entityManager).persist(any());
+        verify(entityManager).merge(any());
         verify(entityManager).flush();
     }
 
@@ -90,7 +90,7 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(0, response.getSuccessfulAssignments());
         assertEquals(0, response.getFailures().size()); // No failures recorded - validation happens in validator layer
 
-        verify(entityManager, never()).persist(any());
+        verify(entityManager, never()).merge(any());
         verify(entityManager, never()).flush();
     }
 
@@ -118,7 +118,7 @@ class JudiciaryAssignmentServiceTest {
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
         final PersistenceException persistenceException = new PersistenceException(
                 new SQLIntegrityConstraintViolationException("duplicate key constraint"));
-        doThrow(persistenceException).when(entityManager).persist(any());
+        doThrow(persistenceException).when(entityManager).merge(any());
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
 
@@ -134,14 +134,14 @@ class JudiciaryAssignmentServiceTest {
 
         when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
-        doThrow(new RuntimeException("connection lost")).when(entityManager).persist(any());
+        doThrow(new RuntimeException("connection lost")).when(entityManager).merge(any());
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
 
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(0, response.getSuccessfulAssignments());
         assertEquals(AssignmentFailureReason.PERSISTENCE_ERROR, response.getFailures().get(0).getReason());
-        verify(entityManager).persist(any());
+        verify(entityManager).merge(any());
     }
 
     private AssignJudiciariesRequest buildRequest(final String judiciaryId, final String sessionId) {
@@ -233,7 +233,7 @@ class JudiciaryAssignmentServiceTest {
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(1, response.getSuccessfulAssignments());
         assertTrue(response.getFailures().isEmpty());
-        verify(entityManager).persist(any());
+        verify(entityManager).merge(any());
         verify(entityManager).flush();
     }
 
@@ -256,7 +256,7 @@ class JudiciaryAssignmentServiceTest {
         // Verify that the saved CourtScheduleJudiciary has the rotaJudiciaryId from the assignment
         final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> entityCaptor = 
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class);
-        verify(entityManager).persist(entityCaptor.capture());
+        verify(entityManager).merge(entityCaptor.capture());
         assertEquals(rotaJudiciaryId, entityCaptor.getValue().getRotaJudiciaryId());
     }
 
@@ -279,7 +279,7 @@ class JudiciaryAssignmentServiceTest {
         // Verify that the saved CourtScheduleJudiciary falls back to cpUserId when rotaJudiciaryId is null
         final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> entityCaptor = 
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class);
-        verify(entityManager).persist(entityCaptor.capture());
+        verify(entityManager).merge(entityCaptor.capture());
         assertEquals(cpUserId, entityCaptor.getValue().getRotaJudiciaryId());
     }
 
@@ -303,8 +303,44 @@ class JudiciaryAssignmentServiceTest {
         // Verify that the saved CourtScheduleJudiciary falls back to judiciaryId when rotaJudiciaryId and cpUserId are null
         final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> entityCaptor = 
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class);
-        verify(entityManager).persist(entityCaptor.capture());
+        verify(entityManager).merge(entityCaptor.capture());
         assertEquals(judiciaryId, entityCaptor.getValue().getRotaJudiciaryId());
+    }
+
+    @Test
+    void shouldFlushOnceAtEnd_WhenMultipleAssignments() {
+        // Verify that flush is called only once at the end, not per entity
+        final String judiciaryId1 = "judiciary-1";
+        final String judiciaryId2 = "judiciary-2";
+        final String sessionId1 = "session-1";
+        final String sessionId2 = "session-2";
+
+        when(referenceDataMapperService.findById(requester, judiciaryId1)).thenReturn(Optional.of(buildJudiciary(judiciaryId1)));
+        when(referenceDataMapperService.findById(requester, judiciaryId2)).thenReturn(Optional.of(buildJudiciary(judiciaryId2)));
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(
+                of(buildCourtSchedule(sessionId1), buildCourtSchedule(sessionId2)));
+
+        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
+                .addJudiciary(JudiciaryAssignment.builder()
+                        .withJudiciaryId(judiciaryId1)
+                        .addSessionId(sessionId1)
+                        .build())
+                .addJudiciary(JudiciaryAssignment.builder()
+                        .withJudiciaryId(judiciaryId2)
+                        .addSessionId(sessionId2)
+                        .build())
+                .build();
+
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, requester, EXECUTION_ID);
+
+        assertEquals(2, response.getRequestedAssignments());
+        assertEquals(2, response.getSuccessfulAssignments());
+        assertTrue(response.getFailures().isEmpty());
+        
+        // Verify merge is called for each assignment
+        verify(entityManager, atLeastOnce()).merge(any());
+        // Verify flush is called only once at the end (not per entity)
+        verify(entityManager).flush();
     }
 }
 
