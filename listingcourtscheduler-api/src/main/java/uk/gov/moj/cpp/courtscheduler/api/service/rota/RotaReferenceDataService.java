@@ -2,14 +2,13 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import static java.lang.String.format;
 import static java.util.Optional.empty;
-import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
-import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_ERR_MSG;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaUtils;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -50,13 +49,11 @@ public class RotaReferenceDataService {
      * @param requester   the requester for making reference data queries
      * @param email       the email address of the judiciary
      * @param executionId the execution ID for logging purposes (can be null)
-     * @param firstName   the first name of the judiciary (can be null)
-     * @param surname     the surname of the judiciary (can be null)
      * @return Optional containing the Judiciary if found, empty otherwise
      */
-    public Optional<Judiciary> validateAndFindJudiciaryByEmail(final Requester requester, final String email, final String executionId, final String firstName, final String surname) {
-        if (!isNotEmpty(email)) {
-            logger.debug("Judiciary email is empty, returning empty Optional");
+    public Optional<Judiciary> validateAndFindJudiciaryByEmail(final Requester requester, final String email, final String executionId) {
+        if (!isNotBlank(email)) {
+            logger.debug("Judiciary email is empty or blank, returning empty Optional");
             return empty();
         }
 
@@ -68,31 +65,19 @@ public class RotaReferenceDataService {
                         email, judiciaryOptional.get().getId());
                 return judiciaryOptional;
             } else {
-                // Judiciary not found - log error if firstName and surname are available
                 logger.warn("Judiciary not found for email: {}", email);
-                if (isNotEmpty(executionId) && isNotEmpty(firstName) && isNotEmpty(surname)) {
-                    final String errorMessage = JUDICIARY_ERR_MSG.format(firstName, surname, email);
-                    rotaProcessLogService.saveRotaProcessLog(
-                            rotaProcessLog()
-                                    .withExecutionId(executionId)
-                                    .withErrorCode(JUDICIARY_ERR_MSG.code())
-                                    .withErrorText(errorMessage)
-                                    .build()
-                    );
-                }
                 return empty();
             }
         } catch (final Exception ex) {
             // Error occurred during validation - log error
             logger.error("Error occurred while validating judiciary for email: {}", email, ex);
-            if (isNotEmpty(executionId)) {
+            if (isNotBlank(executionId)) {
                 final String errorMessage = format("Error validating judiciary for email %s: %s", email, ex.getMessage());
-                rotaProcessLogService.saveRotaProcessLog(
-                        rotaProcessLog()
-                                .withExecutionId(executionId)
-                                .withErrorCode(ROTA_PROCESSING_ERROR.code())
-                                .withErrorText(ROTA_PROCESSING_ERROR.template().formatted(errorMessage))
-                                .build()
+                RotaUtils.logProcessingError(
+                        rotaProcessLogService,
+                        executionId,
+                        ROTA_PROCESSING_ERROR.code(),
+                        ROTA_PROCESSING_ERROR.template().formatted(errorMessage)
                 );
             }
             return empty();
@@ -117,16 +102,15 @@ public class RotaReferenceDataService {
         if (venue == null) {
             logger.warn("Venue is null, cannot validate venue");
             if (exceptionMessages != null) {
-                final String venueDetails = buildVenueDetails(null);
+                final String venueDetails = RotaUtils.buildVenueDetails(null);
                 exceptionMessages.putIfAbsent(venueDetails, REF_DATA_VENUE_NOT_FOUND.code());
             } else if (isNotEmpty(executionId)) {
-                final String errorMessage = REF_DATA_VENUE_NOT_FOUND.format(buildVenueDetails(null));
-                rotaProcessLogService.saveRotaProcessLog(
-                        rotaProcessLog()
-                                .withExecutionId(executionId)
-                                .withErrorCode(REF_DATA_VENUE_NOT_FOUND.code())
-                                .withErrorText(errorMessage)
-                                .build()
+                final String errorMessage = REF_DATA_VENUE_NOT_FOUND.format(RotaUtils.buildVenueDetails(null));
+                RotaUtils.logProcessingError(
+                        rotaProcessLogService,
+                        executionId,
+                        REF_DATA_VENUE_NOT_FOUND.code(),
+                        errorMessage
                 );
             }
             return empty();
@@ -149,16 +133,15 @@ public class RotaReferenceDataService {
                 logger.warn("Venue validation failed - locationId: {}, venueId: {}, venueName: {}",
                         venue.getLocationId(), venue.getVenueId(), venue.getVenueName());
                 if (exceptionMessages != null) {
-                    final String venueDetails = buildVenueDetails(venue);
+                    final String venueDetails = RotaUtils.buildVenueDetails(venue);
                     exceptionMessages.putIfAbsent(venueDetails, REF_DATA_VENUE_NOT_FOUND.code());
                 } else if (isNotEmpty(executionId)) {
-                    final String errorMessage = REF_DATA_VENUE_NOT_FOUND.format(buildVenueDetails(venue));
-                    rotaProcessLogService.saveRotaProcessLog(
-                            rotaProcessLog()
-                                    .withExecutionId(executionId)
-                                    .withErrorCode(REF_DATA_VENUE_NOT_FOUND.code())
-                                    .withErrorText(errorMessage)
-                                    .build()
+                    final String errorMessage = REF_DATA_VENUE_NOT_FOUND.format(RotaUtils.buildVenueDetails(venue));
+                    RotaUtils.logProcessingError(
+                            rotaProcessLogService,
+                            executionId,
+                            REF_DATA_VENUE_NOT_FOUND.code(),
+                            errorMessage
                     );
                 }
                 return empty();
@@ -170,26 +153,15 @@ public class RotaReferenceDataService {
             if (isNotEmpty(executionId)) {
                 final String errorMessage = format("Error validating venue - locationId: %d, venueId: %d, venueName: %s - %s",
                         venue.getLocationId(), venue.getVenueId(), venue.getVenueName(), ex.getMessage());
-                rotaProcessLogService.saveRotaProcessLog(
-                        rotaProcessLog()
-                                .withExecutionId(executionId)
-                                .withErrorCode(ROTA_PROCESSING_ERROR.code())
-                                .withErrorText(ROTA_PROCESSING_ERROR.template().formatted(errorMessage))
-                                .build()
+                RotaUtils.logProcessingError(
+                        rotaProcessLogService,
+                        executionId,
+                        ROTA_PROCESSING_ERROR.code(),
+                        ROTA_PROCESSING_ERROR.template().formatted(errorMessage)
                 );
             }
             return empty();
         }
-    }
-
-    private String buildVenueDetails(final Venue venue) {
-        if (venue == null) {
-            return "UNKNOWN_LOCATION - UNKNOWN_VENUE - UNKNOWN_VENUE_ID";
-        }
-        final String locationId = venue.getLocationId() != null ? venue.getLocationId().toString() : "UNKNOWN_LOCATION";
-        final String venueName = defaultIfBlank(venue.getVenueName(), "UNKNOWN_VENUE");
-        final String venueId = venue.getVenueId() != null ? venue.getVenueId().toString() : "UNKNOWN_VENUE_ID";
-        return format("%s - %s - %s", locationId, venueName, venueId);
     }
 }
 

@@ -92,7 +92,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.of(judiciary));
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId, "John", "Doe");
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId);
 
         // then
         assertTrue(result.isPresent());
@@ -104,7 +104,7 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldReturnEmpty_WhenEmailIsEmpty() {
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, "", executionId, null, null);
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, "", executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -115,7 +115,7 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldReturnEmpty_WhenEmailIsNull() {
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, null, executionId, null, null);
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, null, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -129,7 +129,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId, null, null);
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -144,7 +144,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, null, "John", "Doe");
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, null);
 
         // then
         assertFalse(result.isPresent());
@@ -159,7 +159,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(requester, email)).thenThrow(exception);
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId, "John", "Doe");
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -175,24 +175,18 @@ class RotaReferenceDataServiceTest {
     }
 
     @Test
-    void shouldLogError_WhenJudiciaryNotFoundWithFirstNameAndSurname() {
+    void shouldNotLogError_WhenJudiciaryNotFound() {
         // given
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId, "John", "Doe");
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId);
 
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByEmail(requester, email);
-
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
-                ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
-        verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
-
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
-        assertThat(log.getExecutionId(), is(executionId));
-        assertThat(log.getErrorCode(), is("JUDICIARY_ERR_MSG"));
+        // Should not log when judiciary is not found (logging was removed as it's handled elsewhere)
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
     }
 
     @Test
@@ -201,7 +195,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId, null, "Doe");
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -215,7 +209,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId, "John", null);
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -229,7 +223,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId, "", "Doe");
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -243,7 +237,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId, "John", "");
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -257,11 +251,38 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(requester, email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId, "", "");
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, executionId);
 
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByEmail(requester, email);
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
+    }
+
+    @Test
+    void shouldReturnEmpty_WhenEmailIsWhitespace() {
+        // when
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, "   ", executionId);
+
+        // then
+        assertFalse(result.isPresent());
+        verify(referenceDataMapperService, never()).findByEmail(any(), anyString());
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
+    }
+
+    @Test
+    void shouldNotLogError_WhenExceptionOccursAndExecutionIdIsNull() {
+        // given
+        RuntimeException exception = new RuntimeException("Database error");
+        when(referenceDataMapperService.findByEmail(requester, email)).thenThrow(exception);
+
+        // when
+        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(requester, email, null);
+
+        // then
+        assertFalse(result.isPresent());
+        verify(referenceDataMapperService).findByEmail(requester, email);
+        // Should not log when executionId is null
         verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
     }
 

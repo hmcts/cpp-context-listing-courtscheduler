@@ -3,10 +3,8 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.UUID.randomUUID;
-import static java.util.stream.Collectors.joining;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
-import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.DELIMITER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.EMAIL_ADDRESS;
@@ -27,7 +25,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.TITLE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.DISTRICT_JUDGES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
@@ -51,7 +48,6 @@ import java.util.stream.Collectors;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,20 +84,17 @@ public class RotaJudiciaryHelper {
     public Map<String, UUID> createJudiciaryMap(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                  final Requester requester,
                                                  final String executionId) {
-        if (isEmptyRecords(records)) {
+        if (RotaUtils.isEmptyRecords(records)) {
             logger.warn("No records provided to create judiciary map");
             return Collections.emptyMap();
         }
 
         final Map<String, UUID> judiciaryMap = new ConcurrentHashMap<>();
-        final Set<String> missingJudiciaryEmails = ConcurrentHashMap.newKeySet();
-        final Map<String, Map<String, String>> magistrates = getRecordsByType(records, MAGISTRATES);
-        final Map<String, Map<String, String>> districtJudges = getRecordsByType(records, DISTRICT_JUDGES);
+        final Map<String, Map<String, String>> magistrates = RotaUtils.getRecordsByType(records, MAGISTRATES);
+        final Map<String, Map<String, String>> districtJudges = RotaUtils.getRecordsByType(records, DISTRICT_JUDGES);
 
-        processJudiciaries(magistrates, MAGS_EMAIL, requester, executionId, judiciaryMap, missingJudiciaryEmails, "magistrate");
-        processJudiciaries(districtJudges, JUDGE_EMAIL, requester, executionId, judiciaryMap, missingJudiciaryEmails, "district judge");
-
-        logMissingJudiciaries(missingJudiciaryEmails, executionId);
+        processJudiciaries(magistrates, MAGS_EMAIL, requester, executionId, judiciaryMap, "magistrate");
+        processJudiciaries(districtJudges, JUDGE_EMAIL, requester, executionId, judiciaryMap, "district judge");
 
         logger.info("Created judiciary map with {} entries ({} magistrates, {} district judges)",
                 judiciaryMap.size(), magistrates.size(), districtJudges.size());
@@ -148,7 +141,7 @@ public class RotaJudiciaryHelper {
         final Map<String, JudiciaryCourtScheduleData> judiciaryCourtListingProfileScheduleMap = 
                 createJudiciaryCourtListingProfileScheduleMap(judiciaryCourtListingProfileMap, 
                         scheduleJudiciaryList, courtScheduleMap);
-        logger.debug("Created judiciary court listing profile schedule map with {} composite key entries", 
+        logger.debug("Created judiciary court listing profile schedule map with {} composite key entries",
                 judiciaryCourtListingProfileScheduleMap.size());
 
         // Create final map with judiciaryId as key and List of JudiciaryCourtScheduleData as value
@@ -240,31 +233,13 @@ public class RotaJudiciaryHelper {
         final String courtListingProfileId = schedule.getCourtListingProfileId();
 
         judiciaryCourtListingProfileMap.compute(judiciaryId, (key, existingList) -> 
-                addToListIfNotPresent(existingList, courtListingProfileId));
+                RotaUtils.addToListIfNotPresent(existingList, courtListingProfileId));
 
         logger.debug("Mapped judiciaryId {} to court schedule(s) with listingProfileId: {}, position: {}, isBenchChairman: {}, isDeputy: {}",
                 judiciaryId, courtListingProfileId,
                 schedule.getPosition(), schedule.getBenchChairman(), schedule.getDeputy());
     }
 
-    /**
-     * Adds an item to a list if it's not already present, or creates a new list if the existing one is null.
-     *
-     * @param existingList the existing list, or null
-     * @param item         the item to add
-     * @return the list with the item added
-     */
-    private List<String> addToListIfNotPresent(final List<String> existingList, final String item) {
-        if (existingList == null) {
-            final List<String> newList = new ArrayList<>();
-            newList.add(item);
-            return newList;
-        }
-        if (!existingList.contains(item)) {
-            existingList.add(item);
-        }
-        return existingList;
-    }
 
     /**
      * Logs a summary of the created judiciary court schedule map.
@@ -318,18 +293,14 @@ public class RotaJudiciaryHelper {
         final Map<String, List<JudiciaryCourtScheduleData>> resultMap = judiciaryCourtListingProfileScheduleMap.entrySet().stream()
                 .filter(entry -> {
                     final String compositeKey = entry.getKey();
-                    final String[] parts = compositeKey.split("\\|", 2);
-                    if (parts.length != 2 || !isNotEmpty(parts[0])) {
+                    if (RotaUtils.parseCompositeKey(compositeKey) == null) {
                         logger.debug("Invalid or empty composite key format: {}", compositeKey);
                         return false;
                     }
                     return true;
                 })
                 .collect(Collectors.groupingBy(
-                        entry -> {
-                            final String[] parts = entry.getKey().split("\\|", 2);
-                            return parts[0];
-                        },
+                        entry -> RotaUtils.extractFirstPart(entry.getKey()),
                         ConcurrentHashMap::new,
                         Collectors.mapping(
                                 Map.Entry::getValue,
@@ -408,7 +379,7 @@ public class RotaJudiciaryHelper {
                 processCourtListingProfileEntry(judiciaryId, courtListingProfileId, scheduleLookupMap, 
                         courtScheduleMap, resultMap);
             } catch (final Exception ex) {
-                logger.error("Error creating composite key map entry for judiciaryId: {} and courtListingProfileId: {}: {}", 
+                logger.error("Error creating composite key map entry for judiciaryId: {} and courtListingProfileId: {}: {}",
                         judiciaryId, courtListingProfileId, ex.getMessage(), ex);
             }
         });
@@ -434,11 +405,11 @@ public class RotaJudiciaryHelper {
             return;
         }
 
-        final String lookupKey = judiciaryId + "|" + courtListingProfileId;
+        final String lookupKey = RotaUtils.buildCompositeKey(judiciaryId, courtListingProfileId);
         final CourtScheduleJudiciary schedule = scheduleLookupMap.get(lookupKey);
 
         if (schedule == null) {
-            logger.debug("No schedule found for judiciaryId: {} and courtListingProfileId: {}", 
+            logger.debug("No schedule found for judiciaryId: {} and courtListingProfileId: {}",
                     judiciaryId, courtListingProfileId);
             return;
         }
@@ -475,8 +446,10 @@ public class RotaJudiciaryHelper {
             final String courtListingProfileId = schedule.getCourtListingProfileId();
             
             if (isNotEmpty(judiciaryId) && isNotEmpty(courtListingProfileId)) {
-                final String key = judiciaryId + "|" + courtListingProfileId;
-                lookupMap.put(key, schedule);
+                final String key = RotaUtils.buildCompositeKey(judiciaryId, courtListingProfileId);
+                if (key != null) {
+                    lookupMap.put(key, schedule);
+                }
             }
         });
 
@@ -495,8 +468,8 @@ public class RotaJudiciaryHelper {
      */
     public Map<String, Map<String, String>> getJudiciaryInfoMap(final Map<RotaPayload, Map<String, Map<String, String>>> records) {
         final Map<String, Map<String, String>> judiciaryInfoMap = new HashMap<>(
-                getRecordsByType(records, DISTRICT_JUDGES));
-        judiciaryInfoMap.putAll(getRecordsByType(records, MAGISTRATES));
+                RotaUtils.getRecordsByType(records, DISTRICT_JUDGES));
+        judiciaryInfoMap.putAll(RotaUtils.getRecordsByType(records, MAGISTRATES));
         return judiciaryInfoMap;
     }
 
@@ -529,7 +502,6 @@ public class RotaJudiciaryHelper {
                                     final Requester requester,
                                     final String executionId,
                                     final Map<String, UUID> judiciaryMap,
-                                    final Set<String> missingJudiciaryEmails,
                                     final String judiciaryType) {
         judiciaries.forEach((justiceId, judiciaryData) -> {
             if (judiciaryData == null || judiciaryData.isEmpty()) {
@@ -543,47 +515,23 @@ public class RotaJudiciaryHelper {
                 return;
             }
 
-            final String firstName = getOrElse(judiciaryData, MAGISTRATE_FORENAMES, JUDGE_FORENAMES);
-            final String surname = getOrElse(judiciaryData, MAGISTRATE_SURNAME, JUDGE_SURNAME);
-            referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId, firstName, surname)
-                    .ifPresentOrElse(
-                            judiciary -> {
-                                judiciaryMap.put(justiceId, UUID.fromString(judiciary.getId()));
-                                logger.debug("Mapped {} {} to judiciary with ID: {}", judiciaryType, justiceId, judiciary.getId());
-                            },
-                            () -> missingJudiciaryEmails.add(email)
-                    );
+            referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId)
+                    .ifPresent(judiciary -> {
+                        judiciaryMap.put(justiceId, UUID.fromString(judiciary.getId()));
+                        logger.debug("Mapped {} {} to judiciary with ID: {}", judiciaryType, justiceId, judiciary.getId());
+                    });
         });
-    }
-
-    private void logMissingJudiciaries(final Set<String> missingJudiciaryEmails, final String executionId) {
-        if (!missingJudiciaryEmails.isEmpty() && isNotEmpty(executionId)) {
-            final String judiciaryMissingMessages = missingJudiciaryEmails.stream()
-                    .filter(StringUtils::isNotEmpty)
-                    .distinct()
-                    .collect(joining(format(DELIMITER)));
-            if (isNotEmpty(judiciaryMissingMessages)) {
-                final String msg = JUDICIARY_NOT_FOUND.format(judiciaryMissingMessages);
-                rotaProcessLogService.saveRotaProcessLog(
-                        rotaProcessLog()
-                                .withExecutionId(executionId)
-                                .withErrorCode(JUDICIARY_NOT_FOUND.code())
-                                .withErrorText(msg)
-                                .build()
-                );
-            }
-        }
     }
 
     private List<CourtScheduleJudiciary> createScheduleJudiciaryList(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                                      final Requester requester,
                                                                      final String executionId) {
-        if (isEmptyRecords(records)) {
+        if (RotaUtils.isEmptyRecords(records)) {
             logger.warn("No records provided to create schedule judiciary list");
             return Collections.emptyList();
         }
 
-        final Collection<Map<String, String>> schedules = getRecordsByType(records, SCHEDULE).values();
+        final Collection<Map<String, String>> schedules = RotaUtils.getRecordsByType(records, SCHEDULE).values();
         if (schedules.isEmpty()) {
             logger.debug("No schedules found in records");
             return Collections.emptyList();
@@ -600,6 +548,8 @@ public class RotaJudiciaryHelper {
                 logger.error("Error processing schedule: {}", ex.getMessage(), ex);
             }
         });
+
+        RotaUtils.logMissingDataError(rotaProcessLogService, errors.values(), executionId, JUDICIARY_NOT_FOUND);
 
         logger.info("Created schedule judiciary list with {} entries from {} schedules",
                 scheduleJudiciaryList.size(), schedules.size());
@@ -677,9 +627,7 @@ public class RotaJudiciaryHelper {
             return;
         }
 
-        final String firstName = schedule.get(FORENAMES);
-        final String surname = schedule.get(SURNAME);
-        referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId, firstName, surname)
+        referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId)
                 .ifPresentOrElse(
                         judiciary -> populateScheduleWithJudiciaryData(schedule, judiciary),
                         () -> logJudiciaryNotFoundError(schedule, errors, email)
@@ -704,13 +652,5 @@ public class RotaJudiciaryHelper {
         }
     }
 
-    private boolean isEmptyRecords(final Map<RotaPayload, Map<String, Map<String, String>>> records) {
-        return records == null || records.isEmpty();
-    }
-
-    private Map<String, Map<String, String>> getRecordsByType(final Map<RotaPayload, Map<String, Map<String, String>>> records,
-                                                              final RotaPayload payloadType) {
-        return records.getOrDefault(payloadType, Collections.emptyMap());
-    }
 }
 
