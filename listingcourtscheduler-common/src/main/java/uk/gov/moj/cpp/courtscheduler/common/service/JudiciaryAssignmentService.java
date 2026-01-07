@@ -38,7 +38,6 @@ import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.transaction.Transactional;
-
 import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 
 import org.slf4j.Logger;
@@ -71,7 +70,7 @@ public class JudiciaryAssignmentService {
         return assignJudiciaries(request, requester, executionId, false);
     }
 
-    @Transactional(REQUIRES_NEW)
+    @Transactional
     public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
                                                        final Requester requester,
                                                        final String executionId,
@@ -87,6 +86,11 @@ public class JudiciaryAssignmentService {
 
         final Map<String, CourtSchedule> sessionsById = fetchSessionsById(assignments);
         final AssignmentResult result = processAssignments(assignments, sessionsById, requester, skipValidations, useRepository);
+
+        // Flush once at the end for EntityManager operations (API calls) - only if there were successful assignments
+        if (!useRepository && result.successfulAssignments() > 0) {
+            entityManager.flush();
+        }
 
         if (skipValidations && executionId != null) {
             logMissingReferences(result.missingJudiciaryIds(), result.missingSessionIds(), executionId);
@@ -220,10 +224,14 @@ public class JudiciaryAssignmentService {
     /**
      * Persists entity using EntityManager - used for API calls.
      * @Transactional(REQUIRES_NEW) on assignJudiciaries() ensures transaction is active.
+     * Uses merge() instead of persist() for better entity state management, similar to unassignJudiciary.
+     * merge() handles both new and existing entities, making it more robust for detached entity states.
+     * Flush is done once at the end of the method to batch operations.
      */
     private void persistEntityWithEntityManager(final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity) {
-        entityManager.persist(entity);
-        entityManager.flush();
+        // Use merge() which handles both new and existing entities, similar to unassignJudiciary approach
+        entityManager.merge(entity);
+        // Note: flush() is called once at the end of assignJudiciaries() method to batch operations
     }
 
     /**
