@@ -100,7 +100,7 @@ class AssignJudiciariesApiValidatorTest {
 
     @Test
     void shouldSkipValidationWhenSkipValidationsIsTrue() {
-        // Even with invalid assignment (empty judiciaryId, null isDeputy/isBenchChairman), validation should pass when skipValidations is true
+        // Even with invalid assignment (empty judiciaryId), validation should pass when skipValidations is true
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId("")
                 .withSessionIds(List.of("not-a-uuid"))
@@ -157,57 +157,89 @@ class AssignJudiciariesApiValidatorTest {
     }
 
     @Test
-    void shouldReturnErrorWhenIsDeputyIsNull() {
+    void shouldAcceptNullIsDeputy() {
+        final String judiciaryId = "judiciary-1";
+        final String sessionId = UUID.randomUUID().toString();
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId("judiciary-1")
-                .withSessionIds(List.of(UUID.randomUUID().toString()))
+                .withJudiciaryId(judiciaryId)
+                .withSessionIds(List.of(sessionId))
                 .withIsBenchChairman(true)
                 .build();
         final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
                 .addJudiciary(assignment)
                 .build();
 
+        final Judiciary judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
+                .withId(judiciaryId)
+                .build();
+        final CourtSchedule session = new CourtSchedule();
+        session.setCourtScheduleId(sessionId);
+
+        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+                .thenReturn(Optional.of(judiciary));
+        when(courtScheduleRepository.findByCourtScheduleIds(any()))
+                .thenReturn(List.of(session));
+
         final JsonObject result = validator.validate(request, requester);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
-        assertTrue(message.contains("isDeputy is mandatory"));
+        assertTrue(result.isEmpty());
     }
 
     @Test
-    void shouldReturnErrorWhenIsBenchChairmanIsNull() {
+    void shouldAcceptNullIsBenchChairman() {
+        final String judiciaryId = "judiciary-1";
+        final String sessionId = UUID.randomUUID().toString();
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId("judiciary-1")
-                .withSessionIds(List.of(UUID.randomUUID().toString()))
+                .withJudiciaryId(judiciaryId)
+                .withSessionIds(List.of(sessionId))
                 .withIsDeputy(false)
                 .build();
         final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
                 .addJudiciary(assignment)
                 .build();
 
+        final Judiciary judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
+                .withId(judiciaryId)
+                .build();
+        final CourtSchedule session = new CourtSchedule();
+        session.setCourtScheduleId(sessionId);
+
+        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+                .thenReturn(Optional.of(judiciary));
+        when(courtScheduleRepository.findByCourtScheduleIds(any()))
+                .thenReturn(List.of(session));
+
         final JsonObject result = validator.validate(request, requester);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
-        assertTrue(message.contains("isBenchChairman is mandatory"));
+        assertTrue(result.isEmpty());
     }
 
     @Test
-    void shouldReturnErrorWhenBothIsDeputyAndIsBenchChairmanAreNull() {
+    void shouldAcceptNullIsDeputyAndIsBenchChairman() {
+        final String judiciaryId = "judiciary-1";
+        final String sessionId = UUID.randomUUID().toString();
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId("judiciary-1")
-                .withSessionIds(List.of(UUID.randomUUID().toString()))
+                .withJudiciaryId(judiciaryId)
+                .withSessionIds(List.of(sessionId))
                 .build();
         final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
                 .addJudiciary(assignment)
                 .build();
 
+        final Judiciary judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
+                .withId(judiciaryId)
+                .build();
+        final CourtSchedule session = new CourtSchedule();
+        session.setCourtScheduleId(sessionId);
+
+        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+                .thenReturn(Optional.of(judiciary));
+        when(courtScheduleRepository.findByCourtScheduleIds(any()))
+                .thenReturn(List.of(session));
+
         final JsonObject result = validator.validate(request, requester);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
-        assertTrue(message.contains("isDeputy is mandatory"));
-        assertTrue(message.contains("isBenchChairman is mandatory"));
+        assertTrue(result.isEmpty());
     }
 
     @Test
