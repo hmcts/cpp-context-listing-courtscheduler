@@ -4,17 +4,16 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.DELIMITER;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.MISSING_COURT_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.BUSINESS_TYPE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PANEL;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
@@ -24,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -69,12 +69,12 @@ public class RotaCourtScheduleHelper {
     public Map<String, Set<UUID>> createCourtScheduleMap(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                           final Requester requester,
                                                           final String executionId) {
-        if (isEmptyRecords(records)) {
+        if (RotaUtils.isEmptyRecords(records)) {
             logger.warn("No records provided to create court schedule map");
             return Collections.emptyMap();
         }
 
-        final Map<String, Map<String, String>> courtListings = getRecordsByType(records, COURT_LISTING);
+        final Map<String, Map<String, String>> courtListings = RotaUtils.getRecordsByType(records, COURT_LISTING);
         if (courtListings.isEmpty()) {
             logger.debug("No court listings found in records");
             return Collections.emptyMap();
@@ -82,17 +82,19 @@ public class RotaCourtScheduleHelper {
 
         final Map<String, Set<UUID>> courtScheduleMap = new ConcurrentHashMap<>();
         final Map<String, String> missingReferenceDataMappingMap = new ConcurrentHashMap<>();
+        final Map<String, List<String>> missingSessionsByOuCode = new ConcurrentHashMap<>();
 
         courtListings.forEach((listingProfileId, listingProfile) -> {
             try {
                 processCourtListing(listingProfileId, listingProfile, requester, executionId,
-                        courtScheduleMap, missingReferenceDataMappingMap);
+                        courtScheduleMap, missingReferenceDataMappingMap, missingSessionsByOuCode);
             } catch (final Exception ex) {
                 logger.error("Error processing court listing profile {}: {}", listingProfileId, ex.getMessage(), ex);
             }
         });
 
-        logMissingReferenceData(missingReferenceDataMappingMap, executionId);
+                RotaUtils.logMissingReferenceData(rotaProcessLogService, missingReferenceDataMappingMap, executionId, REF_DATA_VENUE_NOT_FOUND);
+        logMissingCourtSessions(missingSessionsByOuCode, executionId);
 
         logger.info("Created court schedule map with {} entries from {} court listings",
                 courtScheduleMap.size(), courtListings.size());
@@ -105,7 +107,8 @@ public class RotaCourtScheduleHelper {
                                      final Requester requester,
                                      final String executionId,
                                      final Map<String, Set<UUID>> courtScheduleMap,
-                                     final Map<String, String> missingReferenceDataMappingMap) {
+                                     final Map<String, String> missingReferenceDataMappingMap,
+                                     final Map<String, List<String>> missingSessionsByOuCode) {
         final String panel = listingProfile.get(PANEL);
         final String sessionDateStr = listingProfile.get(SESSION_DATE);
         final String session = listingProfile.get(SESSION);
@@ -138,6 +141,7 @@ public class RotaCourtScheduleHelper {
         } else {
             logger.debug("No court schedule found for listing profile {} with panel: {}, sessionDate: {}, session: {}, courtRoomId: {}",
                     listingProfileId, panel, sessionDate, session, courtRoom.getCourtroomId());
+            recordMissingSession(missingSessionsByOuCode, courtRoom, sessionDate, session, panel, listingProfile);
         }
     }
 
@@ -174,65 +178,59 @@ public class RotaCourtScheduleHelper {
                 .filter(cs -> panel.equals(cs.getPanel())
                         && courtRoomId.equals(cs.getCourtRoomId())
                         && sessionDate.equals(cs.getSessionDate())
-                        && matchesSession(session, cs.getCourtSession()))
+                        && RotaUtils.matchesSession(session, cs.getCourtSession()))
                 .toList();
     }
 
-    /**
-     * Checks if the session values match, considering that 'AD' (All Day) can match both 'AM' and 'PM' sessions.
-     * 
-     * @param requestedSession the session value from the rota file (AM, PM, or AD)
-     * @param courtScheduleSession the session value from the court schedule (AM, PM, or AD)
-     * @return true if sessions match according to the matching rules
-     */
-    private boolean matchesSession(final String requestedSession, final String courtScheduleSession) {
-        if (requestedSession == null || courtScheduleSession == null) {
-            return false;
-        }
-        
-        // Exact match
-        if (requestedSession.equals(courtScheduleSession)) {
-            return true;
-        }
-        
-        // If requested session is AM, also match AD
-        if (AM_SESSION.equals(requestedSession) && ALL_DAY.equals(courtScheduleSession)) {
-            return true;
-        }
-        
-        // If requested session is PM, also match AD
-        return PM_SESSION.equals(requestedSession) && ALL_DAY.equals(courtScheduleSession);
-    }
 
-    private void logMissingReferenceData(final Map<String, String> missingReferenceDataMappingMap, final String executionId) {
-        if (!missingReferenceDataMappingMap.isEmpty() && isNotEmpty(executionId)) {
-            final String venueDetails = missingReferenceDataMappingMap.entrySet()
-                    .stream()
-                    .filter(e -> REF_DATA_VENUE_NOT_FOUND.code().equals(e.getValue()))
-                    .map(Map.Entry::getKey)
+    private void logMissingCourtSessions(final Map<String, List<String>> missingSessionsByOuCode, final String executionId) {
+        if (missingSessionsByOuCode == null || missingSessionsByOuCode.isEmpty() || !isNotEmpty(executionId)) {
+            return;
+        }
+
+        missingSessionsByOuCode.forEach((ouCode, sessions) -> {
+            final String sessionDetails = sessions.stream()
                     .filter(org.apache.commons.lang3.StringUtils::isNotBlank)
                     .distinct()
                     .collect(joining(format(DELIMITER)));
-            if (isNotEmpty(venueDetails)) {
-                final String msg = REF_DATA_VENUE_NOT_FOUND.format(venueDetails);
-                rotaProcessLogService.saveRotaProcessLog(
-                        rotaProcessLog()
-                                .withExecutionId(executionId)
-                                .withErrorCode(REF_DATA_VENUE_NOT_FOUND.code())
-                                .withErrorText(msg)
-                                .build()
+            if (isNotEmpty(sessionDetails)) {
+                final String errorText = MISSING_COURT_SESSION.format(ouCode, sessionDetails);
+                logger.warn(errorText);
+                RotaUtils.logProcessingError(
+                        rotaProcessLogService,
+                        executionId,
+                        MISSING_COURT_SESSION.code(),
+                        errorText
                 );
             }
-        }
+        });
     }
 
-    private boolean isEmptyRecords(final Map<RotaPayload, Map<String, Map<String, String>>> records) {
-        return records == null || records.isEmpty();
+    private void recordMissingSession(final Map<String, List<String>> missingSessionsByOuCode,
+                                      final CourtRoom courtRoom,
+                                      final LocalDate sessionDate,
+                                      final String session,
+                                      final String panel,
+                                      final Map<String, String> listingProfile) {
+        final String ouCode = defaultIfBlank(courtRoom.getOucode(), "UNKNOWN_OUCODE");
+        final String courtHouseName = defaultIfBlank(courtRoom.getOucodeL3Name(), "UNKNOWN_COURTHOUSE");
+        final String courtRoomName = defaultIfBlank(courtRoom.getCourtroomName(), "UNKNOWN_COURTROOM");
+        final String businessType = defaultIfBlank(listingProfile.get(BUSINESS_TYPE), "UNKNOWN_BUSINESS_TYPE");
+        final String sessionStr = defaultIfBlank(session, "UNKNOWN_SESSION");
+        final String panelStr = defaultIfBlank(panel, "UNKNOWN_PANEL");
+        
+        final String sessionDetails = format("%s - %s - %s - %s - %s - %s",
+                sessionDate,
+                courtHouseName,
+                courtRoomName,
+                businessType,
+                sessionStr,
+                panelStr);
+        
+        missingSessionsByOuCode
+                .computeIfAbsent(ouCode, key -> new ArrayList<>())
+                .add(sessionDetails);
     }
 
-    private Map<String, Map<String, String>> getRecordsByType(final Map<RotaPayload, Map<String, Map<String, String>>> records,
-                                                              final RotaPayload payloadType) {
-        return records.getOrDefault(payloadType, Collections.emptyMap());
-    }
 }
 

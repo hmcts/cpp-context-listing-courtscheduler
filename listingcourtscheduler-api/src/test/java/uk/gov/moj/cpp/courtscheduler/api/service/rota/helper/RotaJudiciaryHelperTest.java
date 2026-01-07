@@ -18,11 +18,15 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDGE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDGE_SURNAME;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDICIARY_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.JUDICIARY_TYPE;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.EMAIL_ADDRESS;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.FORENAMES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.MAGS_EMAIL;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ROTA_JUDICIARY_ID;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SURNAME;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.DISTRICT_JUDGES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_NOT_FOUND;
 
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
@@ -43,6 +47,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -158,7 +163,7 @@ class RotaJudiciaryHelperTest {
     }
 
     @Test
-    void shouldLogMissingJudiciary_WhenJudiciaryNotFound() {
+    void shouldNotLogMissingJudiciary_WhenJudiciaryNotFoundInCreateJudiciaryMap() {
         // given
         final String magistrateId = "mag-1";
         final String magistrateEmail = "missing@example.com";
@@ -174,7 +179,8 @@ class RotaJudiciaryHelperTest {
 
         // then
         assertThat(result, is(emptyMap()));
-        verify(rotaProcessLogService).saveRotaProcessLog(any());
+        // createJudiciaryMap no longer logs missing judiciaries (logging moved to createScheduleJudiciaryList)
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
     }
 
     // ============================================================================
@@ -487,7 +493,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                null, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, requester, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -725,6 +731,207 @@ class RotaJudiciaryHelperTest {
 
         // then
         assertThat(result, is(emptyMap()));
+    }
+
+    // ============================================================================
+    // Tests for logJudiciaryMissingMessage (tested via createJudiciaryCourtScheduleMap)
+    // ============================================================================
+
+    @Test
+    void shouldLogJudiciaryMissingMessage_WhenJudiciaryNotFoundInSchedule() {
+        // given
+        final String rotaJusticeId = "justice-1";
+        final String email = "missing@example.com";
+        final String firstName = "John";
+        final String lastName = "Doe";
+        final UUID judiciaryUuid = UUID.fromString(judiciaryId);
+        final String courtListingProfileId = "listing-1";
+
+        final Map<String, UUID> judiciaryMap = Map.of(rotaJusticeId, judiciaryUuid);
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(UUID.randomUUID()));
+
+        final Map<String, Map<String, String>> schedules = new HashMap<>();
+        final Map<String, String> schedule = new HashMap<>();
+        schedule.put(ROTA_JUDICIARY_ID, rotaJusticeId);
+        schedule.put(EMAIL_ADDRESS, email);
+        schedule.put(FORENAMES, firstName);
+        schedule.put(SURNAME, lastName);
+        schedules.put("schedule-1", schedule);
+        records.put(SCHEDULE, schedules);
+
+        final Map<String, Map<String, String>> magistrates = new HashMap<>();
+        magistrates.put(rotaJusticeId, Map.of(MAGS_EMAIL, email, JUDGE_FORENAMES, firstName, JUDGE_SURNAME, lastName));
+        records.put(MAGISTRATES, magistrates);
+
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId)))
+                .thenReturn(Optional.empty());
+
+        // when
+        final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+                records, judiciaryMap, courtScheduleMap, requester, executionId);
+
+        // then
+        assertThat(result, is(notNullValue()));
+        assertThat(result.isEmpty(), is(true));
+
+        // Verify that logJudiciaryMissingMessage was called via rotaProcessLogService
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
+                ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
+        verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
+
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
+        assertThat(log.getExecutionId(), is(executionId));
+        assertThat(log.getErrorCode(), is(JUDICIARY_NOT_FOUND.code()));
+        assertThat(log.getErrorText(), is(notNullValue()));
+        assertThat(log.getErrorText().contains("Judiciary detail not found"), is(true));
+    }
+
+    @Test
+    void shouldNotLogJudiciaryMissingMessage_WhenNoErrors() {
+        // given
+        final String rotaJusticeId = "justice-1";
+        final String email = "judge@example.com";
+        final UUID judiciaryUuid = UUID.fromString(judiciaryId);
+        final String courtListingProfileId = "listing-1";
+
+        final Map<String, UUID> judiciaryMap = Map.of(rotaJusticeId, judiciaryUuid);
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(UUID.randomUUID()));
+
+        final Map<String, Map<String, String>> schedules = new HashMap<>();
+        final Map<String, String> schedule = new HashMap<>();
+        schedule.put(ROTA_JUDICIARY_ID, rotaJusticeId);
+        schedule.put(EMAIL_ADDRESS, email);
+        schedule.put(COURT_LISTING_PROFILE_ID, courtListingProfileId);
+        schedule.put(JUDICIARY_ID, judiciaryId);
+        schedules.put("schedule-1", schedule);
+        records.put(SCHEDULE, schedules);
+
+        final Map<String, Map<String, String>> magistrates = new HashMap<>();
+        magistrates.put(rotaJusticeId, Map.of(MAGS_EMAIL, email));
+        records.put(MAGISTRATES, magistrates);
+
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId)))
+                .thenReturn(Optional.of(judiciary));
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
+                .withJudiciaryId(judiciaryId)
+                .withCourtListingProfileId(courtListingProfileId)
+                .build();
+        when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(courtScheduleJudiciary);
+
+        // when
+        final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+                records, judiciaryMap, courtScheduleMap, requester, executionId);
+
+        // then
+        assertThat(result, is(notNullValue()));
+        // Should not log when there are no errors
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
+    }
+
+    @Test
+    void shouldNotLogJudiciaryMissingMessage_WhenExecutionIdIsNull() {
+        // given
+        final String rotaJusticeId = "justice-1";
+        final String email = "missing@example.com";
+        final String firstName = "John";
+        final String lastName = "Doe";
+        final UUID judiciaryUuid = UUID.fromString(judiciaryId);
+        final String courtListingProfileId = "listing-1";
+
+        final Map<String, UUID> judiciaryMap = Map.of(rotaJusticeId, judiciaryUuid);
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(UUID.randomUUID()));
+
+        final Map<String, Map<String, String>> schedules = new HashMap<>();
+        final Map<String, String> schedule = new HashMap<>();
+        schedule.put(ROTA_JUDICIARY_ID, rotaJusticeId);
+        schedule.put(EMAIL_ADDRESS, email);
+        schedule.put(FORENAMES, firstName);
+        schedule.put(SURNAME, lastName);
+        schedules.put("schedule-1", schedule);
+        records.put(SCHEDULE, schedules);
+
+        final Map<String, Map<String, String>> magistrates = new HashMap<>();
+        magistrates.put(rotaJusticeId, Map.of(MAGS_EMAIL, email, JUDGE_FORENAMES, firstName, JUDGE_SURNAME, lastName));
+        records.put(MAGISTRATES, magistrates);
+
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(null)))
+                .thenReturn(Optional.empty());
+
+        // when
+        final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+                records, judiciaryMap, courtScheduleMap, requester, null);
+
+        // then
+        assertThat(result, is(notNullValue()));
+        // Should not log when executionId is null
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
+    }
+
+    @Test
+    void shouldLogMultipleJudiciaryMissingMessages() {
+        // given
+        final String rotaJusticeId1 = "justice-1";
+        final String rotaJusticeId2 = "justice-2";
+        final String email1 = "missing1@example.com";
+        final String email2 = "missing2@example.com";
+        final String firstName1 = "John";
+        final String lastName1 = "Doe";
+        final String firstName2 = "Jane";
+        final String lastName2 = "Smith";
+        final UUID judiciaryUuid1 = UUID.fromString(judiciaryId);
+        final UUID judiciaryUuid2 = UUID.randomUUID();
+        final String courtListingProfileId = "listing-1";
+
+        final Map<String, UUID> judiciaryMap = Map.of(rotaJusticeId1, judiciaryUuid1, rotaJusticeId2, judiciaryUuid2);
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(UUID.randomUUID()));
+
+        final Map<String, Map<String, String>> schedules = new HashMap<>();
+        
+        final Map<String, String> schedule1 = new HashMap<>();
+        schedule1.put(ROTA_JUDICIARY_ID, rotaJusticeId1);
+        schedule1.put(EMAIL_ADDRESS, email1);
+        schedule1.put(FORENAMES, firstName1);
+        schedule1.put(SURNAME, lastName1);
+        schedules.put("schedule-1", schedule1);
+
+        final Map<String, String> schedule2 = new HashMap<>();
+        schedule2.put(ROTA_JUDICIARY_ID, rotaJusticeId2);
+        schedule2.put(EMAIL_ADDRESS, email2);
+        schedule2.put(FORENAMES, firstName2);
+        schedule2.put(SURNAME, lastName2);
+        schedules.put("schedule-2", schedule2);
+        
+        records.put(SCHEDULE, schedules);
+
+        final Map<String, Map<String, String>> magistrates = new HashMap<>();
+        magistrates.put(rotaJusticeId1, Map.of(MAGS_EMAIL, email1, JUDGE_FORENAMES, firstName1, JUDGE_SURNAME, lastName1));
+        magistrates.put(rotaJusticeId2, Map.of(MAGS_EMAIL, email2, JUDGE_FORENAMES, firstName2, JUDGE_SURNAME, lastName2));
+        records.put(MAGISTRATES, magistrates);
+
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email1), eq(executionId)))
+                .thenReturn(Optional.empty());
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email2), eq(executionId)))
+                .thenReturn(Optional.empty());
+
+        // when
+        final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
+                records, judiciaryMap, courtScheduleMap, requester, executionId);
+
+        // then
+        assertThat(result, is(notNullValue()));
+
+        // Verify that logJudiciaryMissingMessage was called with both errors
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
+                ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
+        verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
+
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
+        assertThat(log.getExecutionId(), is(executionId));
+        assertThat(log.getErrorCode(), is(JUDICIARY_NOT_FOUND.code()));
+        assertThat(log.getErrorText(), is(notNullValue()));
+        assertThat(log.getErrorText().contains("John Doe"), is(true));
+        assertThat(log.getErrorText().contains("Jane Smith"), is(true));
     }
 }
 

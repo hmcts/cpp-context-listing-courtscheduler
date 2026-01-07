@@ -7,10 +7,6 @@ public enum MissingDataError {
             "JUDICIARY_NOT_FOUND",
             Prefix.MONITORING + "Judiciary detail not found for the following judiciaries :-%n%n%s"),
 
-    COURT_DETAIL_NOT_FOUND(
-            "COURT_DETAIL_NOT_FOUND",
-            Prefix.MONITORING + "Court details not found for the following locations :- %n%s"),
-
     BUSINESS_TYPES_NOT_FOUND(
             "BUSINESS_TYPES_NOT_FOUND",
             Prefix.MONITORING + "These business types cannot be found on newSlots : {}"),
@@ -18,10 +14,6 @@ public enum MissingDataError {
     JUDICIARY_ERR_MSG(
             "JUDICIARY_ERR_MSG",
             "Name %s %s%nEmail : %s"),
-
-    REF_DATA_JUDICIARY_EMAIL(
-            "REF_DATA_JUDICIARY_EMAIL",
-            "Judiciary email cannot be found in referenceData"),
 
     MISSING_COURT_SESSION(
             "MISSING_COURT_SESSION",
