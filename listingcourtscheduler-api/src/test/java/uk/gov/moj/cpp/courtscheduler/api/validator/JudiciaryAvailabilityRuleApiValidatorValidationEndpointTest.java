@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
+import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
 
@@ -37,6 +38,7 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
 
     private AddJudiciaryAvailabilityRuleRequest addRequest;
     private UpdateJudiciaryAvailabilityRuleRequest updateRequest;
+    private DeleteJudiciaryAvailabilityRuleRequest deleteRequest;
 
     @BeforeEach
     void setUp() {
@@ -58,6 +60,10 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
         updateRequest.setRepeatDays(Arrays.asList(
                 new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)
         ));
+
+        deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
+        deleteRequest.setRuleId(randomUUID().toString());
+        deleteRequest.setJudiciaryId(randomUUID().toString());
     }
 
     @Test
@@ -150,6 +156,54 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
         assertFalse(result.isEmpty());
         String errorMessage = result.getString("errorMessage");
         assertTrue(errorMessage.contains("3 years"));
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectForValidDeleteRequest() {
+        when(service.validateDeleteJudiciaryAvailabilityRule(deleteRequest)).thenReturn(null);
+
+        JsonObject result = validator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(deleteRequest, service);
+
+        assertThat(result, is(EMPTY_JSON_OBJECT));
+    }
+
+    @Test
+    void shouldReturnErrorWhenDeleteRequestIsNull() {
+        JsonObject result = validator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(null, service);
+
+        assertFalse(result.isEmpty());
+        assertTrue(result.getString("errorMessage").contains("Request"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenDeleteRequestRuleIdIsBlank() {
+        deleteRequest.setRuleId("");
+
+        JsonObject result = validator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(deleteRequest, service);
+
+        assertFalse(result.isEmpty());
+        assertTrue(result.getString("errorMessage").contains("ruleId"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenDeleteRequestJudiciaryIdIsBlank() {
+        deleteRequest.setJudiciaryId("");
+
+        JsonObject result = validator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(deleteRequest, service);
+
+        assertFalse(result.isEmpty());
+        assertTrue(result.getString("errorMessage").contains("judiciaryId"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenDeleteRequestHasBusinessRuleViolations() {
+        String businessError = "Cannot delete availability rule. Rule is already applied to session session-123 on 2026-01-15 (AM)";
+        when(service.validateDeleteJudiciaryAvailabilityRule(deleteRequest)).thenReturn(businessError);
+
+        JsonObject result = validator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(deleteRequest, service);
+
+        assertFalse(result.isEmpty());
+        assertTrue(result.getString("errorMessage").contains("already applied"));
     }
 }
 

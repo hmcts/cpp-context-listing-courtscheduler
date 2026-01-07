@@ -729,6 +729,37 @@ public class CourtSchedulerApi {
         return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.update.availability.rule.validate").apply(validationResult);
     }
 
+    @Handles("courtscheduler.judiciary.delete.availability.rule.validate")
+    public JsonEnvelope validateDeleteJudiciaryAvailabilityRule(final JsonEnvelope envelope) {
+        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.judiciary.delete.availability.rule.validate requested : {}", requestFromApiJsonObject);
+
+        DeleteJudiciaryAvailabilityRuleRequest request = deleteJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
+
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
+
+        if (!validate.isEmpty()) {
+            // Return validation failure response
+            final String errorMessage = validate.getString(ERROR_MESSAGE);
+            final JsonObject validationResult = createObjectBuilder()
+                    .add(VALIDATION_RESULT, createObjectBuilder()
+                            .add(STATUS, FAILURE)
+                            .add(VALIDATION_ERROR, errorMessage)
+                            .build())
+                    .build();
+            throw new UnprocessableEntityException(validationResult);
+        }
+
+        // Return validation success response
+        final JsonObject validationResult = createObjectBuilder()
+                .add(VALIDATION_RESULT, createObjectBuilder()
+                        .add(STATUS, SUCCESS)
+                        .build())
+                .build();
+
+        return enveloper.withMetadataFrom(envelope, "courtscheduler.judiciary.delete.availability.rule.validate").apply(validationResult);
+    }
+
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {
         JsonObject build = createObjectBuilder().add(key, jsonValue).build();
         String name = originalEnvelope.metadata().name();

@@ -59,6 +59,9 @@ class JudiciaryAvailabilityServiceTest {
     @Mock
     private javax.persistence.EntityManager entityManager;
 
+    @Mock
+    private uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+
     @InjectMocks
     private JudiciaryAvailabilityService service;
 
@@ -1111,6 +1114,97 @@ class JudiciaryAvailabilityServiceTest {
         assertThat(response.getJudiciary(), is(org.hamcrest.Matchers.nullValue()));
         verify(repository).findBy(ruleId);
         verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void shouldReturnNullWhenValidateDeleteWithNoMatchingSessions() {
+        final String ruleId = randomUUID().toString();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setJudiciaryId(judiciaryId);
+
+        JudiciaryAvailabilityRule rule = createRule(judiciaryId,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
+        rule.setId(ruleId);
+        rule.setSessionType(SessionType.AM);
+
+        when(repository.findBy(ruleId)).thenReturn(rule);
+        when(courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
+                judiciaryId, rule.getFromDate(), rule.getToDate(), "AM"))
+                .thenReturn(Collections.emptyList());
+
+        String result = service.validateDeleteJudiciaryAvailabilityRule(request);
+
+        assertThat(result, is(org.hamcrest.Matchers.nullValue()));
+        verify(repository).findBy(ruleId);
+        verify(courtScheduleJudiciaryRepository).findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
+                judiciaryId, rule.getFromDate(), rule.getToDate(), "AM");
+    }
+
+    @Test
+    void shouldReturnErrorWhenValidateDeleteRuleNotFound() {
+        final String ruleId = randomUUID().toString();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setJudiciaryId(judiciaryId);
+
+        when(repository.findBy(ruleId)).thenReturn(null);
+
+        String result = service.validateDeleteJudiciaryAvailabilityRule(request);
+
+        assertNotNull(result);
+        assertTrue(result.contains("not found"));
+        verify(repository).findBy(ruleId);
+    }
+
+    @Test
+    void shouldReturnErrorWhenValidateDeleteRuleIdIsNull() {
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(null);
+        request.setJudiciaryId(judiciaryId);
+
+        String result = service.validateDeleteJudiciaryAvailabilityRule(request);
+
+        assertNotNull(result);
+        assertTrue(result.contains("Rule ID is required"));
+        verify(repository, org.mockito.Mockito.never()).findBy(org.mockito.ArgumentMatchers.anyString());
+    }
+
+
+    @Test
+    void shouldReturnErrorWhenValidateDeleteRuleAppliedToADSessionType() {
+        final String ruleId = randomUUID().toString();
+        final String sessionId = randomUUID().toString();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setJudiciaryId(judiciaryId);
+
+        JudiciaryAvailabilityRule rule = createRule(judiciaryId,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                Arrays.asList(AvailabilityDayOfWeek.Monday), RecurringType.WEEKLY);
+        rule.setId(ruleId);
+        rule.setSessionType(SessionType.AD);
+
+        // Monday, January 5, 2026 (January 6 is Tuesday)
+        LocalDate sessionDate = LocalDate.of(2026, 1, 5);
+        Object[] sessionData = new Object[]{sessionId, sessionDate, "AM"};
+
+        when(repository.findBy(ruleId)).thenReturn(rule);
+        // AD rule should match AM, PM, or AD sessions
+        List<Object[]> sessionListAD = new ArrayList<>();
+        sessionListAD.add(sessionData);
+        when(courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
+                judiciaryId, rule.getFromDate(), rule.getToDate(), "AD"))
+                .thenReturn(sessionListAD);
+
+        String result = service.validateDeleteJudiciaryAvailabilityRule(request);
+
+        assertNotNull(result);
+        assertTrue(result.contains("already applied"));
+        verify(repository).findBy(ruleId);
+        verify(courtScheduleJudiciaryRepository).findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
+                judiciaryId, rule.getFromDate(), rule.getToDate(), "AD");
     }
 }
 

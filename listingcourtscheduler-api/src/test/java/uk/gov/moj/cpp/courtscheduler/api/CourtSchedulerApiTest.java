@@ -38,11 +38,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConv
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.DeleteJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleResponseConverter;
@@ -1566,5 +1562,62 @@ class CourtSchedulerApiTest {
 
         assertThrows(UnprocessableEntityException.class, () ->
                 courtSchedulerApi.validateUpdateJudiciaryAvailabilityRule(validationEnvelope));
+    }
+
+    @Test
+    void shouldValidateDeleteJudiciaryAvailabilityRuleSuccessfully() {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .build();
+        final String requestName = "courtscheduler.judiciary.delete.availability.rule.validate";
+        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setJudiciaryId(judiciaryId);
+
+        when(deleteJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+        when(enveloper.withMetadataFrom(validationEnvelope, requestName)).thenReturn(function);
+        when(function.apply(any(JsonObject.class))).thenReturn(validationEnvelope);
+
+        courtSchedulerApi.validateDeleteJudiciaryAvailabilityRule(validationEnvelope);
+
+        verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
+    }
+
+    @Test
+    void shouldThrowUnprocessableEntityExceptionWhenDeleteValidationFails() {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .build();
+        final String requestName = "courtscheduler.judiciary.delete.availability.rule.validate";
+        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
+        request.setRuleId(ruleId);
+        request.setJudiciaryId(judiciaryId);
+
+        JsonObject validationError = createObjectBuilder()
+                .add("errorMessage", "Cannot delete availability rule. Rule is already applied to session session-123 on 2026-01-15 (AM)")
+                .build();
+
+        when(deleteJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
+        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
+                .thenReturn(validationError);
+
+        assertThrows(UnprocessableEntityException.class, () ->
+                courtSchedulerApi.validateDeleteJudiciaryAvailabilityRule(validationEnvelope));
+
+        verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
     }
 }

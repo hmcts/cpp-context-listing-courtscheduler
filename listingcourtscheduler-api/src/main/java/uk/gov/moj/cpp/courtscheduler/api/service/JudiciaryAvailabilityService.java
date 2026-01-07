@@ -909,5 +909,41 @@ public class JudiciaryAvailabilityService {
         // For simplicity, we consider any overlap in date range with same judiciary as a conflict
         return true;
     }
+
+    /**
+     * Validates if a judiciary availability rule can be deleted.
+     * Checks if the rule is already applied/assigned to a session.
+     * Returns an error message if the rule is applied to sessions, null otherwise.
+     */
+    public String validateDeleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
+        LOGGER.info("Validating delete for judiciary availability rule: {}", request);
+
+        if (request == null || request.getRuleId() == null || request.getRuleId().isEmpty()) {
+            return "Rule ID is required";
+        }
+
+        final JudiciaryAvailabilityRule rule = repository.findBy(request.getRuleId());
+        if (rule == null) {
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
+            return "Judiciary availability rule with id " + request.getRuleId() + " not found";
+        }
+
+        // Find court schedules (sessions) that match the rule's criteria
+        final String sessionType = rule.getSessionType() != null ? rule.getSessionType().name() : "AD";
+        final List<Object[]> matchingSessions = courtScheduleJudiciaryRepository
+                .findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
+                        rule.getJudiciaryId(),
+                        rule.getFromDate(),
+                        rule.getToDate(),
+                        sessionType
+                );
+
+        if (matchingSessions.isEmpty()) {
+            LOGGER.info("No matching sessions found for rule {}", request.getRuleId());
+            return null;
+        } else {
+            return "Cannot delete availability rule. Rule is already applied to session";
+        }
+    }
 }
 

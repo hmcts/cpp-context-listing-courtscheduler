@@ -192,5 +192,31 @@ public class JudiciaryAvailabilityRuleApiValidator {
 
         return EMPTY_JSON_OBJECT;
     }
+
+    public JsonObject validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(final DeleteJudiciaryAvailabilityRuleRequest request,
+                                                                                    final JudiciaryAvailabilityService service) {
+        LOGGER.info("Validating DeleteJudiciaryAvailabilityRule for validation endpoint: {}", request);
+
+        JsonObject validation = validateRequestNotNull(request);
+        if (!validation.isEmpty()) {
+            return validation;
+        }
+
+        if (isBlank(request.getRuleId())) {
+            return getMessage(RULE_ID_FIELD);
+        }
+
+        if (isBlank(request.getJudiciaryId())) {
+            return getMessage("judiciaryId");
+        }
+
+        // Call service validation for business rules (check if rule is applied to sessions)
+        final String businessError = service.validateDeleteJudiciaryAvailabilityRule(request);
+        if (businessError != null) {
+            return buildErrorResponse(businessError);
+        }
+
+        return EMPTY_JSON_OBJECT;
+    }
 }
 

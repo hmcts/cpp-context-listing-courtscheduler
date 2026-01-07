@@ -469,6 +469,16 @@ public class DatabaseSeeder {
         }
     }
 
+    public void updateJudiciaryAvailabilityRuleSessionType(final String ruleId, final String sessionType) throws SQLException {
+        final String UPDATE_SESSION_TYPE_SQL = "UPDATE judiciary_availability_rule SET session_type = ? WHERE id = ?";
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement stmt = connection.prepareStatement(UPDATE_SESSION_TYPE_SQL)) {
+            stmt.setString(1, sessionType);
+            stmt.setString(2, ruleId);
+            stmt.executeUpdate();
+        }
+    }
+
     public void insertJudiciaryAvailabilityRulesBatch(
             final List<RuleData> rules) throws SQLException {
         // Process in chunks to avoid memory issues with very large batches

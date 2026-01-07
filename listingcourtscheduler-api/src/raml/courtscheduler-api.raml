@@ -830,3 +830,31 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.validate.response+json:
             schema: !include json/schema/courtscheduler.validate.response.json
             example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/validate-delete:
+  post:
+    description: |
+      Validate judiciary availability rule for deletion.
+      Checks if the rule is already applied/assigned to a session and throws error if it is.
+      ...
+      (mapping):
+          requestType: application/json
+          name: courtscheduler.judiciary.delete.availability.rule.validate
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.delete.availability.rule.json
+        example: !include json/courtscheduler.judiciary.delete.availability.rule.json
+    responses:
+      200:
+        description: Validation successful
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json

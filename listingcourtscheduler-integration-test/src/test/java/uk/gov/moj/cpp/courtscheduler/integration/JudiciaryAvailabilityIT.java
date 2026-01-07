@@ -8,9 +8,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 
@@ -19,6 +17,9 @@ import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -44,6 +45,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
     private static final String AVAILABILITY_RULES_DELETE = "/judiciaries/availability-rules/delete";
     private static final String AVAILABILITY_RULES_VALIDATE_ADD = "/judiciaries/availability-rules/validate-add";
     private static final String AVAILABILITY_RULES_VALIDATE_UPDATE = "/judiciaries/availability-rules/validate-update";
+    private static final String AVAILABILITY_RULES_VALIDATE_DELETE = "/judiciaries/availability-rules/validate-delete";
     private static final String AVAILABILITY_RULES = "/judiciaries/availability-rules";
     private static final String JUDICIARIES_AVAILABILITY = "/judiciaries/availability";
     private static final String JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES = "/judiciaries/{judiciaryId}/availability-rules/{ruleId}";
@@ -1555,5 +1557,120 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String responseString = response.readEntity(String.class);
         assertTrue(responseString.contains("future") || responseString.contains("validationError"));
     }
+
+    @Test
+    void shouldReturnSuccessWhenValidatingDeleteJudiciaryAvailabilityRuleWithNoSessions() throws Exception {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final LocalDate startDate = LocalDate.now().plusDays(1);
+        final LocalDate endDate = LocalDate.now().plusDays(31);
+
+        // First, create a rule in the database
+        databaseSeeder.insertJudiciaryAvailabilityRule(
+                ruleId,
+                judiciaryId,
+                courtHouseId,
+                Collections.emptyList(),
+                startDate,
+                endDate,
+                RecurringType.WEEKLY,
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
+        );
+
+        // Now validate delete - should succeed as no sessions are assigned
+        final String requestPayload = Json.createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .build()
+                .toString();
+
+        final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_DELETE, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String responseString = response.readEntity(String.class);
+        final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
+        final JsonObject validationResult = responseJson.getJsonObject("validationResult");
+        assertThat(validationResult.getString("status"), is("SUCCESS"));
+    }
+
+    @Test
+    void shouldReturnFailureWhenValidatingDeleteJudiciaryAvailabilityRuleAppliedToSession() throws Exception {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+
+        // Create a rule: Weekly on Mondays, AM session
+        databaseSeeder.insertJudiciaryAvailabilityRule(
+                ruleId,
+                judiciaryId,
+                courtHouseId,
+                Collections.emptyList(),
+                startDate,
+                endDate,
+                RecurringType.WEEKLY,
+                Arrays.asList(AvailabilityDayOfWeek.Monday)
+        );
+        // Update session_type to AM
+        databaseSeeder.updateJudiciaryAvailabilityRuleSessionType(ruleId, SessionType.AM.name());
+
+        // Create a court schedule on a Monday (January 5, 2026 is a Monday) with AM session
+        final String courtScheduleId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2026, 1, 5); // Monday
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setCourtHouseId(courtHouseId);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setActive(true);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        // Assign the judiciary to the court schedule
+        final CourtScheduleJudiciary courtScheduleJudiciary = RANDOM.nextObject(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciaryKey key = new CourtScheduleJudiciaryKey();
+        key.setCourtScheduleId(courtScheduleId);
+        key.setJudiciaryId(judiciaryId);
+        courtScheduleJudiciary.setId(key);
+        courtScheduleJudiciary.setActive(true);
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        // Now validate delete - should fail as rule is applied to a session
+        final String requestPayload = Json.createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .build()
+                .toString();
+
+        final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_DELETE, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
+
+        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY.code()));
+        final String responseString = response.readEntity(String.class);
+        final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
+        final JsonObject validationResult = responseJson.getJsonObject("validationResult");
+        assertThat(validationResult.getString("status"), is("FAILURE"));
+        assertTrue(validationResult.getString("validationError").contains("already applied"));
+    }
+
+    @Test
+    void shouldReturnFailureWhenValidatingDeleteJudiciaryAvailabilityRuleWithNonExistentRule() {
+        final String ruleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+
+        // Validate delete for non-existent rule
+        final String requestPayload = Json.createObjectBuilder()
+                .add("ruleId", ruleId)
+                .add("judiciaryId", judiciaryId)
+                .build()
+                .toString();
+
+        final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_DELETE, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
+
+        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY.code()));
+        final String responseString = response.readEntity(String.class);
+        assertTrue(responseString.contains("not found") || responseString.contains("validationError"));
+    }
+
 }
 
