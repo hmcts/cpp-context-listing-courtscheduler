@@ -1940,6 +1940,61 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
+    @Test
+    void shouldPersistIsDeputyAndIsBenchChairmanAsFalseWhenNotProvided() throws Exception {
+        // Setup: Create a court schedule
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        // Use a judiciary ID from the stubbed reference data (from referencedata.judiciaries.json)
+        final String judiciaryId = "9ac02e8d-ee90-3da6-8d3e-0dd0af2cb976";
+
+        // Verify judiciary is not assigned initially
+        List<CourtScheduleJudiciary> judiciariesBefore = databaseReader.courtScheduleJudiciaries();
+        assertFalse(judiciariesBefore.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(judiciaryId)));
+
+        // Call assign endpoint without isDeputy and isBenchChairman
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", judiciaryId)
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                // Intentionally not including isDeputy and isBenchChairman
+                                .build())
+                        .build())
+                .add("skipValidations", false)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                ASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should return ACCEPTED when validation passes
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Wait a bit for async processing
+        Thread.sleep(1000);
+
+        // Verify judiciary is assigned and check database values
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        final CourtScheduleJudiciary assignedJudiciary = judiciariesAfter.stream()
+                .filter(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(judiciaryId))
+                .findFirst()
+                .orElse(null);
+
+        assertThat(assignedJudiciary, notNullValue());
+        // Verify that isDeputy and isBenchChairman are persisted as false when not provided
+        assertFalse(assignedJudiciary.getDeputy(), "isDeputy should be persisted as false when not provided");
+        assertFalse(assignedJudiciary.getBenchChairman(), "isBenchChairman should be persisted as false when not provided");
+    }
+
     private CourtSchedule createTestCourtSchedule() {
         final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(randomUUID().toString());
