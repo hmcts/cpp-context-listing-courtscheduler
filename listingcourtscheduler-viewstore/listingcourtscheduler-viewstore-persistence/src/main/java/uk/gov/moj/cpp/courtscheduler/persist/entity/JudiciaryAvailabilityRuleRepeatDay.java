@@ -19,16 +19,12 @@ public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
     @Column(name = "day_of_week", nullable = false)
     private AvailabilityDayOfWeek dayOfWeek; // Full name: Monday, Tuesday, etc.
 
-    @Column(name = "day_index", nullable = false)
-    private Integer index; // Optional index for recurring patterns (0 means no index)
-
     public JudiciaryAvailabilityRuleRepeatDay() {
         //For JPA
     }
 
-    public JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek dayOfWeek, Integer index) {
+    public JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
-        this.index = index;
     }
 
     public AvailabilityDayOfWeek getDayOfWeek() {
@@ -37,14 +33,6 @@ public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
 
     public void setDayOfWeek(AvailabilityDayOfWeek dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
-    }
-
-    public Integer getIndex() {
-        return this.index;
-    }
-
-    public void setIndex(Integer index) {
-        this.index = index;
     }
 
     @Override
@@ -56,19 +44,18 @@ public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
             return false;
         }
         final JudiciaryAvailabilityRuleRepeatDay that = (JudiciaryAvailabilityRuleRepeatDay) o;
-        return Objects.equals(this.dayOfWeek, that.dayOfWeek) && Objects.equals(this.index, that.index);
+        return Objects.equals(this.dayOfWeek, that.dayOfWeek);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.dayOfWeek, this.index);
+        return Objects.hash(this.dayOfWeek);
     }
 
     @Override
     public String toString() {
         return "JudiciaryAvailabilityRuleRepeatDay{" +
                 "dayOfWeek='" + this.dayOfWeek + '\'' +
-                ", index=" + this.index +
                 '}';
     }
 }

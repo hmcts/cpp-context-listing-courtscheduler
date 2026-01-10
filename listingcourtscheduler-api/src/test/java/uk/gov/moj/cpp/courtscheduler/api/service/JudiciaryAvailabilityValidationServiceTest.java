@@ -9,9 +9,7 @@ import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
@@ -157,14 +155,10 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldReturnErrorWhenOverlappingRuleExistsForSameJudiciary() {
         AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
-        request.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)
-        ));
-        request.setRecurringType(RecurringType.WEEKLY);
+        request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday));
 
         // Create an existing overlapping rule
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(15), today.plusDays(35));
-        existingRule.setRecurringType(RecurringType.WEEKLY);
         existingRule.setRepeatDays(Arrays.asList(
                 createEntityRepeatDay(AvailabilityDayOfWeek.Monday)
         ));
@@ -181,14 +175,10 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldNotReturnErrorWhenOverlappingRuleHasDifferentRepeatDays() {
         AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
-        request.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)
-        ));
-        request.setRecurringType(RecurringType.WEEKLY);
+        request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday));
 
         // Create an existing overlapping rule with different days
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(15), today.plusDays(35));
-        existingRule.setRecurringType(RecurringType.WEEKLY);
         existingRule.setRepeatDays(Arrays.asList(
                 createEntityRepeatDay(AvailabilityDayOfWeek.Tuesday) // Different day
         ));
@@ -293,10 +283,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     void shouldReturnErrorWhenOverlappingRuleExistsForUpdateExcludingCurrentRule() {
         String ruleId = randomUUID().toString();
         UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
-        request.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)
-        ));
-        request.setRecurringType(RecurringType.WEEKLY);
+        request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), today.plusDays(40));
         existingRule.setId(ruleId);
@@ -304,7 +291,6 @@ class JudiciaryAvailabilityValidationServiceTest {
         // Create another overlapping rule
         JudiciaryAvailabilityRule otherRule = createExistingRule(today.plusDays(15), today.plusDays(35));
         otherRule.setId(randomUUID().toString());
-        otherRule.setRecurringType(RecurringType.WEEKLY);
         otherRule.setRepeatDays(Arrays.asList(
                 createEntityRepeatDay(AvailabilityDayOfWeek.Monday)
         ));
@@ -323,14 +309,10 @@ class JudiciaryAvailabilityValidationServiceTest {
     void shouldNotReturnErrorWhenOnlyCurrentRuleOverlapsForUpdate() {
         String ruleId = randomUUID().toString();
         UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
-        request.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)
-        ));
-        request.setRecurringType(RecurringType.WEEKLY);
+        request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), today.plusDays(40));
         existingRule.setId(ruleId);
-        existingRule.setRecurringType(RecurringType.WEEKLY);
         existingRule.setRepeatDays(Arrays.asList(
                 createEntityRepeatDay(AvailabilityDayOfWeek.Monday)
         ));
@@ -603,12 +585,8 @@ class JudiciaryAvailabilityValidationServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(startDate);
         request.setEndDate(endDate);
-        request.setRecurringType(RecurringType.WEEKLY);
         request.setSessionType(SessionType.AD);
-        request.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null),
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Tuesday, null)
-        ));
+        request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday));
         return request;
     }
 
@@ -619,12 +597,8 @@ class JudiciaryAvailabilityValidationServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(startDate);
         request.setEndDate(endDate);
-        request.setRecurringType(RecurringType.WEEKLY);
         request.setSessionType(SessionType.AD);
-        request.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null),
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Tuesday, null)
-        ));
+        request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday));
         return request;
     }
 
@@ -635,17 +609,12 @@ class JudiciaryAvailabilityValidationServiceTest {
         rule.setCourtHouseId(courtHouseId);
         rule.setFromDate(startDate);
         rule.setToDate(endDate);
-        rule.setRecurringType(RecurringType.WEEKLY);
         rule.setSessionType(SessionType.AD);
         return rule;
     }
 
     private uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay createEntityRepeatDay(AvailabilityDayOfWeek dayOfWeek) {
-        uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay repeatDay = 
-                new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay();
-        repeatDay.setDayOfWeek(dayOfWeek);
-        repeatDay.setIndex(0);
-        return repeatDay;
+        return new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay(dayOfWeek);
     }
 }
 

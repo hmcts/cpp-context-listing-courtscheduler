@@ -7,15 +7,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
@@ -50,10 +47,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         final LocalDate startDate = LocalDate.of(2026, 1, 1);
         final LocalDate endDate = LocalDate.of(2026, 1, 31);
 
-        final List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null),
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Tuesday, 1)
-        );
+        final List<uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek> repeatDays = Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday);
 
         final List<JudiciaryUnavailabilityResponse> unavailabilities = Arrays.asList(
                 new JudiciaryUnavailabilityResponse(
@@ -69,7 +63,6 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         rule.setCourtHouseId(courtHouseId);
         rule.setStartDate(startDate);
         rule.setEndDate(endDate);
-        rule.setRecurringType(RecurringType.WEEKLY);
         rule.setSessionType(SessionType.AM);
         rule.setRepeatDays(repeatDays);
         rule.setUnavailabilities(unavailabilities);
@@ -77,6 +70,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         final Judiciary judiciary = new Judiciary();
         judiciary.setId(judiciaryId);
         judiciary.setSurname("Smith");
+        judiciary.setRequestedName("MR RECORDER J SMITH");
 
         final JudiciarySpecialism specialism = new JudiciarySpecialism();
         specialism.setJudiciaryId(judiciaryId);
@@ -106,16 +100,13 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         assertThat(ruleObject.getString("courtHouseId"), is(courtHouseId));
         assertThat(ruleObject.getString("startDate"), is("2026-01-01"));
         assertThat(ruleObject.getString("endDate"), is("2026-01-31"));
-        assertThat(ruleObject.getString("recurringType"), is("WEEKLY"));
         assertThat(ruleObject.getString("sessionType"), is("AM"));
 
-        // Verify repeatDays - first is string, second is object
+        // Verify repeatDays - simple string array
         final JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
         assertThat(repeatDaysArray.size(), is(2));
         assertThat(repeatDaysArray.getString(0), is("Monday"));
-        final JsonObject repeatDayObject = repeatDaysArray.getJsonObject(1);
-        assertThat(repeatDayObject.getString("day"), is("Tuesday"));
-        assertThat(repeatDayObject.getInt("index"), is(1));
+        assertThat(repeatDaysArray.getString(1), is("Tuesday"));
 
         // Verify unavailabilities
         final JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");
@@ -129,6 +120,12 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         final JsonArray judiciariesArray = result.getJsonArray("judiciaries");
         assertNotNull(judiciariesArray);
         assertThat(judiciariesArray.size(), is(1));
+        
+        // Verify judiciary fields including requestedName
+        final JsonObject judiciaryObject = judiciariesArray.getJsonObject(0);
+        assertThat(judiciaryObject.getString("id"), is(judiciaryId));
+        assertThat(judiciaryObject.getString("surname"), is("Smith"));
+        assertThat(judiciaryObject.getString("requestedName"), is("MR RECORDER J SMITH"));
     }
 
     @Test
@@ -153,59 +150,9 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
     }
 
     @Test
-    void shouldConvertRepeatDaysAsStringWhenIndexIsNull() {
+    void shouldConvertRepeatDaysAsStringArray() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Wednesday, null)
-        ));
-
-        final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
-        response.setRules(Arrays.asList(rule));
-        response.setTotalCount(1);
-        response.setPageNumber(1);
-        response.setPageSize(20);
-
-        final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
-        final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
-
-        assertThat(repeatDaysArray.size(), is(1));
-        assertThat(repeatDaysArray.getString(0), is("Wednesday"));
-    }
-
-    @Test
-    void shouldConvertRepeatDaysAsObjectWhenIndexIsNotNull() {
-        final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Thursday, 2)
-        ));
-
-        final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
-        response.setRules(Arrays.asList(rule));
-        response.setTotalCount(1);
-        response.setPageNumber(1);
-        response.setPageSize(20);
-
-        final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
-        final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
-
-        assertThat(repeatDaysArray.size(), is(1));
-        final JsonObject repeatDayObject = repeatDaysArray.getJsonObject(0);
-        assertThat(repeatDayObject.getString("day"), is("Thursday"));
-        assertThat(repeatDayObject.getInt("index"), is(2));
-    }
-
-    @Test
-    void shouldConvertRepeatDaysWithMixedFormats() {
-        final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null),
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Tuesday, 1),
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Friday, null)
-        ));
+        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Friday));
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
         response.setRules(Arrays.asList(rule));
@@ -220,7 +167,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
 
         assertThat(repeatDaysArray.size(), is(3));
         assertThat(repeatDaysArray.getString(0), is("Monday"));
-        assertThat(repeatDaysArray.getJsonObject(1).getString("day"), is("Tuesday"));
+        assertThat(repeatDaysArray.getString(1), is("Tuesday"));
         assertThat(repeatDaysArray.getString(2), is("Friday"));
     }
 
@@ -285,7 +232,6 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
     @Test
     void shouldConvertRuleWithoutOptionalFields() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRecurringType(null);
         rule.setSessionType(null);
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
@@ -300,14 +246,12 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
 
         assertThat(ruleObject.getString("id"), is(notNullValue()));
         assertThat(ruleObject.getString("judiciaryId"), is(notNullValue()));
-        assertTrue(!ruleObject.containsKey("recurringType") || ruleObject.isNull("recurringType"));
         assertTrue(!ruleObject.containsKey("sessionType") || ruleObject.isNull("sessionType"));
     }
 
     @Test
     void shouldConvertRuleWithAllOptionalFields() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRecurringType(RecurringType.MONTHLY);
         rule.setSessionType(SessionType.PM);
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
@@ -320,7 +264,6 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         final JsonArray rulesArray = result.getJsonArray("rules");
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
 
-        assertThat(ruleObject.getString("recurringType"), is("MONTHLY"));
         assertThat(ruleObject.getString("sessionType"), is("PM"));
     }
 
@@ -450,6 +393,31 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         assertThat(unavailabilitiesArray.getJsonObject(1).getString("reason"), is("ANNUAL_LEAVE"));
         assertThat(unavailabilitiesArray.getJsonObject(2).getString("reason"), is("OFFICIAL_BUSINESS"));
         assertThat(unavailabilitiesArray.getJsonObject(3).getString("reason"), is("SICK_LEAVE"));
+    }
+
+    @Test
+    void shouldConvertJudiciaryWithNullRequestedName() {
+        final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
+        final Judiciary judiciary = new Judiciary();
+        judiciary.setId(rule.getJudiciaryId());
+        judiciary.setSurname("Doe");
+        judiciary.setRequestedName(null);
+
+        final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
+        response.setRules(Arrays.asList(rule));
+        response.setTotalCount(1);
+        response.setPageNumber(1);
+        response.setPageSize(20);
+        response.setJudiciaries(Arrays.asList(judiciary));
+
+        final JsonObject result = converter.convert(response);
+        final JsonArray judiciariesArray = result.getJsonArray("judiciaries");
+        final JsonObject judiciaryObject = judiciariesArray.getJsonObject(0);
+
+        assertThat(judiciaryObject.getString("id"), is(rule.getJudiciaryId()));
+        assertThat(judiciaryObject.getString("surname"), is("Doe"));
+        // requestedName should be null or not present when null
+        assertTrue(!judiciaryObject.containsKey("requestedName") || judiciaryObject.isNull("requestedName"));
     }
 
     private JudiciaryAvailabilityRuleResponse createBasicRule() {

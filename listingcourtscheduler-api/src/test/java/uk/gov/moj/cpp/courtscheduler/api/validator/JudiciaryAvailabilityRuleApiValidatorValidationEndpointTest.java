@@ -12,7 +12,6 @@ import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
 
 import java.time.LocalDate;
@@ -47,9 +46,7 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
         addRequest.setCourtHouseId(randomUUID().toString());
         addRequest.setStartDate(LocalDate.now().plusDays(1));
         addRequest.setEndDate(LocalDate.now().plusDays(31));
-        addRequest.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)
-        ));
+        addRequest.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday));
 
         updateRequest = new UpdateJudiciaryAvailabilityRuleRequest();
         updateRequest.setRuleId(randomUUID().toString());
@@ -57,9 +54,7 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
         updateRequest.setCourtHouseId(randomUUID().toString());
         updateRequest.setStartDate(LocalDate.now().plusDays(1));
         updateRequest.setEndDate(LocalDate.now().plusDays(31));
-        updateRequest.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null)
-        ));
+        updateRequest.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday));
 
         deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
         deleteRequest.setRuleId(randomUUID().toString());
@@ -186,13 +181,13 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
     }
 
     @Test
-    void shouldReturnErrorWhenDeleteRequestJudiciaryIdIsBlank() {
+    void shouldNotReturnErrorWhenDeleteRequestJudiciaryIdIsBlank() {
         deleteRequest.setJudiciaryId("");
 
         JsonObject result = validator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(deleteRequest, service);
 
-        assertFalse(result.isEmpty());
-        assertTrue(result.getString("errorMessage").contains("judiciaryId"));
+        // judiciaryId is optional for delete operations, so no error should be returned
+        assertTrue(result.isEmpty());
     }
 
     @Test

@@ -14,10 +14,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRespons
 import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
-import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryAvailabilityRuleRepository;
 import uk.gov.justice.services.core.requester.Requester;
@@ -240,16 +238,13 @@ public class JudiciaryAvailabilityService {
         response.setCourtHouseId(entity.getCourtHouseId());
         response.setStartDate(entity.getFromDate());
         response.setEndDate(entity.getToDate());
-        response.setRecurringType(entity.getRecurringType());
         response.setSessionType(entity.getSessionType());
 
-        // Convert entity repeat days to domain repeat days
+        // Convert entity repeat days to domain repeat days (enum)
         if (entity.getRepeatDays() != null && !entity.getRepeatDays().isEmpty()) {
-            final List<JudiciaryAvailabilityRuleRepeatDay> domainRepeatDays = new ArrayList<>();
+            final List<AvailabilityDayOfWeek> domainRepeatDays = new ArrayList<>();
             for (uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay entityDay : entity.getRepeatDays()) {
-                // Convert 0 index to null (0 means no index in database)
-                final Integer index = entityDay.getIndex() != null && entityDay.getIndex() > 0 ? entityDay.getIndex() : null;
-                domainRepeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(entityDay.getDayOfWeek(), index));
+                domainRepeatDays.add(entityDay.getDayOfWeek());
             }
             response.setRepeatDays(domainRepeatDays);
         }
@@ -320,23 +315,8 @@ public class JudiciaryAvailabilityService {
 
         for (uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay repeatDay : rule.getRepeatDays()) {
             final AvailabilityDayOfWeek dayName = repeatDay.getDayOfWeek();
-            final Integer index = repeatDay.getIndex();
-            // 0 means no index was provided
-            final boolean hasIndex = index != null && index > 0;
-
-            if (rule.getRecurringType() == null) {
-                // No recurring type - add all matching days in the date range
-                addDaysForDateRange(days, dayName, effectiveStart, effectiveEnd);
-            } else if (RecurringType.MONTHLY.equals(rule.getRecurringType()) && hasIndex) {
-                // Monthly recurring with index (e.g., 2nd Tuesday, 3rd Wednesday)
-                addDaysForMonthlyRecurring(days, dayName, index, effectiveStart, effectiveEnd);
-            } else if (RecurringType.WEEKLY.equals(rule.getRecurringType())) {
-                // Weekly recurring - add all matching days in the date range
-                addDaysForDateRange(days, dayName, effectiveStart, effectiveEnd);
-            } else {
-                // Default: add all matching days
-                addDaysForDateRange(days, dayName, effectiveStart, effectiveEnd);
-            }
+            // Add all matching days in the date range (recurringType removed, always weekly behavior)
+            addDaysForDateRange(days, dayName, effectiveStart, effectiveEnd);
         }
 
         return days;
@@ -395,53 +375,6 @@ public class JudiciaryAvailabilityService {
         }
     }
 
-    /**
-     * Add days for monthly recurring pattern with index (e.g., 2nd Tuesday of each month).
-     */
-    private void addDaysForMonthlyRecurring(
-            final Set<String> days,
-            final AvailabilityDayOfWeek dayName,
-            final Integer index,
-            final LocalDate start,
-            final LocalDate end) {
-
-        final DayOfWeek targetDayOfWeek = convertDayNameToDayOfWeek(dayName);
-        if (targetDayOfWeek == null || index == null) {
-            return;
-        }
-
-        LocalDate current = start;
-        while (!current.isAfter(end)) {
-            // Check if current date is the Nth occurrence of the target day in its month
-            if (isNthOccurrenceOfDayInMonth(current, targetDayOfWeek, index)) {
-                days.add(targetDayOfWeek.getDisplayName(TextStyle.FULL,Locale.UK));
-            }
-            current = current.plusDays(1);
-        }
-    }
-
-    /**
-     * Check if a date is the Nth occurrence of a day of week in its month.
-     */
-    private boolean isNthOccurrenceOfDayInMonth(final LocalDate date, final DayOfWeek dayOfWeek, final int n) {
-        if (date.getDayOfWeek() != dayOfWeek) {
-            return false;
-        }
-
-        // Count occurrences of this day in the month up to this date
-        int occurrenceCount = 0;
-        LocalDate firstOfMonth = date.withDayOfMonth(1);
-        LocalDate current = firstOfMonth;
-
-        while (!current.isAfter(date)) {
-            if (current.getDayOfWeek() == dayOfWeek) {
-                occurrenceCount++;
-            }
-            current = current.plusDays(1);
-        }
-
-        return occurrenceCount == n;
-    }
 
     /**
      * Convert day name (e.g., "Monday") to DayOfWeek enum.
@@ -486,7 +419,7 @@ public class JudiciaryAvailabilityService {
     }
 
     /**
-     * Populates entity fields from request (judiciaryId, courtHouseId, startDate, endDate, recurringType, sessionType).
+     * Populates entity fields from request (judiciaryId, courtHouseId, startDate, endDate, sessionType).
      * These fields are required as per contract.
      */
     private void populateEntityFields(final JudiciaryAvailabilityRule entity, 
@@ -495,24 +428,20 @@ public class JudiciaryAvailabilityService {
         entity.setCourtHouseId(request.getCourtHouseId());
         entity.setFromDate(request.getStartDate());
         entity.setToDate(request.getEndDate());
-        entity.setRecurringType(request.getRecurringType());
         entity.setSessionType(request.getSessionType() != null ? request.getSessionType() : SessionType.AD);
     }
 
     /**
-     * Converts domain repeat days to entity repeat days.
+     * Converts domain repeat days (enum) to entity repeat days.
      * repeatDays is required as per contract.
      */
     private List<uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay> convertRepeatDaysToEntity(
-            final List<JudiciaryAvailabilityRuleRepeatDay> domainRepeatDays) {
+            final List<AvailabilityDayOfWeek> domainRepeatDays) {
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay> entityRepeatDays = new ArrayList<>();
         if (domainRepeatDays != null) {
-            for (JudiciaryAvailabilityRuleRepeatDay domainDay : domainRepeatDays) {
+            for (AvailabilityDayOfWeek dayOfWeek : domainRepeatDays) {
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay persistDay = 
-                        new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay();
-                persistDay.setDayOfWeek(domainDay.getDayOfWeek());
-                // Convert null index to 0 (0 means no index in database)
-                persistDay.setIndex(domainDay.getIndex() != null ? domainDay.getIndex() : 0);
+                        new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay(dayOfWeek);
                 entityRepeatDays.add(persistDay);
             }
         }
@@ -874,23 +803,12 @@ public class JudiciaryAvailabilityService {
             final BaseJudiciaryAvailabilityRuleWithDetailsRequest request,
             final JudiciaryAvailabilityRule existingRule) {
         
-        // If both have the same recurring type
-        if (request.getRecurringType() != null && existingRule.getRecurringType() != null) {
-            if (!request.getRecurringType().equals(existingRule.getRecurringType())) {
-                return false; // Different recurring types don't conflict
-            }
-        } else if (request.getRecurringType() != existingRule.getRecurringType()) {
-            return false; // One has recurring type, the other doesn't
-        }
-        
         // Check if they have overlapping repeat days
         if (request.getRepeatDays() != null && !request.getRepeatDays().isEmpty() &&
             existingRule.getRepeatDays() != null && !existingRule.getRepeatDays().isEmpty()) {
             
-            // Extract day names from request
-            final Set<AvailabilityDayOfWeek> requestDays = request.getRepeatDays().stream()
-                    .map(JudiciaryAvailabilityRuleRepeatDay::getDayOfWeek)
-                    .collect(Collectors.toSet());
+            // Extract day names from request (enum)
+            final Set<AvailabilityDayOfWeek> requestDays = new HashSet<>(request.getRepeatDays());
             
             // Extract day names from existing rule
             final Set<AvailabilityDayOfWeek> existingDays = existingRule.getRepeatDays().stream()
@@ -901,7 +819,7 @@ public class JudiciaryAvailabilityService {
             final Set<AvailabilityDayOfWeek> intersection = new HashSet<>(requestDays);
             intersection.retainAll(existingDays);
             
-            // If there's overlap in days and same recurring type, they conflict
+            // If there's overlap in days, they conflict
             return !intersection.isEmpty();
         }
         

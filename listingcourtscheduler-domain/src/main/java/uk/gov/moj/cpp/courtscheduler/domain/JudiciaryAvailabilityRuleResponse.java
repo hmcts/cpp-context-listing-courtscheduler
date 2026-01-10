@@ -11,8 +11,7 @@ public class JudiciaryAvailabilityRuleResponse {
     private String courtHouseId;
     private LocalDate startDate;
     private LocalDate endDate;
-    private RecurringType recurringType;
-    private List<JudiciaryAvailabilityRuleRepeatDay> repeatDays;
+    private List<AvailabilityDayOfWeek> repeatDays;
     private SessionType sessionType;
     private List<JudiciaryUnavailabilityResponse> unavailabilities;
 
@@ -59,19 +58,11 @@ public class JudiciaryAvailabilityRuleResponse {
         this.endDate = endDate;
     }
 
-    public RecurringType getRecurringType() {
-        return this.recurringType;
-    }
-
-    public void setRecurringType(RecurringType recurringType) {
-        this.recurringType = recurringType;
-    }
-
-    public List<JudiciaryAvailabilityRuleRepeatDay> getRepeatDays() {
+    public List<AvailabilityDayOfWeek> getRepeatDays() {
         return this.repeatDays;
     }
 
-    public void setRepeatDays(List<JudiciaryAvailabilityRuleRepeatDay> repeatDays) {
+    public void setRepeatDays(List<AvailabilityDayOfWeek> repeatDays) {
         this.repeatDays = repeatDays;
     }
 
@@ -105,7 +96,6 @@ public class JudiciaryAvailabilityRuleResponse {
                 Objects.equals(this.courtHouseId, that.courtHouseId) &&
                 Objects.equals(this.startDate, that.startDate) &&
                 Objects.equals(this.endDate, that.endDate) &&
-                this.recurringType == that.recurringType &&
                 Objects.equals(this.repeatDays, that.repeatDays) &&
                 this.sessionType == that.sessionType &&
                 Objects.equals(this.unavailabilities, that.unavailabilities);
@@ -113,7 +103,7 @@ public class JudiciaryAvailabilityRuleResponse {
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.id, this.judiciaryId, this.courtHouseId, this.startDate, this.endDate, this.recurringType, this.repeatDays, this.sessionType, this.unavailabilities);
+        return Objects.hash(this.id, this.judiciaryId, this.courtHouseId, this.startDate, this.endDate, this.repeatDays, this.sessionType, this.unavailabilities);
     }
 
     @Override
@@ -124,7 +114,6 @@ public class JudiciaryAvailabilityRuleResponse {
                 ", courtHouseId='" + this.courtHouseId + '\'' +
                 ", startDate=" + this.startDate +
                 ", endDate=" + this.endDate +
-                ", recurringType=" + this.recurringType +
                 ", repeatDays=" + this.repeatDays +
                 ", sessionType=" + this.sessionType +
                 ", unavailabilities=" + this.unavailabilities +

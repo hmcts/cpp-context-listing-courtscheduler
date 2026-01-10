@@ -6,10 +6,6 @@
     "courtHouseId": {"$ref": "#/definitions/uuid"},
     "startDate": {"type": "string", "format": "date"},
     "endDate": {"type": "string", "format": "date"},
-    "recurringType": {
-      "type": "string",
-      "enum": ["WEEKLY", "MONTHLY"]
-    },
     "sessionType": {
       "type": "string",
       "enum": ["AM", "PM", "AD"]
@@ -17,23 +13,8 @@
     "repeatDays": {
       "type": "array",
       "items": {
-        "oneOf": [
-          {
-            "type": "string",
-            "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "day": {
-                "type": "string",
-                "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-              },
-              "index": {"type": "integer"}
-            },
-            "required": ["day"]
-          }
-        ]
+        "type": "string",
+        "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
       }
     },
     "unavailabilities": {

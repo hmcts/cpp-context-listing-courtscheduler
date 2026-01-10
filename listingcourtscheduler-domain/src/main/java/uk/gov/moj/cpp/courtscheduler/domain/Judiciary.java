@@ -20,6 +20,7 @@ public class Judiciary {
     private String emailAddress;
     private String cpUserId;
     private List<JudiciarySpecialismType> specialisms;
+    private String requestedName;
 
     public Judiciary() {
     }
@@ -169,6 +170,14 @@ public class Judiciary {
         this.specialisms = specialisms;
     }
 
+    public String getRequestedName() {
+        return requestedName;
+    }
+
+    public void setRequestedName(final String requestedName) {
+        this.requestedName = requestedName;
+    }
+
     public static final class JudiciaryBuilder {
         private String id;
         private Integer seqId;
@@ -187,6 +196,7 @@ public class Judiciary {
         private String emailAddress;
         private String cpUserId;
         private List<JudiciarySpecialismType> specialisms;
+        private String requestedName;
 
         private JudiciaryBuilder() {}
 
@@ -277,6 +287,11 @@ public class Judiciary {
             return this;
         }
 
+        public JudiciaryBuilder withRequestedName(final String requestedName) {
+            this.requestedName = requestedName;
+            return this;
+        }
+
         public Judiciary build() {
             final Judiciary judiciary = new Judiciary();
             judiciary.setId(this.id);
@@ -296,6 +311,7 @@ public class Judiciary {
             judiciary.setTitleSuffix(this.titleSuffix);
             judiciary.setTitleSuffixWelsh(this.titleSuffixWelsh);
             judiciary.setSpecialisms(this.specialisms);
+            judiciary.setRequestedName(this.requestedName);
             return judiciary;
         }
     }

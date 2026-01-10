@@ -701,6 +701,12 @@ protocols: [ HTTP, HTTPS ]
     responses:
       200:
         description: OK
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
 
 /judiciaries/availability-rules/update:
   post:
@@ -718,6 +724,12 @@ protocols: [ HTTP, HTTPS ]
     responses:
       200:
         description: OK
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
 
 /judiciaries/availability-rules/delete:
   post:
@@ -735,6 +747,12 @@ protocols: [ HTTP, HTTPS ]
     responses:
       200:
         description: OK
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
 
 
 /judiciaries/availability:

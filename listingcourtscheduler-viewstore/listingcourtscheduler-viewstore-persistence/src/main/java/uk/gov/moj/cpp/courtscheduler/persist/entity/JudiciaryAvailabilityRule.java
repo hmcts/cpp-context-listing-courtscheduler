@@ -23,7 +23,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
-import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 
 @Entity
 @Table(name = "judiciary_availability_rule")
@@ -47,10 +46,6 @@ public class JudiciaryAvailabilityRule {
 
     @Column(name = "to_date", nullable = false)
     private LocalDate toDate;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "recurring_type", length = 20)
-    private RecurringType recurringType; // Weekly or Monthly
 
     @ElementCollection(fetch = FetchType.LAZY)
     @javax.persistence.CollectionTable(
@@ -125,14 +120,6 @@ public class JudiciaryAvailabilityRule {
         this.toDate = toDate;
     }
 
-    public RecurringType getRecurringType() {
-        return this.recurringType;
-    }
-
-    public void setRecurringType(RecurringType recurringType) {
-        this.recurringType = recurringType;
-    }
-
     public List<JudiciaryAvailabilityRuleRepeatDay> getRepeatDays() {
         return this.repeatDays;
     }
@@ -168,12 +155,12 @@ public class JudiciaryAvailabilityRule {
     @Override
     public boolean equals(final Object o) {
         if (!(o instanceof final JudiciaryAvailabilityRule that)) return false;
-        return Objects.equals(getId(), that.getId()) && Objects.equals(getJudiciaryId(), that.getJudiciaryId()) && Objects.equals(getCourtHouseId(), that.getCourtHouseId()) && Objects.equals(getFromDate(), that.getFromDate()) && Objects.equals(getToDate(), that.getToDate()) && getRecurringType() == that.getRecurringType() && Objects.equals(getRepeatDays(), that.getRepeatDays()) && getSessionType() == that.getSessionType() && Objects.equals(getCreatedOn(), that.getCreatedOn()) && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
+        return Objects.equals(getId(), that.getId()) && Objects.equals(getJudiciaryId(), that.getJudiciaryId()) && Objects.equals(getCourtHouseId(), that.getCourtHouseId()) && Objects.equals(getFromDate(), that.getFromDate()) && Objects.equals(getToDate(), that.getToDate()) && Objects.equals(getRepeatDays(), that.getRepeatDays()) && getSessionType() == that.getSessionType() && Objects.equals(getCreatedOn(), that.getCreatedOn()) && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getId(), getJudiciaryId(), getCourtHouseId(), getFromDate(), getToDate(), getRecurringType(), getRepeatDays(), getSessionType(), getCreatedOn(), getUpdatedOn());
+        return Objects.hash(getId(), getJudiciaryId(), getCourtHouseId(), getFromDate(), getToDate(), getRepeatDays(), getSessionType(), getCreatedOn(), getUpdatedOn());
     }
 }
 

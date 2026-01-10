@@ -757,14 +757,14 @@ class CourtSchedulerApiTest {
 
         when(this.enveloper.withMetadataFrom(deleteEnvelope, requestName)).thenReturn(function);
         when(deleteJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRule(any(DeleteJudiciaryAvailabilityRuleRequest.class)))
+        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
         courtSchedulerApi.deleteJudiciaryAvailabilityRule(deleteEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(deleteEnvelope, requestName);
         verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRule(any(DeleteJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
         verify(judiciaryAvailabilityService).deleteJudiciaryAvailabilityRule(any(DeleteJudiciaryAvailabilityRuleRequest.class));
     }
 
@@ -789,14 +789,14 @@ class CourtSchedulerApiTest {
                 .build();
 
         when(deleteJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRule(any(DeleteJudiciaryAvailabilityRuleRequest.class)))
+        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
                 .thenReturn(validationError);
 
-        assertThrows(ValidationException.class, () ->
+        assertThrows(UnprocessableEntityException.class, () ->
                 courtSchedulerApi.deleteJudiciaryAvailabilityRule(deleteEnvelope));
 
         verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRule(any(DeleteJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
         verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).deleteJudiciaryAvailabilityRule(any());
     }
 
@@ -809,7 +809,6 @@ class CourtSchedulerApiTest {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
-                .add("recurringType", "WEEKLY")
                 .add("sessionType", "AM")
                 .add("repeatDays", createArrayBuilder()
                         .add(createObjectBuilder()
@@ -826,14 +825,14 @@ class CourtSchedulerApiTest {
 
         when(this.enveloper.withMetadataFrom(addEnvelope, requestName)).thenReturn(function);
         when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class)))
+        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(AddJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
         courtSchedulerApi.addJudiciaryAvailabilityRule(addEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(addEnvelope, requestName);
         verify(addJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(AddJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
         verify(judiciaryAvailabilityService).addJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class));
     }
 
@@ -862,13 +861,13 @@ class CourtSchedulerApiTest {
                 .build();
 
         when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class)))
+        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(AddJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
                 .thenReturn(validationError);
 
-        assertThrows(ValidationException.class, () -> courtSchedulerApi.addJudiciaryAvailabilityRule(addEnvelope));
+        assertThrows(UnprocessableEntityException.class, () -> courtSchedulerApi.addJudiciaryAvailabilityRule(addEnvelope));
 
         verify(addJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(AddJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
         verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).addJudiciaryAvailabilityRule(any());
     }
 
@@ -883,7 +882,6 @@ class CourtSchedulerApiTest {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", "2026-02-01")
                 .add("endDate", "2026-02-28")
-                .add("recurringType", "WEEKLY")
                 .add("sessionType", "AM")
                 .add("repeatDays", createArrayBuilder()
                         .add(createObjectBuilder()
@@ -901,14 +899,14 @@ class CourtSchedulerApiTest {
 
         when(this.enveloper.withMetadataFrom(updateEnvelope, requestName)).thenReturn(function);
         when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class)))
+        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
         courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(updateEnvelope, requestName);
         verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
         verify(judiciaryAvailabilityService).updateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
     }
 
@@ -936,13 +934,13 @@ class CourtSchedulerApiTest {
 
         when(this.enveloper.withMetadataFrom(updateEnvelope, requestName)).thenReturn(function);
         when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class)))
+        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
         courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope);
 
         verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
         verify(judiciaryAvailabilityService).updateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
     }
 
@@ -974,14 +972,14 @@ class CourtSchedulerApiTest {
                 .build();
 
         when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class)))
+        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
                 .thenReturn(validationError);
 
-        assertThrows(ValidationException.class, () ->
+        assertThrows(UnprocessableEntityException.class, () ->
                 courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope));
 
         verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
         verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).updateJudiciaryAvailabilityRule(any());
     }
 
@@ -996,7 +994,6 @@ class CourtSchedulerApiTest {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", "2026-02-01")
                 .add("endDate", "2026-02-28")
-                .add("recurringType", "WEEKLY")
                 .add("repeatDays", createArrayBuilder()
                         .add("Monday")
                         .build())
@@ -1018,13 +1015,13 @@ class CourtSchedulerApiTest {
 
         when(this.enveloper.withMetadataFrom(updateEnvelope, requestName)).thenReturn(function);
         when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class)))
+        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
         courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope);
 
         verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
         verify(judiciaryAvailabilityService).updateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
     }
 

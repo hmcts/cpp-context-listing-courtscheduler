@@ -16,7 +16,6 @@ import org.apache.deltaspike.data.api.AbstractEntityRepository;
 import org.apache.deltaspike.data.api.Repository;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
-import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
 @Repository(forEntity = JudiciaryAvailabilityRule.class)
 public abstract class JudiciaryAvailabilityRuleRepository extends AbstractEntityRepository<JudiciaryAvailabilityRule, String> {
@@ -82,43 +81,9 @@ public abstract class JudiciaryAvailabilityRuleRepository extends AbstractEntity
             final int pageSize,
             final int pageNumber) {
 
-        // Build native SQL query with LEFT JOIN to fetch rules, their repeat days, and unavailabilities
-        // Use COUNT(*) OVER() windowing function in the subquery to get total count of distinct rules
-        // Explicitly list columns to avoid duplicate aliases (both r and u have 'id' columns)
-        final StringBuilder queryBuilder = new StringBuilder();
-        queryBuilder.append("SELECT r.id, r.judiciary_id, r.court_house_id, r.from_date, r.to_date, ");
-        queryBuilder.append("r.recurring_type, r.session_type, r.created_on, r.updated_on, r.totalCount, ");
-        queryBuilder.append("rd.rule_id as rd_rule_id, rd.day_of_week as rd_day_of_week, rd.day_index as rd_day_index, ");
-        queryBuilder.append("u.id as u_id, u.availability_rule_id as u_availability_rule_id, ");
-        queryBuilder.append("u.from_date as u_from_date, u.to_date as u_to_date, u.reason as u_reason, ");
-        queryBuilder.append("u.created_on as u_created_on, u.updated_on as u_updated_on ");
-        queryBuilder.append("FROM (SELECT *, COUNT(*) OVER() as totalCount FROM judiciary_availability_rule ");
-        queryBuilder.append("WHERE from_date <= :queryEndDate AND to_date >= :queryStartDate ");
-        if (courtHouseId != null && !courtHouseId.trim().isEmpty()) {
-            queryBuilder.append("AND court_house_id = :courtHouseId ");
-        }
-        if (judiciaryId != null && !judiciaryId.trim().isEmpty()) {
-            queryBuilder.append("AND judiciary_id = :judiciaryId ");
-        }
-        queryBuilder.append("ORDER BY from_date ASC ");
-        queryBuilder.append("LIMIT :pageSize OFFSET :offset) r ");
-        queryBuilder.append("LEFT JOIN judiciary_availability_rule_repeat_day rd ON r.id = rd.rule_id ");
-        queryBuilder.append("LEFT JOIN judiciary_unavailability u ON r.id = u.availability_rule_id ");
-        queryBuilder.append("ORDER BY r.from_date ASC, rd.day_of_week ASC");
-
-        final javax.persistence.Query nativeQuery = this.entityManager.createNativeQuery(queryBuilder.toString());
-
-        // Set parameters
-        nativeQuery.setParameter("queryStartDate", queryStartDate);
-        nativeQuery.setParameter("queryEndDate", queryEndDate);
-        if (courtHouseId != null && !courtHouseId.trim().isEmpty()) {
-            nativeQuery.setParameter("courtHouseId", courtHouseId);
-        }
-        if (judiciaryId != null && !judiciaryId.trim().isEmpty()) {
-            nativeQuery.setParameter("judiciaryId", judiciaryId);
-        }
-        nativeQuery.setParameter("pageSize", pageSize);
-        nativeQuery.setParameter("offset", (pageNumber - 1) * pageSize);
+        final String queryString = buildQueryString(courtHouseId, judiciaryId);
+        final javax.persistence.Query nativeQuery = this.entityManager.createNativeQuery(queryString);
+        setQueryParameters(nativeQuery, queryStartDate, queryEndDate, courtHouseId, judiciaryId, pageSize, pageNumber);
 
         @SuppressWarnings("unchecked")
         final List<Object[]> resultList = nativeQuery.getResultList();
@@ -127,15 +92,70 @@ public abstract class JudiciaryAvailabilityRuleRepository extends AbstractEntity
             return new java.util.AbstractMap.SimpleEntry<>(0, new ArrayList<>());
         }
 
-        // Extract total count from first row
-        // Column order: r.id(0), r.judiciary_id(1), r.court_house_id(2), r.from_date(3), r.to_date(4),
-        // r.recurring_type(5), r.session_type(6), r.created_on(7), r.updated_on(8), r.totalCount(9),
-        // rd.rule_id(10), rd.day_of_week(11), rd.day_index(12),
-        // u.id(13), u.availability_rule_id(14), u.from_date(15), u.to_date(16), u.reason(17),
-        // u.created_on(18), u.updated_on(19)
-        final int totalCount = ((Number) resultList.get(0)[9]).intValue();
+        final int totalCount = extractTotalCount(resultList);
+        final List<JudiciaryAvailabilityRule> rules = processResultRows(resultList);
 
-        // Group rows by rule ID and build entities
+        return new java.util.AbstractMap.SimpleEntry<>(totalCount, rules);
+    }
+
+    private String buildQueryString(final String courtHouseId, final String judiciaryId) {
+        final StringBuilder queryBuilder = new StringBuilder();
+        queryBuilder.append("SELECT r.id, r.judiciary_id, r.court_house_id, r.from_date, r.to_date, ");
+        queryBuilder.append("r.session_type, r.created_on, r.updated_on, r.totalCount, ");
+        queryBuilder.append("rd.rule_id as rd_rule_id, rd.day_of_week as rd_day_of_week, ");
+        queryBuilder.append("u.id as u_id, u.availability_rule_id as u_availability_rule_id, ");
+        queryBuilder.append("u.from_date as u_from_date, u.to_date as u_to_date, u.reason as u_reason, ");
+        queryBuilder.append("u.created_on as u_created_on, u.updated_on as u_updated_on ");
+        queryBuilder.append("FROM (SELECT *, COUNT(*) OVER() as totalCount FROM judiciary_availability_rule ");
+        queryBuilder.append("WHERE from_date <= :queryEndDate AND to_date >= :queryStartDate ");
+        
+        if (isNotEmpty(courtHouseId)) {
+            queryBuilder.append("AND court_house_id = :courtHouseId ");
+        }
+        if (isNotEmpty(judiciaryId)) {
+            queryBuilder.append("AND judiciary_id = :judiciaryId ");
+        }
+        
+        queryBuilder.append("ORDER BY from_date ASC ");
+        queryBuilder.append("LIMIT :pageSize OFFSET :offset) r ");
+        queryBuilder.append("LEFT JOIN judiciary_availability_rule_repeat_day rd ON r.id = rd.rule_id ");
+        queryBuilder.append("LEFT JOIN judiciary_unavailability u ON r.id = u.availability_rule_id ");
+        queryBuilder.append("ORDER BY r.from_date ASC, rd.day_of_week ASC");
+        
+        return queryBuilder.toString();
+    }
+
+    private void setQueryParameters(final javax.persistence.Query query,
+                                     final LocalDate queryStartDate,
+                                     final LocalDate queryEndDate,
+                                     final String courtHouseId,
+                                     final String judiciaryId,
+                                     final int pageSize,
+                                     final int pageNumber) {
+        query.setParameter("queryStartDate", queryStartDate);
+        query.setParameter("queryEndDate", queryEndDate);
+        
+        if (isNotEmpty(courtHouseId)) {
+            query.setParameter("courtHouseId", courtHouseId);
+        }
+        if (isNotEmpty(judiciaryId)) {
+            query.setParameter("judiciaryId", judiciaryId);
+        }
+        
+        query.setParameter("pageSize", pageSize);
+        query.setParameter("offset", (pageNumber - 1) * pageSize);
+    }
+
+    private int extractTotalCount(final List<Object[]> resultList) {
+        // Column order: r.id(0), r.judiciary_id(1), r.court_house_id(2), r.from_date(3), r.to_date(4),
+        // r.session_type(5), r.created_on(6), r.updated_on(7), r.totalCount(8),
+        // rd.rule_id(9), rd.day_of_week(10),
+        // u.id(11), u.availability_rule_id(12), u.from_date(13), u.to_date(14), u.reason(15),
+        // u.created_on(16), u.updated_on(17)
+        return ((Number) resultList.get(0)[8]).intValue();
+    }
+
+    private List<JudiciaryAvailabilityRule> processResultRows(final List<Object[]> resultList) {
         final java.util.Map<String, JudiciaryAvailabilityRule> rulesMap = new java.util.LinkedHashMap<>();
         final java.util.Map<String, Integer> ruleOrder = new java.util.HashMap<>();
         int orderIndex = 0;
@@ -144,76 +164,100 @@ public abstract class JudiciaryAvailabilityRuleRepository extends AbstractEntity
             final String ruleId = (String) row[0];
             
             if (!rulesMap.containsKey(ruleId)) {
-                // Create new rule entity
-                final JudiciaryAvailabilityRule rule = new JudiciaryAvailabilityRule();
-                rule.setId(ruleId);
-                rule.setJudiciaryId((String) row[1]);
-                rule.setCourtHouseId((String) row[2]);
-                rule.setFromDate(((java.sql.Date) row[3]).toLocalDate());
-                rule.setToDate(((java.sql.Date) row[4]).toLocalDate());
-                if (row[5] != null) {
-                    rule.setRecurringType(uk.gov.moj.cpp.courtscheduler.domain.RecurringType.valueOf((String) row[5]));
-                }
-                if (row[6] != null) {
-                    rule.setSessionType(uk.gov.moj.cpp.courtscheduler.domain.SessionType.valueOf((String) row[6]));
-                }
-                rule.setCreatedOn((java.util.Date) row[7]);
-                rule.setUpdatedOn((java.util.Date) row[8]);
-                rule.setRepeatDays(new ArrayList<>());
-                rule.setUnavailabilities(new ArrayList<>());
-                
+                final JudiciaryAvailabilityRule rule = createRuleFromRow(row);
                 rulesMap.put(ruleId, rule);
                 ruleOrder.put(ruleId, orderIndex++);
             }
 
             final JudiciaryAvailabilityRule rule = rulesMap.get(ruleId);
-
-            // Add repeat day if present (LEFT JOIN may return null)
-            // rd columns: rule_id (index 10), day_of_week (index 11), day_index (index 12)
-            if (row[11] != null) {
-                final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay repeatDay =
-                        new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay();
-                repeatDay.setDayOfWeek(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.valueOf((String) row[11]));
-                final Integer dayIndex = row[12] != null ? ((Number) row[12]).intValue() : 0;
-                repeatDay.setIndex(dayIndex > 0 ? dayIndex : null);
-                
-                // Only add if not already present (avoid duplicates)
-                if (!rule.getRepeatDays().contains(repeatDay)) {
-                    rule.getRepeatDays().add(repeatDay);
-                }
-            }
-
-            // Add unavailability if present (LEFT JOIN may return null)
-            // u columns: id (13), availability_rule_id (14), from_date (15), to_date (16),
-            // reason (17), created_on (18), updated_on (19)
-            if (row[13] != null) {
-                final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability unavailability =
-                        new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability();
-                unavailability.setId((String) row[13]);
-                unavailability.setRule(rule);
-                unavailability.setFromDate(((java.sql.Date) row[15]).toLocalDate());
-                unavailability.setToDate(((java.sql.Date) row[16]).toLocalDate());
-                if (row[17] != null) {
-                    final String reasonString = (String) row[17];
-                    unavailability.setReason(uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason.valueOf(reasonString));
-                }
-                unavailability.setCreatedOn((java.util.Date) row[18]);
-                unavailability.setUpdatedOn((java.util.Date) row[19]);
-                
-                // Only add if not already present (avoid duplicates)
-                if (rule.getUnavailabilities().stream().noneMatch(u -> u.getId().equals(unavailability.getId()))) {
-                    rule.getUnavailabilities().add(unavailability);
-                }
-            }
+            addRepeatDayToRule(rule, row);
+            addUnavailabilityToRule(rule, row);
         }
 
-        // Convert to list maintaining order
+        return convertToOrderedList(rulesMap, ruleOrder);
+    }
+
+    private JudiciaryAvailabilityRule createRuleFromRow(final Object[] row) {
+        final JudiciaryAvailabilityRule rule = new JudiciaryAvailabilityRule();
+        rule.setId((String) row[0]);
+        rule.setJudiciaryId((String) row[1]);
+        rule.setCourtHouseId((String) row[2]);
+        rule.setFromDate(((java.sql.Date) row[3]).toLocalDate());
+        rule.setToDate(((java.sql.Date) row[4]).toLocalDate());
+        
+        if (row[5] != null) {
+            rule.setSessionType(uk.gov.moj.cpp.courtscheduler.domain.SessionType.valueOf((String) row[5]));
+        }
+        
+        rule.setCreatedOn((java.util.Date) row[6]);
+        rule.setUpdatedOn((java.util.Date) row[7]);
+        rule.setRepeatDays(new ArrayList<>());
+        rule.setUnavailabilities(new ArrayList<>());
+        
+        return rule;
+    }
+
+    private void addRepeatDayToRule(final JudiciaryAvailabilityRule rule, final Object[] row) {
+        // rd columns: rule_id (index 9), day_of_week (index 10)
+        if (row[10] == null) {
+            return;
+        }
+        
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay repeatDay =
+                new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay(
+                        uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.valueOf((String) row[10]));
+        
+        if (!rule.getRepeatDays().contains(repeatDay)) {
+            rule.getRepeatDays().add(repeatDay);
+        }
+    }
+
+    private void addUnavailabilityToRule(final JudiciaryAvailabilityRule rule, final Object[] row) {
+        // u columns: id (11), availability_rule_id (12), from_date (13), to_date (14),
+        // reason (15), created_on (16), updated_on (17)
+        if (row[11] == null) {
+            return;
+        }
+        
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability unavailability =
+                createUnavailabilityFromRow(rule, row);
+        
+        if (rule.getUnavailabilities().stream().noneMatch(u -> u.getId().equals(unavailability.getId()))) {
+            rule.getUnavailabilities().add(unavailability);
+        }
+    }
+
+    private uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability createUnavailabilityFromRow(
+            final JudiciaryAvailabilityRule rule, final Object[] row) {
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability unavailability =
+                new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability();
+        unavailability.setId((String) row[11]);
+        unavailability.setRule(rule);
+        unavailability.setFromDate(((java.sql.Date) row[13]).toLocalDate());
+        unavailability.setToDate(((java.sql.Date) row[14]).toLocalDate());
+        
+        if (row[15] != null) {
+            unavailability.setReason(uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason.valueOf((String) row[15]));
+        }
+        
+        unavailability.setCreatedOn((java.util.Date) row[16]);
+        unavailability.setUpdatedOn((java.util.Date) row[17]);
+        
+        return unavailability;
+    }
+
+    private List<JudiciaryAvailabilityRule> convertToOrderedList(
+            final java.util.Map<String, JudiciaryAvailabilityRule> rulesMap,
+            final java.util.Map<String, Integer> ruleOrder) {
         final List<JudiciaryAvailabilityRule> rules = new ArrayList<>(rulesMap.values());
         rules.sort((r1, r2) -> Integer.compare(
                 ruleOrder.getOrDefault(r1.getId(), Integer.MAX_VALUE),
                 ruleOrder.getOrDefault(r2.getId(), Integer.MAX_VALUE)));
+        return rules;
+    }
 
-        return new java.util.AbstractMap.SimpleEntry<>(totalCount, rules);
+    private boolean isNotEmpty(final String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }
 

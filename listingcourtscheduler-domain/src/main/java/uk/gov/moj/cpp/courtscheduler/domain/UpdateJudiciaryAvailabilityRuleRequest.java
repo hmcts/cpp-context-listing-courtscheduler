@@ -14,15 +14,14 @@ public class UpdateJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailab
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         UpdateJudiciaryAvailabilityRuleRequest that = (UpdateJudiciaryAvailabilityRuleRequest) o;
-        return recurringType == that.recurringType &&
-                Objects.equals(repeatDays, that.repeatDays) &&
+        return Objects.equals(repeatDays, that.repeatDays) &&
                 sessionType == that.sessionType &&
                 Objects.equals(unavailabilities, that.unavailabilities);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), recurringType, repeatDays, sessionType, unavailabilities);
+        return Objects.hash(super.hashCode(), repeatDays, sessionType, unavailabilities);
     }
 
     @Override
@@ -33,7 +32,6 @@ public class UpdateJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailab
                 .add("courtHouseId='" + courtHouseId + "'")
                 .add("startDate=" + startDate)
                 .add("endDate=" + endDate)
-                .add("recurringType=" + recurringType)
                 .add("repeatDays=" + repeatDays)
                 .add("sessionType=" + sessionType)
                 .add("unavailabilities=" + unavailabilities)

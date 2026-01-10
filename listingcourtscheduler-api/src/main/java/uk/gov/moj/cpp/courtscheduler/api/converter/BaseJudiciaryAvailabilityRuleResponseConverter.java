@@ -8,7 +8,7 @@ import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
+import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
 
@@ -18,30 +18,18 @@ import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
  */
 public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
 
-    protected static final String DAY = "day";
-    protected static final String INDEX = "index";
     protected static final String START_DATE = "startDate";
     protected static final String END_DATE = "endDate";
     protected static final String REASON = "reason";
 
     /**
-     * Converts list of repeat days to JSON array.
-     * Supports both string format (when index is null) and object format (when index is present).
+     * Converts list of repeat days (AvailabilityDayOfWeek enum) to JSON array of strings.
      */
-    protected JsonArray convertRepeatDaysToJson(List<JudiciaryAvailabilityRuleRepeatDay> repeatDays) {
+    protected JsonArray convertRepeatDaysToJson(List<AvailabilityDayOfWeek> repeatDays) {
         JsonArrayBuilder repeatDaysArrayBuilder = Json.createArrayBuilder();
         if (repeatDays != null) {
-            for (JudiciaryAvailabilityRuleRepeatDay repeatDay : repeatDays) {
-                if (repeatDay.getIndex() != null) {
-                    // Object format with index
-                    repeatDaysArrayBuilder.add(Json.createObjectBuilder()
-                            .add(DAY, repeatDay.getDayOfWeek().name())
-                            .add(INDEX, repeatDay.getIndex())
-                            .build());
-                } else {
-                    // Simple string format
-                    repeatDaysArrayBuilder.add(repeatDay.getDayOfWeek().name());
-                }
+            for (AvailabilityDayOfWeek repeatDay : repeatDays) {
+                repeatDaysArrayBuilder.add(repeatDay.name());
             }
         }
         return repeatDaysArrayBuilder.build();
@@ -91,7 +79,6 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
                 .add("repeatDays", convertRepeatDaysToJson(rule.getRepeatDays()))
                 .add("unavailabilities", convertUnavailabilitiesToJson(rule.getUnavailabilities()));
 
-        addOptionalEnumField(ruleBuilder, "recurringType", rule.getRecurringType());
         addOptionalEnumField(ruleBuilder, "sessionType", rule.getSessionType());
 
         return ruleBuilder.build();

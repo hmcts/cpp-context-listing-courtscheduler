@@ -11,9 +11,7 @@ import javax.json.JsonValue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleWithDetailsRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
@@ -28,12 +26,9 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
     protected static final String COURT_HOUSE_ID = "courtHouseId";
     protected static final String START_DATE = "startDate";
     protected static final String END_DATE = "endDate";
-    protected static final String RECURRING_TYPE = "recurringType";
     protected static final String SESSION_TYPE = "sessionType";
     protected static final String REPEAT_DAYS = "repeatDays";
     protected static final String UNAVAILABILITIES = "unavailabilities";
-    protected static final String INDEX = "index";
-    protected static final String DAY = "day";
 
     /**
      * Populates common base fields from JSON object to request object.
@@ -46,13 +41,9 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
     }
 
     /**
-     * Populates detail fields (recurringType, sessionType, repeatDays, unavailabilities) from JSON object.
+     * Populates detail fields (sessionType, repeatDays, unavailabilities) from JSON object.
      */
     protected void populateDetailFields(JsonObject jsonObject, BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
-        if (hasField(jsonObject, RECURRING_TYPE)) {
-            request.setRecurringType(RecurringType.valueOf(jsonObject.getString(RECURRING_TYPE)));
-        }
-
         if (hasField(jsonObject, SESSION_TYPE)) {
             request.setSessionType(SessionType.valueOf(jsonObject.getString(SESSION_TYPE)));
         }
@@ -69,11 +60,11 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
     }
 
     /**
-     * Converts JSON array of repeat days to list of JudiciaryAvailabilityRuleRepeatDay.
-     * Supports both string format ("Monday") and object format ({"day": "Tuesday", "index": 2}).
+     * Converts JSON array of repeat days to list of AvailabilityDayOfWeek enum values.
+     * Each item must be a string enum value: "Monday", "Tuesday", "Wednesday", "Thursday", "Friday".
      */
-    protected List<JudiciaryAvailabilityRuleRepeatDay> convertRepeatDays(JsonArray repeatDaysArray) {
-        List<JudiciaryAvailabilityRuleRepeatDay> repeatDays = new ArrayList<>();
+    protected List<AvailabilityDayOfWeek> convertRepeatDays(JsonArray repeatDaysArray) {
+        List<AvailabilityDayOfWeek> repeatDays = new ArrayList<>();
 
         for (JsonValue jsonValue : repeatDaysArray) {
             if (jsonValue.getValueType() == JsonValue.ValueType.STRING) {
@@ -81,20 +72,11 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
                 String titleCase = dayOfWeek.length() > 0
                     ? dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase()
                     : dayOfWeek;
-                repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(
-                        AvailabilityDayOfWeek.valueOf(titleCase), null));
-            } else if (jsonValue.getValueType() == JsonValue.ValueType.OBJECT) {
-                JsonObject dayObject = (JsonObject) jsonValue;
-                String dayOfWeek = dayObject.getString(DAY);
-                String titleCase = dayOfWeek.length() > 0 
-                    ? dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase()
-                    : dayOfWeek;
-                Integer index = null;
-                if (hasField(dayObject, INDEX)) {
-                    index = dayObject.getInt(INDEX);
+                try {
+                    repeatDays.add(AvailabilityDayOfWeek.valueOf(titleCase));
+                } catch (IllegalArgumentException e) {
+                    // Invalid day name - skip it (validation will catch it)
                 }
-                repeatDays.add(new JudiciaryAvailabilityRuleRepeatDay(
-                        AvailabilityDayOfWeek.valueOf(titleCase), index));
             }
         }
 

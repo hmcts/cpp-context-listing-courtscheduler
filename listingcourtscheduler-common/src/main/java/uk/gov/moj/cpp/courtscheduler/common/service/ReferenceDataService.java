@@ -395,6 +395,7 @@ public class ReferenceDataService {
                 .withTitlePrefix(getStringOrElse(jsonObject, "titlePrefix", null))
                 .withTitlePrefixWelsh(getStringOrElse(jsonObject, "titlePrefixWelsh", null))
                 .withSpecialisms(specialisms)
+                .withRequestedName(getStringOrElse(jsonObject, "requestedName", null))
                 .build();
     }
 

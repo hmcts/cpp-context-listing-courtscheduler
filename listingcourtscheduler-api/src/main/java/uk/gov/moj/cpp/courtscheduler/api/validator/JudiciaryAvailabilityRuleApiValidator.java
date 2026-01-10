@@ -12,7 +12,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleRequest
 import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleWithDetailsRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 
 import java.util.List;
@@ -45,10 +44,6 @@ public class JudiciaryAvailabilityRuleApiValidator {
 
         if (isBlank(request.getRuleId())) {
             return getMessage(RULE_ID_FIELD);
-        }
-
-        if (isBlank(request.getJudiciaryId())) {
-            return getMessage("judiciaryId");
         }
 
         return EMPTY_JSON_OBJECT;
@@ -102,14 +97,16 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateRepeatDays(final List<JudiciaryAvailabilityRuleRepeatDay> repeatDays) {
+    private JsonObject validateRepeatDays(final List<uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek> repeatDays) {
         if (repeatDays == null || repeatDays.isEmpty()) {
             return getMessage("repeatDays");
         }
 
-        for (JudiciaryAvailabilityRuleRepeatDay repeatDay : repeatDays) {
-            if (repeatDay.getDayOfWeek() == null) {
-                return getMessage("repeatDays.dayOfWeek");
+        // Enum provides type safety - no need to validate individual values
+        // Just check for null values in the list
+        for (uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek repeatDay : repeatDays) {
+            if (repeatDay == null) {
+                return getMessage("repeatDays");
             }
         }
 
@@ -204,10 +201,6 @@ public class JudiciaryAvailabilityRuleApiValidator {
 
         if (isBlank(request.getRuleId())) {
             return getMessage(RULE_ID_FIELD);
-        }
-
-        if (isBlank(request.getJudiciaryId())) {
-            return getMessage("judiciaryId");
         }
 
         // Call service validation for business rules (check if rule is applied to sessions)

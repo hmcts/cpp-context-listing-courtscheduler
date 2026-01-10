@@ -7,13 +7,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleRepeatDay;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
@@ -51,12 +48,8 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
         rule.setCourtHouseId(courtHouseId);
         rule.setStartDate(startDate);
         rule.setEndDate(endDate);
-        rule.setRecurringType(RecurringType.WEEKLY);
         rule.setSessionType(SessionType.AM);
-        rule.setRepeatDays(Arrays.asList(
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Monday, null),
-                new JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.Tuesday, 1)
-        ));
+        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday));
         rule.setUnavailabilities(Arrays.asList(
                 new JudiciaryUnavailabilityResponse(
                         LocalDate.of(2026, 1, 10),
@@ -82,16 +75,13 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
         assertThat(ruleObject.getString("courtHouseId"), is(courtHouseId));
         assertThat(ruleObject.getString("startDate"), is("2026-01-01"));
         assertThat(ruleObject.getString("endDate"), is("2026-01-31"));
-        assertThat(ruleObject.getString("recurringType"), is("WEEKLY"));
         assertThat(ruleObject.getString("sessionType"), is("AM"));
 
-        // Verify repeatDays
+        // Verify repeatDays - simple string array
         final javax.json.JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
         assertThat(repeatDaysArray.size(), is(2));
         assertThat(repeatDaysArray.getString(0), is("Monday"));
-        final JsonObject repeatDayObject = repeatDaysArray.getJsonObject(1);
-        assertThat(repeatDayObject.getString("day"), is("Tuesday"));
-        assertThat(repeatDayObject.getInt("index"), is(1));
+        assertThat(repeatDaysArray.getString(1), is("Tuesday"));
 
         // Verify unavailabilities
         final javax.json.JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");
@@ -123,7 +113,6 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
     @Test
     void shouldConvertRuleWithoutOptionalFields() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRecurringType(null);
         rule.setSessionType(null);
 
         final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, null);
@@ -132,21 +121,18 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
 
         assertThat(ruleObject.getString("id"), is(notNullValue()));
         assertThat(ruleObject.getString("judiciaryId"), is(notNullValue()));
-        assertTrue(!ruleObject.containsKey("recurringType") || ruleObject.isNull("recurringType"));
         assertTrue(!ruleObject.containsKey("sessionType") || ruleObject.isNull("sessionType"));
     }
 
     @Test
     void shouldConvertRuleWithAllOptionalFields() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRecurringType(RecurringType.MONTHLY);
         rule.setSessionType(SessionType.PM);
 
         final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, null);
         final JsonObject result = converter.convert(response);
         final JsonObject ruleObject = result.getJsonObject("rule");
 
-        assertThat(ruleObject.getString("recurringType"), is("MONTHLY"));
         assertThat(ruleObject.getString("sessionType"), is("PM"));
     }
 

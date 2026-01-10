@@ -132,6 +132,11 @@ class ReferenceDataServiceTest {
         when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
         final List<Judiciary> judiciaries = referenceDataService.getJudiciariesMap(requester);
         assertTrue(isNotEmpty(judiciaries));
+        // Verify requestedName is populated
+        assertThat(judiciaries.get(0).getRequestedName(), Matchers.is("HER HONOUR JUDGE K WANT QC, HONORARY RECORDER OF WALES"));
+        if (judiciaries.size() > 1) {
+            assertThat(judiciaries.get(1).getRequestedName(), Matchers.is("HER HONOUR JUDGE N SHANT QC, HONORARY RECORDER OF DERBY"));
+        }
     }
 
     @Test

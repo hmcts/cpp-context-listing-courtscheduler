@@ -21,7 +21,6 @@
             <column name="to_date" type="DATE">
                 <constraints nullable="false"/>
             </column>
-            <column name="recurring_type" type="VARCHAR(20)"/>
             <column name="session_type" type="VARCHAR(10)" defaultValue="AD">
                 <constraints nullable="false"/>
             </column>
@@ -40,13 +39,10 @@
             <column name="day_of_week" type="VARCHAR(20)">
                 <constraints nullable="false"/>
             </column>
-            <column name="day_index" type="INTEGER" defaultValueNumeric="0">
-                <constraints nullable="false"/>
-            </column>
         </createTable>
 
         <addPrimaryKey tableName="judiciary_availability_rule_repeat_day"
-                       columnNames="rule_id,day_of_week,day_index"
+                       columnNames="rule_id,day_of_week"
                        constraintName="pk_judiciary_availability_rule_repeat_days"/>
         <addForeignKeyConstraint baseTableName="judiciary_availability_rule_repeat_day"
                                  baseColumnNames="rule_id"

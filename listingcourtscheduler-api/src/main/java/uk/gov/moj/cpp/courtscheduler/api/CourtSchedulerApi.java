@@ -597,10 +597,18 @@ public class CourtSchedulerApi {
         LOGGER.info("courtscheduler.judiciary.add.availability.rule requested : {}", requestFromApiJsonObject);
 
         AddJudiciaryAvailabilityRuleRequest request = addJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
-        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRule(request);
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
 
         if (!validate.isEmpty()) {
-            throw new ValidationException(validate);
+            // Return validation failure response
+            final String errorMessage = validate.getString(ERROR_MESSAGE);
+            final JsonObject validationResult = createObjectBuilder()
+                    .add(VALIDATION_RESULT, createObjectBuilder()
+                            .add(STATUS, FAILURE)
+                            .add(VALIDATION_ERROR, errorMessage)
+                            .build())
+                    .build();
+            throw new UnprocessableEntityException(validationResult);
         }
 
         judiciaryAvailabilityService.addJudiciaryAvailabilityRule(request);
@@ -613,12 +621,29 @@ public class CourtSchedulerApi {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.judiciary.update.availability.rule requested : {}", requestFromApiJsonObject);
 
+        // Extract ruleId from request payload
+        final String ruleId = requestFromApiJsonObject.containsKey(RULE_ID) ?
+                requestFromApiJsonObject.getString(RULE_ID) : null;
+
         UpdateJudiciaryAvailabilityRuleRequest request = updateJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
 
-        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRule(request);
+        // Set ruleId from payload if not already set by converter
+        if (ruleId != null && (request.getRuleId() == null || request.getRuleId().isEmpty())) {
+            request.setRuleId(ruleId);
+        }
+
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
 
         if (!validate.isEmpty()) {
-            throw new ValidationException(validate);
+            // Return validation failure response
+            final String errorMessage = validate.getString(ERROR_MESSAGE);
+            final JsonObject validationResult = createObjectBuilder()
+                    .add(VALIDATION_RESULT, createObjectBuilder()
+                            .add(STATUS, FAILURE)
+                            .add(VALIDATION_ERROR, errorMessage)
+                            .build())
+                    .build();
+            throw new UnprocessableEntityException(validationResult);
         }
 
         judiciaryAvailabilityService.updateJudiciaryAvailabilityRule(request);
@@ -633,10 +658,18 @@ public class CourtSchedulerApi {
 
         DeleteJudiciaryAvailabilityRuleRequest request = deleteJudiciaryAvailabilityRuleConverter.convert(requestFromApiJsonObject);
 
-        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRule(request);
+        JsonObject validate = judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
 
         if (!validate.isEmpty()) {
-            throw new ValidationException(validate);
+            // Return validation failure response
+            final String errorMessage = validate.getString(ERROR_MESSAGE);
+            final JsonObject validationResult = createObjectBuilder()
+                    .add(VALIDATION_RESULT, createObjectBuilder()
+                            .add(STATUS, FAILURE)
+                            .add(VALIDATION_ERROR, errorMessage)
+                            .build())
+                    .build();
+            throw new UnprocessableEntityException(validationResult);
         }
 
         judiciaryAvailabilityService.deleteJudiciaryAvailabilityRule(request);

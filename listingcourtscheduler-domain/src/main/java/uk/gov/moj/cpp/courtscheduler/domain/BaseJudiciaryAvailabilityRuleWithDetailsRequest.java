@@ -6,36 +6,27 @@ import java.util.List;
 
 /**
  * Intermediate base class for judiciary availability rule requests that include
- * recurring type, repeat days, session type, and unavailabilities.
+ * repeat days, session type, and unavailabilities.
  * Used by Add and Update requests to share common functionality.
  */
 public abstract class BaseJudiciaryAvailabilityRuleWithDetailsRequest extends BaseJudiciaryAvailabilityRuleRequest {
 
-    protected RecurringType recurringType;
-    protected List<JudiciaryAvailabilityRuleRepeatDay> repeatDays;
+    protected List<AvailabilityDayOfWeek> repeatDays;
     protected SessionType sessionType;
     protected List<JudiciaryUnavailabilityRequest> unavailabilities;
-
-    public RecurringType getRecurringType() {
-        return recurringType;
-    }
-
-    public void setRecurringType(RecurringType recurringType) {
-        this.recurringType = recurringType;
-    }
 
     /**
      * Returns an unmodifiable view of the repeat days list.
      * Use setRepeatDays to modify the list.
      */
-    public List<JudiciaryAvailabilityRuleRepeatDay> getRepeatDays() {
+    public List<AvailabilityDayOfWeek> getRepeatDays() {
         return repeatDays == null ? null : Collections.unmodifiableList(repeatDays);
     }
 
     /**
      * Sets the repeat days list. Creates a defensive copy to prevent external modification.
      */
-    public void setRepeatDays(List<JudiciaryAvailabilityRuleRepeatDay> repeatDays) {
+    public void setRepeatDays(List<AvailabilityDayOfWeek> repeatDays) {
         this.repeatDays = repeatDays == null ? null : new ArrayList<>(repeatDays);
     }
 
