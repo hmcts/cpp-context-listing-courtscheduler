@@ -2120,8 +2120,8 @@ class SessionsApiValidatorTest {
     @Test
     void shouldCallValidateSessionIntegrityWithCorrectParametersForMonthlyFrequencyWithIndex() {
         // Given - This matches the curl request from the user
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
-        LocalDate endDate = LocalDate.of(2026, 6, 30);
+        LocalDate startDate = LocalDate.now().plusDays(1);
+        LocalDate endDate = LocalDate.now().plusMonths(6);
         Session sessionToBeAdded = session()
                 .withCourtCentreId(courtCentreId)
                 .withCourtRoomId(courtRoomId)
