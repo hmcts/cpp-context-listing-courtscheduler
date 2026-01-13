@@ -662,7 +662,7 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.find.judiciary.availability.rule.json
             example: !include json/courtscheduler.find.judiciary.availability.rule.json
 
-/judiciaries/{judiciaryId}/availability-rules/{ruleId}:
+/judiciaries/availability-rules/{ruleId}:
   get:
     description: |
       Get a single judiciary availability rule by ruleId

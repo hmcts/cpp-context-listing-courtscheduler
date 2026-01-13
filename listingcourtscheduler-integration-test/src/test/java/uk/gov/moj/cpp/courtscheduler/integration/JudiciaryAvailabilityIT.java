@@ -15,7 +15,6 @@ import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import uk.gov.justice.services.test.utils.core.http.RequestParams;
 import uk.gov.justice.services.test.utils.core.http.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.RecurringType;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -48,72 +47,49 @@ class JudiciaryAvailabilityIT extends AbstractIT {
     private static final String AVAILABILITY_RULES_VALIDATE_DELETE = "/judiciaries/availability-rules/validate-delete";
     private static final String AVAILABILITY_RULES = "/judiciaries/availability-rules";
     private static final String JUDICIARIES_AVAILABILITY = "/judiciaries/availability";
-    private static final String JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES = "/judiciaries/{judiciaryId}/availability-rules/{ruleId}";
+    private static final String RULE_ID_AVAILABILITY_RULES = "/judiciaries/availability-rules/{ruleId}";
     private static final String RESPONSE_TYPE = "application/json";
     private static final String ADD_AVAILABILITY_RULE_CONTENT_TYPE = "application/json";
     private static final String UPDATE_AVAILABILITY_RULE_CONTENT_TYPE = "application/json";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
 
-    @Test
-    void shouldAddAvailabilityMonthlyEverySecondTuesday() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 6, 30);
+    /**
+     * Helper method to get a future date (tomorrow by default).
+     * Ensures dates are always in the future for validation.
+     */
+    private LocalDate futureDate(int daysFromNow) {
+        return LocalDate.now().plusDays(daysFromNow);
+    }
 
-        // Add availability rule: Monthly, every 2nd Tuesday
-        final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
-        final JsonObjectBuilder dayObjectBuilder = Json.createObjectBuilder()
-                .add("day", AvailabilityDayOfWeek.Tuesday.name())
-                .add("index", 2);
-        repeatDaysBuilder.add(dayObjectBuilder);
-        
-        final String requestPayload = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", startDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.MONTHLY.name())
-                .add("repeatDays", repeatDaysBuilder)
-                .add("sessionType", SessionType.AD.name())
-                .build()
-                .toString();
+    /**
+     * Helper method to get a future date that falls on a specific day of week.
+     * Finds the next occurrence of the specified day from today.
+     */
+    private LocalDate futureDateOnDayOfWeek(java.time.DayOfWeek dayOfWeek, int weeksFromNow) {
+        LocalDate baseDate = LocalDate.now().plusWeeks(weeksFromNow);
+        int daysUntilTarget = (dayOfWeek.getValue() - baseDate.getDayOfWeek().getValue() + 7) % 7;
+        if (daysUntilTarget == 0 && weeksFromNow == 0) {
+            // If today is the target day, move to next week
+            daysUntilTarget = 7;
+        }
+        return baseDate.plusDays(daysUntilTarget);
+    }
 
-        final Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, requestPayload);
-        assertThat(response.getStatus(), is(OK.getStatusCode()));
-
-        // Verify by finding availability for a date range that includes 2nd Tuesday
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
-
-        final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
-
-        final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
-        final ResponseData responseData = poll(requestParams)
-                .with()
-                .timeout(30L, SECONDS)
-                .pollInterval(50L, MILLISECONDS)
-                .pollDelay(0L, MILLISECONDS)
-                .until();
-
-        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
-
-        final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
-        assertTrue(availableJudiciaries.size() > 0, "Should find at least one available judiciary");
-        assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Should contain the judiciary ID");
+    /**
+     * Helper method to get the nth occurrence of a day of week in a month.
+     * For example, 2nd Monday of a given month.
+     */
+    private LocalDate nthDayOfWeekInMonth(LocalDate monthStart, java.time.DayOfWeek dayOfWeek, int n) {
+        LocalDate firstDay = monthStart.with(java.time.temporal.TemporalAdjusters.firstInMonth(dayOfWeek));
+        return firstDay.plusWeeks(n - 1);
     }
 
     @Test
     void shouldAddAvailabilityWeeklyOnAllWeekdays() {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Add availability rule: Weekly on all weekdays (Monday-Friday)
         final String requestPayload = Json.createObjectBuilder()
@@ -121,7 +97,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
                         .add(AvailabilityDayOfWeek.Monday.name())
                         .add(AvailabilityDayOfWeek.Tuesday.name())
@@ -134,9 +109,21 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, requestPayload);
         assertThat(response.getStatus(), is(OK.getStatusCode()));
 
-        // Verify by finding availability
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 5); // Monday
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 9); // Friday
+        // Verify by finding availability - ensure query dates are within the rule's date range
+        LocalDate queryStartDate = futureDateOnDayOfWeek(java.time.DayOfWeek.MONDAY, 0);
+        // Ensure query dates are within the availability range
+        if (queryStartDate.isBefore(startDate)) {
+            queryStartDate = startDate;
+        }
+        LocalDate queryEndDate = futureDateOnDayOfWeek(java.time.DayOfWeek.FRIDAY, 0);
+        // If Friday is before Monday, use Monday + 4 days instead
+        if (queryEndDate.isBefore(queryStartDate)) {
+            queryEndDate = queryStartDate.plusDays(4);
+        }
+        // Ensure query end date doesn't exceed rule end date
+        if (queryEndDate.isAfter(endDate)) {
+            queryEndDate = endDate;
+        }
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -164,8 +151,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
     void shouldAddAvailabilityWeeklyOnTuesdaysAndThursdays() {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Add availability rule: Weekly on Tuesdays and Thursdays
         final String requestPayload = Json.createObjectBuilder()
@@ -173,7 +160,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
                         .add(AvailabilityDayOfWeek.Tuesday.name())
                         .add(AvailabilityDayOfWeek.Thursday.name()))
@@ -183,9 +169,21 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, requestPayload);
         assertThat(response.getStatus(), is(OK.getStatusCode()));
 
-        // Verify by finding availability
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 6); // Tuesday
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 8); // Thursday
+        // Verify by finding availability - ensure query dates are within the rule's date range
+        LocalDate queryStartDate = futureDateOnDayOfWeek(java.time.DayOfWeek.TUESDAY, 0);
+        // Ensure query dates are within the availability range
+        if (queryStartDate.isBefore(startDate)) {
+            queryStartDate = startDate;
+        }
+        LocalDate queryEndDate = futureDateOnDayOfWeek(java.time.DayOfWeek.THURSDAY, 0);
+        // If Thursday is before Tuesday, use Tuesday + 2 days instead
+        if (queryEndDate.isBefore(queryStartDate)) {
+            queryEndDate = queryStartDate.plusDays(2);
+        }
+        // Ensure query end date doesn't exceed rule end date
+        if (queryEndDate.isAfter(endDate)) {
+            queryEndDate = endDate;
+        }
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -213,19 +211,18 @@ class JudiciaryAvailabilityIT extends AbstractIT {
     void shouldAddUnavailabilityForStartDateEndDate() {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Add availability for all weekdays with unavailability period in a single call
-        final LocalDate unavailabilityStartDate = LocalDate.of(2026, 1, 10);
-        final LocalDate unavailabilityEndDate = LocalDate.of(2026, 1, 15);
+        final LocalDate unavailabilityStartDate = futureDate(10);
+        final LocalDate unavailabilityEndDate = futureDate(15);
 
         final String payload = Json.createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
                         .add(AvailabilityDayOfWeek.Monday.name())
                         .add(AvailabilityDayOfWeek.Tuesday.name())
@@ -307,27 +304,30 @@ class JudiciaryAvailabilityIT extends AbstractIT {
     void shouldAddUnavailabilityForWeeklyEachTuesday() {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Add availability for all weekdays with unavailability for weekly Tuesdays in a single call
-        // January 2026: Tuesdays are Jan 6, 13, 20, 27
         final JsonArrayBuilder unavailabilitiesBuilder = Json.createArrayBuilder();
+        LocalDate firstTuesday = futureDateOnDayOfWeek(java.time.DayOfWeek.TUESDAY, 0);
         unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 1, 6).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 1, 6).format(DATE_FORMATTER))
+                .add("startDate", firstTuesday.format(DATE_FORMATTER))
+                .add("endDate", firstTuesday.format(DATE_FORMATTER))
                 .add("reason", "TRAINING"));
+        LocalDate secondTuesday = firstTuesday.plusWeeks(1);
         unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 1, 13).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 1, 13).format(DATE_FORMATTER))
+                .add("startDate", secondTuesday.format(DATE_FORMATTER))
+                .add("endDate", secondTuesday.format(DATE_FORMATTER))
                 .add("reason", "TRAINING"));
+        LocalDate thirdTuesday = firstTuesday.plusWeeks(2);
         unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 1, 20).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 1, 20).format(DATE_FORMATTER))
+                .add("startDate", thirdTuesday.format(DATE_FORMATTER))
+                .add("endDate", thirdTuesday.format(DATE_FORMATTER))
                 .add("reason", "TRAINING"));
+        LocalDate fourthTuesday = firstTuesday.plusWeeks(3);
         unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 1, 27).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 1, 27).format(DATE_FORMATTER))
+                .add("startDate", fourthTuesday.format(DATE_FORMATTER))
+                .add("endDate", fourthTuesday.format(DATE_FORMATTER))
                 .add("reason", "TRAINING"));
 
         final String payload = Json.createObjectBuilder()
@@ -335,7 +335,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", Json.createArrayBuilder()
                         .add(AvailabilityDayOfWeek.Monday.name())
                         .add(AvailabilityDayOfWeek.Tuesday.name())
@@ -350,8 +349,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(response.getStatus(), is(OK.getStatusCode()));
 
         // Verify: Query for a Tuesday should not return this judiciary
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 6); // Tuesday
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 6); // Same Tuesday
+        final LocalDate queryStartDate = firstTuesday; // Tuesday
+        final LocalDate queryEndDate = firstTuesday; // Same Tuesday
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -375,7 +374,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Should not contain the judiciary on Tuesday");
 
         // But should be available on other days (e.g., Monday)
-        final LocalDate mondayDate = LocalDate.of(2026, 1, 5); // Monday
+        final LocalDate mondayDate = futureDateOnDayOfWeek(java.time.DayOfWeek.MONDAY, 0);
         queryParams.put("startDate", mondayDate.format(DATE_FORMATTER));
         queryParams.put("endDate", mondayDate.format(DATE_FORMATTER));
 
@@ -428,148 +427,14 @@ class JudiciaryAvailabilityIT extends AbstractIT {
             assertThat(unavailability.getString("reason"), is("TRAINING"));
         }
     }
-    
-    @Test
-    void shouldAddUnavailabilityForMonthlyEverySecondMonday() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 6, 30);
-
-        // Add availability for all weekdays with unavailability for monthly 2nd Monday in a single call
-        // 2nd Mondays: Jan 12, Feb 9, Mar 9, Apr 13, May 11, Jun 8
-        final JsonArrayBuilder unavailabilitiesBuilder = Json.createArrayBuilder();
-        unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 1, 12).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 1, 12).format(DATE_FORMATTER))
-                .add("reason", "OFFICIAL_BUSINESS"));
-        unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 2, 9).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 2, 9).format(DATE_FORMATTER))
-                .add("reason", "OFFICIAL_BUSINESS"));
-        unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 3, 9).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 3, 9).format(DATE_FORMATTER))
-                .add("reason", "OFFICIAL_BUSINESS"));
-        unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 4, 13).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 4, 13).format(DATE_FORMATTER))
-                .add("reason", "OFFICIAL_BUSINESS"));
-        unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 5, 11).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 5, 11).format(DATE_FORMATTER))
-                .add("reason", "OFFICIAL_BUSINESS"));
-        unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", LocalDate.of(2026, 6, 8).format(DATE_FORMATTER))
-                .add("endDate", LocalDate.of(2026, 6, 8).format(DATE_FORMATTER))
-                .add("reason", "OFFICIAL_BUSINESS"));
-
-        final String payload = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", startDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.WEEKLY.name())
-                .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.Monday.name())
-                        .add(AvailabilityDayOfWeek.Tuesday.name())
-                        .add(AvailabilityDayOfWeek.Wednesday.name())
-                        .add(AvailabilityDayOfWeek.Thursday.name())
-                        .add(AvailabilityDayOfWeek.Friday.name()))
-                .add("unavailabilities", unavailabilitiesBuilder)
-                .build()
-                .toString();
-
-        Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, payload);
-        assertThat(response.getStatus(), is(OK.getStatusCode()));
-
-        // Verify: Query for 2nd Monday should not return this judiciary
-        // January 2026: 1st Monday is Jan 5, 2nd Monday is Jan 12
-        final LocalDate secondMonday = LocalDate.of(2026, 1, 12);
-        final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", secondMonday.format(DATE_FORMATTER));
-        queryParams.put("endDate", secondMonday.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
-
-        final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
-        final ResponseData responseData = poll(requestParams)
-                .with()
-                .timeout(30L, SECONDS)
-                .pollInterval(50L, MILLISECONDS)
-                .pollDelay(0L, MILLISECONDS)
-                .until();
-
-        assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
-
-        final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
-        // Should not contain the judiciary on 2nd Monday
-        assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Should not contain the judiciary on 2nd Monday");
-
-        // Verify: Query for the rule and verify unavailabilities with reasons are returned
-        final Map<String, Object> ruleQueryParams = new HashMap<>();
-        ruleQueryParams.put("startDate", startDate.format(DATE_FORMATTER));
-        ruleQueryParams.put("endDate", endDate.format(DATE_FORMATTER));
-        ruleQueryParams.put("courtHouseId", courtHouseId);
-
-        final RequestParams ruleRequestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, ruleQueryParams);
-        final ResponseData ruleResponseData = poll(ruleRequestParams)
-                .with()
-                .timeout(30L, SECONDS)
-                .pollInterval(50L, MILLISECONDS)
-                .pollDelay(0L, MILLISECONDS)
-                .until();
-
-        assertThat(ruleResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
-
-        final JsonObject ruleJsonObject = stringToJsonObjectConverter.convert(ruleResponseData.getPayload());
-        final JsonArray rules = ruleJsonObject.getJsonArray("rules");
-        assertTrue(rules.size() > 0, "Should find at least one rule");
-        
-        final JsonObject rule = rules.getJsonObject(0);
-        assertThat(rule.getString("judiciaryId"), is(judiciaryId));
-        
-        // Verify unavailabilities are present with correct reasons
-        assertTrue(rule.containsKey("unavailabilities"), "Rule should contain unavailabilities array");
-        final JsonArray unavailabilities = rule.getJsonArray("unavailabilities");
-        assertTrue(unavailabilities.size() >= 6, "Should contain at least 6 unavailabilities (one for each 2nd Monday)");
-        
-        // Verify all unavailabilities have OFFICIAL_BUSINESS as the reason
-        for (int i = 0; i < unavailabilities.size(); i++) {
-            final JsonObject unavailability = unavailabilities.getJsonObject(i);
-            assertTrue(unavailability.containsKey("reason"), "Unavailability should have reason");
-            assertThat(unavailability.getString("reason"), is("OFFICIAL_BUSINESS"));
-        }
-
-        // But should be available on other Mondays (e.g., 1st Monday)
-        final LocalDate firstMonday = LocalDate.of(2026, 1, 5); // 1st Monday
-        queryParams.put("startDate", firstMonday.format(DATE_FORMATTER));
-        queryParams.put("endDate", firstMonday.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-
-        final RequestParams firstMondayRequestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
-        final ResponseData firstMondayResponseData = poll(firstMondayRequestParams)
-                .with()
-                .timeout(30L, SECONDS)
-                .pollInterval(50L, MILLISECONDS)
-                .pollDelay(0L, MILLISECONDS)
-                .until();
-
-        assertThat(firstMondayResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
-
-        final JsonObject firstMondayJsonObject = stringToJsonObjectConverter.convert(firstMondayResponseData.getPayload());
-        final JsonArray firstMondayAvailableJudiciaries = firstMondayJsonObject.getJsonArray("availableJudiciaries");
-        assertTrue(containsJudiciary(firstMondayAvailableJudiciaries, judiciaryId), "Should contain the judiciary on 1st Monday");
-    }
 
     @Test
     void shouldDeleteJudiciaryAvailabilityRule() throws Exception {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Insert a rule via database seeder
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -579,13 +444,24 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday, AvailabilityDayOfWeek.Wednesday, AvailabilityDayOfWeek.Thursday, AvailabilityDayOfWeek.Friday)
         );
 
-        // Verify the rule exists by finding availability
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 5); // Monday
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 9); // Friday
+        // Verify the rule exists by finding availability - ensure query dates are within the rule's date range
+        LocalDate queryStartDate = futureDateOnDayOfWeek(java.time.DayOfWeek.MONDAY, 0);
+        // Ensure query dates are within the availability range
+        if (queryStartDate.isBefore(startDate)) {
+            queryStartDate = startDate;
+        }
+        LocalDate queryEndDate = futureDateOnDayOfWeek(java.time.DayOfWeek.FRIDAY, 0);
+        // If Friday is before Monday, use Monday + 4 days instead
+        if (queryEndDate.isBefore(queryStartDate)) {
+            queryEndDate = queryStartDate.plusDays(4);
+        }
+        // Ensure query end date doesn't exceed rule end date
+        if (queryEndDate.isAfter(endDate)) {
+            queryEndDate = endDate;
+        }
 
         Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -647,8 +523,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId2 = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Insert two rules
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -658,7 +534,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
         );
 
@@ -669,12 +544,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Wednesday, AvailabilityDayOfWeek.Thursday)
         );
 
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate queryStartDate = futureDate(1);
+        final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -709,8 +583,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
                 ruleId,
@@ -719,12 +593,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate queryStartDate = futureDate(1);
+        final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -751,8 +624,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = "7e2f843e-d639-40b3-8611-8015f3a13333"; // Use ID from stubbed judiciaries
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
                 ruleId,
@@ -761,12 +634,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate queryStartDate = futureDate(1);
+        final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -804,8 +676,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
                 ruleId,
@@ -814,12 +686,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate queryStartDate = futureDate(1);
+        final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -848,8 +719,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
                 ruleId,
@@ -858,12 +729,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate queryStartDate = futureDate(1);
+        final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -896,8 +766,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
                 ruleId,
@@ -906,12 +776,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate queryStartDate = futureDate(1);
+        final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -947,8 +816,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId3 = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Insert three rules
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -958,7 +827,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
@@ -969,7 +837,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Tuesday)
         );
 
@@ -980,12 +847,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Wednesday)
         );
 
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate queryStartDate = futureDate(1);
+        final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -1018,8 +884,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
                 ruleId,
@@ -1028,15 +894,14 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         // Stub the specialisms response
         uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciarySpecialisms("referencedata.judiciary-specialisms.json");
 
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate queryStartDate = futureDate(1);
+        final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -1064,8 +929,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = "9ac02e8d-ee90-3da6-8d3e-0dd0af2cb976"; // Use ID from stubbed judiciaries
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
                 ruleId,
@@ -1074,15 +939,14 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
         // Stub the specialisms response
         uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciarySpecialisms("referencedata.judiciary-specialisms.json");
 
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate queryStartDate = futureDate(1);
+        final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -1134,8 +998,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate originalStartDate = LocalDate.of(2026, 1, 1);
-        final LocalDate originalEndDate = LocalDate.of(2026, 1, 31);
+        final LocalDate originalStartDate = futureDate(10); // 10 days from now
+        final LocalDate originalEndDate = futureDate(40); // ~1.3 months from now
 
         // Insert an initial rule via database seeder
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -1145,13 +1009,24 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 originalStartDate,
                 originalEndDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
         );
 
-        // Verify the original rule exists by finding availability
-        final LocalDate queryStartDate = LocalDate.of(2026, 1, 5); // Monday
-        final LocalDate queryEndDate = LocalDate.of(2026, 1, 9); // Friday
+        // Verify the original rule exists by finding availability - ensure query dates are within the rule's date range
+        LocalDate queryStartDate = futureDateOnDayOfWeek(java.time.DayOfWeek.MONDAY, 0);
+        // Ensure query dates are within the availability range
+        if (queryStartDate.isBefore(originalStartDate)) {
+            queryStartDate = originalStartDate;
+        }
+        LocalDate queryEndDate = futureDateOnDayOfWeek(java.time.DayOfWeek.FRIDAY, 0);
+        // If Friday is before Monday, use Monday + 4 days instead
+        if (queryEndDate.isBefore(queryStartDate)) {
+            queryEndDate = queryStartDate.plusDays(4);
+        }
+        // Ensure query end date doesn't exceed rule end date
+        if (queryEndDate.isAfter(originalEndDate)) {
+            queryEndDate = originalEndDate;
+        }
 
         Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -1174,10 +1049,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should be available before update");
 
         // Update the rule with new dates, repeat days and unavailabilities
-        final LocalDate updatedStartDate = LocalDate.of(2026, 2, 1);
-        final LocalDate updatedEndDate = LocalDate.of(2026, 2, 28);
-        final LocalDate unavailabilityStartDate = LocalDate.of(2026, 2, 10);
-        final LocalDate unavailabilityEndDate = LocalDate.of(2026, 2, 15);
+        final LocalDate updatedStartDate = futureDate(1); // Tomorrow
+        final LocalDate updatedEndDate = futureDate(30); // ~1 month from now
+        final LocalDate unavailabilityStartDate = futureDate(10);
+        final LocalDate unavailabilityEndDate = futureDate(15);
 
         final String updatePayload = Json.createObjectBuilder()
                 .add("ruleId", ruleId)
@@ -1185,17 +1060,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", updatedStartDate.format(DATE_FORMATTER))
                 .add("endDate", updatedEndDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.MONTHLY.name())
                 .add("sessionType", SessionType.AM.name())
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(Json.createObjectBuilder()
-                                .add("day", AvailabilityDayOfWeek.Wednesday.name())
-                                .add("index", 2)
-                                .build())
-                        .add(Json.createObjectBuilder()
-                                .add("day", AvailabilityDayOfWeek.Thursday.name())
-                                .add("index", 3)
-                                .build())
+                        .add(AvailabilityDayOfWeek.Wednesday.name())
+                        .add(AvailabilityDayOfWeek.Thursday.name())
                         .build())
                 .add("unavailabilities", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
@@ -1212,11 +1080,37 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(updateResponse.getStatus(), is(OK.getStatusCode()));
 
         // Verify the rule is updated by checking availability in the new date range
-        // February 2026: 2nd Wednesday = Feb 11, 3rd Thursday = Feb 19
-        // Note: Feb 10-15 is marked as unavailable, so we'll check around Feb 19 (3rd Thursday)
+        // Note: The unavailability period is marked, so we'll check a date after it
+        // Find a Thursday that's after the unavailability period and within the updated date range
+        LocalDate queryDate = unavailabilityEndDate.plusDays(1); // Day after unavailability ends
+        // Ensure query date is at least the updated start date
+        if (queryDate.isBefore(updatedStartDate)) {
+            queryDate = updatedStartDate;
+        }
+        // Find the next Wednesday or Thursday (the repeatDays in the updated rule)
+        while (queryDate.isBefore(updatedEndDate) || queryDate.isEqual(updatedEndDate)) {
+            if (queryDate.getDayOfWeek() == java.time.DayOfWeek.WEDNESDAY || 
+                queryDate.getDayOfWeek() == java.time.DayOfWeek.THURSDAY) {
+                break; // Found a valid day
+            }
+            queryDate = queryDate.plusDays(1);
+        }
+        // If we didn't find a Wednesday or Thursday within range, use the last valid day
+        if (queryDate.isAfter(updatedEndDate)) {
+            queryDate = updatedEndDate;
+            // Go backwards to find the last Wednesday or Thursday
+            while (queryDate.isAfter(updatedStartDate) || queryDate.isEqual(updatedStartDate)) {
+                if (queryDate.getDayOfWeek() == java.time.DayOfWeek.WEDNESDAY || 
+                    queryDate.getDayOfWeek() == java.time.DayOfWeek.THURSDAY) {
+                    break;
+                }
+                queryDate = queryDate.minusDays(1);
+            }
+        }
+        
         queryParams = new HashMap<>();
-        queryParams.put("startDate", LocalDate.of(2026, 2, 18).format(DATE_FORMATTER));
-        queryParams.put("endDate", LocalDate.of(2026, 2, 20).format(DATE_FORMATTER));
+        queryParams.put("startDate", queryDate.format(DATE_FORMATTER));
+        queryParams.put("endDate", queryDate.format(DATE_FORMATTER));
         queryParams.put("courtHouseId", courtHouseId);
 
         requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
@@ -1280,8 +1174,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Insert a rule via database seeder
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -1291,7 +1185,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
         );
 
@@ -1299,8 +1192,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("withJudiciary", false);
 
-        final String getUrl = JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES
-                .replace("{judiciaryId}", judiciaryId)
+        final String getUrl = RULE_ID_AVAILABILITY_RULES
                 .replace("{ruleId}", ruleId);
         final RequestParams requestParams = getRequestParams(getUrl, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -1320,7 +1212,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(rule.getString("courtHouseId"), is(courtHouseId));
         assertThat(rule.getString("startDate"), is(startDate.format(DATE_FORMATTER)));
         assertThat(rule.getString("endDate"), is(endDate.format(DATE_FORMATTER)));
-        assertThat(rule.getString("recurringType"), is("WEEKLY"));
     }
 
     @Test
@@ -1328,8 +1219,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = "7e2f843e-d639-40b3-8611-8015f3a13333"; // Use ID from stubbed judiciaries
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Insert a rule via database seeder
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -1339,7 +1230,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                RecurringType.MONTHLY,
                 Arrays.asList(AvailabilityDayOfWeek.Wednesday)
         );
 
@@ -1347,8 +1237,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("withJudiciary", true);
 
-        final String getUrl = JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES
-                .replace("{judiciaryId}", judiciaryId)
+        final String getUrl = RULE_ID_AVAILABILITY_RULES
                 .replace("{ruleId}", ruleId);
         final RequestParams requestParams = getRequestParams(getUrl, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -1364,7 +1253,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertNotNull(jsonObject.getJsonObject("rule"), "Response should contain rule");
         final JsonObject rule = jsonObject.getJsonObject("rule");
         assertThat(rule.getString("id"), is(ruleId));
-        assertThat(rule.getString("recurringType"), is("MONTHLY"));
 
         // Judiciary may be null if not found in reference data service, but structure should be present
         assertTrue(jsonObject.containsKey("judiciary"), "Response should contain judiciary field");
@@ -1375,8 +1263,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = "7e2f843e-d639-40b3-8611-8015f3a13333"; // Use ID from stubbed judiciaries
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Insert a rule via database seeder
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -1386,13 +1274,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Friday)
         );
 
         // Get the rule without specifying withJudiciary (should default to true)
-        final String getUrl = JUDICIARY_ID_RULE_ID_AVAILABILITY_RULES
-                .replace("{judiciaryId}", judiciaryId)
+        final String getUrl = RULE_ID_AVAILABILITY_RULES
                 .replace("{ruleId}", ruleId);
         final RequestParams requestParams = getRequestParams(getUrl, RESPONSE_TYPE, SYSTEM_USER_ID, new HashMap<>());
         final ResponseData responseData = poll(requestParams)
@@ -1426,7 +1312,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", repeatDaysBuilder)
                 .add("sessionType", SessionType.AD.name())
                 .build()
@@ -1456,7 +1341,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", repeatDaysBuilder)
                 .add("sessionType", SessionType.AD.name())
                 .build()
@@ -1485,7 +1369,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
@@ -1499,7 +1382,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", repeatDaysBuilder)
                 .add("sessionType", SessionType.AD.name())
                 .build()
@@ -1531,7 +1413,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 originalStartDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
@@ -1545,7 +1426,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("courtHouseId", courtHouseId)
                 .add("startDate", newStartDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("recurringType", RecurringType.WEEKLY.name())
                 .add("repeatDays", repeatDaysBuilder)
                 .add("sessionType", SessionType.AD.name())
                 .build()
@@ -1574,7 +1454,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
 
@@ -1599,8 +1478,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final String ruleId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
-        final LocalDate startDate = LocalDate.of(2026, 1, 1);
-        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final LocalDate startDate = futureDate(1); // Tomorrow
+        final LocalDate endDate = futureDate(30); // ~1 month from now
 
         // Create a rule: Weekly on Mondays, AM session
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -1610,15 +1489,14 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                RecurringType.WEEKLY,
                 Arrays.asList(AvailabilityDayOfWeek.Monday)
         );
         // Update session_type to AM
         databaseSeeder.updateJudiciaryAvailabilityRuleSessionType(ruleId, SessionType.AM.name());
 
-        // Create a court schedule on a Monday (January 5, 2026 is a Monday) with AM session
+        // Create a court schedule on a Monday with AM session
         final String courtScheduleId = randomUUID().toString();
-        final LocalDate sessionDate = LocalDate.of(2026, 1, 5); // Monday
+        final LocalDate sessionDate = futureDateOnDayOfWeek(java.time.DayOfWeek.MONDAY, 0);
         final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setCourtHouseId(courtHouseId);

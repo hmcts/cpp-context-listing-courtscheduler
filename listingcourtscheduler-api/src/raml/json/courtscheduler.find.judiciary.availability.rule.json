@@ -6,7 +6,6 @@
       "courtHouseId": "323e4567-e89b-12d3-a456-426614174002",
       "startDate": "2026-01-01",
       "endDate": "2026-01-31",
-      "recurringType": "MONTHLY",
       "sessionType": "AD",
       "repeatDays": [
         {
@@ -25,7 +24,6 @@
       "courtHouseId": "323e4567-e89b-12d3-a456-426614174002",
       "startDate": "2026-01-02",
       "endDate": "2026-01-04",
-      "recurringType": "WEEKLY",
       "sessionType": "AM",
       "repeatDays": [
         "Monday",

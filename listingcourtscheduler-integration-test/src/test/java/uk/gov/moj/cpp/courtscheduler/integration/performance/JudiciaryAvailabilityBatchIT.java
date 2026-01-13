@@ -60,7 +60,6 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     Collections.emptyList(),
                     availableStart1,
                     availableEnd1,
-                    "Weekly",
                     List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             ));
 
@@ -73,7 +72,6 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     Collections.emptyList(),
                     availableStart2,
                     availableEnd2,
-                    "Weekly",
                     List.of("Monday", "Tuesday", "Wednesday")
             ));
 
@@ -86,7 +84,6 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     Collections.emptyList(),
                     availableStart3,
                     availableEnd3,
-                    "Weekly",
                     List.of("Thursday", "Friday")
             ));
 
@@ -105,7 +102,6 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     unavailabilities,
                     unavailableStart,
                     unavailableEnd,
-                    "Weekly",
                     List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             ));
         }
@@ -125,7 +121,6 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     new ArrayList<>(),
                     availableStart1,
                     availableEnd1,
-                    "Weekly",
                     List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             ));
 
@@ -138,7 +133,6 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     new ArrayList<>(),
                     availableStart2,
                     availableEnd2,
-                    "Weekly",
                     List.of("Monday", "Tuesday", "Wednesday")
             ));
 
@@ -151,7 +145,6 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     new ArrayList<>(),
                     availableStart3,
                     availableEnd3,
-                    "Weekly",
                     List.of("Thursday", "Friday")
             ));
             final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
@@ -167,7 +160,6 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     unavailabilities,
                     queryStartDate,
                     queryEndDate,
-                    "Weekly",
                     List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             ));
         }
