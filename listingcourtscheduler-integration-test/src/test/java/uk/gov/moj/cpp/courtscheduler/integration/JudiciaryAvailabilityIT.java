@@ -75,15 +75,6 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         return baseDate.plusDays(daysUntilTarget);
     }
 
-    /**
-     * Helper method to get the nth occurrence of a day of week in a month.
-     * For example, 2nd Monday of a given month.
-     */
-    private LocalDate nthDayOfWeekInMonth(LocalDate monthStart, java.time.DayOfWeek dayOfWeek, int n) {
-        LocalDate firstDay = monthStart.with(java.time.temporal.TemporalAdjusters.firstInMonth(dayOfWeek));
-        return firstDay.plusWeeks(n - 1);
-    }
-
     @Test
     void shouldAddAvailabilityWeeklyOnAllWeekdays() {
         final String judiciaryId = randomUUID().toString();

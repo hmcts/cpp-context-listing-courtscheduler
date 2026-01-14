@@ -595,12 +595,11 @@ public class JudiciaryAvailabilityService {
                         .filter(rule -> !rule.getId().equals(excludeRuleId))
                         .toList()
                 : overlappingRules;
-        
-        for (final JudiciaryAvailabilityRule existingRule : rulesToCheck) {
-            if (hasOverlappingRepeatPattern(request, existingRule)) {
-                return "A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern";
-            }
+
+        if (!rulesToCheck.isEmpty()) {
+            return "A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern";
         }
+
         return null;
     }
 
@@ -793,39 +792,6 @@ public class JudiciaryAvailabilityService {
         }
         // Two ranges overlap if: start1 <= end2 AND start2 <= end1
         return !start1.isAfter(end2) && !start2.isAfter(end1);
-    }
-
-    /**
-     * Checks if a request has an overlapping repeat pattern with an existing rule.
-     * This checks if the repeat days and recurring type would cause conflicts.
-     */
-    private boolean hasOverlappingRepeatPattern(
-            final BaseJudiciaryAvailabilityRuleWithDetailsRequest request,
-            final JudiciaryAvailabilityRule existingRule) {
-        
-        // Check if they have overlapping repeat days
-        if (request.getRepeatDays() != null && !request.getRepeatDays().isEmpty() &&
-            existingRule.getRepeatDays() != null && !existingRule.getRepeatDays().isEmpty()) {
-            
-            // Extract day names from request (enum)
-            final Set<AvailabilityDayOfWeek> requestDays = new HashSet<>(request.getRepeatDays());
-            
-            // Extract day names from existing rule
-            final Set<AvailabilityDayOfWeek> existingDays = existingRule.getRepeatDays().stream()
-                    .map(uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay::getDayOfWeek)
-                    .collect(Collectors.toSet());
-            
-            // Check if there's any overlap in days
-            final Set<AvailabilityDayOfWeek> intersection = new HashSet<>(requestDays);
-            intersection.retainAll(existingDays);
-            
-            // If there's overlap in days, they conflict
-            return !intersection.isEmpty();
-        }
-        
-        // If one has repeat days and the other doesn't, they might still conflict
-        // For simplicity, we consider any overlap in date range with same judiciary as a conflict
-        return true;
     }
 
     /**

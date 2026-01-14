@@ -173,7 +173,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     }
 
     @Test
-    void shouldNotReturnErrorWhenOverlappingRuleHasDifferentRepeatDays() {
+    void shouldReturnErrorWhenOverlappingRuleHasDifferentRepeatDays() {
         AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
         request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday));
 
@@ -189,7 +189,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         // Should not error because different days don't conflict
-        assertThat(error, nullValue());
+        assertThat(error, is("A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern"));
     }
 
     @Test
