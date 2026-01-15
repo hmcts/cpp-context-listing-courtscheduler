@@ -34,8 +34,10 @@ import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionValidationParams;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder;
+import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -45,6 +47,7 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -647,7 +650,7 @@ class SessionsApiValidatorTest {
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
-        assertEquals("The courtroom belongs to a court centre with CROWN jurisdiction, which does not match the session jurisdiction MAGISTRATES",
+        assertEquals("Courtroom selected does not exist in Rota",
                 result.getString("errorMessage"));
     }
 
@@ -2302,5 +2305,370 @@ class SessionsApiValidatorTest {
         if (result.containsKey("errorMessage")) {
             assertTrue(!result.getString("errorMessage").contains("Cannot assign courtroom to a CROWN draft session with hearings booked"));
         }
+    }
+
+    // Tests for getSessionsAvailabilityValidation
+    @Test
+    void shouldReturnErrorWhenCourtScheduleIdsIsEmptyForAvailabilityValidation() {
+        // Given
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(emptyList())
+                .withSlotsOrDuration(60)
+                .build();
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertEquals("Court Schedule Ids cannot be empty", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtScheduleIdsAreNotFound() {
+        // Given
+        String courtScheduleId1 = randomUUID().toString();
+        String courtScheduleId2 = randomUUID().toString();
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(List.of(courtScheduleId1, courtScheduleId2))
+                .withSlotsOrDuration(60)
+                .build();
+
+        // Return only one schedule to avoid IndexOutOfBounds, but one ID is still missing
+        CourtSchedule schedule1 = new CourtSchedule();
+        schedule1.setCourtScheduleId(courtScheduleId1);
+        schedule1.setSlotBased(false);
+        
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId1, courtScheduleId2)))
+                .thenReturn(List.of(schedule1));
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertTrue(result.getString("errorMessage").contains("Court Schedule Ids not found"));
+        assertTrue(result.getString("errorMessage").contains(courtScheduleId2));
+    }
+
+    @Test
+    void shouldReturnErrorWhenScheduleTypesAreInconsistent() {
+        // Given
+        String courtScheduleId1 = randomUUID().toString();
+        String courtScheduleId2 = randomUUID().toString();
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(List.of(courtScheduleId1, courtScheduleId2))
+                .withSlotsOrDuration(60)
+                .build();
+
+        CourtSchedule schedule1 = new CourtSchedule();
+        schedule1.setCourtScheduleId(courtScheduleId1);
+        schedule1.setSlotBased(true);
+
+        CourtSchedule schedule2 = new CourtSchedule();
+        schedule2.setCourtScheduleId(courtScheduleId2);
+        schedule2.setSlotBased(false);
+
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId1, courtScheduleId2)))
+                .thenReturn(List.of(schedule1, schedule2));
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertEquals("All court schedules should be either slot-based or duration-based", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenSlotBasedScheduleIsFullyBooked() {
+        // Given
+        String courtScheduleId = randomUUID().toString();
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withSlotsOrDuration(null)
+                .build();
+
+        CourtSchedule schedule = new CourtSchedule();
+        schedule.setCourtScheduleId(courtScheduleId);
+        schedule.setSlotBased(true);
+        schedule.setMaxSlots(10);
+
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId)))
+                .thenReturn(List.of(schedule));
+
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(List.of(courtScheduleId)))
+                .thenReturn(Map.of(courtScheduleId, 10)); // Fully booked
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertEquals("Court Schedule Id: " + courtScheduleId + " is fully booked", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectWhenSlotBasedScheduleHasAvailability() {
+        // Given
+        String courtScheduleId = randomUUID().toString();
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withSlotsOrDuration(null)
+                .build();
+
+        CourtSchedule schedule = new CourtSchedule();
+        schedule.setCourtScheduleId(courtScheduleId);
+        schedule.setSlotBased(true);
+        schedule.setMaxSlots(10);
+
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId)))
+                .thenReturn(List.of(schedule));
+
+        when(allocatedListingService.getAllocatedListingsByCourtScheduleId(List.of(courtScheduleId)))
+                .thenReturn(Map.of(courtScheduleId, 5)); // Has availability
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldReturnErrorWhenDurationIsNullForDurationBasedSchedule() {
+        // Given
+        String courtScheduleId = randomUUID().toString();
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withSlotsOrDuration(null)
+                .build();
+
+        CourtSchedule schedule = new CourtSchedule();
+        schedule.setCourtScheduleId(courtScheduleId);
+        schedule.setSlotBased(false);
+
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId)))
+                .thenReturn(List.of(schedule));
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertEquals("Duration is mandatory and should be greater than 0", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenDurationIsLessThanOneForDurationBasedSchedule() {
+        // Given
+        String courtScheduleId = randomUUID().toString();
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withSlotsOrDuration(0)
+                .build();
+
+        CourtSchedule schedule = new CourtSchedule();
+        schedule.setCourtScheduleId(courtScheduleId);
+        schedule.setSlotBased(false);
+
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId)))
+                .thenReturn(List.of(schedule));
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertEquals("Duration is mandatory and should be greater than 0", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenDurationExceedsAvailableDuration() {
+        // Given
+        String courtScheduleId = randomUUID().toString();
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withSlotsOrDuration(100)
+                .build();
+
+        CourtSchedule schedule = new CourtSchedule();
+        schedule.setCourtScheduleId(courtScheduleId);
+        schedule.setSlotBased(false);
+        schedule.setAvailableDuration(50); // Less than requested
+
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId)))
+                .thenReturn(List.of(schedule));
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertEquals("Not enough available durations for all court schedules", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectWhenDurationIsSufficient() {
+        // Given
+        String courtScheduleId = randomUUID().toString();
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withSlotsOrDuration(50)
+                .build();
+
+        CourtSchedule schedule = new CourtSchedule();
+        schedule.setCourtScheduleId(courtScheduleId);
+        schedule.setSlotBased(false);
+        schedule.setAvailableDuration(100); // More than requested
+
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId)))
+                .thenReturn(List.of(schedule));
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldReturnErrorWhenAllDaySplitScheduleHasNoMorningOrAfternoonAvailability() {
+        // Given
+        String courtScheduleId = randomUUID().toString();
+        ValidateSessionAvailabilityRequestParam requestParam = ValidateSessionAvailabilityRequestParam
+                .ValidateSessionAvailabilityRequestParamBuilder.validateSessionAvailabilityRequestParam()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withSlotsOrDuration(50)
+                .build();
+
+        LocalDate sessionDate = LocalDate.now();
+        Date sessionStartTime = java.sql.Timestamp.valueOf(sessionDate.atTime(9, 0)); // 9:00 AM
+        Date hearingStartTime = java.sql.Timestamp.valueOf(sessionDate.atTime(10, 0)); // 10:00 AM (morning session)
+
+        CourtSchedule schedule = new CourtSchedule();
+        schedule.setCourtScheduleId(courtScheduleId);
+        schedule.setSlotBased(false);
+        schedule.setAvailableDuration(100);
+        schedule.setSupportAdSplit(true);
+        schedule.setMaxAdMorningDuration(100);
+        schedule.setMaxAdAfternoonDuration(100);
+        schedule.setSessionStartTime(sessionStartTime);
+        schedule.setSessionDate(sessionDate);
+
+        AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
+        when(booked.getDuration()).thenReturn(100); // Fully books the morning session
+        when(booked.getHearingStartTime()).thenReturn(hearingStartTime);
+
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId)))
+                .thenReturn(List.of(schedule));
+
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(List.of(booked));
+
+        // When
+        JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
+
+        // Then
+        assertEquals("Requested duration must fit within either the morning or afternoon session for all-day split schedules.", result.getString("errorMessage"));
+    }
+
+    // Tests for getAssignCourtroomValidation
+    @Test
+    void shouldReturnErrorWhenCourtScheduleIdsIsNullForAssignCourtroom() {
+        // Given
+        AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(null)
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        // When
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+
+        // Then
+        assertEquals("At least one court schedule ID must be provided", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtScheduleIdsIsEmptyForAssignCourtroom() {
+        // Given
+        AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(emptyList())
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        // When
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+
+        // Then
+        assertEquals("At least one court schedule ID must be provided", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtRoomIdIsNull() {
+        // Given
+        AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(randomUUID().toString()))
+                .withCourtRoomId(null)
+                .build();
+
+        // When
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+
+        // Then
+        assertEquals("Courtroom ID must be provided", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtRoomIdIsEmpty() {
+        // Given
+        AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(randomUUID().toString()))
+                .withCourtRoomId("")
+                .build();
+
+        // When
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+
+        // Then
+        assertEquals("Courtroom ID must be provided", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnErrorWhenCourtRoomIdIsBlank() {
+        // Given
+        AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(randomUUID().toString()))
+                .withCourtRoomId("   ")
+                .build();
+
+        // When
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+
+        // Then
+        assertEquals("Courtroom ID must be provided", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldReturnEmptyJsonObjectWhenAllFieldsAreValid() {
+        // Given
+        AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(randomUUID().toString()))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        // When
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+
+        // Then
+        assertEquals(EMPTY_JSON_OBJECT, result);
     }
 }

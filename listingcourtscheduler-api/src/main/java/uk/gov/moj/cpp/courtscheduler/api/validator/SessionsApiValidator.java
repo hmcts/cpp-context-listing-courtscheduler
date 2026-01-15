@@ -290,7 +290,7 @@ public class SessionsApiValidator {
             if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
                 return buildErrorResponse("The courtroom belongs to a court centre with MAGISTRATES jurisdiction, which does not match the session jurisdiction CROWN");
             } else {
-                return buildErrorResponse("The courtroom belongs to a court centre with CROWN jurisdiction, which does not match the session jurisdiction MAGISTRATES");
+                return buildErrorResponse("Courtroom selected does not exist in Rota");
             }
         }
         return EMPTY_JSON_OBJECT;
