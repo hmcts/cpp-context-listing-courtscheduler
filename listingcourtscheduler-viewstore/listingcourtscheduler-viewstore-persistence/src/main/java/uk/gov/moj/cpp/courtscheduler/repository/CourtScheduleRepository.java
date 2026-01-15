@@ -1056,7 +1056,7 @@ public abstract class CourtScheduleRepository extends AbstractEntityRepository<C
                             modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class);
                     errorDeleteCourtSchedules.add(domainCourtSchedule);
                 } else {
-                    if (courtSchedule.getSessionDate().isAfter(now())) {
+                    if (!courtSchedule.getSessionDate().isBefore(now())) {
                         List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId);
                         courtScheduleJudiciaries.forEach(courtScheduleJudiciary -> courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary));
                         remove(courtSchedule);
