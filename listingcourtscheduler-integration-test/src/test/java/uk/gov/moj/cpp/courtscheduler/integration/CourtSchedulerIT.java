@@ -5,14 +5,18 @@ import static java.util.Date.from;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static javax.json.Json.createArrayBuilder;
+import static javax.json.Json.createObjectBuilder;
 import static javax.ws.rs.core.Response.Status.ACCEPTED;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.apache.activemq.artemis.utils.RandomUtil.randomSimpleString;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
@@ -30,6 +34,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SE
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getRandomFutureDateWithinNextYear;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.localDateToDateWithTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.getUtcTimeStringForDate;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 
@@ -39,6 +44,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
 import java.io.StringReader;
@@ -63,7 +70,6 @@ import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 
@@ -76,6 +82,9 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String VALIDATE_URL = "/validate";
     private static final String VALIDATE_SESSION_AVAILABILITY_URL = "/validate-session-availability";
     private static final String OUCODE_MIGRATE_URL = "/oucode/migrate";
+    private static final String JUDICIARY_SESSION_URL = "/session";
+    private static final String ASSIGN_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.assign-judiciary+json";
+    private static final String UNASSIGN_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.unassign.judiciary+json";
 
     private static final String COURT_SCHEDULE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
     private static final String COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
@@ -1550,6 +1559,495 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListingForMorning.setHearingStartTime(combineDateAndTime(courtSchedule.getSessionDate(), time));
         databaseSeeder.insertAllocatedListing(allocatedListingForMorning);
         return allocatedListingForMorning;
+    }
+
+    @Test
+    void shouldUnassignJudiciarySuccessfully() throws SQLException, Exception {
+        // Setup: Create a court schedule and assign a judiciary
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        // Verify judiciary is assigned
+        List<CourtScheduleJudiciary> judiciariesBefore = databaseReader.courtScheduleJudiciaries();
+        assertTrue(judiciariesBefore.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+
+        // Call unassign endpoint
+
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                UNASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Verify judiciary is unassigned
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        assertFalse(judiciariesAfter.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+    }
+
+    @Test
+    void shouldContinueProcessingWhenUnassigningJudiciaryWithAllocatedListings() throws SQLException, Exception {
+        // Setup: Create a court schedule with allocated listings and assign a judiciary
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        // Add allocated listing to the court schedule
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        // Call unassign endpoint
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                UNASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should return ACCEPTED since we continue processing (no exception thrown)
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Verify judiciary is still assigned (not removed due to allocated listings)
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        assertTrue(judiciariesAfter.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+    }
+
+    @Test
+    void shouldContinueProcessingWhenJudiciaryNotFound() throws SQLException, IllegalArgumentException {
+        // Setup: Create a court schedule but no judiciary assignment
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final String nonExistentJudiciaryId = randomUUID().toString();
+
+        // Call unassign endpoint with non-existent judiciary
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", nonExistentJudiciaryId)
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                UNASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should return ACCEPTED since we continue processing (no exception thrown)
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenSessionIdsMissing() {
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", randomUUID().toString())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                UNASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenJudiciaryIdMissing() {
+        // Note: Validator no longer validates missing judiciaryId, but service layer will return error
+        // when trying to find judiciary with empty ID
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(randomUUID().toString())
+                                        .build())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                UNASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    }
+
+    @Test
+    void shouldSkipValidationsWhenSkipValidationsIsTrueForUnassign() throws Exception {
+        // Setup: Create a court schedule and assign a judiciary
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        // Add allocated listing to the court schedule (normally would prevent unassignment)
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        // Call unassign endpoint with skipValidations=true
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .add("skipValidations", true)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                UNASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should succeed even though allocated listings exist (validations skipped)
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Verify judiciary is unassigned
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        assertFalse(judiciariesAfter.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+    }
+
+    @Test
+    void shouldPerformValidationsWhenSkipValidationsIsFalseForUnassign() throws Exception {
+        // Setup: Create a court schedule and assign a judiciary
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        // Add allocated listing to the court schedule (should prevent unassignment)
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        // Call unassign endpoint with skipValidations=false
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .add("skipValidations", false)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                UNASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should succeed (validation continues but doesn't throw exception, just logs)
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Verify judiciary is still assigned (validation prevented unassignment)
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        assertTrue(judiciariesAfter.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId().getJudiciaryId())));
+    }
+
+    @Test
+    void shouldAssignJudiciarySuccessfully() throws Exception {
+        // Setup: Create a court schedule
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final String judiciaryId = randomUUID().toString();
+
+        // Verify judiciary is not assigned initially
+        List<CourtScheduleJudiciary> judiciariesBefore = databaseReader.courtScheduleJudiciaries();
+        assertFalse(judiciariesBefore.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(judiciaryId)));
+
+        // Call assign endpoint with skipValidations=true (since judiciary may not exist in reference data)
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", judiciaryId)
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .add("skipValidations", true)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                ASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should succeed with skipValidations=true
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    @Test
+    void shouldAssignJudiciaryWithSkipValidationsFalse() throws Exception {
+        // Setup: Create a court schedule
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        // Use a judiciary ID from the stubbed reference data (from referencedata.judiciaries.json)
+        final String judiciaryId = "9ac02e8d-ee90-3da6-8d3e-0dd0af2cb976";
+
+        // Call assign endpoint with skipValidations=false
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", judiciaryId)
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .add("isDeputy", false)
+                                .add("isBenchChairman", true)
+                                .build())
+                        .build())
+                .add("skipValidations", false)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                ASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should return ACCEPTED when validation passes (judiciary exists in reference data)
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    @Test
+    void shouldAssignJudiciaryWithMultipleSessions() throws Exception {
+        // Setup: Create multiple court schedules
+        final CourtSchedule courtSchedule1 = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule1);
+
+        final CourtSchedule courtSchedule2 = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule2);
+
+        final String judiciaryId = randomUUID().toString();
+
+        // Call assign endpoint with skipValidations=true for multiple sessions
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", judiciaryId)
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule1.getCourtScheduleId())
+                                        .add(courtSchedule2.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .add("skipValidations", true)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                ASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should succeed
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    @Test
+    void shouldAssignJudiciaryWithDefaultSkipValidations() throws Exception {
+        // Setup: Create a court schedule
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        // Use a judiciary ID from the stubbed reference data (from referencedata.judiciaries.json)
+        final String judiciaryId = "9ac02e8d-ee90-3da6-8d3e-0dd0af2cb976";
+
+        // Call assign endpoint without skipValidations (should default to false)
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", judiciaryId)
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .add("isDeputy", true)
+                                .add("isBenchChairman", false)
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                ASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should return ACCEPTED when validation passes (judiciary exists in reference data, defaults to skipValidations=false)
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    @Test
+    void shouldPersistIsDeputyAndIsBenchChairmanAsFalseWhenNotProvided() throws Exception {
+        // Setup: Create a court schedule
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        // Use a judiciary ID from the stubbed reference data (from referencedata.judiciaries.json)
+        final String judiciaryId = "9ac02e8d-ee90-3da6-8d3e-0dd0af2cb976";
+
+        // Verify judiciary is not assigned initially
+        List<CourtScheduleJudiciary> judiciariesBefore = databaseReader.courtScheduleJudiciaries();
+        assertFalse(judiciariesBefore.stream()
+                .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(judiciaryId)));
+
+        // Call assign endpoint without isDeputy and isBenchChairman
+        final String requestPayload = createObjectBuilder()
+                .add("judiciaries", createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add("judiciaryId", judiciaryId)
+                                .add("sessionIds", createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                // Intentionally not including isDeputy and isBenchChairman
+                                .build())
+                        .build())
+                .add("skipValidations", false)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                ASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        // Should return ACCEPTED when validation passes
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        // Wait a bit for async processing
+        Thread.sleep(1000);
+
+        // Verify judiciary is assigned and check database values
+        List<CourtScheduleJudiciary> judiciariesAfter = databaseReader.courtScheduleJudiciaries();
+        final CourtScheduleJudiciary assignedJudiciary = judiciariesAfter.stream()
+                .filter(js -> js.getId().getCourtScheduleId().equals(courtSchedule.getCourtScheduleId())
+                        && js.getId().getJudiciaryId().equals(judiciaryId))
+                .findFirst()
+                .orElse(null);
+
+        assertThat(assignedJudiciary, notNullValue());
+        // Verify that isDeputy and isBenchChairman are persisted as false when not provided
+        assertFalse(assignedJudiciary.getDeputy(), "isDeputy should be persisted as false when not provided");
+        assertFalse(assignedJudiciary.getBenchChairman(), "isBenchChairman should be persisted as false when not provided");
+    }
+
+    private CourtSchedule createTestCourtSchedule() {
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(randomUUID().toString());
+        courtSchedule.setListingProfileId("CS" + randomSimpleString().toString());
+        courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setSessionDate(LocalDate.now().plusDays(30));
+        courtSchedule.setActive(true);
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setAvailableSlots(10);
+        courtSchedule.setMaxDuration(240);
+        courtSchedule.setAvailableDuration(240);
+        courtSchedule.setCourtSession(AM_SESSION);
+        courtSchedule.setPanel("ADULT");
+        courtSchedule.setBusinessType("TRL");
+        courtSchedule.setSupportAdSplit(false);
+        courtSchedule.setIsOverbookingAllowed(false);
+        courtSchedule.setMaxAdMorningDuration(0);
+        courtSchedule.setMaxAdAfternoonDuration(0);
+        return courtSchedule;
+    }
+
+    private CourtScheduleJudiciary createTestCourtScheduleJudiciary(final String courtScheduleId) {
+        final CourtScheduleJudiciary courtScheduleJudiciary = new CourtScheduleJudiciary();
+        final CourtScheduleJudiciaryKey key = new CourtScheduleJudiciaryKey();
+        key.setCourtScheduleId(courtScheduleId);
+        key.setJudiciaryId(randomUUID().toString());
+        courtScheduleJudiciary.setId(key);
+        courtScheduleJudiciary.setCourtListingProfileId("CS" + randomSimpleString().toString());
+        courtScheduleJudiciary.setRotaJudiciaryId("ROTA" + randomSimpleString().toString());
+        courtScheduleJudiciary.setTitle("Mr");
+        courtScheduleJudiciary.setForenames("John");
+        courtScheduleJudiciary.setSurname("Doe");
+        courtScheduleJudiciary.setEmail("john.doe@example.com");
+        courtScheduleJudiciary.setJudiciaryType("MAGISTRATE");
+        courtScheduleJudiciary.setBenchChairman(false);
+        courtScheduleJudiciary.setDeputy(false);
+        courtScheduleJudiciary.setPosition("1");
+        courtScheduleJudiciary.setActive(true);
+        return courtScheduleJudiciary;
+    }
+
+    private AllocatedListing getAllocatedListing(final CourtSchedule courtSchedule) {
+        final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        allocatedListing.setId(randomUUID().toString());
+        allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
+        allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
+        allocatedListing.setOucode(courtSchedule.getOuCode());
+        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0).atZone(UTC_ZONE).toInstant()));
+        allocatedListing.setDuration(60);
+        allocatedListing.setHearingId(randomUUID().toString());
+        allocatedListing.setBookingId(randomUUID().toString());
+        return allocatedListing;
     }
 
 }

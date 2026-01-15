@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.service;
+package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
 import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.mockito.ArgumentMatchers.any;
@@ -69,7 +69,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));
         doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations(eq(requester));
 
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, false);
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, false, "new");
 
         verify(azureBlobClientService, atLeastOnce()).findAvailableFile(eq("lja_"));
         verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName), eq(leaseId));

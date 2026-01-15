@@ -56,7 +56,6 @@ public class RotaFileProcessHistoryService {
                 + ".xml");
         rotaFileProcessHistory.setFileHash(computeFileHash(content));
         rotaFileProcessHistory.setProcessStartDate(Timestamp.valueOf(LocalDateTime.now()));
-        rotaFileProcessHistory.setProcessEndDate(null);
         return rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
     }
 

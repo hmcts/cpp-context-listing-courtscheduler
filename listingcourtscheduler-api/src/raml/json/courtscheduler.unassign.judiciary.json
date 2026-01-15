@@ -1,0 +1,18 @@
+{
+  "judiciaries": [
+    {
+      "judiciaryId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "sessionIds": [
+        "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111",
+        "1b2c3d44-7e8f-4b9a-8c7d-2a3b4c5d6666"
+      ]
+    },
+    {
+      "judiciaryId": "7e6f4a11-1111-2222-3333-444455556666",
+      "sessionIds": [
+        "22223333-4444-5555-6666-777788889999"
+      ]
+    }
+  ]
+}
+

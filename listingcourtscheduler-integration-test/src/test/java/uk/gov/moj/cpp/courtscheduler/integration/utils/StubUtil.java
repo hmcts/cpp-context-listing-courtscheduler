@@ -117,11 +117,13 @@ public class StubUtil {
 
     public static void stubGetReferenceDataJudiciaries(final String responsePath) {
         final String urlPath = QUERY_RELATIVE_URL_ROTA_JUDICIARIES;
+        final String payload = getPayload(responsePath);
         stubFor(get(urlPathEqualTo(urlPath))
-                .willReturn(aResponse().withStatus(SC_OK)
+                .willReturn(aResponse()
+                        .withStatus(SC_OK)
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", ROTA_JUDICIARIES_QUERY_MEDIA_TYPE)
-                        .withBody(getPayload(responsePath))));
+                        .withBody(payload)));
     }
 
 
