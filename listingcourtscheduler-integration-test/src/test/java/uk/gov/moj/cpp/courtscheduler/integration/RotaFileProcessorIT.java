@@ -56,6 +56,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Deprecated
 class RotaFileProcessorIT extends AbstractIT {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessorIT.class);

@@ -5,16 +5,21 @@ import static java.util.UUID.randomUUID;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
@@ -34,26 +39,19 @@ import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciariesRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.DeleteJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleResponseConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.GetJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.GetJudiciaryAvailabilityRuleResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ConverterException;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -61,28 +59,22 @@ import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil;
+import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciaryAvailabilityRuleApiValidator;
+import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.UnprocessableEntityException;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
+import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
@@ -102,7 +94,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -182,29 +176,19 @@ class CourtSchedulerApiTest {
     @Mock
     private OuCodeMigrateConverter ouCodeMigrateConverter;
     @Mock
+    private JudiciariesApiValidator judiciariesApiValidator;
+    @Mock
     private JsonEnvelope envelope;
     @Mock
     private ListHearingSlotConverter listHearingSlotConverter;
     @Mock
-    private AddJudiciaryAvailabilityRuleConverter addJudiciaryAvailabilityRuleConverter;
+    private AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
     @Mock
-    private DeleteJudiciaryAvailabilityRuleConverter deleteJudiciaryAvailabilityRuleConverter;
+    private AssignJudiciariesApiValidator assignJudiciariesApiValidator;
     @Mock
-    private UpdateJudiciaryAvailabilityRuleConverter updateJudiciaryAvailabilityRuleConverter;
+    private JudiciaryAssignmentService judiciaryAssignmentService;
     @Mock
-    private FindJudiciaryAvailabilityConverter findJudiciaryAvailabilityConverter;
-    @Mock
-    private FindJudiciaryAvailabilityRuleConverter findJudiciaryAvailabilityRuleConverter;
-    @Mock
-    private FindJudiciaryAvailabilityRuleResponseConverter findJudiciaryAvailabilityRuleResponseConverter;
-    @Mock
-    private GetJudiciaryAvailabilityRuleConverter getJudiciaryAvailabilityRuleConverter;
-    @Mock
-    private GetJudiciaryAvailabilityRuleResponseConverter getJudiciaryAvailabilityRuleResponseConverter;
-    @Mock
-    private JudiciaryAvailabilityService judiciaryAvailabilityService;
-    @Mock
-    private JudiciaryAvailabilityRuleApiValidator judiciaryAvailabilityRuleApiValidator;
+    private JudiciaryUnassignmentService judiciaryUnassignmentService;
 
 
     @Test
@@ -261,6 +245,67 @@ class CourtSchedulerApiTest {
         courtSchedulerApi.deleteCourtSchedule(deleteCourtScheduleJsonEnvelope);
 
         verify(enveloper, atLeastOnce()).withMetadataFrom(deleteCourtScheduleJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldAssignJudiciaries() throws IOException {
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.assign-judiciary.json"));
+        final String requestName = "courtscheduler.assign-judiciary";
+        final JsonEnvelope envelope = createEnvelope(requestName, jsonObject);
+
+        final AssignJudiciariesRequest requestDto = AssignJudiciariesRequest.builder().build();
+
+        when(assignJudiciariesRequestConverter.convert(jsonObject)).thenReturn(requestDto);
+        when(assignJudiciariesApiValidator.validate(requestDto, requester)).thenReturn(EMPTY_JSON_OBJECT);
+        when(enveloper.withMetadataFrom(envelope, requestName)).thenReturn(function);
+        when(function.apply(any(JsonObject.class))).thenReturn(envelope);
+
+        courtSchedulerApi.assignJudiciary(envelope);
+
+        verify(judiciaryAssignmentService).assignJudiciaries(requestDto, requester, envelope.metadata().id().toString());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(envelope, requestName);
+        final ArgumentCaptor<JsonObject> responseCaptor = ArgumentCaptor.forClass(JsonObject.class);
+        verify(function).apply(responseCaptor.capture());
+        assertTrue(responseCaptor.getValue().isEmpty());
+    }
+
+    @Test
+    void shouldAssignJudiciariesWithSkipValidations() throws IOException {
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.assign-judiciary.json"));
+        final JsonObject jsonObjectWithSkipValidations = createObjectBuilder()
+                .add("judiciaries", jsonObject.getJsonArray("judiciaries"))
+                .add("skipValidations", true)
+                .build();
+        final String requestName = "courtscheduler.assign-judiciary";
+        final JsonEnvelope envelope = createEnvelope(requestName, jsonObjectWithSkipValidations);
+
+        final AssignJudiciariesRequest requestDto = AssignJudiciariesRequest.builder()
+                .withSkipValidations(true)
+                .build();
+
+        when(assignJudiciariesRequestConverter.convert(jsonObjectWithSkipValidations)).thenReturn(requestDto);
+        when(assignJudiciariesApiValidator.validate(requestDto, requester)).thenReturn(EMPTY_JSON_OBJECT);
+        when(enveloper.withMetadataFrom(envelope, requestName)).thenReturn(function);
+        when(function.apply(any(JsonObject.class))).thenReturn(envelope);
+
+        courtSchedulerApi.assignJudiciary(envelope);
+
+        verify(judiciaryAssignmentService).assignJudiciaries(requestDto, requester, envelope.metadata().id().toString());
+        assertTrue(requestDto.isSkipValidations());
+    }
+
+    @Test
+    void shouldThrowWhenAssignJudiciariesFailsValidation() throws IOException {
+        final JsonObject jsonObject = payloadToObject(getPayload("courtscheduler.assign-judiciary.json"));
+        final JsonEnvelope envelope = createEnvelope("courtscheduler.assign-judiciary", jsonObject);
+        final AssignJudiciariesRequest requestDto = AssignJudiciariesRequest.builder().build();
+        final JsonObject validationError = createObjectBuilder().add("errorMessage", "invalid").build();
+
+        when(assignJudiciariesRequestConverter.convert(jsonObject)).thenReturn(requestDto);
+        when(assignJudiciariesApiValidator.validate(requestDto, requester)).thenReturn(validationError);
+
+        assertThrows(ValidationException.class, () -> courtSchedulerApi.assignJudiciary(envelope));
+        verify(judiciaryAssignmentService, never()).assignJudiciaries(any(), any(), any());
     }
 
     @Test
@@ -328,11 +373,11 @@ class CourtSchedulerApiTest {
         String hearingDateJsonName = "hearingDate";
         String courtScheduleIdJsonName = "courtScheduleId";
         JsonObject schedule1 = createObjectBuilder().add(courtScheduleIdJsonName, "Court-Schedule-Id1")
-                                                    .add(hearingDateJsonName, "2025-04-25")
-                                                    .build();
+                .add(hearingDateJsonName, "2025-04-25")
+                .build();
         JsonObject schedule2 = createObjectBuilder().add(courtScheduleIdJsonName, "Court-Schedule-Id2")
-                                                    .add(hearingDateJsonName, "2025-04-26")
-                                                    .build();
+                .add(hearingDateJsonName, "2025-04-26")
+                .build();
         JsonArrayBuilder schedulesJsonArrayBuilder = createArrayBuilder().add(schedule1).add(schedule2);
         when(slotsUpdateService.update(any())).thenReturn(createObjectBuilder().add("schedules", schedulesJsonArrayBuilder).build());
         when(enveloper.withMetadataFrom(updateHearingSlotsEnvelope, requestName)).thenReturn(function);
@@ -597,12 +642,97 @@ class CourtSchedulerApiTest {
         final String requestName = "courtscheduler.oucode.migrate";
 
         final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
-        when(ouCodeMigrateConverter.convert(anyString())).thenReturn(new OuCodeMigrateRequest());
+        final OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        when(ouCodeMigrateConverter.convert(anyString())).thenReturn(ouCodeMigrateRequest);
         when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
-        when(sessionsService.migrateOuCodes(any())).thenReturn(Result.SUCCESS());
+        when(sessionsService.migrateOuCodes(any(OuCodeMigrateRequest.class))).thenReturn(Result.SUCCESS());
         courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
 
+        verify(ouCodeMigrateConverter).convert(jsonObject.toString());
+        verify(sessionsService).migrateOuCodes(ouCodeMigrateRequest);
         verify(enveloper, atLeastOnce()).withMetadataFrom(migrateOuCodeEnvelope, requestName);
+    }
+
+    @Test
+    void shouldThrowBadRequestExceptionWhenMigrateOuCodesFails() throws IOException {
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+        final String errorMessage = "One of the OuCode not present for migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+        final OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        when(ouCodeMigrateConverter.convert(anyString())).thenReturn(ouCodeMigrateRequest);
+        when(sessionsService.migrateOuCodes(any(OuCodeMigrateRequest.class)))
+                .thenReturn(new Result(errorMessage, false));
+
+        final BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope));
+
+        assertThat(exception.getMessage(), is(errorMessage));
+        verify(ouCodeMigrateConverter).convert(jsonObject.toString());
+        verify(sessionsService).migrateOuCodes(ouCodeMigrateRequest);
+        verify(enveloper, never()).withMetadataFrom(any(), anyString());
+    }
+
+    @Test
+    void shouldPropagateConverterExceptionWhenConversionFails() throws IOException {
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+        final ConverterException converterException = new ConverterException("Conversion failed");
+        when(ouCodeMigrateConverter.convert(anyString())).thenThrow(converterException);
+
+        final ConverterException exception = assertThrows(ConverterException.class,
+                () -> courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope));
+
+        assertThat(exception, is(converterException));
+        verify(ouCodeMigrateConverter).convert(jsonObject.toString());
+        verify(sessionsService, never()).migrateOuCodes(any());
+        verify(enveloper, never()).withMetadataFrom(any(), anyString());
+    }
+
+    @Test
+    void shouldCallConverterWithCorrectPayload() throws IOException {
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+        final OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        when(ouCodeMigrateConverter.convert(jsonObject.toString())).thenReturn(ouCodeMigrateRequest);
+        when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
+        when(sessionsService.migrateOuCodes(any(OuCodeMigrateRequest.class))).thenReturn(Result.SUCCESS());
+
+        courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
+
+        final ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
+        verify(ouCodeMigrateConverter).convert(payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue(), is(jsonObject.toString()));
+    }
+
+    @Test
+    void shouldCallSessionsServiceWithConvertedRequest() throws IOException {
+        String payload = getPayload("oucode-migrate-courtscheduler.json");
+        final JsonObject jsonObject = payloadToObject(payload);
+        final String requestName = "courtscheduler.oucode.migrate";
+
+        final JsonEnvelope migrateOuCodeEnvelope = createEnvelope(requestName, jsonObject);
+        final OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
+        ouCodeMigrateRequest.setMigrated(true);
+        when(ouCodeMigrateConverter.convert(anyString())).thenReturn(ouCodeMigrateRequest);
+        when(enveloper.withMetadataFrom(migrateOuCodeEnvelope, requestName)).thenReturn(function);
+        when(sessionsService.migrateOuCodes(any(OuCodeMigrateRequest.class))).thenReturn(Result.SUCCESS());
+
+        courtSchedulerApi.migrateOuCode(migrateOuCodeEnvelope);
+
+        final ArgumentCaptor<OuCodeMigrateRequest> requestCaptor = ArgumentCaptor.forClass(OuCodeMigrateRequest.class);
+        verify(sessionsService).migrateOuCodes(requestCaptor.capture());
+        final OuCodeMigrateRequest capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest, is(ouCodeMigrateRequest));
+        assertThat(capturedRequest.isMigrated(), is(true));
     }
 
     @Test
@@ -741,581 +871,329 @@ class CourtSchedulerApiTest {
     }
 
     @Test
-    void shouldDeleteJudiciaryAvailabilityRule() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
+    void shouldUnassignJudiciarySuccessfully() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+
+        final JsonObject judiciary = createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
-                .build();
-        final String requestName = "courtscheduler.judiciary.delete.availability.rule";
-        final JsonEnvelope deleteEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-
-        when(this.enveloper.withMetadataFrom(deleteEnvelope, requestName)).thenReturn(function);
-        when(deleteJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(EMPTY_JSON_OBJECT);
-
-        courtSchedulerApi.deleteJudiciaryAvailabilityRule(deleteEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(deleteEnvelope, requestName);
-        verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
-        verify(judiciaryAvailabilityService).deleteJudiciaryAvailabilityRule(any(DeleteJudiciaryAvailabilityRuleRequest.class));
-    }
-
-    @Test
-    void shouldThrowValidationExceptionWhenDeleteValidationFails() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .build();
-        final String requestName = "courtscheduler.judiciary.delete.availability.rule";
-        final JsonEnvelope deleteEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-
-        // This test verifies that validation exceptions are still thrown when validator returns an error
-        JsonObject validationError = createObjectBuilder()
-                .add("errorMessage", "Request cannot be null")
-                .build();
-
-        when(deleteJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(validationError);
-
-        assertThrows(UnprocessableEntityException.class, () ->
-                courtSchedulerApi.deleteJudiciaryAvailabilityRule(deleteEnvelope));
-
-        verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
-        verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).deleteJudiciaryAvailabilityRule(any());
-    }
-
-    @Test
-    void shouldAddJudiciaryAvailabilityRule() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("sessionType", "AM")
-                .add("repeatDays", createArrayBuilder()
-                        .add(createObjectBuilder()
-                                .add("day", "Monday")
-                                .build())
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
                         .build())
                 .build();
-        final String requestName = "courtscheduler.judiciary.add.availability.rule";
-        final JsonEnvelope addEnvelope = createEnvelope(requestName, jsonPayloadObject);
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
 
-        AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
+        final Map<String, List<String>> expectedMap = new HashMap<>();
+        expectedMap.put(judiciaryId, Collections.singletonList(sessionId));
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(Map.class), anyString(), anyBoolean());
 
-        when(this.enveloper.withMetadataFrom(addEnvelope, requestName)).thenReturn(function);
-        when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(AddJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(EMPTY_JSON_OBJECT);
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        courtSchedulerApi.addJudiciaryAvailabilityRule(addEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(addEnvelope, requestName);
-        verify(addJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(AddJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
-        verify(judiciaryAvailabilityService).addJudiciaryAvailabilityRule(any(AddJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(), anyString(), anyBoolean());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
-    void shouldThrowValidationExceptionWhenAddJudiciaryAvailabilityRuleHasInvalidData() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
+    void shouldPassSkipValidationsFlagToUnassignmentService() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+
+        final JsonObject judiciary = createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("repeatDays", createArrayBuilder()
-                        .add("Monday")
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
                         .build())
                 .build();
-        final String requestName = "courtscheduler.judiciary.add.availability.rule";
-        final JsonEnvelope addEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
-        request.setJudiciaryId(judiciaryId);
-        // courtHouseId not set to trigger validation error
-
-        final JsonObject validationError = createObjectBuilder()
-                .add("errorMessage", "courtHouseId cannot be null")
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
                 .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .add("skipValidations", true)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
 
-        when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(AddJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(validationError);
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(Map.class), anyString(), eq(true));
 
-        assertThrows(UnprocessableEntityException.class, () -> courtSchedulerApi.addJudiciaryAvailabilityRule(addEnvelope));
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        verify(addJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(AddJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
-        verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).addJudiciaryAvailabilityRule(any());
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(Map.class), anyString(), eq(true));
     }
 
     @Test
-    void shouldUpdateJudiciaryAvailabilityRule() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
+    void shouldDefaultSkipValidationsToFalseWhenNotProvided() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+
+        final JsonObject judiciary = createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-02-01")
-                .add("endDate", "2026-02-28")
-                .add("sessionType", "AM")
-                .add("repeatDays", createArrayBuilder()
-                        .add(createObjectBuilder()
-                                .add("day", "Monday")
-                                .build())
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
                         .build())
                 .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule";
-        final JsonEnvelope updateEnvelope = createEnvelope(requestName, jsonPayloadObject);
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
 
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(Map.class), anyString(), eq(false));
 
-        when(this.enveloper.withMetadataFrom(updateEnvelope, requestName)).thenReturn(function);
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(EMPTY_JSON_OBJECT);
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(updateEnvelope, requestName);
-        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
-        verify(judiciaryAvailabilityService).updateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(Map.class), anyString(), eq(false));
     }
 
     @Test
-    void shouldUpdateJudiciaryAvailabilityRuleWithRuleIdFromRequestParameter() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-02-01")
-                .add("endDate", "2026-02-28")
-                .add("repeatDays", createArrayBuilder()
-                        .add("Monday")
+    void shouldReturnErrorEnvelopeWhenSessionIdsIsMissing() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "sessionIds array is required in judiciaries[0]";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", "judge-456")
+                .build();
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
+
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString(), anyBoolean());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldReturnErrorEnvelopeWhenJudiciaryIdIsMissing() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "judiciaryId is required in judiciaries[0]";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("sessionIds", createArrayBuilder()
+                        .add("schedule-123")
                         .build())
                 .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule";
-        final JsonEnvelope updateEnvelope = createEnvelope(requestName, jsonPayloadObject);
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
 
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        when(this.enveloper.withMetadataFrom(updateEnvelope, requestName)).thenReturn(function);
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(EMPTY_JSON_OBJECT);
-
-        courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope);
-
-        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
-        verify(judiciaryAvailabilityService).updateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString(), anyBoolean());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
-    void shouldThrowValidationExceptionWhenUpdateValidationFails() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
+    void shouldContinueProcessingWhenCourtScheduleHasAllocatedListings() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+
+        final JsonObject judiciary = createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-02-01")
-                .add("endDate", "2026-02-28")
-                .add("repeatDays", createArrayBuilder()
-                        .add("Monday")
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
                         .build())
                 .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule";
-        final JsonEnvelope updateEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
-
-        JsonObject validationError = createObjectBuilder()
-                .add("errorMessage", "ruleId cannot be blank")
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
                 .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(), anyString(), anyBoolean());
 
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(validationError);
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        assertThrows(UnprocessableEntityException.class, () ->
-                courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope));
-
-        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
-        verify(judiciaryAvailabilityService, org.mockito.Mockito.never()).updateJudiciaryAvailabilityRule(any());
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(), anyString(), anyBoolean());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
-    void shouldUpdateJudiciaryAvailabilityRuleWithUnAvailabilities() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
+    void shouldContinueProcessingWhenJudiciaryNotFound() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId = "schedule-123";
+        final String judiciaryId = "judge-456";
+
+        final JsonObject judiciary = createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-02-01")
-                .add("endDate", "2026-02-28")
-                .add("repeatDays", createArrayBuilder()
-                        .add("Monday")
-                        .build())
-                .add("unavailabilities", createArrayBuilder()
-                        .add(createObjectBuilder()
-                                .add("startDate", "2026-02-10")
-                                .add("endDate", "2026-02-12")
-                                .add("reason", "ANNUAL_LEAVE")
-                                .build())
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId)
                         .build())
                 .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule";
-        final JsonEnvelope updateEnvelope = createEnvelope(requestName, jsonPayloadObject);
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
+                .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(), anyString(), anyBoolean());
 
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        when(this.enveloper.withMetadataFrom(updateEnvelope, requestName)).thenReturn(function);
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(EMPTY_JSON_OBJECT);
-
-        courtSchedulerApi.updateJudiciaryAvailabilityRule(updateEnvelope);
-
-        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(UpdateJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
-        verify(judiciaryAvailabilityService).updateJudiciaryAvailabilityRule(any(UpdateJudiciaryAvailabilityRuleRequest.class));
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(), anyString(), anyBoolean());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
-    void shouldFindJudiciaryAvailabilityRules() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
-                .add("judiciaryId", judiciaryId)
-                .add("pageSize", 10)
-                .add("pageNumber", 1)
-                .add("withJudiciary", true)
+    void shouldReturnErrorEnvelopeWhenJudiciariesArrayIsMissing() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "judiciaries array is required";
+
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
                 .build();
-        final String requestName = "courtscheduler.judiciary.find.availability.rule";
-        final JsonEnvelope findEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        FindJudiciaryAvailabilityRuleRequest request = new FindJudiciaryAvailabilityRuleRequest();
-        request.setStartDate(LocalDate.of(2026, 1, 1));
-        request.setEndDate(LocalDate.of(2026, 1, 31));
-        request.setCourtHouseId(courtHouseId);
-        request.setJudiciaryId(judiciaryId);
-        request.setPageSize(10);
-        request.setPageNumber(1);
-        request.setWithJudiciary(true);
-
-        final List<JudiciaryAvailabilityRuleResponse> rules = new ArrayList<>();
-        final JudiciaryAvailabilityRuleResponse ruleResponse = new JudiciaryAvailabilityRuleResponse();
-        ruleResponse.setId(randomUUID().toString());
-        ruleResponse.setJudiciaryId(judiciaryId);
-        ruleResponse.setCourtHouseId(courtHouseId);
-        rules.add(ruleResponse);
-
-        final FindJudiciaryAvailabilityRuleResponse serviceResponse = new FindJudiciaryAvailabilityRuleResponse(rules, 1, 1, 10);
-        final JsonObject responseJsonObject = createObjectBuilder()
-                .add("rules", createArrayBuilder().build())
-                .add("totalCount", 1)
-                .add("pageNumber", 1)
-                .add("pageSize", 10)
-                .add("judiciaries", createArrayBuilder().build())
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
                 .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
 
-        when(this.enveloper.withMetadataFrom(findEnvelope, requestName)).thenReturn(function);
-        when(findJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityService.findJudiciaryAvailabilityRules(any(FindJudiciaryAvailabilityRuleRequest.class), any(Requester.class)))
-                .thenReturn(serviceResponse);
-        when(findJudiciaryAvailabilityRuleResponseConverter.convert(any(FindJudiciaryAvailabilityRuleResponse.class)))
-                .thenReturn(responseJsonObject);
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        courtSchedulerApi.findJudiciaryAvailabilityRules(findEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(findEnvelope, requestName);
-        verify(findJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityService).findJudiciaryAvailabilityRules(any(FindJudiciaryAvailabilityRuleRequest.class), eq(requester));
-        verify(findJudiciaryAvailabilityRuleResponseConverter).convert(any(FindJudiciaryAvailabilityRuleResponse.class));
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString(), anyBoolean());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
-    void shouldFindJudiciaryAvailabilityRulesWithJudiciaryId() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
-                .add("judiciaryId", judiciaryId)
-                .add("pageSize", 20)
-                .add("pageNumber", 1)
+    void shouldReturnErrorEnvelopeWhenJudiciariesArrayIsEmpty() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "judiciaries array must contain at least one item";
+
+        final JsonArray judiciariesArray = createArrayBuilder()
                 .build();
-        final String requestName = "courtscheduler.judiciary.find.availability.rule";
-        final JsonEnvelope findEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        FindJudiciaryAvailabilityRuleRequest request = new FindJudiciaryAvailabilityRuleRequest();
-        request.setStartDate(LocalDate.of(2026, 1, 1));
-        request.setEndDate(LocalDate.of(2026, 1, 31));
-        request.setCourtHouseId(courtHouseId);
-        request.setJudiciaryId(judiciaryId);
-        request.setPageSize(20);
-        request.setPageNumber(1);
-
-        final FindJudiciaryAvailabilityRuleResponse serviceResponse = new FindJudiciaryAvailabilityRuleResponse(Collections.emptyList(), 0, 1, 20);
-        final JsonObject responseJsonObject = createObjectBuilder()
-                .add("rules", createArrayBuilder().build())
-                .add("totalCount", 0)
-                .add("pageNumber", 1)
-                .add("pageSize", 20)
-                .add("judiciaries", createArrayBuilder().build())
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
                 .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
 
-        when(this.enveloper.withMetadataFrom(findEnvelope, requestName)).thenReturn(function);
-        when(findJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityService.findJudiciaryAvailabilityRules(any(FindJudiciaryAvailabilityRuleRequest.class), any(Requester.class)))
-                .thenReturn(serviceResponse);
-        when(findJudiciaryAvailabilityRuleResponseConverter.convert(any(FindJudiciaryAvailabilityRuleResponse.class)))
-                .thenReturn(responseJsonObject);
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        courtSchedulerApi.findJudiciaryAvailabilityRules(findEnvelope);
-
-        verify(findJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityService).findJudiciaryAvailabilityRules(any(FindJudiciaryAvailabilityRuleRequest.class), eq(requester));
-        verify(findJudiciaryAvailabilityRuleResponseConverter).convert(any(FindJudiciaryAvailabilityRuleResponse.class));
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString(), anyBoolean());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
-    void shouldFindJudiciaryAvailabilityRulesWithPagination() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
-                .add("judiciaryId", judiciaryId)
-                .add("pageSize", 5)
-                .add("pageNumber", 2)
-                .add("withJudiciary", false)
+    void shouldReturnErrorEnvelopeWhenSessionIdsArrayIsEmpty() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String errorMessage = "sessionIds array must contain at least one item in judiciaries[0]";
+
+        final JsonObject judiciary = createObjectBuilder()
+                .add("judiciaryId", "judge-456")
+                .add("sessionIds", createArrayBuilder().build())
                 .build();
-        final String requestName = "courtscheduler.judiciary.find.availability.rule";
-        final JsonEnvelope findEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        FindJudiciaryAvailabilityRuleRequest request = new FindJudiciaryAvailabilityRuleRequest();
-        request.setStartDate(LocalDate.of(2026, 1, 1));
-        request.setEndDate(LocalDate.of(2026, 1, 31));
-        request.setCourtHouseId(courtHouseId);
-        request.setJudiciaryId(judiciaryId);
-        request.setPageSize(5);
-        request.setPageNumber(2);
-        request.setWithJudiciary(false);
-
-        final FindJudiciaryAvailabilityRuleResponse serviceResponse = new FindJudiciaryAvailabilityRuleResponse(Collections.emptyList(), 0, 2, 5);
-        final JsonObject responseJsonObject = createObjectBuilder()
-                .add("rules", createArrayBuilder().build())
-                .add("totalCount", 0)
-                .add("pageNumber", 2)
-                .add("pageSize", 5)
-                .add("judiciaries", createArrayBuilder().build())
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary)
                 .build();
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
+                .build();
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        final JsonObject errorResponse = createObjectBuilder()
+                .add("errorMessage", errorMessage)
+                .build();
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(errorResponse);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
 
-        when(this.enveloper.withMetadataFrom(findEnvelope, requestName)).thenReturn(function);
-        when(findJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityService.findJudiciaryAvailabilityRules(any(FindJudiciaryAvailabilityRuleRequest.class), any(Requester.class)))
-                .thenReturn(serviceResponse);
-        when(findJudiciaryAvailabilityRuleResponseConverter.convert(any(FindJudiciaryAvailabilityRuleResponse.class)))
-                .thenReturn(responseJsonObject);
+        final JsonEnvelope result = courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        courtSchedulerApi.findJudiciaryAvailabilityRules(findEnvelope);
-
-        verify(findJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        final ArgumentCaptor<FindJudiciaryAvailabilityRuleRequest> requestCaptor = ArgumentCaptor.forClass(FindJudiciaryAvailabilityRuleRequest.class);
-        verify(judiciaryAvailabilityService).findJudiciaryAvailabilityRules(requestCaptor.capture(), eq(requester));
-        assertEquals(5, requestCaptor.getValue().getPageSize(), "pageSize should be 5");
-        assertEquals(2, requestCaptor.getValue().getPageNumber(), "pageNumber should be 2");
-        assertEquals(false, requestCaptor.getValue().getWithJudiciary(), "withJudiciary should be false");
-        verify(findJudiciaryAvailabilityRuleResponseConverter).convert(any(FindJudiciaryAvailabilityRuleResponse.class));
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, org.mockito.Mockito.never()).unassignJudiciary(any(), anyString(), anyBoolean());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     @Test
-    void shouldFindJudiciaryAvailability() {
-        final String judiciaryId1 = randomUUID().toString();
-        final String judiciaryId2 = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
+    void shouldUnassignMultipleJudiciariesSuccessfully() {
+        final String requestName = "courtscheduler.unassign.judiciary";
+        final String sessionId1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String sessionId2 = "1b2c3d44-7e8f-4b9a-8c7d-2a3b4c5d6666";
+        final String sessionId3 = "22223333-4444-5555-6666-777788889999";
+        final String judiciaryId1 = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+        final String judiciaryId2 = "7e6f4a11-1111-2222-3333-444455556666";
+
+        final JsonObject judiciary1 = createObjectBuilder()
+                .add("judiciaryId", judiciaryId1)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId1)
+                        .add(sessionId2)
+                        .build())
                 .build();
-        final String requestName = "courtscheduler.judiciary.find.availability";
-        final JsonEnvelope findEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        FindJudiciaryAvailabilityRequest request = new FindJudiciaryAvailabilityRequest();
-        request.setStartDate(LocalDate.of(2026, 1, 1));
-        request.setEndDate(LocalDate.of(2026, 1, 31));
-        request.setCourtHouseId(courtHouseId);
-
-        final List<String> availableJudiciaries = new ArrayList<>();
-        availableJudiciaries.add(judiciaryId1);
-        availableJudiciaries.add(judiciaryId2);
-        final FindJudiciaryAvailabilityResponse serviceResponse = new FindJudiciaryAvailabilityResponse(availableJudiciaries);
-
-        when(this.enveloper.withMetadataFrom(findEnvelope, requestName)).thenReturn(function);
-        when(findJudiciaryAvailabilityConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityService.findJudiciaryAvailability(any(FindJudiciaryAvailabilityRequest.class)))
-                .thenReturn(serviceResponse);
-
-        final JsonEnvelope result = courtSchedulerApi.findJudiciaryAvailability(findEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(findEnvelope, requestName);
-        verify(findJudiciaryAvailabilityConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityService).findJudiciaryAvailability(any(FindJudiciaryAvailabilityRequest.class));
-    }
-
-    @Test
-    void shouldFindJudiciaryAvailabilityWithEmptyList() {
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
+        final JsonObject judiciary2 = createObjectBuilder()
+                .add("judiciaryId", judiciaryId2)
+                .add("sessionIds", createArrayBuilder()
+                        .add(sessionId3)
+                        .build())
                 .build();
-        final String requestName = "courtscheduler.judiciary.find.availability";
-        final JsonEnvelope findEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        FindJudiciaryAvailabilityRequest request = new FindJudiciaryAvailabilityRequest();
-        request.setStartDate(LocalDate.of(2026, 1, 1));
-        request.setEndDate(LocalDate.of(2026, 1, 31));
-        request.setCourtHouseId(courtHouseId);
-
-        final FindJudiciaryAvailabilityResponse serviceResponse = new FindJudiciaryAvailabilityResponse(Collections.emptyList());
-        final JsonEnvelope expectedResult = createEnvelope(requestName, createObjectBuilder().add("availableJudiciaries", Json.createArrayBuilder().build()).build());
-
-        when(this.enveloper.withMetadataFrom(findEnvelope, requestName)).thenReturn(function);
-        when(function.apply(any())).thenReturn(expectedResult);
-        when(findJudiciaryAvailabilityConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityService.findJudiciaryAvailability(any(FindJudiciaryAvailabilityRequest.class)))
-                .thenReturn(serviceResponse);
-
-        final JsonEnvelope result = courtSchedulerApi.findJudiciaryAvailability(findEnvelope);
-
-        assertNotNull(result, "Result should not be null");
-        verify(enveloper, atLeastOnce()).withMetadataFrom(findEnvelope, requestName);
-        verify(findJudiciaryAvailabilityConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityService).findJudiciaryAvailability(any(FindJudiciaryAvailabilityRequest.class));
-    }
-
-    @Test
-    void shouldFindJudiciaryAvailabilityWithJudiciaryId() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
-                .add("judiciaryId", judiciaryId)
+        final JsonArray judiciariesArray = createArrayBuilder()
+                .add(judiciary1)
+                .add(judiciary2)
                 .build();
-        final String requestName = "courtscheduler.judiciary.find.availability";
-        final JsonEnvelope findEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        FindJudiciaryAvailabilityRequest request = new FindJudiciaryAvailabilityRequest();
-        request.setStartDate(LocalDate.of(2026, 1, 1));
-        request.setEndDate(LocalDate.of(2026, 1, 31));
-        request.setCourtHouseId(courtHouseId);
-        request.setJudiciaryId(judiciaryId);
-
-        final List<String> availableJudiciaries = new ArrayList<>();
-        availableJudiciaries.add(judiciaryId);
-        final FindJudiciaryAvailabilityResponse serviceResponse = new FindJudiciaryAvailabilityResponse(availableJudiciaries);
-
-        when(this.enveloper.withMetadataFrom(findEnvelope, requestName)).thenReturn(function);
-        when(findJudiciaryAvailabilityConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityService.findJudiciaryAvailability(any(FindJudiciaryAvailabilityRequest.class)))
-                .thenReturn(serviceResponse);
-
-        final JsonEnvelope result = courtSchedulerApi.findJudiciaryAvailability(findEnvelope);
-
-        verify(findJudiciaryAvailabilityConverter).convert(any(JsonObject.class));
-        final ArgumentCaptor<FindJudiciaryAvailabilityRequest> requestCaptor = ArgumentCaptor.forClass(FindJudiciaryAvailabilityRequest.class);
-        verify(judiciaryAvailabilityService).findJudiciaryAvailability(requestCaptor.capture());
-        assertEquals(judiciaryId, requestCaptor.getValue().getJudiciaryId(), "judiciaryId should be set");
-        assertEquals(courtHouseId, requestCaptor.getValue().getCourtHouseId(), "courtHouseId should be set");
-    }
-
-    @Test
-    void shouldFindJudiciaryAvailabilityWithNullResponse() {
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("courtHouseId", courtHouseId)
+        final JsonObject payloadAsJsonObject = createObjectBuilder()
+                .add("judiciaries", judiciariesArray)
                 .build();
-        final String requestName = "courtscheduler.judiciary.find.availability";
-        final JsonEnvelope findEnvelope = createEnvelope(requestName, jsonPayloadObject);
+        final JsonEnvelope unassignJudiciaryJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
+        when(enveloper.withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName)).thenReturn(function);
+        when(judiciariesApiValidator.validateUnassignJudiciaryRequest(any(JsonObject.class))).thenReturn(EMPTY_JSON_OBJECT);
+        doNothing().when(judiciaryUnassignmentService).unassignJudiciary(any(Map.class), anyString(), anyBoolean());
 
-        FindJudiciaryAvailabilityRequest request = new FindJudiciaryAvailabilityRequest();
-        request.setStartDate(LocalDate.of(2026, 1, 1));
-        request.setEndDate(LocalDate.of(2026, 1, 31));
-        request.setCourtHouseId(courtHouseId);
+        courtSchedulerApi.unassignJudiciary(unassignJudiciaryJsonEnvelope);
 
-        final FindJudiciaryAvailabilityResponse serviceResponse = new FindJudiciaryAvailabilityResponse();
-        serviceResponse.setAvailableJudiciaries(null);
-        final JsonEnvelope expectedResult = createEnvelope(requestName, createObjectBuilder().add("availableJudiciaries", Json.createArrayBuilder().build()).build());
-
-        when(this.enveloper.withMetadataFrom(findEnvelope, requestName)).thenReturn(function);
-        when(function.apply(any())).thenReturn(expectedResult);
-        when(findJudiciaryAvailabilityConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityService.findJudiciaryAvailability(any(FindJudiciaryAvailabilityRequest.class)))
-                .thenReturn(serviceResponse);
-
-        final JsonEnvelope result = courtSchedulerApi.findJudiciaryAvailability(findEnvelope);
-
-        assertNotNull(result, "Result should not be null");
-        verify(enveloper, atLeastOnce()).withMetadataFrom(findEnvelope, requestName);
-        verify(findJudiciaryAvailabilityConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityService).findJudiciaryAvailability(any(FindJudiciaryAvailabilityRequest.class));
+        verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
+        verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(), anyString(), anyBoolean());
+        verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {
@@ -1336,285 +1214,5 @@ class CourtSchedulerApiTest {
         return new HearingSlotSearchAndBookResponse(hearingId, "432c067d-eaca-4ce5-ad90-a366ef3e4bb6", "001c067d-eaca-4ce5-ad90-a366ef3e4bb6",
                 sessionStartTime.toString(), 20,
                 List.of(CourtScheduleJudiciary.judiciary().withCourtScheduleId("432c067d-eaca-4ce5-ad90-a366ef3e4bb6").withJudiciaryId(randomUUID().toString()).build()));
-    }
-
-    @Test
-    void shouldGetJudiciaryAvailabilityRule() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        // ruleId is a path parameter, may be included in payload by framework
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("withJudiciary", true)
-                .build();
-        final String requestName = "courtscheduler.judiciary.get.availability.rule";
-        final JsonEnvelope getEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setWithJudiciary(true);
-
-        final JudiciaryAvailabilityRuleResponse ruleResponse = new JudiciaryAvailabilityRuleResponse();
-        ruleResponse.setId(ruleId);
-        ruleResponse.setJudiciaryId(judiciaryId);
-
-        final uk.gov.moj.cpp.courtscheduler.domain.Judiciary judiciary = new uk.gov.moj.cpp.courtscheduler.domain.Judiciary();
-        judiciary.setId(judiciaryId);
-        judiciary.setSurname("Smith");
-
-        final GetJudiciaryAvailabilityRuleResponse serviceResponse = new GetJudiciaryAvailabilityRuleResponse(ruleResponse, judiciary);
-        final JsonObject responseJsonObject = createObjectBuilder()
-                .add("rule", createObjectBuilder().build())
-                .add("judiciary", createObjectBuilder().build())
-                .build();
-
-        when(this.enveloper.withMetadataFrom(getEnvelope, requestName)).thenReturn(function);
-        when(getJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityService.getJudiciaryAvailabilityRule(any(GetJudiciaryAvailabilityRuleRequest.class), any(Requester.class)))
-                .thenReturn(serviceResponse);
-        when(getJudiciaryAvailabilityRuleResponseConverter.convert(any(GetJudiciaryAvailabilityRuleResponse.class)))
-                .thenReturn(responseJsonObject);
-
-        courtSchedulerApi.getJudiciaryAvailabilityRule(getEnvelope);
-
-        verify(enveloper, atLeastOnce()).withMetadataFrom(getEnvelope, requestName);
-        verify(getJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityService).getJudiciaryAvailabilityRule(any(GetJudiciaryAvailabilityRuleRequest.class), eq(requester));
-        verify(getJudiciaryAvailabilityRuleResponseConverter).convert(any(GetJudiciaryAvailabilityRuleResponse.class));
-    }
-
-    @Test
-    void shouldGetJudiciaryAvailabilityRuleWithoutJudiciary() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        // ruleId is a path parameter, may be included in payload by framework
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("withJudiciary", false)
-                .build();
-        final String requestName = "courtscheduler.judiciary.get.availability.rule";
-        final JsonEnvelope getEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setWithJudiciary(false);
-
-        final JudiciaryAvailabilityRuleResponse ruleResponse = new JudiciaryAvailabilityRuleResponse();
-        ruleResponse.setId(ruleId);
-        ruleResponse.setJudiciaryId(judiciaryId);
-
-        final GetJudiciaryAvailabilityRuleResponse serviceResponse = new GetJudiciaryAvailabilityRuleResponse(ruleResponse, null);
-        final JsonObject responseJsonObject = createObjectBuilder()
-                .add("rule", createObjectBuilder().build())
-                .addNull("judiciary")
-                .build();
-
-        when(this.enveloper.withMetadataFrom(getEnvelope, requestName)).thenReturn(function);
-        when(getJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityService.getJudiciaryAvailabilityRule(any(GetJudiciaryAvailabilityRuleRequest.class), any(Requester.class)))
-                .thenReturn(serviceResponse);
-        when(getJudiciaryAvailabilityRuleResponseConverter.convert(any(GetJudiciaryAvailabilityRuleResponse.class)))
-                .thenReturn(responseJsonObject);
-
-        courtSchedulerApi.getJudiciaryAvailabilityRule(getEnvelope);
-
-        verify(getJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityService).getJudiciaryAvailabilityRule(any(GetJudiciaryAvailabilityRuleRequest.class), eq(requester));
-        verify(getJudiciaryAvailabilityRuleResponseConverter).convert(any(GetJudiciaryAvailabilityRuleResponse.class));
-    }
-
-    @Test
-    void shouldReturnSuccessWhenAddJudiciaryAvailabilityValidationPasses() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", LocalDate.now().plusDays(1).toString())
-                .add("endDate", LocalDate.now().plusDays(31).toString())
-                .add("repeatDays", createArrayBuilder()
-                        .add("Monday")
-                        .build())
-                .build();
-        final String requestName = "courtscheduler.judiciary.add.availability.rule.validate";
-        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest request =
-                new uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest();
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
-
-        when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(), any()))
-                .thenReturn(EMPTY_JSON_OBJECT);
-        when(enveloper.withMetadataFrom(validationEnvelope, requestName)).thenReturn(function);
-        when(function.apply(any(JsonObject.class))).thenReturn(validationEnvelope);
-
-        courtSchedulerApi.validateAddJudiciaryAvailabilityRule(validationEnvelope);
-
-        verify(addJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(), any());
-        verify(enveloper).withMetadataFrom(validationEnvelope, requestName);
-    }
-
-    @Test
-    void shouldReturnFailureWhenAddJudiciaryAvailabilityValidationFails() {
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", LocalDate.now().plusDays(1).toString())
-                .add("endDate", LocalDate.now().plusDays(31).toString())
-                .add("repeatDays", createArrayBuilder()
-                        .add("Monday")
-                        .build())
-                .build();
-        final String requestName = "courtscheduler.judiciary.add.availability.rule.validate";
-        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest request =
-                new uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest();
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
-
-        final JsonObject validationError = createObjectBuilder()
-                .add("errorMessage", "Date range cannot exceed 3 years")
-                .build();
-
-        when(addJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(any(), any()))
-                .thenReturn(validationError);
-
-        assertThrows(UnprocessableEntityException.class, () ->
-                courtSchedulerApi.validateAddJudiciaryAvailabilityRule(validationEnvelope));
-    }
-
-    @Test
-    void shouldReturnSuccessWhenUpdateJudiciaryAvailabilityValidationPasses() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", LocalDate.now().plusDays(1).toString())
-                .add("endDate", LocalDate.now().plusDays(31).toString())
-                .add("repeatDays", createArrayBuilder()
-                        .add("Monday")
-                        .build())
-                .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule.validate";
-        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
-
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(), any()))
-                .thenReturn(EMPTY_JSON_OBJECT);
-        when(enveloper.withMetadataFrom(validationEnvelope, requestName)).thenReturn(function);
-        when(function.apply(any(JsonObject.class))).thenReturn(validationEnvelope);
-
-        courtSchedulerApi.validateUpdateJudiciaryAvailabilityRule(validationEnvelope);
-
-        verify(updateJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(), any());
-        verify(enveloper).withMetadataFrom(validationEnvelope, requestName);
-    }
-
-    @Test
-    void shouldReturnFailureWhenUpdateJudiciaryAvailabilityValidationFails() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final String courtHouseId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", LocalDate.now().plusDays(1).toString())
-                .add("endDate", LocalDate.now().plusDays(31).toString())
-                .add("repeatDays", createArrayBuilder()
-                        .add("Monday")
-                        .build())
-                .build();
-        final String requestName = "courtscheduler.judiciary.update.availability.rule.validate";
-        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-        request.setCourtHouseId(courtHouseId);
-
-        final JsonObject validationError = createObjectBuilder()
-                .add("errorMessage", "If start date is changed, it must be in the future")
-                .build();
-
-        when(updateJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(any(), any()))
-                .thenReturn(validationError);
-
-        assertThrows(UnprocessableEntityException.class, () ->
-                courtSchedulerApi.validateUpdateJudiciaryAvailabilityRule(validationEnvelope));
-    }
-
-    @Test
-    void shouldValidateDeleteJudiciaryAvailabilityRuleSuccessfully() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .build();
-        final String requestName = "courtscheduler.judiciary.delete.availability.rule.validate";
-        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-
-        when(deleteJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(EMPTY_JSON_OBJECT);
-        when(enveloper.withMetadataFrom(validationEnvelope, requestName)).thenReturn(function);
-        when(function.apply(any(JsonObject.class))).thenReturn(validationEnvelope);
-
-        courtSchedulerApi.validateDeleteJudiciaryAvailabilityRule(validationEnvelope);
-
-        verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
-    }
-
-    @Test
-    void shouldThrowUnprocessableEntityExceptionWhenDeleteValidationFails() {
-        final String ruleId = randomUUID().toString();
-        final String judiciaryId = randomUUID().toString();
-        final JsonObject jsonPayloadObject = createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .build();
-        final String requestName = "courtscheduler.judiciary.delete.availability.rule.validate";
-        final JsonEnvelope validationEnvelope = createEnvelope(requestName, jsonPayloadObject);
-
-        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
-        request.setRuleId(ruleId);
-        request.setJudiciaryId(judiciaryId);
-
-        JsonObject validationError = createObjectBuilder()
-                .add("errorMessage", "Cannot delete availability rule. Rule is already applied to session session-123 on 2026-01-15 (AM)")
-                .build();
-
-        when(deleteJudiciaryAvailabilityRuleConverter.convert(any(JsonObject.class))).thenReturn(request);
-        when(judiciaryAvailabilityRuleApiValidator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class)))
-                .thenReturn(validationError);
-
-        assertThrows(UnprocessableEntityException.class, () ->
-                courtSchedulerApi.validateDeleteJudiciaryAvailabilityRule(validationEnvelope));
-
-        verify(deleteJudiciaryAvailabilityRuleConverter).convert(any(JsonObject.class));
-        verify(judiciaryAvailabilityRuleApiValidator).validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(any(DeleteJudiciaryAvailabilityRuleRequest.class), any(JudiciaryAvailabilityService.class));
     }
 }

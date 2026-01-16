@@ -71,12 +71,12 @@ public class RotaDataEnricher {
                                                           final Boolean migrated,
                                                           final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
                                                           final Requester requester,
-                                                          final String executionId) {
+                                                          final String executionId,
+                                                          final Map<String, String> missingReferenceDataMappingMap) {
         logger.info("enrichCourtListing - rotaPeriodEndDate: {}", rotaPeriodEndDate);
         long enrichCourtListingStartTime = System.currentTimeMillis();
         final Map<String, Map<String, String>> courtListings = records.get(COURT_LISTING);
         final Map<String, CourtSchedule> courtSchedules = new HashMap<>();
-        final Map<String, String> missingReferenceDataMappingMap = new HashMap<>();
         for (final Map<String, String> listingProfile : courtListings.values()) {
             try {
                 final String linkedSessionId = listingProfile.get(LINKED_SESSION_ID);
@@ -100,9 +100,6 @@ public class RotaDataEnricher {
         }
         final long enrichCourtListingEndTime = System.currentTimeMillis();
         logger.info("Time taken to enrich court listings: {} ms", enrichCourtListingEndTime - enrichCourtListingStartTime);
-        if (!missingReferenceDataMappingMap.isEmpty()) {
-            missingReferenceDataMappingLogger.logCourtDetailsMessage(missingReferenceDataMappingMap, executionId);
-        }
         return courtSchedules;
     }
 
