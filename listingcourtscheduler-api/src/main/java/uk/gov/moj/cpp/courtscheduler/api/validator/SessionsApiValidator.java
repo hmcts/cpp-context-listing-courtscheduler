@@ -874,7 +874,7 @@ public class SessionsApiValidator {
                 : referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester);
 
         if (courtRoomOpt.isEmpty()) {
-            return buildErrorResponse(COURTROOM_NOT_FOUND + courtRoomId);
+            return buildErrorResponse("Courtroom selected does not exist in Rota");
         }
         return EMPTY_JSON_OBJECT;
     }
