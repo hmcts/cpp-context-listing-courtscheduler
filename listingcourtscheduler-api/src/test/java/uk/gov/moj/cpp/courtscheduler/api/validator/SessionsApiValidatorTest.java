@@ -12,9 +12,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
-import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
@@ -27,6 +27,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
@@ -34,7 +35,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionValidationParams;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
@@ -61,7 +61,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class SessionsApiValidatorTest {
@@ -1101,7 +1100,7 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
         assertTrue(result.containsKey("errorMessage"));
-        assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
+        assertEquals("Courtroom selected does not exist in Rota", result.getString("errorMessage"));
     }
 
     @Test
@@ -1121,7 +1120,7 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
 
         assertTrue(result.containsKey("errorMessage"));
-        assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
+        assertEquals("Courtroom selected does not exist in Rota", result.getString("errorMessage"));
     }
 
     @Test
