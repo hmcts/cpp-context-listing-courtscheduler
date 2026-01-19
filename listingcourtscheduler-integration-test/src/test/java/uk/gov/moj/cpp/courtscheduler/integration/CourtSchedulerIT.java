@@ -80,6 +80,11 @@ import javax.ws.rs.core.Response;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
 
 class CourtSchedulerIT extends AbstractIT {
 
@@ -289,20 +294,21 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(errorResponseMessage, containsString(SESSION_END_TIME_CANNOT_BE_LATER.formatted(ALL_DAY)));
     }
 
-    @Test
-    void shouldReturn400WhenPanelMissingForMagistratesJurisdictionInCreate() {
-        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-missing-panel-magistrates.json");
+    @ParameterizedTest
+    @MethodSource("provideInvalidCreatePayloads")
+    void shouldReturn400WhenInvalidPayloadInCreate(final String payloadFileName) {
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload(payloadFileName);
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
     }
 
-    @Test
-    void shouldReturn400WhenIsDraftMissingForCrownJurisdictionInCreate() {
-        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-null-draft-crown.json");
-        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
-
-        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+    private static Stream<Arguments> provideInvalidCreatePayloads() {
+        return Stream.of(
+                Arguments.of("create-court-schedule-missing-panel-magistrates.json"),
+                Arguments.of("create-court-schedule-null-draft-crown.json"),
+                Arguments.of("create-court-schedule-wrong-court-centre.json")
+        );
     }
 
     @Test
@@ -392,13 +398,6 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(errorResponseMessage, is("{\"error\":\"All day split flag should be sent for All Day(AD) session\"}"));
     }
 
-    @Test
-    void shouldReturn400WhenCourtroomDoesNotBelongToCourtCentreInCreate() {
-        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-wrong-court-centre.json");
-        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
-
-        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
-    }
 
     @Test
     void shouldReturn400WhenCourtroomDoesNotBelongToCourtCentreInValidateCreate() {
