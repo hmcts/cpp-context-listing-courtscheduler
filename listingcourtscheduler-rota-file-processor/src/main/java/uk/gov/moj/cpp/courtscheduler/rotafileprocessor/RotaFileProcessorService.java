@@ -25,6 +25,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.DateRange;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryScheduleEnricher;
@@ -36,12 +37,14 @@ import java.io.ByteArrayInputStream;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -98,6 +101,8 @@ public class RotaFileProcessorService {
 
     private static final String SNAPSHOT_NAME_PART = "_snapshot_";
     private static final String DUMMY_NAME_PART = "dummysupport";
+    private static final String XML_NAME_PART = ".xml";
+    private static final int TIMESTAMP_STRING_LENGTH = 16;
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
@@ -157,6 +162,17 @@ public class RotaFileProcessorService {
         final LocalDate rotaPeriodEndDate = rotaPeriodDateInfoProvider.getRotaPeriodEndDate();
         logger.info("rotaPeriodStartDate: {}, rotaPeriodEndDate: {}, rotaPeriodStartDay: {}, rotaPeriodEndDay: {}, masterRotaPeriodCutOffDate: {}, monthsBetweenRotaPeriod: {}", rotaPeriodStartDate, rotaPeriodEndDate,
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDay(), rotaPeriodDateInfoProvider.getRotaPeriodEndDay(), rotaPeriodEndDate, rotaPeriodDateInfoProvider.getMonthsBetweenRotaPeriod());
+
+        // Create rota_file_process_history record for master rota files (same as snapshot files)
+        if (!fileName.contains(SNAPSHOT_NAME_PART)) {
+            logger.info("DD-15703:processMasterRotaFile: before rotaFileProcessHistoryRepository.save");
+            final String fileNamePrefix = fileName.endsWith(".xml") ? fileName.substring(0, fileName.length() - (TIMESTAMP_STRING_LENGTH + XML_NAME_PART.length())) : fileName;
+            final OffsetDateTime fileDateTime = FileUtil.getLJAFileTimeStampAsOffsetDateTime(fileName);
+
+            executionId = randomUUID().toString();
+            rotaFileProcessHistory = rotaFileProcessHistoryService.save(fileNamePrefix, fileDateTime, content, executionId);
+            logger.info("DD-15703:processMasterRotaFile: after rotaFileProcessHistoryRepository.save - executionId: {}", executionId);
+        }
 
         final List<String> locations = getLocationFromRecords(records);
 
@@ -245,6 +261,10 @@ public class RotaFileProcessorService {
                 logger.info("snapshot rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
+            logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
+            if(rotaFileProcessHistory != null)
+                rotaFileProcessHistoryService.update(rotaFileProcessHistory);
+            logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
         } else {
             final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
             for(int i = 0; i < dateRanges.size(); i++) {
@@ -256,6 +276,10 @@ public class RotaFileProcessorService {
                 logger.info("master rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
+            logger.info("DD-15703:processMasterRotaFile: before rotaFileProcessHistoryRepository.update");
+            if(rotaFileProcessHistory != null)
+                rotaFileProcessHistoryService.update(rotaFileProcessHistory);
+            logger.info("DD-15703:processMasterRotaFile: after rotaFileProcessHistoryRepository.update");
         }
     }
 
@@ -342,7 +366,7 @@ public class RotaFileProcessorService {
                 .filter(slot -> (slot.getValue().getSessionDate().isEqual(dateRange.getStart()) ||
                         slot.getValue().getSessionDate().isEqual(dateRange.getEnd()) ||
                         (slot.getValue().getSessionDate().isAfter(dateRange.getStart()) &&
-                                slot.getValue().getSessionDate().isBefore(dateRange.getEnd()))))
+                        slot.getValue().getSessionDate().isBefore(dateRange.getEnd()))))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }

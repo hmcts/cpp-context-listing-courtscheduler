@@ -82,7 +82,7 @@ class RotaDataEnricherTest {
         final LocalDate rotaPeriodCutOffDate = LocalDate.of(2019, 12, 16);
         final RotaFileParser rotaFileParser = new RotaFileParser();
         setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
-        final Map<String,String> missingReferenceDataMappingMap = new HashMap();
+        final Map<String,String> missingReferenceDataMappingMap = new HashMap<>();
 
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
@@ -128,7 +128,7 @@ class RotaDataEnricherTest {
         final LocalDate rotaPeriodCutOffDate = LocalDate.of(2019, 12, 16);
         final RotaFileParser rotaFileParser = new RotaFileParser();
         setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
-        final Map<String,String> missingReferenceDataMappingMap = new HashMap();
+        final Map<String,String> missingReferenceDataMappingMap = new HashMap<>();
 
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
