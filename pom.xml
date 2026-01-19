@@ -10,7 +10,7 @@
 
     <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
     <artifactId>listingcourtscheduler-parent</artifactId>
-    <version>17.0.85-CCSPH1-SNAPSHOT</version>
+    <version>17.0.86-CCSPH1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>CourtScheduler Service - Parent Module</name>
