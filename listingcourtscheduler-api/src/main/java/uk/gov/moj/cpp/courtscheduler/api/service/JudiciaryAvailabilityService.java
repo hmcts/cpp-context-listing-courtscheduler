@@ -826,7 +826,7 @@ public class JudiciaryAvailabilityService {
             LOGGER.info("No matching sessions found for rule {}", request.getRuleId());
             return null;
         } else {
-            return "Cannot delete availability rule. Rule is already applied to session";
+            return "You cannot delete this itinerary because it is being used in a session. You must remove the session before you can delete it.";
         }
     }
 }
