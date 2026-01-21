@@ -338,7 +338,7 @@ public class SessionsApiValidator {
     }
 
     private static boolean hasValidDuration(final Session session) {
-        return nonNull(session.getSlotsOrDuration()) && (session.getSlotsOrDuration() >= 1);
+        return nonNull(session.getSlotsOrDuration()) && (session.getSlotsOrDuration() >= 0);
     }
 
     private static boolean allDaySplitWithValidDuration(final Session session) {
