@@ -420,7 +420,7 @@ class SessionsApiValidatorTest {
                 .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.MONDAY))
                 .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(0)
+                .withSlotsOrDuration(null)
                 .build();
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
@@ -431,6 +431,8 @@ class SessionsApiValidatorTest {
 
         BusinessType businessType = new BusinessType("TRL", 1, "Description", "Category", false, true, "MAGISTRATES");
         when(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).thenReturn(Optional.of(businessType));
+        stubMagCourtRoomAvailable(courtRoomId);
+        
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals("Duration should be supplied for duration-based business type TRL", result.getString("errorMessage"));
