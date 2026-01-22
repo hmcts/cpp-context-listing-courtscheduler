@@ -9,6 +9,9 @@ import java.util.UUID;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
@@ -65,7 +68,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("courtHouseId"));
+        assertThat(result.getString("errorMessage"), is("Select a courthouse"));
     }
 
     @Test
@@ -75,7 +78,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("startDate"));
+        assertThat(result.getString("errorMessage"), is("Enter a start date"));
     }
 
     @Test
@@ -85,7 +88,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("endDate"));
+        assertThat(result.getString("errorMessage"), is("Enter an end date"));
     }
 
     @Test
@@ -96,8 +99,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("startDate") || 
-                   result.getString("errorMessage").contains("endDate"));
+        assertThat(result.getString("errorMessage"), is("The start date must be the same as or before the end date"));
     }
 
     @Test
@@ -118,7 +120,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("repeatDays"));
+        assertThat(result.getString("errorMessage"), is("Select the days you want to repeat"));
     }
 
     @Test
@@ -128,7 +130,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("repeatDays"));
+        assertThat(result.getString("errorMessage"), is("Select the days you want to repeat"));
     }
 
     @Test
@@ -138,7 +140,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertTrue(result.getString("errorMessage").contains("repeatDays"));
+        assertThat(result.getString("errorMessage"), is("Select a day of the week"));
     }
 
     @Test

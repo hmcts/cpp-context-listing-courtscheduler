@@ -1124,7 +1124,7 @@ class JudiciaryAvailabilityServiceTest {
         String result = service.validateDeleteJudiciaryAvailabilityRule(request);
 
         assertNotNull(result);
-        assertTrue(result.contains("not found"));
+        assertTrue(result.contains("Judicial itinerary does not exist"));
         verify(repository).findBy(ruleId);
     }
 
@@ -1171,7 +1171,7 @@ class JudiciaryAvailabilityServiceTest {
         String result = service.validateDeleteJudiciaryAvailabilityRule(request);
 
         assertNotNull(result);
-        assertTrue(result.contains("already applied"));
+        assertTrue(result.contains("being used in a session"));
         verify(repository).findBy(ruleId);
         verify(courtScheduleJudiciaryRepository).findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
                 judiciaryId, rule.getFromDate(), rule.getToDate(), "AD");

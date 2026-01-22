@@ -70,7 +70,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("Date range cannot exceed 3 years"));
+        assertThat(error, is("The date range must be 3 years or less"));
     }
 
     @Test
@@ -80,7 +80,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("Start date must be in the future during creation"));
+        assertThat(error, is("The start date must be in the future"));
     }
 
     @Test
@@ -90,7 +90,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("End date must be in the future during creation"));
+        assertThat(error, is("The end date must be in the future"));
     }
 
     @Test
@@ -107,7 +107,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("Unavailability 1 start date must be within availability date range"));
+        assertThat(error, is(String.format("Unavailability %s start date must be between %s and %s", 1, request.getStartDate(), request.getEndDate())));
     }
 
     @Test
@@ -124,7 +124,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("Unavailability 1 end date must be within availability date range"));
+        assertThat(error, is(String.format("Unavailability %s end date must be between %s and %s", 1, request.getStartDate(), request.getEndDate())));
     }
 
     @Test
@@ -149,7 +149,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("Unavailabilities cannot overlap"));
+        assertThat(error, is("Unavailability dates cannot overlap"));
     }
 
     @Test
@@ -169,7 +169,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern"));
+        assertThat(error, is("The judiciary is already assigned during these dates"));
     }
 
     @Test
@@ -189,7 +189,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         // Should not error because different days don't conflict
-        assertThat(error, is("A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern"));
+        assertThat(error, is("The judiciary is already assigned during these dates"));
     }
 
     @Test
@@ -220,7 +220,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("If start date is changed, it must be in the future"));
+        assertThat(error, is("The new start date must be in the future"));
     }
 
     @Test
@@ -253,7 +253,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("If end date is changed, it must be in the future"));
+        assertThat(error, is("The new end date must be in the future"));
     }
 
     @Test
@@ -276,7 +276,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("Judiciary availability rule with id " + ruleId + " not found"));
+        assertThat(error, is("Judicial itinerary does not exist."));
     }
 
     @Test
@@ -302,7 +302,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern"));
+        assertThat(error, is("The judiciary is already assigned during these dates"));
     }
 
     @Test
@@ -346,9 +346,8 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("Adding unavailability from " + today.plusDays(15) + 
-                " to " + today.plusDays(20) + 
-                " would affect 2 already assigned session(s). Please review the assigned sessions before proceeding."));
+        assertThat(error, is(String.format("Adding unavailability from %s to %s would affect %s already assigned session(s). Review the assigned sessions before you continue", 
+                today.plusDays(15), today.plusDays(20), 2)));
     }
 
     @Test
@@ -395,8 +394,8 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("Changing start date from " + oldStart + " to " + newStart + 
-                " would affect 2 already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding."));
+        assertThat(error, is(String.format("Changing the start date affects %s sessions already assigned between %s and %s. Review these sessions before you continue.", 
+                2, oldStart, newStart)));
     }
 
     @Test
@@ -503,9 +502,8 @@ class JudiciaryAvailabilityValidationServiceTest {
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
         assertThat(error, notNullValue());
-        assertThat(error, is("Adding unavailability from " + today.plusDays(15) + 
-                " to " + today.plusDays(20) + 
-                " would affect 2 already assigned session(s). Please review the assigned sessions before proceeding."));
+        assertThat(error, is(String.format("Adding unavailability from %s to %s would affect %s already assigned session(s). Review the assigned sessions before you continue", 
+                today.plusDays(15), today.plusDays(20), 2)));
     }
 
     @Test

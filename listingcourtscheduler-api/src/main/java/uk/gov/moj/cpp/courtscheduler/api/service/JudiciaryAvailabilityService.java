@@ -21,6 +21,23 @@ import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryAvailabilityRuleReposit
 import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.ADDING_UNAVAILABILITY_WOULD_AFFECT_SESSIONS;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.CANNOT_DELETE_ITINERARY_IN_USE;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.CHANGING_END_DATE_FROM_TO_WOULD_AFFECT;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.CHANGING_START_DATE_AFFECTS_SESSIONS;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.DATE_RANGE_MUST_BE_3_YEARS_OR_LESS;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.END_DATE_MUST_BE_IN_FUTURE;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.JUDICIARY_ALREADY_ASSIGNED_DURING_DATES;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.NEW_END_DATE_MUST_BE_IN_FUTURE;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.NEW_START_DATE_MUST_BE_IN_FUTURE;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.RULE_ID_REQUIRED;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.RULE_ID_REQUIRED_FOR_UPDATE;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.RULE_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.START_DATE_MUST_BE_IN_FUTURE;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.UNAVAILABILITY_DATES_CANNOT_OVERLAP;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.UNAVAILABILITY_END_DATE_MUST_BE_BETWEEN;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.UNAVAILABILITY_START_DATE_MUST_BE_BETWEEN;
+
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
@@ -44,8 +61,6 @@ public class JudiciaryAvailabilityService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryAvailabilityService.class.getName());
     public static final String JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND = "Judiciary availability rule with id {} not found";
-    private static final String UNAVAILABILITY_PREFIX = "Unavailability ";
-    private static final String WOULD_AFFECT = " would affect ";
 
     @Inject
     private JudiciaryAvailabilityRuleRepository repository;
@@ -522,7 +537,7 @@ public class JudiciaryAvailabilityService {
         if (request.getStartDate() != null && request.getEndDate() != null) {
             final long yearsBetween = java.time.temporal.ChronoUnit.YEARS.between(request.getStartDate(), request.getEndDate());
             if (yearsBetween > 3) {
-                return "Date range cannot exceed 3 years";
+                return DATE_RANGE_MUST_BE_3_YEARS_OR_LESS;
             }
         }
         return null;
@@ -531,10 +546,10 @@ public class JudiciaryAvailabilityService {
     private String validateFutureDatesForCreation(final AddJudiciaryAvailabilityRuleRequest request) {
         final LocalDate today = LocalDate.now();
         if (request.getStartDate() != null && request.getStartDate().isBefore(today)) {
-            return "Start date must be in the future during creation";
+            return START_DATE_MUST_BE_IN_FUTURE;
         }
         if (request.getEndDate() != null && request.getEndDate().isBefore(today)) {
-            return "End date must be in the future during creation";
+            return END_DATE_MUST_BE_IN_FUTURE;
         }
         return null;
     }
@@ -549,10 +564,10 @@ public class JudiciaryAvailabilityService {
                     request.getUnavailabilities().get(i);
             if (unavailability.getStartDate() != null && unavailability.getEndDate() != null) {
                 if (request.getStartDate() != null && unavailability.getStartDate().isBefore(request.getStartDate())) {
-                    return UNAVAILABILITY_PREFIX + (i + 1) + " start date must be within availability date range";
+                    return String.format(UNAVAILABILITY_START_DATE_MUST_BE_BETWEEN, i + 1, request.getStartDate(), request.getEndDate());
                 }
                 if (request.getEndDate() != null && unavailability.getEndDate().isAfter(request.getEndDate())) {
-                    return UNAVAILABILITY_PREFIX + (i + 1) + " end date must be within availability date range";
+                    return String.format(UNAVAILABILITY_END_DATE_MUST_BE_BETWEEN, i + 1, request.getStartDate(), request.getEndDate());
                 }
             }
         }
@@ -571,7 +586,7 @@ public class JudiciaryAvailabilityService {
                 final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest u2 = 
                         request.getUnavailabilities().get(j);
                 if (doDateRangesOverlap(u1.getStartDate(), u1.getEndDate(), u2.getStartDate(), u2.getEndDate())) {
-                    return "Unavailabilities cannot overlap";
+                    return UNAVAILABILITY_DATES_CANNOT_OVERLAP;
                 }
             }
         }
@@ -597,7 +612,7 @@ public class JudiciaryAvailabilityService {
                 : overlappingRules;
 
         if (!rulesToCheck.isEmpty()) {
-            return "A judiciary can only be available in one place at a time. An overlapping rule exists for the same date range and repeat pattern";
+            return JUDICIARY_ALREADY_ASSIGNED_DURING_DATES;
         }
 
         return null;
@@ -622,10 +637,8 @@ public class JudiciaryAvailabilityService {
                                 unavailability.getEndDate()
                         );
                 if (!affectedSessions.isEmpty()) {
-                    return "Adding unavailability from " + unavailability.getStartDate() + 
-                            " to " + unavailability.getEndDate() + 
-                            WOULD_AFFECT + affectedSessions.size() + 
-                            " already assigned session(s). Please review the assigned sessions before proceeding.";
+                    return String.format(ADDING_UNAVAILABILITY_WOULD_AFFECT_SESSIONS, 
+                            unavailability.getStartDate(), unavailability.getEndDate(), affectedSessions.size());
                 }
             }
         }
@@ -685,7 +698,7 @@ public class JudiciaryAvailabilityService {
 
     private String validateRuleIdForUpdate(final UpdateJudiciaryAvailabilityRuleRequest request) {
         if (request.getRuleId() == null || request.getRuleId().isEmpty()) {
-            return "Rule ID is required for update";
+            return RULE_ID_REQUIRED_FOR_UPDATE;
         }
         return null;
     }
@@ -693,7 +706,7 @@ public class JudiciaryAvailabilityService {
     private String validateExistingRule(final UpdateJudiciaryAvailabilityRuleRequest request, 
                                          final JudiciaryAvailabilityRule existingRule) {
         if (existingRule == null) {
-            return "Judiciary availability rule with id " + request.getRuleId() + " not found";
+            return String.format(RULE_NOT_FOUND);
         }
         return null;
     }
@@ -705,10 +718,10 @@ public class JudiciaryAvailabilityService {
         final boolean endDateChanged = !existingRule.getToDate().equals(request.getEndDate());
         
         if (startDateChanged && request.getStartDate() != null && request.getStartDate().isBefore(today)) {
-            return "If start date is changed, it must be in the future";
+            return NEW_START_DATE_MUST_BE_IN_FUTURE;
         }
         if (endDateChanged && request.getEndDate() != null && request.getEndDate().isBefore(today)) {
-            return "If end date is changed, it must be in the future";
+            return NEW_END_DATE_MUST_BE_IN_FUTURE;
         }
         return null;
     }
@@ -757,9 +770,9 @@ public class JudiciaryAvailabilityService {
                         newStart.minusDays(1)
                 );
         if (!affectedSessions.isEmpty()) {
-            return "Changing start date from " + oldStart + " to " + newStart + 
-                    WOULD_AFFECT + affectedSessions.size() + 
-                    " already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding.";
+            return "Changing the start date affects " + affectedSessions.size() + 
+                    " sessions already assigned between " + oldStart + " and " + newStart + 
+                    ". Review these sessions before you continue.";
         }
         return null;
     }
@@ -774,9 +787,7 @@ public class JudiciaryAvailabilityService {
                         oldEnd
                 );
         if (!affectedSessions.isEmpty()) {
-            return "Changing end date from " + oldEnd + " to " + newEnd + 
-                    WOULD_AFFECT + affectedSessions.size() + 
-                    " already assigned session(s) in the removed date range. Please review the assigned sessions before proceeding.";
+            return String.format(CHANGING_END_DATE_FROM_TO_WOULD_AFFECT, oldEnd, newEnd, affectedSessions.size());
         }
         return null;
     }
@@ -803,13 +814,13 @@ public class JudiciaryAvailabilityService {
         LOGGER.info("Validating delete for judiciary availability rule: {}", request);
 
         if (request == null || request.getRuleId() == null || request.getRuleId().isEmpty()) {
-            return "Rule ID is required";
+            return RULE_ID_REQUIRED;
         }
 
         final JudiciaryAvailabilityRule rule = repository.findBy(request.getRuleId());
         if (rule == null) {
             LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
-            return "Judiciary availability rule with id " + request.getRuleId() + " not found";
+            return String.format(RULE_NOT_FOUND);
         }
 
         // Find court schedules (sessions) that match the rule's criteria
@@ -826,7 +837,7 @@ public class JudiciaryAvailabilityService {
             LOGGER.info("No matching sessions found for rule {}", request.getRuleId());
             return null;
         } else {
-            return "You cannot delete this itinerary because it is being used in a session. You must remove the session before you can delete it.";
+            return CANNOT_DELETE_ITINERARY_IN_USE;
         }
     }
 }
