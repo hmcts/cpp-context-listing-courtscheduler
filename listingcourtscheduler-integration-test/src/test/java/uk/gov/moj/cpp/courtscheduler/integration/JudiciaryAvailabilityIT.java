@@ -1519,7 +1519,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
         final JsonObject validationResult = responseJson.getJsonObject("validationResult");
         assertThat(validationResult.getString("status"), is("FAILURE"));
-        assertTrue(validationResult.getString("validationError").contains("already applied"));
+        assertThat(validationResult.getString("validationError"), is("You cannot delete this itinerary because it is being used in a session. You must remove the session before you can delete it."));
     }
 
     @Test
