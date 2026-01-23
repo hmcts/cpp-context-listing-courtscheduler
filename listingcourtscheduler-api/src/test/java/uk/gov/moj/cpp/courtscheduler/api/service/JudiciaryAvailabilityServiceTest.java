@@ -376,7 +376,7 @@ class JudiciaryAvailabilityServiceTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.deleteJudiciaryAvailabilityRule(request));
 
-        assertThat(exception.getMessage(), is("Judiciary availability rule with id " + ruleId + " not found"));
+        assertThat(exception.getMessage(), is("Judicial itinerary does not exist."));
         verify(repository).findBy(ruleId);
         verify(repository, org.mockito.Mockito.never()).remove(org.mockito.ArgumentMatchers.any());
     }
@@ -816,7 +816,7 @@ class JudiciaryAvailabilityServiceTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.updateJudiciaryAvailabilityRule(request));
 
-        assertThat(exception.getMessage(), is("Judiciary availability rule with id " + ruleId + " not found"));
+        assertThat(exception.getMessage(), is("Judicial itinerary does not exist."));
         verify(repository).findBy(ruleId);
         verify(repository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
     }
@@ -1008,7 +1008,7 @@ class JudiciaryAvailabilityServiceTest {
             service.getJudiciaryAvailabilityRule(request, requester);
         });
 
-        assertThat(exception.getMessage(), is("Judiciary availability rule with id " + ruleId + " not found"));
+        assertThat(exception.getMessage(), is("Judicial itinerary does not exist."));
         verify(repository).findBy(ruleId);
     }
 

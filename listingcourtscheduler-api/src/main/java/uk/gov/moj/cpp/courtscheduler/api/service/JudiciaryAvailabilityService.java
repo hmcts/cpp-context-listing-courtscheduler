@@ -96,7 +96,7 @@ public class JudiciaryAvailabilityService {
         final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
         if (entity == null) {
             LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
-            throw new IllegalArgumentException("Judiciary availability rule with id " + request.getRuleId() + " not found");
+            throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
         populateEntityFields(entity, request);
@@ -124,7 +124,7 @@ public class JudiciaryAvailabilityService {
         final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
         if (entity == null) {
             LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
-            throw new IllegalArgumentException("Judiciary availability rule with id " + request.getRuleId() + " not found");
+            throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
         repository.remove(entity);
@@ -226,7 +226,7 @@ public class JudiciaryAvailabilityService {
         final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
         if (entity == null) {
             LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
-            throw new IllegalArgumentException("Judiciary availability rule with id " + request.getRuleId() + " not found");
+            throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
         final JudiciaryAvailabilityRuleResponse ruleResponse = convertToResponse(entity);
