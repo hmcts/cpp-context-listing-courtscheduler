@@ -79,6 +79,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1967,7 +1968,7 @@ class SessionsServiceTest {
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
     }
 
-    @Disabled // Test
+    @Test
     void shouldDetectDuplicateForMonthlyFrequencyWithIndexWhenSessionExistsOnSameDate() {
         // Given - Monthly frequency session with index 4 (4th Friday)
         final LocalDate startDate = LocalDate.of(2026, 1, 1);
@@ -1979,6 +1980,7 @@ class SessionsServiceTest {
                 .withCourtRoomId("court-room-1")
                 .withBusinessType("LGT")
                 .withSessionType("AD")
+                .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
                 .withIndex(4)
                 .build();
@@ -1991,16 +1993,17 @@ class SessionsServiceTest {
         existingSession.setCourtRoomId("court-room-1");
         existingSession.setBusinessType("LGT");
         existingSession.setCourtSession("AD");
+        existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 1, 23)); // 4th Friday of January 2026
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
         final JsonObject result = sessionsService.validateSessionIntegrity(newSession, startDate, endDate, repeatFor, RepeatFrequency.EVERY_MONTH);
 
         // Then
-        verify(courtScheduleRepository).getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate);
+        verify(courtScheduleRepository).getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES");
         assertTrue(result.containsKey("errorMessage"), "Expected error message for duplicate session");
         assertTrue(result.getString("errorMessage").contains(existingSession.getCourtScheduleId()));
     }
@@ -2017,6 +2020,7 @@ class SessionsServiceTest {
                 .withCourtRoomId("court-room-1")
                 .withBusinessType("LGT")
                 .withSessionType("AD")
+                .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
                 .withIndex(4)
                 .build();
@@ -2029,9 +2033,10 @@ class SessionsServiceTest {
         existingSession.setCourtRoomId("court-room-1");
         existingSession.setBusinessType("LGT");
         existingSession.setCourtSession("AD");
+        existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 1, 2)); // 1st Friday of January 2026
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
@@ -2041,7 +2046,8 @@ class SessionsServiceTest {
         assertFalse(result.containsKey("errorMessage"));
     }
 
-    @Disabled //Test
+    @org.junit.jupiter.api.Disabled("Re-enabled when validatedMonthlyFrequency index consideration is verified")
+    @Test
     void shouldDetectDuplicateForMonthlyFrequencyWithIndexAcrossMultipleMonths() {
         // Given - Monthly frequency session with index 4 (4th Friday) for Jan-June 2026
         final LocalDate startDate = LocalDate.of(2026, 1, 1);
@@ -2053,6 +2059,7 @@ class SessionsServiceTest {
                 .withCourtRoomId("court-room-1")
                 .withBusinessType("LGT")
                 .withSessionType("AM")
+                .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
                 .withIndex(4)
                 .build();
@@ -2065,9 +2072,10 @@ class SessionsServiceTest {
         existingSession.setCourtRoomId("court-room-1");
         existingSession.setBusinessType("LGT");
         existingSession.setCourtSession("AM");
+        existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 3, 27)); // 4th Friday of March 2026
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
@@ -2091,6 +2099,7 @@ class SessionsServiceTest {
                 .withCourtRoomId("court-room-1")
                 .withBusinessType("LGT")
                 .withSessionType("AM")
+                .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
                 .withIndex(5) // 5th Friday doesn't exist in February
                 .build();
@@ -2102,9 +2111,10 @@ class SessionsServiceTest {
         existingSession.setCourtRoomId("court-room-1");
         existingSession.setBusinessType("LGT");
         existingSession.setCourtSession("AM");
+        existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 2, 26)); // 4th Friday of February 2026
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
@@ -2114,7 +2124,8 @@ class SessionsServiceTest {
         assertFalse(result.containsKey("errorMessage"));
     }
 
-    @Disabled// Test
+    @org.junit.jupiter.api.Disabled("Re-enabled when weekly vs monthly validation path is verified")
+    @Test
     void shouldUseWeeklyFrequencyValidationWhenFrequencyIsNotMonthly() {
         // Given - Weekly frequency session
         final LocalDate startDate = LocalDate.of(2026, 1, 2);
@@ -2126,6 +2137,7 @@ class SessionsServiceTest {
                 .withCourtRoomId("court-room-1")
                 .withBusinessType("LGT")
                 .withSessionType("AM")
+                .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
                 .build();
 
@@ -2137,18 +2149,29 @@ class SessionsServiceTest {
         existingSession.setCourtRoomId("court-room-1");
         existingSession.setBusinessType("LGT");
         existingSession.setCourtSession("AM");
+        existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 1, 2)); // First Friday
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
         final JsonObject result = sessionsService.validateSessionIntegrity(newSession, startDate, endDate, repeatFor, RepeatFrequency.EVERY_WEEK);
 
         // Then - Should use weekly validation logic
-        verify(courtScheduleRepository).getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate);
+        verify(courtScheduleRepository).getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES");
         assertTrue(result.containsKey("errorMessage"), "Expected error message for duplicate session");
         assertTrue(result.getString("errorMessage").contains(existingSession.getCourtScheduleId()));
+    }
+
+    @Test
+    void getOccurrenceIndexOfDayInMonthReturnsCorrectIndexForFourthFriday() throws Exception {
+        // Jan 23, 2026 is the 4th Friday of January - verify helper returns 4
+        final LocalDate jan23 = LocalDate.of(2026, 1, 23);
+        Method method = SessionsService.class.getDeclaredMethod("getOccurrenceIndexOfDayInMonth", LocalDate.class);
+        method.setAccessible(true);
+        int result = (int) method.invoke(sessionsService, jan23);
+        assertEquals(4, result, "Jan 23 2026 is 4th Friday of January");
     }
 
     @Test
@@ -2163,11 +2186,12 @@ class SessionsServiceTest {
                 .withCourtRoomId("court-room-1")
                 .withBusinessType("LGT")
                 .withSessionType("AM")
+                .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
                 .withIndex(null) // No index
                 .build();
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(emptyList());
 
         // When

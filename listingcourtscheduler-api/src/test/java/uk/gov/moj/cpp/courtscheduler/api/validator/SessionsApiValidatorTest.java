@@ -361,6 +361,127 @@ class SessionsApiValidatorTest {
     }
 
     @Test
+    void shouldReturnErrorWhenMonthlySameDaySameIndexDuplicateInPayload() {
+        // Monthly: same (day, index) with same session type = duplicate
+        final Session sessionInList = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(4)
+                .build();
+        final Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(4)
+                .withSlotsOrDuration(60)
+                .build();
+
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1));
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        lenient().when(repeatPattern.getRepeatFor()).thenReturn(1); // unused - validation returns early with duplicate
+        // Validation returns early with duplicate error, so no need to stub business type or court room
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldNotReturnErrorWhenMonthlySameDayDifferentIndexInPayload() {
+        // Monthly: same day but different index = allowed
+        final Session sessionInList = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(4)
+                .build();
+        final Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(1)
+                .withSlotsOrDuration(60)
+                .build();
+
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1));
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(repeatPattern.getRepeatFor()).thenReturn(1);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        stubMagCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldNotReturnErrorWhenMonthlyDifferentDaySameIndexInPayload() {
+        // Monthly: different day, same index = allowed (e.g. 4th Friday and 4th Monday)
+        final Session sessionInList = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
+                .withIndex(4)
+                .build();
+        final Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(4)
+                .withSlotsOrDuration(60)
+                .build();
+
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1));
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(repeatPattern.getRepeatFor()).thenReturn(1);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        stubMagCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
     void shouldReturnEmptyJsonObjectWhenValidationIsSuccessful() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
         Session session = createAMSession();
