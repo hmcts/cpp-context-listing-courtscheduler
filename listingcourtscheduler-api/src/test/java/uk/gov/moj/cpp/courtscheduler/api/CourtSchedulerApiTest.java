@@ -38,14 +38,15 @@ import uk.gov.justice.services.messaging.JsonEnvelope;
 import uk.gov.justice.services.messaging.Metadata;
 import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciariesRequestConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ConverterException;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.ConverterException;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
@@ -69,6 +70,8 @@ import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
@@ -187,6 +190,8 @@ class CourtSchedulerApiTest {
     private JudiciaryAssignmentService judiciaryAssignmentService;
     @Mock
     private JudiciaryUnassignmentService judiciaryUnassignmentService;
+    @Mock
+    private AssignCourtroomRequestConverter assignCourtroomRequestConverter;
 
 
     @Test
@@ -1192,6 +1197,75 @@ class CourtSchedulerApiTest {
         verify(judiciariesApiValidator, atLeastOnce()).validateUnassignJudiciaryRequest(any(JsonObject.class));
         verify(judiciaryUnassignmentService, atLeastOnce()).unassignJudiciary(any(), anyString(), anyBoolean());
         verify(enveloper, atLeastOnce()).withMetadataFrom(unassignJudiciaryJsonEnvelope, requestName);
+    }
+
+    @Test
+    void shouldAssignCourtroom() {
+        // Given a request to assign courtroom
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("courtScheduleIds", createArrayBuilder()
+                        .add("schedule-id-1")
+                        .add("schedule-id-2"))
+                .add("courtRoomId", "courtroom-id-123")
+                .build();
+        final String requestName = "courtscheduler.assign.courtroom";
+        final JsonEnvelope assignCourtroomJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        // Mock the converter
+        AssignCourtroomRequest assignCourtroomRequest = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of("schedule-id-1", "schedule-id-2"))
+                .withCourtRoomId("courtroom-id-123")
+                .build();
+
+        AssignCourtroomResponse assignCourtroomResponse = new AssignCourtroomResponse();
+        assignCourtroomResponse.setErrorGroups(new ArrayList<>()); // Empty error groups for successful assignment
+
+        when(assignCourtroomRequestConverter.convert(any(JsonObject.class))).thenReturn(assignCourtroomRequest);
+        when(sessionsApiValidator.getAssignCourtroomValidation(any(AssignCourtroomRequest.class), any(Requester.class))).thenReturn(EMPTY_JSON_OBJECT);
+        when(sessionsService.assignCourtroom(any(AssignCourtroomRequest.class), any(Requester.class))).thenReturn(assignCourtroomResponse);
+        when(enveloper.withMetadataFrom(assignCourtroomJsonEnvelope, assignCourtroomJsonEnvelope.metadata().name())).thenReturn(function);
+
+        // When
+        courtSchedulerApi.assignCourtroom(assignCourtroomJsonEnvelope);
+
+        // Then
+        verify(assignCourtroomRequestConverter, atLeastOnce()).convert(any(JsonObject.class));
+        verify(sessionsApiValidator, atLeastOnce()).getAssignCourtroomValidation(any(AssignCourtroomRequest.class), any(Requester.class));
+        verify(sessionsService, atLeastOnce()).assignCourtroom(any(AssignCourtroomRequest.class), any(Requester.class));
+        verify(enveloper, atLeastOnce()).withMetadataFrom(assignCourtroomJsonEnvelope, assignCourtroomJsonEnvelope.metadata().name());
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenAssignCourtroomValidationFails() {
+        // Given a request with invalid data
+        final JsonObject jsonPayloadObject = createObjectBuilder()
+                .add("courtScheduleIds", createArrayBuilder())
+                .add("courtRoomId", "")
+                .build();
+        final String requestName = "courtscheduler.assign.courtroom";
+        final JsonEnvelope assignCourtroomJsonEnvelope = createEnvelope(requestName, jsonPayloadObject);
+
+        AssignCourtroomRequest assignCourtroomRequest = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(Collections.emptyList())
+                .withCourtRoomId("")
+                .build();
+
+        JsonObject validationError = createObjectBuilder()
+                .add("errorMessage", "At least one court schedule ID must be provided")
+                .build();
+
+        when(assignCourtroomRequestConverter.convert(any(JsonObject.class))).thenReturn(assignCourtroomRequest);
+        when(sessionsApiValidator.getAssignCourtroomValidation(any(AssignCourtroomRequest.class), any(Requester.class))).thenReturn(validationError);
+
+        // When/Then
+        assertThrows(ValidationException.class, () ->
+                courtSchedulerApi.assignCourtroom(assignCourtroomJsonEnvelope));
+
+        verify(assignCourtroomRequestConverter, atLeastOnce()).convert(any(JsonObject.class));
+        verify(sessionsApiValidator, atLeastOnce()).getAssignCourtroomValidation(any(AssignCourtroomRequest.class), any(Requester.class));
+        verify(sessionsService, never()).assignCourtroom(any(), any());
     }
 
     private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {

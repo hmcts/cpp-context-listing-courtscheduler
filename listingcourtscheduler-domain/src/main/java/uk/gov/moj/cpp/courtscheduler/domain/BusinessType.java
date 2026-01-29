@@ -9,6 +9,7 @@ public class BusinessType {
     private String typeDescription;
     private boolean slot;
     private boolean duration;
+    private String jurisdiction;
 
 
 
@@ -20,17 +21,19 @@ public class BusinessType {
                         final String typeCode,
                         final String typeDescription,
                         final boolean slot,
-                        final boolean duration) {
+                        final boolean duration,
+                        final String jurisdiction) {
         this.id = id;
         this.seqNum = seqNum;
         this.typeCode = typeCode;
         this.typeDescription = typeDescription;
         this.slot = slot;
         this.duration = duration;
+        this.jurisdiction = jurisdiction;
     }
 
     public String getId() {
-        return id;
+        return this.id;
     }
 
     public void setId(final String id) {
@@ -38,7 +41,7 @@ public class BusinessType {
     }
 
     public Integer getSeqNum() {
-        return seqNum;
+        return this.seqNum;
     }
 
     public void setSeqNum(final Integer seqNum) {
@@ -46,7 +49,7 @@ public class BusinessType {
     }
 
     public String getTypeCode() {
-        return typeCode;
+        return this.typeCode;
     }
 
     public void setTypeCode(final String typeCode) {
@@ -54,7 +57,7 @@ public class BusinessType {
     }
 
     public String getTypeDescription() {
-        return typeDescription;
+        return this.typeDescription;
     }
 
     public void setTypeDescription(final String typeDescription) {
@@ -62,7 +65,7 @@ public class BusinessType {
     }
 
     public boolean isSlot() {
-        return slot;
+        return this.slot;
     }
 
     public void setSlot(final boolean slot) {
@@ -70,11 +73,19 @@ public class BusinessType {
     }
 
     public boolean isDuration() {
-        return duration;
+        return this.duration;
     }
 
     public void setDuration(final boolean duration) {
         this.duration = duration;
+    }
+
+    public String getJurisdiction() {
+        return this.jurisdiction;
+    }
+
+    public void setJurisdiction(final String jurisdiction) {
+        this.jurisdiction = jurisdiction;
     }
 
     public static final class BusinessTypeBuilder {
@@ -84,6 +95,7 @@ public class BusinessType {
         private String typeDescription;
         private boolean slot;
         private boolean duration;
+        private String jurisdiction;
 
         private BusinessTypeBuilder() {
         }
@@ -122,14 +134,20 @@ public class BusinessType {
             return this;
         }
 
+        public BusinessTypeBuilder withJurisdiction(String jurisdiction) {
+            this.jurisdiction = jurisdiction;
+            return this;
+        }
+
         public BusinessType build() {
             BusinessType businessType = new BusinessType();
-            businessType.setId(id);
-            businessType.setSeqNum(seqNum);
-            businessType.setTypeCode(typeCode);
-            businessType.setTypeDescription(typeDescription);
-            businessType.setSlot(slot);
-            businessType.setDuration(duration);
+            businessType.setId(this.id);
+            businessType.setSeqNum(this.seqNum);
+            businessType.setTypeCode(this.typeCode);
+            businessType.setTypeDescription(this.typeDescription);
+            businessType.setSlot(this.slot);
+            businessType.setDuration(this.duration);
+            businessType.setJurisdiction(this.jurisdiction);
             return businessType;
         }
     }

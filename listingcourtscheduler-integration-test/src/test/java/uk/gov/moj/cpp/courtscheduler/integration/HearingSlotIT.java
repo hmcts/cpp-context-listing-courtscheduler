@@ -15,6 +15,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
@@ -240,12 +241,14 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setIsDraft(false);
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(true);
         courtSchedule.setMaxSlots(10);
         courtSchedule.setAvailableSlots(9);
+        courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtSchedule);
@@ -428,8 +431,10 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setIsDraft(false);
         courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
         courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtSchedule);
@@ -812,6 +817,8 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleAMSession.setSessionDate(sessionDateForAMSession);
         courtScheduleAMSession.setOuCode(ouCode);
         courtScheduleAMSession.setIsOverbookingAllowed(true);
+        courtScheduleAMSession.setIsDraft(false);
+        courtScheduleAMSession.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtScheduleAMSession);
 
         final CourtSchedule courtSchedulePMSession = RANDOM.nextObject(CourtSchedule.class);
@@ -821,6 +828,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedulePMSession.setSessionDate(sessionDateForPMSession);
         courtSchedulePMSession.setOuCode(ouCode);
         courtSchedulePMSession.setIsOverbookingAllowed(true);
+        courtSchedulePMSession.setIsDraft(false);
+        courtSchedulePMSession.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtSchedulePMSession);
 
         final CourtSchedule courtScheduleADSession = RANDOM.nextObject(CourtSchedule.class);
@@ -830,6 +839,8 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleADSession.setSessionDate(sessionDateForADSession);
         courtScheduleADSession.setOuCode(ouCode);
         courtScheduleADSession.setIsOverbookingAllowed(true);
+        courtScheduleADSession.setIsDraft(false);
+        courtScheduleADSession.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtScheduleADSession);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryForAM = createJudiciaryForSchedule(courtScheduleAMSession);
@@ -2220,11 +2231,11 @@ class HearingSlotIT extends AbstractIT {
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
         final JsonObject hearingSlotJsonObject = (JsonObject) jsonObject.getJsonArray("hearingSlots").get(0);
-        
+
         // Verify that MinHearingTime and MaxHearingTime are not present in the response
         assertFalse(hearingSlotJsonObject.containsKey("minHearingTime"), "minHearingTime should not be present in the response");
         assertFalse(hearingSlotJsonObject.containsKey("maxHearingTime"), "maxHearingTime should not be present in the response");
-        
+
         // Verify other expected fields are present
         assertThat(hearingSlotJsonObject.getString("courtScheduleId"), is(courtSchedule.getCourtScheduleId()));
         assertThat(hearingSlotJsonObject.getString("ouCode"), is(courtSchedule.getOuCode()));
@@ -2442,12 +2453,12 @@ class HearingSlotIT extends AbstractIT {
         final LocalDate sessionDate = LocalDate.of(2024, 4, 15);
         final String ouCode = "B01LY00";
         final String panel = "ADULT";
-        
+
         // Create three slot-based court schedules with same OU code and panel but different court rooms and business types
         final CourtSchedule matchingSchedule1 = createSlotBasedCourtSchedule(ouCode, panel, sessionDate, "CR01", "TRF");
         final CourtSchedule matchingSchedule2 = createSlotBasedCourtSchedule(ouCode, panel, sessionDate, "CR01", "GAP");
         final CourtSchedule differentCourtRoom = createSlotBasedCourtSchedule(ouCode, panel, sessionDate, "CR02", "TRF");
-        
+
         databaseSeeder.insertCourtSchedule(matchingSchedule1);
         databaseSeeder.insertCourtSchedule(matchingSchedule2);
         databaseSeeder.insertCourtSchedule(differentCourtRoom);
@@ -2461,7 +2472,7 @@ class HearingSlotIT extends AbstractIT {
         hearingSlotsRequestParams = hearingSlotsRequestParams.replace("COURT_SESSION", "AM");
 
         Map<String, Object> requestParamMap = objectMapper.readValue(hearingSlotsRequestParams, new TypeReference<>() {});
-        
+
         // Add slot-based specific parameters
         requestParamMap.put("isSlotBased", true);
         requestParamMap.put("courtRoomId", "CR01");
@@ -2475,10 +2486,10 @@ class HearingSlotIT extends AbstractIT {
 
         JsonObject jsonObject = stringToJsonObjectConverter.convert(response.getPayload());
         JsonArray hearingSlots = jsonObject.getJsonArray("hearingSlots");
-        
+
         // Should return 2 results (both schedules with court room CR01 but different business types)
         assertThat(hearingSlots.size(), is(2));
-        
+
         // Verify both results have court room CR01
         for (int i = 0; i < hearingSlots.size(); i++) {
             JsonObject courtSchedule = hearingSlots.getJsonObject(i);

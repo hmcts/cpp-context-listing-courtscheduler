@@ -45,6 +45,8 @@ public class CourtScheduleView {
     private String sessionEndTime;
     @JsonProperty("isOverbookingAllowed")
     private boolean overbookingAllowed;
+    private Boolean isDraft;
+    private String jurisdiction;
 
     protected CourtScheduleView(final CourtScheduleViewBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -82,6 +84,8 @@ public class CourtScheduleView {
         this.sessionStartTime = builder.sessionStartTime;
         this.sessionEndTime = builder.sessionEndTime;
         this.overbookingAllowed = builder.isOverbookingAllowed;
+        this.isDraft = builder.isDraft;
+        this.jurisdiction = builder.jurisdictionType;
     }
 
     public CourtScheduleView() {
@@ -339,6 +343,22 @@ public class CourtScheduleView {
         this.overbookingAllowed = isOverbookingAllowed;
     }
 
+    public Boolean getIsDraft() {
+        return isDraft;
+    }
+
+    public void setIsDraft(final Boolean isDraft) {
+        this.isDraft = isDraft;
+    }
+
+    public String getJurisdiction() {
+        return jurisdiction;
+    }
+
+    public void setJurisdiction(final String jurisdiction) {
+        this.jurisdiction = jurisdiction;
+    }
+
     public static final class CourtScheduleViewBuilder {
 
         private String courtScheduleId;
@@ -378,6 +398,8 @@ public class CourtScheduleView {
         private String sessionStartTime;
         private String sessionEndTime;
         private boolean isOverbookingAllowed;
+        private Boolean isDraft;
+        private String jurisdictionType;
 
         public static CourtScheduleViewBuilder courtSchedule() {
             return new CourtScheduleViewBuilder();
@@ -567,6 +589,16 @@ public class CourtScheduleView {
 
         public CourtScheduleViewBuilder withIsOverbookingAllowed(final boolean isOverbookingAllowed) {
             this.isOverbookingAllowed = isOverbookingAllowed;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withIsDraft(final Boolean isDraft) {
+            this.isDraft = isDraft;
+            return this;
+        }
+
+        public CourtScheduleViewBuilder withJurisdictionType(final String jurisdictionType) {
+            this.jurisdictionType = jurisdictionType;
             return this;
         }
 

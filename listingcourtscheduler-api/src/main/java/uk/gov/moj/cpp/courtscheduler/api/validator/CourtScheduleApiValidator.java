@@ -9,6 +9,7 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_AFTER_END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
 
 import uk.gov.justice.services.common.converter.LocalDates;
@@ -45,6 +46,17 @@ public class CourtScheduleApiValidator {
             return getMessage(RequestParameterConstant.END_DATE.getLabel());
         } else if (isInvalidDateFormat(courtScheduleRequestParam.sessionEndDate())) {
             return getMessage(format(END_DATE_IS_IN_BAD_FORMAT, courtScheduleRequestParam.sessionEndDate()));
+        }
+
+        // Validate startDate <= endDate
+        try {
+            final var start = LocalDates.from(courtScheduleRequestParam.sessionStartDate());
+            final var end = LocalDates.from(courtScheduleRequestParam.sessionEndDate());
+            if (end.isBefore(start)) {
+                return buildErrorResponse(START_DATE_AFTER_END_DATE);
+            }
+        } catch (DateTimeParseException e) {
+            return buildErrorResponse(format(START_DATE_IS_IN_BAD_FORMAT, courtScheduleRequestParam.sessionStartDate()));
         }
 
 

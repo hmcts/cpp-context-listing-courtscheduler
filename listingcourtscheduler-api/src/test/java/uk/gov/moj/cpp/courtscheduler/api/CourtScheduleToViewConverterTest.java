@@ -7,6 +7,7 @@ import static org.hamcrest.Matchers.is;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToViewConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -55,5 +56,55 @@ class CourtScheduleToViewConverterTest {
         assertThat(courtSessionsViews.get(1).getSessions().get(0).getCourtRoomId(), is(courtRoomId1));
         assertThat(courtSessionsViews.get(1).getSessions().get(0).getSessionDate(), is(sessionDate1));
         assertThat(courtSessionsViews.get(1).getSessions().get(0).getTotalBooked(), is(totalBooked1));
+    }
+
+    @Test
+    public void shouldConvertJurisdictionType() {
+        // given
+        String jurisdictionType = "MAGISTRATES";
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setJurisdiction(jurisdictionType);
+
+        // when
+        List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule));
+
+        // then
+        assertThat(courtSessionsViews.size(), is(1));
+        List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        assertThat(sessions.size(), is(1));
+        assertThat(sessions.get(0).getJurisdiction(), is(jurisdictionType));
+    }
+
+    @Test
+    public void shouldConvertJurisdictionTypeWhenNull() {
+        // given
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setJurisdiction(null);
+
+        // when
+        List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule));
+
+        // then
+        assertThat(courtSessionsViews.size(), is(1));
+        List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        assertThat(sessions.size(), is(1));
+        assertThat(sessions.get(0).getJurisdiction(), is((String) null));
+    }
+
+    @Test
+    public void shouldConvertJurisdictionTypeForCrown() {
+        // given
+        String jurisdictionType = "CROWN";
+        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setJurisdiction(jurisdictionType);
+
+        // when
+        List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule));
+
+        // then
+        assertThat(courtSessionsViews.size(), is(1));
+        List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        assertThat(sessions.size(), is(1));
+        assertThat(sessions.get(0).getJurisdiction(), is(jurisdictionType));
     }
 }

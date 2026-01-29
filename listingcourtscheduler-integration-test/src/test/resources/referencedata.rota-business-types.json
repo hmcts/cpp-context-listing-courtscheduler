@@ -6,7 +6,8 @@
       "typeCode": "APP",
       "typeDescription": "Applications",
       "slot": true,
-      "duration": false
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
     },
     {
       "id": "c66d90c8-8ef2-36d8-b033-e24a6ee09c8c",

@@ -292,6 +292,7 @@ public class CourtScheduleRepositoryTest {
         CourtRoom courtRoom = random(CourtRoom.class);
 
         CourtSchedule courtScheduleEntity = random(CourtSchedule.class);
+        courtScheduleEntity.setJurisdiction("MAGISTRATES");
         courtScheduleRepository.save(courtScheduleEntity);
 
         uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule updatedCourtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder()
@@ -302,6 +303,7 @@ public class CourtScheduleRepositoryTest {
                 .withSessionType(ALL_DAY)
                 .withPanel(panel)
                 .withIsOverbookingAllowed(true)
+                .withJurisdiction("MAGISTRATES")
                 .build();
 
         Result result = courtScheduleRepository.update(courtScheduleEntity, updatedCourtSchedule, Optional.of(courtRoom));
@@ -1267,6 +1269,8 @@ public class CourtScheduleRepositoryTest {
         schedule.setAvailableSlots(10);
         schedule.setAvailableDuration(240);
         schedule.setCourtHouseId("CH" + ouCode);
+        schedule.setIsDraft(false);
+        schedule.setJurisdiction("MAGISTRATES");
 
         // Boolean fields with defaults
         schedule.setSupportAdSplit(false);
@@ -1298,7 +1302,7 @@ public class CourtScheduleRepositoryTest {
         String sessionEndDate = courtSchedule.getSessionDate().plusDays(2).toString();
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private static CourtScheduleRequestParam getCourtScheduleAllRequestParams(final CourtSchedule courtSchedule,final String courtroomId, final String courtCentreId) {
@@ -1307,7 +1311,7 @@ public class CourtScheduleRepositoryTest {
         String sessionEndDate = courtSchedule.getSessionDate().toString();
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtroomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtroomId, businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private static CourtScheduleRequestParam getCourtScheduleRequestMandatoryParams(final CourtSchedule courtSchedule, final String courtCentreId,final LocalDate startDate,final LocalDate endDate) {
@@ -1317,7 +1321,7 @@ public class CourtScheduleRepositoryTest {
         String sessionEndDate = endDate.toString();
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     @Test
@@ -1871,8 +1875,10 @@ public class CourtScheduleRepositoryTest {
     @Test
     public void shouldDeleteCourtScheduleOnlyInFuture() {
         String oldCourtScheduleId = random(String.class);
+        String todayCourtScheduleId = random(String.class);
+        String tomorrowCourtScheduleId = random(String.class);
         String futureCourtScheduleId = random(String.class);
-        List<String> courtScheduleIdList = List.of(oldCourtScheduleId, futureCourtScheduleId);
+        List<String> courtScheduleIdList = List.of(oldCourtScheduleId, todayCourtScheduleId, tomorrowCourtScheduleId, futureCourtScheduleId);
         final CourtSchedule oldCcourtSchedule = random(CourtSchedule.class);
         oldCcourtSchedule.setCourtScheduleId(oldCourtScheduleId);
         oldCcourtSchedule.setPanel("ADULT");
@@ -1881,19 +1887,252 @@ public class CourtScheduleRepositoryTest {
         oldCcourtSchedule.setSessionDate(LocalDate.now().minusDays(1));
         courtScheduleRepository.saveAndFlush(oldCcourtSchedule);
 
+        final CourtSchedule todayCourtSchedule = random(CourtSchedule.class);
+        todayCourtSchedule.setCourtScheduleId(todayCourtScheduleId);
+        todayCourtSchedule.setPanel("ADULT");
+        todayCourtSchedule.setOperationalUnit("BA124");
+        todayCourtSchedule.setOuCode("BA124");
+        todayCourtSchedule.setSessionDate(LocalDate.now());
+        courtScheduleRepository.saveAndFlush(todayCourtSchedule);
+
+        final CourtSchedule tomorrowCourtSchedule = random(CourtSchedule.class);
+        tomorrowCourtSchedule.setCourtScheduleId(tomorrowCourtScheduleId);
+        tomorrowCourtSchedule.setPanel("ADULT");
+        tomorrowCourtSchedule.setOperationalUnit("BA124");
+        tomorrowCourtSchedule.setOuCode("BA124");
+        tomorrowCourtSchedule.setSessionDate(LocalDate.now().plusDays(1));
+        courtScheduleRepository.saveAndFlush(tomorrowCourtSchedule);
+
         final CourtSchedule futureCourtSchedule = random(CourtSchedule.class);
         futureCourtSchedule.setCourtScheduleId(futureCourtScheduleId);
         futureCourtSchedule.setPanel("ADULT");
         futureCourtSchedule.setOperationalUnit("BA124");
         futureCourtSchedule.setOuCode("BA124");
-        futureCourtSchedule.setSessionDate(LocalDate.now().plusDays(1));
+        futureCourtSchedule.setSessionDate(LocalDate.now().plusDays(2));
         courtScheduleRepository.saveAndFlush(futureCourtSchedule);
 
         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
         em.clear();
 
         assertNotNull(courtScheduleRepository.findBy(oldCourtScheduleId));
+        assertNull(courtScheduleRepository.findBy(todayCourtScheduleId));
+        assertNull(courtScheduleRepository.findBy(tomorrowCourtScheduleId));
         assertNull(courtScheduleRepository.findBy(futureCourtScheduleId));
+    }
+
+    @Test
+    public void shouldNotDeletePastCourtSchedules() {
+        // Given - Multiple past dates
+        String oneDayAgoId = random(String.class);
+        String oneWeekAgoId = random(String.class);
+        String oneMonthAgoId = random(String.class);
+        List<String> courtScheduleIdList = List.of(oneDayAgoId, oneWeekAgoId, oneMonthAgoId);
+
+        final CourtSchedule oneDayAgo = createCourtSchedule(oneDayAgoId, LocalDate.now().minusDays(1));
+        final CourtSchedule oneWeekAgo = createCourtSchedule(oneWeekAgoId, LocalDate.now().minusDays(7));
+        final CourtSchedule oneMonthAgo = createCourtSchedule(oneMonthAgoId, LocalDate.now().minusMonths(1));
+
+        courtScheduleRepository.saveAndFlush(oneDayAgo);
+        courtScheduleRepository.saveAndFlush(oneWeekAgo);
+        courtScheduleRepository.saveAndFlush(oneMonthAgo);
+
+        // When
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
+        em.clear();
+
+        // Then - All past schedules should remain
+        assertNotNull(courtScheduleRepository.findBy(oneDayAgoId));
+        assertNotNull(courtScheduleRepository.findBy(oneWeekAgoId));
+        assertNotNull(courtScheduleRepository.findBy(oneMonthAgoId));
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void shouldDeleteTodayAndFutureCourtSchedules() {
+        // Given - Today and multiple future dates
+        String todayId = random(String.class);
+        String tomorrowId = random(String.class);
+        String oneWeekFutureId = random(String.class);
+        String oneMonthFutureId = random(String.class);
+        String oneYearFutureId = random(String.class);
+        List<String> courtScheduleIdList = List.of(todayId, tomorrowId, oneWeekFutureId, oneMonthFutureId, oneYearFutureId);
+
+        final CourtSchedule today = createCourtSchedule(todayId, LocalDate.now());
+        final CourtSchedule tomorrow = createCourtSchedule(tomorrowId, LocalDate.now().plusDays(1));
+        final CourtSchedule oneWeekFuture = createCourtSchedule(oneWeekFutureId, LocalDate.now().plusDays(7));
+        final CourtSchedule oneMonthFuture = createCourtSchedule(oneMonthFutureId, LocalDate.now().plusMonths(1));
+        final CourtSchedule oneYearFuture = createCourtSchedule(oneYearFutureId, LocalDate.now().plusYears(1));
+
+        courtScheduleRepository.saveAndFlush(today);
+        courtScheduleRepository.saveAndFlush(tomorrow);
+        courtScheduleRepository.saveAndFlush(oneWeekFuture);
+        courtScheduleRepository.saveAndFlush(oneMonthFuture);
+        courtScheduleRepository.saveAndFlush(oneYearFuture);
+
+        // When
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
+        em.clear();
+
+        // Then - All today and future schedules should be deleted
+        assertNull(courtScheduleRepository.findBy(todayId));
+        assertNull(courtScheduleRepository.findBy(tomorrowId));
+        assertNull(courtScheduleRepository.findBy(oneWeekFutureId));
+        assertNull(courtScheduleRepository.findBy(oneMonthFutureId));
+        assertNull(courtScheduleRepository.findBy(oneYearFutureId));
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void shouldNotDeletePastSchedulesEvenWithMixedDates() {
+        // Given - Mix of past, today, and future dates
+        String pastId = random(String.class);
+        String todayId = random(String.class);
+        String futureId = random(String.class);
+        List<String> courtScheduleIdList = List.of(pastId, todayId, futureId);
+
+        final CourtSchedule past = createCourtSchedule(pastId, LocalDate.now().minusDays(5));
+        final CourtSchedule today = createCourtSchedule(todayId, LocalDate.now());
+        final CourtSchedule future = createCourtSchedule(futureId, LocalDate.now().plusDays(10));
+
+        courtScheduleRepository.saveAndFlush(past);
+        courtScheduleRepository.saveAndFlush(today);
+        courtScheduleRepository.saveAndFlush(future);
+
+        // When
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
+        em.clear();
+
+        // Then - Past should remain, today and future should be deleted
+        assertNotNull(courtScheduleRepository.findBy(pastId));
+        assertNull(courtScheduleRepository.findBy(todayId));
+        assertNull(courtScheduleRepository.findBy(futureId));
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void shouldNotDeleteCourtScheduleWithAllocatedListingsEvenIfTodayOrFuture() {
+        // Given - Today's schedule with allocated listings
+        String todayWithAllocationsId = random(String.class);
+        String futureWithAllocationsId = random(String.class);
+        List<String> courtScheduleIdList = List.of(todayWithAllocationsId, futureWithAllocationsId);
+
+        final CourtSchedule todayWithAllocations = createCourtSchedule(todayWithAllocationsId, LocalDate.now());
+        final CourtSchedule futureWithAllocations = createCourtSchedule(futureWithAllocationsId, LocalDate.now().plusDays(5));
+        
+        courtScheduleRepository.saveAndFlush(todayWithAllocations);
+        courtScheduleRepository.saveAndFlush(futureWithAllocations);
+
+        // Create allocated listings
+        AllocatedListing allocatedListing1 = random(AllocatedListing.class);
+        allocatedListing1.setCourtScheduleId(todayWithAllocationsId);
+        allocatedListingRepository.saveAndFlush(allocatedListing1);
+
+        AllocatedListing allocatedListing2 = random(AllocatedListing.class);
+        allocatedListing2.setCourtScheduleId(futureWithAllocationsId);
+        allocatedListingRepository.saveAndFlush(allocatedListing2);
+
+        // When
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
+        em.clear();
+
+        // Then - Schedules with allocations should not be deleted and should be in error list
+        assertNotNull(courtScheduleRepository.findBy(todayWithAllocationsId));
+        assertNotNull(courtScheduleRepository.findBy(futureWithAllocationsId));
+        assertEquals(2, courtSchedules.size());
+        assertTrue(courtSchedules.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(todayWithAllocationsId)));
+        assertTrue(courtSchedules.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(futureWithAllocationsId)));
+    }
+
+    @Test
+    public void shouldNotDeletePastScheduleWithAllocatedListings() {
+        // Given - Past schedule with allocated listings
+        String pastWithAllocationsId = random(String.class);
+        List<String> courtScheduleIdList = List.of(pastWithAllocationsId);
+
+        final CourtSchedule pastWithAllocations = createCourtSchedule(pastWithAllocationsId, LocalDate.now().minusDays(3));
+        courtScheduleRepository.saveAndFlush(pastWithAllocations);
+
+        AllocatedListing allocatedListing = random(AllocatedListing.class);
+        allocatedListing.setCourtScheduleId(pastWithAllocationsId);
+        allocatedListingRepository.saveAndFlush(allocatedListing);
+
+        // When
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
+        em.clear();
+
+        // Then - Past schedule with allocations should not be deleted (both because it's past and has allocations)
+        assertNotNull(courtScheduleRepository.findBy(pastWithAllocationsId));
+        assertEquals(1, result.size());
+        assertTrue(result.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(pastWithAllocationsId)));
+    }
+
+    @Test
+    public void shouldDeleteCourtScheduleAndAssociatedJudiciaries() {
+        // Given - Today's schedule with judiciaries
+        String scheduleId = random(String.class);
+        List<String> courtScheduleIdList = List.of(scheduleId);
+
+        final CourtSchedule schedule = createCourtSchedule(scheduleId, LocalDate.now());
+        courtScheduleRepository.saveAndFlush(schedule);
+
+        CourtScheduleJudiciary judiciary1 = random(CourtScheduleJudiciary.class);
+        CourtScheduleJudiciaryKey key1 = new CourtScheduleJudiciaryKey();
+        key1.setCourtScheduleId(scheduleId);
+        key1.setJudiciaryId(randomUUID().toString());
+        judiciary1.setId(key1);
+        courtScheduleJudiciaryRepository.saveAndFlush(judiciary1);
+
+        CourtScheduleJudiciary judiciary2 = random(CourtScheduleJudiciary.class);
+        CourtScheduleJudiciaryKey key2 = new CourtScheduleJudiciaryKey();
+        key2.setCourtScheduleId(scheduleId);
+        key2.setJudiciaryId(randomUUID().toString());
+        judiciary2.setId(key2);
+        courtScheduleJudiciaryRepository.saveAndFlush(judiciary2);
+
+        // When
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
+        em.clear();
+
+        // Then - Schedule and associated judiciaries should be deleted
+        assertNull(courtScheduleRepository.findBy(scheduleId));
+        assertTrue(courtScheduleJudiciaryRepository.findByCourtScheduleId(scheduleId).isEmpty());
+        assertTrue(courtSchedules.isEmpty());
+    }
+
+    @Test
+    public void shouldHandleEmptyList() {
+        // Given - Empty list
+        List<String> courtScheduleIdList = List.of();
+
+        // When
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
+
+        // Then - Should return empty list
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void shouldHandleNonExistentCourtScheduleIds() {
+        // Given - Non-existent IDs
+        String nonExistentId1 = randomUUID().toString();
+        String nonExistentId2 = randomUUID().toString();
+        List<String> courtScheduleIdList = List.of(nonExistentId1, nonExistentId2);
+
+        // When
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result = courtScheduleRepository.deleteCourtSchedule(courtScheduleIdList);
+
+        // Then - Should return empty list (no errors for non-existent IDs)
+        assertTrue(result.isEmpty());
+    }
+
+    private CourtSchedule createCourtSchedule(String courtScheduleId, LocalDate sessionDate) {
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setPanel("ADULT");
+        courtSchedule.setOperationalUnit("BA124");
+        courtSchedule.setOuCode("BA124");
+        courtSchedule.setSessionDate(sessionDate);
+        return courtSchedule;
     }
 
     @Test
@@ -2336,6 +2575,8 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
         courtSchedule1.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtSchedule1.setIsDraft(false);
+        courtSchedule1.setJurisdiction("MAGISTRATES");
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -2398,6 +2639,8 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
         courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
+        courtSchedule1.setIsDraft(false);
+        courtSchedule1.setJurisdiction("MAGISTRATES");
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -2460,6 +2703,8 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
         courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
+        courtSchedule1.setIsDraft(false);
+        courtSchedule1.setJurisdiction("MAGISTRATES");
         courtScheduleRepository.save(courtSchedule1);
 
         CourtSchedule updateRequest = new CourtSchedule();
@@ -2698,6 +2943,8 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionStartTime(convertToDate(LocalTime.of(14, 0)));
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
+        courtSchedule1.setIsDraft(false);
+        courtSchedule1.setJurisdiction("MAGISTRATES");
         courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
 
         courtScheduleRepository.save(courtSchedule1);
@@ -2780,6 +3027,8 @@ public class CourtScheduleRepositoryTest {
         courtSchedule1.setSessionEndTime(convertToDate(LocalTime.of(18, 0)));
         courtSchedule1.setIsOverbookingAllowed(true);
         courtSchedule1.setNationalBreakTime(convertToDate(LocalTime.of(12, 0)));
+        courtSchedule1.setIsDraft(false);
+        courtSchedule1.setJurisdiction("MAGISTRATES");
 
         courtScheduleRepository.save(courtSchedule1);
 

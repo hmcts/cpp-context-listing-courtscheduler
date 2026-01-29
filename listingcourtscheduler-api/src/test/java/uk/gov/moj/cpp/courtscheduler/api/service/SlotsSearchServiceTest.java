@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
@@ -258,6 +259,8 @@ class SlotsSearchServiceTest {
                 .withSessionEndTime(Date.from(LocalTime.parse("13:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1)))
                 .withIsOverbookingAllowed(true)
+                .withIsDraft(false)
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
                 .withMinHearingTime("09:00")
                 .withMaxHearingTime("12:00")
                 .build();
@@ -317,6 +320,8 @@ class SlotsSearchServiceTest {
                 .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
                 .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
                 .withIsOverbookingAllowed(true)
+                .withIsDraft(false)
+                .withJurisdiction(MAGISTRATES.getJurisdiction())
                 .build();
     }
 
@@ -545,7 +550,7 @@ class SlotsSearchServiceTest {
     }
 
     // Helper methods to create test CourtSchedule objects
-    private CourtSchedule createCourtScheduleWithOverbookingAllowed(boolean isOverbookingAllowed, boolean slotBased, 
+    private CourtSchedule createCourtScheduleWithOverbookingAllowed(boolean isOverbookingAllowed, boolean slotBased,
             int maxDurationForMorning, int maxDurationForAfternoon, int totalBookedForMorning, int totalBookedForAfternoon,
             int maxDuration, int totalBooked) {
         return new CourtSchedule.CourtScheduleBuilder()

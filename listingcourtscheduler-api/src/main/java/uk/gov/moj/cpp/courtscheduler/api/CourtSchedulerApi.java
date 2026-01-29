@@ -98,6 +98,7 @@ public class CourtSchedulerApi {
     private static final String SESSIONIDS = "sessionIds";
     private static final String JUDICIARY_ID = "judiciaryId";
     private static final String SKIP_VALIDATIONS = "skipValidations";
+    private static final String ERROR_GROUPS = "errorGroups";
     @Inject
     private Enveloper enveloper;
     @Inject
@@ -167,6 +168,8 @@ public class CourtSchedulerApi {
 
     @Inject
     private JudiciaryAssignmentService judiciaryAssignmentService;
+    @Inject
+    private uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter assignCourtroomRequestConverter;
 
 
     @Handles("courtscheduler.create")
@@ -311,6 +314,35 @@ public class CourtSchedulerApi {
                 .add(RESULTS, objectToJsonObjectConverter.convert(result))
                 .build();
         return envelopeFor(envelope, responseObject, RESULTS);
+    }
+
+    @Handles("courtscheduler.assign.courtroom")
+    public JsonEnvelope assignCourtroom(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.assign.courtroom requested : {}", payload);
+
+        uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request =
+                assignCourtroomRequestConverter.convert(envelope.payloadAsJsonObject());
+
+        JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response =
+                sessionsService.assignCourtroom(request, requester);
+
+        // Convert AssignCourtroomResponse to JSON
+        // The schema expects a direct array of error groups, so extract errorGroups and convert to JsonArray
+        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomErrorGroup> listConverter =
+                new ListToJsonArrayConverter<>();
+        final JsonValue errorGroupsArray = response.getErrorGroups().isEmpty()
+                ? JsonValue.EMPTY_JSON_ARRAY
+                : listConverter.convert(response.getErrorGroups());
+
+        // Use envelopeFor to wrap the array (though schema expects direct array, framework may need wrapping)
+        return envelopeFor(envelope, errorGroupsArray, ERROR_GROUPS);
     }
 
     @Handles("courtscheduler.update.hearing.slots")

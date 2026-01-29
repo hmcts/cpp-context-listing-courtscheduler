@@ -24,15 +24,28 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
     public static final String DELETE_CSJ_BY_IDS_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) " +
             "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)";
 
-    private static final String SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "SELECT csj.court_schedule_id courtScheduleId, csj.judiciary_id judiciaryId " +
-            "FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN " +
-            " (SELECT distinct al.court_schedule_id FROM allocated_listings al WHERE " +
-            "al.hearing_start_time BETWEEN :startDate AND :endDate AND al.oucode IN (:ouCodes) " +
-            "UNION " +
-            "SELECT pb.court_schedule_id FROM provisional_booking pb, court_schedule cs " +
-            "WHERE pb.court_schedule_id = cs.id AND pb.active is true " +
+    private static final String SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "SELECT csj.court_schedule_id AS courtScheduleId, " +
+            "csj.judiciary_id AS judiciaryId " +
+            "FROM court_schedule_judiciary csj " +
+            "WHERE csj.active = true " +
+            "AND ( " +
+            "EXISTS ( " +
+            "SELECT 1 " +
+            "FROM allocated_listings al " +
+            "WHERE al.court_schedule_id = csj.court_schedule_id " +
+            "AND al.hearing_start_time BETWEEN :startDate AND :endDate " +
+            "AND al.oucode IN (:ouCodes) " +
+            ") " +
+            "OR EXISTS ( " +
+            "SELECT 1 " +
+            "FROM provisional_booking pb " +
+            "JOIN court_schedule cs " +
+            "ON cs.id = pb.court_schedule_id " +
+            "WHERE pb.court_schedule_id = csj.court_schedule_id " +
+            "AND pb.active = true " +
             "AND pb.hearing_start_time BETWEEN :startDate AND :endDate " +
-            "AND cs.oucode IN (:ouCodes)) AND csj.active = true";
+            "AND cs.oucode IN (:ouCodes) " +
+            "))";
 
     private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (SELECT cs.id FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays))";
 

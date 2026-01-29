@@ -9,7 +9,8 @@
       "panel": "YOUTH",
       "repeatDays": ["MON", "WED", "FRI"],
       "sessionStartTime": "10:00",
-      "sessionEndTime": "12:00"
+      "sessionEndTime": "12:00",
+      "jurisdiction": "MAGISTRATES"
     },
     {
       "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
@@ -20,7 +21,9 @@
       "panel": "ADULT",
       "repeatDays": ["TUE", "THU"],
       "sessionStartTime": "13:00",
-      "sessionEndTime": "15:00"
+      "sessionEndTime": "15:00",
+      "draft": false,
+      "jurisdiction": "CROWN"
     }
   ],
   "repeatPattern": {
