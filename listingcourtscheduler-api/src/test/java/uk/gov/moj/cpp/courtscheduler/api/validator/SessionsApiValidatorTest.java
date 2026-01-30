@@ -12,11 +12,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 
@@ -25,6 +27,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
@@ -39,6 +42,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.lang.reflect.Field;
@@ -88,6 +92,9 @@ class SessionsApiValidatorTest {
 
     @Mock
     private AllocatedListingService allocatedListingService;
+
+    @Mock
+    private RotaProcessLogService rotaProcessLogService;
 
     private final String courtCentreId = randomUUID().toString();
     private final String courtRoomId = randomUUID().toString();
@@ -500,6 +507,7 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals(0, result.size());
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any(RotaProcessLog.class));
     }
 
     @Test
@@ -661,10 +669,16 @@ class SessionsApiValidatorTest {
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
+        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
+        RotaProcessLog savedLog = logCaptor.getValue();
+        assertEquals(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code(), savedLog.getErrorCode());
+        assertEquals(CREATE_SESSIONS_COURTROOM_NOT_FOUND.format(courtRoomId), savedLog.getErrorText());
     }
 
     @Test
@@ -703,6 +717,7 @@ class SessionsApiValidatorTest {
 
         assertEquals("The courtroom must belong to the same court centre as specified in courtCentreId",
                 result.getString("errorMessage"));
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any(RotaProcessLog.class));
     }
 
     @Test
@@ -810,20 +825,12 @@ class SessionsApiValidatorTest {
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
-        
-        // Courtroom not found in CP (CROWN) but found in Rota (MAGISTRATES) - jurisdiction mismatch
+        // For CROWN only CP is checked; courtroom not found in CP returns COURTROOM_NOT_FOUND
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
-        
-        CourtRoom rotaCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(courtRoomId)
-                .withOucodeUUID(courtCentreId)
-                .build();
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(rotaCourtRoom));
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
-        assertEquals("The courtroom belongs to a court centre with MAGISTRATES jurisdiction, which does not match the session jurisdiction CROWN",
-                result.getString("errorMessage"));
+        assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
     }
 
     @Test
@@ -862,6 +869,11 @@ class SessionsApiValidatorTest {
 
         assertEquals("Courtroom selected does not exist in Rota",
                 result.getString("errorMessage"));
+        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
+        RotaProcessLog savedLog = logCaptor.getValue();
+        assertEquals(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code(), savedLog.getErrorCode());
+        assertEquals(CREATE_SESSIONS_COURTROOM_NOT_FOUND.format(courtRoomId), savedLog.getErrorText());
     }
 
     private Session createDraftSession() {

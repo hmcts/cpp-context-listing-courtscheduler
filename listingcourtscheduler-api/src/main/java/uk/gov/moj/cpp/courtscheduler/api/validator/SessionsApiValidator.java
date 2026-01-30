@@ -21,6 +21,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSINESS_TYPE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED;
@@ -41,6 +42,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
@@ -94,6 +96,9 @@ public class SessionsApiValidator {
 
     @Inject
     private AllocatedListingService allocatedListingService;
+
+    @Inject
+    private RotaProcessLogService rotaProcessLogService;
 
     public JsonObject getSessionsCreateValidation(final CreateSessionRequestParam createSessionRequestParam, final Requester requester) {
         final long totalStartTime = System.currentTimeMillis();
@@ -305,21 +310,21 @@ public class SessionsApiValidator {
 
     private CourtRoomRetrievalResult retrieveCourtRoomByJurisdiction(String courtRoomId, String sessionJurisdiction, Requester requester) {
         if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
-            //IF both Raja and Hasan confirms this, we can simply rely on
-            // MAGS : if you can verify courtroom against getCpCourtRoomByCourtRoomId reject,
-            // else check getRotaCourtRoomByCourtRoomId if mapping not exists, don't reject but insert into rota_process_log
-            //CROWN : only check getCpCourtRoomByCourtRoomId if not exists then reject, otherwise allow
-
             return new CourtRoomRetrievalResult(
-                    referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester),Optional.empty()
-                    //ASKRAJA referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)
+                    referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester), Optional.empty()
             );
         } else {
-            return new CourtRoomRetrievalResult(
-                    //ASKHASAN referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester),
-                    Optional.empty(),
-                    referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)
-            );
+            Optional<CourtRoom> rotaCourtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester);
+            if (rotaCourtRoom.isEmpty()) {
+                rotaProcessLogService.saveRotaProcessLog(
+                        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog()
+                                .withErrorCode(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code())
+                                .withErrorText(CREATE_SESSIONS_COURTROOM_NOT_FOUND.format(courtRoomId))
+                                .build()
+                );
+            }
+            Optional<CourtRoom> cpCourtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester);
+            return new CourtRoomRetrievalResult(rotaCourtRoom, cpCourtRoom);
         }
     }
 
