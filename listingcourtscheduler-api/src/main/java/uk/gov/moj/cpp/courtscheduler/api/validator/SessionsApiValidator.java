@@ -63,7 +63,9 @@ import java.time.LocalTime;
 import java.time.chrono.ChronoLocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +85,10 @@ public class SessionsApiValidator {
 
     private static final DateTimeFormatter TIME_FORMATTER = ofPattern("HH:mm");
     public static final int DEFAULT_DURATION = 180;
+    private static final String PERF_VALIDATE_ADDED_SESSION_PAYLOAD_DUPLICATE_CHECK_MS =
+            "[PERF] validateAddedSessionPayload duplicate check took {} ms";
+    private static final String PERF_VALIDATE_ADDED_SESSION_PAYLOAD_TOTAL_MS =
+            "[PERF] validateAddedSessionPayload total took {} ms";
 
     @Inject
     private SessionsService sessionsService;
@@ -540,73 +546,106 @@ public class SessionsApiValidator {
                                                    final Requester requester) {
         final long totalStartTime = System.currentTimeMillis();
         final Session sessionToBeAdded = createSessionRequestParam.getSessionToBeAdded();
-        
-        long stepStart = System.currentTimeMillis();
-        if (repeatFrequency == EVERY_MONTH) {
-            // For monthly: only duplicate if same (day, index) with session type conflict within payload
-            final List<Session> matchingSessions = new java.util.ArrayList<>();
-            for (Session session : createSessionRequestParam.getSessionList()) {
-                if (session.getCourtCentreId().equals(sessionToBeAdded.getCourtCentreId()) &&
-                        session.getCourtRoomId().equals(sessionToBeAdded.getCourtRoomId()) &&
-                        session.getBusinessType().equals(sessionToBeAdded.getBusinessType())) {
-                    matchingSessions.add(session);
-                }
-            }
-            matchingSessions.add(sessionToBeAdded);
-            final Map<String, Session> dayIndexToSession = new java.util.HashMap<>();
-            for (Session session : matchingSessions) {
-                for (DayOfWeek day : session.getRepeatDays()) {
-                    final Integer index = session.getIndex();
-                    if (index == null) {
-                        continue;
-                    }
-                    final String key = day.name() + "_" + index;
-                    if (dayIndexToSession.containsKey(key)) {
-                        if (isSessionTypeDuplicateOrNotValidForAllDay(dayIndexToSession.get(key), session)) {
-                            LOGGER.info("getSessionsCreateValidation DUPLICATE_SESSIONS (monthly: same day and index)");
-                            LOGGER.info("[PERF] validateAddedSessionPayload duplicate check took {} ms", System.currentTimeMillis() - stepStart);
-                            return buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS);
-                        }
-                    } else {
-                        dayIndexToSession.put(key, session);
-                    }
-                }
-            }
-        } else {
-            // For weekly (or other): same days not allowed - any overlapping day with session type conflict = duplicate
-            final Set<DayOfWeek> repeatDaysToBeAdded = new HashSet<>(sessionToBeAdded.getRepeatDays());
-            for (Session session : createSessionRequestParam.getSessionList()) {
-                LOGGER.info("getSessionsCreateValidation getSessionList not null");
-                boolean match = session.getCourtCentreId().equals(sessionToBeAdded.getCourtCentreId()) &&
-                        session.getCourtRoomId().equals(sessionToBeAdded.getCourtRoomId()) &&
-                        session.getBusinessType().equals(sessionToBeAdded.getBusinessType());
-                LOGGER.info("getSessionsCreateValidation match value : {}", match);
-                if (match) {
-                    Set<DayOfWeek> repeatDays = new HashSet<>(session.getRepeatDays());
-                    if (repeatDaysToBeAdded.stream().anyMatch(repeatDays::contains) && isSessionTypeDuplicateOrNotValidForAllDay(session, sessionToBeAdded)) {
-                        LOGGER.info("getSessionsCreateValidation DUPLICATE_SESSIONS");
-                        LOGGER.info("[PERF] validateAddedSessionPayload duplicate check took {} ms", System.currentTimeMillis() - stepStart);
-                        return buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS);
-                    }
-                }
-            }
+        final long duplicateCheckStart = System.currentTimeMillis();
+
+        Optional<JsonObject> duplicateError = repeatFrequency == EVERY_MONTH
+                ? findDuplicateErrorForMonthlyPayload(createSessionRequestParam, sessionToBeAdded)
+                : findDuplicateErrorForWeeklyPayload(createSessionRequestParam, sessionToBeAdded);
+
+        LOGGER.info(PERF_VALIDATE_ADDED_SESSION_PAYLOAD_DUPLICATE_CHECK_MS, System.currentTimeMillis() - duplicateCheckStart);
+        if (duplicateError.isPresent()) {
+            LOGGER.info(PERF_VALIDATE_ADDED_SESSION_PAYLOAD_TOTAL_MS, System.currentTimeMillis() - totalStartTime);
+            return duplicateError.get();
         }
-        LOGGER.info("[PERF] validateAddedSessionPayload duplicate check took {} ms", System.currentTimeMillis() - stepStart);
-        
-        // For validate-create, also enforce business type / courtroom / court-centre rules
-        stepStart = System.currentTimeMillis();
+
+        long stepStart = System.currentTimeMillis();
         JsonObject businessTypeAndCourtRoomValidationResult = validateSessionBusinessTypeAndCourtRoom(sessionToBeAdded, requester);
         LOGGER.info("[PERF] validateSessionBusinessTypeAndCourtRoom took {} ms", System.currentTimeMillis() - stepStart);
         if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
-            LOGGER.info("[PERF] validateAddedSessionPayload total took {} ms", System.currentTimeMillis() - totalStartTime);
+            LOGGER.info(PERF_VALIDATE_ADDED_SESSION_PAYLOAD_TOTAL_MS, System.currentTimeMillis() - totalStartTime);
             return businessTypeAndCourtRoomValidationResult;
         }
-        
+
         stepStart = System.currentTimeMillis();
         JsonObject result = validateSessionToBeAdded(sessionToBeAdded, requester);
         LOGGER.info("[PERF] validateSessionToBeAdded took {} ms", System.currentTimeMillis() - stepStart);
-        LOGGER.info("[PERF] validateAddedSessionPayload total took {} ms", System.currentTimeMillis() - totalStartTime);
+        LOGGER.info(PERF_VALIDATE_ADDED_SESSION_PAYLOAD_TOTAL_MS, System.currentTimeMillis() - totalStartTime);
         return result;
+    }
+
+    private Optional<JsonObject> findDuplicateErrorForMonthlyPayload(final CreateSessionRequestParam createSessionRequestParam,
+                                                                    final Session sessionToBeAdded) {
+        List<Session> matchingSessions = collectSessionsMatchingCourtCentreRoomAndBusinessType(
+                sessionToBeAdded, createSessionRequestParam.getSessionList());
+        matchingSessions.add(sessionToBeAdded);
+        Map<String, Session> dayIndexToSession = new HashMap<>();
+        for (Session session : matchingSessions) {
+            Optional<JsonObject> error = checkMonthlySessionForDuplicate(dayIndexToSession, session);
+            if (error.isPresent()) {
+                return error;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private List<Session> collectSessionsMatchingCourtCentreRoomAndBusinessType(final Session sessionToBeAdded,
+                                                                                final List<Session> sessionList) {
+        List<Session> matching = new ArrayList<>();
+        for (Session session : sessionList) {
+            if (isSameCourtCentreRoomAndBusinessType(session, sessionToBeAdded)) {
+                matching.add(session);
+            }
+        }
+        return matching;
+    }
+
+    private static boolean isSameCourtCentreRoomAndBusinessType(final Session a, final Session b) {
+        return a.getCourtCentreId().equals(b.getCourtCentreId())
+                && a.getCourtRoomId().equals(b.getCourtRoomId())
+                && a.getBusinessType().equals(b.getBusinessType());
+    }
+
+    private Optional<JsonObject> checkMonthlySessionForDuplicate(final Map<String, Session> dayIndexToSession,
+                                                               final Session session) {
+        for (DayOfWeek day : session.getRepeatDays()) {
+            Integer index = session.getIndex();
+            if (index == null) {
+                continue;
+            }
+            String key = day.name() + "_" + index;
+            if (dayIndexToSession.containsKey(key)) {
+                if (isSessionTypeDuplicateOrNotValidForAllDay(dayIndexToSession.get(key), session)) {
+                    LOGGER.info("getSessionsCreateValidation DUPLICATE_SESSIONS (monthly: same day and index)");
+                    return Optional.of(buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS));
+                }
+            } else {
+                dayIndexToSession.put(key, session);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<JsonObject> findDuplicateErrorForWeeklyPayload(final CreateSessionRequestParam createSessionRequestParam,
+                                                                    final Session sessionToBeAdded) {
+        Set<DayOfWeek> repeatDaysToBeAdded = new HashSet<>(sessionToBeAdded.getRepeatDays());
+        for (Session session : createSessionRequestParam.getSessionList()) {
+            LOGGER.info("getSessionsCreateValidation getSessionList not null");
+            boolean match = isSameCourtCentreRoomAndBusinessType(session, sessionToBeAdded);
+            LOGGER.info("getSessionsCreateValidation match value : {}", match);
+            if (match && hasOverlappingDayWithDuplicateSessionType(repeatDaysToBeAdded, session, sessionToBeAdded)) {
+                LOGGER.info("getSessionsCreateValidation DUPLICATE_SESSIONS");
+                return Optional.of(buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private boolean hasOverlappingDayWithDuplicateSessionType(final Set<DayOfWeek> repeatDaysToBeAdded,
+                                                              final Session existingSession,
+                                                              final Session sessionToBeAdded) {
+        Set<DayOfWeek> existingRepeatDays = new HashSet<>(existingSession.getRepeatDays());
+        return repeatDaysToBeAdded.stream().anyMatch(existingRepeatDays::contains)
+                && isSessionTypeDuplicateOrNotValidForAllDay(existingSession, sessionToBeAdded);
     }
 
     private JsonObject validateSessionToBeAdded(Session sessionToBeAdded, Requester requester) {
