@@ -22,7 +22,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.CourtSchedulerApi.RESULTS;
-import static uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService.getJsonObject;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.payloadToObject;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
@@ -52,7 +51,6 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
-import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
@@ -75,8 +73,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
-import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatusList;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -159,8 +155,6 @@ class CourtSchedulerApiTest {
     private Function<Object, JsonEnvelope> function;
     @Mock
     private SessionsApiValidator sessionsApiValidator;
-    @Mock
-    private OrganisationUnitHMIStatusService organisationUnitHMIStatusService;
     @InjectMocks
     private CourtSchedulerApi courtSchedulerApi;
     @Mock
@@ -453,69 +447,6 @@ class CourtSchedulerApiTest {
 
         verify(allocatedListingService, atLeastOnce()).getHearingIds(hearingSlotRequestParamConverter.convert(jsonObject));
         verify(enveloper, atLeastOnce()).withMetadataFrom(hearingIdsEnvelope, requestName);
-    }
-
-    @Test
-    void shouldRetrieveOrganisationUnitsHmiStatus() {
-        JsonObject jsonObj = createObjectBuilder().build();
-        String requestName = "listingcourtscheduler.query.organisation-units-hmi-status";
-        JsonEnvelope orgUnitsHmiStatusEnvelope = createEnvelope(requestName, jsonObj);
-
-        List<OrganisationUnitHMIStatus> statusList = new ArrayList<>();
-        String payload = getPayload("test-data/listingcourtscheduler.query.organisation-units-hmi-status.json");
-        JsonObject payloadJsonObj = getJsonObject(payload);
-        JsonArray jsonArr = payloadJsonObj.getJsonArray("organisationUnitHMIStatus");
-        JsonObjectToObjectConverter jsonObjectToObjectConverter = new JsonObjectToObjectConverter(new ObjectMapperProducer().objectMapper());
-        for (int i = 0; i < jsonArr.size(); i++) {
-            final JsonObject json = jsonArr.getJsonObject(i);
-            final OrganisationUnitHMIStatus organisationUnitHmiStatus = jsonObjectToObjectConverter.convert(json, OrganisationUnitHMIStatus.class);
-            statusList.add(organisationUnitHmiStatus);
-        }
-        when(organisationUnitHMIStatusService.getAllOrganisationUnitsHMIStatus()).thenReturn(new OrganisationUnitHMIStatusList(statusList));
-        when(enveloper.withMetadataFrom(orgUnitsHmiStatusEnvelope, requestName)).thenReturn(function);
-        courtSchedulerApi.getOrganisationUnitsHmiStatus(orgUnitsHmiStatusEnvelope);
-
-        ArgumentCaptor<JsonObject> orgUnitsHmiStatusRespArgCaptor = ArgumentCaptor.forClass(JsonObject.class);
-        verify(function).apply(orgUnitsHmiStatusRespArgCaptor.capture());
-
-        JsonObject respJsonObj = orgUnitsHmiStatusRespArgCaptor.getValue();
-        JsonArray orgUnitsHMIStatusJsonArr = respJsonObj.getJsonArray("organisationUnitHMIStatus");
-        assertEquals(3, orgUnitsHMIStatusJsonArr.size());
-        assertEquals("A01AF00", orgUnitsHMIStatusJsonArr.getJsonObject(0).getString("oucode"));
-        assertEquals("42f44290-c183-3cab-9fbe-e22fc25a5fe4", orgUnitsHMIStatusJsonArr.getJsonObject(0).getString("courtCentreId"));
-
-        assertEquals("A01BE00", orgUnitsHMIStatusJsonArr.getJsonObject(1).getString("oucode"));
-        assertEquals("5907faec-be0c-37dc-8513-4685b74ae9ae", orgUnitsHMIStatusJsonArr.getJsonObject(1).getString("courtCentreId"));
-
-        assertEquals("A01CT00", orgUnitsHMIStatusJsonArr.getJsonObject(2).getString("oucode"));
-        assertEquals("05cf1c11-c18d-3b05-ae56-0c8f6d7264bf", orgUnitsHMIStatusJsonArr.getJsonObject(2).getString("courtCentreId"));
-    }
-
-    @Test
-    void shouldRetrieveOrganisationUnitHmiStatusByOucode() {
-        String oucode = "A01AF00";
-        JsonObject jsonObj = createObjectBuilder().add("oucode", oucode).build();
-        String requestName = "listingcourtscheduler.query.organisation-unit-hmi-status";
-        JsonEnvelope orgUnitsHmiStatusEnvelope = createEnvelope(requestName, jsonObj);
-        UUID courtCentreId = randomUUID();
-        OrganisationUnitHMIStatus orgUnitHMIStatus = new OrganisationUnitHMIStatus.Builder()
-                .withOucode(oucode)
-                .withIsHMIListingEnabled(true)
-                .withIsHMISchedulingEnabled(true)
-                .withIsHMIPubHubEnabled(true)
-                .withUpdatedOn(new Timestamp(System.currentTimeMillis()))
-                .withCourtCentreId(courtCentreId.toString())
-                .withCourtId("Court-1").build();
-
-        when(organisationUnitHMIStatusService.getOrganisationUnitHMIStatus(anyString())).thenReturn(of(orgUnitHMIStatus));
-        when(enveloper.withMetadataFrom(orgUnitsHmiStatusEnvelope, requestName)).thenReturn(function);
-        courtSchedulerApi.getOrganisationUnitHmiStatus(orgUnitsHmiStatusEnvelope);
-        ArgumentCaptor<JsonObject> orgUnitsHmiStatusRespArgCaptor = ArgumentCaptor.forClass(JsonObject.class);
-        verify(function).apply(orgUnitsHmiStatusRespArgCaptor.capture());
-
-        JsonObject respJsonObj = orgUnitsHmiStatusRespArgCaptor.getValue().getJsonObject("organisationUnitHMIStatus");
-        assertEquals(oucode, respJsonObj.getString("oucode"));
-        assertEquals(courtCentreId.toString(), respJsonObj.getString("courtCentreId"));
     }
 
     @Test
