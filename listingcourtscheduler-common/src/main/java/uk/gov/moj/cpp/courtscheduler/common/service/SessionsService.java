@@ -795,7 +795,7 @@ public class SessionsService {
         
         long stepStart = System.currentTimeMillis();
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessionsToCompare = courtScheduleRepository
-                .getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), session.getPanelType(), startDate, endDate, jurisdiction);
+                .getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate, jurisdiction);
         logger.info("[PERF] getSimilarSessions DB query took {} ms, returned {} records", System.currentTimeMillis() - stepStart, sessionsToCompare.size());
         
         stepStart = System.currentTimeMillis();

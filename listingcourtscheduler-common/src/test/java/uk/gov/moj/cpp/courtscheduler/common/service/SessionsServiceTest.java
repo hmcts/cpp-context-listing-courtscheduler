@@ -1997,14 +1997,14 @@ class SessionsServiceTest {
         existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 1, 23)); // 4th Friday of January 2026
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
         final JsonObject result = sessionsService.validateSessionIntegrity(newSession, startDate, endDate, repeatFor, RepeatFrequency.EVERY_MONTH);
 
         // Then
-        verify(courtScheduleRepository).getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES");
+        verify(courtScheduleRepository).getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate, "MAGISTRATES");
         assertTrue(result.containsKey("errorMessage"), "Expected error message for duplicate session");
         assertTrue(result.getString("errorMessage").contains(existingSession.getCourtScheduleId()));
     }
@@ -2037,7 +2037,7 @@ class SessionsServiceTest {
         existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 1, 2)); // 1st Friday of January 2026
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
@@ -2076,7 +2076,7 @@ class SessionsServiceTest {
         existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 3, 27)); // 4th Friday of March 2026
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
@@ -2115,7 +2115,7 @@ class SessionsServiceTest {
         existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 2, 26)); // 4th Friday of February 2026
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
@@ -2153,14 +2153,14 @@ class SessionsServiceTest {
         existingSession.setPanel("ADULT");
         existingSession.setSessionDate(LocalDate.of(2026, 1, 2)); // First Friday
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(List.of(existingSession));
 
         // When
         final JsonObject result = sessionsService.validateSessionIntegrity(newSession, startDate, endDate, repeatFor, RepeatFrequency.EVERY_WEEK);
 
         // Then - Should use weekly validation logic
-        verify(courtScheduleRepository).getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES");
+        verify(courtScheduleRepository).getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate, "MAGISTRATES");
         assertTrue(result.containsKey("errorMessage"), "Expected error message for duplicate session");
         assertTrue(result.getString("errorMessage").contains(existingSession.getCourtScheduleId()));
     }
@@ -2192,7 +2192,7 @@ class SessionsServiceTest {
                 .withIndex(null) // No index
                 .build();
 
-        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", "ADULT", startDate, endDate, "MAGISTRATES"))
+        when(courtScheduleRepository.getSimilarSessions("court-centre-1", "court-room-1", "LGT", startDate, endDate, "MAGISTRATES"))
                 .thenReturn(emptyList());
 
         // When
