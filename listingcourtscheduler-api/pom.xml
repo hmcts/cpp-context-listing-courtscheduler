@@ -5,7 +5,7 @@
     <parent>
         <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
         <artifactId>listingcourtscheduler-parent</artifactId>
-        <version>17.0.87-SQL-SNAPSHOT</version>
+        <version>17.0.88-SQL-SNAPSHOT</version>
     </parent>
 
     <artifactId>listingcourtscheduler-api</artifactId>
