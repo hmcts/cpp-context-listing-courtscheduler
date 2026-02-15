@@ -357,12 +357,17 @@ class RotaFileProcessorIT extends AbstractIT {
         // then call rota file processor api
         final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
-        // await until this file uploaded into archive container
+        // await until the database contains the expected records
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
             final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = databaseReader.courtScheduleJudiciaries();
             final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
             return courtScheduleJudiciaryEntities.size() == expectedNumberOfJudiciaries && courtScheduleEntities.size() == expectedNumberOfSlots;
         });
+
+        // await until the specific file has been removed from the input container,
+        // confirming the full async processing cycle (process → upload to output → delete from input) has completed.
+        // This prevents a still-running background captureRotaFilesAndProcessEach loop from picking up the next test's file.
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> !isFileInInputContainer(finalMasterRotaFileName));
 
         logger.info("master rota file processing took time as seconds : {}", stopwatch.elapsed(SECONDS));
 
@@ -442,6 +447,24 @@ class RotaFileProcessorIT extends AbstractIT {
         allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0).atZone(UTC_ZONE).toInstant()));
 
         return allocatedListing;
+    }
+
+    private boolean isFileInInputContainer(final String fileName) {
+        try {
+            final var blobServiceClient = new com.azure.storage.blob.BlobServiceClientBuilder()
+                    .connectionString(ROTASL_STORAGE_CONNECTION_STRING)
+                    .buildClient();
+            final var containerClient = blobServiceClient.getBlobContainerClient(azureBlobInputContainerName);
+            final var options = new com.azure.storage.blob.models.ListBlobsOptions().setPrefix(fileName);
+            for (final var blobItem : containerClient.listBlobs(options, null)) {
+                if (fileName.equals(blobItem.getName())) {
+                    return true;
+                }
+            }
+        } catch (final Exception e) {
+            logger.warn("Error checking if file {} exists in input container: {}", fileName, e.getMessage());
+        }
+        return false;
     }
 
     private static void assertDefaultStartTimeAndEndTime(final List<CourtSchedule> courtSchedules) {

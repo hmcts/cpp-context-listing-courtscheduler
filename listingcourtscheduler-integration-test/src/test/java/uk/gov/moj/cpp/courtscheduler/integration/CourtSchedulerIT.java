@@ -70,6 +70,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -83,8 +84,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.stream.Stream;
 
 class CourtSchedulerIT extends AbstractIT {
 
@@ -3026,7 +3025,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Wait for processing and verify court schedules are created
         final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
-        assertThat("Court schedules should be created", courtSchedules.size(), is(greaterThan(0)));
+        assertThat("Court schedules should be creat0ed", courtSchedules.size(), is(greaterThan(0)));
 
         // Verify court schedule is created with index 5 (no session created if 5th doesn't exist in month)
         final CourtSchedule courtSchedule = courtSchedules.get(0);
