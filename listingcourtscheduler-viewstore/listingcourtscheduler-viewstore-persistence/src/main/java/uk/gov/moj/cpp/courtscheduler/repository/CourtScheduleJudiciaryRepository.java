@@ -26,26 +26,21 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
 
     private static final String SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "SELECT csj.court_schedule_id AS courtScheduleId, " +
             "csj.judiciary_id AS judiciaryId " +
-            "FROM court_schedule_judiciary csj " +
-            "WHERE csj.active = true " +
+            "FROM court_schedule_judiciary csj,court_schedule cs " +
+            "WHERE  cs.id = csj.court_schedule_id and csj.active = true and cs.active = true " +
+            "AND cs.oucode IN (:ouCodes)" +
+            "AND cs.session_start BETWEEN :startDate AND :endDate " +
             "AND ( " +
             "EXISTS ( " +
             "SELECT 1 " +
             "FROM allocated_listings al " +
-            "WHERE al.court_schedule_id = csj.court_schedule_id " +
-            "AND al.hearing_start_time BETWEEN :startDate AND :endDate " +
-            "AND al.oucode IN (:ouCodes) " +
-            ") " +
+            "WHERE al.court_schedule_id = cs.id ) " +
             "OR EXISTS ( " +
             "SELECT 1 " +
             "FROM provisional_booking pb " +
-            "JOIN court_schedule cs " +
-            "ON cs.id = pb.court_schedule_id " +
-            "WHERE pb.court_schedule_id = csj.court_schedule_id " +
-            "AND pb.active = true " +
-            "AND pb.hearing_start_time BETWEEN :startDate AND :endDate " +
-            "AND cs.oucode IN (:ouCodes) " +
-            "))";
+            "WHERE pb.court_schedule_id = cs.id " +
+            "AND pb.active = true )" +
+            ")";
 
     private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (SELECT cs.id FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays))";
 
