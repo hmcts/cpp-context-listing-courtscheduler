@@ -1,0 +1,27 @@
+{
+  "sessions": [
+    {
+      "courtCentreId": "785339c1-af71-3322-a55b-ba255e0db1c2",
+      "courtRoomId": "3fc02c0f-f92e-31da-9686-d626ac8ccdc3",
+      "sessionType": "AM",
+      "businessType": "TRL",
+      "duration": 20,
+      "panel": "ADULT",
+      "repeatDays": [
+        "Friday"
+      ],
+      "sessionStartTime": "10:00",
+      "sessionEndTime": "12:00",
+      "isOverbookingAllowed": true,
+      "isDraft": false,
+      "jurisdiction": "CROWN",
+      "index": 5
+    }
+  ],
+  "repeatPattern": {
+    "frequency": "EVERY_MONTH",
+    "repeatFor": 1,
+    "startDate": "START_DATE",
+    "endDate": "END_DATE"
+  }
+}

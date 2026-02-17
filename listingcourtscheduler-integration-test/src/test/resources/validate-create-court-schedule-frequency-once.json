@@ -1,0 +1,31 @@
+{
+  "sessions": [],
+  "sessionToBeAdded": {
+    "courtCentreId": "49db2271-1941-3847-a7fb-dbd92b035e40",
+    "courtRoomId": "41a41156-0ca9-3352-999e-8d26274bb1aa",
+    "sessionType": "AM",
+    "businessType": "DVLA",
+    "duration": 100,
+    "panel": "ADULT",
+    "repeatDays": ["Friday"],
+    "jurisdiction": "MAGISTRATES"
+  },
+  "repeatPattern": {
+    "frequency": "ONCE",
+    "repeatFor": 1,
+    "startDate": "START_DATE"
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

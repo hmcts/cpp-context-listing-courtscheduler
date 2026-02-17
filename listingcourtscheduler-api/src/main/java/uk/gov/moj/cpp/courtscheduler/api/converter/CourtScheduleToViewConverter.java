@@ -52,6 +52,8 @@ public class CourtScheduleToViewConverter {
                     .withSessionStartTime(sessionTimeFormatter(courtSchedule.getSessionStartTime()))
                     .withSessionEndTime(sessionTimeFormatter(courtSchedule.getSessionEndTime()))
                     .withIsOverbookingAllowed(courtSchedule.isOverbookingAllowed())
+                    .withIsDraft(courtSchedule.isDraft())
+                    .withJurisdictionType(courtSchedule.getJurisdiction())
                     .build();
             CourtSessionsView courtSessionsView;
             if (courtSessionsViews.containsKey(courtRoomName)) {

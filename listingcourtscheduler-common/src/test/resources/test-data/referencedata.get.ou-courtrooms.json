@@ -1,0 +1,32 @@
+{
+  "organisationunits": [
+    {
+      "id": "7e967376-eacf-4fca-9b30-21b0c5aad427",
+      "oucode": "B01BH00",
+      "lja": "2575",
+      "oucodeL1Code": "B",
+      "courtId": "35",
+      "oucodeL1Name": "Magistrates' Courts",
+      "oucodeL3Name": "Bexley Magistrates' Court",
+      "oucodeL3WelshName": "Llys Ynadon Bexley",
+      "address1": "Norwich Place",
+      "address2": "Bexleyheath",
+      "address3": "Kent",
+      "postcode": "DA6 7ND",
+      "defaultStartTime": "10:00:00",
+      "defaultDurationHrs": "07:00:00",
+      "oucodeL2Code": "1",
+      "oucodeL2Name": "London",
+      "region": "London",
+      "courtrooms": [
+        {
+          "id": "8e912353-3b5d-36c3-953e-ad3b94b19de3",
+          "venueName": "BEXLEY MAGISTRATES' COURT",
+          "courtroomId": 121,
+          "courtroomName": "Courtroom 01",
+          "venueId": 39
+        }
+      ]
+    }
+  ]
+}

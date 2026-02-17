@@ -31,15 +31,44 @@
           "maxDurationForAfternoon": {"type": "number"},
           "sessionStartTime": {"type": "string"},
           "sessionEndTime": {"type": "string"},
-          "isOverbookingAllowed": {"type": "boolean"}
+          "isOverbookingAllowed": {"type": "boolean"},
+          "index": {"type": "number"},
+          "isDraft": {"type": "boolean"},
+          "jurisdiction": {"type": "string", "enum": ["CROWN", "MAGISTRATES"]}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel", "repeatDays"]
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "repeatDays", "jurisdiction" ],
+        "allOf": [
+          {
+        "oneOf": [
+              {
+                "allOf": [
+          {
+                    "properties": { "jurisdiction": { "enum": ["CROWN"] } }
+                  },
+                  {
+            "required": ["isDraft"]
+                  }
+                ]
+          },
+              {
+                "allOf": [
+          {
+            "properties": { "jurisdiction": { "enum": ["MAGISTRATES"] } }
+                  },
+                  {
+                    "required": ["panel"]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       }
     },
     "repeatPattern": {
       "type": "object",
       "properties": {
-        "frequency": {"type": "string",  "enum": ["ONCE", "EVERY_WEEK"]},
+        "frequency": {"type": "string",  "enum": ["ONCE", "EVERY_WEEK", "EVERY_MONTH"]},
         "repeatFor" : {"type": "integer"},
         "startDate": {"type": "string", "format": "date"},
         "endDate": {"type": "string", "format": "date"}
@@ -65,9 +94,38 @@
           "maxDurationForMorning": {"type": "number"},
           "maxDurationForAfternoon": {"type": "number"},
           "sessionStartTime": {"type": "string"},
-          "sessionEndTime": {"type": "string"}
+          "sessionEndTime": {"type": "string"},
+          "index": {"type": "number"},
+          "isDraft": {"type": "boolean"},
+          "jurisdiction": {"type": "string", "enum": ["CROWN", "MAGISTRATES"]}
         },
-        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "panel"]
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "jurisdiction"],
+        "allOf": [
+          {
+        "oneOf": [
+              {
+                "allOf": [
+          {
+                    "properties": { "jurisdiction": { "enum": ["CROWN"] } }
+                  },
+                  {
+            "required": ["isDraft"]
+                  }
+                ]
+          },
+              {
+                "allOf": [
+          {
+            "properties": { "jurisdiction": { "enum": ["MAGISTRATES"] } }
+                  },
+                  {
+                    "required": ["panel"]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
     }
   },
   "required": ["repeatPattern", "sessionToBeAdded"],

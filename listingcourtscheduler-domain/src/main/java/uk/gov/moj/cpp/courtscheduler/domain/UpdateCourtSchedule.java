@@ -20,6 +20,8 @@ public class UpdateCourtSchedule {
     private String sessionStartTime;
     private String sessionEndTime;
     private boolean isOverbookingAllowed;
+    private String jurisdiction;
+    private Boolean isDraft;
 
     protected UpdateCourtSchedule(final UpdateCourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -37,6 +39,8 @@ public class UpdateCourtSchedule {
         this.sessionStartTime = builder.sessionStartTime;
         this.sessionEndTime = builder.sessionEndTime;
         this.isOverbookingAllowed = builder.isOverbookingAllowed;
+        this.jurisdiction = builder.jurisdiction;
+        this.isDraft = builder.isDraft;
     }
 
     public UpdateCourtSchedule() {
@@ -171,6 +175,22 @@ public class UpdateCourtSchedule {
         this.isOverbookingAllowed = isOverbookingAllowed;
     }
 
+    public String getJurisdiction() {
+        return jurisdiction;
+    }
+
+    public void setJurisdiction(final String jurisdiction) {
+        this.jurisdiction = jurisdiction;
+    }
+
+    public Boolean getIsDraft() {
+        return isDraft;
+    }
+
+    public void setIsDraft(final Boolean isDraft) {
+        this.isDraft = isDraft;
+    }
+
     public static final class UpdateCourtScheduleBuilder {
         private String courtScheduleId;
         private String courtRoomId;
@@ -188,6 +208,8 @@ public class UpdateCourtSchedule {
         private String sessionStartTime;
         private String sessionEndTime;
         private boolean isOverbookingAllowed;
+        private String jurisdiction;
+        private Boolean isDraft;
 
         public static UpdateCourtSchedule.UpdateCourtScheduleBuilder courtSchedule() {
             return new UpdateCourtSchedule.UpdateCourtScheduleBuilder();
@@ -268,6 +290,16 @@ public class UpdateCourtSchedule {
 
         public UpdateCourtScheduleBuilder withIsOverbookingAllowed(final boolean isOverbookingAllowed) {
             this.isOverbookingAllowed = isOverbookingAllowed;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withJurisdiction(final String jurisdiction) {
+            this.jurisdiction = jurisdiction;
+            return this;
+        }
+
+        public UpdateCourtScheduleBuilder withIsDraft(final Boolean isDraft) {
+            this.isDraft = isDraft;
             return this;
         }
 
