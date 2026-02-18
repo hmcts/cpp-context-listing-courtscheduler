@@ -80,13 +80,12 @@ import java.util.Optional;
 
 import javax.inject.Inject;
 import javax.json.Json;
-import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-@SuppressWarnings({"squid:S1874", "squid:S6813"})
+
 @CustomServiceComponent("Courtscheduler.API")
 public class CourtSchedulerApi {
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtSchedulerApi.class.getName());
@@ -99,7 +98,6 @@ public class CourtSchedulerApi {
     private static final String SESSIONIDS = "sessionIds";
     private static final String JUDICIARY_ID = "judiciaryId";
     private static final String SKIP_VALIDATIONS = "skipValidations";
-
     @Inject
     private Enveloper enveloper;
     @Inject
@@ -362,7 +360,7 @@ public class CourtSchedulerApi {
 
         final HearingSlotSearchAndBookResponse hearingSlotSearchAndBookResponse = slotsUpdateService.searchAndBook(hearingSlotSearchRequest);
 
-        JsonObject responseObject = Json.createObjectBuilder()
+        JsonObject responseObject =  Json.createObjectBuilder()
                 .add(RequestParameterConstant.HEARING_SLOTS.getLabel(),
                         objectToJsonObjectConverter.convert(hearingSlotSearchAndBookResponse))
                 .build();
@@ -452,7 +450,7 @@ public class CourtSchedulerApi {
     }
 
     @Handles("courtscheduler.export.allocated_listings")
-    public JsonEnvelope exportAllocatedListings(final JsonEnvelope envelope) {
+    public JsonEnvelope exportAlloctedListings(final JsonEnvelope envelope) {
         final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
         LOGGER.info("courtscheduler.export.allocated_listings requested : {}", requestFromApiJsonObject);
 
@@ -604,7 +602,6 @@ public class CourtSchedulerApi {
             throw new BadRequestException(errorMessage);
         }
     }
-
 
     private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {
         JsonObject build = createObjectBuilder().add(key, jsonValue).build();

@@ -597,7 +597,7 @@ class CourtSchedulerApiTest {
         when(enveloper.withMetadataFrom(exportAllocatedListingsEnvelope, requestName)).thenReturn(function);
         when(miService.getAllocatedListings(miFilterCriteriaRequestParamConverter.convert(jsonObject))).thenReturn(Collections.emptyList());
 
-        courtSchedulerApi.exportAllocatedListings(exportAllocatedListingsEnvelope);
+        courtSchedulerApi.exportAlloctedListings(exportAllocatedListingsEnvelope);
 
         verify(miService, atLeastOnce()).getAllocatedListings(miFilterCriteriaRequestParamConverter.convert(jsonObject));
         verify(enveloper, atLeastOnce()).withMetadataFrom(exportAllocatedListingsEnvelope, requestName);
