@@ -1,7 +1,7 @@
 {
   "sessions": [
     {
-      "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
+      "courtCentreId": "22c69328-70af-3e27-80c5-1a79e24903d2",
       "courtRoomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c",
       "sessionType": "AM",
       "businessType": "TRL",
@@ -13,7 +13,10 @@
         "Friday"
       ],
       "sessionStartTime": "00:59",
-      "sessionEndTime": "12:00"
+      "sessionEndTime": "12:00",
+      "isOverbookingAllowed": true,
+      "jurisdiction": "CROWN",
+      "isDraft": false
     }
   ],
   "repeatPattern": {

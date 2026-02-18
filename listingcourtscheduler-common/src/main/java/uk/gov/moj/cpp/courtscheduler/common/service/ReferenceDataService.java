@@ -58,9 +58,12 @@ public class ReferenceDataService {
     private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME = "referencedata.query.cp-rota-courtroom-mappings";
     private static final String REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME = "referencedata.query.judiciaries";
     private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME = "referencedata.query.courtroom-session-allocations";
+    private static final String REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME = "referencedata.query.courtrooms";
     private static final String PUBLIC_HOLIDAYS = "publicHolidays";
     private static final String DATE = "date";
     private static final String CP_ROTA_COURT_ROOM_MAPPINGS = "cpRotaCourtRoomMappings";
+    private static final String ORGANISATION_UNITS = "organisationunits";
+    private static final String COURTROOMS = "courtrooms";
     private static final String COURTROOM_ID = "courtroomId";
     private static final String VENUE_NAME = "rotaVenueName";
     private static final String LOCATION_ID = "rotaLocationId";
@@ -68,6 +71,7 @@ public class ReferenceDataService {
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
+    private static final String ALL = "ALL";
 
     @Inject
     private RotaProcessLogService rotaProcessLogService;
@@ -176,10 +180,13 @@ public class ReferenceDataService {
 
         final JsonEnvelope envelope =
                 envelopeFrom(metadataBuilder().withId(randomUUID()).withName(ReferenceDataService.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME).build(),
-                        createObjectBuilder().build());
+                        createObjectBuilder().add("jurisdiction", ALL).build());
+
 
         final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        return JsonObjects.getJsonArray(payload, "rotaBusinessTypes").orElseThrow(() -> new RuntimeException("No business type found: "))
+        final JsonArray rotaBusinessTypes = JsonObjects.getJsonArray(payload, "rotaBusinessTypes").orElseThrow(() -> new RuntimeException("No business type found: "));
+        LOGGER.info("Number of rotaBusinessTypes returned: {}", rotaBusinessTypes.size());
+        return rotaBusinessTypes
                 .stream()
                 .map(JsonObject.class::cast)
                 .map(this::toBusinessType)
@@ -187,28 +194,50 @@ public class ReferenceDataService {
     }
 
     public Optional<BusinessType> getRotaBusinessTypeByCode(final String typeCode, final Requester requester) {
-        final JsonEnvelope envelope =
-                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME).build(),
-                        createObjectBuilder().add("typeCode", typeCode).build());
-
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        final List<BusinessType> businessTypeList = JsonObjects.getJsonArray(payload, "rotaBusinessTypes").orElseThrow(() -> new RuntimeException("No business type found: " + typeCode))
-                .stream()
-                .map(JsonObject.class::cast)
-                .map(this::toBusinessType)
-                .toList();
-        return isEmpty(businessTypeList) ? Optional.empty() : Optional.of(businessTypeList.get(0));
-
+        return getRotaBusinessTypes(requester).stream()
+                .filter(businessType -> businessType.getTypeCode().equals(typeCode))
+                .findFirst();
     }
 
     public Map<String, BusinessType> getRotaBusinessTypesMap(final Requester requester) {
-        return getRotaBusinessTypes(requester).stream().collect(Collectors.toMap(BusinessType::getTypeCode, b -> b));
+        return getRotaBusinessTypes(requester).stream().collect(Collectors.toMap(
+                BusinessType::getTypeCode,
+                b -> b,
+                (existing, replacement) -> {
+                    LOGGER.warn("Duplicate business type code found: {}. Keeping the first occurrence.", existing.getTypeCode());
+                    return existing;
+                }
+        ));
     }
 
     public Map<UUID, CourtRoom> getCourtRoomsMap(final Requester requester) {
         return getRotaCourtRoomMappings(requester).stream()
                 .filter(courtRoom -> nonNull(courtRoom.getCourtroomId()))
                 .collect(Collectors.toMap(courtRoom -> UUID.fromString(courtRoom.getCourtroomId()), c -> c));
+    }
+
+    public List<CourtRoom> getCpCourtRooms(final Requester requester) {
+        final JsonEnvelope envelope =
+                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME).build(),
+                        createObjectBuilder().build());
+
+        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+
+        if (!payload.containsKey(ORGANISATION_UNITS)) {
+            return emptyList();
+        }
+
+        return payload.getJsonArray(ORGANISATION_UNITS).stream()
+                .map(JsonObject.class::cast)
+                .flatMap(ou -> {
+                    if (ou.containsKey(COURTROOMS)) {
+                        return ou.getJsonArray(COURTROOMS).stream()
+                                .map(JsonObject.class::cast)
+                                .map(courtRoomJson -> toCpCourtRoom(courtRoomJson, ou));
+                    }
+                    return java.util.stream.Stream.empty();
+                })
+                .toList();
     }
 
     public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId, final Requester requester) {
@@ -311,6 +340,7 @@ public class ReferenceDataService {
                 .withTypeDescription(jsonObject.getString("typeDescription"))
                 .withSlot(jsonObject.getBoolean("slot"))
                 .withDuration(jsonObject.getBoolean("duration"))
+                .withJurisdiction(getStringOrElse(jsonObject, "jurisdiction", null))
                 .build();
     }
 
@@ -362,6 +392,22 @@ public class ReferenceDataService {
                 .withRotaBusinessTypeCode(getStringOrElse(jsonObject, "rotaBusinessTypeCode", null))
                 .withValidFrom(getStringOrElse(jsonObject, "validFrom", null))
                 .withValidTo(getStringOrElse(jsonObject, "validTo", null))
+                .build();
+    }
+
+    private CourtRoom toCpCourtRoom(JsonObject jsonObject, JsonObject ou) {
+        return CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withId(getStringOrElse(jsonObject, "id", null))
+                .withCppCourtRoomId(getIntOrElse(jsonObject, "courtroomId", null))
+                .withCourtRoomId(String.valueOf(getIntOrElse(jsonObject, "courtroomId", 0)))
+                .withCourtRoomName(getStringOrElse(jsonObject, "courtroomName", null))
+                .withRotaVenueId(getIntOrElse(jsonObject, "venueId", null))
+                .withRotaVenueName(getStringOrElse(jsonObject, "venueName", null))
+                .withOucode(getStringOrElse(ou, "oucode", null))
+                .withOucodeL3Name(getStringOrElse(ou, "oucodeL3Name", null))
+                .withOucodeL2Name(getStringOrElse(ou, "oucodeL2Name", null))
+                .withOucodeL2Code(getStringOrElse(ou, "oucodeL2Code", null))
+                .withOucodeUUID(getStringOrElse(ou, "id", null))
                 .build();
     }
 

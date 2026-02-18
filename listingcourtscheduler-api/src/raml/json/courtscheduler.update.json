@@ -4,6 +4,7 @@
   "sessionType": "AM",
   "businessType": "TRL",
   "panel": "YOUTH",
+  "jurisdiction": "MAGISTRATES",
   "isAllDaySplit": true,
   "maxDurationForMorning": 240,
   "maxDurationForAfternoon": 120,
