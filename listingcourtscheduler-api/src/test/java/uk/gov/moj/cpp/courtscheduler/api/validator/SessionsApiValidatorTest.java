@@ -12,11 +12,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.COURTROOM_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 
@@ -25,6 +27,7 @@ import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
+import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
@@ -39,6 +42,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.lang.reflect.Field;
@@ -88,6 +92,9 @@ class SessionsApiValidatorTest {
 
     @Mock
     private AllocatedListingService allocatedListingService;
+
+    @Mock
+    private RotaProcessLogService rotaProcessLogService;
 
     private final String courtCentreId = randomUUID().toString();
     private final String courtRoomId = randomUUID().toString();
@@ -361,6 +368,127 @@ class SessionsApiValidatorTest {
     }
 
     @Test
+    void shouldReturnErrorWhenMonthlySameDaySameIndexDuplicateInPayload() {
+        // Monthly: same (day, index) with same session type = duplicate
+        final Session sessionInList = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(4)
+                .build();
+        final Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(4)
+                .withSlotsOrDuration(60)
+                .build();
+
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1));
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        lenient().when(repeatPattern.getRepeatFor()).thenReturn(1); // unused - validation returns early with duplicate
+        // Validation returns early with duplicate error, so no need to stub business type or court room
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
+    }
+
+    @Test
+    void shouldNotReturnErrorWhenMonthlySameDayDifferentIndexInPayload() {
+        // Monthly: same day but different index = allowed
+        final Session sessionInList = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(4)
+                .build();
+        final Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(1)
+                .withSlotsOrDuration(60)
+                .build();
+
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1));
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(repeatPattern.getRepeatFor()).thenReturn(1);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        stubMagCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
+    void shouldNotReturnErrorWhenMonthlyDifferentDaySameIndexInPayload() {
+        // Monthly: different day, same index = allowed (e.g. 4th Friday and 4th Monday)
+        final Session sessionInList = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
+                .withIndex(4)
+                .build();
+        final Session sessionToBeAdded = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withIndex(4)
+                .withSlotsOrDuration(60)
+                .build();
+
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1));
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(repeatPattern.getRepeatFor()).thenReturn(1);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        stubMagCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        assertEquals(EMPTY_JSON_OBJECT, result);
+    }
+
+    @Test
     void shouldReturnEmptyJsonObjectWhenValidationIsSuccessful() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
         Session session = createAMSession();
@@ -379,6 +507,7 @@ class SessionsApiValidatorTest {
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals(0, result.size());
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any(RotaProcessLog.class));
     }
 
     @Test
@@ -540,10 +669,16 @@ class SessionsApiValidatorTest {
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
         assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
+        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
+        RotaProcessLog savedLog = logCaptor.getValue();
+        assertEquals(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code(), savedLog.getErrorCode());
+        assertEquals(CREATE_SESSIONS_COURTROOM_NOT_FOUND.format(courtRoomId), savedLog.getErrorText());
     }
 
     @Test
@@ -582,6 +717,7 @@ class SessionsApiValidatorTest {
 
         assertEquals("The courtroom must belong to the same court centre as specified in courtCentreId",
                 result.getString("errorMessage"));
+        verify(rotaProcessLogService, never()).saveRotaProcessLog(any(RotaProcessLog.class));
     }
 
     @Test
@@ -689,20 +825,12 @@ class SessionsApiValidatorTest {
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
-        
-        // Courtroom not found in CP (CROWN) but found in Rota (MAGISTRATES) - jurisdiction mismatch
+        // For CROWN only CP is checked; courtroom not found in CP returns COURTROOM_NOT_FOUND
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
-        
-        CourtRoom rotaCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(courtRoomId)
-                .withOucodeUUID(courtCentreId)
-                .build();
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(rotaCourtRoom));
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
 
-        assertEquals("The courtroom belongs to a court centre with MAGISTRATES jurisdiction, which does not match the session jurisdiction CROWN",
-                result.getString("errorMessage"));
+        assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
     }
 
     @Test
@@ -741,6 +869,11 @@ class SessionsApiValidatorTest {
 
         assertEquals("Courtroom selected does not exist in Rota",
                 result.getString("errorMessage"));
+        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
+        RotaProcessLog savedLog = logCaptor.getValue();
+        assertEquals(CREATE_SESSIONS_COURTROOM_NOT_FOUND.code(), savedLog.getErrorCode());
+        assertEquals(CREATE_SESSIONS_COURTROOM_NOT_FOUND.format(courtRoomId), savedLog.getErrorText());
     }
 
     private Session createDraftSession() {

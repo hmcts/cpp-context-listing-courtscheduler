@@ -413,8 +413,8 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String errorResponseMessage = response.readEntity(String.class);
-        assertThat(errorResponseMessage, containsString("court centre with MAGISTRATES jurisdiction"));
-        assertThat(errorResponseMessage, containsString("does not match the session jurisdiction CROWN"));
+        assertThat(errorResponseMessage, containsString("Court Room not found"));
+        assertThat(errorResponseMessage, containsString("b4562684-9209-3ec4-a544-7f80dabd94d8"));
     }
 
     @Test
@@ -424,8 +424,8 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String errorResponseMessage = response.readEntity(String.class);
-        assertThat(errorResponseMessage, containsString("court centre with MAGISTRATES jurisdiction"));
-        assertThat(errorResponseMessage, containsString("does not match the session jurisdiction CROWN"));
+        assertThat(errorResponseMessage, containsString("Court Room not found"));
+        assertThat(errorResponseMessage, containsString("b4562684-9209-3ec4-a544-7f80dabd94d8"));
     }
 
     @Test
@@ -3007,7 +3007,7 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtSchedulesForMonthlyFrequencyWithDifferentIndexValues() {
-        // Given
+        // Given - index 5 (5th Friday): not every month has 5 Fridays, so 0 or more sessions may be created
         final LocalDate startDate = now().plusDays(1);
         final LocalDate endDate = startDate.plusMonths(2);
 
