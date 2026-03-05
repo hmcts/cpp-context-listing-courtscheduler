@@ -150,6 +150,45 @@
                                     <includes>
                                         <include>**/*IT.java</include>
                                     </includes>
+                                    <excludes>
+                                        <exclude>**/performance/**</exclude>
+                                    </excludes>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>verify</id>
+                                <goals>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>performance-test</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>performance-test</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <generate.test.report>true</generate.test.report>
+                                    </systemPropertyVariables>
+                                    <includes>
+                                        <include>**/performance/**/*IT.java</include>
+                                    </includes>
                                 </configuration>
                             </execution>
                             <execution>

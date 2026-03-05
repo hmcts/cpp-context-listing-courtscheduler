@@ -1,0 +1,24 @@
+{
+  "ruleId": "323e4567-e89b-12d3-a456-426614174000",
+  "judiciaryId": "123e4567-e89b-12d3-a456-426614174000",
+  "courtHouseId": "223e4567-e89b-12d3-a456-426614174000",
+  "startDate": "2026-01-01",
+  "endDate": "2026-01-31",
+  "repeatDays": [
+    {
+      "day": "Tuesday",
+      "index": 2
+    },
+    {
+      "day": "Wednesday",
+      "index": 3
+    }
+  ],
+  "unavailabilities": [
+    {
+      "startDate": "2026-01-10",
+      "endDate": "2026-01-15",
+      "reason": "ANNUAL_LEAVE"
+    }
+  ]
+}

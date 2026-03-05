@@ -649,3 +649,260 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.validate.session.availability.response+json:
             schema: !include json/schema/courtscheduler.validate.session.availability.response.json
             example: !include json/courtscheduler.validate.session.availability.response.json
+
+/judiciaries/availability-rules:
+  get:
+    description: |
+      Find judiciary availability rules.
+      ...
+      (mapping):
+        responseType: application/json
+        name: courtscheduler.judiciary.find.availability.rule
+      ...
+    queryParameters:
+      startDate:
+        description: Start date of the search range (Not in past)
+        type: string
+        required: true
+      endDate:
+        description: End date of the search range (Not in past)
+        type: string
+        required: true
+      courtCentreId:
+        description: Optional court centre ID to filter by
+        type: string
+        required: false
+      pageSize:
+        description: Optional page size for pagination. Default is 20
+        type: integer
+        required: false
+      pageNumber:
+        description: Optional page number for pagination. Default is 1
+        type: integer
+        required: false
+      withJudiciary:
+        description: Optional flag to include judiciaries in response. Default is true
+        type: boolean
+        required: false
+
+    responses:
+      200:
+        body:
+          application/json:
+            schema: !include json/schema/courtscheduler.find.judiciary.availability.rule.json
+            example: !include json/courtscheduler.find.judiciary.availability.rule.json
+
+/judiciaries/availability-rules/{ruleId}:
+  get:
+    description: |
+      Get a single judiciary availability rule by ruleId
+      ...
+      (mapping):
+            responseType: application/json
+            name: courtscheduler.judiciary.get.availability.rule
+      ...
+    queryParameters:
+      withJudiciary:
+        description: Include judiciary details in response
+        type: boolean
+        required: false
+        default: true
+    responses:
+      200:
+        description: OK
+        body:
+          application/json:
+            schema: !include json/schema/courtscheduler.judiciary.get.availability.rule.json
+            example: !include json/courtscheduler.judiciary.get.availability.rule.json
+
+/judiciaries/availability-rules/add:
+  post:
+    description: |
+      Add judiciary availability rule.
+      ...
+      (mapping):
+        requestType: application/json
+        name: courtscheduler.judiciary.add.availability.rule
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.add.availability.rule.json
+        example: !include json/courtscheduler.judiciary.add.availability.rule.json
+    responses:
+      200:
+        description: OK
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/update:
+  post:
+    description: |
+      Update judiciary availability rule.
+      ...
+      (mapping):
+        requestType: application/json
+        name: courtscheduler.judiciary.update.availability.rule
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.update.availability.rule.json
+        example: !include json/courtscheduler.judiciary.update.availability.rule.json
+    responses:
+      200:
+        description: OK
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/delete:
+  post:
+    description: |
+      Delete judiciary availability rule.
+      ...
+      (mapping):
+        requestType: application/json
+        name: courtscheduler.judiciary.delete.availability.rule
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.delete.availability.rule.json
+        example: !include json/courtscheduler.judiciary.delete.availability.rule.json
+    responses:
+      200:
+        description: OK
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+
+/judiciaries/availability:
+  get:
+    description: |
+      ...
+      (mapping):
+          responseType: application/json
+          name: courtscheduler.judiciary.find.availability
+      ...
+    queryParameters:
+      startDate:
+        description: Start date of the search range
+        type: string
+        required: true
+      endDate:
+        description: End date of the search range
+        type: string
+        required: true
+      courtCentreId:
+        description: Optional court centre ID to filter by
+        type: string
+        required: false
+      pageSize:
+        description: Optional page size for pagination. Default is 20
+        type: integer
+        required: false
+      pageNumber:
+        description: Optional page number for pagination. Default is 1
+        type: integer
+        required: false
+      withJudiciary:
+        description: Optional flag to include judiciaries in response. Default is true
+        type: boolean
+        required: false
+    responses:
+      200:
+        body:
+          application/json:
+            schema: !include json/schema/courtscheduler.find.judiciary.availability.json
+            example: !include json/courtscheduler.find.judiciary.availability.json
+
+/judiciaries/availability-rules/validate-add:
+  post:
+    description: |
+      Validate judiciary availability rule for creation.
+      ...
+      (mapping):
+          requestType: application/json
+          name: courtscheduler.judiciary.add.availability.rule.validate
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.add.availability.rule.json
+        example: !include json/courtscheduler.judiciary.add.availability.rule.json
+    responses:
+      200:
+        description: Validation successful
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/validate-update:
+  post:
+    description: |
+      Validate judiciary availability rule for update.
+      ...
+      (mapping):
+          requestType: application/json
+          name: courtscheduler.judiciary.update.availability.rule.validate
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.update.availability.rule.json
+        example: !include json/courtscheduler.judiciary.update.availability.rule.json
+    responses:
+      200:
+        description: Validation successful
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/validate-delete:
+  post:
+    description: |
+      Validate judiciary availability rule for deletion.
+      Checks if the rule is already applied/assigned to a session and throws error if it is.
+      ...
+      (mapping):
+          requestType: application/json
+          name: courtscheduler.judiciary.delete.availability.rule.validate
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.delete.availability.rule.json
+        example: !include json/courtscheduler.judiciary.delete.availability.rule.json
+    responses:
+      200:
+        description: Validation successful
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json

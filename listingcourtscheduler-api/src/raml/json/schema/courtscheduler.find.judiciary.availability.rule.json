@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"$ref": "#/definitions/uuid"},
+          "judiciaryId": {"$ref": "#/definitions/uuid"},
+          "courtHouseId": {"$ref": "#/definitions/uuid"},
+          "startDate": {"type": "string", "format": "date"},
+          "endDate": {"type": "string", "format": "date"},
+          "sessionType": {
+            "type": "string",
+            "enum": ["AM", "PM", "AD"]
+          },
+          "repeatDays": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+            }
+          },
+          "unavailabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "startDate": {"type": "string", "format": "date"},
+                "endDate": {"type": "string", "format": "date"},
+                "reason": {
+                  "type": "string",
+                  "enum": ["TRAINING", "ANNUAL_LEAVE", "OFFICIAL_BUSINESS", "SICK_LEAVE"]
+                }
+              },
+              "required": ["startDate", "endDate"]
+            }
+          }
+        },
+        "required": ["id", "judiciaryId", "courtHouseId", "startDate", "endDate", "repeatDays"]
+      }
+    },
+    "totalCount": {"type": "integer"},
+    "pageNumber": {"type": "integer"},
+    "pageSize": {"type": "integer"},
+    "judiciaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"$ref": "#/definitions/uuid"},
+          "seqId": {"type": "integer"},
+          "titlePrefix": {"type": "string"},
+          "titlePrefixWelsh": {"type": "string"},
+          "titleJudicialPrefix": {"type": "string"},
+          "titleJudicialPrefixWelsh": {"type": "string"},
+          "titleSuffix": {"type": "string"},
+          "titleSuffixWelsh": {"type": "string"},
+          "surname": {"type": "string"},
+          "forenames": {"type": "string"},
+          "judiciaryType": {"type": "string"},
+          "personId": {"type": "string"},
+          "validFrom": {"type": "string"},
+          "validTo": {"type": "string"},
+          "emailAddress": {"type": "string"},
+          "cpUserId": {"type": "string"},
+          "specialisms": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["MURDER", "ATTEMPTED_MURDER", "SEXUAL_OFFENCE", "TERRORISM"]
+            }
+          }
+        },
+        "required": ["id", "surname"]
+      }
+    }
+  },
+  "required": ["rules", "totalCount", "pageNumber", "pageSize", "judiciaries"],
+  "definitions": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+    }
+  }
+}
+

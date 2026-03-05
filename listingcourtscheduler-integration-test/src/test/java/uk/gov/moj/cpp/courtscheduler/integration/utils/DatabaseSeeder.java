@@ -4,6 +4,8 @@ package uk.gov.moj.cpp.courtscheduler.integration.utils;
 import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
+import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
+import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -18,6 +20,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
@@ -79,6 +82,18 @@ public class DatabaseSeeder {
     private static final String MIGRATION_STATUS_DELETE_SQL = "TRUNCATE TABLE courtscheduler_migration_status CASCADE";
     private static final String ROTA_FILE_PROCESS_HISTORY_DELETE_SQL = "TRUNCATE TABLE rota_file_process_history CASCADE";
     private static final String ROTA_LOG_PROCESS_DELETE_SQL = "TRUNCATE TABLE rota_process_log CASCADE";
+    private static final String JUDICIARY_AVAILABILITY_RULE_DELETE_SQL = "TRUNCATE TABLE judiciary_availability_rule CASCADE";
+
+    private static final String JUDICIARY_AVAILABILITY_RULE_INSERT_SQL = "INSERT INTO judiciary_availability_rule (" +
+            "id, judiciary_id, court_house_id, from_date, to_date, session_type, created_on, updated_on) " +
+            "VALUES(?, ?, ?, ?, ?, 'AD', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+
+    private static final String JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL = "INSERT INTO judiciary_availability_rule_repeat_day (" +
+            "rule_id, day_of_week) VALUES(?, ?)";
+
+    private static final String JUDICIARY_UNAVAILABILITY_INSERT_SQL = "INSERT INTO judiciary_unavailability (" +
+            "id, availability_rule_id, from_date, to_date, reason, created_on, updated_on) " +
+            "VALUES(?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
 
 
     private static final String COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL = "UPDATE court_schedule SET court_listing_profile_id = null WHERE oucode = ?";
@@ -381,6 +396,182 @@ public class DatabaseSeeder {
         }
     }
 
+    public void cleanJudiciaryAvailabilityRuleTable() throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_DELETE_SQL)) {
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    public void insertJudiciaryAvailabilityRule(
+            final String ruleId,
+            final String judiciaryId,
+            final String courtHouseId,
+            final List<JudiciaryUnavailabilityRequest> unavailabilities,
+            final LocalDate fromDate,
+            final LocalDate toDate,
+            final List<AvailabilityDayOfWeek> repeatDays) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement ruleStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_INSERT_SQL);
+                 final PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL);
+                 final PreparedStatement unavailabilityStmt = connection.prepareStatement(JUDICIARY_UNAVAILABILITY_INSERT_SQL)) {
+
+                // Always insert the rule (recurring_type column removed)
+                ruleStmt.setString(1, ruleId);
+                ruleStmt.setString(2, judiciaryId);
+                ruleStmt.setString(3, courtHouseId);
+                ruleStmt.setDate(4, Date.valueOf(fromDate));
+                ruleStmt.setDate(5, Date.valueOf(toDate));
+
+                ruleStmt.executeUpdate();
+
+                // Insert repeat days
+                for (AvailabilityDayOfWeek dayOfWeek : repeatDays) {
+                    repeatDaysStmt.setString(1, ruleId);
+                    repeatDaysStmt.setString(2, dayOfWeek.name());
+                    repeatDaysStmt.addBatch();
+                }
+                repeatDaysStmt.executeBatch();
+
+                // If availabilityType is UNAVAILABLE, create a corresponding JudiciaryUnavailability record
+                if (unavailabilities != null && !unavailabilities.isEmpty()) {
+
+                    for(final JudiciaryUnavailabilityRequest request : unavailabilities) {
+
+                        final String unavailabilityId = java.util.UUID.randomUUID().toString();
+                        unavailabilityStmt.setString(1, unavailabilityId);
+                        unavailabilityStmt.setString(2, ruleId);
+                        unavailabilityStmt.setDate(3, Date.valueOf(request.getStartDate()));
+                        unavailabilityStmt.setDate(4, Date.valueOf(request.getEndDate()));
+                        if (request.getReason() != null) {
+                            unavailabilityStmt.setString(5, request.getReason().name());
+                        } else {
+                            unavailabilityStmt.setNull(5, Types.VARCHAR);
+                        }
+                        unavailabilityStmt.executeUpdate();
+                    }
+                }
+
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
+    }
+
+    public void updateJudiciaryAvailabilityRuleSessionType(final String ruleId, final String sessionType) throws SQLException {
+        final String UPDATE_SESSION_TYPE_SQL = "UPDATE judiciary_availability_rule SET session_type = ? WHERE id = ?";
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement stmt = connection.prepareStatement(UPDATE_SESSION_TYPE_SQL)) {
+            stmt.setString(1, sessionType);
+            stmt.setString(2, ruleId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public void insertJudiciaryAvailabilityRulesBatch(
+            final List<RuleData> rules) throws SQLException {
+        // Process in chunks to avoid memory issues with very large batches
+        final int BATCH_SIZE = 5000;
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement ruleStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_INSERT_SQL);
+                 final PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL);
+                 final PreparedStatement unavailabilityStmt = connection.prepareStatement(JUDICIARY_UNAVAILABILITY_INSERT_SQL)) {
+
+                int processedCount = 0;
+                for (RuleData rule : rules) {
+                    // Insert rule (availability_type column removed)
+                    ruleStmt.setString(1, rule.ruleId);
+                    ruleStmt.setString(2, rule.judiciaryId);
+                    ruleStmt.setString(3, rule.courtHouseId);
+                    ruleStmt.setDate(4, Date.valueOf(rule.fromDate));
+                    ruleStmt.setDate(5, Date.valueOf(rule.toDate));
+
+                    ruleStmt.addBatch();
+
+                    // Prepare repeat days for batch
+                    for (String dayOfWeek : rule.repeatDays) {
+                        repeatDaysStmt.setString(1, rule.ruleId);
+                        // Convert to title case to match enum (e.g., "Friday" not "FRIDAY")
+                        final String dayOfWeekTitleCase = dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase();
+                        repeatDaysStmt.setString(2, dayOfWeekTitleCase);
+                        repeatDaysStmt.addBatch();
+                    }
+
+                    // If availabilityType is UNAVAILABLE, create a corresponding JudiciaryUnavailability record
+                    if (rule.unavailabilities != null && !rule.unavailabilities.isEmpty()) {
+                        for(final JudiciaryUnavailabilityRequest request : rule.unavailabilities) {
+                            // Skip unavailability records without startDate (from_date has NOT NULL constraint)
+                            if (request.getStartDate() == null || request.getEndDate() == null) {
+                                continue;
+                            }
+                            final String unavailabilityId = java.util.UUID.randomUUID().toString();
+                            unavailabilityStmt.setString(1, unavailabilityId);
+                            unavailabilityStmt.setString(2, rule.ruleId);
+                            unavailabilityStmt.setDate(3, Date.valueOf(request.getStartDate()));
+                            unavailabilityStmt.setDate(4, Date.valueOf(request.getEndDate()));
+                            if (request.getReason() != null) {
+                                unavailabilityStmt.setString(5, request.getReason().name());
+                            } else {
+                                unavailabilityStmt.setNull(5, Types.VARCHAR);
+                            }
+                            unavailabilityStmt.addBatch();
+                        }
+                    }
+
+                    processedCount++;
+                    // Execute in chunks to avoid memory issues
+                    if (processedCount % BATCH_SIZE == 0) {
+                        ruleStmt.executeBatch();
+                        repeatDaysStmt.executeBatch();
+                        unavailabilityStmt.executeBatch();
+                        connection.commit();
+                        connection.setAutoCommit(false); // Re-enable for next chunk
+                        // Clear unavailability batch for next chunk
+                        unavailabilityStmt.clearBatch();
+                    }
+                }
+
+                // Execute remaining batches
+                if (processedCount % BATCH_SIZE != 0) {
+                    ruleStmt.executeBatch();
+                    repeatDaysStmt.executeBatch();
+                    unavailabilityStmt.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
+    }
+
+    public static class RuleData {
+        final String ruleId;
+        final String judiciaryId;
+        final String courtHouseId;
+        final List<JudiciaryUnavailabilityRequest> unavailabilities;
+        final LocalDate fromDate;
+        final LocalDate toDate;
+        final List<String> repeatDays;
+
+        public RuleData(String ruleId, String judiciaryId, String courtHouseId, List<JudiciaryUnavailabilityRequest> unavailabilities,
+                        LocalDate fromDate, LocalDate toDate,
+                        List<String> repeatDays) {
+            this.ruleId = ruleId;
+            this.judiciaryId = judiciaryId;
+            this.courtHouseId = courtHouseId;
+            this.unavailabilities = unavailabilities;
+            this.fromDate = fromDate;
+            this.toDate = toDate;
+            this.repeatDays = repeatDays;
+        }
+    }
+
+
     public void cleanDb() throws SQLException {
         cleanProvisionalBookingTable();
         cleanAllocatedListingTable();
@@ -389,5 +580,25 @@ public class DatabaseSeeder {
         cleanMigrationStatusTable();
         cleanRotaFileProcessHistoryTable();
         cleanRotaProcessLogTable();
+        cleanJudiciaryAvailabilityRuleTable();
+    }
+
+    // Simple Pair class for internal use
+    public static class Pair<T, U> {
+        private final T first;
+        private final U second;
+
+        public Pair(T first, U second) {
+            this.first = first;
+            this.second = second;
+        }
+
+        public T getFirst() {
+            return this.first;
+        }
+
+        public U getSecond() {
+            return this.second;
+        }
     }
 }

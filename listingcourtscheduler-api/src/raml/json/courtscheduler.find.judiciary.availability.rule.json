@@ -1,0 +1,49 @@
+{
+  "rules": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "judiciaryId": "223e4567-e89b-12d3-a456-426614174001",
+      "courtHouseId": "323e4567-e89b-12d3-a456-426614174002",
+      "startDate": "2026-01-01",
+      "endDate": "2026-01-31",
+      "sessionType": "AD",
+      "repeatDays": [
+        {
+          "day": "Tuesday",
+          "index": 2
+        },
+        {
+          "day": "Wednesday",
+          "index": 3
+        }
+      ]
+    },
+    {
+      "id": "423e4567-e89b-12d3-a456-426614174003",
+      "judiciaryId": "223e4567-e89b-12d3-a456-426614174001",
+      "courtHouseId": "323e4567-e89b-12d3-a456-426614174002",
+      "startDate": "2026-01-02",
+      "endDate": "2026-01-04",
+      "sessionType": "AM",
+      "repeatDays": [
+        "Monday",
+        "Friday"
+      ]
+    }
+  ],
+  "totalCount": 2,
+  "pageNumber": 1,
+  "pageSize": 20,
+  "judiciaries": [    {
+    "id": "223e4567-e89b-12d3-a456-426614174001",
+    "seqId": 160100,
+    "titlePrefix": "Mr",
+    "titlePrefixWelsh": "Mr",
+    "surname": "Algazy",
+    "judiciaryType": "Recorder",
+    "personId": "141340",
+    "emailAddress": "Recorder.Algazy@ejudiciary.net",
+    "specialisms": ["MURDER","ATTEMPTED_MURDER"]
+  }]
+}
+

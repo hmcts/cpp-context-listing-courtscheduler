@@ -9,6 +9,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUser
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataCourtRoomSessionAllocations;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciarySpecialisms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
@@ -66,6 +67,7 @@ public abstract class AbstractIT extends RestClient {
         setupUserAsSystemUser(SYSTEM_USER_ID.toString());
         stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
         stubGetReferenceDataJudiciaries("referencedata.judiciaries.json");
+        stubGetReferenceDataJudiciarySpecialisms("referencedata.judiciary-specialisms.json");
         setupReferenceDataStubs();
     }
 
@@ -98,6 +100,15 @@ public abstract class AbstractIT extends RestClient {
                 .build();
 
         return super.deleteCommand(requestParams.getUrl(), requestParams.getMediaType(), requestParams.getHeaders());
+    }
+
+    protected Response deleteCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
+        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
+                .withHeader(HeaderConstants.USER_ID, userId)
+                .build();
+
+        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(requestParams.getMediaType()));
+        return ResteasyClientBuilderFactory.clientBuilder().build().target(requestParams.getUrl()).request().headers(requestParams.getHeaders()).method("DELETE", entity);
     }
 
     protected RequestParams getRequestParams(final String path, final String contentType, final UUID userId, final Map<String, Object> queryParams) {

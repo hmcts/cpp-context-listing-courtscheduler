@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.reset;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static java.util.UUID.randomUUID;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.http.HttpHeaders.CONTENT_TYPE;
@@ -38,6 +39,8 @@ public class StubUtil {
     private static final String ROTA_COURTROOMSESSIONALLOCATIONS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.courtroom-session-allocations+json";
     private static final String QUERY_RELATIVE_URL_ROTA_JUDICIARIES = "/referencedata-service/query/api/rest/referencedata/judiciaries";
     private static final String ROTA_JUDICIARIES_QUERY_MEDIA_TYPE = "application/vnd.reference-data.judiciaries+json";
+    private static final String QUERY_RELATIVE_URL_JUDICIARY_SPECIALISMS = "/referencedata-service/query/api/rest/referencedata/judiciary-specialisms";
+    private static final String JUDICIARY_SPECIALISMS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.judiciary-specialisms+json";
 
     public static void setupLoggedInUsersPermissionQueryStub(final String userId) {
         reset();
@@ -124,6 +127,15 @@ public class StubUtil {
                         .withHeader("CPPID", randomUUID().toString())
                         .withHeader("Content-Type", ROTA_JUDICIARIES_QUERY_MEDIA_TYPE)
                         .withBody(payload)));
+    }
+
+    public static void stubGetReferenceDataJudiciarySpecialisms(final String responsePath) {
+        final String urlPath = QUERY_RELATIVE_URL_JUDICIARY_SPECIALISMS;
+        stubFor(get(urlPathMatching(urlPath + ".*"))
+                .willReturn(aResponse().withStatus(SC_OK)
+                        .withHeader("CPPID", randomUUID().toString())
+                        .withHeader("Content-Type", JUDICIARY_SPECIALISMS_QUERY_MEDIA_TYPE)
+                        .withBody(getPayload(responsePath))));
     }
 
 

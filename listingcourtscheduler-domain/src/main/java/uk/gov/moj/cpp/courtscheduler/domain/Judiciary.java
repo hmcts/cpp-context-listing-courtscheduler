@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.util.List;
+
 public class Judiciary {
     private String id;
     private Integer seqId;
@@ -17,6 +19,8 @@ public class Judiciary {
     private String validTo;
     private String emailAddress;
     private String cpUserId;
+    private List<JudiciarySpecialismType> specialisms;
+    private String requestedName;
 
     public Judiciary() {
     }
@@ -158,6 +162,22 @@ public class Judiciary {
         this.cpUserId = cpUserId;
     }
 
+    public List<JudiciarySpecialismType> getSpecialisms() {
+        return specialisms;
+    }
+
+    public void setSpecialisms(final List<JudiciarySpecialismType> specialisms) {
+        this.specialisms = specialisms;
+    }
+
+    public String getRequestedName() {
+        return requestedName;
+    }
+
+    public void setRequestedName(final String requestedName) {
+        this.requestedName = requestedName;
+    }
+
     public static final class JudiciaryBuilder {
         private String id;
         private Integer seqId;
@@ -175,6 +195,8 @@ public class Judiciary {
         private String validTo;
         private String emailAddress;
         private String cpUserId;
+        private List<JudiciarySpecialismType> specialisms;
+        private String requestedName;
 
         private JudiciaryBuilder() {}
 
@@ -260,6 +282,16 @@ public class Judiciary {
             return this;
         }
 
+        public JudiciaryBuilder withSpecialisms(final List<JudiciarySpecialismType> specialisms) {
+            this.specialisms = specialisms;
+            return this;
+        }
+
+        public JudiciaryBuilder withRequestedName(final String requestedName) {
+            this.requestedName = requestedName;
+            return this;
+        }
+
         public Judiciary build() {
             final Judiciary judiciary = new Judiciary();
             judiciary.setId(this.id);
@@ -278,6 +310,8 @@ public class Judiciary {
             judiciary.setCpUserId(this.cpUserId);
             judiciary.setTitleSuffix(this.titleSuffix);
             judiciary.setTitleSuffixWelsh(this.titleSuffixWelsh);
+            judiciary.setSpecialisms(this.specialisms);
+            judiciary.setRequestedName(this.requestedName);
             return judiciary;
         }
     }

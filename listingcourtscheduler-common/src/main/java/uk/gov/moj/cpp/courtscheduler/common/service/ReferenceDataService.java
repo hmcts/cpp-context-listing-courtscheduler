@@ -45,6 +45,7 @@ import javax.json.JsonObject;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -286,6 +287,34 @@ public class ReferenceDataService {
         return judiciaries;
     }
 
+    public List<Judiciary> getJudiciariesWithSpecialismByIds(final List<String> judiciaryIds, final Requester requester) {
+        if (judiciaryIds == null || judiciaryIds.isEmpty()) {
+            return emptyList();
+        }
+
+        // Join IDs with comma separator
+        final String idsParam = String.join(",", judiciaryIds);
+
+        final JsonObject params = createObjectBuilder()
+                .add("ids", idsParam)
+                .add("withSpecialism", true)
+                .build();
+
+        final JsonEnvelope envelope = envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME).build(), params);
+
+        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+
+        final List<Judiciary> judiciaries = new ArrayList<>();
+        JsonObjects.getJsonArray(payload, "judiciaries").ifPresent(judiciariesJsonArray -> {
+            for(JsonValue jsonValue: judiciariesJsonArray) {
+                final JsonObject jsonObject = (JsonObject) jsonValue;
+                judiciaries.add(toJudiciary(jsonObject));
+            }
+        });
+
+        return judiciaries;
+    }
+
     public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsMap(final Requester requester) {
         final JsonEnvelope envelope = envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME).build(), createObjectBuilder().build());
 
@@ -332,6 +361,22 @@ public class ReferenceDataService {
     }
 
     private Judiciary toJudiciary(JsonObject jsonObject) {
+        final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType> specialisms = new ArrayList<>();
+        JsonObjects.getJsonArray(jsonObject, "specialisms").ifPresent(specialismsJsonArray -> {
+            for (JsonValue specialismValue : specialismsJsonArray) {
+                final String specialismString = specialismValue.getValueType() == JsonValue.ValueType.STRING
+                        ? ((javax.json.JsonString) specialismValue).getString()
+                        : specialismValue.toString();
+                try {
+                    final uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType specialismType =
+                            uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.valueOf(specialismString);
+                    specialisms.add(specialismType);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.warn("Unknown specialism value received from referencedata service: {}", specialismString);
+                }
+            }
+        });
+
         return Judiciary.JudiciaryBuilder.aJudiciary()
                 .withId(getStringOrElse(jsonObject, "id", null))
                 .withCpUserId(getStringOrElse(jsonObject, "cpUserId", null))
@@ -339,6 +384,7 @@ public class ReferenceDataService {
                 .withJudiciaryType(getStringOrElse(jsonObject, "judiciaryType", null))
                 .withPersonId(getStringOrElse(jsonObject, "personId", null))
                 .withSurname(jsonObject.getString("surname"))
+                .withForenames(jsonObject.getString("forenames"))
                 .withSeqId(jsonObject.getInt("seqId"))
                 .withTitleJudicialPrefix(getStringOrElse(jsonObject, "titleJudicialPrefix", null))
                 .withTitleJudicialPrefixWelsh(getStringOrElse(jsonObject, "titleJudicialPrefixWelsh", null))
@@ -348,6 +394,8 @@ public class ReferenceDataService {
                 .withValidTo(getStringOrElse(jsonObject, "validTo", null))
                 .withTitlePrefix(getStringOrElse(jsonObject, "titlePrefix", null))
                 .withTitlePrefixWelsh(getStringOrElse(jsonObject, "titlePrefixWelsh", null))
+                .withSpecialisms(specialisms)
+                .withRequestedName(getStringOrElse(jsonObject, "requestedName", null))
                 .build();
     }
 

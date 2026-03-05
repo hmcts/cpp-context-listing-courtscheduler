@@ -224,4 +224,37 @@ public class CourtScheduleJudiciaryRepositoryTest {
         assertTrue(isEmpty(courtSchedules));
     }
 
+    @Test
+    public void shouldFindCourtScheduleIdsByJudiciaryDateRangeAndSessionType() {
+        final String courtScheduleId = randomUUID().toString();
+        final String judiciaryId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.now().plusDays(5);
+        final String sessionType = "AM";
+
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setCourtSession(sessionType);
+        courtSchedule.setActive(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setAvailableSlots(10);
+        courtSchedule.setMaxDuration(0);
+        courtSchedule.setAvailableDuration(0);
+        courtScheduleRepository.save(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
+        courtScheduleJudiciary.getId().setCourtScheduleId(courtScheduleId);
+        courtScheduleJudiciary.getId().setJudiciaryId(judiciaryId);
+        courtScheduleJudiciary.setActive(true);
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
+
+        final LocalDate startDate = sessionDate.minusDays(1);
+        final LocalDate endDate = sessionDate.plusDays(1);
+        final List<Object[]> result = courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
+                judiciaryId, startDate, endDate, sessionType);
+
+        assertThat(result.size(), is(1));
+        assertEquals(courtScheduleId, result.get(0)[0]);
+    }
+
 }
