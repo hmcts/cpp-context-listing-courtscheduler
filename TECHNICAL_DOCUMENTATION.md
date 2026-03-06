@@ -1110,4 +1110,3 @@ For additional information, refer to:
 - RAML API documentation: `listingcourtscheduler-api/src/raml/courtscheduler-api.raml`
 - Database schema: `listingcourtscheduler-viewstore/listingcourtscheduler-viewstore-liquibase`
 - Integration tests: `listingcourtscheduler-integration-test`
-
