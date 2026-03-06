@@ -11,6 +11,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetRe
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciarySpecialisms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.*;
 
 import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
 import uk.gov.justice.services.common.http.HeaderConstants;
@@ -80,6 +81,7 @@ public abstract class AbstractIT extends RestClient {
     protected static void setupReferenceDataStubs() {
         stubGetReferenceCourtRooms("referencedata.rota-courtrooms.json");
         stubGetReferenceDataRotaBusinessTypes("referencedata.rota-business-types.json");
+        stubGetCpCourtRooms("referencedata.get.ou-courtrooms.json");
     }
 
     protected ObjectMapper mapper = new ObjectMapper();

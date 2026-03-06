@@ -10,10 +10,12 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME;
+import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.getPayload;
@@ -68,7 +70,7 @@ class ReferenceDataServiceTest {
     @Test
     void shouldReturnBusinessTypeWhenTypeCodeIsProvided() {
 
-        final JsonObject responsePayload = mockBusinessType("DVLA");
+        final JsonObject responsePayload = getPayload("/test-data/referencedata.get.businesstypes.json");
 
         final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
                 .withId(randomUUID())
@@ -77,8 +79,15 @@ class ReferenceDataServiceTest {
 
         when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
 
-        final Optional<BusinessType> businessType = referenceDataService.getRotaBusinessTypeByCode("DVLA", requester);
+        final Optional<BusinessType> businessType = referenceDataService.getRotaBusinessTypeByCode("APP", requester);
         assertThat(businessType, Matchers.notNullValue());
+        assertEquals("APP", businessType.get().getTypeCode());
+
+        ArgumentCaptor<Envelope> envelopeCaptor = ArgumentCaptor.forClass(Envelope.class);
+        verify(requester).requestAsAdmin(envelopeCaptor.capture(), any());
+        JsonObject payload = (JsonObject) envelopeCaptor.getValue().payload();
+        assertEquals("ALL", payload.getString("jurisdiction"));
+        assertFalse(payload.containsKey("typeCode"));
     }
 
     @Test
@@ -164,6 +173,39 @@ class ReferenceDataServiceTest {
 
         final List<BusinessType> businessTypes = referenceDataService.getRotaBusinessTypes(requester);
         assertTrue(isNotEmpty(businessTypes));
+
+        ArgumentCaptor<Envelope> envelopeCaptor = ArgumentCaptor.forClass(Envelope.class);
+        verify(requester).requestAsAdmin(envelopeCaptor.capture(), any());
+        JsonObject payload = (JsonObject) envelopeCaptor.getValue().payload();
+        assertEquals("ALL", payload.getString("jurisdiction"));
+
+        // Verify mapping of jurisdiction
+        Optional<BusinessType> appType = businessTypes.stream().filter(b -> "APP".equals(b.getTypeCode())).findFirst();
+        assertTrue(appType.isPresent());
+        assertEquals(MAGISTRATES.getJurisdiction(), appType.get().getJurisdiction());
+    }
+
+    @Test
+    void shouldGetCpCourtRooms() {
+        final JsonObject courtRoomsJson = getPayload("/test-data/referencedata.get.ou-courtrooms.json");
+        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
+                .withId(randomUUID())
+                .withName(REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME)
+                .build(), courtRoomsJson);
+
+        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+
+        final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms(requester);
+        assertTrue(isNotEmpty(courtRooms));
+        assertEquals(1, courtRooms.size());
+        CourtRoom courtRoom = courtRooms.get(0);
+        assertEquals("8e912353-3b5d-36c3-953e-ad3b94b19de3", courtRoom.getId());
+        assertEquals(121, courtRoom.getCppCourtRoomId());
+        assertEquals("121", courtRoom.getCourtroomId());
+        assertEquals("Courtroom 01", courtRoom.getCourtroomName());
+        assertEquals(39, courtRoom.getRotaVenueId());
+        assertEquals("BEXLEY MAGISTRATES' COURT", courtRoom.getRotaVenueName());
+        assertEquals("B01BH00", courtRoom.getOucode());
     }
 
     @Test

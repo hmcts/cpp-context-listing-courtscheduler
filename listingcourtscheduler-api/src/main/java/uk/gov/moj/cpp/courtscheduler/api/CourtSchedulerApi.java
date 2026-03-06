@@ -32,7 +32,6 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
-import uk.gov.moj.cpp.courtscheduler.api.service.OrganisationUnitHMIStatusService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
@@ -59,8 +58,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatus;
-import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnitHMIStatusList;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
@@ -93,11 +90,11 @@ public class CourtSchedulerApi {
     private static final String COURT_SCHEDULES = "courtSchedules";
     protected static final String RESULTS = "results";
     private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
-    private static final String ORGANISATION_UNIT_HMI_STATUS = "organisationUnitHMIStatus";
     private static final String JUDICIARIES = "judiciaries";
     private static final String SESSIONIDS = "sessionIds";
     private static final String JUDICIARY_ID = "judiciaryId";
     private static final String SKIP_VALIDATIONS = "skipValidations";
+    private static final String ERROR_GROUPS = "errorGroups";
     @Inject
     private Enveloper enveloper;
     @Inject
@@ -114,8 +111,6 @@ public class CourtSchedulerApi {
     private ProvisionalBookingService provisionalBookingService;
     @Inject
     private MiService miService;
-    @Inject
-    private OrganisationUnitHMIStatusService organisationUnitHMIStatusService;
     @Inject
     private SessionsApiValidator sessionsApiValidator;
     @Inject
@@ -167,6 +162,8 @@ public class CourtSchedulerApi {
 
     @Inject
     private JudiciaryAssignmentService judiciaryAssignmentService;
+    @Inject
+    private uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter assignCourtroomRequestConverter;
 
 
     @Handles("courtscheduler.create")
@@ -311,6 +308,35 @@ public class CourtSchedulerApi {
                 .add(RESULTS, objectToJsonObjectConverter.convert(result))
                 .build();
         return envelopeFor(envelope, responseObject, RESULTS);
+    }
+
+    @Handles("courtscheduler.assign.courtroom")
+    public JsonEnvelope assignCourtroom(final JsonEnvelope envelope) {
+        final JsonObject payload = envelope.payloadAsJsonObject();
+        LOGGER.info("courtscheduler.assign.courtroom requested : {}", payload);
+
+        uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request =
+                assignCourtroomRequestConverter.convert(envelope.payloadAsJsonObject());
+
+        JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response =
+                sessionsService.assignCourtroom(request, requester);
+
+        // Convert AssignCourtroomResponse to JSON
+        // The schema expects a direct array of error groups, so extract errorGroups and convert to JsonArray
+        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomErrorGroup> listConverter =
+                new ListToJsonArrayConverter<>();
+        final JsonValue errorGroupsArray = response.getErrorGroups().isEmpty()
+                ? JsonValue.EMPTY_JSON_ARRAY
+                : listConverter.convert(response.getErrorGroups());
+
+        // Use envelopeFor to wrap the array (though schema expects direct array, framework may need wrapping)
+        return envelopeFor(envelope, errorGroupsArray, ERROR_GROUPS);
     }
 
     @Handles("courtscheduler.update.hearing.slots")
@@ -523,35 +549,6 @@ public class CourtSchedulerApi {
         }
 
         return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
-    }
-
-    @Handles("listingcourtscheduler.query.organisation-units-hmi-status")
-    public JsonEnvelope getOrganisationUnitsHmiStatus(final JsonEnvelope envelope) {
-        final JsonObject reqJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("listingcourtscheduler.query.organisation-units-hmi-status requested : {}", reqJsonObject);
-
-        final OrganisationUnitHMIStatusList organisationUnitHMIStatus = organisationUnitHMIStatusService.getAllOrganisationUnitsHMIStatus();
-        final ListToJsonArrayConverter<OrganisationUnitHMIStatus> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
-
-        return envelopeFor(envelope, listToJsonArrayConverter.convert(organisationUnitHMIStatus.getOrganisationUnitHMIStatus()), ORGANISATION_UNIT_HMI_STATUS);
-    }
-
-    @Handles("listingcourtscheduler.query.organisation-unit-hmi-status")
-    public JsonEnvelope getOrganisationUnitHmiStatus(final JsonEnvelope envelope) {
-        final JsonObject reqJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("listingcourtscheduler.query.organisation-unit-hmi-status requested : {}", reqJsonObject);
-
-        final String oucode = reqJsonObject.getString(OUCODE, "");
-        final Optional<OrganisationUnitHMIStatus> orgUnitHMIStatusOpt = organisationUnitHMIStatusService.getOrganisationUnitHMIStatus(oucode);
-        final JsonObject resJsonObj = !orgUnitHMIStatusOpt.isEmpty() ? createObjectBuilder().add("oucode", orgUnitHMIStatusOpt.get().getOucode())
-                .add("isHMIListingEnabled", orgUnitHMIStatusOpt.get().getIsHMIListingEnabled())
-                .add("isHMISchedulingEnabled", orgUnitHMIStatusOpt.get().getIsHMISchedulingEnabled())
-                .add("isHMIPubHubEnabled", orgUnitHMIStatusOpt.get().getIsHMIPubHubEnabled())
-                .add("courtCentreId", orgUnitHMIStatusOpt.get().getCourtCentreId())
-                .add("courtId", orgUnitHMIStatusOpt.get().getCourtId())
-                .build()
-                : EMPTY_JSON_OBJECT;
-        return envelopeFor(envelope, resJsonObj, ORGANISATION_UNIT_HMI_STATUS);
     }
 
     @Handles("courtscheduler.unassign.judiciary")

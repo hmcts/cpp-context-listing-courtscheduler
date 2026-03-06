@@ -1,0 +1,87 @@
+{
+  "errorGroups": [
+    {
+      "sessions": [
+        {
+          "courtScheduleId": "550e8400-e29b-41d4-a716-446655440001",
+          "listingProfileId": "profile-123",
+          "ouCode": "OU001",
+          "courtRoomNumber": 1,
+          "courtHouseId": "house-123",
+          "courtHouseName": "Test Court House",
+          "operationalUnit": "OU001",
+          "businessType": "DVLA",
+          "businessDescription": "DVLA Business Type",
+          "courtRoomId": "3fc02c0f-f92e-31da-9686-d626ac8ccdc3",
+          "courtRoomName": "Court Room 1",
+          "panel": "YOUTH",
+          "courtSession": "AM",
+          "slotBased": true,
+          "active": true,
+          "sessionDate": "2024-12-15",
+          "maxSlots": 15,
+          "maxDuration": 0,
+          "availableSlots": 15,
+          "availableDuration": 0,
+          "totalBooked": 0,
+          "allDaySplit": false,
+          "maxDurationForMorning": 0,
+          "maxDurationForAfternoon": 0,
+          "minHearingTime": null,
+          "maxHearingTime": null,
+          "totalBookedForMorning": 0,
+          "totalBookedForAfternoon": 0,
+          "availableDurationForMorning": 0,
+          "availableDurationForAfternoon": 0,
+          "sessionStartTime": "09:00",
+          "sessionEndTime": "13:00",
+          "isOverbookingAllowed": false,
+          "isDraft": false
+        }
+      ],
+      "error": "Cannot assign courtroom to an assigned session"
+    },
+    {
+      "sessions": [
+        {
+          "courtScheduleId": "550e8400-e29b-41d4-a716-446655440002",
+          "listingProfileId": "profile-124",
+          "ouCode": "OU002",
+          "courtRoomNumber": 2,
+          "courtHouseId": "house-124",
+          "courtHouseName": "Test Court House 2",
+          "operationalUnit": "OU002",
+          "businessType": "DVLA",
+          "businessDescription": "DVLA Business Type",
+          "courtRoomId": "original-courtroom-id",
+          "courtRoomName": "Court Room 2",
+          "panel": "ADULT",
+          "courtSession": "PM",
+          "slotBased": true,
+          "active": true,
+          "sessionDate": "2024-12-15",
+          "maxSlots": 20,
+          "maxDuration": 0,
+          "availableSlots": 20,
+          "availableDuration": 0,
+          "totalBooked": 0,
+          "allDaySplit": false,
+          "maxDurationForMorning": 0,
+          "maxDurationForAfternoon": 0,
+          "minHearingTime": null,
+          "maxHearingTime": null,
+          "totalBookedForMorning": 0,
+          "totalBookedForAfternoon": 0,
+          "availableDurationForMorning": 0,
+          "availableDurationForAfternoon": 0,
+          "sessionStartTime": "14:00",
+          "sessionEndTime": "17:00",
+          "isOverbookingAllowed": false,
+          "isDraft": true
+        }
+      ],
+      "error": "Duplicate session already exists with same business type, session date, and courtroom"
+    }
+  ]
+}
+

@@ -29,4 +29,5 @@ public class ErrorMessages {
     public static final String MAX_HEARING_TIME_BEFORE_SESSION_END_TIME = "Session End Time can not be updated to a time that is before than the maximum hearing time";
     public static final String SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME = "Session Start Time can not be updated to a time that is after hearing time";
     public static final String SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME = "Session End Time can not be updated to a time that is before than the maximum hearing time";
+    public static final String SESSION_IN_PAST_CANNOT_BE_EDITED = "Cannot edit a session that is in the past";
 }

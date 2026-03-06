@@ -514,28 +514,6 @@ Supports complex filtering:
 
 **Response:** Validation results
 
-### Organisation Unit Endpoints
-
-#### GET `/organisation-units/hmi-status`
-**Purpose:** Get HMI status for all organisation units
-
-**Response:** `application/vnd.listingcourtscheduler.query.organisation-units-hmi-status+json`
-
-#### GET `/organisation-units/hmi-status/{oucode}`
-**Purpose:** Get HMI status for specific organisation unit
-
-**Response:** `application/vnd.listingcourtscheduler.query.organisation-unit-hmi-status+json`
-
-**Returns:**
-- `oucode`
-- `isHMIListingEnabled`
-- `isHMISchedulingEnabled`
-- `isHMIPubHubEnabled`
-- `courtCentreId`
-- `courtId`
-
----
-
 ## Rota File Processing
 
 ### Overview

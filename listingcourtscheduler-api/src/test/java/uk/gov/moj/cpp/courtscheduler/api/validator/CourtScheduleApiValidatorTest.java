@@ -31,6 +31,23 @@ class CourtScheduleApiValidatorTest {
     }
 
     @Test
+    void shouldReturnErrorWhenStartDateAfterEndDate() {
+        CourtScheduleRequestParam params = new CourtScheduleRequestParam(
+                "courtCentreId",
+                "courtRoomId",
+                "businessType",
+                "2024-12-05",
+                "2024-12-03",
+                null,
+                "10",
+                "1");
+
+        JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(params);
+
+        assertEquals("Start date must be on or before end date", response.getString("errorMessage"));
+    }
+
+    @Test
     void shouldReturnSuccessWhenOptionalFieldsMissing() {
 
         JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(createRequestWithOptionalFieldsOnly());
@@ -46,7 +63,7 @@ class CourtScheduleApiValidatorTest {
         String sessionEndDate = "2024-12-03";
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private CourtScheduleRequestParam createInvalidRequestParam() {
@@ -56,7 +73,7 @@ class CourtScheduleApiValidatorTest {
         String sessionEndDate = "2024-12-03";
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, null, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, null, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private CourtScheduleRequestParam createRequestWithOptionalFieldsOnly() {
@@ -65,7 +82,7 @@ class CourtScheduleApiValidatorTest {
         String sessionEndDate = "2024-12-03";
         String pageSize = "10";
         String pageNumber = "1";
-        return new CourtScheduleRequestParam(courtCentreId, null, null, sessionStartDate, sessionEndDate, pageSize, pageNumber);
+        return new CourtScheduleRequestParam(courtCentreId, null, null, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
 

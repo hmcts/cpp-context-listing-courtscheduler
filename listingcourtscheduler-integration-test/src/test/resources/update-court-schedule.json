@@ -4,5 +4,6 @@
   "courtSession": "SESSION_TYPE",
   "businessType": "BUSINESS_TYPE",
   "panel": "PANEL",
+  "jurisdiction": "MAGISTRATES",
   "maxDuration": 10
 }

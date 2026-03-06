@@ -52,6 +52,15 @@ rule "API - Action - courtscheduler.delete"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.assign.courtroom"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.assign.courtroom");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.get.court_schedule"
   when
     $outcome: Outcome();
@@ -322,20 +331,3 @@ rule "API - Action - courtscheduler.search.court-schedules-by-id"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - listingcourtscheduler.query.organisation-units-hmi-status"
-  when
-    $outcome: Outcome();
-    $action: Action(name == "listingcourtscheduler.query.organisation-units-hmi-status");
-        eval(true);
-  then
-    $outcome.setSuccess(true);
-end
-
-rule "API - Action - listingcourtscheduler.query.organisation-unit-hmi-status"
-  when
-    $outcome: Outcome();
-    $action: Action(name == "listingcourtscheduler.query.organisation-unit-hmi-status");
-        eval(true);
-  then
-    $outcome.setSuccess(true);
-end
