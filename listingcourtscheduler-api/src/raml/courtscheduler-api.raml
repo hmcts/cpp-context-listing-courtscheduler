@@ -46,6 +46,10 @@ protocols: [ HTTP, HTTPS ]
       sessionEndDate:
         type: string
         required: true
+      isDraft:
+        description: isDraft
+        type: boolean
+        required: false
       pageSize:
         description: Number of records to be displayed per page
         type: string
@@ -76,6 +80,26 @@ protocols: [ HTTP, HTTPS ]
     responses:
       202:
         description: OK
+
+/courtschedule/assign.courtroom:
+  post:
+    description: |
+      Assign a courtroom to multiple court sessions at once.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.assign.courtroom+json
+          name: courtscheduler.assign.courtroom
+      ...
+    body:
+      application/vnd.courtscheduler.assign.courtroom+json:
+        schema: !include json/schema/courtscheduler.assign.courtroom.json
+        example: !include json/courtscheduler.assign.courtroom.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.assign.courtroom.response+json:
+            schema: !include json/schema/courtscheduler.assign.courtroom.response.json
+            example: !include json/courtscheduler.assign.courtroom.response.json
 
 /courtschedule/delete:
   post:
@@ -591,40 +615,6 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.validate.delete.response+json:
             schema: !include json/schema/courtscheduler.validate.response.json
             example: !include json/courtscheduler.validate.response.json
-
-/organisation-units/hmi-status:
-  get:
-    description: |
-      Returns a list of organisation units HMI status from RotaSL
-      ...
-      (mapping):
-          responseType: application/vnd.listingcourtscheduler.query.organisation-units-hmi-status+json
-          name: listingcourtscheduler.query.organisation-units-hmi-status
-      ...
-    responses:
-      200:
-        description: OK
-        body:
-          application/vnd.listingcourtscheduler.query.organisation-units-hmi-status+json:
-            schema: !include json/schema/listingcourtscheduler.query.organisation-units-hmi-status.json
-            example: !include json/listingcourtscheduler.query.organisation-units-hmi-status.json
-
-/organisation-units/hmi-status/{oucode}:
-  get:
-    description: |
-      Returns an organisation unit's HMI status for the given oucode from RotaSL
-      ...
-      (mapping):
-          responseType: application/vnd.listingcourtscheduler.query.organisation-unit-hmi-status+json
-          name: listingcourtscheduler.query.organisation-unit-hmi-status
-      ...
-    responses:
-      200:
-        description: OK
-        body:
-          application/vnd.listingcourtscheduler.query.organisation-unit-hmi-status+json:
-            schema: !include json/schema/listingcourtscheduler.query.organisation-unit-hmi-status.json
-            example: !include json/listingcourtscheduler.query.organisation-unit-hmi-status.json
 
 /validate-session-availability:
   description: |

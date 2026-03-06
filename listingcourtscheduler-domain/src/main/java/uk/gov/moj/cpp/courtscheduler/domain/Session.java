@@ -19,6 +19,9 @@ public class Session {
     private String sessionStartTime;
     private String sessionEndTime;
     private Boolean isOverbookingAllowed;
+    private Boolean isDraft;
+    private String jurisdiction;
+    private Integer index;
 
     public String getCourtCentreId() {
         return courtCentreId;
@@ -72,6 +75,18 @@ public class Session {
         return isOverbookingAllowed;
     }
 
+    public Boolean isDraft() {
+        return isDraft;
+    }
+
+    public String getJurisdiction() {
+        return jurisdiction;
+    }
+
+    public Integer getIndex() {
+        return index;
+    }
+
     public static final class SessionBuilder {
         private String courtCentreId;
         private String courtRoomId;
@@ -86,6 +101,9 @@ public class Session {
         private String sessionStartTime;
         private String sessionEndTime;
         private Boolean isOverbookingAllowed;
+        private Boolean isDraft;
+        private String jurisdiction;
+        private Integer index;
 
         private SessionBuilder() {
         }
@@ -159,6 +177,21 @@ public class Session {
             return this;
         }
 
+        public SessionBuilder withIsDraft(final Boolean isDraft) {
+            this.isDraft = isDraft;
+            return this;
+        }
+
+        public SessionBuilder withJurisdiction(final String jurisdiction) {
+            this.jurisdiction = jurisdiction;
+            return this;
+        }
+
+        public SessionBuilder withIndex(final Integer index) {
+            this.index = index;
+            return this;
+        }
+
         public Session build() {
             Session session = new Session();
             session.slotsOrDuration = this.slotsOrDuration;
@@ -174,6 +207,9 @@ public class Session {
             session.sessionStartTime = this.sessionStartTime;
             session.sessionEndTime = this.sessionEndTime;
             session.isOverbookingAllowed = this.isOverbookingAllowed;
+            session.isDraft = this.isDraft;
+            session.jurisdiction = this.jurisdiction;
+            session.index = this.index;
             return session;
         }
     }
