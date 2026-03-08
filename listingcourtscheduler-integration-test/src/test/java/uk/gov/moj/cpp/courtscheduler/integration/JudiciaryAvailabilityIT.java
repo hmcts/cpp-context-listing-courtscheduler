@@ -1003,21 +1003,14 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
         );
 
-        // Verify the original rule exists by finding availability - ensure query dates are within the rule's date range
-        LocalDate queryStartDate = futureDateOnDayOfWeek(java.time.DayOfWeek.MONDAY, 0);
-        // Ensure query dates are within the availability range
-        if (queryStartDate.isBefore(originalStartDate)) {
-            queryStartDate = originalStartDate;
+        // Verify the original rule exists by finding availability.
+        // Anchor to the first Monday on or after originalStartDate so the window always
+        // contains a Monday and Tuesday regardless of what day of week today is.
+        LocalDate queryStartDate = originalStartDate;
+        while (queryStartDate.getDayOfWeek() != java.time.DayOfWeek.MONDAY) {
+            queryStartDate = queryStartDate.plusDays(1);
         }
-        LocalDate queryEndDate = futureDateOnDayOfWeek(java.time.DayOfWeek.FRIDAY, 0);
-        // If Friday is before Monday, use Monday + 4 days instead
-        if (queryEndDate.isBefore(queryStartDate)) {
-            queryEndDate = queryStartDate.plusDays(4);
-        }
-        // Ensure query end date doesn't exceed rule end date
-        if (queryEndDate.isAfter(originalEndDate)) {
-            queryEndDate = originalEndDate;
-        }
+        LocalDate queryEndDate = queryStartDate.plusDays(4); // Monday → Friday
 
         Map<String, Object> queryParams = new HashMap<>();
         queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
@@ -1139,10 +1132,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
         assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available during unavailability period (Feb 10-15)");
 
-        // Verify the rule is not available in the old date range
+        // Verify Mon/Tue availability is gone after updating the rule to Wed/Thu.
+        // Use a Mon-Tue-only window to avoid overlap with the new rule's Wed/Thu repeat days.
         queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
+        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));           // Monday
+        queryParams.put("endDate", queryStartDate.plusDays(1).format(DATE_FORMATTER)); // Tuesday
         queryParams.put("courtHouseId", courtHouseId);
 
         requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
