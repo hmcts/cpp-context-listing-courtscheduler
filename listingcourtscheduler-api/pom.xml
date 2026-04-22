@@ -165,7 +165,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-Duser.timezone=Europe/London</argLine>
+                    <argLine>@{argLine} -Duser.timezone=Europe/London</argLine>
                 </configuration>
             </plugin>
             <plugin>
