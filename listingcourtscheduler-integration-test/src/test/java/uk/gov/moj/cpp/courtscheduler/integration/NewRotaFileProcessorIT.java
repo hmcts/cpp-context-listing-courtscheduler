@@ -20,9 +20,11 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.payloadToObject;
+import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
+import uk.gov.moj.cpp.courtscheduler.cache.RedisCacheService;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.AzuriteContainerInitialise;
@@ -118,7 +120,11 @@ class NewRotaFileProcessorIT extends AbstractIT {
         setField(azureBlobClientService, "rotaslArchiveContainerName", AZURE_BLOB_INPUT_CONTAINER_NAME);
         setField(azureBlobClientService, "storageApplicationParameters", storageApplicationParameters);
         maxCreatedOnForCourtScheduleJudiciary = null;
-        
+
+        // Flush Redis so any reference data cached by a prior IT class does not shadow the
+        // updated WireMock stubs registered below (clash vector V5).
+        flushRedisCache();
+
         // Override stubs to use updated files for NewRotaFileProcessorIT
         stubGetReferenceDataJudiciaries(UPDATED_JUDICIARIES_FILE);
         stubGetReferenceDataRotaBusinessTypes(UPDATED_ROTA_BUSINESS_TYPES_FILE);
@@ -317,6 +323,15 @@ class NewRotaFileProcessorIT extends AbstractIT {
         databaseSeeder.cleanMigrationStatusTable();
     }
     
+    private void flushRedisCache() {
+        final RedisCacheService redisCacheService = new RedisCacheService();
+        setField(redisCacheService, "host", getHost());
+        setField(redisCacheService, "port", "6380");
+        setField(redisCacheService, "key", "none");
+        setField(redisCacheService, "useSsl", "false");
+        redisCacheService.flushAllCacheKeys();
+    }
+
     private void insertCourtSchedulerMigrationStatus(final List<String> ouCodes) throws SQLException {
         for (final String ouCode : ouCodes) {
             final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
