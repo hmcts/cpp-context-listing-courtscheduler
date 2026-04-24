@@ -48,6 +48,10 @@ public class AzureBlobClientService {
     private String rotaslStorageConnectionString;
 
     @Inject
+    @Value(key = "courtscheduler.rotaslStorageEndpoint", defaultValue = "")
+    private String rotaslStorageEndpoint;
+
+    @Inject
     @Value(key ="courtscheduler.rotaslStorageAccountName", defaultValue = "")
     private String rotaslStorageAccountName;
 
@@ -184,6 +188,13 @@ public class AzureBlobClientService {
     }
 
     private BlobServiceClient createBlobServiceClient() {
+        if (!StringUtils.isEmpty(rotaslStorageEndpoint)) {
+            return new BlobServiceClientBuilder()
+                    .endpoint(rotaslStorageEndpoint)
+                    .connectionString(rotaslStorageConnectionString)
+                    .buildClient();
+        }
+
         if (StringUtils.isEmpty(rotaslStorageAccountName)) {
             return new BlobServiceClientBuilder()
                     .connectionString(rotaslStorageConnectionString)

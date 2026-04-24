@@ -162,6 +162,13 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -Duser.timezone=Europe/London</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>uk.gov.justice.framework-generators</groupId>
                 <artifactId>rest-client-generator-plugin</artifactId>
                 <version>${cpp.framework.version}</version>
