@@ -6,6 +6,7 @@ trigger:
     include:
       - main
       - 'team/*'
+      - 'feature/sv-azurite-edo-719'
     exclude:
       - 'dev/release-*'
 
