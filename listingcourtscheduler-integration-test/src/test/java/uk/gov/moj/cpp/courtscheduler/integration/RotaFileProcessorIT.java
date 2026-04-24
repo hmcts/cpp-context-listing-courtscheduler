@@ -26,6 +26,7 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayloa
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.AzuriteContainerInitialise;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -53,10 +54,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Deprecated
+@ExtendWith(AzuriteContainerInitialise.class)
 class RotaFileProcessorIT extends AbstractIT {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessorIT.class);
@@ -68,7 +71,6 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private final String azureBlobInputContainerName = "schedulelistinginput";
     private final String azureBlobOutputContainerName = "schedulelistingoutput";
-    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=C5l7paX+ELY0X3aDMTrOyXxBE69CMS1pqkYX9XTGdHI7x1jP15VM1FUizCoEmwOo9ML3Bgz0IYA4+AStJIs0kQ==;EndpointSuffix=core.windows.net";
 
     public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
     public static final int DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC = 50;
@@ -88,7 +90,8 @@ class RotaFileProcessorIT extends AbstractIT {
     void setUpAzureBlobClientService() {
         final StorageApplicationParameters storageApplicationParameters = new StorageApplicationParameters();
 
-        setField(azureBlobClientService, "rotaslStorageConnectionString", ROTASL_STORAGE_CONNECTION_STRING);
+        setField(azureBlobClientService, "rotaslStorageConnectionString", AzuriteContainerInitialise.getConnectionString());
+        setField(azureBlobClientService, "rotaslStorageEndpoint", AzuriteContainerInitialise.getBlobEndpoint());
         setField(azureBlobClientService, "rotaslInputContainerName", azureBlobInputContainerName);
         setField(azureBlobClientService, "rotaslArchiveContainerName", azureBlobInputContainerName);
         setField(azureBlobClientService, "storageApplicationParameters", storageApplicationParameters);
@@ -452,7 +455,8 @@ class RotaFileProcessorIT extends AbstractIT {
     private boolean isFileInInputContainer(final String fileName) {
         try {
             final var blobServiceClient = new com.azure.storage.blob.BlobServiceClientBuilder()
-                    .connectionString(ROTASL_STORAGE_CONNECTION_STRING)
+                    .endpoint(AzuriteContainerInitialise.getBlobEndpoint())
+                    .connectionString(AzuriteContainerInitialise.getConnectionString())
                     .buildClient();
             final var containerClient = blobServiceClient.getBlobContainerClient(azureBlobInputContainerName);
             final var options = new com.azure.storage.blob.models.ListBlobsOptions().setPrefix(fileName);
