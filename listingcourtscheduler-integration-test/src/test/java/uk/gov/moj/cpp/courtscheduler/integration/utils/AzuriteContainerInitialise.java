@@ -30,6 +30,18 @@ public class AzuriteContainerInitialise implements BeforeAllCallback, AfterAllCa
     private static final int FIXED_HOST_PORT = 10000;
 
     /**
+     * When set, skip the Testcontainer lifecycle and trust that Azurite is already
+     * reachable at this URL. Used by the ADO pipeline, where Azurite is deployed as
+     * a K8s Service in the validation namespace and the test JVM runs in an ADO
+     * agent pod with no Docker daemon of its own (so Testcontainers would fail with
+     * "Could not find a valid Docker environment").
+     *
+     * Expected form: http://&lt;host&gt;:&lt;port&gt;/&lt;account-name&gt;
+     *   e.g. http://azurite-service.ns-vld-…-isolateblob-….svc.cluster.local:10000/devstoreaccount1
+     */
+    private static final String ENDPOINT_OVERRIDE = System.getenv("AZURITE_ENDPOINT");
+
+    /**
      * Azurite's well-known, publicly documented development account key — NOT a secret.
      * Hardcoded into every Azurite release: https://github.com/Azure/Azurite#default-storage-account
      * Overridable via the AZURITE_ACCOUNT_KEY env var so secret-scanners in CI can be silenced
@@ -53,6 +65,14 @@ public class AzuriteContainerInitialise implements BeforeAllCallback, AfterAllCa
 
     @Override
     public void beforeAll(final ExtensionContext context) {
+        if (ENDPOINT_OVERRIDE != null && !ENDPOINT_OVERRIDE.isEmpty()) {
+            // External-Azurite mode: endpoint is provided (pipeline K8s service);
+            // Testcontainer is skipped. Pre-create containers idempotently against
+            // the remote Azurite — the validation namespace's pod starts empty.
+            preCreateContainer("schedulelistinginput");
+            preCreateContainer("schedulelistingoutput");
+            return;
+        }
         if (!AZURITE.isRunning()) {
             AZURITE.start();
             preCreateContainer("schedulelistinginput");
@@ -67,6 +87,9 @@ public class AzuriteContainerInitialise implements BeforeAllCallback, AfterAllCa
     }
 
     public static String getBlobEndpoint() {
+        if (ENDPOINT_OVERRIDE != null && !ENDPOINT_OVERRIDE.isEmpty()) {
+            return ENDPOINT_OVERRIDE;
+        }
         // Test JVM on the host reaches Azurite via the fixed host port.
         return "http://" + AZURITE.getHost() + ":" + FIXED_HOST_PORT + "/" + ACCOUNT_NAME;
     }
