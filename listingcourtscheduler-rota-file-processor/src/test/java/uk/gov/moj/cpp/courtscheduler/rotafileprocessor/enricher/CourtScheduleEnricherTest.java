@@ -20,6 +20,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
 import java.time.LocalDate;
 import java.util.Calendar;
@@ -180,6 +181,89 @@ class CourtScheduleEnricherTest {
         courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), missingReferenceDataMappingMap, emptyList(), requester, executionId);
 
         assertThat(missingReferenceDataMappingMap.size(), is(1));
+    }
+
+    @Test
+    void shouldApplyRefdataSessionStartAndEndTimesForAmSession() {
+        final CourtRoom courtRoom = createCourtRoom();
+
+        // Refdata-supplied times override the hardcoded morning defaults (10:00 / 13:00)
+        final CourtRoomSessionAllocation allocation = CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation()
+                .withId("241546")
+                .withCourtRoomId(1234)
+                .withOucode("BAUOS05")
+                .withMaxSlot(8)
+                .withMaxDurationMins(60)
+                .withRotaBusinessTypeCode("TBL")
+                .withCourtSession("WEDAM")
+                .withSessionStartTime("09:30")
+                .withSessionEndTime("12:45")
+                .build();
+        when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
+        when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class), eq(requester))).thenReturn(of(courtRoom));
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
+                .thenReturn(of(allocation));
+
+        final Map<String, String> listingProfile = listingProfile("AM");
+        final LocalDate sessionDate = LocalDate.of(2019, 10, 1);
+
+        final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, new HashMap<>(), emptyList(), requester, randomUUID().toString());
+
+        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:30")));
+        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "12:45")));
+    }
+
+    @Test
+    void shouldFallBackToDefaultMorningTimesWhenAllocationHasNoTimes() {
+        final CourtRoom courtRoom = createCourtRoom();
+
+        // Allocation present but no start/end times configured -> defaults must apply (10:00 / 13:00 for AM)
+        final CourtRoomSessionAllocation allocation = new CourtRoomSessionAllocation("241546", 1234, "BAUOS05", 8, 60, "TBL", "WEDAM");
+        when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
+        when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class), eq(requester))).thenReturn(of(courtRoom));
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
+                .thenReturn(of(allocation));
+
+        final Map<String, String> listingProfile = listingProfile("AM");
+        final LocalDate sessionDate = LocalDate.of(2019, 10, 1);
+
+        final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, new HashMap<>(), emptyList(), requester, randomUUID().toString());
+
+        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00")));
+        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "13:00")));
+    }
+
+    @Test
+    void shouldFallBackToDefaultAfternoonTimesWhenAllocationAbsent() {
+        final CourtRoom courtRoom = createCourtRoom();
+
+        when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDPM");
+        when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class), eq(requester))).thenReturn(of(courtRoom));
+        // No CourtRoomSessionAllocation configured for this room/session
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
+                .thenReturn(empty());
+
+        final Map<String, String> listingProfile = listingProfile("PM");
+        final LocalDate sessionDate = LocalDate.of(2019, 10, 1);
+
+        final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, new HashMap<>(), emptyList(), requester, randomUUID().toString());
+
+        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "14:00")));
+        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00")));
+    }
+
+    private Map<String, String> listingProfile(final String session) {
+        final Map<String, String> listingProfile = new HashMap<>();
+        listingProfile.put("id", "CS2129874");
+        listingProfile.put("sessionDate", "2019-10-01");
+        listingProfile.put("session", session);
+        listingProfile.put("panel", "ADULT");
+        listingProfile.put("business", "DVB");
+        listingProfile.put("venueName", "Court 1 Cheltenham");
+        listingProfile.put("venueId", "17729");
+        listingProfile.put("locationId", "175");
+        listingProfile.put("welshSpeaking", "false");
+        return listingProfile;
     }
 
     private CourtRoom createCourtRoom() {

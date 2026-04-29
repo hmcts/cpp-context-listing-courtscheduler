@@ -3,6 +3,8 @@ package uk.gov.moj.cpp.courtscheduler.domain.utils;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toListingSession;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toSqlDate;
 
@@ -243,6 +245,64 @@ class DateUtilsTest {
     void shouldConvertToExactTimestampWithPreciseMillis() {
         final Timestamp actual = DateUtils.toExactTimestamp("2020-07-23T12:34:56.789Z");
         assertThat(actual.toString(), is("2020-07-23 12:34:56.789"));
+    }
+
+    // ----- toListingSession -----
+
+    @Test
+    void shouldBuildListingSessionForMondayAm() {
+        // 2026-04-27 is a Monday
+        assertThat(toListingSession(LocalDate.of(2026, 4, 27), "AM"), is("MONAM"));
+    }
+
+    @Test
+    void shouldBuildListingSessionForFridayPm() {
+        // 2026-05-01 is a Friday
+        assertThat(toListingSession(LocalDate.of(2026, 5, 1), "PM"), is("FRIPM"));
+    }
+
+    @Test
+    void shouldBuildListingSessionForWednesdayAllDay() {
+        // 2026-04-29 is a Wednesday
+        assertThat(toListingSession(LocalDate.of(2026, 4, 29), "AD"), is("WEDAD"));
+    }
+
+    @Test
+    void shouldReturnNullListingSessionWhenDateIsNull() {
+        assertThat(toListingSession(null, "AM"), is(nullValue()));
+    }
+
+    @Test
+    void shouldReturnNullListingSessionWhenSessionIsBlank() {
+        assertThat(toListingSession(LocalDate.of(2026, 4, 27), ""), is(nullValue()));
+        assertThat(toListingSession(LocalDate.of(2026, 4, 27), "  "), is(nullValue()));
+        assertThat(toListingSession(LocalDate.of(2026, 4, 27), null), is(nullValue()));
+    }
+
+    // ----- resolveSessionTime -----
+
+    @Test
+    void resolveSessionTimeShouldPreferCustomOverRefdataAndDefault() {
+        assertThat(resolveSessionTime("09:30", "10:00", "11:00"), is("09:30"));
+    }
+
+    @Test
+    void resolveSessionTimeShouldFallBackToRefdataWhenCustomBlank() {
+        assertThat(resolveSessionTime(null, "10:15", "11:00"), is("10:15"));
+        assertThat(resolveSessionTime("", "10:15", "11:00"), is("10:15"));
+        assertThat(resolveSessionTime("   ", "10:15", "11:00"), is("10:15"));
+    }
+
+    @Test
+    void resolveSessionTimeShouldFallBackToDefaultWhenCustomAndRefdataBlank() {
+        assertThat(resolveSessionTime(null, null, "11:00"), is("11:00"));
+        assertThat(resolveSessionTime("", "", "11:00"), is("11:00"));
+        assertThat(resolveSessionTime("  ", "  ", "11:00"), is("11:00"));
+    }
+
+    @Test
+    void resolveSessionTimeShouldReturnNullWhenAllBlank() {
+        assertThat(resolveSessionTime(null, null, null), is(nullValue()));
     }
 }
 

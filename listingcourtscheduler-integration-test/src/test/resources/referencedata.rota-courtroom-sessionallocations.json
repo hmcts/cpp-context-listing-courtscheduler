@@ -689,6 +689,30 @@
       "rotaBusinessTypeCode": "TRL",
       "validFrom": "2024-04-12",
       "validTo": "2025-09-06"
+    },
+    {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "oucode": "B12JR00",
+      "courtRoomId": 7777,
+      "maxDurationMins": 180,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-01-01",
+      "validTo": "2099-12-31",
+      "sessionStartTime": "09:30",
+      "sessionEndTime": "12:45"
+    },
+    {
+      "id": "22222222-3333-4444-5555-666666666666",
+      "oucode": "B12JR00",
+      "courtRoomId": 7777,
+      "maxDurationMins": 180,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-01-01",
+      "validTo": "2099-12-31",
+      "sessionStartTime": "13:30",
+      "sessionEndTime": "16:30"
     }
   ]
 }

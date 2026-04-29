@@ -10,6 +10,8 @@ public class CourtRoomSessionAllocation {
     private String courtSession;
     private String validFrom;
     private String validTo;
+    private String sessionStartTime;
+    private String sessionEndTime;
 
     public CourtRoomSessionAllocation() {
     }
@@ -107,6 +109,22 @@ public class CourtRoomSessionAllocation {
         this.validTo = validTo;
     }
 
+    public String getSessionStartTime() {
+        return sessionStartTime;
+    }
+
+    public void setSessionStartTime(final String sessionStartTime) {
+        this.sessionStartTime = sessionStartTime;
+    }
+
+    public String getSessionEndTime() {
+        return sessionEndTime;
+    }
+
+    public void setSessionEndTime(final String sessionEndTime) {
+        this.sessionEndTime = sessionEndTime;
+    }
+
     @Override
     public String toString() {
         return "CourtRoomSessionAllocation{" +
@@ -119,6 +137,8 @@ public class CourtRoomSessionAllocation {
                 ", courtSession='" + courtSession + '\'' +
                 ", validFrom='" + validFrom + '\'' +
                 ", validTo='" + validTo + '\'' +
+                ", sessionStartTime='" + sessionStartTime + '\'' +
+                ", sessionEndTime='" + sessionEndTime + '\'' +
                 '}';
     }
 
@@ -132,6 +152,8 @@ public class CourtRoomSessionAllocation {
         private String courtSession;
         private String validFrom;
         private String validTo;
+        private String sessionStartTime;
+        private String sessionEndTime;
 
         private CourtRoomSessionAllocationBuilder() {}
 
@@ -184,6 +206,16 @@ public class CourtRoomSessionAllocation {
             return this;
         }
 
+        public CourtRoomSessionAllocationBuilder withSessionStartTime(final String sessionStartTime) {
+            this.sessionStartTime = sessionStartTime;
+            return this;
+        }
+
+        public CourtRoomSessionAllocationBuilder withSessionEndTime(final String sessionEndTime) {
+            this.sessionEndTime = sessionEndTime;
+            return this;
+        }
+
         public CourtRoomSessionAllocation build() {
             final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation();
             courtRoomSessionAllocation.setId(this.id);
@@ -195,6 +227,8 @@ public class CourtRoomSessionAllocation {
             courtRoomSessionAllocation.setRotaBusinessTypeCode(this.rotaBusinessTypeCode);
             courtRoomSessionAllocation.setValidFrom(this.validFrom);
             courtRoomSessionAllocation.setValidTo(this.validTo);
+            courtRoomSessionAllocation.setSessionStartTime(this.sessionStartTime);
+            courtRoomSessionAllocation.setSessionEndTime(this.sessionEndTime);
             return courtRoomSessionAllocation;
         }
 

@@ -23,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.util.PropertiesLoader;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
@@ -167,6 +168,124 @@ class RotaDataEnricherTest {
         assertThat(pmSession.getAvailableDuration(), is(0));
         assertThat(missingReferenceDataMappingMap.size(),is(0));
 
+    }
+
+    @Test
+    void updateExistingCourtScheduleShouldUseRefdataTimesForAllDay() {
+        final LocalDate sessionDate = LocalDate.of(2026, 4, 29); // Wednesday
+        final String linkedSessionId = "L1";
+        final String ouCode = "B01LY00";
+        final String businessType = "DVB";
+        final Integer courtRoomNumber = 2332;
+        final String courtRoomId = randomUUID().toString();
+
+        // Two rows for the same linkedSessionId and business -> second hits updateExistingCourtSchedule (ALL_DAY)
+        final Map<RotaPayload, Map<String, Map<String, String>>> records = new HashMap<>();
+        final Map<String, Map<String, String>> listings = new java.util.LinkedHashMap<>();
+        listings.put("L1", listingRow("L1", linkedSessionId, sessionDate, "AM", businessType));
+        listings.put("L2", listingRow("L2", linkedSessionId, sessionDate, "PM", businessType));
+        records.put(COURT_LISTING, listings);
+
+        // First row: enricher returns the AM-built schedule (its listingProfileId acts as the key in the map)
+        final CourtSchedule built = CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withListingProfileId("L1")
+                .withOuCode(ouCode)
+                .withCourtRoomId(courtRoomId)
+                .withCourtRoomNumber(courtRoomNumber)
+                .withBusinessType(businessType)
+                .withCourtSession("AM")
+                .withSessionDate(sessionDate)
+                .withMaxSlots(0)
+                .withAvailableSlots(0)
+                .withMaxDuration(0)
+                .withAvailableDuration(0)
+                .build();
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), eq(requester), anyString())).thenReturn(built);
+
+        // Second row triggers refdata lookup; refdata supplies custom AD start/end times
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        final CourtRoomSessionAllocation allocation = CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation()
+                .withId("alloc-1")
+                .withCourtRoomId(courtRoomNumber)
+                .withOucode(ouCode)
+                .withMaxSlot(4)
+                .withMaxDurationMins(45)
+                .withRotaBusinessTypeCode(businessType)
+                .withCourtSession("WEDPM")
+                .withSessionStartTime("09:15")
+                .withSessionEndTime("16:30")
+                .build();
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
+                .thenReturn(of(allocation));
+
+        final Map<String, Boolean> migratedMap = Map.of(ouCode, FALSE);
+        final Map<String, String> missing = new HashMap<>();
+        final Map<String, CourtSchedule> result = rotaDataEnricher.enrichCourtListings(records, sessionDate, migratedMap, FALSE, List.of(), requester, randomUUID().toString(), missing);
+
+        assertThat(result.size(), is(1));
+        final CourtSchedule updated = result.get("L1");
+        assertThat(updated.getCourtSession(), is(ALL_DAY_SESSION));
+        // refdata times override hardcoded ALL_DAY defaults (10:00 / 17:00)
+        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:15")));
+        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "16:30")));
+        // slot/duration totals get incremented by allocation values
+        assertThat(updated.getMaxSlots(), is(4));
+        assertThat(updated.getAvailableSlots(), is(4));
+        assertThat(updated.getMaxDuration(), is(45));
+        assertThat(updated.getAvailableDuration(), is(45));
+    }
+
+    @Test
+    void updateExistingCourtScheduleShouldUseDefaultAllDayTimesWhenRefdataMissing() {
+        final LocalDate sessionDate = LocalDate.of(2026, 4, 29);
+        final String linkedSessionId = "L1";
+        final String ouCode = "B01LY00";
+        final String businessType = "DVB";
+        final Integer courtRoomNumber = 2332;
+        final String courtRoomId = randomUUID().toString();
+
+        final Map<RotaPayload, Map<String, Map<String, String>>> records = new HashMap<>();
+        final Map<String, Map<String, String>> listings = new java.util.LinkedHashMap<>();
+        listings.put("L1", listingRow("L1", linkedSessionId, sessionDate, "AM", businessType));
+        listings.put("L2", listingRow("L2", linkedSessionId, sessionDate, "PM", businessType));
+        records.put(COURT_LISTING, listings);
+
+        final CourtSchedule built = CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(randomUUID().toString())
+                .withListingProfileId("L1")
+                .withOuCode(ouCode)
+                .withCourtRoomId(courtRoomId)
+                .withCourtRoomNumber(courtRoomNumber)
+                .withBusinessType(businessType)
+                .withCourtSession("AM")
+                .withSessionDate(sessionDate)
+                .build();
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), eq(requester), anyString())).thenReturn(built);
+
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        // No allocation -> defaults must apply (ALL_DAY: 10:00 / 17:00)
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
+                .thenReturn(empty());
+
+        final Map<String, Boolean> migratedMap = Map.of(ouCode, FALSE);
+        final Map<String, String> missing = new HashMap<>();
+        final Map<String, CourtSchedule> result = rotaDataEnricher.enrichCourtListings(records, sessionDate, migratedMap, FALSE, List.of(), requester, randomUUID().toString(), missing);
+
+        final CourtSchedule updated = result.get("L1");
+        assertThat(updated.getCourtSession(), is(ALL_DAY_SESSION));
+        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00")));
+        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00")));
+    }
+
+    private Map<String, String> listingRow(final String id, final String linkedSessionId, final LocalDate sessionDate, final String session, final String businessType) {
+        final Map<String, String> row = new HashMap<>();
+        row.put("id", id);
+        row.put("linkedSessionId", linkedSessionId);
+        row.put("sessionDate", sessionDate.toString());
+        row.put("session", session);
+        row.put("business", businessType);
+        return row;
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {

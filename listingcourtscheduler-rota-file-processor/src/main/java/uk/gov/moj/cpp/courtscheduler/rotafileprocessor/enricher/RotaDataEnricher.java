@@ -17,6 +17,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSI
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_ALL_DAY_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_ALL_DAY_START_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.justice.services.core.requester.Requester;
@@ -143,9 +144,18 @@ public class RotaDataEnricher {
         final String listingSession = courtSession.getCourtSession(courtSchedule.getSessionDate(), sessionStr);
         final Optional<CourtRoomSessionAllocation> sessionAllocation  = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(requester, courtSchedule.getOuCode(), courtSchedule.getCourtRoomNumber(), listingSession, courtSchedule.getBusinessType());
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = courtSchedule().withCourtSchedule(courtSchedule);
+
+        // Precedence: refdata allocation time > hardcoded defaults.
+        // (Rota file rows do not carry custom session times; custom times are only honoured
+        // on the courtscheduler.create API path - see SessionsService.)
+        final String refDataStartTime = sessionAllocation.map(CourtRoomSessionAllocation::getSessionStartTime).orElse(null);
+        final String refDataEndTime = sessionAllocation.map(CourtRoomSessionAllocation::getSessionEndTime).orElse(null);
+        final String resolvedStartTime = resolveSessionTime(null, refDataStartTime, DEFAULT_ALL_DAY_START_TIME);
+        final String resolvedEndTime = resolveSessionTime(null, refDataEndTime, DEFAULT_ALL_DAY_END_TIME);
+
         courtScheduleBuilder.withCourtSession(ALL_DAY)
-                .withSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DEFAULT_ALL_DAY_START_TIME))
-                .withSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DEFAULT_ALL_DAY_END_TIME));
+                .withSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedStartTime))
+                .withSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedEndTime));
 
         final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinDateRange.stream()
                 .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(courtSchedule.getCourtRoomId())

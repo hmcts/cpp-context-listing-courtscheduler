@@ -26,7 +26,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SE
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toListingSession;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toLocalTime;
 
 import uk.gov.justice.services.core.requester.Requester;
@@ -94,6 +96,8 @@ public class SessionsService {
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
     @Inject
     private CourtScheduleService courtScheduleService;
+    @Inject
+    private ReferenceDataMapperService referenceDataMapperService;
 
     @Transactional
     public void create(CreateSessionRequestParam createSessionRequestParam, Requester requester) {
@@ -717,9 +721,6 @@ public class SessionsService {
     private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate, Requester requester, String sessionStartTime, String sessionEndTime) {
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder();
 
-        final DateUtils.SessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(session.getSessionType(), sessionStartTime, sessionEndTime);
-        final Date sessionStartDate = combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionStartTime());
-
         courtScheduleBuilder.withCourtScheduleId(UUID.randomUUID().toString())
                 .withBusinessType(session.getBusinessType())
                 .withCourtHouseId(session.getCourtCentreId())
@@ -731,14 +732,69 @@ public class SessionsService {
                 .withAllDaySplit(TRUE.equals(session.isAllDaySplit()))
                 .withMaxDurationForMorning(session.getMaxDurationForMorning())
                 .withMaxDurationForAfternoon(session.getMaxDurationForAfternoon())
-                .withSessionStartTime(sessionStartDate)
-                .withSessionEndTime(combineDateAndTime(sessionDateCandidate, sessionStartAndEndTime.sessionEndTime()))
                 .withIsOverbookingAllowed(TRUE.equals(session.isOverbookingAllowed()))
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate))
                 .withIsDraft(!isNull(session.isDraft()) && session.isDraft())
                 .withJurisdiction(!isNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction());
+
+        // enrichSession populates oucode + courtRoomNumber on the builder, which we need
+        // before we can look up the CourtRoomSessionAllocation refdata.
         enrichSession(courtScheduleBuilder, session.getSlotsOrDuration(), requester);
+
+        applyResolvedSessionTimes(courtScheduleBuilder, session, sessionDateCandidate, sessionStartTime, sessionEndTime, requester);
         return courtScheduleBuilder.build();
+    }
+
+    /**
+     * Resolves the session start/end times using precedence:
+     *   1. customStartTime / customEndTime supplied on the API request (if non-blank)
+     *   2. CourtRoomSessionAllocation refdata times for the (oucode, room, day-of-week + sessionType, businessType)
+     *   3. Hardcoded defaults from {@link DateUtils#getOrElseDefaultSessionStartAndEndTimeIfEmpty}
+     *
+     * For ALL_DAY sessions, refdata start time is read from the AM allocation and the end time
+     * from the PM allocation when available.
+     */
+    private void applyResolvedSessionTimes(final CourtSchedule.CourtScheduleBuilder builder,
+                                           final Session session,
+                                           final LocalDate sessionDate,
+                                           final String customStartTime,
+                                           final String customEndTime,
+                                           final Requester requester) {
+        final String sessionType = session.getSessionType();
+        final String businessType = session.getBusinessType();
+
+        final String refDataStartTime;
+        final String refDataEndTime;
+        if (ALL_DAY.equals(sessionType)) {
+            final Optional<CourtRoomSessionAllocation> amAllocation = lookupAllocation(builder, AM_SESSION, sessionDate, businessType, requester);
+            final Optional<CourtRoomSessionAllocation> pmAllocation = lookupAllocation(builder, PM_SESSION, sessionDate, businessType, requester);
+            refDataStartTime = amAllocation.map(CourtRoomSessionAllocation::getSessionStartTime).orElse(null);
+            refDataEndTime = pmAllocation.map(CourtRoomSessionAllocation::getSessionEndTime).orElse(null);
+        } else {
+            final Optional<CourtRoomSessionAllocation> allocation = lookupAllocation(builder, sessionType, sessionDate, businessType, requester);
+            refDataStartTime = allocation.map(CourtRoomSessionAllocation::getSessionStartTime).orElse(null);
+            refDataEndTime = allocation.map(CourtRoomSessionAllocation::getSessionEndTime).orElse(null);
+        }
+
+        final DateUtils.SessionStartAndEndTime defaults = getOrElseDefaultSessionStartAndEndTimeIfEmpty(sessionType, null, null);
+        final String resolvedStart = resolveSessionTime(customStartTime, refDataStartTime, defaults.sessionStartTime());
+        final String resolvedEnd = resolveSessionTime(customEndTime, refDataEndTime, defaults.sessionEndTime());
+
+        builder.withSessionStartTime(combineDateAndTime(sessionDate, resolvedStart))
+                .withSessionEndTime(combineDateAndTime(sessionDate, resolvedEnd));
+    }
+
+    private Optional<CourtRoomSessionAllocation> lookupAllocation(final CourtSchedule.CourtScheduleBuilder builder,
+                                                                  final String sessionType,
+                                                                  final LocalDate sessionDate,
+                                                                  final String businessType,
+                                                                  final Requester requester) {
+        if (isNull(builder.getOuCode()) || isNull(builder.getCourtRoomNumber()) || isNull(businessType)) {
+            return Optional.empty();
+        }
+        final String listingSession = toListingSession(sessionDate, sessionType);
+        return referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
+                requester, builder.getOuCode(), builder.getCourtRoomNumber(), listingSession, businessType);
     }
 
     private void saveCourtSchedules(List<CourtSchedule> courtScheduleList) {
