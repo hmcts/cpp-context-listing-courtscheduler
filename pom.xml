@@ -17,6 +17,7 @@
 
 
     <properties>
+        <git-build-hook-maven-plugin.version>3.4.1</git-build-hook-maven-plugin.version>
         <sonar.jacoco.itReportPath>${project.basedir}/../target/jacoco-it.exec
         </sonar.jacoco.itReportPath>
         <sonar.report.export.path>sonar-report.json</sonar.report.export.path>
@@ -75,6 +76,23 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>com.rudikershaw.gitbuildhook</groupId>
+                <artifactId>git-build-hook-maven-plugin</artifactId>
+                <version>${git-build-hook-maven-plugin.version}</version>
+                <configuration>
+                    <gitConfig>
+                        <core.hooksPath>.githooks</core.hooksPath>
+                    </gitConfig>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>configure</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>external.atlassian.jgitflow</groupId>
                 <artifactId>jgitflow-maven-plugin</artifactId>
