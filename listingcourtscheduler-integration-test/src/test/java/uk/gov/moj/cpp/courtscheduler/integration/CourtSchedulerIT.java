@@ -132,10 +132,11 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithSessionTimes() {
-        //We send localtime
+        // Payload times are London wall-clock; go via the London-aware helper so expected
+        // instants match the UTC values the backend stores in both BST and GMT.
         final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-        final java.util.Date expectedStartTime = java.util.Date.from(startDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
-        final java.util.Date expectedEndTime = java.util.Date.from(startDate.atTime(12, 0).toInstant(ZoneOffset.UTC));
+        final java.util.Date expectedStartTime = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(10, 0));
+        final java.util.Date expectedEndTime = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(12, 0));
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -1116,8 +1117,10 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
-        // Create allocated listing with hearing time BEFORE session start time (09:00 is before 10:00)
-        createAllocatedListing(expected, UUID.randomUUID(), UUID.randomUUID(), 60, "09:00");
+        // Hearing 2h before session start so the 1h BST/UTC skew inside the validator
+        // (persisted session time is read in UTC, hearings are read in Europe/London) can't
+        // close the gap and silently bypass the check.
+        createAllocatedListing(expected, UUID.randomUUID(), UUID.randomUUID(), 60, "08:00");
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
         String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
@@ -1135,7 +1138,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
 
-        // Should fail because min hearing time (09:00) is before session start time (10:00) retrieved from persisted schedule
+        // Should fail because min hearing time (08:00) is before session start time (10:00) retrieved from persisted schedule
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String errorResponseMessage = response.readEntity(String.class);
         assertThat(errorResponseMessage, containsString(MIN_HEARING_TIME_AFTER_SESSION_START_TIME));
