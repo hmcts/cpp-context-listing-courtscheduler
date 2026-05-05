@@ -6,6 +6,7 @@ trigger:
     include:
       - main
       - 'team/*'
+      - 'feature/sv-azurite-edo-719'
     exclude:
       - 'dev/release-*'
 
@@ -18,7 +19,7 @@ resources:
       type: github
       name: hmcts/cpp-azure-devops-templates
       endpoint: 'hmcts'
-      ref: 'main'
+      ref: 'feature/sv-azurite-edo-719'
 
 pool:
   name: "MDV-ADO-AGENT-AKS-01"
@@ -44,3 +45,4 @@ stages:
           sonarQubeType: 'sonarQubeAKS'
           serviceName: ${{ variables['service_Name'] }}
           itTestFolder: ${{ variables['itTest_Folder'] }}
+          aksDeployBranch: 'feature/sv-azurite-edo-719'
