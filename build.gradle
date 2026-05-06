@@ -73,6 +73,12 @@ subprojects {
 
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
+        // Pin the test JVM timezone to the operational TZ for the UK court service.
+        // Some tests (and the production SessionsApiValidator#getMinHearingTime) hard-code
+        // Europe/London when converting Date↔LocalTime, while sibling code uses
+        // systemDefault(). Without this pin, tests pass on dev machines but fail on
+        // CI runners that default to UTC (e.g. GitHub Actions ubuntu-latest).
+        systemProperty 'user.timezone', 'Europe/London'
         testLogging {
             events "passed", "skipped", "failed"
             exceptionFormat = 'full'
