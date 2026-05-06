@@ -18,9 +18,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import java.util.Calendar;
 import java.util.Map;
 
-import javax.enterprise.context.ApplicationScoped;
+import org.springframework.stereotype.Service;
 
-@ApplicationScoped
+@Service
 public class JudiciaryBuilder {
 
     public CourtScheduleJudiciary build(final Map<String, String> schedule, final String courtScheduleId) {

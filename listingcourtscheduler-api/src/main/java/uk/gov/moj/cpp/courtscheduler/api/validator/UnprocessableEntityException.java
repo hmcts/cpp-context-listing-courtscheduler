@@ -1,24 +1,23 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
-import static io.netty.handler.codec.http.HttpResponseStatus.UNPROCESSABLE_ENTITY;
+import jakarta.json.JsonObject;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
-import javax.json.JsonObject;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response;
-
-public class UnprocessableEntityException extends WebApplicationException {
+/**
+ * Migrated from JAX-RS {@code WebApplicationException} (HTTP 422) to Spring's
+ * {@code ResponseStatusException}. Carries the validation errors JSON for the
+ * {@link uk.gov.moj.cpp.courtscheduler.controllers.GlobalExceptionHandler} to render.
+ */
+public class UnprocessableEntityException extends ResponseStatusException {
     private final JsonObject errors;
-    
-    public UnprocessableEntityException(JsonObject errors) {
-        super(Response.status(UNPROCESSABLE_ENTITY.code())
-                .entity(errors)
-                .type("application/json")
-                .build());
+
+    public UnprocessableEntityException(final JsonObject errors) {
+        super(HttpStatus.UNPROCESSABLE_ENTITY, errors == null ? "" : errors.toString());
         this.errors = errors;
     }
-    
+
     public JsonObject getErrors() {
         return errors;
     }
 }
-

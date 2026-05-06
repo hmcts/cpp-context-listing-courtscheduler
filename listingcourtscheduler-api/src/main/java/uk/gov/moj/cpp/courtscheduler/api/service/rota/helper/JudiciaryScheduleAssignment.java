@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
+import org.springframework.stereotype.Service;
+
 /**
  * Represents a judiciary assignment with its associated court schedule data.
  *

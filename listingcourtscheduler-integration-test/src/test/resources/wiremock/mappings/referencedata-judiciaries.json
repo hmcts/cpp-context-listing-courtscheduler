@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/referencedata-query-api/query/api/rest/referencedata/judiciaries"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.reference-data.judiciaries+json"
+    },
+    "bodyFileName": "referencedata.judiciaries.json"
+  }
+}

@@ -1,12 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import org.springframework.stereotype.Service;
+
 import static java.lang.Boolean.valueOf;
 
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
+@Service
 public class HearingSlotRequestParamConverter implements Converter<JsonObject, HearingSlotRequestParam> {
     @Override
     public HearingSlotRequestParam convert(final JsonObject jsonObject) {

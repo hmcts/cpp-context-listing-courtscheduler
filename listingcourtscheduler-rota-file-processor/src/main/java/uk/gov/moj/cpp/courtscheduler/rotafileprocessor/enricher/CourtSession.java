@@ -4,9 +4,9 @@ import java.time.LocalDate;
 import java.time.format.TextStyle;
 import java.util.Locale;
 
-import javax.enterprise.context.ApplicationScoped;
+import org.springframework.stereotype.Service;
 
-@ApplicationScoped
+@Service
 public class CourtSession {
 
     public String getCourtSession(final LocalDate sessionDate, final String session) {

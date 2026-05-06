@@ -1,6 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
-import uk.gov.justice.services.core.requester.Requester;
+import org.springframework.stereotype.Service;
+
+// (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.exception.AzureBlobClientException;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
@@ -11,18 +13,19 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Future;
 
-import javax.ejb.AsyncResult;
-import javax.ejb.Asynchronous;
-import javax.ejb.Stateless;
-import javax.ejb.TransactionAttribute;
-import javax.ejb.TransactionAttributeType;
-import javax.inject.Inject;
+
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import jakarta.inject.Inject;
 
 import com.azure.storage.blob.models.BlobItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Stateless
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class RotaFileCaptureAndProcessTriggerService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileCaptureAndProcessTriggerService.class);
@@ -42,9 +45,9 @@ public class RotaFileCaptureAndProcessTriggerService {
     @Inject
     private AzureBlobClientService azureBlobClientService;
 
-    @Asynchronous
-    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
-    public Future<String> captureRotaFilesAndProcessEach(final Requester requester, boolean isForItTest, final String rotaProcess) {
+    @Async
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public Future<String> captureRotaFilesAndProcessEach(boolean isForItTest, final String rotaProcess) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called with rotaProcess: {}", rotaProcess);
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
 
@@ -64,7 +67,7 @@ public class RotaFileCaptureAndProcessTriggerService {
 
                 try {
                     if (!referenceDataLoaded) {
-                        loadReferenceData(requester);
+                        loadReferenceData();
                         referenceDataLoaded = true;
                     }
 
@@ -75,10 +78,10 @@ public class RotaFileCaptureAndProcessTriggerService {
 
                     if (ROTA_PROCESS_OLD.equals(rotaProcess)) {
                         logger.info("Using old rota file processor service for blob: {}", blobName);
-                        rotaFileProcessorService.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
+                        rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
                     } else {
                         logger.info("Using new rota file processor service for blob: {}", blobName);
-                        newRotaFileProcessor.downloadAndProcessForEachFile(requester, blobContent, blobName, leaseId);
+                        newRotaFileProcessor.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
                     }
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);
@@ -87,18 +90,18 @@ public class RotaFileCaptureAndProcessTriggerService {
         } while (fileAvailable);
 
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed");
-        return new AsyncResult<>("SUCCESS");
+        return java.util.concurrent.CompletableFuture.completedFuture("SUCCESS");
     }
 
-    private void loadReferenceData(final Requester requester) {
+    private void loadReferenceData() {
         logger.info("Loading reference data for rota processing");
-        referenceDataMapperService.loadCourtRooms(requester);
+        referenceDataMapperService.loadCourtRooms();
         logger.info("Court rooms loaded");
-        referenceDataMapperService.loadJudiciaries(requester);
+        referenceDataMapperService.loadJudiciaries();
         logger.info("Judiciaries loaded");
-        referenceDataMapperService.loadCourtRoomSessionAllocations(requester);
+        referenceDataMapperService.loadCourtRoomSessionAllocations();
         logger.info("Court room session allocations loaded");
-        referenceDataMapperService.loadBusinessTypeMap(requester);
+        referenceDataMapperService.loadBusinessTypeMap();
         logger.info("Business type map loaded - reference data loading completed");
     }
 }

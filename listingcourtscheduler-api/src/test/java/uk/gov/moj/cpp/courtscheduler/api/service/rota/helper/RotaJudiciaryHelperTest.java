@@ -28,7 +28,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JUDICIARY_NOT_FOUND;
 
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
@@ -63,9 +62,6 @@ class RotaJudiciaryHelperTest {
 
     @Mock
     private JudiciaryBuilder judiciaryBuilder;
-
-    @Mock
-    private Requester requester;
 
     @InjectMocks
     private RotaJudiciaryHelper rotaJudiciaryHelper;
@@ -110,13 +106,13 @@ class RotaJudiciaryHelperTest {
         districtJudges.put(judgeId, Map.of(JUDGE_EMAIL, judgeEmail));
         records.put(DISTRICT_JUDGES, districtJudges);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(magistrateEmail), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(magistrateEmail), eq(executionId)))
                 .thenReturn(Optional.of(judiciary));
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(judgeEmail), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(judgeEmail), eq(executionId)))
                 .thenReturn(Optional.of(judiciary));
 
         // when
-        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(records, requester, executionId);
+        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(records, executionId);
 
         // then
         assertThat(result.size(), is(2));
@@ -129,21 +125,21 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldReturnEmptyMap_WhenRecordsIsNull() {
         // when
-        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(null, requester, executionId);
+        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(null, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
-        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(any(), anyString(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(anyString(), anyString());
     }
 
     @Test
     void shouldReturnEmptyMap_WhenRecordsIsEmpty() {
         // when
-        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(emptyMap(), requester, executionId);
+        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(emptyMap(), executionId);
 
         // then
         assertThat(result, is(emptyMap()));
-        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(any(), anyString(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(anyString(), anyString());
     }
 
     @Test
@@ -155,11 +151,11 @@ class RotaJudiciaryHelperTest {
         records.put(MAGISTRATES, magistrates);
 
         // when
-        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(records, requester, executionId);
+        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
-        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(any(), anyString(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindJudiciaryByEmail(anyString(), anyString());
     }
 
     @Test
@@ -171,11 +167,11 @@ class RotaJudiciaryHelperTest {
         magistrates.put(magistrateId, Map.of(MAGS_EMAIL, magistrateEmail));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(magistrateEmail), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(magistrateEmail), eq(executionId)))
                 .thenReturn(Optional.empty());
 
         // when
-        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(records, requester, executionId);
+        final Map<String, UUID> result = rotaJudiciaryHelper.createJudiciaryMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -231,13 +227,13 @@ class RotaJudiciaryHelperTest {
         judiciariesMap.put(rotaJusticeId, Map.of(JUDGE_EMAIL, email));
         schedule.put(ROTA_JUDICIARY_ID, rotaJusticeId);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(email), eq(executionId)))
                 .thenReturn(Optional.of(judiciary));
 
         final Map<String, String> errors = new HashMap<>();
 
         // when
-        rotaJudiciaryHelper.enrichScheduleWithJudiciaryInfo(schedule, judiciariesMap, rotaJusticeId, requester, executionId, errors);
+        rotaJudiciaryHelper.enrichScheduleWithJudiciaryInfo(schedule, judiciariesMap, rotaJusticeId, executionId, errors);
 
         // then
         assertThat(schedule.get(JUDICIARY_ID), is(judiciaryId));
@@ -256,13 +252,13 @@ class RotaJudiciaryHelperTest {
         judiciariesMap.put(rotaJusticeId, Map.of(JUDGE_EMAIL, email, JUDGE_FORENAMES, "John", JUDGE_SURNAME, "Doe"));
         schedule.put(ROTA_JUDICIARY_ID, rotaJusticeId);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(email), eq(executionId)))
                 .thenReturn(Optional.empty());
 
         final Map<String, String> errors = new HashMap<>();
 
         // when
-        rotaJudiciaryHelper.enrichScheduleWithJudiciaryInfo(schedule, judiciariesMap, rotaJusticeId, requester, executionId, errors);
+        rotaJudiciaryHelper.enrichScheduleWithJudiciaryInfo(schedule, judiciariesMap, rotaJusticeId, executionId, errors);
 
         // then
         assertThat(schedule.get(JUDICIARY_ID), is(nullValue()));
@@ -297,7 +293,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
         final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
@@ -312,7 +308,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -337,7 +333,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -355,7 +351,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -384,12 +380,12 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -430,7 +426,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
         final CourtScheduleJudiciary courtScheduleJudiciary1 = CourtScheduleJudiciary.judiciary()
@@ -455,7 +451,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -493,7 +489,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -522,12 +518,12 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -555,12 +551,12 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -589,12 +585,12 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         // Should handle exception gracefully and return empty map or partial results
@@ -635,7 +631,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
         final CourtScheduleJudiciary courtScheduleJudiciary1 = CourtScheduleJudiciary.judiciary()
@@ -660,7 +656,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -684,7 +680,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -712,7 +708,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(any(), anyString(), anyString()))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
         final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
@@ -727,7 +723,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -763,12 +759,12 @@ class RotaJudiciaryHelperTest {
         magistrates.put(rotaJusticeId, Map.of(MAGS_EMAIL, email, JUDGE_FORENAMES, firstName, JUDGE_SURNAME, lastName));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(email), eq(executionId)))
                 .thenReturn(Optional.empty());
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -810,7 +806,7 @@ class RotaJudiciaryHelperTest {
         magistrates.put(rotaJusticeId, Map.of(MAGS_EMAIL, email));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(email), eq(executionId)))
                 .thenReturn(Optional.of(judiciary));
 
         final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
@@ -821,7 +817,7 @@ class RotaJudiciaryHelperTest {
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -855,12 +851,12 @@ class RotaJudiciaryHelperTest {
         magistrates.put(rotaJusticeId, Map.of(MAGS_EMAIL, email, JUDGE_FORENAMES, firstName, JUDGE_SURNAME, lastName));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email), eq(null)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(email), eq(null)))
                 .thenReturn(Optional.empty());
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, null);
+                records, judiciaryMap, courtScheduleMap, null);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -909,14 +905,14 @@ class RotaJudiciaryHelperTest {
         magistrates.put(rotaJusticeId2, Map.of(MAGS_EMAIL, email2, JUDGE_FORENAMES, firstName2, JUDGE_SURNAME, lastName2));
         records.put(MAGISTRATES, magistrates);
 
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email1), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(email1), eq(executionId)))
                 .thenReturn(Optional.empty());
-        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(eq(requester), eq(email2), eq(executionId)))
+        when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(email2), eq(executionId)))
                 .thenReturn(Optional.empty());
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                records, judiciaryMap, courtScheduleMap, requester, executionId);
+                records, judiciaryMap, courtScheduleMap, executionId);
 
         // then
         assertThat(result, is(notNullValue()));

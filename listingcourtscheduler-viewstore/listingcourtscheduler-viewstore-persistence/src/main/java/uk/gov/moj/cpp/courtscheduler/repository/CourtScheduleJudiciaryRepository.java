@@ -11,105 +11,200 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-import javax.annotation.processing.Generated;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
-import org.apache.deltaspike.data.api.AbstractEntityRepository;
-import org.apache.deltaspike.data.api.Modifying;
-import org.apache.deltaspike.data.api.Query;
-import org.apache.deltaspike.data.api.QueryParam;
-import org.apache.deltaspike.data.api.Repository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-@Repository(forEntity = CourtScheduleJudiciary.class)
-public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey> {
+/**
+ * Migrated 1:1 from the legacy DeltaSpike {@code AbstractEntityRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey>}.
+ * Preserves the legacy method-name and {@link Query} annotation style: queries that DeltaSpike
+ * generated from the method name remain method-name-derived; queries that the legacy file wrote
+ * out as {@code @Query} stay as {@code @Query}; methods that needed an explicit {@code EntityManager}
+ * (dynamic native SQL, MI-domain projection, refresh) live in the package-private
+ * {@link CourtScheduleJudiciaryRepositoryCustom} fragment + its {@code …Impl} class — both
+ * colocated in this file so a single read shows the whole repository.
+ */
+@Repository
+public interface CourtScheduleJudiciaryRepository
+        extends JpaRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey>, CourtScheduleJudiciaryRepositoryCustom {
 
-    private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN " +
-            " (SELECT cs.id FROM court_schedule cs WHERE cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND active = true)";
+    /** Spring Data generates the JPQL: {@code SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.email = :email}. Returns {@code null} when no match. */
+    CourtScheduleJudiciary findByEmail(String email);
 
-    public static final String DELETE_CSJ_BY_IDS_QUERY = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) " +
-            "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)";
+    /** Date-range method-name query — used by the MI projection in the {@code Custom} fragment. */
+    List<CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
 
-    private static final String SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY = "SELECT csj.court_schedule_id AS courtScheduleId, " +
-            "csj.judiciary_id AS judiciaryId " +
-            "FROM court_schedule_judiciary csj,court_schedule cs " +
-            "WHERE  cs.id = csj.court_schedule_id and csj.active = true and cs.active = true " +
-            "AND cs.oucode IN (:ouCodes)" +
-            "AND cs.session_start BETWEEN :startDate AND :endDate " +
-            "AND ( " +
-            "EXISTS ( " +
-            "SELECT 1 " +
-            "FROM allocated_listings al " +
-            "WHERE al.court_schedule_id = cs.id ) " +
-            "OR EXISTS ( " +
-            "SELECT 1 " +
-            "FROM provisional_booking pb " +
-            "WHERE pb.court_schedule_id = cs.id " +
-            "AND pb.active = true )" +
-            ")";
+    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId = ?1")
+    List<CourtScheduleJudiciary> findByCourtScheduleId(String courtScheduleId);
 
-    private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (SELECT cs.id FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays))";
+    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.judiciaryId = ?1 AND csj.active = true")
+    List<CourtScheduleJudiciary> findByJudiciaryId(String judiciaryId);
+
+    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId IN (:courtScheduleIds)")
+    List<CourtScheduleJudiciary> findInCourtScheduleIds(@Param("courtScheduleIds") List<String> courtScheduleIds);
+
+    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.judiciaryId IN (:judiciaryIds) AND csj.active = true")
+    List<CourtScheduleJudiciary> findByJudiciaryIds(@Param("judiciaryIds") List<String> judiciaryIds);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE CourtScheduleJudiciary csj "
+            + "SET csj.active = false, csj.updatedOn = :updatedOn "
+            + "WHERE csj.id.courtScheduleId IN :courtScheduleIds")
+    void deactivateSchedules(@Param("courtScheduleIds") List<String> courtScheduleIds,
+                             @Param("updatedOn") Date updatedOn);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE CourtScheduleJudiciary csj "
+            + "SET csj.position = :position, csj.active = true, csj.updatedOn = :updatedOn "
+            + "WHERE csj.id.courtScheduleId = :courtScheduleId AND csj.id.judiciaryId = :judiciaryId")
+    void updateCourtScheduleJudiciaryPosition(@Param("position") String position,
+                                              @Param("updatedOn") Date updatedOn,
+                                              @Param("courtScheduleId") String courtScheduleId,
+                                              @Param("judiciaryId") String judiciaryId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN "
+            + " (SELECT cs.id FROM court_schedule cs WHERE cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND active = true)",
+            nativeQuery = true)
+    int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(@Param("startDate") LocalDate startDate,
+                                                                     @Param("endDate") LocalDate endDate,
+                                                                     @Param("ouCodes") List<String> ouCodes);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) "
+            + "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)",
+            nativeQuery = true)
+    int deleteSchedules(@Param("courtScheduleIds") List<String> courtScheduleIds);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN "
+            + "(SELECT cs.id FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays))",
+            nativeQuery = true)
+    int deleteRedundantRotaData(@Param("numberOfDays") int numberOfDays);
+
+    // ---------------------------------------------------------------------
+    //  Backwards-compatible aliases for DeltaSpike's auto-generated CRUD methods.
+    // ---------------------------------------------------------------------
+
+    default CourtScheduleJudiciary findBy(final CourtScheduleJudiciaryKey key) {
+        return key == null ? null : findById(key).orElse(null);
+    }
+
+    default void remove(final CourtScheduleJudiciary entity) {
+        delete(entity);
+    }
+}
+
+/**
+ * Spring Data {@code Custom} fragment for {@link CourtScheduleJudiciaryRepository}.
+ *
+ * <p>Methods that can't be expressed as a single {@code @Query} or a method-name
+ * derivation: dynamic native SQL, post-processing into MI domain types, and
+ * direct {@code EntityManager.refresh} access.</p>
+ */
+interface CourtScheduleJudiciaryRepositoryCustom {
+
+    /** Calls the date-range JPQL query and projects each row into the MI domain type. */
+    List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria);
+
+    /** Native SQL — returns court_schedule_id, judiciary_id rows for active entries with allocated listings or provisional bookings. */
+    @SuppressWarnings("rawtypes")
+    List getAllocatedScheduleJudiciaryInfo(LocalDate startDate, LocalDate endDate, List<String> ouCodes);
+
+    /**
+     * Court schedule IDs where the supplied judiciary is assigned within the date range
+     * (active entries on both join sides). Native SQL because the legacy version was too.
+     */
+    List<String> findCourtScheduleIdsByJudiciaryAndDateRange(String judiciaryId, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Same as {@link #findCourtScheduleIdsByJudiciaryAndDateRange} but additionally filters by
+     * {@code court_session} matching the supplied session-type set ({@code AD} alone vs
+     * {@code AM/PM + AD}). Returns the {@code (id, session_start, court_session)} triplet.
+     */
+    List<Object[]> findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(String judiciaryId, LocalDate startDate, LocalDate endDate, String ruleSessionType);
+
+    /** {@link jakarta.persistence.EntityManager#refresh(Object)} — used by the in-tree repository tests. */
+    void refresh(CourtScheduleJudiciary entity);
+}
+
+/**
+ * Spring Data picks this up by the {@code …Impl} naming convention as the implementation
+ * of {@link CourtScheduleJudiciaryRepositoryCustom}.
+ */
+class CourtScheduleJudiciaryRepositoryImpl implements CourtScheduleJudiciaryRepositoryCustom {
+
     public static final String START_DATE = "startDate";
     public static final String END_DATE = "endDate";
 
-    public abstract CourtScheduleJudiciary findByEmail(String email);
+    private static final String SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY =
+            "SELECT csj.court_schedule_id AS courtScheduleId, " +
+                    "csj.judiciary_id AS judiciaryId " +
+                    "FROM court_schedule_judiciary csj,court_schedule cs " +
+                    "WHERE  cs.id = csj.court_schedule_id and csj.active = true and cs.active = true " +
+                    "AND cs.oucode IN (:ouCodes)" +
+                    "AND cs.session_start BETWEEN :startDate AND :endDate " +
+                    "AND ( " +
+                    "EXISTS ( " +
+                    "SELECT 1 " +
+                    "FROM allocated_listings al " +
+                    "WHERE al.court_schedule_id = cs.id ) " +
+                    "OR EXISTS ( " +
+                    "SELECT 1 " +
+                    "FROM provisional_booking pb " +
+                    "WHERE pb.court_schedule_id = cs.id " +
+                    "AND pb.active = true )" +
+                    ")";
 
-    abstract List<CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
+    @PersistenceContext
+    private EntityManager entityManager;
 
-    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId = ?1")
-    abstract List<CourtScheduleJudiciary> findByCourtScheduleId(String courtScheduleId);
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
+            final MiFilterCriteria miFilterCriteria) {
+        final List<CourtScheduleJudiciary> rows = entityManager.createQuery(
+                        "SELECT csj FROM CourtScheduleJudiciary csj "
+                                + "WHERE csj.updatedOn > :fromDate AND csj.updatedOn < :toDate",
+                        CourtScheduleJudiciary.class)
+                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()))
+                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()))
+                .getResultList();
 
-    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.judiciaryId = ?1 AND csj.active = true")
-    public abstract List<CourtScheduleJudiciary> findByJudiciaryId(String judiciaryId);
-
-    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId IN (:courtScheduleIds)")
-    public abstract List<CourtScheduleJudiciary> findInCourtScheduleIds(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds);
-
-    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.judiciaryId IN (:judiciaryIds) AND csj.active = true")
-    public abstract List<CourtScheduleJudiciary> findByJudiciaryIds(@QueryParam("judiciaryIds") final List<String> judiciaryIds);
-
-    public List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
-        List<CourtScheduleJudiciary> courtScheduleJudiciaries = findByUpdatedOnGreaterThanAndUpdatedOnLessThan(
-                DateUtils.getDate(miFilterCriteria.getFromLocalDate()),
-                DateUtils.getDate(miFilterCriteria.getToLocalDate()));
-        return courtScheduleJudiciaries.stream().map(courtScheduleJudiciaryEntity -> new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary.Builder()
-                .withCourtScheduleId(courtScheduleJudiciaryEntity.getId().getCourtScheduleId())
-                .withJudiciaryId(courtScheduleJudiciaryEntity.getId().getJudiciaryId())
-                .withPosition(courtScheduleJudiciaryEntity.getPosition())
-                .withTitle(courtScheduleJudiciaryEntity.getTitle())
-                .withForenames(courtScheduleJudiciaryEntity.getForenames())
-                .withSurname(courtScheduleJudiciaryEntity.getSurname())
-                .withEmailAddress(courtScheduleJudiciaryEntity.getEmail())
-                .withJudiciaryType(courtScheduleJudiciaryEntity.getJudiciaryType())
-                .withIsBenchChairman(courtScheduleJudiciaryEntity.getBenchChairman())
-                .withIsDeputy(courtScheduleJudiciaryEntity.getDeputy())
-                .withPosition(courtScheduleJudiciaryEntity.getPosition())
-                .withCourtListingProfileId(courtScheduleJudiciaryEntity.getCourtListingProfileId())
-                .withRotaJudiciaryId(courtScheduleJudiciaryEntity.getRotaJudiciaryId())
-                .withActive(courtScheduleJudiciaryEntity.getActive())
-                .withCreatedOn(courtScheduleJudiciaryEntity.getCreatedOn())
-                .withUpdatedOn(courtScheduleJudiciaryEntity.getUpdatedOn())
+        return rows.stream().map(entity -> new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary.Builder()
+                .withCourtScheduleId(entity.getId().getCourtScheduleId())
+                .withJudiciaryId(entity.getId().getJudiciaryId())
+                .withPosition(entity.getPosition())
+                .withTitle(entity.getTitle())
+                .withForenames(entity.getForenames())
+                .withSurname(entity.getSurname())
+                .withEmailAddress(entity.getEmail())
+                .withJudiciaryType(entity.getJudiciaryType())
+                .withIsBenchChairman(entity.getBenchChairman())
+                .withIsDeputy(entity.getDeputy())
+                .withPosition(entity.getPosition())
+                .withCourtListingProfileId(entity.getCourtListingProfileId())
+                .withRotaJudiciaryId(entity.getRotaJudiciaryId())
+                .withActive(entity.getActive())
+                .withCreatedOn(entity.getCreatedOn())
+                .withUpdatedOn(entity.getUpdatedOn())
                 .build()).toList();
-
     }
 
-    public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
-        return entityManager()
-                .createNativeQuery(DELETE_UNALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY)
-                .setParameter(START_DATE, startDate)
-                .setParameter(END_DATE, endDate)
-                .setParameter("ouCodes", ouCodes)
-                .executeUpdate();
-    }
-
-    public int deleteSchedules(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds) {
-        return entityManager()
-                .createNativeQuery(DELETE_CSJ_BY_IDS_QUERY)
-                .setParameter("courtScheduleIds", courtScheduleIds)
-                .executeUpdate();
-    }
-
-    @SuppressWarnings("squid:S2077")
+    @Override
+    @SuppressWarnings({"rawtypes", "squid:S2077"})
     public List getAllocatedScheduleJudiciaryInfo(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
-        return entityManager()
+        return entityManager
                 .createNativeQuery(SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY)
                 .setParameter(START_DATE, startDate)
                 .setParameter(END_DATE, endDate)
@@ -117,34 +212,10 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 .getResultList();
     }
 
-    @Modifying
-    @Query(value = "UPDATE CourtScheduleJudiciary csj SET csj.active = false, csj.updatedOn = :updatedOn WHERE csj.id.courtScheduleId IN :courtScheduleIds")
-    public abstract void deactivateSchedules(@QueryParam("courtScheduleIds") final List<String> courtScheduleIds, @QueryParam("updatedOn") final Date updatedOn);
-
-    @Modifying
-    @Query(value = "UPDATE CourtScheduleJudiciary csj SET csj.position = :position, csj.active = true, csj.updatedOn = :updatedOn WHERE csj.id.courtScheduleId =:courtScheduleId and csj.id.judiciaryId = :judiciaryId")
-    public abstract void updateCourtScheduleJudiciaryPosition(@QueryParam("position") final String position,
-                                                              @QueryParam("updatedOn") final Date updatedOn,
-                                                              @QueryParam("courtScheduleId") final String courtScheduleId,
-                                                              @QueryParam("judiciaryId") final String judiciaryId);
-
-
-    public int deleteRedundantRotaData(final int numberOfDays) {
-        return entityManager()
-                .createNativeQuery(DELETE_REDUNDANT_ROTA_DATA)
-                .setParameter("numberOfDays", numberOfDays)
-                .executeUpdate();
-    }
-
-    /**
-     * Find court schedule IDs where a judiciary is assigned within a date range.
-     * Returns a list of court schedule IDs that have the specified judiciary assigned
-     * and whose session date falls within the given date range.
-     */
+    @Override
+    @SuppressWarnings("unchecked")
     public List<String> findCourtScheduleIdsByJudiciaryAndDateRange(
-            final String judiciaryId,
-            final LocalDate startDate,
-            final LocalDate endDate) {
+            final String judiciaryId, final LocalDate startDate, final LocalDate endDate) {
         final String query = "SELECT DISTINCT cs.id " +
                 "FROM court_schedule cs " +
                 "INNER JOIN court_schedule_judiciary csj ON cs.id = csj.court_schedule_id " +
@@ -152,34 +223,24 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 "AND cs.session_start BETWEEN :startDate AND :endDate " +
                 "AND cs.active = true " +
                 "AND csj.active = true";
-        
-        @SuppressWarnings("unchecked")
-        final List<String> result = entityManager()
+
+        return entityManager
                 .createNativeQuery(query)
                 .setParameter("judiciaryId", judiciaryId)
                 .setParameter(START_DATE, startDate)
                 .setParameter(END_DATE, endDate)
                 .getResultList();
-
-        return result;
     }
 
-    /**
-     * Find court schedule IDs where a judiciary is assigned within a date range and session type.
-     * Returns a list of court schedule IDs that have the specified judiciary assigned,
-     * whose session date falls within the given date range, and whose session type matches.
-     * If ruleSessionType is AD, it matches AM, PM, or AD session types.
-     * If ruleSessionType is AM or PM, it matches the exact session type and AD.
-     */
+    @Override
+    @SuppressWarnings("unchecked")
     public List<Object[]> findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
             final String judiciaryId,
             final LocalDate startDate,
             final LocalDate endDate,
             final String ruleSessionType) {
         final List<String> sessionTypes = new ArrayList<>();
-
         if (!"AD".equals(ruleSessionType)) {
-            //  AM or PM needs to add AD
             sessionTypes.addAll(Arrays.asList(ruleSessionType, "AD"));
         } else {
             sessionTypes.add("AD");
@@ -194,15 +255,18 @@ public abstract class CourtScheduleJudiciaryRepository extends AbstractEntityRep
                 "AND csj.active = true " +
                 "AND cs.court_session IN (:sessionTypes)";
 
-        @SuppressWarnings("unchecked")
-        final List<Object[]> result = entityManager()
+        return entityManager
                 .createNativeQuery(query)
                 .setParameter("judiciaryId", judiciaryId)
                 .setParameter(START_DATE, startDate)
                 .setParameter(END_DATE, endDate)
                 .setParameter("sessionTypes", sessionTypes)
                 .getResultList();
+    }
 
-        return result;
+    @Override
+    @Transactional
+    public void refresh(final CourtScheduleJudiciary entity) {
+        entityManager.refresh(entity);
     }
 }

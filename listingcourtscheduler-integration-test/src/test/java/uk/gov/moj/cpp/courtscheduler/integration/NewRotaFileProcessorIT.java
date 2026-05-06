@@ -5,8 +5,8 @@ import static java.util.Date.from;
 import static java.util.Objects.isNull;
 import static java.util.Optional.of;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static javax.ws.rs.core.Response.Status.ACCEPTED;
-import static org.apache.activemq.artemis.utils.RandomUtil.randomSimpleString;
+import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
+import static java.util.UUID.randomUUID;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -14,12 +14,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.ReflectionUtil.setField;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.payloadToObject;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.payloadToObject;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
 
@@ -40,10 +40,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.ws.rs.core.Response;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
+import jakarta.ws.rs.core.Response;
 
 import com.google.common.base.Stopwatch;
 import org.apache.commons.io.IOUtils;
@@ -64,7 +64,12 @@ class NewRotaFileProcessorIT extends AbstractIT {
     
     private static final String AZURE_BLOB_INPUT_CONTAINER_NAME = "schedulelistinginput";
     private static final String AZURE_BLOB_OUTPUT_CONTAINER_NAME = "schedulelistingoutput";
-    private static final String ROTASL_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=sasteccmscsl;AccountKey=C5l7paX+ELY0X3aDMTrOyXxBE69CMS1pqkYX9XTGdHI7x1jP15VM1FUizCoEmwOo9ML3Bgz0IYA4+AStJIs0kQ==;EndpointSuffix=core.windows.net";
+    // Azurite emulator (see RotaFileProcessorIT.ROTASL_STORAGE_CONNECTION_STRING for details).
+    // Microsoft-published Azurite account key — not a production secret.
+    // gitleaks:allow
+    private static final String ROTASL_STORAGE_CONNECTION_STRING = System.getProperty(
+            "azurite.connectionString",
+            "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10001/devstoreaccount1;");
     private static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
     
     private static final String BEDFORD_SHIRE_MASTER_FILE_BASE_NAME = "IT_Test_lja_bedfordshire_rotaa_20240401T180039Z";
@@ -198,7 +203,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
     }
     
     private String uploadRotaFile() throws IOException {
-        final String generatedUniqueFileId = randomSimpleString().toString();
+        final String generatedUniqueFileId = randomUUID().toString().substring(0, 8);
         final String finalMasterRotaFileName = format("%s_%s.xml", NewRotaFileProcessorIT.BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, generatedUniqueFileId);
         final String resourcePath = format(ROTAFILEPROCESSOR_RESOURCE_PATH, NewRotaFileProcessorIT.BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
         final InputStream rotaFileInputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);

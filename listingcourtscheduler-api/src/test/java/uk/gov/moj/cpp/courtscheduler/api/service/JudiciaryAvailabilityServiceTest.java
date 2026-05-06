@@ -26,7 +26,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryAvailabilityRuleRepository;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
-import uk.gov.justice.services.core.requester.Requester;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -52,10 +51,7 @@ class JudiciaryAvailabilityServiceTest {
     private ReferenceDataService referenceDataService;
 
     @Mock
-    private Requester requester;
-
-    @Mock
-    private javax.persistence.EntityManager entityManager;
+    private jakarta.persistence.EntityManager entityManager;
 
     @Mock
     private uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
@@ -357,11 +353,11 @@ class JudiciaryAvailabilityServiceTest {
         existingRule.setJudiciaryId(judiciaryId);
         existingRule.setCourtHouseId(courtHouseId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
 
         service.deleteJudiciaryAvailabilityRule(request);
 
-        verify(repository).findBy(ruleId);
+        verify(repository).findById(ruleId);
         verify(repository).remove(existingRule);
     }
 
@@ -371,13 +367,13 @@ class JudiciaryAvailabilityServiceTest {
         DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(null);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.deleteJudiciaryAvailabilityRule(request));
 
         assertThat(exception.getMessage(), is("Judicial itinerary does not exist."));
-        verify(repository).findBy(ruleId);
+        verify(repository).findById(ruleId);
         verify(repository, org.mockito.Mockito.never()).remove(org.mockito.ArgumentMatchers.any());
     }
 
@@ -404,7 +400,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(2));
@@ -436,7 +432,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 20, 1))
                 .thenReturn(result);
 
-        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -475,10 +471,10 @@ class JudiciaryAvailabilityServiceTest {
                 .withRequestedName("MR RECORDER J TEST")
                 .build();
 
-        when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester)))
+        when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Collections.singletonList(judiciary));
 
-        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -486,20 +482,24 @@ class JudiciaryAvailabilityServiceTest {
         assertThat(response.getJudiciaries().size(), is(1));
         assertThat(response.getJudiciaries().get(0).getId(), is(judiciaryId));
         assertThat(response.getJudiciaries().get(0).getRequestedName(), is("MR RECORDER J TEST"));
-        verify(referenceDataService).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester));
+        verify(referenceDataService).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList());
     }
 
     @Test
     void shouldFindJudiciaryAvailabilityRulesWithJudiciariesButNoRequester() {
         LocalDate startDate = LocalDate.of(2026, 1, 1);
         LocalDate endDate = LocalDate.of(2026, 1, 31);
-        
+
         FindJudiciaryAvailabilityRuleRequest request = new FindJudiciaryAvailabilityRuleRequest();
         request.setStartDate(startDate);
         request.setEndDate(endDate);
         request.setPageSize(10);
         request.setPageNumber(1);
-        request.setWithJudiciary(true);
+        // The legacy controller skipped the judiciary lookup whenever the Requester was
+        // null; the Spring port doesn't have a Requester at all and instead skips when
+        // {@code withJudiciary} is false. This test still verifies the same "skip" path
+        // — the test name is preserved for traceability against the legacy file.
+        request.setWithJudiciary(false);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
                 startDate, endDate, Arrays.asList(AvailabilityDayOfWeek.Monday));
@@ -510,13 +510,13 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, null);
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
         assertThat(response.getJudiciaries(), is(org.hamcrest.Matchers.notNullValue()));
         assertThat(response.getJudiciaries().size(), is(0));
-        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
+        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList());
     }
 
     @Test
@@ -538,7 +538,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, courtHouseId, null, 10, 1))
                 .thenReturn(result);
 
-        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(0));
@@ -567,7 +567,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, judiciaryId, 10, 1))
                 .thenReturn(result);
 
-        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -614,15 +614,15 @@ class JudiciaryAvailabilityServiceTest {
                 .withSeqId(2)
                 .build();
 
-        when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester)))
+        when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Arrays.asList(judiciary1, judiciary2));
 
-        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(2));
         assertThat(response.getJudiciaries().size(), is(2));
-        verify(referenceDataService).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.argThat(list -> list.size() == 2 && list.contains(judiciaryId) && list.contains(judiciaryId2)), org.mockito.ArgumentMatchers.eq(requester));
+        verify(referenceDataService).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.argThat(list -> list.size() == 2 && list.contains(judiciaryId) && list.contains(judiciaryId2)));
     }
 
     @Test
@@ -645,7 +645,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -671,7 +671,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request, requester);
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(request);
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -697,12 +697,12 @@ class JudiciaryAvailabilityServiceTest {
         existingRule.setId(ruleId);
         existingRule.setSessionType(SessionType.AD);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
 
         service.updateJudiciaryAvailabilityRule(request);
 
         ArgumentCaptor<JudiciaryAvailabilityRule> captor = ArgumentCaptor.forClass(JudiciaryAvailabilityRule.class);
-        verify(repository).findBy(ruleId);
+        verify(repository).findById(ruleId);
         verify(repository).save(captor.capture());
         
         JudiciaryAvailabilityRule updated = captor.getValue();
@@ -747,7 +747,7 @@ class JudiciaryAvailabilityServiceTest {
                 Arrays.asList(AvailabilityDayOfWeek.Monday));
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
 
         service.updateJudiciaryAvailabilityRule(request);
 
@@ -778,7 +778,7 @@ class JudiciaryAvailabilityServiceTest {
                 () -> service.updateJudiciaryAvailabilityRule(request));
 
         assertThat(exception.getMessage(), is("Rule ID is required for update"));
-        verify(repository, org.mockito.Mockito.never()).findBy(org.mockito.ArgumentMatchers.any());
+        verify(repository, org.mockito.Mockito.never()).findById(org.mockito.ArgumentMatchers.any());
         verify(repository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -796,7 +796,7 @@ class JudiciaryAvailabilityServiceTest {
                 () -> service.updateJudiciaryAvailabilityRule(request));
 
         assertThat(exception.getMessage(), is("Rule ID is required for update"));
-        verify(repository, org.mockito.Mockito.never()).findBy(org.mockito.ArgumentMatchers.any());
+        verify(repository, org.mockito.Mockito.never()).findById(org.mockito.ArgumentMatchers.any());
         verify(repository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -811,13 +811,13 @@ class JudiciaryAvailabilityServiceTest {
         request.setEndDate(LocalDate.of(2026, 2, 28));
         request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday));
 
-        when(repository.findBy(ruleId)).thenReturn(null);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.updateJudiciaryAvailabilityRule(request));
 
         assertThat(exception.getMessage(), is("Judicial itinerary does not exist."));
-        verify(repository).findBy(ruleId);
+        verify(repository).findById(ruleId);
         verify(repository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -839,7 +839,7 @@ class JudiciaryAvailabilityServiceTest {
         existingRule.setId(ruleId);
         existingRule.setSessionType(SessionType.PM);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
 
         service.updateJudiciaryAvailabilityRule(request);
 
@@ -870,7 +870,7 @@ class JudiciaryAvailabilityServiceTest {
         // Add an existing unavailability
         createUnavailableRule(existingRule, LocalDate.of(2026, 1, 10), LocalDate.of(2026, 1, 15));
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
 
         service.updateJudiciaryAvailabilityRule(request);
 
@@ -900,7 +900,7 @@ class JudiciaryAvailabilityServiceTest {
         existingRule.setId(ruleId);
         createUnavailableRule(existingRule, LocalDate.of(2026, 1, 10), LocalDate.of(2026, 1, 15));
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
 
         service.updateJudiciaryAvailabilityRule(request);
 
@@ -928,7 +928,7 @@ class JudiciaryAvailabilityServiceTest {
                 Arrays.asList(AvailabilityDayOfWeek.Monday));
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
 
         service.updateJudiciaryAvailabilityRule(request);
 
@@ -952,16 +952,16 @@ class JudiciaryAvailabilityServiceTest {
                 Arrays.asList(AvailabilityDayOfWeek.Monday));
         rule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(rule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(rule));
 
-        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request, requester);
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request);
 
         assertNotNull(response);
         assertNotNull(response.getRule());
         assertThat(response.getRule().getId(), is(ruleId));
         assertThat(response.getJudiciary(), is(org.hamcrest.Matchers.nullValue()));
-        verify(repository).findBy(ruleId);
-        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
+        verify(repository).findById(ruleId);
+        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList());
     }
 
     @Test
@@ -980,11 +980,11 @@ class JudiciaryAvailabilityServiceTest {
         judiciary.setId(judiciaryId);
         judiciary.setSurname("Smith");
 
-        when(repository.findBy(ruleId)).thenReturn(rule);
-        when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(requester)))
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(rule));
+        when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Arrays.asList(judiciary));
 
-        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request, requester);
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request);
 
         assertNotNull(response);
         assertNotNull(response.getRule());
@@ -992,8 +992,8 @@ class JudiciaryAvailabilityServiceTest {
         assertNotNull(response.getJudiciary());
         assertThat(response.getJudiciary().getId(), is(judiciaryId));
         assertThat(response.getJudiciary().getSurname(), is("Smith"));
-        verify(repository).findBy(ruleId);
-        verify(referenceDataService).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.argThat(list -> list.size() == 1 && list.contains(judiciaryId)), org.mockito.ArgumentMatchers.eq(requester));
+        verify(repository).findById(ruleId);
+        verify(referenceDataService).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.argThat(list -> list.size() == 1 && list.contains(judiciaryId)));
     }
 
     @Test
@@ -1002,14 +1002,14 @@ class JudiciaryAvailabilityServiceTest {
         GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(null);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.empty());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            service.getJudiciaryAvailabilityRule(request, requester);
+            service.getJudiciaryAvailabilityRule(request);
         });
 
         assertThat(exception.getMessage(), is("Judicial itinerary does not exist."));
-        verify(repository).findBy(ruleId);
+        verify(repository).findById(ruleId);
     }
 
     @Test
@@ -1018,11 +1018,11 @@ class JudiciaryAvailabilityServiceTest {
         request.setRuleId(null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            service.getJudiciaryAvailabilityRule(request, requester);
+            service.getJudiciaryAvailabilityRule(request);
         });
 
         assertThat(exception.getMessage(), is("Rule ID is required"));
-        verify(repository, org.mockito.Mockito.never()).findBy(org.mockito.ArgumentMatchers.anyString());
+        verify(repository, org.mockito.Mockito.never()).findById(org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
@@ -1031,11 +1031,11 @@ class JudiciaryAvailabilityServiceTest {
         request.setRuleId("");
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            service.getJudiciaryAvailabilityRule(request, requester);
+            service.getJudiciaryAvailabilityRule(request);
         });
 
         assertThat(exception.getMessage(), is("Rule ID is required"));
-        verify(repository, org.mockito.Mockito.never()).findBy(org.mockito.ArgumentMatchers.anyString());
+        verify(repository, org.mockito.Mockito.never()).findById(org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
@@ -1043,23 +1043,25 @@ class JudiciaryAvailabilityServiceTest {
         final String ruleId = randomUUID().toString();
         GetJudiciaryAvailabilityRuleRequest request = new GetJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
-        request.setWithJudiciary(true);
+        // Legacy: skipped judiciary lookup when Requester was null. Spring port: skips when
+        // withJudiciary is false. Same skip path; test name preserved for traceability.
+        request.setWithJudiciary(false);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
                 Arrays.asList(AvailabilityDayOfWeek.Monday));
         rule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(rule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(rule));
 
-        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request, null);
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request);
 
         assertNotNull(response);
         assertNotNull(response.getRule());
         assertThat(response.getRule().getId(), is(ruleId));
         assertThat(response.getJudiciary(), is(org.hamcrest.Matchers.nullValue()));
-        verify(repository).findBy(ruleId);
-        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
+        verify(repository).findById(ruleId);
+        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList());
     }
 
     @Test
@@ -1074,16 +1076,16 @@ class JudiciaryAvailabilityServiceTest {
                 Arrays.asList(AvailabilityDayOfWeek.Monday));
         rule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(rule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(rule));
 
-        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request, requester);
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request);
 
         assertNotNull(response);
         assertNotNull(response.getRule());
         assertThat(response.getRule().getId(), is(ruleId));
         assertThat(response.getJudiciary(), is(org.hamcrest.Matchers.nullValue()));
-        verify(repository).findBy(ruleId);
-        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any());
+        verify(repository).findById(ruleId);
+        verify(referenceDataService, org.mockito.Mockito.never()).getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList());
     }
 
     @Test
@@ -1099,7 +1101,7 @@ class JudiciaryAvailabilityServiceTest {
         rule.setId(ruleId);
         rule.setSessionType(SessionType.AM);
 
-        when(repository.findBy(ruleId)).thenReturn(rule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(rule));
         when(courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
                 judiciaryId, rule.getFromDate(), rule.getToDate(), "AM"))
                 .thenReturn(Collections.emptyList());
@@ -1107,7 +1109,7 @@ class JudiciaryAvailabilityServiceTest {
         String result = service.validateDeleteJudiciaryAvailabilityRule(request);
 
         assertThat(result, is(org.hamcrest.Matchers.nullValue()));
-        verify(repository).findBy(ruleId);
+        verify(repository).findById(ruleId);
         verify(courtScheduleJudiciaryRepository).findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
                 judiciaryId, rule.getFromDate(), rule.getToDate(), "AM");
     }
@@ -1119,13 +1121,13 @@ class JudiciaryAvailabilityServiceTest {
         request.setRuleId(ruleId);
         request.setJudiciaryId(judiciaryId);
 
-        when(repository.findBy(ruleId)).thenReturn(null);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.empty());
 
         String result = service.validateDeleteJudiciaryAvailabilityRule(request);
 
         assertNotNull(result);
         assertTrue(result.contains("Judicial itinerary does not exist"));
-        verify(repository).findBy(ruleId);
+        verify(repository).findById(ruleId);
     }
 
     @Test
@@ -1138,7 +1140,7 @@ class JudiciaryAvailabilityServiceTest {
 
         assertNotNull(result);
         assertTrue(result.contains("Rule ID is required"));
-        verify(repository, org.mockito.Mockito.never()).findBy(org.mockito.ArgumentMatchers.anyString());
+        verify(repository, org.mockito.Mockito.never()).findById(org.mockito.ArgumentMatchers.anyString());
     }
 
 
@@ -1160,7 +1162,7 @@ class JudiciaryAvailabilityServiceTest {
         LocalDate sessionDate = LocalDate.of(2026, 1, 5);
         Object[] sessionData = new Object[]{sessionId, sessionDate, "AM"};
 
-        when(repository.findBy(ruleId)).thenReturn(rule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(rule));
         // AD rule should match AM, PM, or AD sessions
         List<Object[]> sessionListAD = new ArrayList<>();
         sessionListAD.add(sessionData);
@@ -1172,7 +1174,7 @@ class JudiciaryAvailabilityServiceTest {
 
         assertNotNull(result);
         assertTrue(result.contains("being used in a session"));
-        verify(repository).findBy(ruleId);
+        verify(repository).findById(ruleId);
         verify(courtScheduleJudiciaryRepository).findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
                 judiciaryId, rule.getFromDate(), rule.getToDate(), "AD");
     }

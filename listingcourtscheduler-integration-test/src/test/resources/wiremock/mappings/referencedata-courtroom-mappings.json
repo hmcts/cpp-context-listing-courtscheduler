@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/referencedata-query-api/query/api/rest/referencedata/cp-rota-courtroom-mappings"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.referencedata.query.cp-rota-courtroom-mappings+json"
+    },
+    "jsonBody": {
+      "cpRotaCourtRoomMappings": []
+    }
+  }
+}

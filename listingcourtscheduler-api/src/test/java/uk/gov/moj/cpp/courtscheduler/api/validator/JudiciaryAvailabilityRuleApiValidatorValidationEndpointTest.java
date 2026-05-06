@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
 import static java.util.UUID.randomUUID;
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,7 +17,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleReque
 import java.time.LocalDate;
 import java.util.Arrays;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

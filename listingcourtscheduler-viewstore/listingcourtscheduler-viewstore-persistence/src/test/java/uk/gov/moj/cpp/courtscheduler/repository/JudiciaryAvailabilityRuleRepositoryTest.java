@@ -16,52 +16,37 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.EntityTransaction;
+import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.persistence.EntityManager;
 
-import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Integration test for JudiciaryAvailabilityRuleRepository.
  * Tests the repository methods using a real EntityManager and database.
  */
-@RunWith(CdiTestRunner.class)
-public class JudiciaryAvailabilityRuleRepositoryTest {
 
-    @Inject
+class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtscheduler.repository.AbstractRepositoryTest {
+
+    @Autowired
     private JudiciaryAvailabilityRuleRepository repository;
 
-    @Inject
+    @Autowired
     private EntityManager entityManager;
 
     private List<String> createdRuleIds = new ArrayList<>();
 
-    @Before
+    @BeforeEach
     public void setUp() {
         createdRuleIds.clear();
     }
 
-    @After
-    public void tearDown() {
-        EntityTransaction transaction = entityManager.getTransaction();
-        transaction.begin();
-        try {
-            for (String ruleId : createdRuleIds) {
-                JudiciaryAvailabilityRule rule = repository.findBy(ruleId);
-                if (rule != null) {
-                    repository.remove(rule);
-                }
-            }
-            transaction.commit();
-        } catch (Exception e) {
-            transaction.rollback();
-        }
-    }
+    // tearDown removed: @DataJpaTest is transactional + auto-rolls-back at the end of
+    // every test method, so the explicit cleanup the legacy CDI-based test did is now
+    // unnecessary. The original {@code entityManager.getTransaction().begin()} call
+    // also conflicts with the Spring-managed transaction context.
 
     @Test
     public void shouldFindRulesByDateRange() {
@@ -203,12 +188,11 @@ public class JudiciaryAvailabilityRuleRepositoryTest {
         assertThat(foundRule.getRepeatDays().size(), is(3));
     }
 
-    private JudiciaryAvailabilityRule createAndSaveRule(String ruleId, String judiciaryId, 
-                                                         String courtHouseId, LocalDate fromDate, 
+    private JudiciaryAvailabilityRule createAndSaveRule(String ruleId, String judiciaryId,
+                                                         String courtHouseId, LocalDate fromDate,
                                                          LocalDate toDate, List<AvailabilityDayOfWeek> repeatDays) {
-        EntityTransaction transaction = entityManager.getTransaction();
-        transaction.begin();
-        
+        // Spring's @DataJpaTest provides the transaction; the legacy explicit
+        // EntityTransaction.begin()/commit() conflicted with that.
         try {
             JudiciaryAvailabilityRule rule = new JudiciaryAvailabilityRule();
             rule.setId(ruleId);
@@ -216,21 +200,23 @@ public class JudiciaryAvailabilityRuleRepositoryTest {
             rule.setCourtHouseId(courtHouseId);
             rule.setFromDate(fromDate);
             rule.setToDate(toDate);
+            // session_type was added with NOT NULL + default 'AD' in changeset 049 — set
+            // it explicitly here because the JPA mapping doesn't respect the SQL default.
+            rule.setSessionType(uk.gov.moj.cpp.courtscheduler.domain.SessionType.AD);
             rule.setRepeatDays(new ArrayList<>());
             rule.setUnavailabilities(new ArrayList<>());
-            
+
             for (AvailabilityDayOfWeek day : repeatDays) {
-                JudiciaryAvailabilityRuleRepeatDay repeatDay = 
+                JudiciaryAvailabilityRuleRepeatDay repeatDay =
                         new JudiciaryAvailabilityRuleRepeatDay(day);
                 rule.getRepeatDays().add(repeatDay);
             }
-            
+
             rule = repository.save(rule);
             createdRuleIds.add(ruleId);
-            transaction.commit();
+            entityManager.flush();
             return rule;
         } catch (Exception e) {
-            transaction.rollback();
             throw e;
         }
     }

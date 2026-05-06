@@ -22,10 +22,8 @@ import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.getPayl
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.mockBusinessType;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.mockCourtRooms;
 
-import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
-import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.justice.services.messaging.Envelope;
-import uk.gov.justice.services.test.utils.framework.api.JsonObjectConvertersFactory;
+import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverter;
+
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
@@ -40,8 +38,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import javax.json.Json;
-import javax.json.JsonObject;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
@@ -56,37 +54,35 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ReferenceDataServiceTest {
 
     @Mock
-    private Requester requester;
+    private RotaProcessLogService rotaProcessLogService;
 
     @Mock
-    private RotaProcessLogService rotaProcessLogService;
+    private uk.gov.moj.cpp.courtscheduler.common.service.CommonPlatformQueryClient commonPlatformQueryClient;
 
     @InjectMocks
     private ReferenceDataService referenceDataService;
 
     @Spy
-    private JsonObjectToObjectConverter jsonToObjectConverter = new JsonObjectConvertersFactory().jsonObjectToObjectConverter();
+    private JsonObjectToObjectConverter jsonToObjectConverter = new JsonObjectToObjectConverter(new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules());
 
     @Test
     void shouldReturnBusinessTypeWhenTypeCodeIsProvided() {
 
         final JsonObject responsePayload = getPayload("/test-data/referencedata.get.businesstypes.json");
 
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME)
-                .build(), responsePayload);
+        final JsonObject envelope = responsePayload;
 
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
 
-        final Optional<BusinessType> businessType = referenceDataService.getRotaBusinessTypeByCode("APP", requester);
+        final Optional<BusinessType> businessType = referenceDataService.getRotaBusinessTypeByCode("APP");
         assertThat(businessType, Matchers.notNullValue());
         assertEquals("APP", businessType.get().getTypeCode());
 
-        ArgumentCaptor<Envelope> envelopeCaptor = ArgumentCaptor.forClass(Envelope.class);
-        verify(requester).requestAsAdmin(envelopeCaptor.capture(), any());
-        JsonObject payload = (JsonObject) envelopeCaptor.getValue().payload();
-        assertEquals("ALL", payload.getString("jurisdiction"));
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        ArgumentCaptor<java.util.Map> envelopeCaptor = ArgumentCaptor.forClass(java.util.Map.class);
+        verify(commonPlatformQueryClient).getReferenceData(any(), any(), envelopeCaptor.capture());
+        java.util.Map<String, Object> payload = envelopeCaptor.getValue();
+        assertEquals("ALL", String.valueOf(payload.get("jurisdiction")));
         assertFalse(payload.containsKey("typeCode"));
     }
 
@@ -94,38 +90,29 @@ class ReferenceDataServiceTest {
     void shouldReturnCourtRoomWhenCourtRoomIdIsProvided() {
         final String courtRoomId = randomUUID().toString();
         final JsonObject responsePayload = mockCourtRooms(courtRoomId);
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME)
-                .build(), responsePayload);
+        final JsonObject envelope = responsePayload;
 
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
-        final Optional<CourtRoom> courtRoom = referenceDataService.getRotaCourtRoomByCourtRoomId(courtRoomId, requester);
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
+        final Optional<CourtRoom> courtRoom = referenceDataService.getRotaCourtRoomByCourtRoomId(courtRoomId);
         assertThat(courtRoom, Matchers.notNullValue());
     }
 
     @Test
     void shouldRequestPublicHolidays() {
         final JsonObject responsePayload = Json.createObjectBuilder().build();
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME)
-                .build(), responsePayload);
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
-        final List<LocalDate> publicholidays = referenceDataService.getPublicHolidays("DIV1", LocalDate.of(2024, 1, 1), LocalDate.of(2021, 12, 31), requester);
+        final JsonObject envelope = responsePayload;
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
+        final List<LocalDate> publicholidays = referenceDataService.getPublicHolidays("DIV1", LocalDate.of(2024, 1, 1), LocalDate.of(2021, 12, 31));
         assertThat(publicholidays, Matchers.empty());
     }
 
     @Test
     void shouldGetRotaCourtRoomByVenue() {
         final JsonObject courtRoomJson = getPayload("/test-data/referencedata.get.rota.courtrooms.json");
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME)
-                .build(), courtRoomJson);
+        final JsonObject envelope = courtRoomJson;
 
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
-        final Optional<CourtRoom> courtRoom = referenceDataService.getRotaCourtRoomByVenue(new Venue(77, 0, "Court 9"), new HashMap<>(), requester);
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
+        final Optional<CourtRoom> courtRoom = referenceDataService.getRotaCourtRoomByVenue(new Venue(77, 0, "Court 9"), new HashMap<>());
         assertThat(courtRoom, Matchers.notNullValue());
     }
 
@@ -133,13 +120,10 @@ class ReferenceDataServiceTest {
     @Test
     void shouldGetJudiciariesMap() {
         final JsonObject judiciariesJson = getPayload("/test-data/referencedata-judiciaries.json");
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME)
-                .build(), judiciariesJson);
+        final JsonObject envelope = judiciariesJson;
 
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
-        final List<Judiciary> judiciaries = referenceDataService.getJudiciariesMap(requester);
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
+        final List<Judiciary> judiciaries = referenceDataService.getJudiciariesMap();
         assertTrue(isNotEmpty(judiciaries));
         // Verify requestedName is populated
         assertThat(judiciaries.get(0).getRequestedName(), Matchers.is("HER HONOUR JUDGE K WANT QC, HONORARY RECORDER OF WALES"));
@@ -151,33 +135,28 @@ class ReferenceDataServiceTest {
     @Test
     void shouldGetCourtRoomSessionAllocationsMap() {
         final JsonObject courtRoomSessionAllocationsJson = getPayload("/test-data/referencedata-court-room-session-allocations.json");
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME)
-                .build(), courtRoomSessionAllocationsJson);
+        final JsonObject envelope = courtRoomSessionAllocationsJson;
 
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
-        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = referenceDataService.getCourtRoomSessionAllocationsMap(requester);
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
+        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = referenceDataService.getCourtRoomSessionAllocationsMap();
         assertTrue(isNotEmpty(courtRoomSessionAllocations));
     }
 
     @Test
     void shouldGetRotaBusinessTypes() {
         final JsonObject businessTypesJson = getPayload("/test-data/referencedata.get.businesstypes.json");
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME)
-                .build(), businessTypesJson);
+        final JsonObject envelope = businessTypesJson;
 
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
 
-        final List<BusinessType> businessTypes = referenceDataService.getRotaBusinessTypes(requester);
+        final List<BusinessType> businessTypes = referenceDataService.getRotaBusinessTypes();
         assertTrue(isNotEmpty(businessTypes));
 
-        ArgumentCaptor<Envelope> envelopeCaptor = ArgumentCaptor.forClass(Envelope.class);
-        verify(requester).requestAsAdmin(envelopeCaptor.capture(), any());
-        JsonObject payload = (JsonObject) envelopeCaptor.getValue().payload();
-        assertEquals("ALL", payload.getString("jurisdiction"));
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        ArgumentCaptor<java.util.Map> envelopeCaptor = ArgumentCaptor.forClass(java.util.Map.class);
+        verify(commonPlatformQueryClient).getReferenceData(any(), any(), envelopeCaptor.capture());
+        java.util.Map<String, Object> payload = envelopeCaptor.getValue();
+        assertEquals("ALL", String.valueOf(payload.get("jurisdiction")));
 
         // Verify mapping of jurisdiction
         Optional<BusinessType> appType = businessTypes.stream().filter(b -> "APP".equals(b.getTypeCode())).findFirst();
@@ -188,14 +167,11 @@ class ReferenceDataServiceTest {
     @Test
     void shouldGetCpCourtRooms() {
         final JsonObject courtRoomsJson = getPayload("/test-data/referencedata.get.ou-courtrooms.json");
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME)
-                .build(), courtRoomsJson);
+        final JsonObject envelope = courtRoomsJson;
 
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
 
-        final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms(requester);
+        final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms();
         assertTrue(isNotEmpty(courtRooms));
         assertEquals(1, courtRooms.size());
         CourtRoom courtRoom = courtRooms.get(0);
@@ -211,28 +187,22 @@ class ReferenceDataServiceTest {
     @Test
     void shouldGetRotaBusinessTypesMap() {
         final JsonObject businessTypesJson = getPayload("/test-data/referencedata.get.businesstypes.json");
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME)
-                .build(), businessTypesJson);
+        final JsonObject envelope = businessTypesJson;
 
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
 
-        final Map<String, BusinessType> businessTypes = referenceDataService.getRotaBusinessTypesMap(requester);
+        final Map<String, BusinessType> businessTypes = referenceDataService.getRotaBusinessTypesMap();
         assertFalse(businessTypes.isEmpty());
     }
 
     @Test
     void shouldGetCourtRoomsMap() {
         final JsonObject courtRoomJson = getPayload("/test-data/referencedata.get.rota.courtrooms.json");
-        final Envelope<Object> envelope = Envelope.envelopeFrom(Envelope.metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME)
-                .build(), courtRoomJson);
+        final JsonObject envelope = courtRoomJson;
 
-        when(requester.requestAsAdmin(any(), any())).thenReturn(envelope);
+        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
 
-        final Map<UUID, CourtRoom> courtRoomsMap = referenceDataService.getCourtRoomsMap(requester);
+        final Map<UUID, CourtRoom> courtRoomsMap = referenceDataService.getCourtRoomsMap();
         assertFalse(courtRoomsMap.isEmpty());
 
         ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);

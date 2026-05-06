@@ -10,9 +10,9 @@ import java.io.InputStream;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.enterprise.context.ApplicationScoped;
+import org.springframework.stereotype.Service;
 
-@ApplicationScoped
+@Service
 public class PropertiesLoader {
 
     private final Properties properties = new Properties();

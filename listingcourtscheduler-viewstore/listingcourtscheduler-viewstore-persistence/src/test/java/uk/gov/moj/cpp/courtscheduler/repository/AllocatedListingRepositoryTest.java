@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.Arrays.asList;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -8,8 +7,8 @@ import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
@@ -25,24 +24,22 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Inject;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.After;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 
-@RunWith(CdiTestRunner.class)
-public class AllocatedListingRepositoryTest {
+
+class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     public static final LocalDate DEFAULT_SESSION_DATE = LocalDate.parse("2024-12-09");
-    @Inject
+    @Autowired
     private AllocatedListingRepository allocatedListingRepository;
-    @Inject
+    @Autowired
     private CourtScheduleRepository courtScheduleRepository;
 
-    @After
+    @AfterEach
     public void tearDown() {
         List<AllocatedListing> all = allocatedListingRepository.findAll();
         all.forEach(allocatedListing -> allocatedListingRepository.remove(allocatedListing));
@@ -50,7 +47,7 @@ public class AllocatedListingRepositoryTest {
 
     @Test
     public void shouldSave() {
-        final AllocatedListing allocatedListing = random(AllocatedListing.class);
+        final AllocatedListing allocatedListing = newAllocatedListingWithSavedSchedule();
 
         allocatedListingRepository.save(allocatedListing);
         AllocatedListing by = allocatedListingRepository.findBy(allocatedListing.getId());
@@ -62,11 +59,11 @@ public class AllocatedListingRepositoryTest {
     @Test
     public void shouldFindByHearingId() {
         String hearingId = random(String.class);
-        final AllocatedListing allocatedListing1 = random(AllocatedListing.class);
+        final AllocatedListing allocatedListing1 = newAllocatedListingWithSavedSchedule();
         allocatedListing1.setHearingId(hearingId);
-        final AllocatedListing allocatedListing2 = random(AllocatedListing.class);
+        final AllocatedListing allocatedListing2 = newAllocatedListingWithSavedSchedule();
         allocatedListing2.setHearingId(hearingId);
-        final AllocatedListing allocatedListing3 = random(AllocatedListing.class);
+        final AllocatedListing allocatedListing3 = newAllocatedListingWithSavedSchedule();
 
         allocatedListingRepository.save(allocatedListing1);
         allocatedListingRepository.save(allocatedListing2);
@@ -82,7 +79,7 @@ public class AllocatedListingRepositoryTest {
 
     @Test
     public void shouldReturnTotalListedDurationForCourtscheduleId() {
-        final String courtScheduleId = randomUUID().toString();
+        final String courtScheduleId = persistRandomCourtSchedule();
         AllocatedListing allocatedListing1 = random(AllocatedListing.class);
         allocatedListing1.setDuration(20);
         allocatedListing1.setCourtScheduleId(courtScheduleId);
@@ -97,12 +94,12 @@ public class AllocatedListingRepositoryTest {
 
     @Test
     public void shouldFindByCourtScheduleId() {
-        String courtScheduleId = random(String.class);
+        String courtScheduleId = persistRandomCourtSchedule();
         final AllocatedListing allocatedListing1 = random(AllocatedListing.class);
         allocatedListing1.setCourtScheduleId(courtScheduleId);
         final AllocatedListing allocatedListing2 = random(AllocatedListing.class);
         allocatedListing2.setCourtScheduleId(courtScheduleId);
-        final AllocatedListing allocatedListing3 = random(AllocatedListing.class);
+        final AllocatedListing allocatedListing3 = newAllocatedListingWithSavedSchedule();
 
         allocatedListingRepository.save(allocatedListing1);
         allocatedListingRepository.save(allocatedListing2);
@@ -115,8 +112,8 @@ public class AllocatedListingRepositoryTest {
     @Test
     public void shouldGetAllocatedListingsByCourtScheduleId() {
         final String hearingId = random(String.class);
-        final String courtScheduleId1 = randomUUID().toString();
-        final String courtScheduleId2 = randomUUID().toString();
+        final String courtScheduleId1 = persistRandomCourtSchedule();
+        final String courtScheduleId2 = persistRandomCourtSchedule();
 
         final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
         courtSchedule1.setPanel("ADULT");
@@ -130,17 +127,23 @@ public class AllocatedListingRepositoryTest {
         courtSchedule2.setSlotBased(true);
         courtScheduleRepository.saveAndFlush(courtSchedule2);
 
-        final AllocatedListing allocatedListing1 = random(AllocatedListing.class);
-        allocatedListing1.setHearingId(hearingId);
+        // The schema added a unique index on (court_schedule_id, hearing_id) in
+        // changeset 015; give each AllocatedListing its own hearingId so the
+        // "two-rows-per-court-schedule" semantic the test asserts can still be set up.
+        final String hearingIdA = random(String.class);
+        final String hearingIdB = random(String.class);
+
+        final AllocatedListing allocatedListing1 = newAllocatedListingWithSavedSchedule();
+        allocatedListing1.setHearingId(hearingIdA);
         allocatedListing1.setCourtScheduleId(courtScheduleId1);
         allocatedListing1.setDuration(1);
 
-        final AllocatedListing allocatedListing2 = random(AllocatedListing.class);
-        allocatedListing2.setHearingId(hearingId);
+        final AllocatedListing allocatedListing2 = newAllocatedListingWithSavedSchedule();
+        allocatedListing2.setHearingId(hearingIdB);
         allocatedListing2.setCourtScheduleId(courtScheduleId1);
         allocatedListing2.setDuration(1);
 
-        final AllocatedListing allocatedListing3 = random(AllocatedListing.class);
+        final AllocatedListing allocatedListing3 = newAllocatedListingWithSavedSchedule();
         allocatedListing3.setHearingId(hearingId);
         allocatedListing3.setCourtScheduleId(courtScheduleId2);
         allocatedListing3.setDuration(30);
@@ -218,8 +221,10 @@ public class AllocatedListingRepositoryTest {
         expHearingIds.add(hearingId5);
         allocatedListingRepository.saveAndFlush(createAllocateListing("5", "BOOKING-5", "COURT-SCHEDULE-3", hearingId5));
 
-        final String hearingId6 = randomUUID().toString();
-        allocatedListingRepository.saveAndFlush(createAllocateListing("6", "BOOKING-6", "COURT-SCHEDULE-4", hearingId6));
+        // Listing 6 originally pointed at "COURT-SCHEDULE-4" — a non-existent schedule
+        // that the query was expected to filter out. With the FK added in changeset 033,
+        // that orphan row is no longer insertable; drop it from setup since the test only
+        // asserts on the five listings whose court_schedule is set up above.
 
         HearingSlotRequestParam hearingIdsRequest =
                 new HearingSlotRequestParam("ADULT",

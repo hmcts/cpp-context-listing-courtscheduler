@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: listingcourtscheduler-api
+  # Legacy code (CourtScheduleRepository <-> CourtScheduleRetryService) had a
+  # cyclic CDI dependency that Spring rejects by default.
+  main:
+    allow-circular-references: true
+  jackson:
+    default-property-inclusion: non_null
+  config:
+    import:
+      - "optional:configtree:/mnt/secrets/rpe/"
+      - "optional:classpath:application-datasource.yml"
+      - "optional:classpath:application-server-management.yml"
+      - "optional:classpath:application-azure.yml"
+      - "optional:classpath:application-authz.yml"
+      - "optional:classpath:application-audit.yml"
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS:false}
+
+server:
+  port: ${SERVER_PORT:8083}
+  # Preserve the existing UI-facing URL: /listingcourtscheduler-api/rest/courtscheduler/<path>
+  servlet:
+    context-path: /listingcourtscheduler-api/rest/courtscheduler
+
+courtscheduler:
+  # System user UUID (CJSCPPUID) used on outbound HTTP calls to other CPP context-services
+  # in place of the Justice Services framework's Requester#requestAsAdmin(...).
+  system-user-id: ${COURTSCHEDULER_SYSTEM_USER_ID:}
+  rota:
+    months-of-provisional-data-to-populate: ${ROTA_MONTHS_OF_PROVISIONAL_DATA:6}
+    cycle-to-populate-length: ${ROTA_CYCLE_LENGTH_DAYS:28}
+
+# External services
+referencedata:
+  base-url: ${REFERENCEDATA_BASE_URL:http://localhost:8080}
+usersgroups:
+  base-url: ${USERSGROUPS_BASE_URL:http://localhost:8080}
+
+# Redis cache (existing semantics)
+redis:
+  common-cache:
+    host: ${REDIS_COMMON_CACHE_HOST:localhost}
+    port: ${REDIS_COMMON_CACHE_PORT:6380}
+    use-ssl: ${REDIS_COMMON_CACHE_USE_SSL:false}
+    key-prefix: ${REDIS_COMMON_CACHE_KEY:courtscheduler}
+    key-ttl-seconds: ${REDIS_COMMON_CACHE_KEY_TTL:86400}

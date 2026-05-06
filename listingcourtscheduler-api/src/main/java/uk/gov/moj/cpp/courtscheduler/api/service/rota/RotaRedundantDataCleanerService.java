@@ -1,19 +1,22 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
+import org.springframework.stereotype.Service;
+
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 
-import javax.ejb.Asynchronous;
-import javax.ejb.Stateless;
-import javax.inject.Inject;
-import javax.transaction.Transactional;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Stateless
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class RotaRedundantDataCleanerService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaRedundantDataCleanerService.class);
@@ -30,7 +33,7 @@ public class RotaRedundantDataCleanerService {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
-    @Asynchronous
+    @Async
     @Transactional
     public void cleanDataForPreviousMonths(final int numberOfPreviousMonthsAndOlder) {
         final int numberOfDeletedAllocatedListingsForRedundancy = allocatedListingService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);

@@ -1,148 +1,183 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.reset;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static java.util.UUID.randomUUID;
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.apache.http.HttpHeaders.CONTENT_TYPE;
-import static org.apache.http.HttpStatus.SC_OK;
-import static uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils.stubPingFor;
-import static uk.gov.justice.services.common.http.HeaderConstants.ID;
-import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
-import uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
+import org.apache.http.HttpHeaders;
 
-import java.util.UUID;
-
+/**
+ * Re-platformed in place: was a static-method WireMock helper using
+ * {@code uk.gov.justice.service.wiremock.testutil.InternalEndpointMockUtils} and the
+ * embedded WireMock from the Justice Services framework. Now talks to the dockerised
+ * WireMock at {@code wiremock.baseUrl} ({@code http://localhost:8189} by default).
+ *
+ * <p>All public method names + signatures preserved so the legacy IT classes don't need
+ * to be rewritten. URL paths use the canonical {@code /referencedata-query-api/...}
+ * routing matching {@link uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService}.</p>
+ */
 public class StubUtil {
-    private static final String HOST = getHost();
-    private static final int PORT = 8080;
 
-    private static final String CONTENT_TYPE_QUERY_PERMISSION = "application/vnd.usersgroups.get-logged-in-user-permissions+json";
-    private static final String USER_DETAILS_URL = "/usersgroups-service/query/api/rest/usersgroups/users/logged-in-user";
-    private static final String USER_DETAILS_MEDIA_TYPE = "application/vnd.usersgroups.logged-in-user-details+json";
+    private static final String WIREMOCK_BASE_URL =
+            System.getProperty("wiremock.baseUrl", "http://localhost:8189");
 
-    private static final String REFERENCE_DATA_SERVICE_NAME = "referencedata-service";
+    private static final WireMock CLIENT = WireMock.create()
+            .scheme(WIREMOCK_BASE_URL.startsWith("https") ? "https" : "http")
+            .host(extractHost(WIREMOCK_BASE_URL))
+            .port(extractPort(WIREMOCK_BASE_URL))
+            .build();
 
-    private static final String QUERY_RELATIVE_URL_BUSINESS_TYPE = "/referencedata-service/query/api/rest/referencedata/rota-business-types";
+    private static final String REFERENCEDATA_BASE = "/referencedata-query-api/query/api/rest/referencedata";
+    private static final String USERSGROUPS_BASE   = "/usersgroups-query-api/query/api/rest/usersgroups";
 
-    private static final String ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.rota-business-types+json";
-    private static final String QUERY_RELATIVE_URL_ROTA_COURTROOMS = "/referencedata-service/query/api/rest/referencedata/cp-rota-courtroom-mappings";
-    private static final String ROTA_COURTROOMS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.cp-rota-courtroom-mappings+json";
-    private static final String QUERY_RELATIVE_URL_ROTA_COURTROOMSESSIONALLOCATIONS = "/referencedata-service/query/api/rest/referencedata/courtroom-session-allocations";
-    private static final String ROTA_COURTROOMSESSIONALLOCATIONS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.courtroom-session-allocations+json";
-    private static final String QUERY_RELATIVE_URL_ROTA_JUDICIARIES = "/referencedata-service/query/api/rest/referencedata/judiciaries";
-    private static final String ROTA_JUDICIARIES_QUERY_MEDIA_TYPE = "application/vnd.reference-data.judiciaries+json";
-    private static final String QUERY_RELATIVE_URL_JUDICIARY_SPECIALISMS = "/referencedata-service/query/api/rest/referencedata/judiciary-specialisms";
-    private static final String JUDICIARY_SPECIALISMS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.query.judiciary-specialisms+json";
+    private static final String USERS_PERMISSIONS_PATH = USERSGROUPS_BASE + "/users/logged-in-user/permissions";
+    private static final String USERS_GROUPS_PATH      = USERSGROUPS_BASE + "/users";
 
-    private static final String QUERY_RELATIVE_URL_CP_COURTROOMS = "/referencedata-service/query/api/rest/referencedata/courtrooms";
-    private static final String CP_COURTROOMS_QUERY_MEDIA_TYPE = "application/vnd.referencedata.ou-courtrooms+json";
+    private static final String QUERY_RELATIVE_URL_BUSINESS_TYPE        = REFERENCEDATA_BASE + "/rota-business-types";
+    private static final String QUERY_RELATIVE_URL_ROTA_COURTROOMS      = REFERENCEDATA_BASE + "/cp-rota-courtroom-mappings";
+    private static final String QUERY_RELATIVE_URL_SESSION_ALLOCATIONS  = REFERENCEDATA_BASE + "/courtroom-session-allocations";
+    private static final String QUERY_RELATIVE_URL_JUDICIARIES          = REFERENCEDATA_BASE + "/judiciaries";
+    private static final String QUERY_RELATIVE_URL_JUDICIARY_SPECIALISMS = REFERENCEDATA_BASE + "/judiciary-specialisms";
+    private static final String QUERY_RELATIVE_URL_CP_COURTROOMS        = REFERENCEDATA_BASE + "/courtrooms";
+
+    private static final String ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE        = "application/vnd.referencedata.query.rota-business-types+json";
+    private static final String ROTA_COURTROOMS_QUERY_MEDIA_TYPE            = "application/vnd.referencedata.query.cp-rota-courtroom-mappings+json";
+    private static final String SESSION_ALLOCATIONS_QUERY_MEDIA_TYPE        = "application/vnd.referencedata.query.courtroom-session-allocations+json";
+    private static final String JUDICIARIES_QUERY_MEDIA_TYPE                = "application/vnd.reference-data.judiciaries+json";
+    private static final String JUDICIARY_SPECIALISMS_QUERY_MEDIA_TYPE      = "application/vnd.referencedata.query.judiciary-specialisms+json";
+    private static final String CP_COURTROOMS_QUERY_MEDIA_TYPE              = "application/vnd.referencedata.ou-courtrooms+json";
+    private static final String USER_PERMISSIONS_MEDIA_TYPE                 = "application/vnd.usersgroups.get-logged-in-user-permissions+json";
 
     public static void setupLoggedInUsersPermissionQueryStub(final String userId) {
-        reset();
-        stubPingFor("usersgroups-service");
+        CLIENT.resetMappings();
 
-        stubFor(get(urlPathEqualTo("/usersgroups-service/query/api/rest/usersgroups/users/logged-in-user/permissions"))
-                .willReturn(aResponse().withStatus(OK.getStatusCode())
+        // The auth filter (cp-auth-rules-filter:2.0.0) calls
+        // GET /usersgroups-query-api/.../users/logged-in-user/permissions with the
+        // request's CJSCPPUID — once for the test user, and again for SYSTEM_USER_ID
+        // on calls that the legacy IT classes drive as the system user. Register
+        // BOTH stubs so the second lookup doesn't 404.
+        CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(USERS_PERMISSIONS_PATH))
+                .withHeader("CJSCPPUID", WireMock.equalTo(userId))
+                .atPriority(2)
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
                         .withHeader("ID", userId)
                         .withHeader("CPPID", randomUUID().toString())
-                        .withHeader("Content-Type", "application/json")
+                        .withHeader(HttpHeaders.CONTENT_TYPE, USER_PERMISSIONS_MEDIA_TYPE)
                         .withBody(getPayload("usersgroups.user-permissions.json"))));
     }
 
-    public static void setupUserAsSystemUser(String userId) {
-        InternalEndpointMockUtils.stubPingFor("usersgroups-service");
-        stubFor(get(urlPathEqualTo("/usersgroups-service/query/api/rest/usersgroups/users/" + userId + "/groups"))
-                .willReturn(aResponse().withStatus(SC_OK)
-                        .withHeader(ID, randomUUID().toString())
-                        .withHeader("Content-Type", "application/json")
+    public static void setupUserAsSystemUser(final String userId) {
+        // System user: SYSTEM_USERS group, plus COURT_SCHEDULE CREATE/READ permissions
+        // — mirrors what the production usersgroups-query-api grants the system principal.
+        // System-only rules in the .drl match on group membership; permissioned rules
+        // (e.g. judiciary endpoints) match on hasPermission, so the system user needs
+        // both paths for the legacy IT classes that drive every endpoint with SYSTEM_USER_ID.
+        CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(USERS_PERMISSIONS_PATH))
+                .withHeader("CJSCPPUID", WireMock.equalTo(userId))
+                .atPriority(2)
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader("ID", userId)
+                        .withHeader("CPPID", randomUUID().toString())
+                        .withHeader(HttpHeaders.CONTENT_TYPE, USER_PERMISSIONS_MEDIA_TYPE)
+                        .withBody("{\"groups\":[{\"groupId\":\"g-sys\",\"groupName\":\"SYSTEM_USERS\",\"prosecutingAuthority\":null}],"
+                                + "\"switchableRoles\":[],"
+                                + "\"permissions\":["
+                                + "{\"permissionId\":\"p-sys-1\",\"object\":\"CourtSchedule\",\"action\":\"Create\",\"description\":\"\"},"
+                                + "{\"permissionId\":\"p-sys-2\",\"object\":\"CourtSchedule\",\"action\":\"View\",\"description\":\"\"}"
+                                + "]}")));
+        // Legacy /users/{userId}/groups path also kept for any direct callers.
+        CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(USERS_GROUPS_PATH + "/" + userId + "/groups"))
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader("CPPID", randomUUID().toString())
+                        .withHeader(HttpHeaders.CONTENT_TYPE, "application/json")
                         .withBody(getPayload("stub-data/usersgroups.get-groups-by-user.json"))));
     }
 
-    public static void stubGetReferenceDataRotaBusinessTypes(final String responsePath) {
-        final String urlPath = QUERY_RELATIVE_URL_BUSINESS_TYPE;
-        final String fullPayload = getPayload(responsePath);
-
-        // Stub for requests without typeCode parameter
-        stubFor(get(urlPathEqualTo(urlPath))
-                .withQueryParam("jurisdiction", equalTo("ALL"))
+    public static StubMapping stubGetReferenceDataRotaBusinessTypes(final String responsePath) {
+        return CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(QUERY_RELATIVE_URL_BUSINESS_TYPE))
+                .withQueryParam("jurisdiction", WireMock.equalTo("ALL"))
                 .atPriority(2)
-                .willReturn(aResponse()
-                        .withStatus(SC_OK)
-                        .withHeader("CPPID", randomUUID().toString())
-                        .withHeader("Content-Type", ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE)
-                        .withBody(fullPayload)));
-    }
-
-    public static void stubGetReferenceCourtRooms(final String responsePath) {
-        final String urlPath = QUERY_RELATIVE_URL_ROTA_COURTROOMS;
-        stubFor(get(urlPathEqualTo(urlPath))
-                .willReturn(aResponse().withStatus(SC_OK)
-                        .withHeader("CPPID", randomUUID().toString())
-                        .withHeader("Content-Type", ROTA_COURTROOMS_QUERY_MEDIA_TYPE)
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
     }
 
-    public static void stubGetReferenceDataCourtRoomSessionAllocations(final String responsePath) {
-        final String urlPath = QUERY_RELATIVE_URL_ROTA_COURTROOMSESSIONALLOCATIONS;
-        stubFor(get(urlPathEqualTo(urlPath))
-                .willReturn(aResponse().withStatus(SC_OK)
-                        .withHeader("CPPID", randomUUID().toString())
-                        .withHeader("Content-Type", ROTA_COURTROOMSESSIONALLOCATIONS_QUERY_MEDIA_TYPE)
+    public static StubMapping stubGetReferenceCourtRooms(final String responsePath) {
+        return CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(QUERY_RELATIVE_URL_ROTA_COURTROOMS))
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, ROTA_COURTROOMS_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
     }
 
-    public static void stubGetReferenceDataJudiciaries(final String responsePath) {
-        final String urlPath = QUERY_RELATIVE_URL_ROTA_JUDICIARIES;
-        final String payload = getPayload(responsePath);
-        stubFor(get(urlPathEqualTo(urlPath))
-                .willReturn(aResponse()
-                        .withStatus(SC_OK)
-                        .withHeader("CPPID", randomUUID().toString())
-                        .withHeader("Content-Type", ROTA_JUDICIARIES_QUERY_MEDIA_TYPE)
-                        .withBody(payload)));
-    }
-
-    public static void stubGetReferenceDataJudiciarySpecialisms(final String responsePath) {
-        final String urlPath = QUERY_RELATIVE_URL_JUDICIARY_SPECIALISMS;
-        stubFor(get(urlPathMatching(urlPath + ".*"))
-                .willReturn(aResponse().withStatus(SC_OK)
-                        .withHeader("CPPID", randomUUID().toString())
-                        .withHeader("Content-Type", JUDICIARY_SPECIALISMS_QUERY_MEDIA_TYPE)
+    public static StubMapping stubGetReferenceDataCourtRoomSessionAllocations(final String responsePath) {
+        return CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(QUERY_RELATIVE_URL_SESSION_ALLOCATIONS))
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, SESSION_ALLOCATIONS_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
     }
 
-    public static void stubGetCpCourtRooms(final String responsePath) {
-        final String urlPath = QUERY_RELATIVE_URL_CP_COURTROOMS;
-        stubFor(get(urlPathEqualTo(urlPath))
-                .willReturn(aResponse().withStatus(SC_OK)
-                        .withHeader("CPPID", randomUUID().toString())
-                        .withHeader("Content-Type", CP_COURTROOMS_QUERY_MEDIA_TYPE)
+    public static StubMapping stubGetReferenceDataJudiciaries(final String responsePath) {
+        return CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(QUERY_RELATIVE_URL_JUDICIARIES))
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, JUDICIARIES_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
     }
 
+    public static StubMapping stubGetReferenceDataJudiciarySpecialisms(final String responsePath) {
+        return CLIENT.register(WireMock.get(WireMock.urlPathMatching(QUERY_RELATIVE_URL_JUDICIARY_SPECIALISMS + ".*"))
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, JUDICIARY_SPECIALISMS_QUERY_MEDIA_TYPE)
+                        .withBody(getPayload(responsePath))));
+    }
 
-    public static void stubGetUserDetails(final String userId, final String organisationId, final String fileName) {
-        stubPingFor("usersgroups-service");
+    public static StubMapping stubGetCpCourtRooms(final String responsePath) {
+        return CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(QUERY_RELATIVE_URL_CP_COURTROOMS))
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, CP_COURTROOMS_QUERY_MEDIA_TYPE)
+                        .withBody(getPayload(responsePath))));
+    }
 
+    public static StubMapping stubGetUserDetails(final String userId, final String organisationId, final String fileName) {
         final String payload = getPayload(fileName)
                 .replace("USER_ID", userId)
                 .replace("ORGANISATION_ID", organisationId);
-
-        stubPingFor("usersgroups-service");
-
-        stubFor(get(urlPathEqualTo(USER_DETAILS_URL))
-                .willReturn(aResponse().withStatus(OK.getStatusCode())
-                        .withHeader("CPPID", UUID.randomUUID().toString())
-                        .withHeader(CONTENT_TYPE, USER_DETAILS_MEDIA_TYPE)
+        return CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(USERSGROUPS_BASE + "/users/logged-in-user"))
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, "application/vnd.usersgroups.logged-in-user-details+json")
                         .withBody(payload)));
+    }
 
+    public static int countRequests(final RequestPatternBuilder pattern) {
+        return CLIENT.findAll(pattern).size();
+    }
+
+    private static String extractHost(final String url) {
+        final String stripped = url.replaceFirst("^[a-z]+://", "");
+        final int colon = stripped.indexOf(':');
+        final int slash = stripped.indexOf('/');
+        final int end = (colon >= 0 && (slash < 0 || colon < slash))
+                ? colon : (slash >= 0 ? slash : stripped.length());
+        return stripped.substring(0, end);
+    }
+
+    private static int extractPort(final String url) {
+        final String stripped = url.replaceFirst("^[a-z]+://", "");
+        final int colon = stripped.indexOf(':');
+        if (colon < 0) return url.startsWith("https") ? 443 : 80;
+        final int slash = stripped.indexOf('/', colon);
+        final String portStr = slash > 0 ? stripped.substring(colon + 1, slash) : stripped.substring(colon + 1);
+        return Integer.parseInt(portStr);
     }
 }
