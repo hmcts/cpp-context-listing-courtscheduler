@@ -10,10 +10,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class StorageApplicationParameters {
 
-    @Value("${azure.local.mi.clientId:}")
+    @Value("${azure.local.mi.clientId:}") // gitleaks:allow
     private String azureLocalMiClientId;
 
-    @Value("${azure.local.mi.tenantId:}")
+    @Value("${azure.local.mi.tenantId:}") // gitleaks:allow
     private String azureLocalMiTenantId;
 
     public String getAzureLocalMiClientId() {

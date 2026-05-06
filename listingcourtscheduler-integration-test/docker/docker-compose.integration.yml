@@ -86,7 +86,7 @@ services:
       # The legacy AzureBlobClientService uses a connection-string when the account
       # name is empty; pointing it at the in-network Azurite container lets the
       # RotaFile* IT classes upload XML rota files and have the app pick them up.
-      COURTSCHEDULER_ROTASLSTORAGECONNECTIONSTRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+      COURTSCHEDULER_ROTASLSTORAGECONNECTIONSTRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;" # gitleaks:allow
       COURTSCHEDULER_ROTASLINPUTCONTAINERNAME: "schedulelistinginput"
       COURTSCHEDULER_ROTASLARCHIVECONTAINERNAME: "schedulelistingarchive"
     depends_on:

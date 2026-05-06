@@ -66,10 +66,9 @@ class NewRotaFileProcessorIT extends AbstractIT {
     private static final String AZURE_BLOB_OUTPUT_CONTAINER_NAME = "schedulelistingoutput";
     // Azurite emulator (see RotaFileProcessorIT.ROTASL_STORAGE_CONNECTION_STRING for details).
     // Microsoft-published Azurite account key — not a production secret.
-    // gitleaks:allow
     private static final String ROTASL_STORAGE_CONNECTION_STRING = System.getProperty(
             "azurite.connectionString",
-            "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10001/devstoreaccount1;");
+            "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10001/devstoreaccount1;"); // gitleaks:allow
     private static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
     
     private static final String BEDFORD_SHIRE_MASTER_FILE_BASE_NAME = "IT_Test_lja_bedfordshire_rotaa_20240401T180039Z";
