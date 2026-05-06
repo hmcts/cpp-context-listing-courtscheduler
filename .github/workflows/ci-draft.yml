@@ -1,14 +1,15 @@
 name: Build and Publish (Non-Release)
 
 on:
+  # Run on every PR regardless of target branch — gating of publish/docker/deploy
+  # is done by the `is_publish` / `trigger_docker` / `trigger_deploy` inputs below
+  # which are conditional on `github.event_name == 'push'`.
   pull_request:
-    branches:
-      - master
-      - main
   push:
     branches:
       - master
       - main
+      - 'dev/*'
 
 jobs:
   ci-draft:
