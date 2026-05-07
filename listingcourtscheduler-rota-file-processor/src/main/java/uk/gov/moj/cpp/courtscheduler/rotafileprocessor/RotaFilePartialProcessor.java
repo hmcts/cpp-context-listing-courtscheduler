@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -70,7 +71,7 @@ public class RotaFilePartialProcessor {
 
     @Async
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public void processFullRotaFile(final Map<String, CourtSchedule> slots,
+    public CompletableFuture<Void> processFullRotaFile(final Map<String, CourtSchedule> slots,
                                     final Map<String, CourtSchedule> slotsForMigrated,
                                     final Collection<CourtScheduleJudiciary> schedules,
                                     final Collection<CourtScheduleJudiciary> schedulesForMigrated,
@@ -104,12 +105,13 @@ public class RotaFilePartialProcessor {
             logger.info("DD-15703:processFullRotaFile: updating process_end_date after processing completes");
             rotaFileProcessHistoryService.update(rotaFileProcessHistory);
         }
+        return CompletableFuture.completedFuture(null);
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
     @Async
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
+    public CompletableFuture<Void> processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                         final Map<String, CourtSchedule> slotsForMigrated,
                                         final Collection<CourtScheduleJudiciary> schedules,
                                         final Collection<CourtScheduleJudiciary> schedulesForMigrated,
@@ -149,6 +151,7 @@ public class RotaFilePartialProcessor {
             logger.info("DD-15703:processSnapshotRotaFile: updating process_end_date after processing completes");
             rotaFileProcessHistoryService.update(rotaFileProcessHistory);
         }
+        return CompletableFuture.completedFuture(null);
     }
 
     private SlotAndScheduleInfo getExtractAndReceiveSlotAndScheduleInfo(final List<String> ouCodes,

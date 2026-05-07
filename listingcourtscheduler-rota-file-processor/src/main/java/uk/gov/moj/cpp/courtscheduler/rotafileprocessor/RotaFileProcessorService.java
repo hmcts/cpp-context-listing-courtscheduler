@@ -44,7 +44,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -247,6 +249,12 @@ public class RotaFileProcessorService {
         if (fileName.contains(SNAPSHOT_NAME_PART)) {
             logger.info("DD-15703:RotaFileProcessor: Before  processSnapshotRotaFile");
             final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
+            // Collect the @Async per-week futures so we can wait for ALL weeks to finish
+            // before declaring the file processed. Without this, downstream callers
+            // (downloadAndProcessForEachFile → archive + delete from input) race ahead
+            // while per-week deletes/inserts are still landing, leading to inconsistent
+            // counts and the test flake where post-processing assertions see partial state.
+            final List<CompletableFuture<Void>> weekFutures = new ArrayList<>();
             for(int i = 0; i < dateRanges.size(); i++) {
                 final DateRange dateRange = dateRanges.get(i);
                 final boolean isLastDateRange = (i == dateRanges.size() - 1);
@@ -255,25 +263,30 @@ public class RotaFileProcessorService {
                 startAndEndDate.put(END_DATE.getLabel(), dateRange.getEnd());
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
                 logger.info("Filtered Slots for Snapshot : {} within dateRange: {} - {}", filteredSlots.keySet(), dateRange.getStart(), dateRange.getEnd());
-                rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId, rotaFileProcessHistory, isLastDateRange);
+                weekFutures.add(rotaFilePartialProcessor.processSnapshotRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, startAndEndDate, ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId, rotaFileProcessHistory, isLastDateRange));
                 logger.info("snapshot rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
+            // filter(nonNull) tolerates Mockito mocks returning null in unit tests; in production
+            // the @Async proxy always returns a real CompletableFuture.
+            CompletableFuture.allOf(weekFutures.stream().filter(Objects::nonNull).toArray(CompletableFuture[]::new)).join();
             logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
             if(rotaFileProcessHistory != null)
                 rotaFileProcessHistoryService.update(rotaFileProcessHistory);
             logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
         } else {
             final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
+            final List<CompletableFuture<Void>> weekFutures = new ArrayList<>();
             for(int i = 0; i < dateRanges.size(); i++) {
                 final DateRange dateRange = dateRanges.get(i);
                 final boolean isLastDateRange = (i == dateRanges.size() - 1);
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
                 logger.info("Filtered Slots for Full Rota file : {}", filteredSlots.keySet());
-                rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId, rotaFileProcessHistory, isLastDateRange);
+                weekFutures.add(rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId, rotaFileProcessHistory, isLastDateRange));
                 logger.info("master rota file {} processing part number: {} within dateRange: {} - {}", fileName, partIndex, dateRange.getStart(), dateRange.getEnd());
                 partIndex++;
             }
+            CompletableFuture.allOf(weekFutures.stream().filter(Objects::nonNull).toArray(CompletableFuture[]::new)).join();
             logger.info("DD-15703:processMasterRotaFile: before rotaFileProcessHistoryRepository.update");
             if(rotaFileProcessHistory != null)
                 rotaFileProcessHistoryService.update(rotaFileProcessHistory);
