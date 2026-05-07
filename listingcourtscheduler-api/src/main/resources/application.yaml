@@ -29,6 +29,12 @@ courtscheduler:
   # System user UUID (CJSCPPUID) used on outbound HTTP calls to other CPP context-services
   # in place of the Justice Services framework's Requester#requestAsAdmin(...).
   system-user-id: ${COURTSCHEDULER_SYSTEM_USER_ID:}
+  http:
+    # Outbound HTTP timeouts for CommonPlatformQueryClient (referencedata + usersgroups).
+    # Without these, JDK HttpClient defaults to "no timeout" and a stuck peer can wedge
+    # the @Async rota pipeline indefinitely.
+    connect-timeout-seconds: ${COURTSCHEDULER_HTTP_CONNECT_TIMEOUT_SECONDS:5}
+    read-timeout-seconds: ${COURTSCHEDULER_HTTP_READ_TIMEOUT_SECONDS:30}
   rota:
     months-of-provisional-data-to-populate: ${ROTA_MONTHS_OF_PROVISIONAL_DATA:6}
     cycle-to-populate-length: ${ROTA_CYCLE_LENGTH_DAYS:28}

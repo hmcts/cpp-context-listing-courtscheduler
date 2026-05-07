@@ -194,7 +194,12 @@ class RotaFileProcessorIT extends AbstractIT {
         // then call rota file processor api
         final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
-        // await until this file uploaded into archive container
+        // Wait for the snapshot file to leave the input container — proves the async
+        // captureRotaFilesAndProcessEach pipeline finished its terminal step. Doing this
+        // before the count await avoids the per-week race where judiciaries are deleted
+        // and re-inserted: a count-only await can be satisfied mid-cycle.
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> !isFileInInputContainer(finalSnapshotFileName));
+
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
             final List<CourtSchedule> courtSchedulesFromSnapshotFile = databaseReader.courtSchedulesCreatedAfter(maxCreatedOnForCourtSchedule);
             return isNotEmpty(courtSchedulesFromSnapshotFile) && courtSchedulesFromSnapshotFile.size() == 210;
@@ -267,7 +272,12 @@ class RotaFileProcessorIT extends AbstractIT {
         // then call rota file processor api
         final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
-        // await until this file uploaded into archive container
+        // Wait for the snapshot file to leave the input container — proves the async
+        // captureRotaFilesAndProcessEach pipeline finished its terminal step. Doing this
+        // before the count await avoids the per-week race where judiciaries are deleted
+        // and re-inserted: a count-only await can be satisfied mid-cycle.
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> !isFileInInputContainer(finalSnapshotFileName));
+
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
             final List<CourtSchedule> courtSchedulesFromSnapshotFile = databaseReader.courtSchedulesCreatedAfter(maxCreatedOnForCourtSchedule);
             return isNotEmpty(courtSchedulesFromSnapshotFile) && courtSchedulesFromSnapshotFile.size() == 209;
@@ -361,17 +371,21 @@ class RotaFileProcessorIT extends AbstractIT {
         // then call rota file processor api
         final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, "application/vnd.courtscheduler.rotasl.process_rota_files+json", SYSTEM_USER_ID, payloadAsJsonString);
 
-        // await until the database contains the expected records
+        // First wait until the *new* file has been removed from the input container.
+        // This is the terminal step of the async captureRotaFilesAndProcessEach pipeline
+        // (process → upload to output → delete from input), so it proves the new run has
+        // finished — independent of whatever counts were already in the DB from a prior call.
+        // Doing this before the count check is essential for the migrated/repeat path:
+        // there the DB already shows the expected counts at the moment we kick the new run,
+        // so a count-only await would return immediately and let assertions fire mid-rerun.
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> !isFileInInputContainer(finalMasterRotaFileName));
+
+        // Now wait until the database has settled to the expected counts.
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> {
             final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = databaseReader.courtScheduleJudiciaries();
             final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
             return courtScheduleJudiciaryEntities.size() == expectedNumberOfJudiciaries && courtScheduleEntities.size() == expectedNumberOfSlots;
         });
-
-        // await until the specific file has been removed from the input container,
-        // confirming the full async processing cycle (process → upload to output → delete from input) has completed.
-        // This prevents a still-running background captureRotaFilesAndProcessEach loop from picking up the next test's file.
-        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() -> !isFileInInputContainer(finalMasterRotaFileName));
 
         logger.info("master rota file processing took time as seconds : {}", stopwatch.elapsed(SECONDS));
 
