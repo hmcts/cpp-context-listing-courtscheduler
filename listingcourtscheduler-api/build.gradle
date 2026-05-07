@@ -146,6 +146,55 @@ application {
     mainClass = 'uk.gov.moj.cpp.courtscheduler.Application'
 }
 
+/* ---------------- Publishing ----------------
+ * Publishes the Spring Boot fat jar (and the 'plain' classifier jar) to GitHub Packages
+ * and the HMCTS Azure DevOps Artifacts feed. Coordinates are pinned to match the ADO
+ * Deploy pipeline's expectations (see .github/workflows/ci-build-publish.yml `Deploy` job:
+ * GROUP_ID=uk.gov.hmcts.cp, ARTIFACT_ID=<repo-name>).
+ *
+ * Credentials/repository identifiers come from env vars in CI; locally a developer can
+ * still run `./gradlew publishToMavenLocal` without any of them.
+ */
+def githubActor = project.findProperty("github.actor") ?: System.getenv("GITHUB_ACTOR")
+def githubToken = project.findProperty("github.token") ?: System.getenv("GITHUB_TOKEN")
+def githubRepo  = System.getenv("GITHUB_REPOSITORY") ?: "hmcts/${rootProject.name}"
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId    = 'uk.gov.hmcts.cp'
+            artifactId = rootProject.name
+            version    = project.version
+
+            artifact(tasks.named('bootJar'))
+            artifact(tasks.named('jar'))
+
+            pom {
+                name = rootProject.name
+                url  = "https://github.com/${githubRepo}"
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url  = uri("https://maven.pkg.github.com/${githubRepo}")
+            credentials {
+                username = githubActor
+                password = githubToken
+            }
+        }
+        maven {
+            name = "AzureArtifacts"
+            url  = uri(rootProject.ext.azureADOArtifactRepository)
+            credentials {
+                username = rootProject.ext.azureADOArtifactActor
+                password = rootProject.ext.azureADOArtifactToken
+            }
+        }
+    }
+}
+
 tasks.named('test') {
     // Run every test class even when one fails, so the failure list is comprehensive.
     failFast = false
