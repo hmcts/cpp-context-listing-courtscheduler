@@ -24,9 +24,11 @@ services:
   wiremock:
     image: wiremock/wiremock:3.9.1
     container_name: CP_CSCHED_wiremock
-    command: ["--verbose"]
+    command: ["--disable-banner"]
     ports:
       - "8189:8080"
+    logging:
+      driver: "none"
     volumes:
       - ../src/test/resources/wiremock/mappings:/home/wiremock/mappings
       - ../src/test/resources/wiremock/__files:/home/wiremock/__files
