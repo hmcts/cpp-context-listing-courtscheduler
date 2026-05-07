@@ -319,13 +319,12 @@ class RotaFileProcessorIT extends AbstractIT {
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
 
         final LocalDate oneHundredAndEightyDaysBeforeNow = LocalDate.now().minusDays(numberOfPreviousDaysAndOlder);
-        // await until this file uploaded into archive container
-        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC, SECONDS).until(() -> {
-            final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
-            return courtScheduleEntities.stream()
-                    .filter(courtSchedule -> courtSchedule.getSessionDate().isAfter(oneHundredAndEightyDaysBeforeNow) || courtSchedule.getSessionDate().isEqual(oneHundredAndEightyDaysBeforeNow))
-                    .toList().size() == (numberOfTotalCourtSchedules - numberOf180DaysOrOlderThan);
-        });
+        // Wait until cleanup has actually removed every schedule older than the cut-off.
+        // (The "count of non-old schedules" check is unreliable when the test data is wholly
+        // older than now-180d — it is satisfied before cleanup even starts.)
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC, SECONDS).until(() ->
+                databaseReader.courtSchedules().stream()
+                        .noneMatch(courtSchedule -> courtSchedule.getSessionDate().isBefore(oneHundredAndEightyDaysBeforeNow)));
 
         final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
         assertTrue(courtScheduleEntities.stream()
