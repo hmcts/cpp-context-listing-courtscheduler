@@ -216,11 +216,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+      # Download into the same build/libs/ layout the root Dockerfile expects
+      # (the ADO pipeline lands its downloaded jar in the same path).
       - name: Download Spring Boot fat jar
         uses: actions/download-artifact@v8
         with:
           name: app-jar
-          path: listingcourtscheduler-api/build/libs
+          path: build/libs
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -235,14 +237,13 @@ jobs:
       - name: Build and Push Docker Image to GitHub
         uses: docker/build-push-action@v7
         with:
-          context: listingcourtscheduler-api
-          file: listingcourtscheduler-api/Dockerfile
+          context: .
+          file: Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ needs.Artefact-Version.outputs.artefact_version }}
           build-args: |
-            BASE_IMAGE=eclipse-temurin:25
-            JAR_FILENAME=${{ needs.Build.outputs.artefact_name }}.jar
+            BASE_IMAGE=eclipse-temurin:25-jre
 
   Deploy:
     needs: [Provider-Deploy, Build, Artefact-Version]
