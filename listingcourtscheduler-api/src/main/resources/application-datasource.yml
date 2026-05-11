@@ -1,14 +1,14 @@
 # Datasource, JPA and Liquibase
 spring:
   datasource:
-    url: ${COURTSCHEDULER_DATASOURCE_URL:jdbc:postgresql://localhost:5432/scsl}
-    username: ${COURTSCHEDULER_DATASOURCE_USERNAME:scsl}
-    password: ${COURTSCHEDULER_DATASOURCE_PASSWORD:scsl}
-    driver-class-name: ${COURTSCHEDULER_DATASOURCE_DRIVER:org.postgresql.Driver}
+    url: ${CSCHED_DATASOURCE_URL:jdbc:postgresql://localhost:5432/scsl}
+    username: ${CSCHED_DATASOURCE_USERNAME:scsl}
+    password: ${CSCHED_DATASOURCE_PASSWORD:scsl}
+    driver-class-name: ${CSCHED_DATASOURCE_DRIVER:org.postgresql.Driver}
     hikari:
       pool-name: cp-hikari
-      maximum-pool-size: ${COURTSCHEDULER_DB_POOL_SIZE:20}
-      minimum-idle: ${COURTSCHEDULER_DB_MIN_IDLE:5}
+      maximum-pool-size: ${CSCHED_DB_POOL_SIZE:20}
+      minimum-idle: ${CSCHED_DB_MIN_IDLE:5}
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
