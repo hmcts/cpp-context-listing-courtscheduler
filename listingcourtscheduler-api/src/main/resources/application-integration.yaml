@@ -41,6 +41,12 @@ cp:
 courtscheduler:
   envelope:
     enabled: true
+  # Bridge AzureBlobClientService's @Value("${courtscheduler.rotaslStorageConnectionString:}")
+  # to the IT-only CSCHED_ROTASLSTORAGECONNECTIONSTRING env var (set by
+  # docker-compose.integration.yml to point at the Azurite emulator). Production uses
+  # managed-identity / DefaultAzureCredential and leaves this property empty, so the
+  # mapping lives here in the integration profile rather than the shared application.yaml.
+  rotaslStorageConnectionString: ${CSCHED_ROTASLSTORAGECONNECTIONSTRING:}
 
 management:
   health:
