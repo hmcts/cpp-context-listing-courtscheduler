@@ -1508,7 +1508,9 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
 
         AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
-        Date hearingTime = Date.from(LocalDate.now().plusDays(1).atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        // Pin to Europe/London so the produced instant is deterministic across local and CI JVMs
+        // (the validator reads the instant back through atZone("Europe/London")).
+        Date hearingTime = Date.from(LocalDate.now().plusDays(1).atTime(10, 0).atZone(java.time.ZoneId.of("Europe/London")).toInstant());
         when(booked.getHearingStartTime()).thenReturn(hearingTime);
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
@@ -1817,18 +1819,22 @@ class SessionsApiValidatorTest {
         CourtSchedule persistedSchedule = new CourtSchedule();
         LocalDate sessionDate = LocalDate.now().plusDays(1);
         persistedSchedule.setSessionDate(sessionDate);
-        // Session starts at 10:00 in persisted schedule
-        Date sessionStartDate = Date.from(sessionDate.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
-        Date sessionEndDate = Date.from(sessionDate.atTime(13, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        // Session starts at 11:00 in persisted schedule. We use 11:00 (not 10:00) so the comparison
+        // survives the 1-hour London<->UTC mismatch between SessionsApiValidator's sessionTimeFormatter
+        // (which uses the JVM-default tz - UTC on CI, Europe/London locally) and getMinHearingTime
+        // (which always reads the hearing back via atZone("Europe/London")).
+        // Pin the instant generation to Europe/London so it is deterministic across CI and local JVMs.
+        Date sessionStartDate = Date.from(sessionDate.atTime(11, 0).atZone(java.time.ZoneId.of("Europe/London")).toInstant());
+        Date sessionEndDate = Date.from(sessionDate.atTime(13, 0).atZone(java.time.ZoneId.of("Europe/London")).toInstant());
         persistedSchedule.setSessionStartTime(sessionStartDate);
         persistedSchedule.setSessionEndTime(sessionEndDate);
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
-        // Mock allocated listing with hearing time at 09:00 (before session start at 10:00)
+        // Mock allocated listing with hearing time at 09:00 (before session start at 11:00)
         AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
-        Date hearingTime = Date.from(sessionDate.atTime(9, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        Date hearingTime = Date.from(sessionDate.atTime(9, 0).atZone(java.time.ZoneId.of("Europe/London")).toInstant());
         when(booked.getHearingStartTime()).thenReturn(hearingTime);
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))

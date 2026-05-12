@@ -440,6 +440,8 @@ public class ReferenceDataService {
                 .withRotaBusinessTypeCode(getStringOrElse(jsonObject, "rotaBusinessTypeCode", null))
                 .withValidFrom(getStringOrElse(jsonObject, "validFrom", null))
                 .withValidTo(getStringOrElse(jsonObject, "validTo", null))
+                .withSessionStartTime(getStringOrElse(jsonObject, "sessionStartTime", null))
+                .withSessionEndTime(getStringOrElse(jsonObject, "sessionEndTime", null))
                 .build();
     }
 
