@@ -250,9 +250,6 @@ jobs:
     if: ${{ inputs.trigger_deploy }}
     runs-on: ubuntu-latest
     steps:
-      - name: Extract repo name
-        run: echo "REPO_NAME=${GITHUB_REPOSITORY##*/}" >> $GITHUB_ENV
-
       - name: Trigger ADO pipeline
         uses: hmcts/trigger-ado-pipeline@v2
         with:
@@ -261,7 +258,7 @@ jobs:
           template_parameters: >
             {
               "GROUP_ID": "uk.gov.hmcts.cp",
-              "ARTIFACT_ID": "${{ env.REPO_NAME }}",
+              "ARTIFACT_ID": "listingcourtscheduler",
               "ARTIFACT_VERSION": "${{ needs.Artefact-Version.outputs.artefact_version }}",
               "TARGET_REPOSITORY": "${{ github.repository }}",
               "agentDemand": "ubuntu-j25",
