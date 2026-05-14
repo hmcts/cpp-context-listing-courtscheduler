@@ -163,14 +163,14 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             groupId    = 'uk.gov.hmcts.cp'
-            artifactId = 'listingcourtscheduler'
+            artifactId = rootProject.name
             version    = project.version
 
             artifact(tasks.named('bootJar'))
             artifact(tasks.named('jar'))
 
             pom {
-                name = 'listingcourtscheduler'
+                name = rootProject.name
                 url  = "https://github.com/${githubRepo}"
             }
         }
