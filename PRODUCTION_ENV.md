@@ -10,8 +10,7 @@ recommended overrides for production.
 |---|---|---|
 | `COURTSCHEDULER_SYSTEM_USER_ID` | UUID sent as `CJSCPPUID` on outbound calls | `22222222-2222-2222-2222-222222222222` |
 | `CSCHED_ROTASLSTORAGECONNECTIONSTRING` | Azure Storage connection string for rota blobs | `DefaultEndpointsProtocol=https;AccountName=…;AccountKey=…;EndpointSuffix=core.windows.net` |
-| `REFERENCEDATA_BASE_URL` | Reference-data service base URL | `https://referencedata.cpp.svc.cluster.local` |
-| `USERSGROUPS_BASE_URL` | Users-groups service base URL | `https://usersgroups.cpp.svc.cluster.local` |
+| `CSCHED_BASE_URL` | Base URL of the CPP gateway fronting referencedata + usersgroups query APIs | `https://cpp-gateway.cpp.svc.cluster.local` |
 | `CSCHED_DATASOURCE_URL` | Postgres JDBC URL | `jdbc:postgresql://courtscheduler-db.cpp.svc.cluster.local:5432/courtscheduler` |
 | `CSCHED_DATASOURCE_USERNAME` | DB user | `courtscheduler` |
 | `CSCHED_DATASOURCE_PASSWORD` | DB password | *(secret)* |

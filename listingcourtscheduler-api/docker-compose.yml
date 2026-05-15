@@ -56,9 +56,9 @@ services:
       SPRING_LIQUIBASE_ENABLED: "true"
       SPRING_LIQUIBASE_CHANGE_LOG: "classpath:liquibase/courtscheduler-view-store-db-changelog.xml"
 
-      # Outbound CPP services — supplied by callers (Helm/secrets) in real envs
-      USERSGROUPS_BASE_URL: ${USERSGROUPS_BASE_URL:-}
-      REFERENCEDATA_BASE_URL: ${REFERENCEDATA_BASE_URL:-}
+      # Outbound CPP services — supplied by callers (Helm/secrets) in real envs.
+      # Same gateway base URL fronts both referencedata and usersgroups query APIs.
+      CSCHED_BASE_URL: ${CSCHED_BASE_URL:-}
       COURTSCHEDULER_SYSTEM_USER_ID: ${COURTSCHEDULER_SYSTEM_USER_ID:-}
 
       # Azure Storage — production binds via Workload Identity / DefaultAzureCredential

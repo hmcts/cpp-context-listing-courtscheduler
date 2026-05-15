@@ -65,9 +65,9 @@ services:
       CSCHED_HTTP_AUDIT_ENABLED: "true"
       CSCHED_AUDIT_ENABLED: "false"
 
-      # Identity URL points at WireMock running in the same compose network
-      USERSGROUPS_BASE_URL: "http://wiremock:8080"
-      REFERENCEDATA_BASE_URL: "http://wiremock:8080"
+      # Base URL for both referencedata + usersgroups query APIs points at
+      # WireMock running in the same compose network.
+      CSCHED_BASE_URL: "http://wiremock:8080"
 
       # Spring Boot 4 disables OTLP metrics that fail at shutdown when no collector exists
       MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED: "false"
