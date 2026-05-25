@@ -218,6 +218,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     @org.springframework.context.annotation.Lazy
     CourtScheduleRetryService courtScheduleRetryService;
     @Inject
+    uk.gov.moj.cpp.courtscheduler.service.CourtScheduleBatchInsertService courtScheduleBatchInsertService;
+    @Inject
     private AllocatedListingRepository allocatedListingRepository;
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
@@ -401,8 +403,18 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     /**
-     * Highly optimized batch processing for maximum performance.
-     * Uses bulk operations, reduced entity manager operations, and optimized memory usage.
+     * Batch-persist records by delegating to {@link uk.gov.moj.cpp.courtscheduler.service.CourtScheduleBatchInsertService}
+     * which wraps each batch in {@code Propagation.REQUIRES_NEW}. If a batch trips a
+     * unique-index collision, only that inner transaction is rolled back — the caller's
+     * outer transaction stays clean and the failed records fall through to the per-record
+     * retry path ({@link #saveCourtSchedules} → {@link #update}) which resolves the
+     * collision by updating the existing row.
+     *
+     * <p>Previously the persist+flush happened in the caller's transaction, so any
+     * collision marked that transaction rollback-only and Spring threw
+     * {@code UnexpectedRollbackException} at commit even when the per-record retry
+     * had recovered every record. See {@code SaveCourtSchedulesDuplicateTest} for
+     * the reproducer.</p>
      */
     private void processOptimizedBatches(List<CourtSchedule> courtSchedules, List<CourtSchedule> failedSchedules) {
         final int totalRecords = courtSchedules.size();
@@ -411,57 +423,29 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
         LOGGER.debug("Processing {} records in {} batches of size {}", totalRecords, numBatches, batchSize);
 
-        // Pre-allocate collections for better performance
-        final List<CourtSchedule> currentBatch = new ArrayList<>(batchSize);
-        int processedCount = 0;
-
-        try {
-            for (int i = 0; i < totalRecords; i++) {
-                final CourtSchedule cs = courtSchedules.get(i);
-                currentBatch.add(cs);
-
-                // Persist immediately to reduce memory footprint
-                entityManager.persist(cs);
-
-                // Process batch when it reaches the configured size or is the last batch
-                if (currentBatch.size() >= batchSize || i == totalRecords - 1) {
-                    if (flushBatchOptimized(currentBatch, failedSchedules)) {
-                        processedCount += currentBatch.size();
-                        LOGGER.debug("Successfully processed batch {}/{} with {} records",
-                                   (processedCount / batchSize) + 1, numBatches, currentBatch.size());
-                    } else {
-                        LOGGER.warn("Batch failed, processing {} records individually", currentBatch.size());
-                        processIndividualRecordsFast(currentBatch, failedSchedules);
-                        processedCount += currentBatch.size();
-                    }
-                    currentBatch.clear();
-                }
-            }
-
-        } catch (Exception e) {
-            LOGGER.error("Critical error during optimized batch processing: {}", e.getMessage(), e);
-            // Process remaining records individually
-            if (!currentBatch.isEmpty()) {
-                processIndividualRecordsFast(currentBatch, failedSchedules);
+        List<CourtSchedule> currentBatch = new ArrayList<>(batchSize);
+        for (int i = 0; i < totalRecords; i++) {
+            currentBatch.add(courtSchedules.get(i));
+            if (currentBatch.size() >= batchSize || i == totalRecords - 1) {
+                attemptBatchPersist(currentBatch, failedSchedules);
+                currentBatch = new ArrayList<>(batchSize);
             }
         }
     }
 
     /**
-     * Optimized batch flush with minimal overhead and fast execution.
+     * Try persisting the batch in its own transaction. On any failure (typically a
+     * unique-constraint violation) the inner transaction rolls back cleanly and the
+     * batch falls through to {@link #processIndividualRecordsFast}, which retries each
+     * record independently in its own REQUIRES_NEW transaction — collisions are
+     * resolved by updating the existing row, genuine inserts succeed on retry.
      */
-    private boolean flushBatchOptimized(List<CourtSchedule> batch, List<CourtSchedule> failedSchedules) {
+    private void attemptBatchPersist(final List<CourtSchedule> batch, final List<CourtSchedule> failedSchedules) {
         try {
-            // Single flush operation for maximum speed
-            entityManager.flush();
-            entityManager.clear();
-            return true;
+            courtScheduleBatchInsertService.persistBatch(batch);
         } catch (Exception e) {
-            LOGGER.warn("Batch flush failed for {} records: {}", batch.size(), e.getMessage());
-            // Add failed records to failedSchedules list
-            failedSchedules.addAll(batch);
-            entityManager.clear();
-            return false;
+            LOGGER.warn("Batch insert of {} records failed ({}); falling back to per-record retry", batch.size(), e.getMessage());
+            processIndividualRecordsFast(batch, failedSchedules);
         }
     }
 

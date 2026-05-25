@@ -135,7 +135,15 @@ public abstract class AbstractRepositoryTest {
      */
     @org.springframework.boot.SpringBootConfiguration
     @org.springframework.boot.autoconfigure.EnableAutoConfiguration
-    @ComponentScan(basePackages = "uk.gov.moj.cpp.courtscheduler.repository")
+    // `service` is included so CourtScheduleRetryService (an @Service the
+    // repository implementation @Inject-s via @Lazy) is resolvable inside
+    // @DataJpaTest contexts — without it the repository proxy is built fine
+    // but the first call into a method that touches the retry service fails
+    // with NoSuchBeanDefinitionException.
+    @ComponentScan(basePackages = {
+            "uk.gov.moj.cpp.courtscheduler.repository",
+            "uk.gov.moj.cpp.courtscheduler.service"
+    })
     @org.springframework.boot.persistence.autoconfigure.EntityScan(basePackages = "uk.gov.moj.cpp.courtscheduler.persist.entity")
     @org.springframework.data.jpa.repository.config.EnableJpaRepositories(basePackages = "uk.gov.moj.cpp.courtscheduler.repository")
     static class TestRepositoriesConfig {
