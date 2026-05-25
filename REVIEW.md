@@ -68,6 +68,7 @@ plus the non-obvious fixes that changed behaviour.
 | File | Why |
 |---|---|
 | `viewstore-persistence/.../repository/CourtScheduleRepositoryCustom.java` | The five view-store repositories were all converted from DeltaSpike `AbstractEntityRepository` to Spring Data interfaces. Four of them ended up as **single-file** `interface … extends JpaRepository, …RepositoryCustom { }` because their custom logic was small enough to inline. The CourtSchedule one stays as the **classic 3-file split** because its custom `…Impl` is 2000+ lines (entity-manager-driven business logic) — colocating that with the public interface would be unreadable. The Custom interface is the contract between them. |
+| `viewstore-persistence/.../service/CourtScheduleBatchInsertService.java` | Migration-specific. Isolates the batch `persist`+`flush` in `@Transactional(REQUIRES_NEW)` so a unique-index collision can't poison the caller's transaction with Hibernate's rollback-only flag. See §3.12 for the full diagnosis. |
 | `viewstore-persistence/src/test/resources/application.yml` | Minimal Spring config for the persistence module's slice tests (testcontainers-driven). |
 | `viewstore-liquibase/build.gradle` | Resource-only module; `java.srcDirs=[]` so no compile, only the Liquibase changelogs are packaged. Spring Boot's `spring.liquibase.change-log` config picks them up at runtime. |
 
@@ -439,6 +440,57 @@ in milliseconds, and would catch any future regression of either:
 The two failure modes they check are exactly the two we hit in this
 migration. Recommend `git add` and merge.
 
+### 3.12 Rollback-only contamination in `saveCourtSchedules`
+
+| File | Change |
+|---|---|
+| `service/CourtScheduleBatchInsertService.java` | **New.** Single method `persistBatch(List<CourtSchedule>)` annotated `@Transactional(propagation = REQUIRES_NEW)`. Wraps Hibernate's `entityManager.persist(...)` + `flush()` in an isolated transaction. |
+| `repository/CourtScheduleRepositoryImpl.java` | `processOptimizedBatches` no longer calls `entityManager.persist`/`flush` directly. It now delegates each batch to `courtScheduleBatchInsertService.persistBatch(...)` via the proxy; on failure (constraint violation), it falls through to the existing per-record `processIndividualRecordsFast` retry path. The old `flushBatchOptimized` helper is gone. |
+| `repository/SaveCourtSchedulesDuplicateTest.java` | **New.** `@DataJpaTest` against Testcontainers Postgres reproducing priming's HTTP 500. Asserts that a second `saveCourtSchedules` whose natural key already exists must commit cleanly, not throw. |
+| `repository/AbstractRepositoryTest.java` | `@ComponentScan` now also includes `uk.gov.moj.cpp.courtscheduler.service` so the retry / batch-insert services are resolvable inside `@DataJpaTest` contexts. |
+
+**Bug** (manifested in priming logs, root cause traced from `kubectl logs`):
+the legacy WildFly code's `upsertOne` / `processOptimizedBatches`
+implements an upsert as **try-insert, catch unique-constraint-violation,
+then update**. The batch persist+flush ran inside the caller's
+`@Transactional` boundary. Under EJB CMT this was tolerated (catching
+the application exception didn't propagate the rollback-only flag the
+same way). Under Spring's `@Transactional` proxy + Hibernate 7's JPA
+contract, the `flush()` failure marks the surrounding JPA transaction
+**rollback-only at flush-time** — before the catch block runs.
+`processIndividualRecordsFast` then recovers each record cleanly via
+`@Transactional(REQUIRES_NEW)` on `upsertOne`, but the outer transaction
+is already poisoned. Spring's interceptor refuses to commit a
+rollback-only tx → `UnexpectedRollbackException` → HTTP 500.
+
+**Important:** the entire upsert-by-exception pattern (`upsertOne`,
+`retryAndSave`, `processIndividualRecordsFast`, the recovery flow) is
+inherited verbatim from legacy `origin/main`. The migration did not
+introduce it. The bug was always latent — Spring's stricter
+rollback-only enforcement surfaced it.
+
+**Fix shape (taken):** isolate just the batch `persist`+`flush` in a
+`REQUIRES_NEW` transaction. If it fails, only that inner tx is rolled
+back — the caller's outer transaction stays committable, and the
+existing per-record retry path (already on `REQUIRES_NEW` via a separate
+bean) resolves the collision by updating the existing row.
+
+**Fix not taken (deliberately, for now):** replace the
+exception-as-control-flow upsert with Postgres-native
+`INSERT … ON CONFLICT (oucode, court_room_id, rota_business_type,
+session_start, court_session) WHERE active DO UPDATE …`. That removes
+~200 lines (`CourtScheduleRetryService`, `CourtScheduleBatchInsertService`,
+half of `CourtScheduleRepositoryImpl`'s batch machinery) and is
+race-safe under the concurrent priming load. Tracked as a follow-up in
+§4. The current REQUIRES_NEW fix unblocks priming today without
+rewriting the persistence path.
+
+`Session.upsert(entity)` (Hibernate 6.4+ / 7.x) is **not** the right
+primitive for this schema: it resolves conflicts on the PK, but the
+collision here is on a partial unique index over a non-PK natural key.
+HQL or native `INSERT … ON CONFLICT` is the only conflict-target-aware
+upsert option.
+
 ---
 
 ## 4. Out-of-scope but worth flagging
@@ -467,6 +519,14 @@ want to track them as separate cleanup items.
   informational, no functional impact.
 - Two DRL rule labels (`drl:28`, `drl:65`) don't match their `name == `
   constraint string. Display-only. Cosmetic.
+- §3.12 follow-up: replace the exception-as-control-flow upsert in
+  `CourtScheduleRepositoryImpl` with native Postgres
+  `INSERT … ON CONFLICT (…) WHERE active DO UPDATE`. Removes
+  ~200 lines (`CourtScheduleRetryService`, `CourtScheduleBatchInsertService`,
+  the batch/individual retry chain), eliminates the rollback-only
+  failure class entirely, and is race-safe under concurrent priming.
+  Estimated 2–4 days. Hibernate 7's `Session.upsert` is not applicable
+  here because the conflict target is a non-PK partial unique index.
 
 ---
 
@@ -485,5 +545,10 @@ want to track them as separate cleanup items.
 - [ ] §3.5 — any new `@ExceptionHandler` returns the `errorBody(...)` shape.
 - [ ] §3.7 — any new repository method follows the method-name + `@Query`
       convention, not the entityManager.createQuery boilerplate.
+- [ ] §3.12 — any new write path that may collide on a unique index
+      runs inside its own `@Transactional(REQUIRES_NEW)` (not the
+      caller's tx), or uses a real upsert (`INSERT … ON CONFLICT`).
+      Do **not** add new `try persist+flush / catch ConstraintViolation`
+      blocks in shared transactions.
 - [ ] No new file under `META-INF/` (no CDI / persistence.xml descriptors).
 - [ ] No new dependency on Justice Services artefacts.
