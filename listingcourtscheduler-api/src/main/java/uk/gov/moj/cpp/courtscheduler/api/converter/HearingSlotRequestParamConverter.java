@@ -41,8 +41,12 @@ public class HearingSlotRequestParamConverter implements Converter<JsonObject, H
                 valueOf(jsonObject.getString(RequestParameterConstant.IS_SLOT_BASED.getLabel())) : null;
         final String hearingStartTime = jsonObject.containsKey(RequestParameterConstant.HEARING_START_TIME.getLabel()) ?
                 jsonObject.getString(RequestParameterConstant.HEARING_START_TIME.getLabel()) : null;
-        final boolean showOverbookingSlots = jsonObject.containsKey(RequestParameterConstant.SHOW_OVERBOOKING_SLOTS.getLabel()) ?
-                jsonObject.getBoolean(RequestParameterConstant.SHOW_OVERBOOKING_SLOTS.getLabel()) : false;
+        // HearingSlotsApi.getHearingSlots writes Boolean fields into the qp map via
+        // .toString(), so they arrive here as JsonString("true"/"false") — not JsonValue.TRUE/FALSE.
+        // getBoolean() would ClassCast on a JsonString → HTTP 500; read as string and parse,
+        // matching the isSlotBased path above.
+        final boolean showOverbookingSlots = jsonObject.containsKey(RequestParameterConstant.SHOW_OVERBOOKING_SLOTS.getLabel()) &&
+                valueOf(jsonObject.getString(RequestParameterConstant.SHOW_OVERBOOKING_SLOTS.getLabel()));
         final String caseIdentifier = jsonObject.containsKey(RequestParameterConstant.CASE_IDENTIFIER.getLabel()) ?
                 jsonObject.getString(RequestParameterConstant.CASE_IDENTIFIER.getLabel()) : null;
         final String duration = jsonObject.containsKey(RequestParameterConstant.DURATION.getLabel()) ?
