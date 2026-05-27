@@ -126,4 +126,8 @@ tasks.named('test') {
 
 tasks.named('processTestResources') {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    // Copy the docker-compose .env (single source of truth for the Azurite
+    // connection string) onto the test classpath so AzuriteFixture can read
+    // it with getResourceAsStream — same file the compose stack auto-loads.
+    from('docker/.env')
 }

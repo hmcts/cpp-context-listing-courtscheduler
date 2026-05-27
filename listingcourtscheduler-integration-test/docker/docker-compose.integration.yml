@@ -2,9 +2,14 @@ services:
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:3.34.0
     container_name: CP_CSCHED_azurite
-    command: azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck
+    # Bind both sides of the port mapping to 10011 — same port as the Java
+    # tests' AzuriteFixture.BLOB_PORT — so the only difference between the
+    # host-side and app-side connection strings is the hostname.
+    # 10011 (not Azurite's default 10000) avoids clashing with a native
+    # Azurite a developer might already run on the standard port.
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10011 --skipApiVersionCheck
     ports:
-      - "10001:10000"
+      - "10011:10011"
 
   db:
     image: postgres:16-alpine
@@ -88,7 +93,10 @@ services:
       # The legacy AzureBlobClientService uses a connection-string when the account
       # name is empty; pointing it at the in-network Azurite container lets the
       # RotaFile* IT classes upload XML rota files and have the app pick them up.
-      CSCHED_ROTASLSTORAGECONNECTIONSTRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;" # gitleaks:allow
+      # Defined in `.env` (auto-loaded by docker-compose from the same directory).
+      # AzuriteFixture in the test classpath reads the same .env and adapts the
+      # host portion for tests that run on the host JVM.
+      CSCHED_ROTASLSTORAGECONNECTIONSTRING: ${CSCHED_ROTASLSTORAGECONNECTIONSTRING}
       CSCHED_ROTASLINPUTCONTAINERNAME: "schedulelistinginput"
       CSCHED_ROTASLARCHIVECONTAINERNAME: "schedulelistingarchive"
     depends_on:

@@ -68,12 +68,11 @@ class RotaFileProcessorIT extends AbstractIT {
 
     private final String azureBlobInputContainerName = "schedulelistinginput";
     private final String azureBlobOutputContainerName = "schedulelistingoutput";
-    // Azurite (Azure Storage emulator) — host-side default points at the local docker port
-    // (mapped to 10001 by docker/docker-compose.integration.yml). Override with -Dazurite.connectionString=...
-    // Microsoft-published Azurite account key — not a production secret; same as upstream tools use.
+    // Azurite (Azure Storage emulator). Override with -Dazurite.connectionString=...
+    // Default reads docker/.env from the test classpath via AzuriteFixture.
     private static final String ROTASL_STORAGE_CONNECTION_STRING = System.getProperty(
             "azurite.connectionString",
-            "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10001/devstoreaccount1;"); // gitleaks:allow
+            uk.gov.moj.cpp.courtscheduler.integration.utils.AzuriteFixture.connectionString());
 
     public static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 120;
     public static final int DEFAULT_POLL_TIMEOUT_FOR_CLEAN_REDUNDANT_ROTA_DATA_IN_SEC = 120;

@@ -1,0 +1,18 @@
+# Project-level allowlist for Gitleaks-based secret scanners.
+#
+# The Azurite emulator account key below is the well-known, publicly
+# documented test key shipped by Microsoft for the Azure Storage emulator.
+# It is published on https://learn.microsoft.com/azure/storage/common/storage-use-azurite
+# and is identical across every Azurite installation — it cannot authenticate
+# against real Azure Storage. Detecting it as a "leaked secret" is a false
+# positive; allowlist it globally so we don't need a per-line `gitleaks:allow`
+# comment on each occurrence.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Azurite emulator account key — public Microsoft test fixture, not a real secret"
+regexes = [
+    '''Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=='''
+]
