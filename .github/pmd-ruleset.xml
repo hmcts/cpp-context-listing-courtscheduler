@@ -27,6 +27,15 @@
         <exclude name="ShortVariable"/>
         <exclude name="TooManyStaticImports"/>
     </rule>
+    <!-- Allow the conventional SLF4J field name `logger` on top of the default
+         all-uppercase constant pattern. Twenty files in the legacy WildFly
+         codebase use `private static final Logger logger`; we preserve that
+         naming rather than churn unrelated files in the migration PR. -->
+    <rule ref="category/java/codestyle.xml/FieldNamingConventions">
+        <properties>
+            <property name="exclusions" value="serialVersionUID,serialPersistentFields,logger"/>
+        </properties>
+    </rule>
     <rule ref="category/java/errorprone.xml">
         <exclude name="InvalidLogMessageFormat"/>
     </rule>
