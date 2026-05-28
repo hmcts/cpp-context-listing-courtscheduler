@@ -21,7 +21,8 @@ import java.util.Properties;
  *
  * <p>The Microsoft-published account key embedded in that string is the
  * publicly documented Azurite emulator key; it cannot authenticate against
- * real Azure Storage. Globally allowlisted in {@code .gitleaks.toml}.</p>
+ * real Azure Storage. Marked {@code # gitleaks:allow} on the {@code .env}
+ * line so the HMCTS secret scanner treats it as an intentional fixture.</p>
  */
 public final class AzuriteFixture {
 
@@ -45,9 +46,17 @@ public final class AzuriteFixture {
             }
             final Properties p = new Properties();
             p.load(in);
-            final String value = p.getProperty(ENV_KEY);
+            String value = p.getProperty(ENV_KEY);
             if (value == null || value.isBlank()) {
                 throw new IllegalStateException(ENV_KEY + " missing from /.env on the test classpath");
+            }
+            // Strip any trailing ` # …` inline comment. docker-compose v2 strips
+            // these from .env values; java.util.Properties does not, so we do it
+            // here. The connection string we care about has no legitimate ` #`
+            // sequence in its content.
+            final int commentStart = value.indexOf(" #");
+            if (commentStart >= 0) {
+                value = value.substring(0, commentStart).stripTrailing();
             }
             return value;
         } catch (IOException e) {
