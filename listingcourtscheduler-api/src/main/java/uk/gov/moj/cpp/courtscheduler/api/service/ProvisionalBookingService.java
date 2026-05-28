@@ -4,7 +4,7 @@ import static java.util.UUID.randomUUID;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PROVISIONAL_SLOTS;
 
-import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
+import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;

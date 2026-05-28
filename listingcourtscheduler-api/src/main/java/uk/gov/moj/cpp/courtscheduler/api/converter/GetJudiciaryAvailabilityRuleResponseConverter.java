@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import org.springframework.stereotype.Service;
 
+import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
 
