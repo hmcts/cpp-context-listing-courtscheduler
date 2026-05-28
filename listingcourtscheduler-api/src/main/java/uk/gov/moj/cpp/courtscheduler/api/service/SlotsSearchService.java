@@ -2,7 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.Integer.parseInt;
 
-import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
+import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
