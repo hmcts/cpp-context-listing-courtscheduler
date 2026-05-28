@@ -1,13 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.UUID.randomUUID;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -18,24 +17,22 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
-import javax.inject.Inject;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import jakarta.transaction.Transactional;
-import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.After;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
-@RunWith(CdiTestRunner.class)
-public class CourtScheduleJudiciaryRepositoryTest {
-    @Inject
+
+class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler.repository.AbstractRepositoryTest {
+    @Autowired
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
-    @Inject
+    @Autowired
     private CourtScheduleRepository courtScheduleRepository;
 
-    @After
+    @AfterEach
     public void tearDown() {
         List<CourtScheduleJudiciary> all = courtScheduleJudiciaryRepository.findAll();
         all.forEach(courtScheduleJudiciary -> courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary));
@@ -43,7 +40,7 @@ public class CourtScheduleJudiciaryRepositoryTest {
 
     @Test
     public void shouldSave() {
-        final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
         CourtScheduleJudiciary by = courtScheduleJudiciaryRepository.findBy(courtScheduleJudiciary.getId());
@@ -54,7 +51,7 @@ public class CourtScheduleJudiciaryRepositoryTest {
 
     @Test
     public void shouldFindByEmail() {
-        final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
         CourtScheduleJudiciary by = courtScheduleJudiciaryRepository.findByEmail(courtScheduleJudiciary.getEmail());
@@ -65,7 +62,7 @@ public class CourtScheduleJudiciaryRepositoryTest {
 
     @Test
     public void shouldFindCourtScheduleJudiciariesUpdatedBetweenDates() {
-        CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
+        CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
         LocalDate fromDate = LocalDate.now().minusDays(1);
         LocalDate toDate = LocalDate.now().plusDays(1);
         MiFilterCriteria miFilterCriteria = new MiFilterCriteria(fromDate, toDate);
@@ -79,8 +76,8 @@ public class CourtScheduleJudiciaryRepositoryTest {
 
     @Test
     public void shouldDeactivateSchedules() {
-        final String courtScheduleId = randomUUID().toString();
-        final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
+        final String courtScheduleId = persistRandomCourtSchedule();
+        final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary.getId().setCourtScheduleId(courtScheduleId);
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
@@ -97,10 +94,10 @@ public class CourtScheduleJudiciaryRepositoryTest {
 
     @Test
     public void shouldUpdateCourtScheduleJudiciaryPosition() {
-        final String courtScheduleId = randomUUID().toString();
+        final String courtScheduleId = persistRandomCourtSchedule();
         final String judiciaryId = randomUUID().toString();
 
-        final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary.setPosition("6");
         courtScheduleJudiciary.setUpdatedOn(Calendar.getInstance().getTime());
         courtScheduleJudiciary.setActive(false);
@@ -124,14 +121,14 @@ public class CourtScheduleJudiciaryRepositoryTest {
 
     @Test
     public void shouldFindInCourtSchedules() {
-        final String courtScheduleId1 = randomUUID().toString();
-        final CourtScheduleJudiciary courtScheduleJudiciary1 = random(CourtScheduleJudiciary.class);
+        final String courtScheduleId1 = persistRandomCourtSchedule();
+        final CourtScheduleJudiciary courtScheduleJudiciary1 = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary1.getId().setCourtScheduleId(courtScheduleId1);
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary1);
 
-        final String courtScheduleId2 = randomUUID().toString();
-        final CourtScheduleJudiciary courtScheduleJudiciary2 = random(CourtScheduleJudiciary.class);
+        final String courtScheduleId2 = persistRandomCourtSchedule();
+        final CourtScheduleJudiciary courtScheduleJudiciary2 = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary2.getId().setCourtScheduleId(courtScheduleId2);
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary2);
@@ -141,18 +138,18 @@ public class CourtScheduleJudiciaryRepositoryTest {
         assertEquals(2, courtScheduleJudiciaries.size());
     }
 
-    @Ignore("when removing transactional ut not working, otherwise it receives an exception whilst runtime")
+    @Disabled("when removing transactional ut not working, otherwise it receives an exception whilst runtime")
     @Test
     @Transactional
     public void shouldDeleteSchedules() {
-        final String courtScheduleId1 = randomUUID().toString();
-        final CourtScheduleJudiciary courtScheduleJudiciary1 = random(CourtScheduleJudiciary.class);
+        final String courtScheduleId1 = persistRandomCourtSchedule();
+        final CourtScheduleJudiciary courtScheduleJudiciary1 = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary1.getId().setCourtScheduleId(courtScheduleId1);
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary1);
 
-        final String courtScheduleId2 = randomUUID().toString();
-        final CourtScheduleJudiciary courtScheduleJudiciary2 = random(CourtScheduleJudiciary.class);
+        final String courtScheduleId2 = persistRandomCourtSchedule();
+        final CourtScheduleJudiciary courtScheduleJudiciary2 = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary2.getId().setCourtScheduleId(courtScheduleId2);
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary2);
@@ -168,13 +165,13 @@ public class CourtScheduleJudiciaryRepositoryTest {
         assertTrue(isEmpty(expectedCourtScheduleJudiciary2));
     }
 
-    @Ignore("when we remove transactional annotation, then it is causing the assertion to fail - will fix later")
+    @Disabled("when we remove transactional annotation, then it is causing the assertion to fail - will fix later")
     @Test
     @Transactional
     public void shouldDeleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod() {
-        final String courtScheduleId1 = randomUUID().toString();
+        final String courtScheduleId1 = persistRandomCourtSchedule();
         final String ouCode1 = "B53DT00";
-        final CourtScheduleJudiciary courtScheduleJudiciary1 = random(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciary courtScheduleJudiciary1 = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary1.getId().setCourtScheduleId(courtScheduleId1);
         courtScheduleJudiciary1.setActive(true);
 
@@ -192,9 +189,9 @@ public class CourtScheduleJudiciaryRepositoryTest {
 
         courtScheduleRepository.save(courtSchedule1);
 
-        final String courtScheduleId2 = randomUUID().toString();
+        final String courtScheduleId2 = persistRandomCourtSchedule();
         final String ouCode2 = "B52BB00";
-        final CourtScheduleJudiciary courtScheduleJudiciary2 = random(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciary courtScheduleJudiciary2 = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary2.getId().setCourtScheduleId(courtScheduleId2);
         courtScheduleJudiciary2.setActive(true);
 
@@ -226,7 +223,7 @@ public class CourtScheduleJudiciaryRepositoryTest {
 
     @Test
     public void shouldFindCourtScheduleIdsByJudiciaryDateRangeAndSessionType() {
-        final String courtScheduleId = randomUUID().toString();
+        final String courtScheduleId = persistRandomCourtSchedule();
         final String judiciaryId = randomUUID().toString();
         final LocalDate sessionDate = LocalDate.now().plusDays(5);
         final String sessionType = "AM";
@@ -242,7 +239,7 @@ public class CourtScheduleJudiciaryRepositoryTest {
         courtSchedule.setAvailableDuration(0);
         courtScheduleRepository.save(courtSchedule);
 
-        final CourtScheduleJudiciary courtScheduleJudiciary = random(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary.getId().setCourtScheduleId(courtScheduleId);
         courtScheduleJudiciary.getId().setJudiciaryId(judiciaryId);
         courtScheduleJudiciary.setActive(true);

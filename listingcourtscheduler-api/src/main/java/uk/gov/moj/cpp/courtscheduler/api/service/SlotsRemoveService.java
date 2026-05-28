@@ -2,10 +2,11 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
-@ApplicationScoped
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class SlotsRemoveService {
 
     @Inject

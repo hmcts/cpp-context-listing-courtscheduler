@@ -1,49 +1,32 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import static java.util.UUID.randomUUID;
-import static javax.json.Json.createObjectBuilder;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import uk.gov.justice.services.core.enveloper.Enveloper;
-import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.justice.services.messaging.Envelope;
-import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.justice.services.messaging.Metadata;
-import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaFileCaptureAndProcessTriggerService;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaRedundantDataCleanerService;
 
-import java.util.UUID;
-import java.util.function.Function;
-
-import javax.ejb.AsyncResult;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
+/**
+ * Re-platformed onto the Spring Boot {@link RotaFileProcessorApi} (was a CDI
+ * {@code @CustomServiceComponent} that took {@code JsonEnvelope}s and called the
+ * trigger service with a {@code Requester}). The current controller takes a
+ * plain {@code Map<String,Object>} body and returns {@link ResponseEntity}; it
+ * dispatches to the same downstream services with their migrated signatures.
+ */
 @ExtendWith(MockitoExtension.class)
 class RotaFileProcessorApiTest {
-
-    @Mock
-    private Enveloper enveloper;
-
-    @Mock
-    private Requester requester;
-
-    @Mock
-    private Function<Object, JsonEnvelope> function;
 
     @Mock
     private RotaFileCaptureAndProcessTriggerService rotaFileCaptureAndProcessTriggerService;
@@ -54,52 +37,56 @@ class RotaFileProcessorApiTest {
     @InjectMocks
     private RotaFileProcessorApi rotaFileProcessorApi;
 
-    @Mock
-    private Logger LOGGER;
-
     @Test
     void shouldProcessRotaFiles() {
-        final String requestName = "courtscheduler.rotasl.process_rota_files";
+        final Map<String, Object> body = new HashMap<>();
+        body.put("rotaProcess", "new");
+        body.put("forItTest", false);
 
-        final JsonObject payloadAsJsonObject = createObjectBuilder().build();
-        final JsonEnvelope processRotaFilesJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
-        when(enveloper.withMetadataFrom(processRotaFilesJsonEnvelope, requestName)).thenReturn(function);
-        when(rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(eq(requester), eq(false), eq("new"))).thenReturn(new AsyncResult<>("SUCCESS"));
+        final ResponseEntity<Void> response = rotaFileProcessorApi.postProcessRotaFiles(body);
 
-        rotaFileProcessorApi.processRotaFiles(processRotaFilesJsonEnvelope);
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        verify(rotaFileCaptureAndProcessTriggerService).captureRotaFilesAndProcessEach(eq(false), eq("new"));
+    }
 
-        verify(rotaFileCaptureAndProcessTriggerService, timeout(1000).atLeastOnce()).captureRotaFilesAndProcessEach(eq(requester), eq(false), eq("new"));
-        verify(LOGGER, atLeastOnce()).info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
-        verify(enveloper, atLeastOnce()).withMetadataFrom(processRotaFilesJsonEnvelope, requestName);
+    @Test
+    void shouldProcessRotaFilesWithMissingRotaProcessUsingRandomUuid() {
+        // When body has no rotaProcess key, the controller passes a random UUID through —
+        // the trigger service then routes to the "new" rota processor branch.
+        final ResponseEntity<Void> response = rotaFileProcessorApi.postProcessRotaFiles(new HashMap<>());
+
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        verify(rotaFileCaptureAndProcessTriggerService).captureRotaFilesAndProcessEach(eq(false), org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void shouldProcessRotaFilesPassingForItTestFlagThrough() {
+        final Map<String, Object> body = new HashMap<>();
+        body.put("rotaProcess", "old");
+        body.put("forItTest", true);
+
+        final ResponseEntity<Void> response = rotaFileProcessorApi.postProcessRotaFiles(body);
+
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        verify(rotaFileCaptureAndProcessTriggerService).captureRotaFilesAndProcessEach(eq(true), eq("old"));
     }
 
     @Test
     void shouldCleanRedundantRotaData() {
-        final String requestName = "courtscheduler.rotasl.clean_redundant_rota_data";
+        final Map<String, Object> body = new HashMap<>();
+        body.put("months", 6);
 
-        final JsonObject payloadAsJsonObject = createObjectBuilder().build();
-        final JsonEnvelope cleanRedundantRotaDataJsonEnvelope = createEnvelope(requestName, payloadAsJsonObject);
-        when(enveloper.withMetadataFrom(cleanRedundantRotaDataJsonEnvelope, requestName)).thenReturn(function);
-        doNothing().when(rotaRedundantDataCleanerService).cleanDataForPreviousMonths(anyInt());
+        final ResponseEntity<Void> response = rotaFileProcessorApi.postCleanRedundantRotaData(body);
 
-        rotaFileProcessorApi.cleanRedundantRotaData(cleanRedundantRotaDataJsonEnvelope);
-
-        verify(rotaRedundantDataCleanerService, timeout(1000).atLeastOnce()).cleanDataForPreviousMonths(anyInt());
-        verify(LOGGER, atLeastOnce()).info("cleanRedundantRotaData api called - courtscheduler.rotasl.clean_redundant_rota_data");
-        verify(LOGGER, atLeastOnce()).info("successfully called and completed - rotaRedundantDataCleanerService.cleanDataForPreviousMonths asynchronously");
-        verify(enveloper, atLeastOnce()).withMetadataFrom(cleanRedundantRotaDataJsonEnvelope, requestName);
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        verify(rotaRedundantDataCleanerService).cleanDataForPreviousMonths(6);
     }
 
-    private JsonEnvelope createEnvelope(final String name, final JsonValue payload) {
-        final UUID uuid = randomUUID();
-        final UUID userId = randomUUID();
+    @Test
+    void shouldCleanRedundantRotaDataDefaultsToSixMonthsWhenBodyEmpty() {
+        final ResponseEntity<Void> response = rotaFileProcessorApi.postCleanRedundantRotaData(new HashMap<>());
 
-        final Metadata metadata = Envelope
-                .metadataBuilder()
-                .withName(name)
-                .withId(uuid)
-                .withUserId(userId.toString())
-                .build();
-        return new DefaultJsonEnvelopeProvider().envelopeFrom(metadata, payload);
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        verify(rotaRedundantDataCleanerService).cleanDataForPreviousMonths(6);
     }
 }

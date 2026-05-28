@@ -16,8 +16,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * Utility class for rota file-related operations such as file validation,
  * snapshot file processing, and file type checks.
  */
-@ApplicationScoped
+@Service
 public class RotaFileUtility {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileUtility.class);

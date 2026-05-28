@@ -1,11 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import org.springframework.stereotype.Service;
+
 import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.logging.Level.WARNING;
 import static java.util.logging.Logger.getGlobal;
-import static javax.json.Json.createObjectBuilder;
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static jakarta.json.Json.createObjectBuilder;
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
@@ -16,8 +18,8 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CR
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_AFTER_END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
 
-import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
-import uk.gov.justice.services.common.converter.LocalDates;
+import org.springframework.web.server.ResponseStatusException;
+// (removed) use java.time.LocalDate directly
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
@@ -31,13 +33,14 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.json.JsonObject;
+import jakarta.inject.Inject;
+import jakarta.json.JsonObject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Service
 public class HearingSlotsApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
     @Inject
@@ -65,8 +68,8 @@ public class HearingSlotsApiValidator {
         }
 
         // Validate startDate <= endDate
-        final var start = LocalDates.from(hearingSlotRequestParam.sessionStartDate());
-        final var end = LocalDates.from(hearingSlotRequestParam.sessionEndDate());
+        final var start = java.time.LocalDate.parse(hearingSlotRequestParam.sessionStartDate());
+        final var end = java.time.LocalDate.parse(hearingSlotRequestParam.sessionEndDate());
         if (end.isBefore(start)) {
             return buildErrorResponse(START_DATE_AFTER_END_DATE);
         }
@@ -75,7 +78,7 @@ public class HearingSlotsApiValidator {
             try {
                 ZonedDateTime.parse(hearingSlotRequestParam.hearingStartTime());
             } catch (final DateTimeParseException e) {
-                throw new BadRequestException(format("Invalid hearingStartTime: %s and exception %s ", hearingSlotRequestParam.hearingStartTime(),e.getMessage()));
+                throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, format("Invalid hearingStartTime: %s and exception %s ", hearingSlotRequestParam.hearingStartTime(),e.getMessage()));
             }
         }
 
@@ -148,7 +151,7 @@ public class HearingSlotsApiValidator {
 
     private boolean isInvalidDateFormat(final String date) {
         try {
-            LocalDates.from(date);
+            java.time.LocalDate.parse(date);
         } catch (final DateTimeParseException e) {
             getGlobal().log(WARNING, format("Invalid Date supplied: %s and exception", date), e);
             return true;

@@ -11,11 +11,11 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.transaction.Transactional;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import org.springframework.transaction.annotation.Transactional;
 
-@ApplicationScoped
+@Service
 public class RotaFileProcessHistoryService {
 
     @Inject

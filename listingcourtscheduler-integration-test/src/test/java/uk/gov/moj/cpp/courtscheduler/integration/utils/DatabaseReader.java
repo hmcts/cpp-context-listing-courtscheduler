@@ -24,9 +24,9 @@ import org.apache.commons.lang3.tuple.Pair;
 
 public class DatabaseReader {
 
-    private static final String USERNAME = "scsl";
-    private static final String PASSWORD = "scsl";
-    private static final String DATABASE = "scsl";
+    private static final String USERNAME = System.getProperty("db.user", "courtscheduler");
+    private static final String PASSWORD = System.getProperty("db.password", "courtscheduler");
+    private static final String DATABASE = System.getProperty("db.name", "courtscheduler");
 
     private static final String COURT_SCHEDULE_GET_SQL = "SELECT * FROM court_schedule WHERE active is true ORDER BY session_start";
     private static final String COURT_SCHEDULE_JUDICIARY_GET_SQL = "SELECT * FROM court_schedule_judiciary WHERE active is true";

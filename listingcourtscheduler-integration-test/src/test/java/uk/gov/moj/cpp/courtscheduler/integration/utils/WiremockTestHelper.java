@@ -1,38 +1,33 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 
-import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.requestParams;
-import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
-import static uk.gov.justice.services.test.utils.core.matchers.ResponseStatusMatcher.status;
-
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-
-import java.util.concurrent.TimeUnit;
-
-import javax.ws.rs.core.Response.Status;
-
+import jakarta.ws.rs.core.Response.Status;
 
 /**
- * Provides helper methods for tests to interact with Wiremock instance
+ * Re-platformed in place: was a Justice Services {@code RestPoller}/{@code ResponseStatusMatcher}
+ * helper waiting for stubs on {@code localhost:8080}. Now uses the shim {@link RestPoller}
+ * targeting the dockerised app via {@code app.baseUrl}.
  */
 public class WiremockTestHelper {
 
     public static final int TIMEOUT = 90;
 
-    private static final String HOST = System.getProperty("INTEGRATION_HOST_KEY", "localhost");
-    private static final String BASE_URI = "http://" + HOST + ":8080";
+    private static final String APP_BASE_URL = System.getProperty(
+            "app.baseUrl",
+            "http://localhost:8083/listingcourtscheduler-api/rest/courtscheduler");
 
     public static void waitForStubToBeReady(final String resource, final String mediaType) {
         waitForStubToBeReady(resource, mediaType, Status.OK);
     }
 
     public static void waitForStubToBeReady(final String resource, final String mediaType, final Status expectedStatus) {
-        final RequestParams requestParams = requestParams(BASE_URI + resource, mediaType).build();
-
-        poll(requestParams)
-                .timeout(TIMEOUT, TimeUnit.SECONDS)
-                .until(
-                        status().is(expectedStatus)
-                );
+        final RequestParams params = new RequestParams(APP_BASE_URL + resource, mediaType, null);
+        final ResponseData responseData = poll(params).timeout(TIMEOUT, SECONDS).until();
+        if (responseData.getStatus().getStatusCode() != expectedStatus.getStatusCode()) {
+            throw new IllegalStateException("Stub at " + resource + " not ready, got status "
+                    + responseData.getStatus().getStatusCode());
+        }
     }
 }

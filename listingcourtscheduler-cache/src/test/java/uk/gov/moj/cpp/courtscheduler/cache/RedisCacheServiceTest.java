@@ -9,7 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.gov.justice.services.test.utils.core.reflection.ReflectionUtil.setField;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisConnectionException;

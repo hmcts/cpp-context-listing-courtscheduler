@@ -8,13 +8,13 @@ import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 
 import java.util.List;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
 public class BusinessTypeMatchingLogger {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(BusinessTypeMatchingLogger.class);

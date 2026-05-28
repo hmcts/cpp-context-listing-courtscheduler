@@ -8,6 +8,9 @@
 *.rar
 *.puml
 
+# Keep the Gradle wrapper jar so fresh checkouts can bootstrap ./gradlew
+!gradle/wrapper/gradle-wrapper.jar
+
 # Thumbnails
 Thumbs.db
 
@@ -46,6 +49,13 @@ Thumbs.db
 # Maven
 target/
 .mvn/
+
+# Gradle
+build/
+.gradle/
+
+# Claude Code session state
+.claude/
 
 # Subversion
 .svn/

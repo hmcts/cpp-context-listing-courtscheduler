@@ -1,0 +1,8 @@
+# Azure Blob Storage — used by rota file processor
+azure:
+  storage:
+    connection-string: ${AZURE_STORAGE_CONNECTION_STRING:}
+    input-container: ${AZURE_STORAGE_INPUT_CONTAINER:rotasl-input}
+    archive-container: ${AZURE_STORAGE_ARCHIVE_CONTAINER:rotasl-archive}
+    rota-prefix: ${AZURE_STORAGE_ROTA_PREFIX:lja_}
+    it-test-prefix: ${AZURE_STORAGE_IT_PREFIX:IT_Test_}

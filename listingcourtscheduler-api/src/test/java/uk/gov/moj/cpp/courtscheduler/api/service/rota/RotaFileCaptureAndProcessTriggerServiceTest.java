@@ -8,7 +8,6 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
@@ -47,9 +46,6 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
     private ReferenceDataMapperService referenceDataMapperService;
 
     @Mock
-    private Requester requester;
-
-    @Mock
     private BlobItem blobItem;
 
     @Test
@@ -64,15 +60,15 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
 
         when(azureBlobClientService.findAvailableFile(eq("lja_"))).thenReturn(listBlobItemMap);
         when(azureBlobClientService.downloadFiles(any(BlobItem.class))).thenReturn(blobContent);
-        doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName), eq(leaseId));
-        doNothing().when(referenceDataMapperService).loadJudiciaries(eq(requester));
-        doNothing().when(referenceDataMapperService).loadCourtRooms(eq(requester));
-        doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations(eq(requester));
+        doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(  eq(blobContent), eq(blobName), eq(leaseId));
+        doNothing().when(referenceDataMapperService).loadJudiciaries();
+        doNothing().when(referenceDataMapperService).loadCourtRooms();
+        doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations();
 
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, false, "new");
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(false, "new");
 
         verify(azureBlobClientService, atLeastOnce()).findAvailableFile(eq("lja_"));
-        verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(eq(requester), eq(blobContent), eq(blobName), eq(leaseId));
+        verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(  eq(blobContent), eq(blobName), eq(leaseId));
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {

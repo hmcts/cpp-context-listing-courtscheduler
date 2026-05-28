@@ -12,16 +12,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.json.Json;
-import javax.json.JsonObject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class SlotsSearchService {
     private static final Logger LOGGER = LoggerFactory.getLogger(SlotsSearchService.class.getName());
 

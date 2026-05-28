@@ -27,7 +27,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.DISTRICT_JUD
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryAssignmentRequestHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleData;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryScheduleAssignment;
@@ -99,9 +98,6 @@ class RotaFileProcessorTest {
     private RotaLocationPeriodHelper rotaLocationPeriodHelper;
 
 
-    @Mock
-    private Requester requester;
-
     @InjectMocks
     private RotaFileProcessor rotaFileProcessor;
 
@@ -159,7 +155,7 @@ class RotaFileProcessorTest {
             setupSuccessfulProcessing();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(azureBlobClientService).uploadProcessedFile(any(ByteArrayInputStream.class), eq((long) blobContent.length), eq(blobName), eq(empty()));
@@ -176,7 +172,7 @@ class RotaFileProcessorTest {
             when(rotaFileParser.parse(anyString(), any())).thenThrow(new RuntimeException("Parsing error"));
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(azureBlobClientService).releaseLease(blobName, leaseId, true);
@@ -204,7 +200,7 @@ class RotaFileProcessorTest {
             doNothing().when(azureBlobClientService).deleteFile(anyString(), any());
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaFileUtility).isDummyFile(blobName);
@@ -226,7 +222,7 @@ class RotaFileProcessorTest {
             doNothing().when(azureBlobClientService).deleteFile(anyString(), any());
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaFileUtility).isNewerSnapshotFileProcessed(blobName);
@@ -246,7 +242,7 @@ class RotaFileProcessorTest {
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaFileUtility).createAndSaveFileProcessHistory(eq(blobName), eq(blobContent), eq(rotaFileProcessHistoryService));
@@ -273,7 +269,7 @@ class RotaFileProcessorTest {
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaFileProcessHistoryService, never()).update(any(RotaFileProcessHistory.class));
@@ -292,7 +288,7 @@ class RotaFileProcessorTest {
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaFileUtility).createAndSaveFileProcessHistory(eq(blobName), eq(blobContent), eq(rotaFileProcessHistoryService));
@@ -312,16 +308,16 @@ class RotaFileProcessorTest {
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             // Verify processing completed successfully
             verify(rotaFileParser).parse(blobName, blobContent);
-            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true));
+            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true));
             verify(rotaFileUtility).logProcessingTime(any(), eq(blobName), anyLong(), anyLong());
             // Verify that updateFileProcessHistory utility method is called (which internally calls the service)
             verify(rotaFileUtility).updateFileProcessHistory(any(), any(RotaFileProcessHistory.class), eq(blobName), eq(rotaFileProcessHistoryService));
@@ -352,11 +348,11 @@ class RotaFileProcessorTest {
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(expectedExecutionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(expectedExecutionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaFileUtility).createAndSaveFileProcessHistory(eq(blobName), eq(blobContent), eq(rotaFileProcessHistoryService));
@@ -382,7 +378,7 @@ class RotaFileProcessorTest {
             when(rotaLocationPeriodHelper.getLocationFromRecords(anyMap())).thenReturn(expectedLocations);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaLocationPeriodHelper).getLocationFromRecords(anyMap());
@@ -397,14 +393,14 @@ class RotaFileProcessorTest {
             final List<String> locations = List.of("100", "200");
             final List<String> expectedOuCodes = List.of("OU001", "OU002");
             when(rotaLocationPeriodHelper.getLocationFromRecords(anyMap())).thenReturn(locations);
-            when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations, requester))
+            when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations))
                     .thenReturn(expectedOuCodes);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaLocationPeriodHelper).getOuCodesFromCourtRoomMappingsByLocationId(locations, requester);
+            verify(rotaLocationPeriodHelper).getOuCodesFromCourtRoomMappingsByLocationId(locations);
         }
 
         @Test
@@ -415,7 +411,7 @@ class RotaFileProcessorTest {
             setupRecordsWithData();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaLocationPeriodHelper).getRotaPeriodDates(anyMap());
@@ -428,13 +424,13 @@ class RotaFileProcessorTest {
             setupSuccessfulProcessing();
             setupRecordsWithData();
             final List<String> ouCodes = List.of("OU001", "OU002");
-            when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList(), any()))
+            when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList()))
                     .thenReturn(ouCodes);
             when(rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes)))
                     .thenReturn(5);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaLocationPeriodHelper).deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes));
@@ -447,16 +443,16 @@ class RotaFileProcessorTest {
             setupSuccessfulProcessing();
             setupRecordsWithRotaPeriod();
             when(rotaLocationPeriodHelper.getLocationFromRecords(anyMap())).thenReturn(List.of());
-            when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList(), any()))
+            when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList()))
                     .thenReturn(List.of());
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaLocationPeriodHelper).getLocationFromRecords(anyMap());
-            verify(rotaLocationPeriodHelper).getOuCodesFromCourtRoomMappingsByLocationId(List.of(), requester);
+            verify(rotaLocationPeriodHelper).getOuCodesFromCourtRoomMappingsByLocationId(List.of());
         }
     }
 
@@ -476,13 +472,13 @@ class RotaFileProcessorTest {
             setupRecordsWithData();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(rotaFileParser).parse(blobName, blobContent);
-            verify(rotaJudiciaryHelper).createJudiciaryMap(anyMap(), any(), anyString());
-            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), any(), anyString());
-            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString());
+            verify(rotaJudiciaryHelper).createJudiciaryMap(anyMap(), anyString());
+            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), anyString());
+            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString());
         }
 
         @Test
@@ -493,15 +489,15 @@ class RotaFileProcessorTest {
             final Map<String, Map<String, String>> magistrates = createMagistratesRecord("mag-1", "magistrate@example.com");
             records.put(MAGISTRATES, magistrates);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
-            when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
                     .thenReturn(Map.of("mag-1", UUID.fromString(judiciary.getId())));
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaJudiciaryHelper).createJudiciaryMap(anyMap(), any(), eq(executionId));
+            verify(rotaJudiciaryHelper).createJudiciaryMap(anyMap(), eq(executionId));
         }
 
         @Test
@@ -512,15 +508,15 @@ class RotaFileProcessorTest {
             final Map<String, Map<String, String>> courtListings = createCourtListingRecord("listing-1");
             records.put(COURT_LISTING, courtListings);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
-            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
+            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                     .thenReturn(Map.of("listing-1", Set.of(UUID.fromString(courtSchedule.getCourtScheduleId()))));
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), any(), eq(executionId));
+            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), eq(executionId));
         }
 
         @Test
@@ -535,15 +531,15 @@ class RotaFileProcessorTest {
             courtListings.put("listing-1", listingData);
             records.put(COURT_LISTING, courtListings);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
-            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
+            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                     .thenReturn(emptyMap());
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), any(), eq(executionId));
+            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), eq(executionId));
         }
 
         @Test
@@ -559,15 +555,15 @@ class RotaFileProcessorTest {
             courtListings.put("listing-1", listingData);
             records.put(COURT_LISTING, courtListings);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
-            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
+            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                     .thenReturn(emptyMap());
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), any(), eq(executionId));
+            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), eq(executionId));
         }
 
         @Test
@@ -580,19 +576,19 @@ class RotaFileProcessorTest {
             final Map<String, Map<String, String>> magistrates = createMagistratesRecord("judge-1", "magistrate@example.com");
             records.put(MAGISTRATES, magistrates);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
-            when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
                     .thenReturn(Map.of("judge-1", UUID.fromString(judiciary.getId())));
-            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
+            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                     .thenReturn(Map.of("listing-1", Set.of(UUID.randomUUID())));
-            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(Map.of(judiciary.getId(), List.of(new JudiciaryCourtScheduleData(
                             List.of(UUID.randomUUID()), null, "CHAIR", true, false))));
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), eq(executionId));
+            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), eq(executionId));
         }
 
         @Test
@@ -610,10 +606,10 @@ class RotaFileProcessorTest {
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), eq(executionId));
+            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), eq(executionId));
         }
 
         @Test
@@ -630,18 +626,18 @@ class RotaFileProcessorTest {
             final Map<String, Map<String, String>> magistrates = createMagistratesRecord("judge-1", "magistrate@example.com");
             records.put(MAGISTRATES, magistrates);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
-            when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
                     .thenReturn(Map.of("judge-1", UUID.fromString(judiciary.getId())));
-            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
+            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                     .thenReturn(emptyMap());
-            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(Collections.emptyMap());
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), eq(executionId));
+            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), eq(executionId));
         }
     }
 
@@ -669,17 +665,17 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaJudiciaryHelper).createJudiciaryMap(anyMap(), any(), eq(executionId));
-            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), any(), eq(executionId));
-            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), eq(executionId));
-            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true));
+            verify(rotaJudiciaryHelper).createJudiciaryMap(anyMap(), eq(executionId));
+            verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), eq(executionId));
+            verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), eq(executionId));
+            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true));
         }
 
         @Test
@@ -695,7 +691,7 @@ class RotaFileProcessorTest {
             final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
             rotaFeedDataMap.put(judiciary.getId(), List.of(new JudiciaryCourtScheduleData(
                     List.of(sessionId1, sessionId2), null, "CHAIR", true, false)));
-            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
             final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciary.getId(), sessionId1, sessionId2);
@@ -703,15 +699,15 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(2, 2);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             final ArgumentCaptor<AssignJudiciariesRequest> requestCaptor = ArgumentCaptor.forClass(AssignJudiciariesRequest.class);
-            verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(requester), eq(executionId), eq(true));
+            verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(executionId), eq(true));
 
             final AssignJudiciariesRequest capturedRequest = requestCaptor.getValue();
             assertThat(capturedRequest.getJudiciaries().size(), is(1));
@@ -726,15 +722,15 @@ class RotaFileProcessorTest {
             // given
             setupSuccessfulProcessing();
             setupRecordsWithRotaPeriod();
-            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(emptyMap());
             setupEmptyProcessingMaps();
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(judiciaryAssignmentService, never()).assignJudiciaries(any(), any(), anyString(), anyBoolean());
+            verify(judiciaryAssignmentService, never()).assignJudiciaries(any(AssignJudiciariesRequest.class), anyString());
         }
 
         @Test
@@ -754,7 +750,7 @@ class RotaFileProcessorTest {
                     List.of(sessionId1), null, "CHAIR", true, false)));
             rotaFeedDataMap.put(judiciaryId2, List.of(new JudiciaryCourtScheduleData(
                     List.of(sessionId2), null, "CHAIR", true, false)));
-            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
             final AssignJudiciariesRequest assignRequest = createMultiJudiciaryAssignRequest(judiciaryId1, sessionId1, judiciaryId2, sessionId2);
@@ -762,15 +758,15 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(2, 2);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             final ArgumentCaptor<AssignJudiciariesRequest> requestCaptor = ArgumentCaptor.forClass(AssignJudiciariesRequest.class);
-            verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(requester), eq(executionId), eq(true));
+            verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(executionId), eq(true));
 
             final AssignJudiciariesRequest capturedRequest = requestCaptor.getValue();
             assertThat(capturedRequest.getJudiciaries().size(), is(2));
@@ -795,7 +791,7 @@ class RotaFileProcessorTest {
                     new JudiciaryCourtScheduleData(List.of(sessionId2), null, "LEFT_WINGER", false, true),
                     new JudiciaryCourtScheduleData(List.of(sessionId3), null, "RIGHT_WINGER", false, false)
             ));
-            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
             final AssignJudiciariesRequest assignRequest = AssignJudiciariesRequest.builder()
@@ -806,11 +802,11 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(3, 3);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             @SuppressWarnings("unchecked")
@@ -838,7 +834,7 @@ class RotaFileProcessorTest {
                     List.of(sessionId1), null, "CHAIR", true, false)));
             rotaFeedDataMap.put("judiciary-2", Collections.emptyList()); // Empty list
             rotaFeedDataMap.put("judiciary-3", null); // Null list
-            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
             final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciaryId1, sessionId1);
@@ -846,11 +842,11 @@ class RotaFileProcessorTest {
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(requester), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             @SuppressWarnings("unchecked")
@@ -889,11 +885,11 @@ class RotaFileProcessorTest {
             records.put(COURT_LISTING, courtListings);
 
             setupLocationAndPeriodHelpers();
-            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
+            when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                     .thenThrow(new RuntimeException("Date parsing error"));
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(azureBlobClientService).releaseLease(blobName, leaseId, true);
@@ -914,11 +910,11 @@ class RotaFileProcessorTest {
             records.put(MAGISTRATES, magistrates);
 
             setupLocationAndPeriodHelpers();
-            when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), any(), anyString()))
+            when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
                     .thenThrow(new RuntimeException("Validation error"));
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(azureBlobClientService).releaseLease(blobName, leaseId, true);
@@ -943,7 +939,7 @@ class RotaFileProcessorTest {
                     .thenThrow(new RuntimeException("Location processing error"));
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(azureBlobClientService).releaseLease(blobName, leaseId, true);
@@ -964,13 +960,13 @@ class RotaFileProcessorTest {
             doNothing().when(azureBlobClientService).releaseLease(anyString(), anyString(), anyBoolean());
 
             when(rotaLocationPeriodHelper.getLocationFromRecords(anyMap())).thenReturn(List.of());
-            when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList(), any()))
+            when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList()))
                     .thenReturn(List.of());
             when(rotaLocationPeriodHelper.getRotaPeriodDates(anyMap()))
                     .thenThrow(new RuntimeException("Period processing error"));
 
             // when
-            rotaFileProcessor.downloadAndProcessForEachFile(requester, blobContentWrapper, blobName, leaseId);
+            rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
             verify(azureBlobClientService).releaseLease(blobName, leaseId, true);
@@ -1093,7 +1089,7 @@ class RotaFileProcessorTest {
 
     private void setupLocationAndPeriodHelpers() {
         lenient().when(rotaLocationPeriodHelper.getLocationFromRecords(anyMap())).thenReturn(List.of());
-        lenient().when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList(), any()))
+        lenient().when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList()))
                 .thenReturn(List.of());
         final RotaPeriodDateInfoProvider mockPeriodProvider = createMockRotaPeriodDateInfoProvider();
         when(rotaLocationPeriodHelper.getRotaPeriodDates(anyMap())).thenReturn(mockPeriodProvider);
@@ -1156,29 +1152,29 @@ class RotaFileProcessorTest {
         final Map<String, UUID> judiciaryMap = new HashMap<>();
         judiciaryMap.put("mag-1", UUID.fromString(judiciary.getId()));
         judiciaryMap.put("judge-1", UUID.fromString(judiciary.getId()));
-        when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), any(), anyString()))
+        when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
                 .thenReturn(judiciaryMap);
 
         // Mock RotaCourtScheduleHelper
         final Map<String, Set<UUID>> courtScheduleMap = new HashMap<>();
         courtScheduleMap.put("listing-1", Set.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
-        when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
+        when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                 .thenReturn(courtScheduleMap);
 
         // Mock RotaJudiciaryHelper for judiciary court schedule map
         final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedMap = new HashMap<>();
         rotaFeedMap.put(judiciary.getId(), List.of(new JudiciaryCourtScheduleData(
                 List.of(UUID.fromString(courtSchedule.getCourtScheduleId())), null, "CHAIR", true, false)));
-        when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+        when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                 .thenReturn(rotaFeedMap);
     }
 
     private void setupEmptyProcessingMaps() {
-        when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), any(), anyString()))
+        when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
                 .thenReturn(emptyMap());
-        when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), any(), anyString()))
+        when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                 .thenReturn(emptyMap());
-        when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), any(), anyString()))
+        when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                 .thenReturn(emptyMap());
     }
 }

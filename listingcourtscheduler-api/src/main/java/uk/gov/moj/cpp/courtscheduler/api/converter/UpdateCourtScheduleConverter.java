@@ -1,12 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import org.springframework.stereotype.Service;
+
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.MAX_DURATION_FOR_AFTERNOON;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.MAX_DURATION_FOR_MORNING;
 
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
+@Service
 public class UpdateCourtScheduleConverter implements Converter<JsonObject, UpdateCourtSchedule> {
     private static final String CROWN = "CROWN";
     private static final String ADULT = "ADULT";

@@ -10,6 +10,6 @@
   "courtRoomNumber": "123",
   "businessType": "buss",
   "courtSession": "session",
-  "showOverbookedSlots": true,
+  "showOverbookedSlots": "true",
   "caseIdentifier": "API"
 }

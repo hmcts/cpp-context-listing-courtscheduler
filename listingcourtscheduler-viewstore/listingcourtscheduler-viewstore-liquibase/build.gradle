@@ -1,0 +1,10 @@
+// Resources-only module: ships the Liquibase changelogs on the classpath so Spring Boot's
+// spring-boot-liquibase auto-configuration can find classpath:liquibase/...changelog.xml.
+//
+// Source set is the existing src/main/resources directory — no Java in this module.
+sourceSets {
+    main {
+        java.srcDirs = []
+        resources.srcDirs = ['src/main/resources']
+    }
+}

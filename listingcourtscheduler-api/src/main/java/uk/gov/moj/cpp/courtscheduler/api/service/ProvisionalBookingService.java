@@ -20,14 +20,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.json.Json;
-import javax.json.JsonObject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 
 import org.modelmapper.ModelMapper;
 
-@ApplicationScoped
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class ProvisionalBookingService {
     private static final String BOOKING_ID = "bookingId";
     @Inject

@@ -4,7 +4,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
+
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
@@ -17,7 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class CourtScheduleMapperTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    private final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
 
     @Test
     void shouldConvertToEntity() throws Exception {

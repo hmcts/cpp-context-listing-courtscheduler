@@ -1,19 +1,22 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
-import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
+import org.springframework.stereotype.Service;
+
+import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
 
 import java.io.IOException;
 import java.util.List;
 
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JSR310Module;
 
+@Service
 public class ListToJsonArrayConverter<T> implements Converter<List<T>, JsonArray> {
 
     final ObjectMapper mapper = new ObjectMapper();

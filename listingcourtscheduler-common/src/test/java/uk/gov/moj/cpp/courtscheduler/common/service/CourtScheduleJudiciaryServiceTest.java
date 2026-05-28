@@ -11,7 +11,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
+
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
@@ -38,7 +38,7 @@ class CourtScheduleJudiciaryServiceTest {
     @Mock
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
-    private final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    private final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules().configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Test
     void shouldFindRelatedJudiciarySchedules() throws IOException {

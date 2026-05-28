@@ -37,9 +37,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNI
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import org.junit.jupiter.api.Disabled;
-import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
-import uk.gov.justice.services.core.requester.Requester;
+import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
+
 import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
@@ -93,13 +92,13 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-import javax.json.JsonObject;
-import javax.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonArray;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.smallrye.common.constraint.Assert;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -119,10 +118,7 @@ class SessionsServiceTest {
     @Mock
     private CourtScheduleService courtScheduleService;
     @Mock
-    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
-    @Mock
-    private Requester requester;
-    @Mock
+    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;    @Mock
     private AllocatedListingRepository allocatedListingRepository;
     @Mock
     private CourtMigrationRepository courtMigrationRepository;
@@ -138,7 +134,7 @@ class SessionsServiceTest {
     @Mock
     private CourtSchedule courtScheduleEntityMock;
 
-    private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    private static final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules().configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final int NEW_MAX_DURATION = 40;
     private static final int NEW_MAX_SLOTS = 20;
     public static final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
@@ -171,18 +167,18 @@ class SessionsServiceTest {
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
 
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // Ensure getCpCourtRoomByCourtRoomId is called, NOT getRotaCourtRoomByCourtRoomId
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq("court-room-id"), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq("court-room-id")))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId("court-room-id").build()));
 
         // When
-        sessionsService.create(createSessionRequest, requester);
+        sessionsService.create(createSessionRequest);
 
         // Then
-        verify(referenceDataCache).getCpCourtRoomByCourtRoomId(eq("court-room-id"), eq(requester));
-        verify(referenceDataCache, never()).getRotaCourtRoomByCourtRoomId(any(), any());
+        verify(referenceDataCache).getCpCourtRoomByCourtRoomId(eq("court-room-id"));
+        verify(referenceDataCache, never()).getRotaCourtRoomByCourtRoomId(any());
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(any(List.class));
     }
 
@@ -202,11 +198,11 @@ class SessionsServiceTest {
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
         LocalDate lastDate = findTheLastDateThatIsInOneOfTheWeekDays(endDate, allSessionDays);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("TRL"),eq(requester))).thenReturn(returnBusinessTypeObject("TRL", false));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("TRL"))).thenReturn(returnBusinessTypeObject("TRL", false));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
-        sessionsService.create(createSessionRequest,requester);
+        sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getValue();
 
@@ -227,9 +223,9 @@ class SessionsServiceTest {
         String panel = random(String.class);
         String courtSession = random(String.class);
 
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester)))
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA")))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(), eq(requester)))
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any()))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(
@@ -237,7 +233,7 @@ class SessionsServiceTest {
                 createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1)
         );
 
-        sessionsService.create(createSessionRequest, requester);
+        sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(anyList());
 
         final CreateSessionRequestParam createSessionRequest1 = createSessionRequest(
@@ -254,7 +250,7 @@ class SessionsServiceTest {
             return null;
         }).when(courtScheduleRepository).saveCourtSchedules(anyList());
 
-        sessionsService.create(createSessionRequest1, requester);
+        sessionsService.create(createSessionRequest1);
 
         ArgumentCaptor<CourtSchedule> courtScheduleCaptor1 = ArgumentCaptor.forClass(CourtSchedule.class);
         verify(courtScheduleRepository, atLeastOnce()).update(courtScheduleCaptor1.capture(), eq(false));
@@ -286,11 +282,11 @@ class SessionsServiceTest {
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
         LocalDate lastDate = findTheLastDateThatIsInOneOfTheWeekDays(endDate, allSessionDays);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
-        sessionsService.create(createSessionRequest,requester);
+        sessionsService.create(createSessionRequest);
 
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
 
@@ -320,11 +316,11 @@ class SessionsServiceTest {
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
         LocalDate lastDate = findTheLastDateThatIsInOneOfTheWeekDays(endDate, allSessionDays);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 2));
-        sessionsService.create(createSessionRequest,requester);
+        sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getValue();
 
@@ -352,11 +348,11 @@ class SessionsServiceTest {
         }).get();
 
         LocalDate firstDate = findTheFirstDateThatIsInOneOfTheWeekDays(startDate, allSessionDays);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, repeatWeeks));
-        sessionsService.create(createSessionRequest,requester);
+        sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getValue();
 
@@ -374,10 +370,10 @@ class SessionsServiceTest {
         final LocalDate endDate = startDate.plusMonths(1);
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
 
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
 
-        sessionsService.create(createSessionRequest,requester);
+        sessionsService.create(createSessionRequest);
 
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
 
@@ -400,18 +396,18 @@ class SessionsServiceTest {
     @Test
     void shouldCreateSingleCourtSchedulesForOnceFrequency() {
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
-        sessionsService.create(createSessionRequest,requester);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(any(List.class));
     }
 
     @Test
     void shouldCreateSingleCourtSchedulesForOnceFrequencyWithDefaultSessionTimes() {
         final CreateSessionRequestParam createSessionRequest = createSessionRequestWithoutTimes(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
-        sessionsService.create(createSessionRequest,requester);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getValue();
 
@@ -424,9 +420,9 @@ class SessionsServiceTest {
         final LocalDate startDate = LocalDate.of(2024, 06, 20);
         final Session session = singleSession(WEEK_DAYS_FIRST_HALF, true);
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(3), RepeatFrequency.ONCE, 1));
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"),eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any(),eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
-        sessionsService.create(createSessionRequest,requester);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(any(List.class));
     }
     @Test
@@ -435,9 +431,9 @@ class SessionsServiceTest {
         CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParam();
         uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule();
         given(courtScheduleRepository.getCourtSchedulesBy(courtScheduleRequestParam)).willReturn(List.of(courtSchedule));
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq(courtSchedule.getBusinessType()), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(courtSchedule.getBusinessType()))).thenReturn(returnBusinessTypeObject("DVLA", true));
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(courtScheduleRequestParam, requester);
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(courtScheduleRequestParam);
 
         assertThat(courtSchedules.contains(courtSchedule), is(true));
     }
@@ -450,9 +446,9 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.deleteCourtSchedule(anyList())).thenReturn(courtSchedules);
 
-        JsonObject response = sessionsService.deleteCourtScheduleSessions(sessionsParam, requester);
+        JsonObject response = sessionsService.deleteCourtScheduleSessions(sessionsParam);
 
-        Assert.assertTrue(response.get("sessions").asJsonArray().isEmpty());
+        assertTrue(response.get("sessions").asJsonArray().isEmpty());
     }
 
     @Test
@@ -473,10 +469,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
         assertThat(result.isSuccess(), is(true));
     }
 
@@ -499,16 +495,16 @@ class SessionsServiceTest {
                 .build();
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "CROWN"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "CROWN"));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq("new-room"), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq("new-room")))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId("new-room").build()));
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertThat(result.isSuccess(), is(true));
-        verify(referenceDataCache, never()).getRotaCourtRoomByCourtRoomId(anyString(), any());
+        verify(referenceDataCache, never()).getRotaCourtRoomByCourtRoomId(anyString());
     }
 
     @Test
@@ -529,10 +525,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setAllDaySplit(false);
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
         assertThat(result.isSuccess(), is(true));
     }
 
@@ -553,10 +549,10 @@ class SessionsServiceTest {
         when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persisted.getSessionDate(), "10:00"));
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(List.of(courtScheduleId))).thenReturn(List.of(booked));
 
-        Result result = sessionsService.update(update, requester);
+        Result result = sessionsService.update(update);
 
         assertFalse(result.isSuccess());
         assertEquals(SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME, result.getMsg());
@@ -579,10 +575,10 @@ class SessionsServiceTest {
         when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persisted.getSessionDate(), "10:00"));
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(List.of(courtScheduleId))).thenReturn(List.of(booked));
 
-        Result result = sessionsService.update(update, requester);
+        Result result = sessionsService.update(update);
 
         assertFalse(result.isSuccess());
         assertEquals(SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME, result.getMsg());
@@ -605,10 +601,10 @@ class SessionsServiceTest {
         when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persisted.getSessionDate(), "14:00"));
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(List.of(courtScheduleId))).thenReturn(List.of(booked));
 
-        Result result = sessionsService.update(update, requester);
+        Result result = sessionsService.update(update);
 
         assertFalse(result.isSuccess());
         assertEquals(SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME, result.getMsg());
@@ -631,10 +627,10 @@ class SessionsServiceTest {
         when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persisted.getSessionDate(), "14:00"));
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(List.of(courtScheduleId))).thenReturn(List.of(booked));
 
-        Result result = sessionsService.update(update, requester);
+        Result result = sessionsService.update(update);
 
         assertFalse(result.isSuccess());
         assertEquals(SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME, result.getMsg());
@@ -657,10 +653,10 @@ class SessionsServiceTest {
         when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persisted.getSessionDate(), "12:00"));
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(List.of(courtScheduleId))).thenReturn(List.of(booked));
 
-        Result result = sessionsService.update(update, requester);
+        Result result = sessionsService.update(update);
 
         assertFalse(result.isSuccess());
         assertEquals(SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME, result.getMsg());
@@ -683,10 +679,10 @@ class SessionsServiceTest {
         when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persisted.getSessionDate(), "11:00"));
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(List.of(courtScheduleId))).thenReturn(List.of(booked));
 
-        Result result = sessionsService.update(update, requester);
+        Result result = sessionsService.update(update);
 
         assertFalse(result.isSuccess());
         assertEquals(SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME, result.getMsg());
@@ -710,10 +706,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setAllDaySplit(false);
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
         assertThat(result.isSuccess(), is(true));
     }
 
@@ -728,7 +724,7 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(null);
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertEquals("Court Session not found", result.getMsg());
     }
@@ -745,10 +741,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq(persistedCourtSchedule.getBusinessType()), eq(requester))).thenReturn(returnBusinessTypeObject("DVAL", true, "MAGISTRATES"));
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq(updateCourtSchedule.getBusinessType()), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(persistedCourtSchedule.getBusinessType()))).thenReturn(returnBusinessTypeObject("DVAL", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(updateCourtSchedule.getBusinessType()))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertEquals("Business Type cannot be changed from Slot to Non-Slot and vice versa", result.getMsg());
     }
@@ -764,9 +760,9 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("INVALID"), eq(requester))).thenReturn(Optional.empty());
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("INVALID"))).thenReturn(Optional.empty());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertEquals("Invalid business type", result.getMsg());
     }
@@ -784,7 +780,7 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertEquals("Jurisdiction cannot be changed", result.getMsg());
     }
@@ -801,10 +797,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction("MAGISTRATES");
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester)))
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA")))
                 .thenReturn(returnBusinessTypeObject("DVLA", true, "CROWN"));
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertEquals("Business Type jurisdiction CROWN does not match session jurisdiction MAGISTRATES", result.getMsg());
     }
@@ -825,9 +821,9 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertEquals("All day split flag cannot be changed for this session", result.getMsg());
     }
@@ -841,7 +837,7 @@ class SessionsServiceTest {
         migrationStatus.setMigrated(true);
 
         when(courtMigrationRepository.findByOuCode(oucode)).thenReturn(migrationStatus);
-        Assert.assertTrue(sessionsService.isMigrated(oucode));
+        assertTrue(sessionsService.isMigrated(oucode));
 
     }
 
@@ -854,7 +850,7 @@ class SessionsServiceTest {
         migrationStatus.setMigrated(false);
 
         when(courtMigrationRepository.findByOuCode(oucode)).thenReturn(migrationStatus);
-        Assert.assertFalse(sessionsService.isMigrated(oucode));
+        assertFalse(sessionsService.isMigrated(oucode));
 
     }
 
@@ -889,7 +885,7 @@ class SessionsServiceTest {
         migrationStatus.setCourtCentreId(courtCentreId);
         migrationStatus.setMigrated(true);
         when(courtMigrationRepository.findByCourtCentreId(courtCentreId)).thenReturn(migrationStatus);
-        Assert.assertTrue(sessionsService.isMigratedByCourtCentreId(courtCentreId));
+        assertTrue(sessionsService.isMigratedByCourtCentreId(courtCentreId));
     }
 
     @Test
@@ -901,7 +897,7 @@ class SessionsServiceTest {
         migrationStatus.setCourtCentreId(courtCentreId);
         migrationStatus.setMigrated(false);
         when(courtMigrationRepository.findByCourtCentreId(courtCentreId)).thenReturn(migrationStatus);
-        Assert.assertFalse(sessionsService.isMigratedByCourtCentreId(courtCentreId));
+        assertFalse(sessionsService.isMigratedByCourtCentreId(courtCentreId));
     }
 
     @Test
@@ -1454,13 +1450,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(false);
-        given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("TRL")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-1", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-1")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1502,19 +1498,19 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType trlBusinessType = new BusinessType();
         trlBusinessType.setSlot(false);
-        given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(trlBusinessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("TRL")).willReturn(Optional.of(trlBusinessType));
 
         final BusinessType dvlaBusinessType = new BusinessType();
         dvlaBusinessType.setSlot(true);
-        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).willReturn(Optional.of(dvlaBusinessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).willReturn(Optional.of(dvlaBusinessType));
 
         final CourtRoom courtRoom1 = new CourtRoom();
         final CourtRoom courtRoom2 = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-3", requester)).willReturn(Optional.of(courtRoom1));
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-4", requester)).willReturn(Optional.of(courtRoom2));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-3")).willReturn(Optional.of(courtRoom1));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-4")).willReturn(Optional.of(courtRoom2));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1))
@@ -1545,13 +1541,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(true);
-        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-2", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-2")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1581,13 +1577,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(false);
-        given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("TRL")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-5", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-5")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1615,7 +1611,7 @@ class SessionsServiceTest {
         );
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1643,7 +1639,7 @@ class SessionsServiceTest {
         );
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then - verify that saveCourtSchedules is called, but with an empty list or list without February session
         ArgumentCaptor<List<CourtSchedule>> captor = ArgumentCaptor.forClass(List.class);
@@ -1679,13 +1675,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(false);
-        given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("TRL")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-index5-exists", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-index5-exists")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then - verify that saveCourtSchedules is called with exactly one session (5th Friday = March 29th)
         ArgumentCaptor<List<CourtSchedule>> captor2 = ArgumentCaptor.forClass(List.class);
@@ -1722,13 +1718,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(false);
-        given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("TRL")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-7", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-7")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1758,13 +1754,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(true);
-        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-8", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-8")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1794,13 +1790,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(false);
-        given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("TRL")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-9", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-9")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1830,13 +1826,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(false);
-        given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("TRL")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-10", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-10")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1866,13 +1862,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(true);
-        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-11", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-11")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1902,13 +1898,13 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType businessType = new BusinessType();
         businessType.setSlot(false);
-        given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(businessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("TRL")).willReturn(Optional.of(businessType));
 
         final CourtRoom courtRoom = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-12", requester)).willReturn(Optional.of(courtRoom));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-12")).willReturn(Optional.of(courtRoom));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -1950,19 +1946,19 @@ class SessionsServiceTest {
         // Mock the reference data cache
         final BusinessType trlBusinessType = new BusinessType();
         trlBusinessType.setSlot(false);
-        given(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).willReturn(Optional.of(trlBusinessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("TRL")).willReturn(Optional.of(trlBusinessType));
 
         final BusinessType dvlaBusinessType = new BusinessType();
         dvlaBusinessType.setSlot(true);
-        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).willReturn(Optional.of(dvlaBusinessType));
+        given(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).willReturn(Optional.of(dvlaBusinessType));
 
         final CourtRoom courtRoom1 = new CourtRoom();
         final CourtRoom courtRoom2 = new CourtRoom();
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-13", requester)).willReturn(Optional.of(courtRoom1));
-        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-14", requester)).willReturn(Optional.of(courtRoom2));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-13")).willReturn(Optional.of(courtRoom1));
+        given(referenceDataCache.getRotaCourtRoomByCourtRoomId("court-room-14")).willReturn(Optional.of(courtRoom2));
 
         // When
-        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)), requester);
+        sessionsService.create(createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_MONTH, repeatFor)));
 
         // Then
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(argThat(Objects::nonNull));
@@ -2221,10 +2217,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertFalse(result.isSuccess());
         assertEquals(ErrorMessages.SESSION_EDIT_ANOTHER_USER, result.getMsg());
@@ -2249,10 +2245,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertFalse(result.isSuccess());
         assertEquals(ErrorMessages.SESSION_EDIT_ANOTHER_USER, result.getMsg());
@@ -2277,10 +2273,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertFalse(result.isSuccess());
         assertEquals(ErrorMessages.SESSION_EDIT_ANOTHER_USER, result.getMsg());
@@ -2308,13 +2304,13 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("new-courtroom-id"), eq(requester))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("new-courtroom-id"))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertTrue(result.isSuccess());
     }
@@ -2342,12 +2338,12 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertTrue(result.isSuccess());
     }
@@ -2371,10 +2367,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertFalse(result.isSuccess());
         assertEquals(ErrorMessages.SESSION_START_TIME_CANNOT_BE_LATER_THAN_END_TIME, result.getMsg());
@@ -2400,10 +2396,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertFalse(result.isSuccess());
         assertEquals(ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED, result.getMsg());
@@ -2429,10 +2425,10 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertFalse(result.isSuccess());
         assertEquals(ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER, result.getMsg());
@@ -2461,10 +2457,10 @@ class SessionsServiceTest {
         when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), "10:00"));
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(List.of(booked));
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertFalse(result.isSuccess());
         assertEquals(SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME, result.getMsg());
@@ -2493,10 +2489,10 @@ class SessionsServiceTest {
         when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), "10:00"));
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(List.of(booked));
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertFalse(result.isSuccess());
         assertEquals(SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME, result.getMsg());
@@ -2527,12 +2523,12 @@ class SessionsServiceTest {
 
         when(booked.getHearingStartTime()).thenReturn(DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), "10:00"));
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(List.of(booked));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertTrue(result.isSuccess());
     }
@@ -2559,12 +2555,12 @@ class SessionsServiceTest {
         updateCourtSchedule.setAllDaySplit(false);
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertTrue(result.isSuccess());
         verify(courtScheduleRepository, times(1)).update(any(), any(), any());
@@ -2591,12 +2587,12 @@ class SessionsServiceTest {
         updateCourtSchedule.setMaxSlots(15);
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         // Note: The actual draft status change would be handled at the repository/entity level
 
@@ -2626,12 +2622,12 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("TRL"), eq(requester))).thenReturn(returnBusinessTypeObject("TRL", false, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("TRL"))).thenReturn(returnBusinessTypeObject("TRL", false, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertTrue(result.isSuccess());
         verify(courtScheduleRepository, times(1)).update(any(), any(), any());
@@ -2658,12 +2654,12 @@ class SessionsServiceTest {
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"), eq(requester))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(5); // Some slots booked
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
 
-        Result result = sessionsService.update(updateCourtSchedule, requester);
+        Result result = sessionsService.update(updateCourtSchedule);
 
         assertTrue(result.isSuccess());
         assertEquals(20, updateCourtSchedule.getAvailableSlots()); // 25 - 5 = 20
@@ -2706,7 +2702,7 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session1, session2));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
@@ -2717,7 +2713,7 @@ class SessionsServiceTest {
         doAnswer(invocation -> null).when(courtScheduleRepository).save(any());
 
         // When
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -2740,11 +2736,11 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(emptyList());
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.empty());
 
         // When
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -2775,11 +2771,11 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(emptyList());
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
 
         // When
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -2813,13 +2809,13 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
-        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -2854,13 +2850,13 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
-        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -2894,13 +2890,13 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
-        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -2941,16 +2937,16 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
                 eq(courtRoomId), eq(sessionDate), anyString(), anyList(), eq(courtCentreId), eq(courtScheduleId)))
                 .thenReturn(List.of(duplicateSession));
-        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -2994,18 +2990,18 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(eligibleSession, ineligibleSession));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eligibleSessionId))
                 .thenReturn(persistedEligibleSession);
-        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
         doAnswer(invocation -> null).when(courtScheduleRepository).save(any());
 
         // When
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3046,17 +3042,17 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenThrow(new RuntimeException("Database error"));
-        when(referenceDataCache.getRotaBusinessTypeByCode(anyString(), eq(requester)))
+        when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request, requester);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
