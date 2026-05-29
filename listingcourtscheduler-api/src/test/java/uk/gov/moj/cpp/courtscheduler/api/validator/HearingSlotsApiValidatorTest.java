@@ -1,14 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
-import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
+import org.springframework.web.server.ResponseStatusException;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
@@ -18,7 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import java.time.Instant;
 import java.util.List;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -141,7 +141,7 @@ class HearingSlotsApiValidatorTest {
                 null
         );
 
-        BadRequestException thrown = assertThrows(BadRequestException.class,
+        ResponseStatusException thrown = assertThrows(ResponseStatusException.class,
                 () -> validator.getHearingSlotsValidation(request));
 
         assertTrue(thrown.getMessage().contains("invalid-date-format"));

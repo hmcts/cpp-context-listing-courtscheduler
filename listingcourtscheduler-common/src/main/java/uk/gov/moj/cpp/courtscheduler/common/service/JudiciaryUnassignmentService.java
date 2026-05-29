@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static java.util.Collections.singletonList;
-import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError;
@@ -17,16 +16,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.transaction.Transactional;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
 public class JudiciaryUnassignmentService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryUnassignmentService.class);
@@ -43,7 +42,7 @@ public class JudiciaryUnassignmentService {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
-    @PersistenceContext(unitName = "courtscheduler-persistence-unit")
+    @PersistenceContext
     private EntityManager entityManager;
 
     @Transactional
@@ -51,7 +50,7 @@ public class JudiciaryUnassignmentService {
         unassignJudiciary(judiciaryToSessionIds, executionId, false);
     }
 
-    @Transactional(REQUIRES_NEW)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds, final String executionId, final boolean skipValidations) {
         LOGGER.info("unassignJudiciary: attempting to unassign judiciaries from sessions : {} (skipValidations: {})", judiciaryToSessionIds, skipValidations);
 
@@ -63,6 +62,13 @@ public class JudiciaryUnassignmentService {
         for (Map.Entry<String, List<String>> entry : judiciaryToSessionIds.entrySet()) {
             final String judiciaryId = entry.getKey();
             final List<String> sessionIds = entry.getValue();
+
+            // The validator deliberately no longer rejects missing judiciaryId; it's the service's
+            // job to surface that as an IllegalArgumentException so the controller returns 400
+            // (mapped by GlobalExceptionHandler#handleIllegalArg).
+            if (!skipValidations && (judiciaryId == null || judiciaryId.isBlank())) {
+                throw new IllegalArgumentException("judiciaryId is required");
+            }
 
             // Check if judiciary exists in any assignment (skip if skipValidations is true)
             if (!skipValidations) {

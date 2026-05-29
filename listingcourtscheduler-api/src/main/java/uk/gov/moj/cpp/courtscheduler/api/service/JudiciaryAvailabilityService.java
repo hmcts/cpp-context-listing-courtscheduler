@@ -18,7 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryAvailabilityRuleRepository;
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.ADDING_UNAVAILABILITY_WOULD_AFFECT_SESSIONS;
@@ -50,13 +50,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class JudiciaryAvailabilityService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryAvailabilityService.class.getName());
@@ -93,7 +94,7 @@ public class JudiciaryAvailabilityService {
             throw new IllegalArgumentException("Rule ID is required for update");
         }
 
-        final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
+        final JudiciaryAvailabilityRule entity = repository.findById(request.getRuleId()).orElse(null);
         if (entity == null) {
             LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
             throw new IllegalArgumentException(RULE_NOT_FOUND);
@@ -121,7 +122,7 @@ public class JudiciaryAvailabilityService {
     public void deleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Deleting judiciary availability rule: {}", request);
 
-        final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
+        final JudiciaryAvailabilityRule entity = repository.findById(request.getRuleId()).orElse(null);
         if (entity == null) {
             LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
             throw new IllegalArgumentException(RULE_NOT_FOUND);
@@ -168,7 +169,7 @@ public class JudiciaryAvailabilityService {
         return new FindJudiciaryAvailabilityResponse(availableJudiciaries);
     }
 
-    public FindJudiciaryAvailabilityRuleResponse findJudiciaryAvailabilityRules(final FindJudiciaryAvailabilityRuleRequest request, final Requester requester) {
+    public FindJudiciaryAvailabilityRuleResponse findJudiciaryAvailabilityRules(final FindJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Finding judiciary availability rules for: {}", request);
 
         // Get default pagination values if not provided
@@ -202,10 +203,10 @@ public class JudiciaryAvailabilityService {
         final List<Judiciary> judiciaries = new ArrayList<>();
         
         // Fetch judiciaries if requested
-        if (withJudiciary && requester != null) {
+        if (withJudiciary) {
             final List<String> judiciaryIdList = extractUniqueJudiciaryIds(rules);
             if (!judiciaryIdList.isEmpty()) {
-                final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesWithSpecialismByIds(judiciaryIdList, requester);
+                final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesWithSpecialismByIds(judiciaryIdList);
                 judiciaries.addAll(fetchedJudiciaries);
                 LOGGER.info("Fetched {} judiciaries for {} unique IDs", fetchedJudiciaries.size(), judiciaryIdList.size());
             }
@@ -216,14 +217,14 @@ public class JudiciaryAvailabilityService {
         return response;
     }
 
-    public GetJudiciaryAvailabilityRuleResponse getJudiciaryAvailabilityRule(final GetJudiciaryAvailabilityRuleRequest request, final Requester requester) {
+    public GetJudiciaryAvailabilityRuleResponse getJudiciaryAvailabilityRule(final GetJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Getting judiciary availability rule for ruleId: {}", request.getRuleId());
 
         if (request.getRuleId() == null || request.getRuleId().isEmpty()) {
             throw new IllegalArgumentException("Rule ID is required");
         }
 
-        final JudiciaryAvailabilityRule entity = repository.findBy(request.getRuleId());
+        final JudiciaryAvailabilityRule entity = repository.findById(request.getRuleId()).orElse(null);
         if (entity == null) {
             LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
             throw new IllegalArgumentException(RULE_NOT_FOUND);
@@ -234,9 +235,9 @@ public class JudiciaryAvailabilityService {
         // Fetch judiciary if requested
         final boolean withJudiciary = Boolean.TRUE.equals(request.getWithJudiciary());
         Judiciary judiciary = null;
-        if (withJudiciary && requester != null && entity.getJudiciaryId() != null) {
+        if (withJudiciary && entity.getJudiciaryId() != null) {
             final List<String> judiciaryIdList = List.of(entity.getJudiciaryId());
-            final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesWithSpecialismByIds(judiciaryIdList, requester);
+            final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesWithSpecialismByIds(judiciaryIdList);
             if (!fetchedJudiciaries.isEmpty()) {
                 judiciary = fetchedJudiciaries.get(0);
                 LOGGER.info("Fetched judiciary for ruleId {}", request.getRuleId());
@@ -655,7 +656,7 @@ public class JudiciaryAvailabilityService {
             return error;
         }
         
-        final JudiciaryAvailabilityRule existingRule = repository.findBy(request.getRuleId());
+        final JudiciaryAvailabilityRule existingRule = repository.findById(request.getRuleId()).orElse(null);
         error = validateExistingRule(request, existingRule);
         if (error != null) {
             return error;
@@ -817,7 +818,7 @@ public class JudiciaryAvailabilityService {
             return RULE_ID_REQUIRED;
         }
 
-        final JudiciaryAvailabilityRule rule = repository.findBy(request.getRuleId());
+        final JudiciaryAvailabilityRule rule = repository.findById(request.getRuleId()).orElse(null);
         if (rule == null) {
             LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
             return String.format(RULE_NOT_FOUND);

@@ -1,29 +1,31 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.Arrays.stream;
-import static javax.json.Json.createObjectBuilder;
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
-import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.HEARING_ID;
-import static uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing_.OUCODE;
+import static uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam.SearchCourtSchedulesByIdRequestParamBuilder.searchCourtSchedulesByIdRequestParamBuilder;
 
-import uk.gov.justice.services.adapter.rest.exception.BadRequestException;
-import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
-import uk.gov.justice.services.core.annotation.CustomServiceComponent;
-import uk.gov.justice.services.core.annotation.Handles;
-import uk.gov.justice.services.core.enveloper.Enveloper;
-import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciariesRequestConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToViewConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeRecalculateAvailabilityConverter;
@@ -33,576 +35,516 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
-import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
-import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
-import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
-import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.config.JsonValueConverter;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
+import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.CourtscheduleOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.MiOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.OucodeOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.ProvisionalBookingOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.SessionOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.ValidateOpenApi;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+/**
+ * Spring Boot replacement for the legacy WildFly {@code CourtSchedulerApi} omnibus
+ * controller. Implements all six OpenAPI-generated interfaces that originally lived
+ * under the single {@code @CustomServiceComponent("Courtscheduler.API")} legacy class:
+ * court schedule CRUD, session judiciary assignment, OU-code migration, MI exports,
+ * validation, and provisional booking.
+ *
+ * <p>Kept as a single class deliberately so {@code git diff HEAD} highlights the
+ * WildFly-to-Spring conversion against the original file (rather than producing
+ * rename-shaped delete+add noise from a per-concern split).</p>
+ */
+@RestController
+public class CourtSchedulerApi implements CourtscheduleOpenApi,
+                                          SessionOpenApi,
+                                          OucodeOpenApi,
+                                          MiOpenApi,
+                                          ValidateOpenApi,
+                                          ProvisionalBookingOpenApi {
 
-import javax.inject.Inject;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
+    private static final Logger LOG = LoggerFactory.getLogger(CourtSchedulerApi.class);
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+    private static final String ASSIGN_MT = "application/vnd.courtscheduler.assign-judiciary+json";
+    private static final String UNASSIGN_MT = "application/vnd.courtscheduler.unassign.judiciary+json";
+    private static final String CREATE_MT = "application/vnd.courtscheduler.validate.create+json";
+    private static final String UPDATE_MT = "application/vnd.courtscheduler.validate.update+json";
+    private static final String DELETE_MT = "application/vnd.courtscheduler.validate.delete+json";
 
-@CustomServiceComponent("Courtscheduler.API")
-public class CourtSchedulerApi {
-    private static final Logger LOGGER = LoggerFactory.getLogger(CourtSchedulerApi.class.getName());
-    private static final String ALLOCATED_LISTINGS = "allocatedListings";
-    private static final String COURT_SCHEDULES = "courtSchedules";
-    protected static final String RESULTS = "results";
-    private static final String COURT_SCHEDULE_JUDICIARIES = "courtScheduleJudiciaries";
-    private static final String JUDICIARIES = "judiciaries";
-    private static final String SESSIONIDS = "sessionIds";
-    private static final String JUDICIARY_ID = "judiciaryId";
-    private static final String SKIP_VALIDATIONS = "skipValidations";
-    private static final String ERROR_GROUPS = "errorGroups";
-    @Inject
-    private Enveloper enveloper;
-    @Inject
-    private SessionsService sessionsService;
-    @Inject
-    private Requester requester;
-    @Inject
-    private SlotsUpdateService slotsUpdateService;
-    @Inject
-    private SlotsSearchService slotsSearchService;
-    @Inject
-    private SlotsRemoveService slotsRemoveService;
-    @Inject
-    private ProvisionalBookingService provisionalBookingService;
-    @Inject
-    private MiService miService;
-    @Inject
-    private SessionsApiValidator sessionsApiValidator;
-    @Inject
-    private ObjectToJsonObjectConverter objectToJsonObjectConverter;
-    @Inject
-    private AllocatedSlotConverter converter;
-    @Inject
-    private HearingSlotsApiValidator hearingIdsApiValidator;
-    @Inject
-    private CourtScheduleApiValidator courtScheduleApiValidator;
-    @Inject
-    private HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
-    @Inject
-    private HearingSlotSearchRequestConverter hearingSlotSearchRequestConverter;
-    @Inject
-    private ListHearingSlotConverter listHearingSlotConverter;
-    @Inject
-    private CourtScheduleRequestParamConverter courtScheduleRequestParamConverter;
-    @Inject
-    private MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter;
-    @Inject
-    private ProvisionalSlotConverter provisionalSlotConverter;
-    @Inject
-    private ProvisionalBookingApiValidator provisionalBookingApiValidator;
-    @Inject
-    private SessionsConverter sessionsConverter;
-    @Inject
-    private UpdateCourtScheduleConverter updateCourtScheduleConverter;
-    @Inject
-    private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
-    @Inject
-    private OuCodeMigrateConverter ouCodeMigrateConverter;
-    @Inject
-    private OuCodeRecalculateAvailabilityConverter ouCodeRecalculateAvailabilityConverter;
-    @Inject
-    private AllocatedListingService allocatedListingService;
-    @Inject
-    private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
-    @Inject
-    private JudiciaryUnassignmentService judiciaryUnassignmentService;
-    @Inject
-    private JudiciariesApiValidator judiciariesApiValidator;
+    // --- shared infrastructure
+    private final ObjectMapper objectMapper;
+    private final HttpServletRequest request;
 
-    @Inject
-    private AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
+    // --- court schedule CRUD
+    private final SessionsService sessionsService;
+    private final SessionsApiValidator sessionsApiValidator;
+    private final CourtScheduleApiValidator courtScheduleApiValidator;
+    private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
+    private final UpdateCourtScheduleConverter updateCourtScheduleConverter;
+    private final SessionsConverter sessionsConverter;
+    private final AssignCourtroomRequestConverter assignCourtroomRequestConverter;
+    private final ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
 
-    @Inject
-    private AssignJudiciariesApiValidator assignJudiciariesApiValidator;
+    // --- session judiciary assignment / unassignment
+    private final JudiciaryAssignmentService judiciaryAssignmentService;
+    private final JudiciaryUnassignmentService judiciaryUnassignmentService;
+    private final AssignJudiciariesApiValidator assignJudiciariesApiValidator;
+    private final JudiciariesApiValidator judiciariesApiValidator;
+    private final AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
 
-    @Inject
-    private JudiciaryAssignmentService judiciaryAssignmentService;
-    @Inject
-    private uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter assignCourtroomRequestConverter;
+    // --- OU code
+    private final OuCodeMigrateConverter ouCodeMigrateConverter;
+    private final OuCodeRecalculateAvailabilityConverter ouCodeRecalculateAvailabilityConverter;
 
+    // --- MI exports
+    private final MiService miService;
+    private final MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter;
 
-    @Handles("courtscheduler.create")
-    public JsonEnvelope createCourtSchedule(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.create requested : {}", requestFromApiJsonObject);
-        CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
-        JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+    // --- provisional booking
+    private final ProvisionalBookingService provisionalBookingService;
+    private final ProvisionalBookingApiValidator provisionalBookingApiValidator;
+    private final ProvisionalSlotConverter provisionalSlotConverter;
 
+    public CourtSchedulerApi(final ObjectMapper objectMapper,
+                             final HttpServletRequest request,
+                             final SessionsService sessionsService,
+                             final SessionsApiValidator sessionsApiValidator,
+                             final CourtScheduleApiValidator courtScheduleApiValidator,
+                             final CreateSessionsRequestParamConverter createSessionsRequestParamConverter,
+                             final UpdateCourtScheduleConverter updateCourtScheduleConverter,
+                             final SessionsConverter sessionsConverter,
+                             final AssignCourtroomRequestConverter assignCourtroomRequestConverter,
+                             final ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter,
+                             final JudiciaryAssignmentService judiciaryAssignmentService,
+                             final JudiciaryUnassignmentService judiciaryUnassignmentService,
+                             final AssignJudiciariesApiValidator assignJudiciariesApiValidator,
+                             final JudiciariesApiValidator judiciariesApiValidator,
+                             final AssignJudiciariesRequestConverter assignJudiciariesRequestConverter,
+                             final OuCodeMigrateConverter ouCodeMigrateConverter,
+                             final OuCodeRecalculateAvailabilityConverter ouCodeRecalculateAvailabilityConverter,
+                             final MiService miService,
+                             final MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter,
+                             final ProvisionalBookingService provisionalBookingService,
+                             final ProvisionalBookingApiValidator provisionalBookingApiValidator,
+                             final ProvisionalSlotConverter provisionalSlotConverter) {
+        this.objectMapper = objectMapper;
+        this.request = request;
+        this.sessionsService = sessionsService;
+        this.sessionsApiValidator = sessionsApiValidator;
+        this.courtScheduleApiValidator = courtScheduleApiValidator;
+        this.createSessionsRequestParamConverter = createSessionsRequestParamConverter;
+        this.updateCourtScheduleConverter = updateCourtScheduleConverter;
+        this.sessionsConverter = sessionsConverter;
+        this.assignCourtroomRequestConverter = assignCourtroomRequestConverter;
+        this.validateSessionAvailabilityRequestParamConverter = validateSessionAvailabilityRequestParamConverter;
+        this.judiciaryAssignmentService = judiciaryAssignmentService;
+        this.judiciaryUnassignmentService = judiciaryUnassignmentService;
+        this.assignJudiciariesApiValidator = assignJudiciariesApiValidator;
+        this.judiciariesApiValidator = judiciariesApiValidator;
+        this.assignJudiciariesRequestConverter = assignJudiciariesRequestConverter;
+        this.ouCodeMigrateConverter = ouCodeMigrateConverter;
+        this.ouCodeRecalculateAvailabilityConverter = ouCodeRecalculateAvailabilityConverter;
+        this.miService = miService;
+        this.miFilterCriteriaRequestParamConverter = miFilterCriteriaRequestParamConverter;
+        this.provisionalBookingService = provisionalBookingService;
+        this.provisionalBookingApiValidator = provisionalBookingApiValidator;
+        this.provisionalSlotConverter = provisionalSlotConverter;
+    }
+
+    /* ============================================================
+     *  Shared helpers
+     * ============================================================ */
+
+    /** Map<String,Object> (Jackson) to jakarta.json.JsonObject expected by legacy converters. */
+    private JsonObject toJsonObject(final Map<String, Object> body) {
+        try (var reader = Json.createReader(new StringReader(toJson(body)))) {
+            return reader.readObject();
+        }
+    }
+
+    private String toJson(final Map<String, Object> body) {
+        try {
+            return body == null ? "{}" : objectMapper.writeValueAsString(body);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Invalid request body", e);
+        }
+    }
+
+    /* ============================================================
+     *  CourtscheduleOpenApi — court schedule CRUD
+     * ============================================================ */
+
+    @Override
+    public ResponseEntity<Void> postCourtschedulerCreateCourtschedule(final Map<String, Object> body) {
+        LOG.info("courtscheduler.create requested: {}", body);
+        final CreateSessionRequestParam param = createSessionsRequestParamConverter.convert(toJsonObject(body));
+
+        final JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(param);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
 
-        sessionsService.create(createSessionRequestParam, requester);
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.create").apply(createObjectBuilder().build());
+        sessionsService.create(param);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
-    @Handles("courtscheduler.validate.create")
-    public JsonEnvelope validateCreateCourtSchedule(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.validate.create requested : {}", requestFromApiJsonObject);
-        CreateSessionRequestParam createSessionRequestParam = createSessionsRequestParamConverter.convert(requestFromApiJsonObject);
-        JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+    @Override
+    public ResponseEntity<Map<String, Object>> getCourtschedule(final String courtCentreId,
+                                                                final String sessionStartDate,
+                                                                final String sessionEndDate,
+                                                                final String pageSize,
+                                                                final String pageNumber,
+                                                                final String courtRoomId,
+                                                                final String businessType,
+                                                                final Boolean isDraft) {
+        LOG.info("courtscheduler.get.court_schedule courtCentreId={}, sessionStart={}, sessionEnd={}",
+                courtCentreId, sessionStartDate, sessionEndDate);
 
+        final CourtScheduleRequestParam param = new CourtScheduleRequestParam(
+                courtCentreId, courtRoomId, businessType,
+                sessionStartDate, sessionEndDate,
+                isDraft, pageSize, pageNumber);
+
+        final JsonObject validate = courtScheduleApiValidator.getCourtSchedulesValidation(param);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
 
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.validate.create").apply(createObjectBuilder().build());
+        final List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(param);
+
+        final Map<String, Object> body = new LinkedHashMap<>();
+        body.put("courtSchedules", groupByCourtRoom(courtSchedules));
+        return ResponseEntity.ok(body);
     }
 
-    @Handles("courtscheduler.validate.session.availability")
-    public JsonEnvelope validateSessionAvailabilityCourtSchedule(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.validate.session.availability requested : {}", requestFromApiJsonObject);
-        ValidateSessionAvailabilityRequestParam validateSessionAvailabilityRequestParam = validateSessionAvailabilityRequestParamConverter.convert(requestFromApiJsonObject);
-        JsonObject validate = sessionsApiValidator.getSessionsAvailabilityValidation(validateSessionAvailabilityRequestParam);
+    @Override
+    public ResponseEntity<Map<String, Object>> getCourtschedulesByIds(final String courtScheduleIds) {
+        LOG.info("courtscheduler.search.court-schedules-by-id ids={}", courtScheduleIds);
 
-        if (!validate.isEmpty()) {
-            throw new ValidationException(validate);
-        }
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.validate.session.availability").apply(createObjectBuilder().build());
-    }
-
-    @Handles("courtscheduler.assign-judiciary")
-    public JsonEnvelope assignJudiciary(final JsonEnvelope envelope) {
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.assign-judiciary requested : {}", payload);
-
-        final AssignJudiciariesRequest requestDto = assignJudiciariesRequestConverter.convert(payload);
-        final JsonObject validation = assignJudiciariesApiValidator.validate(requestDto, requester);
-
-        if (!validation.isEmpty()) {
-            throw new ValidationException(validation);
-        }
-
-        judiciaryAssignmentService.assignJudiciaries(
-                requestDto,
-                requester,
-                envelope.metadata().id().toString());
-
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
-    }
-
-    @Handles("courtscheduler.delete")
-    public JsonEnvelope deleteCourtSchedule(final JsonEnvelope envelope) {
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.delete requested : {}", payload);
-        SessionsParam sessions = sessionsConverter.convert(envelope.payloadAsJsonObject().toString());
-
-        JsonObject responseObject = sessionsService.deleteCourtScheduleSessions(sessions, requester);
-
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
-    }
-
-    @Handles("courtscheduler.get.court_schedule")
-    public JsonEnvelope getCourtSchedule(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.get.court_schedule requested : {}", requestFromApiJsonObject);
-
-        final CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParamConverter.convert(requestFromApiJsonObject);
-
-        final JsonObject validate = courtScheduleApiValidator.getCourtSchedulesValidation(courtScheduleRequestParam);
-
-        if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
-        }
-
-        final List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(courtScheduleRequestParam, requester);
-
-        final List<CourtSessionsView> courtSessionsViewList = CourtScheduleToViewConverter.getCourtSessionsViews(courtSchedules);
-
-        return envelopeFor(envelope, new ListToJsonArrayConverter<CourtSessionsView>().convert(courtSessionsViewList), COURT_SCHEDULES);
-    }
-
-    @Handles("courtscheduler.search.court-schedules-by-id")
-    public JsonEnvelope searchCourtSchedulesById(final JsonEnvelope envelope) {
-        final JsonObject queryParams = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.search.court-schedules-by-id  : {}", queryParams);
-
-        final String idsParam = queryParams.getString("courtScheduleIds", "");
-        final List<String> courtScheduleIds = stream(idsParam.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
+        final List<String> ids = courtScheduleIds == null
+                ? List.of()
+                : stream(courtScheduleIds.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
 
         final SearchCourtSchedulesByIdRequestParam param =
-                SearchCourtSchedulesByIdRequestParam.SearchCourtSchedulesByIdRequestParamBuilder
-                        .searchCourtSchedulesByIdRequestParamBuilder()
-                        .withCourtScheduleIds(courtScheduleIds)
+                searchCourtSchedulesByIdRequestParamBuilder()
+                        .withCourtScheduleIds(ids)
                         .build();
 
-        List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedulesById(param);
+        final List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedulesById(param);
 
-        final JsonValue result = new ListToJsonArrayConverter<CourtSchedule>().convert(courtSchedules);
-
-        return enveloper
-                .withMetadataFrom(envelope, "courtscheduler.search.court-schedules-by-id")
-                .apply(createObjectBuilder().add(COURT_SCHEDULES, result).build());
+        final Map<String, Object> body = new LinkedHashMap<>();
+        body.put("courtSchedules", courtSchedules);
+        return ResponseEntity.ok(body);
     }
 
-
-    @Handles("courtscheduler.update")
-    public JsonEnvelope updateCourtSchedule(final JsonEnvelope envelope) {
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.update requested : {}", payload);
-        UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(envelope.payloadAsJsonObject());
-
-        JsonObject validate = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
-
-        if (!validate.isEmpty()) {
-            throw new ValidationException(validate);
+    /**
+     * Reshape the flat {@code List<CourtSchedule>} into the legacy IT-asserted shape
+     * grouped by {@code courtRoomId} with a nested {@code sessions} array.
+     *
+     * <p>Each session has its {@code sessionStartTime} / {@code sessionEndTime} fields
+     * rewritten from a {@code Date} (Jackson default → full ISO) to a UTC {@code "HH:mm"}
+     * string so the legacy IT contract is preserved.</p>
+     */
+    private List<Map<String, Object>> groupByCourtRoom(final List<CourtSchedule> schedules) {
+        final Map<String, List<CourtSchedule>> byCourtRoom = new LinkedHashMap<>();
+        for (final CourtSchedule cs : schedules) {
+            byCourtRoom.computeIfAbsent(cs.getCourtRoomId(), k -> new ArrayList<>()).add(cs);
         }
-
-        Result result = sessionsService.update(updateCourtSchedule, requester);
-        if (!result.isSuccess()) {
-            throw new ValidationException(createObjectBuilder().add(ERROR_MESSAGE, result.getMsg()).build());
-        }
-        JsonObject responseObject = createObjectBuilder()
-                .add(RESULTS, objectToJsonObjectConverter.convert(result))
-                .build();
-        return envelopeFor(envelope, responseObject, RESULTS);
-    }
-
-    @Handles("courtscheduler.assign.courtroom")
-    public JsonEnvelope assignCourtroom(final JsonEnvelope envelope) {
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.assign.courtroom requested : {}", payload);
-
-        uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request =
-                assignCourtroomRequestConverter.convert(envelope.payloadAsJsonObject());
-
-        JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
-
-        if (!validate.isEmpty()) {
-            throw new ValidationException(validate);
-        }
-
-        uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse response =
-                sessionsService.assignCourtroom(request, requester);
-
-        // Convert AssignCourtroomResponse to JSON
-        // The schema expects a direct array of error groups, so extract errorGroups and convert to JsonArray
-        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomErrorGroup> listConverter =
-                new ListToJsonArrayConverter<>();
-        final JsonValue errorGroupsArray = response.getErrorGroups().isEmpty()
-                ? JsonValue.EMPTY_JSON_ARRAY
-                : listConverter.convert(response.getErrorGroups());
-
-        // Use envelopeFor to wrap the array (though schema expects direct array, framework may need wrapping)
-        return envelopeFor(envelope, errorGroupsArray, ERROR_GROUPS);
-    }
-
-    @Handles("courtscheduler.update.hearing.slots")
-    public JsonEnvelope updateHearingSlots(final JsonEnvelope envelope) {
-        final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
-        LOGGER.info("courtscheduler.update.hearing.slots:{}", payloadAsJsonString);
-        List<AllocatedSlot> allocatedSlots = converter.convert(payloadAsJsonString).getHearingSlots();
-
-        final JsonObject schedulesJsonObj = slotsUpdateService.update(allocatedSlots);
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.update.hearing.slots").apply(schedulesJsonObj);
-    }
-
-    @Handles("courtscheduler.list.hearings-in-court-sessions")
-    public JsonEnvelope listHearingSlotsInCourtSchedules(final JsonEnvelope envelope) {
-        final String payloadAsJsonString = envelope.payloadAsJsonObject().toString();
-        LOGGER.info("courtscheduler.list.hearings-in-court-sessions:{}", payloadAsJsonString);
-        RequestedSlots requestedSlots = listHearingSlotConverter.convert(payloadAsJsonString);
-
-        JsonObject validate = hearingIdsApiValidator.listHearingSlotsValidation(requestedSlots.getHearingSlots());
-
-        if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
-        }
-
-        final ListHearingSlotsResponse listHearingSlotsResponse = slotsUpdateService.listHearingSlots(requestedSlots);
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.list.hearings-in-court-sessions.response")
-                .apply(objectToJsonObjectConverter.convert(listHearingSlotsResponse));
-    }
-
-    @Handles("courtscheduler.search.book.hearing.slots")
-    public JsonEnvelope searchBookHearingSlots(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.search.book.hearing.slots requested : {}", requestFromApiJsonObject);
-        HearingSlotSearchRequest hearingSlotSearchRequest = hearingSlotSearchRequestConverter.convert(requestFromApiJsonObject);
-
-        final long validateStart = System.nanoTime();
-        JsonObject validate = hearingIdsApiValidator.searchAndBookRequestValidation(hearingSlotSearchRequest);
-        final long validateEnd = System.nanoTime();
-
-        LOGGER.info("Search Book: Time taken for validation : {}", (validateEnd - validateStart) / 1000000);
-
-        if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
-        }
-
-        final HearingSlotSearchAndBookResponse hearingSlotSearchAndBookResponse = slotsUpdateService.searchAndBook(hearingSlotSearchRequest);
-
-        JsonObject responseObject =  Json.createObjectBuilder()
-                .add(RequestParameterConstant.HEARING_SLOTS.getLabel(),
-                        objectToJsonObjectConverter.convert(hearingSlotSearchAndBookResponse))
-                .build();
-
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
-    }
-
-    @Handles("courtscheduler.get.hearing.slots")
-    public JsonEnvelope getHearingSlots(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.get.hearing.slots requested : {}", requestFromApiJsonObject);
-        HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(requestFromApiJsonObject);
-        final long validatestart = System.nanoTime();
-        JsonObject validate = hearingIdsApiValidator.getHearingSlotsValidation(hearingSlotRequestParam);
-        final long validateEnd = System.nanoTime();
-
-        LOGGER.info("PRF: Time taken for validation : {}", (validateEnd - validatestart) / 1000000);
-
-        if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
-        }
-
-        final JsonObject responseObject = slotsSearchService.search(hearingSlotRequestParam);
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
-    }
-
-    @Handles("courtscheduler.remove.hearing.slots")
-    public JsonEnvelope removeHearingSlots(final JsonEnvelope envelope) {
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.remove.hearing.slots requested  : {}", payload);
-
-        final String hearingId = payload.getString(HEARING_ID);
-
-        slotsRemoveService.remove(hearingId);
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.remove.hearing.slots").apply(createObjectBuilder().build());
-    }
-
-    @Handles("courtscheduler.get.hearing.ids")
-    public JsonEnvelope getHearingIds(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.get.hearing.ids requested : {}", requestFromApiJsonObject);
-        HearingSlotRequestParam hearingIdsRequest = hearingSlotRequestParamConverter.convert(requestFromApiJsonObject);
-        final long validateStart = System.nanoTime();
-        JsonObject validate = hearingIdsApiValidator.getHearingSlotsValidation(hearingIdsRequest);
-        final long validateEnd = System.nanoTime();
-
-        LOGGER.info("Time taken for allocated hearing ids validation : {}", (validateEnd - validateStart) / 1000000);
-
-        if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
-        }
-
-        JsonObject responseObject = allocatedListingService.getHearingIds(hearingIdsRequest);
-
-        LOGGER.info("courtscheduler.get.hearing.ids returned : {}", responseObject);
-
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
-    }
-
-    @Handles("courtscheduler.export.court_schedule")
-    public JsonEnvelope exportCourtSchedule(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.export.court_schedule requested : {}", requestFromApiJsonObject);
-
-        MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
-
-
-        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> courtSchedules = miService.getCourtSchedules(miFilterCriteria);
-        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
-
-        return envelopeFor(envelope, listToJsonArrayConverter.convert(courtSchedules), COURT_SCHEDULES);
-    }
-
-
-    @Handles("courtscheduler.export.court_schedule_judiciary")
-    public JsonEnvelope exportCourtScheduleJudiciary(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.export.court_schedule_judiciary requested : {}", requestFromApiJsonObject);
-
-        MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
-
-        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> courtScheduleJudiciaries = miService.getCourtSchedulesJudiciary(miFilterCriteria);
-        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
-
-        return envelopeFor(envelope, listToJsonArrayConverter.convert(courtScheduleJudiciaries), COURT_SCHEDULE_JUDICIARIES);
-    }
-
-    @Handles("courtscheduler.export.allocated_listings")
-    public JsonEnvelope exportAlloctedListings(final JsonEnvelope envelope) {
-        final JsonObject requestFromApiJsonObject = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.export.allocated_listings requested : {}", requestFromApiJsonObject);
-
-        MiFilterCriteria miFilterCriteria = miFilterCriteriaRequestParamConverter.convert(requestFromApiJsonObject);
-
-        List<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> allocatedListings = miService.getAllocatedListings(miFilterCriteria);
-        final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
-
-        return envelopeFor(envelope, listToJsonArrayConverter.convert(allocatedListings), ALLOCATED_LISTINGS);
-    }
-
-    @Handles("courtscheduler.create.provisional.booking")
-    public JsonEnvelope createProvisionalBooking(final JsonEnvelope envelope) {
-        ProvisionalBookingSlots provisionalBookingSlots = provisionalSlotConverter.convert(envelope.payloadAsJsonObject().toString());
-        LOGGER.info("courtscheduler.create.provisional.booking : {}", provisionalBookingSlots);
-        JsonObject validate = provisionalBookingApiValidator.createProvisionalBookingValidation(provisionalBookingSlots);
-
-        if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
-        }
-
-        JsonObject responseObject = provisionalBookingService.bookProvisionalSlots(provisionalBookingSlots);
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
-    }
-
-    @Handles("courtscheduler.get.provisional.booking")
-    public JsonEnvelope getProvisionalBooking(final JsonEnvelope envelope) {
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        final String bookingIds = payload.getString(RequestParameterConstant.BOOKING_IDS.getLabel());
-        LOGGER.info("courtscheduler.get.provisional.booking requested : {}", payload);
-        JsonObject validate = provisionalBookingApiValidator.getProvisionalBookingValidation(bookingIds);
-
-        if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
-        }
-
-        JsonObject responseObject = provisionalBookingService.fetchProvisionalSlots(bookingIds);
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(responseObject);
-    }
-
-    @Handles("courtscheduler.oucode.migrate")
-    public JsonEnvelope migrateOuCode(final JsonEnvelope envelope) {
-
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.oucode.migrate requested : {}", payload);
-
-        OuCodeMigrateRequest ouCodeMigrateRequest = ouCodeMigrateConverter.convert(payload.toString());
-
-        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
-
-        if (!result.isSuccess()) {
-            throw new BadRequestException(result.getMsg());
-        }
-
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
-    }
-
-    @Handles("courtscheduler.oucode.recalculate.availability")
-    public JsonEnvelope ouCodeRecalculateAvailability(final JsonEnvelope envelope) {
-
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.oucode.recalculate.availability requested : {}", payload);
-
-        OuCodeRecalculateAvailabilityRequest ouCodeRequest = ouCodeRecalculateAvailabilityConverter.convert(payload.toString());
-
-        Result result = sessionsService.ouCodesRecalculateAvailability(ouCodeRequest);
-
-        if (!result.isSuccess()) {
-            throw new BadRequestException(result.getMsg());
-        }
-
-        return enveloper.withMetadataFrom(envelope, envelope.metadata().name()).apply(createObjectBuilder().build());
-    }
-
-    @Handles("courtscheduler.unassign.judiciary")
-    public JsonEnvelope unassignJudiciary(final JsonEnvelope envelope) {
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("courtscheduler.unassign.judiciary requested : {}", payload);
-
-        JsonObject validate = judiciariesApiValidator.validateUnassignJudiciaryRequest(payload);
-
-        if (!validate.isEmpty()) {
-            return envelopeFor(envelope, validate, ERROR);
-        }
-
-        // Build map of judiciaryId -> List of sessionIds
-        final Map<String, List<String>> judiciaryToSessionIds = new HashMap<>();
-        final javax.json.JsonArray judiciaries = payload.getJsonArray(JUDICIARIES);
-
-        for (int i = 0; i < judiciaries.size(); i++) {
-            final JsonObject judiciary = judiciaries.getJsonObject(i);
-            final String judiciaryId = judiciary.getString(JUDICIARY_ID, "");
-            final javax.json.JsonArray sessionIds = judiciary.getJsonArray(SESSIONIDS);
-
-            final List<String> sessionIdList = new ArrayList<>();
-            for (int j = 0; j < sessionIds.size(); j++) {
-                final String sessionId = sessionIds.getString(j, "");
-                sessionIdList.add(sessionId);
+        final List<Map<String, Object>> result = new ArrayList<>();
+        for (final var entry : byCourtRoom.entrySet()) {
+            final List<CourtSchedule> sessions = entry.getValue();
+            final List<Map<String, Object>> sessionMaps = new ArrayList<>();
+            for (final CourtSchedule cs : sessions) {
+                sessionMaps.add(toSessionMapWithUtcTimes(cs));
             }
-            judiciaryToSessionIds.put(judiciaryId, sessionIdList);
+            final Map<String, Object> group = new LinkedHashMap<>();
+            group.put("courtRoomId", entry.getKey());
+            group.put("courtRoomNumber", sessions.isEmpty() ? null : sessions.get(0).getCourtRoomNumber());
+            group.put("sessions", sessionMaps);
+            result.add(group);
         }
-
-        final boolean skipValidations = payload.containsKey(SKIP_VALIDATIONS) && payload.getBoolean(SKIP_VALIDATIONS);
-        unassignJudiciaries(judiciaryToSessionIds, envelope.metadata().id().toString(), skipValidations);
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.unassign.judiciary").apply(createObjectBuilder().build());
+        return result;
     }
 
-    private void unassignJudiciaries(Map<String, List<String>> judiciaryToSessionIds, String executionId, boolean skipValidations) {
+    private static final java.time.format.DateTimeFormatter UTC_HH_MM_FORMATTER =
+            java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneOffset.UTC);
+
+    private Map<String, Object> toSessionMapWithUtcTimes(final CourtSchedule cs) {
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> map = objectMapper.convertValue(cs, Map.class);
+        if (cs.getSessionStartTime() != null) {
+            map.put("sessionStartTime", UTC_HH_MM_FORMATTER.format(cs.getSessionStartTime().toInstant()));
+        }
+        if (cs.getSessionEndTime() != null) {
+            map.put("sessionEndTime", UTC_HH_MM_FORMATTER.format(cs.getSessionEndTime().toInstant()));
+        }
+        return map;
+    }
+
+    @Override
+    public ResponseEntity<Map<String, Object>> postCourtschedulerAssignCourtroom(final Map<String, Object> body) {
+        LOG.info("courtscheduler.assign.courtroom requested: {}", body);
+        final AssignCourtroomRequest req = assignCourtroomRequestConverter.convert(toJsonObject(body));
+
+        final JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(req);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(req);
+
+        final Map<String, Object> result = new LinkedHashMap<>();
+        result.put("errorGroups", response.getErrorGroups());
+        return ResponseEntity.ok(result);
+    }
+
+    @Override
+    public ResponseEntity<Map<String, Object>> postCourtschedulerDeleteCourtschedule(final Map<String, Object> body) {
+        LOG.info("courtscheduler.delete requested: {}", body);
+        final SessionsParam sessions = sessionsConverter.convert(toJson(body));
+
+        final JsonObject responseObject = sessionsService.deleteCourtScheduleSessions(sessions);
+
+        return ResponseEntity.ok(JsonValueConverter.toMap(responseObject));
+    }
+
+    @Override
+    public ResponseEntity<Void> postCourtschedulerUpdateCourtscheduleEdit(final Map<String, Object> body) {
+        LOG.info("courtscheduler.update requested: {}", body);
+        final UpdateCourtSchedule update = updateCourtScheduleConverter.convert(toJsonObject(body));
+
+        final JsonObject validate = sessionsApiValidator.getSessionsUpdateValidation(update);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        final Result result = sessionsService.update(update);
+        if (!result.isSuccess()) {
+            throw new ValidationException(
+                    Json.createObjectBuilder().add("errorMessage", result.getMsg()).build());
+        }
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    /* ============================================================
+     *  SessionOpenApi — judiciary assign / unassign on /session
+     * ============================================================ */
+
+    @Override
+    public ResponseEntity<Void> postCourtschedulerSessionJudiciary(final Map<String, Object> body) {
+        final String contentType = request.getContentType() == null ? "" : request.getContentType();
+        LOG.info("/session ContentType={}, body={}", contentType, body);
+
+        if (contentType.contains(ASSIGN_MT.substring(0, ASSIGN_MT.indexOf('+')))) {
+            return assignJudiciary(body);
+        }
+        if (contentType.contains(UNASSIGN_MT.substring(0, UNASSIGN_MT.indexOf('+')))) {
+            return unassignJudiciary(body);
+        }
+        throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "Unsupported Content-Type for /session: " + contentType);
+    }
+
+    private ResponseEntity<Void> assignJudiciary(final Map<String, Object> body) {
+        final AssignJudiciariesRequest dto = assignJudiciariesRequestConverter.convert(toJsonObject(body));
+        final JsonObject validate = assignJudiciariesApiValidator.validate(dto);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+        judiciaryAssignmentService.assignJudiciaries(dto, UUID.randomUUID().toString());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private ResponseEntity<Void> unassignJudiciary(final Map<String, Object> body) {
+        final JsonObject validate = judiciariesApiValidator.validateUnassignJudiciaryRequest(toJsonObject(body));
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+        final Map<String, List<String>> judiciaryToSessionIds = new HashMap<>();
+        final List<Map<String, Object>> judiciaries =
+                (List<Map<String, Object>>) body.getOrDefault("judiciaries", List.of());
+        for (final Map<String, Object> j : judiciaries) {
+            final String judiciaryId = (String) j.getOrDefault("judiciaryId", "");
+            final List<String> sessionIds = new ArrayList<>(
+                    (List<String>) j.getOrDefault("sessionIds", List.of()));
+            judiciaryToSessionIds.put(judiciaryId, sessionIds);
+        }
+        final boolean skipValidations = Boolean.TRUE.equals(body.get("skipValidations"));
         try {
-            judiciaryUnassignmentService.unassignJudiciary(judiciaryToSessionIds, executionId, skipValidations);
-            LOGGER.info("courtscheduler.unassign.judiciary: successfully unassigned judiciaries from sessions");
-        } catch (IllegalStateException e) {
-            final String errorMessage = e.getMessage();
-            LOGGER.warn("courtscheduler.unassign.judiciary: cannot unassign - {}", errorMessage);
-            throw new BadRequestException(errorMessage);
-        } catch (Exception e) {
-            final String errorMessage = e.getMessage();
-            LOGGER.warn("courtscheduler.unassign.judiciary: not found - {}", errorMessage);
-            throw new BadRequestException(errorMessage);
+            judiciaryUnassignmentService.unassignJudiciary(
+                    judiciaryToSessionIds, UUID.randomUUID().toString(), skipValidations);
+        } catch (IllegalStateException ise) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ise.getMessage());
         }
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
-    private JsonEnvelope envelopeFor(final JsonEnvelope originalEnvelope, JsonValue jsonValue, String key) {
-        JsonObject build = createObjectBuilder().add(key, jsonValue).build();
-        String name = originalEnvelope.metadata().name();
-        return enveloper.withMetadataFrom(originalEnvelope, name).apply(build);
+    /* ============================================================
+     *  OucodeOpenApi — OU code migrate / recalculate
+     * ============================================================ */
+
+    @Override
+    public ResponseEntity<Void> postOuCodeMigrate(final Map<String, Object> body) {
+        LOG.info("courtscheduler.oucode.migrate: {}", body);
+        final OuCodeMigrateRequest req = ouCodeMigrateConverter.convert(toJson(body));
+        final Result result = sessionsService.migrateOuCodes(req);
+        if (!result.isSuccess()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, result.getMsg());
+        }
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    @Override
+    public ResponseEntity<Void> postOuCodeRecalculateAvailability(final Map<String, Object> body) {
+        LOG.info("courtscheduler.oucode.recalculate.availability: {}", body);
+        final OuCodeRecalculateAvailabilityRequest req = ouCodeRecalculateAvailabilityConverter.convert(toJson(body));
+        final Result result = sessionsService.ouCodesRecalculateAvailability(req);
+        if (!result.isSuccess()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, result.getMsg());
+        }
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    /* ============================================================
+     *  MiOpenApi — Management Information exports
+     * ============================================================ */
+
+    private MiFilterCriteria miCriteria(final String fromDate, final String toDate) {
+        final JsonObjectBuilder builder = Json.createObjectBuilder();
+        builder.add("fromDate", fromDate == null ? "" : fromDate);
+        builder.add("toDate", toDate == null ? "" : toDate);
+        return miFilterCriteriaRequestParamConverter.convert(builder.build());
+    }
+
+    @Override
+    public ResponseEntity<Map<String, Object>> getMiCourtSchedules(final String fromDate, final String toDate) {
+        LOG.info("courtscheduler.export.court_schedule fromDate={}, toDate={}", fromDate, toDate);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> rows =
+                miService.getCourtSchedules(miCriteria(fromDate, toDate));
+        final Map<String, Object> body = new LinkedHashMap<>();
+        body.put("courtSchedules", rows);
+        return ResponseEntity.ok(body);
+    }
+
+    @Override
+    public ResponseEntity<Map<String, Object>> getMiCourtScheduleJudiciaries(final String fromDate, final String toDate) {
+        LOG.info("courtscheduler.export.court_schedule_judiciary fromDate={}, toDate={}", fromDate, toDate);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> rows =
+                miService.getCourtSchedulesJudiciary(miCriteria(fromDate, toDate));
+        final Map<String, Object> body = new LinkedHashMap<>();
+        body.put("courtScheduleJudiciaries", rows);
+        return ResponseEntity.ok(body);
+    }
+
+    @Override
+    public ResponseEntity<Map<String, Object>> getMiAllocatedListings(final String fromDate, final String toDate) {
+        LOG.info("courtscheduler.export.allocated_listings fromDate={}, toDate={}", fromDate, toDate);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> rows =
+                miService.getAllocatedListings(miCriteria(fromDate, toDate));
+        final Map<String, Object> body = new LinkedHashMap<>();
+        body.put("allocatedListings", rows);
+        return ResponseEntity.ok(body);
+    }
+
+    /* ============================================================
+     *  ValidateOpenApi — Content-Type-dispatched validate.* endpoints
+     * ============================================================ */
+
+    @Override
+    @SkipEnvelope
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public ResponseEntity<Void> postValidate(final Map<String, Object> body) {
+        final String contentType = request.getContentType() == null ? "" : request.getContentType();
+        LOG.info("courtscheduler.validate ContentType={}", contentType);
+
+        final JsonObject validate;
+        if (contentType.startsWith(CREATE_MT.substring(0, CREATE_MT.indexOf('+')))) {
+            validate = sessionsApiValidator.getSessionsCreateValidation(
+                    createSessionsRequestParamConverter.convert(toJsonObject(body)));
+        } else if (contentType.startsWith(UPDATE_MT.substring(0, UPDATE_MT.indexOf('+')))) {
+            validate = sessionsApiValidator.getSessionsUpdateValidation(
+                    updateCourtScheduleConverter.convert(toJsonObject(body)));
+        } else if (contentType.startsWith(DELETE_MT.substring(0, DELETE_MT.indexOf('+')))) {
+            // SessionsConverter handles the parse; the resulting SessionsParam is the
+            // "well-formed" check. Empty JsonObject indicates pass.
+            sessionsConverter.convert(toJson(body));
+            validate = Json.createObjectBuilder().build();
+        } else {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                    "Unsupported Content-Type for /validate: " + contentType);
+        }
+
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+        // Legacy IT classes assert response body is exactly "{}" for a successful
+        // validation, so explicitly return an empty Map.
+        return (ResponseEntity) ResponseEntity.ok(Collections.emptyMap());
+    }
+
+    @Override
+    @SkipEnvelope
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public ResponseEntity<Void> postValidateSessionAvailability(final Map<String, Object> body) {
+        final JsonObject validate = sessionsApiValidator.getSessionsAvailabilityValidation(
+                validateSessionAvailabilityRequestParamConverter.convert(toJsonObject(body)));
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+        return (ResponseEntity) ResponseEntity.ok(Collections.emptyMap());
+    }
+
+    /* ============================================================
+     *  ProvisionalBookingOpenApi — provisional booking endpoints
+     * ============================================================ */
+
+    @Override
+    public ResponseEntity<Map<String, Object>> postCreateProvisionalBooking(final Map<String, Object> body) {
+        LOG.info("courtscheduler.create.provisional.booking: {}", body);
+        final ProvisionalBookingSlots slots = provisionalSlotConverter.convert(toJson(body));
+        final JsonObject validate = provisionalBookingApiValidator.createProvisionalBookingValidation(slots);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+        final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots);
+        return ResponseEntity.ok(JsonValueConverter.toMap(response));
+    }
+
+    @Override
+    public ResponseEntity<Map<String, Object>> getProvisionalBooking(final String bookingIds) {
+        LOG.info("courtscheduler.get.provisional.booking bookingIds={}", bookingIds);
+        final JsonObject validate = provisionalBookingApiValidator.getProvisionalBookingValidation(bookingIds);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+        final JsonObject response = provisionalBookingService.fetchProvisionalSlots(bookingIds);
+        return ResponseEntity.ok(JsonValueConverter.toMap(response));
     }
 }

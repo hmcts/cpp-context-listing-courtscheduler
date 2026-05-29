@@ -26,7 +26,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSI
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -64,9 +63,6 @@ class RotaCourtScheduleHelperTest {
 
     @Mock
     private RotaProcessLogService rotaProcessLogService;
-
-    @Mock
-    private Requester requester;
 
     @InjectMocks
     private RotaCourtScheduleHelper rotaCourtScheduleHelper;
@@ -124,13 +120,13 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(courtSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -142,18 +138,18 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldReturnEmptyMap_WhenRecordsIsNull() {
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(null, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(null, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
         verify(dateParsingUtility, never()).parseSessionDate(anyString());
-        verify(venueCourtRoomHelper, never()).getCourtRoom(anyMap(), any(), anyString(), anyMap());
+        verify(venueCourtRoomHelper, never()).getCourtRoom(anyMap(), anyString(), anyMap());
     }
 
     @Test
     void shouldReturnEmptyMap_WhenRecordsIsEmpty() {
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(emptyMap(), requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(emptyMap(), executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -166,7 +162,7 @@ class RotaCourtScheduleHelperTest {
         records.put(RotaPayload.MAGISTRATES, new HashMap<>());
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -186,7 +182,7 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -206,7 +202,7 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -230,11 +226,11 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(null);
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
-        verify(venueCourtRoomHelper, never()).getCourtRoom(anyMap(), any(), anyString(), anyMap());
+        verify(venueCourtRoomHelper, never()).getCourtRoom(anyMap(), anyString(), anyMap());
     }
 
     @Test
@@ -252,11 +248,11 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(null);
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -281,13 +277,13 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -327,13 +323,13 @@ class RotaCourtScheduleHelperTest {
                 .build();
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(matchingSchedule, nonMatchingSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -367,13 +363,13 @@ class RotaCourtScheduleHelperTest {
                 .build();
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(adSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -407,13 +403,13 @@ class RotaCourtScheduleHelperTest {
                 .build();
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(adSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -447,13 +443,13 @@ class RotaCourtScheduleHelperTest {
                 .build();
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(amSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -485,13 +481,13 @@ class RotaCourtScheduleHelperTest {
                 .build();
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(adSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -525,13 +521,13 @@ class RotaCourtScheduleHelperTest {
                 .build();
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(amSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -564,13 +560,13 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -624,13 +620,13 @@ class RotaCourtScheduleHelperTest {
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr1)).thenReturn(sessionDate);
         when(dateParsingUtility.parseSessionDate(sessionDateStr2)).thenReturn(sessionDate2);
-        when(venueCourtRoomHelper.getCourtRoom(anyMap(), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(anyMap(), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), any(), any()))
                 .thenReturn(Collections.emptyList());
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -687,9 +683,9 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile1), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile1), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile2), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile2), eq(executionId), anyMap()))
                 .thenReturn(courtRoom2);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
@@ -697,7 +693,7 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(Collections.emptyList());
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -742,13 +738,13 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(null), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(null), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, null);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, null);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -774,13 +770,13 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(""), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(""), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, "");
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, "");
 
         // then
         assertThat(result, is(emptyMap()));
@@ -806,13 +802,13 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(courtSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -846,11 +842,11 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoomWithMissingFields);
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -888,15 +884,15 @@ class RotaCourtScheduleHelperTest {
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         // Venue not found - getCourtRoom returns null and populates missingReferenceDataMappingMap
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenAnswer(invocation -> {
-                    Map<String, String> missingRefDataMap = invocation.getArgument(3);
+                    Map<String, String> missingRefDataMap = invocation.getArgument(2);
                     missingRefDataMap.put("100 - Test Venue - 200", REF_DATA_VENUE_NOT_FOUND.code());
                     return null;
                 });
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -928,15 +924,15 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(null), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(null), anyMap()))
                 .thenAnswer(invocation -> {
-                    Map<String, String> missingRefDataMap = invocation.getArgument(3);
+                    Map<String, String> missingRefDataMap = invocation.getArgument(2);
                     missingRefDataMap.put("100 - Test Venue - 200", REF_DATA_VENUE_NOT_FOUND.code());
                     return null;
                 });
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, null);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, null);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -962,13 +958,13 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(courtSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -997,12 +993,12 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenThrow(new RuntimeException("Date parsing error"));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
         // Should not crash, just log error and continue
-        verify(venueCourtRoomHelper, never()).getCourtRoom(anyMap(), any(), anyString(), anyMap());
+        verify(venueCourtRoomHelper, never()).getCourtRoom(anyMap(), anyString(), anyMap());
     }
 
     @Test
@@ -1028,11 +1024,11 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoomWithoutOuCode);
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -1062,11 +1058,11 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoomWithoutId);
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -1091,13 +1087,13 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenThrow(new RuntimeException("Service error"));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -1138,13 +1134,13 @@ class RotaCourtScheduleHelperTest {
                 .build();
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(schedule1, schedule2));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -1166,7 +1162,7 @@ class RotaCourtScheduleHelperTest {
         records.put(COURT_LISTING, courtListings);
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result, is(emptyMap()));
@@ -1207,13 +1203,13 @@ class RotaCourtScheduleHelperTest {
                 .build();
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(matchingSchedule, nonMatchingSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));
@@ -1257,13 +1253,13 @@ class RotaCourtScheduleHelperTest {
                 .build();
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
-        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(requester), eq(executionId), anyMap()))
+        when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(matchingSchedule, nonMatchingSchedule));
 
         // when
-        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+        final Map<String, Set<UUID>> result = rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
 
         // then
         assertThat(result.size(), is(1));

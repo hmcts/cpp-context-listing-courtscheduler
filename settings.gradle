@@ -1,0 +1,10 @@
+rootProject.name = 'cpp-context-listing-courtscheduler'
+
+include 'listingcourtscheduler-cache'
+include 'listingcourtscheduler-domain'
+include 'listingcourtscheduler-common'
+include 'listingcourtscheduler-viewstore:listingcourtscheduler-viewstore-persistence'
+include 'listingcourtscheduler-viewstore:listingcourtscheduler-viewstore-liquibase'
+include 'listingcourtscheduler-rota-file-processor'
+include 'listingcourtscheduler-api'
+include 'listingcourtscheduler-integration-test'

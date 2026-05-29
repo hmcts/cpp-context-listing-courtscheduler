@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
@@ -12,8 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * Helper class for location, OU code, and rota period processing operations from rota file records.
  * Handles extraction of location IDs, mapping them to organizational unit codes, and managing rota period operations.
  */
-@ApplicationScoped
+@Service
 public class RotaLocationPeriodHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaLocationPeriodHelper.class);
@@ -67,13 +67,13 @@ public class RotaLocationPeriodHelper {
      * @param requester   the requester for making reference data queries
      * @return list of OU codes corresponding to the provided location IDs
      */
-    public List<String> getOuCodesFromCourtRoomMappingsByLocationId(final List<String> locationIds, final Requester requester) {
+    public List<String> getOuCodesFromCourtRoomMappingsByLocationId(final List<String> locationIds) {
         if (locationIds == null || locationIds.isEmpty()) {
             logger.debug("No location IDs provided for OU code resolution");
             return new ArrayList<>();
         }
 
-        final Map<String, String> locationIdOuCodeMap = buildLocationIdToOuCodeMap(requester);
+        final Map<String, String> locationIdOuCodeMap = buildLocationIdToOuCodeMap();
         final List<String> ouCodes = resolveOuCodes(locationIds, locationIdOuCodeMap);
         
         logger.info("Resolved {} OU codes from {} location IDs", ouCodes.size(), locationIds.size());
@@ -86,9 +86,9 @@ public class RotaLocationPeriodHelper {
      * @param requester the requester for making reference data queries
      * @return map of location ID (as String) to OU code
      */
-    private Map<String, String> buildLocationIdToOuCodeMap(final Requester requester) {
+    private Map<String, String> buildLocationIdToOuCodeMap() {
         final Map<String, String> locationIdOuCodeMap = new HashMap<>();
-        referenceDataMapperService.getCourtRoomsMap(requester).values()
+        referenceDataMapperService.getCourtRoomsMap().values()
                 .forEach(courtRoom -> {
                     final String locationId = String.valueOf(courtRoom.getRotaLocationId());
                     if (!locationIdOuCodeMap.containsKey(locationId)) {

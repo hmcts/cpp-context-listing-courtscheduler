@@ -1,11 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
-import static io.smallrye.common.constraint.Assert.assertTrue;
 import static java.util.Collections.emptyList;
 import static java.util.UUID.randomUUID;
-import static javax.json.Json.createObjectBuilder;
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static jakarta.json.Json.createObjectBuilder;
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -22,8 +22,6 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CR
 import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
@@ -55,7 +53,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -85,9 +83,6 @@ class SessionsApiValidatorTest {
     private CourtScheduleRepository courtScheduleRepository;
 
     @Mock
-    private Requester requester;
-
-    @Mock
     private ReferenceDataCache referenceDataCache;
 
     @Mock
@@ -99,34 +94,34 @@ class SessionsApiValidatorTest {
     private final String courtCentreId = randomUUID().toString();
     private final String courtRoomId = randomUUID().toString();
 
-    private final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    private final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
 
     private void stubMagCourtRoomAvailable(String courtRoomId) {
-        lenient().when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        lenient().when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(
                         CourtRoom.CourtRoomBuilder.aCourtRoom()
                                 .withCourtRoomId(courtRoomId)
                                 .withOucodeUUID(courtCentreId)
                                 .build()));
         // Explicitly stub CP source to return empty for MAGISTRATES jurisdiction
-        lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.empty());
     }
 
     private void stubCrownCourtRoomAvailable(String courtRoomId) {
-        lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(
                         CourtRoom.CourtRoomBuilder.aCourtRoom()
                                 .withCourtRoomId(courtRoomId)
                                 .withOucodeUUID(courtCentreId)
                                 .build()));
         // Explicitly stub Rota source to return empty for CROWN jurisdiction
-        lenient().when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(courtRoomId), eq(requester)))
+        lenient().when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.empty());
     }
 
     private void stubBusinessType(String code, String jurisdiction, boolean slot, boolean duration) {
-        lenient().when(referenceDataCache.getRotaBusinessTypeByCode(eq(code), eq(requester)))
+        lenient().when(referenceDataCache.getRotaBusinessTypeByCode(eq(code)))
                 .thenReturn(Optional.of(new BusinessType("id-" + code, 1, code, "desc-" + code, slot, duration, jurisdiction)));
     }
 
@@ -143,7 +138,7 @@ class SessionsApiValidatorTest {
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(repeatPattern.getStartDate()).thenReturn(pastDate);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(START_DATE_IS_INVALID + pastDate, result.getString("errorMessage"));
     }
@@ -158,7 +153,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(endDate);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("Start date must be on or before end date", result.getString("errorMessage"));
     }
@@ -172,7 +167,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(null);
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("Invalid combination of parameters: For More Than once, you should supply a repeat-for and end date ", result.getString("errorMessage"));
     }
@@ -188,7 +183,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
         when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionToBeAdded));
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("PM Session Start Time cannot be earlier than 14:00", result.getString("errorMessage"));
     }
@@ -204,7 +199,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
         when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionToBeAdded));
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("AM Session End Time cannot exceed 13:00", result.getString("errorMessage"));
     }
@@ -220,7 +215,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
         when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionToBeAdded));
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("Invalid time format. Please use HH:mm format.", result.getString("errorMessage"));
@@ -265,7 +260,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
     }
@@ -288,10 +283,10 @@ class SessionsApiValidatorTest {
 
         // Business type stub needed for sessionToBeAdded validation
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertEquals("Duration should be set for this session", result.getString("errorMessage"));
     }
 
@@ -316,7 +311,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
     }
 
@@ -363,7 +358,7 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
     }
 
@@ -400,7 +395,7 @@ class SessionsApiValidatorTest {
         lenient().when(repeatPattern.getRepeatFor()).thenReturn(1); // unused - validation returns early with duplicate
         // Validation returns early with duplicate error, so no need to stub business type or court room
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertEquals("Session to be added has a duplicate", result.getString("errorMessage"));
     }
 
@@ -437,12 +432,12 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
 
@@ -479,12 +474,12 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
 
@@ -500,11 +495,11 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
         // Courtroom exists and belongs to the same court centre as the session
         stubMagCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(0, result.size());
         verify(rotaProcessLogService, never()).saveRotaProcessLog(any(RotaProcessLog.class));
@@ -531,9 +526,9 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("Business Type jurisdiction CROWN does not match session jurisdiction MAGISTRATES", result.getString("errorMessage"));
     }
@@ -559,10 +554,10 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("TRL", 1, "Description", "Category", false, true, "MAGISTRATES");
-        when(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("TRL")).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("Duration should be supplied for duration-based business type TRL", result.getString("errorMessage"));
     }
@@ -588,10 +583,10 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("TRL", 1, "Description", "Category", false, true, "MAGISTRATES");
-        when(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("TRL")).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -617,10 +612,10 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("TRL", 1, "Description", "Category", false, true, "MAGISTRATES");
-        when(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("TRL")).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -647,10 +642,10 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("TRL", 1, "Description", "Category", false, true, "MAGISTRATES");
-        when(referenceDataCache.getRotaBusinessTypeByCode("TRL", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("TRL")).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -667,11 +662,11 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
         ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
@@ -704,16 +699,16 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
 
         // Courtroom exists but belongs to a different court centre
         CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
                 .withCourtRoomId(courtRoomId)
                 .withOucodeUUID(courtCentreId) // different from mismatchedCourtCentreId
                 .build();
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.of(courtRoom));
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("The courtroom must belong to the same court centre as specified in courtCentreId",
                 result.getString("errorMessage"));
@@ -742,10 +737,10 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
     }
@@ -788,15 +783,15 @@ class SessionsApiValidatorTest {
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
 
         CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
                 .withCourtRoomId(courtRoomId)
                 .withOucodeUUID(courtCentreId) // valid for existing, invalid for sessionToBeAdded
                 .build();
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.of(courtRoom));
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("The courtroom must belong to the same court centre as specified in courtCentreId",
                 result.getString("errorMessage"));
@@ -824,11 +819,11 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
         // For CROWN only CP is checked; courtroom not found in CP returns COURTROOM_NOT_FOUND
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(COURTROOM_NOT_FOUND + courtRoomId, result.getString("errorMessage"));
     }
@@ -854,18 +849,18 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
         
         // Courtroom not found in Rota (MAGISTRATES) but found in CP (CROWN) - jurisdiction mismatch
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
         
         CourtRoom cpCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
                 .withCourtRoomId(courtRoomId)
                 .withOucodeUUID(courtCentreId)
                 .build();
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.of(cpCourtRoom));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.of(cpCourtRoom));
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals("Courtroom selected does not exist in Rota",
                 result.getString("errorMessage"));
@@ -945,7 +940,7 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndSessionTypeIsNotAllDay() {
         SessionValidationParams params = new SessionValidationParams(60, 60, true, "AM", "BUSINESS_TYPE", null, null, null, null);
-        JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
+        JsonObject result = sessionsApiValidator.validateSession(params, true);
         assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS, result.getString("errorMessage"));
     }
 
@@ -953,7 +948,7 @@ class SessionsApiValidatorTest {
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndMaxDurationIsInvalid() {
         SessionValidationParams params = new SessionValidationParams(null, 60, true, ALL_DAY, "BUSINESS_TYPE", null, null, "10:00", "17:00");
 
-        JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
+        JsonObject result = sessionsApiValidator.validateSession(params, true);
         assertEquals(ErrorMessages.MAX_DURATION_AM_PM_PROVIDED_FOR_ALL_DAY_SPLIT_SESSION, result.getString("errorMessage"));
     }
 
@@ -973,7 +968,7 @@ class SessionsApiValidatorTest {
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
                 .thenReturn(List.of(booked));
 
-        JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
+        JsonObject result = sessionsApiValidator.validateSession(params, true);
         assertEquals(ErrorMessages.MAX_HEARING_TIME_BEFORE_SESSION_END_TIME, result.getString("errorMessage"));
     }
 
@@ -981,9 +976,9 @@ class SessionsApiValidatorTest {
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndBusinessTypeIsNotDurationBased() {
         SessionValidationParams params = new SessionValidationParams(60, 60, true, ALL_DAY, "BUSINESS_TYPE", null, null, "10:00", "17:00");
         BusinessType businessType = new BusinessType("BUSINESS_TYPE", 1, "Description", "Category", false, false, null);
-        when(referenceDataCache.getRotaBusinessTypeByCode("BUSINESS_TYPE", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("BUSINESS_TYPE")).thenReturn(Optional.of(businessType));
 
-        JsonObject result = sessionsApiValidator.validateSession(params, true, requester);
+        JsonObject result = sessionsApiValidator.validateSession(params, true);
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_DURATION_BASED_SESSION, result.getString("errorMessage"));
     }
@@ -999,7 +994,7 @@ class SessionsApiValidatorTest {
                 .withMaxSlots(10)
                 .build();
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("Jurisdiction is mandatory and must be either MAGISTRATES or CROWN", result.getString("errorMessage"));
@@ -1017,7 +1012,7 @@ class SessionsApiValidatorTest {
                 .withMaxSlots(10)
                 .build();
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("Jurisdiction must be either MAGISTRATES or CROWN", result.getString("errorMessage"));
@@ -1046,7 +1041,7 @@ class SessionsApiValidatorTest {
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "CROWN", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("isDraft is mandatory for CROWN jurisdiction sessions", result.getString("errorMessage"));
@@ -1074,7 +1069,7 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", MAGISTRATES.getJurisdiction(), true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("panel is mandatory for MAGISTRATES jurisdiction sessions", result.getString("errorMessage"));
@@ -1095,7 +1090,7 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("isDraft can only be true when jurisdiction is CROWN", result.getString("errorMessage"));
@@ -1114,7 +1109,7 @@ class SessionsApiValidatorTest {
 
         stubCrownCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("isDraft is mandatory for CROWN jurisdiction sessions", result.getString("errorMessage"));
@@ -1141,7 +1136,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
                 .thenReturn(persistedSchedule);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should accept isDraft=false for MAGISTRATES silently
         assertTrue(result.isEmpty() || !result.containsKey("errorMessage"));
@@ -1160,7 +1155,7 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("panel is mandatory for MAGISTRATES jurisdiction sessions", result.getString("errorMessage"));
@@ -1189,7 +1184,7 @@ class SessionsApiValidatorTest {
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "CROWN", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertTrue(result.containsKey("errorMessage"));
         assertTrue(result.getString("errorMessage").contains("YOUTH panel is not allowed for CROWN jurisdiction"));
@@ -1218,7 +1213,7 @@ class SessionsApiValidatorTest {
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "CROWN", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         // Should accept ADULT panel for CROWN
         assertTrue(result.isEmpty() || !result.containsKey("errorMessage"));
@@ -1246,7 +1241,7 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         // Should accept YOUTH panel for MAGISTRATES
         assertTrue(result.isEmpty() || !result.containsKey("errorMessage"));
@@ -1273,7 +1268,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
                 .thenReturn(persistedSchedule);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertTrue(result.getString("errorMessage").contains("YOUTH panel is not allowed for CROWN jurisdiction"));
@@ -1300,7 +1295,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId()))
                 .thenReturn(persistedSchedule);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should accept ADULT panel for CROWN
         assertTrue(result.isEmpty() || !result.containsKey("errorMessage"));
@@ -1318,9 +1313,9 @@ class SessionsApiValidatorTest {
                 .withMaxSlots(10)
                 .build();
 
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("Courtroom selected does not exist in Rota", result.getString("errorMessage"));
@@ -1338,9 +1333,9 @@ class SessionsApiValidatorTest {
                 .withMaxSlots(10)
                 .build();
 
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)).thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("Courtroom selected does not exist in Rota", result.getString("errorMessage"));
@@ -1360,7 +1355,7 @@ class SessionsApiValidatorTest {
                 .withMaxSlots(10)
                 .build();
 
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
 
         CourtSchedule persistedCourtSchedule = new CourtSchedule();
@@ -1371,7 +1366,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedCourtSchedule);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals("Cannot change isDraft from false to true for CROWN jurisdiction sessions", result.getString("errorMessage"));
@@ -1398,7 +1393,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(0, result.size());
     }
@@ -1424,10 +1419,10 @@ class SessionsApiValidatorTest {
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(0, result.size());
     }
@@ -1453,10 +1448,10 @@ class SessionsApiValidatorTest {
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedCourtSchedule);
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(0, result.size());
     }
@@ -1480,7 +1475,7 @@ class SessionsApiValidatorTest {
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(anyString())).thenReturn(emptyList());
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -1513,7 +1508,7 @@ class SessionsApiValidatorTest {
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.MIN_HEARING_TIME_AFTER_SESSION_START_TIME, result.getString("errorMessage"));
@@ -1549,7 +1544,7 @@ class SessionsApiValidatorTest {
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.MAX_HEARING_TIME_BEFORE_SESSION_END_TIME, result.getString("errorMessage"));
@@ -1583,7 +1578,7 @@ class SessionsApiValidatorTest {
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -1615,7 +1610,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persistedSchedule);
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(emptyList());
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -1660,7 +1655,7 @@ class SessionsApiValidatorTest {
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
                 .thenReturn(List.of(booked));
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should pass validation since hearing time (11:00) is within session window (10:00-13:00)
         assertEquals(EMPTY_JSON_OBJECT, result);
@@ -1693,7 +1688,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -1725,7 +1720,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -1754,7 +1749,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(null);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -1788,7 +1783,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
@@ -1834,7 +1829,7 @@ class SessionsApiValidatorTest {
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
                 .thenReturn(List.of(booked));
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should fail validation because session start time (10:00) is AFTER min hearing time (09:00)
         // Error: "Session Start Time can not be updated to a time that is later than the minimum hearing time"
@@ -1873,10 +1868,10 @@ class SessionsApiValidatorTest {
                 .withCourtRoomId(newCourtRoomId)
                 .withOucodeUUID(differentCourtHouseId) // Different court house
                 .build();
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(newCourtRoomId), eq(requester)))
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(newCourtRoomId)))
                 .thenReturn(Optional.of(newCourtRoom));
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertTrue(result.getString("errorMessage").contains("Courtroom must belong to the same court house"));
@@ -1915,12 +1910,12 @@ class SessionsApiValidatorTest {
                 .withCourtRoomId(newCourtRoomId)
                 .withOucodeUUID(courtHouseId) // Same court house
                 .build();
-        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(newCourtRoomId), eq(requester)))
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(newCourtRoomId)))
                 .thenReturn(Optional.of(newCourtRoom));
 
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should pass court house validation (may fail other validations, but not court house check)
         // We check that the error is NOT about court house
@@ -1958,7 +1953,7 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should pass validation since courtroom is not changed
         assertEquals(EMPTY_JSON_OBJECT, result);
@@ -1987,7 +1982,7 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(newCourtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should skip court house validation (may fail other validations, but not court house check)
         // We check that the error is NOT about court house
@@ -2032,10 +2027,10 @@ class SessionsApiValidatorTest {
                 .withCourtRoomId(newCourtRoomId)
                 .withOucodeUUID(differentCourtHouseId) // Different court house
                 .build();
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(newCourtRoomId), eq(requester)))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(newCourtRoomId)))
                 .thenReturn(Optional.of(newCourtRoom));
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertTrue(result.getString("errorMessage").contains("Courtroom must belong to the same court house"));
@@ -2066,7 +2061,7 @@ class SessionsApiValidatorTest {
 
         stubMagCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED, result.getString("errorMessage"));
@@ -2099,7 +2094,7 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should pass past session validation (may fail other validations, but not past session check)
         if (result.containsKey("errorMessage")) {
@@ -2134,7 +2129,7 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should pass past session validation (may fail other validations, but not past session check)
         if (result.containsKey("errorMessage")) {
@@ -2163,7 +2158,7 @@ class SessionsApiValidatorTest {
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType("DVLA", "MAGISTRATES", true, false);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Should skip past session validation (may fail other validations, but not past session check)
         if (result.containsKey("errorMessage")) {
@@ -2197,7 +2192,7 @@ class SessionsApiValidatorTest {
 
         stubCrownCourtRoomAvailable(courtRoomId);
 
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         assertTrue(result.containsKey("errorMessage"));
         assertEquals(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED, result.getString("errorMessage"));
@@ -2233,13 +2228,13 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
         BusinessType businessType = new BusinessType("FWT", 1, "Description", "Category", false, true, "CROWN");
-        when(referenceDataCache.getRotaBusinessTypeByCode("FWT", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("FWT")).thenReturn(Optional.of(businessType));
         stubCrownCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
         // When
-        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         // Then
         ArgumentCaptor<RepeatFrequency> frequencyCaptor = ArgumentCaptor.forClass(RepeatFrequency.class);
@@ -2278,13 +2273,13 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", false, true, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
         // When
-        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         // Then
         ArgumentCaptor<RepeatFrequency> frequencyCaptor = ArgumentCaptor.forClass(RepeatFrequency.class);
@@ -2322,13 +2317,13 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getRepeatFor()).thenReturn(null);
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", false, true, MAGISTRATES.getJurisdiction());
-        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), nullable(LocalDate.class), nullable(Integer.class), any(RepeatFrequency.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
         // When
-        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         // Then
         ArgumentCaptor<RepeatFrequency> frequencyCaptor = ArgumentCaptor.forClass(RepeatFrequency.class);
@@ -2372,13 +2367,13 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
         BusinessType businessType = new BusinessType("FWT", 1, "Description", "Category", false, true, "CROWN");
-        when(referenceDataCache.getRotaBusinessTypeByCode("FWT", requester)).thenReturn(Optional.of(businessType));
+        when(referenceDataCache.getRotaBusinessTypeByCode("FWT")).thenReturn(Optional.of(businessType));
         stubCrownCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
 
         // When
-        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam, requester);
+        sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         // Then - Verify frequency is passed correctly
         ArgumentCaptor<Session> sessionCaptor = ArgumentCaptor.forClass(Session.class);
@@ -2439,7 +2434,7 @@ class SessionsApiValidatorTest {
         stubBusinessType("FWT", "CROWN", true, false);
 
         // When
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Then
         assertEquals("Cannot assign courtroom to a CROWN draft session with hearings booked", result.getString("errorMessage"));
@@ -2479,7 +2474,7 @@ class SessionsApiValidatorTest {
         stubBusinessType("FWT", "CROWN", true, false);
 
         // When
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Then
         assertEquals("Cannot assign state to a CROWN draft session with hearings booked", result.getString("errorMessage"));
@@ -2521,7 +2516,7 @@ class SessionsApiValidatorTest {
         stubBusinessType("FWT", "CROWN", true, false);
 
         // When
-        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule, requester);
+        JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
         // Then - Should pass validation (may have other validation errors, but not the hearings booked error)
         if (result.containsKey("errorMessage")) {
@@ -2808,7 +2803,7 @@ class SessionsApiValidatorTest {
                 .build();
 
         // When
-        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
 
         // Then
         assertEquals("At least one court schedule ID must be provided", result.getString("errorMessage"));
@@ -2824,7 +2819,7 @@ class SessionsApiValidatorTest {
                 .build();
 
         // When
-        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
 
         // Then
         assertEquals("At least one court schedule ID must be provided", result.getString("errorMessage"));
@@ -2840,7 +2835,7 @@ class SessionsApiValidatorTest {
                 .build();
 
         // When
-        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
 
         // Then
         assertEquals("Courtroom ID must be provided", result.getString("errorMessage"));
@@ -2856,7 +2851,7 @@ class SessionsApiValidatorTest {
                 .build();
 
         // When
-        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
 
         // Then
         assertEquals("Courtroom ID must be provided", result.getString("errorMessage"));
@@ -2872,7 +2867,7 @@ class SessionsApiValidatorTest {
                 .build();
 
         // When
-        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
 
         // Then
         assertEquals("Courtroom ID must be provided", result.getString("errorMessage"));
@@ -2888,7 +2883,7 @@ class SessionsApiValidatorTest {
                 .build();
 
         // When
-        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request, requester);
+        JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
 
         // Then
         assertEquals(EMPTY_JSON_OBJECT, result);

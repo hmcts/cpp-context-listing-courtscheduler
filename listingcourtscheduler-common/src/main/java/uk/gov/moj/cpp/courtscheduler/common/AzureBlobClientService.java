@@ -6,7 +6,7 @@ import static java.time.LocalDate.now;
 import static java.util.Optional.empty;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import uk.gov.justice.services.common.configuration.Value;
+import org.springframework.beans.factory.annotation.Value;
 import uk.gov.moj.cpp.courtscheduler.common.exception.AzureBlobClientException;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 
@@ -16,9 +16,9 @@ import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Optional;
 
-import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import com.azure.core.util.Configuration;
 import com.azure.core.util.ConfigurationBuilder;
@@ -37,26 +37,22 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
 public class AzureBlobClientService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AzureBlobClientService.class);
     private static final String ERROR_MSG = "Azure %s is not specified. Please add configuration for `%s`";
 
-    @Inject
-    @Value(key = "courtscheduler.rotaslStorageConnectionString", defaultValue = "")
+    @Value("${courtscheduler.rotaslStorageConnectionString:}")
     private String rotaslStorageConnectionString;
 
-    @Inject
-    @Value(key ="courtscheduler.rotaslStorageAccountName", defaultValue = "")
+    @Value("${courtscheduler.rotaslStorageAccountName:}")
     private String rotaslStorageAccountName;
 
-    @Inject
-    @Value(key = "courtscheduler.rotaslInputContainerName", defaultValue = "schedulelistinginput")
+    @Value("${courtscheduler.rotaslInputContainerName:schedulelistinginput}")
     private String rotaslInputContainerName;
 
-    @Inject
-    @Value(key = "courtscheduler.rotaslArchiveContainerName", defaultValue = "schedulelistingoutput")
+    @Value("${courtscheduler.rotaslArchiveContainerName:schedulelistingoutput}")
     private String rotaslArchiveContainerName;
 
     @Inject

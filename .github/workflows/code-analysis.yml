@@ -1,0 +1,36 @@
+name: Code analysis
+
+on:
+  pull_request:
+
+jobs:
+  pmd-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - uses: pmd/pmd-github-action@v2
+        id: pmd
+        continue-on-error: true
+        with:
+          rulesets: '.github/pmd-ruleset.xml'
+          # Multi-module build — let PMD recurse from repo root and scan every
+          # module's src/main/java. The ruleset filters to the rules we care about.
+          sourcePath: '.'
+          analyzeModifiedFilesOnly: false
+
+      - name: Fail build if there are violations
+        if: always()
+        run: |
+          VIOLATIONS="${{ steps.pmd.outputs.violations }}"
+          if [ -n "$VIOLATIONS" ] && [ "$VIOLATIONS" != "0" ]; then
+            echo "PMD found $VIOLATIONS violations"
+            exit 1
+          fi

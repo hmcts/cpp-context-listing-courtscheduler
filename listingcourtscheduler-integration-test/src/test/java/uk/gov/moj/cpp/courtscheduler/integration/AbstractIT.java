@@ -1,52 +1,67 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static java.util.UUID.fromString;
-import static org.apache.commons.collections.MapUtils.isEmpty;
-import static uk.gov.justice.services.test.utils.common.host.TestHostProvider.getHost;
-import static uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder.requestParams;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLoggedInUsersPermissionQueryStub;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetCpCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataCourtRoomSessionAllocations;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciarySpecialisms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.*;
-
-import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
-import uk.gov.justice.services.common.http.HeaderConstants;
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-import uk.gov.justice.services.test.utils.core.http.RequestParamsBuilder;
-import uk.gov.justice.services.test.utils.core.rest.RestClient;
-import uk.gov.justice.services.test.utils.core.rest.ResteasyClientBuilderFactory;
-import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseReader;
-import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
-
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.Random;
-import java.util.TimeZone;
-import java.util.UUID;
-
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.benas.randombeans.EnhancedRandomBuilder;
 import io.github.benas.randombeans.api.EnhancedRandom;
 import io.github.benas.randombeans.api.Randomizer;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.Response;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Random;
+import java.util.TimeZone;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.web.client.DefaultResponseErrorHandler;
+import org.springframework.web.client.RestTemplate;
+import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseReader;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
 
-@ExtendWith(TestDurationExtension.class)
-public abstract class AbstractIT extends RestClient {
-    protected final String BASE_URL = "http://" + getHost() + ":8080/listingcourtscheduler-api/rest/courtscheduler";
-    protected static final UUID USER_ID = fromString("bb593957-08a8-4d41-a5c1-7674d38d4f43");
-    protected static final UUID SYSTEM_USER_ID = fromString("8e035a94-437d-4f7f-af63-150ccb549bde");
+/**
+ * Re-platformed in place: was {@code extends RestClient} (Justice Services framework)
+ * targeting {@code localhost:8080}; now uses Spring {@link RestTemplate} against the
+ * {@code app.baseUrl} system property set by the Gradle {@code integration} task.
+ *
+ * <p>The legacy {@code postCommand}/{@code putCommand}/{@code deleteCommand} method
+ * surface is preserved — they still return {@code jakarta.ws.rs.core.Response}, built
+ * via {@link #toLegacyResponse(ResponseEntity)} from the underlying Spring response —
+ * so the IT classes compile without rewrites of every {@code response.getStatus()} or
+ * {@code response.readEntity(...)} call site.</p>
+ */
+public abstract class AbstractIT {
+
+    /** Base URL of the dockerised Spring Boot app, set by the Gradle {@code integration} task. */
+    protected static final String APP_BASE_URL = System.getProperty(
+            "app.baseUrl",
+            "http://localhost:8083/listingcourtscheduler-api/rest/courtscheduler");
+
+    /** Kept for source-compatibility with the legacy test classes. */
+    protected final String BASE_URL = APP_BASE_URL;
+
+    protected static final UUID USER_ID = fromString("11111111-1111-1111-1111-111111111111");
+    protected static final UUID SYSTEM_USER_ID = fromString("22222222-2222-2222-2222-222222222222");
+
     protected static final Random random = new Random();
     protected static final EnhancedRandom RANDOM = new EnhancedRandomBuilder()
             .maxStringLength(5)
@@ -54,10 +69,14 @@ public abstract class AbstractIT extends RestClient {
             .randomize(Integer.class, (Randomizer<Integer>) () -> random.nextInt(500))
             .randomize(long.class, (Randomizer<Long>) () -> (long) random.nextInt(500))
             .build();
+
     protected final DatabaseSeeder databaseSeeder = new DatabaseSeeder();
     protected final DatabaseReader databaseReader = new DatabaseReader();
+    protected final ObjectMapper mapper = new ObjectMapper();
+    protected final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
 
-    // Set timezone to UTC as early as possible
+    private static final RestTemplate REST = newRestTemplate();
+
     static {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
     }
@@ -84,56 +103,169 @@ public abstract class AbstractIT extends RestClient {
         stubGetCpCourtRooms("referencedata.get.ou-courtrooms.json");
     }
 
-    protected ObjectMapper mapper = new ObjectMapper();
-    protected final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
-
-    protected Response postCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
-
-        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
-                .withHeader(HeaderConstants.USER_ID, userId)
-                .build();
-
-        return super.postCommand(requestParams.getUrl(), requestParams.getMediaType(), requestPayload, requestParams.getHeaders());
+    private static RestTemplate newRestTemplate() {
+        final RestTemplate template = new RestTemplate();
+        // Surface 4xx/5xx as ResponseEntity so legacy assertions on status codes work.
+        template.setErrorHandler(new DefaultResponseErrorHandler() {
+            @Override
+            public boolean hasError(final ClientHttpResponse response) {
+                return false;
+            }
+        });
+        return template;
     }
 
-    protected Response deleteCommand(final String path, final String contentType, final UUID userId) {
-        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
-                .withHeader(HeaderConstants.USER_ID, userId)
-                .build();
+    // ---------- Legacy method surface ----------
 
-        return super.deleteCommand(requestParams.getUrl(), requestParams.getMediaType(), requestParams.getHeaders());
+    protected Response postCommand(final String path,
+                                   final String contentType,
+                                   final UUID userId,
+                                   final String requestPayload) {
+        return toLegacyResponse(exchange(HttpMethod.POST, path, contentType, userId, requestPayload));
     }
 
-    protected Response deleteCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
-        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
-                .withHeader(HeaderConstants.USER_ID, userId)
-                .build();
-
-        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(requestParams.getMediaType()));
-        return ResteasyClientBuilderFactory.clientBuilder().build().target(requestParams.getUrl()).request().headers(requestParams.getHeaders()).method("DELETE", entity);
+    protected Response deleteCommand(final String path,
+                                     final String contentType,
+                                     final UUID userId) {
+        return toLegacyResponse(exchange(HttpMethod.DELETE, path, contentType, userId, null));
     }
 
-    protected RequestParams getRequestParams(final String path, final String contentType, final UUID userId, final Map<String, Object> queryParams) {
-        final String url = (isEmpty(queryParams)) ? BASE_URL + path : (BASE_URL + path + "?" + createUrlFromParam(queryParams));
-        RequestParamsBuilder requestParamsBuilder = RequestParamsBuilder.requestParams(url, contentType);
-        requestParamsBuilder = requestParamsBuilder.withHeader(HeaderConstants.USER_ID, userId);
-        return requestParamsBuilder.build();
+    protected Response deleteCommand(final String path,
+                                     final String contentType,
+                                     final UUID userId,
+                                     final String requestPayload) {
+        return toLegacyResponse(exchange(HttpMethod.DELETE, path, contentType, userId, requestPayload));
     }
 
-    protected Response putCommand(final String path, final String contentType, final UUID userId, final String requestPayload) {
-
-        final RequestParams requestParams = requestParams(BASE_URL + path, contentType)
-                .withHeader(HeaderConstants.USER_ID, userId)
-                .build();
-
-        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(requestParams.getMediaType()));
-        return ResteasyClientBuilderFactory.clientBuilder().build().target(requestParams.getUrl()).request().headers(requestParams.getHeaders()).put(entity);
+    protected Response putCommand(final String path,
+                                  final String contentType,
+                                  final UUID userId,
+                                  final String requestPayload) {
+        return toLegacyResponse(exchange(HttpMethod.PUT, path, contentType, userId, requestPayload));
     }
 
-    public Response putCommand(final String url, final String contentType, final String requestPayload, final MultivaluedMap<String, Object> headers) {
-        Entity<String> entity = Entity.entity(requestPayload, MediaType.valueOf(contentType));
-        Response response = ResteasyClientBuilderFactory.clientBuilder().build().target(url).request().headers(headers).put(entity);
-        return response;
+    /** Builds the {@code RequestParams}-like aggregator used by the legacy test code. */
+    protected RequestParams getRequestParams(final String path,
+                                             final String contentType,
+                                             final UUID userId,
+                                             final Map<String, Object> queryParams) {
+        final String url = (queryParams == null || queryParams.isEmpty())
+                ? BASE_URL + path
+                : (BASE_URL + path + "?" + createUrlFromParam(queryParams));
+        return new RequestParams(url, contentType, userId == null ? null : userId.toString());
+    }
+
+    /** GET via {@link RestTemplate}; returns the legacy {@code jakarta.ws.rs.core.Response}. */
+    protected Response getCommand(final RequestParams params) {
+        final HttpHeaders headers = new HttpHeaders();
+        if (params.getMediaType() != null) {
+            headers.set(HttpHeaders.ACCEPT, params.getMediaType());
+        }
+        if (params.getUserId() != null) {
+            headers.set("CJSCPPUID", params.getUserId());
+        }
+        final ResponseEntity<String> response = REST.exchange(
+                URI.create(params.getUrl()), HttpMethod.GET,
+                new HttpEntity<>(headers), String.class);
+        return toLegacyResponse(response);
+    }
+
+    private ResponseEntity<String> exchange(final HttpMethod method,
+                                            final String path,
+                                            final String contentType,
+                                            final UUID userId,
+                                            final String body) {
+        final HttpHeaders headers = new HttpHeaders();
+        if (contentType != null) {
+            headers.setContentType(MediaType.parseMediaType(contentType));
+        }
+        if (userId != null) {
+            headers.set("CJSCPPUID", userId.toString());
+        }
+        final HttpEntity<String> entity = new HttpEntity<>(body, headers);
+        return REST.exchange(URI.create(BASE_URL + path), method, entity, String.class);
+    }
+
+    /**
+     * Wraps a Spring {@link ResponseEntity} as a JAX-RS {@link Response}, preserving status,
+     * body, content-type and headers — so the existing legacy test assertions
+     * ({@code response.getStatus()}, {@code response.readEntity(String.class)}, etc.) continue
+     * to compile and behave the same way.
+     *
+     * <p>Returns a {@link LegacyResponse} so callers can use {@code readEntity(Class)}, which
+     * the standard {@link Response.ResponseBuilder} build only supports on inbound (client)
+     * responses — not on the outbound {@link org.glassfish.jersey.message.internal.OutboundJaxrsResponse}
+     * a builder produces. This kept the legacy IT call-sites unchanged.</p>
+     */
+    public static Response toLegacyResponse(final ResponseEntity<String> response) {
+        return new LegacyResponse(response);
+    }
+
+    /**
+     * Hand-rolled {@link Response} that exposes the original Spring response's body via
+     * {@link #readEntity(Class)} as well as {@link #getEntity()}, so legacy tests that use
+     * either pattern keep working without rewrites.
+     */
+    public static final class LegacyResponse extends Response {
+        private final ResponseEntity<String> spring;
+        private final MultivaluedMap<String, Object> headers = new MultivaluedHashMap<>();
+        private final MultivaluedMap<String, String> stringHeaders = new MultivaluedHashMap<>();
+
+        public LegacyResponse(final ResponseEntity<String> spring) {
+            this.spring = spring;
+            spring.getHeaders().forEach((name, values) -> {
+                for (final String v : values) {
+                    headers.add(name, v);
+                    stringHeaders.add(name, v);
+                }
+            });
+        }
+
+        @Override public int getStatus() { return spring.getStatusCode().value(); }
+        @Override public StatusType getStatusInfo() { return Response.Status.fromStatusCode(getStatus()); }
+        @Override public Object getEntity() { return spring.getBody(); }
+
+        @SuppressWarnings("unchecked")
+        @Override public <T> T readEntity(final Class<T> entityType) {
+            if (entityType == String.class || entityType == Object.class) {
+                return (T) spring.getBody();
+            }
+            if (entityType == byte[].class) {
+                return (T) (spring.getBody() == null ? new byte[0] : spring.getBody().getBytes(StandardCharsets.UTF_8));
+            }
+            throw new UnsupportedOperationException("LegacyResponse.readEntity only supports String/byte[]; got " + entityType);
+        }
+        @Override public <T> T readEntity(final jakarta.ws.rs.core.GenericType<T> entityType) { return readEntity((Class<T>) entityType.getRawType()); }
+        @Override public <T> T readEntity(final Class<T> entityType, final java.lang.annotation.Annotation[] annotations) { return readEntity(entityType); }
+        @Override public <T> T readEntity(final jakarta.ws.rs.core.GenericType<T> entityType, final java.lang.annotation.Annotation[] annotations) { return readEntity((Class<T>) entityType.getRawType()); }
+
+        @Override public boolean hasEntity() { return spring.getBody() != null; }
+        @Override public boolean bufferEntity() { return true; }
+        @Override public void close() { /* no-op */ }
+
+        @Override public jakarta.ws.rs.core.MediaType getMediaType() {
+            final MediaType ct = spring.getHeaders().getContentType();
+            return ct == null ? null : jakarta.ws.rs.core.MediaType.valueOf(ct.toString());
+        }
+        @Override public java.util.Locale getLanguage() { return null; }
+        @Override public int getLength() { return spring.getBody() == null ? -1 : spring.getBody().length(); }
+        @Override public java.util.Set<String> getAllowedMethods() { return java.util.Collections.emptySet(); }
+        @Override public java.util.Map<String, jakarta.ws.rs.core.NewCookie> getCookies() { return java.util.Collections.emptyMap(); }
+        @Override public jakarta.ws.rs.core.EntityTag getEntityTag() { return null; }
+        @Override public java.util.Date getDate() { return null; }
+        @Override public java.util.Date getLastModified() { return null; }
+        @Override public java.net.URI getLocation() { return null; }
+        @Override public java.util.Set<jakarta.ws.rs.core.Link> getLinks() { return java.util.Collections.emptySet(); }
+        @Override public boolean hasLink(final String relation) { return false; }
+        @Override public jakarta.ws.rs.core.Link getLink(final String relation) { return null; }
+        @Override public jakarta.ws.rs.core.Link.Builder getLinkBuilder(final String relation) { return null; }
+
+        @Override public MultivaluedMap<String, Object> getMetadata() { return headers; }
+        @Override public MultivaluedMap<String, String> getStringHeaders() { return stringHeaders; }
+        @Override public String getHeaderString(final String name) {
+            final java.util.List<String> values = stringHeaders.get(name);
+            return values == null || values.isEmpty() ? null : String.join(",", values);
+        }
     }
 
     protected String createUrlFromParam(final Map<String, Object> queryParam) {
@@ -142,8 +274,11 @@ public abstract class AbstractIT extends RestClient {
             if (sb.length() > 0) {
                 sb.append('&');
             }
-            sb.append(URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)).append('=').append(URLEncoder.encode(e.getValue().toString(), StandardCharsets.UTF_8));
+            sb.append(java.net.URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8))
+                    .append('=')
+                    .append(java.net.URLEncoder.encode(e.getValue().toString(), StandardCharsets.UTF_8));
         }
         return sb.toString();
     }
+
 }

@@ -1,8 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.String.format;
-import static javax.json.Json.createArrayBuilder;
-import static javax.json.Json.createObjectBuilder;
+import static jakarta.json.Json.createArrayBuilder;
+import static jakarta.json.Json.createObjectBuilder;
 
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotToHearingSlotSearchResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestToAllocatedSlotConverter;
@@ -27,14 +27,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
 
 import org.apache.commons.collections.CollectionUtils;
 
-@ApplicationScoped
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class SlotsUpdateService {
 
     public static final String HEARING_DATE = "hearingDate";

@@ -3,18 +3,11 @@ package uk.gov.moj.cpp.courtscheduler.api.helper;
 import static java.util.UUID.randomUUID;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
-import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
-import uk.gov.justice.services.messaging.Envelope;
-import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.justice.services.messaging.Metadata;
-import uk.gov.justice.services.messaging.spi.DefaultJsonEnvelopeProvider;
+import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
 
-import java.util.UUID;
-
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
+import jakarta.json.Json;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
 
 public class SessionsHelper {
     public static final String REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME = "referencedata.query.public-holidays";
@@ -62,19 +55,6 @@ public class SessionsHelper {
         arrayBuilder.add(businessTypeObject);
         return Json.createObjectBuilder().add("cpRotaCourtRoomMappings", arrayBuilder).build();
     }
-    public static JsonEnvelope createEnvelope(final String name, final JsonValue payload) {
-        final UUID uuid = randomUUID();
-        final UUID userId = randomUUID();
-
-        final Metadata metadata = Envelope
-                .metadataBuilder()
-                .withName(name)
-                .withId(uuid)
-                .withUserId(userId.toString())
-                .build();
-        return new DefaultJsonEnvelopeProvider().envelopeFrom(metadata, payload);
-    }
-
     public static JsonObject getPayload(String path) {
         StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         return stringToJsonObjectConverter.convert(fileToString(path));

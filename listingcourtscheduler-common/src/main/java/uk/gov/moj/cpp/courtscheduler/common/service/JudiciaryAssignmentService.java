@@ -6,7 +6,7 @@ import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
@@ -33,17 +33,16 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.transaction.Transactional;
-import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
 public class JudiciaryAssignmentService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryAssignmentService.class);
@@ -60,19 +59,17 @@ public class JudiciaryAssignmentService {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
-    @PersistenceContext(unitName = "courtscheduler-persistence-unit")
+    @PersistenceContext
     private EntityManager entityManager;
 
-    @Transactional(REQUIRES_NEW)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
-                                                       final Requester requester,
                                                        final String executionId) {
-        return assignJudiciaries(request, requester, executionId, false);
+        return assignJudiciaries(request, executionId, false);
     }
 
     @Transactional
     public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
-                                                       final Requester requester,
                                                        final String executionId,
                                                        final boolean useRepository) {
         final boolean skipValidations = request != null && request.isSkipValidations();
@@ -85,7 +82,7 @@ public class JudiciaryAssignmentService {
         }
 
         final Map<String, CourtSchedule> sessionsById = fetchSessionsById(assignments);
-        final AssignmentResult result = processAssignments(assignments, sessionsById, requester, skipValidations, useRepository);
+        final AssignmentResult result = processAssignments(assignments, sessionsById, skipValidations, useRepository);
 
         // Flush once at the end for EntityManager operations (API calls) - only if there were successful assignments
         if (!useRepository && result.successfulAssignments() > 0) {
@@ -121,7 +118,6 @@ public class JudiciaryAssignmentService {
 
     private AssignmentResult processAssignments(final List<JudiciaryAssignment> assignments,
                                                 final Map<String, CourtSchedule> sessionsById,
-                                                final Requester requester,
                                                 final boolean skipValidations,
                                                 final boolean useRepository) {
         final Set<String> missingJudiciaryIds = new LinkedHashSet<>();
@@ -143,7 +139,7 @@ public class JudiciaryAssignmentService {
             }
 
             final String judiciaryId = assignment.getJudiciaryId();
-            final Judiciary judiciary = referenceDataMapperService.findById(requester, judiciaryId).orElse(null);
+            final Judiciary judiciary = referenceDataMapperService.findById(judiciaryId).orElse(null);
 
             for (final String sessionId : sessionIds) {
                 requestedAssignments++;
@@ -223,7 +219,7 @@ public class JudiciaryAssignmentService {
 
     /**
      * Persists entity using EntityManager - used for API calls.
-     * @Transactional(REQUIRES_NEW) on assignJudiciaries() ensures transaction is active.
+     * @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW) on assignJudiciaries() ensures transaction is active.
      * Uses merge() instead of persist() for better entity state management, similar to unassignJudiciary.
      * merge() handles both new and existing entities, making it more robust for detached entity states.
      * Flush is done once at the end of the method to batch operations.

@@ -1,42 +1,32 @@
 package uk.gov.moj.cpp.courtscheduler.api.accesscontrol;
 
-import static uk.gov.moj.cpp.accesscontrol.drools.ExpectedPermission.builder;
-
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
-import uk.gov.moj.cpp.accesscontrol.drools.ExpectedPermission;
-
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-@JsonPropertyOrder({"object","action","key","keyWithOutSource"})
+/**
+ * Permission JSON literals consumed by the Drools rules in
+ * {@code uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl/courtscheduler-api.drl}.
+ *
+ * <p>cp-auth-rules-filter 2.0.0's {@code RequestUserAndGroupProvider#hasPermission}
+ * deserialises each expected-permission string with Jackson into a {@code UserPermission}
+ * record (fields {@code permissionId}, {@code object}, {@code action}, {@code description})
+ * and matches by {@code UserPermission.getKey()} = {@code "<object>_<action>"}.</p>
+ *
+ * <p>The constants below therefore return JSON strings rather than the legacy
+ * {@code ExpectedPermission} builder shape.</p>
+ */
 public final class PermissionConstants {
 
-    private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    public static final String CREATE_COURT_SCHEDULE_JSON =
+            "{\"object\":\"CourtSchedule\",\"action\":\"Create\"}";
 
-    private static final String COURT_SCHEDULE_OBJECT = "CourtSchedule";
-    private static final String CREATE_ACTION = "Create";
-    private static final String VIEW_ACTION = "View";
+    public static final String GET_COURT_SCHEDULE_JSON =
+            "{\"object\":\"CourtSchedule\",\"action\":\"View\"}";
 
-    private PermissionConstants() {
+    private PermissionConstants() { }
+
+    public static String createCourtSchedulePermission() {
+        return CREATE_COURT_SCHEDULE_JSON;
     }
 
-    public static String createCourtSchedulePermission() throws JsonProcessingException {
-        final ExpectedPermission expectedPermission = builder()
-                .withObject(COURT_SCHEDULE_OBJECT)
-                .withAction(CREATE_ACTION)
-                .build();
-
-        return objectMapper.writeValueAsString(expectedPermission);
+    public static String getCourtSchedulePermission() {
+        return GET_COURT_SCHEDULE_JSON;
     }
-
-    public static String getCourtSchedulePermission() throws JsonProcessingException {
-        final ExpectedPermission expectedPermission = builder()
-                .withObject(COURT_SCHEDULE_OBJECT)
-                .withAction(VIEW_ACTION)
-                .build();
-
-        return objectMapper.writeValueAsString(expectedPermission);
-    }
-
 }

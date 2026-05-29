@@ -1,0 +1,34 @@
+# cp-audit-filter-springboot
+# OpenAPI spec is required even when audit.http.enabled=false (library bean creation).
+audit:
+  http:
+    enabled: ${CSCHED_HTTP_AUDIT_ENABLED:false}
+    openapi-rest-spec: ${CSCHED_REST_SPECIFICATION:openapi/courtscheduler-api.openapi.yml}
+
+# CP Audit (Artemis JMS) — required by cp-audit-filter-springboot even when audit.http.enabled=false
+cp:
+  audit:
+    enabled: ${CSCHED_AUDIT_ENABLED:false}
+    high-availability: ${CSCHED_ARTEMIS_HA:false}
+    hosts:
+      - ${CSCHED_ARTEMIS_HOST_PRIMARY:localhost}
+      - ${CSCHED_ARTEMIS_HOST_SECONDARY:}
+    port: ${CSCHED_ARTEMIS_PORT:61616}
+    user: ${CSCHED_ARTEMIS_USER:}
+    password: ${CSCHED_ARTEMIS_PASSWORD:}
+    ssl-enabled: ${CSCHED_ARTEMIS_SSL_ENABLED:false}
+    client-auth-required: ${CSCHED_ARTEMIS_CLIENT_AUTH_REQUIRED:false}
+    keystore: ${CSCHED_ARTEMIS_KEYSTORE:}
+    keystore-password: ${CSCHED_ARTEMIS_KEYSTORE_PASSWORD:}
+    truststore: ${CSCHED_ARTEMIS_KEYSTORE:}
+    truststore-password: ${CSCHED_ARTEMIS_KEYSTORE_PASSWORD:}
+    verify-host: ${CSCHED_ARTEMIS_VERIFY_HOST:false}
+    jms:
+      reconnect-attempts: ${CSCHED_JMS_RECONNECT_ATTEMPTS:-1}
+      initial-connect-attempts: ${CSCHED_JMS_INITIAL_CONNECT_ATTEMPTS:10}
+      retry-interval-ms: ${CSCHED_JMS_RETRY_INTERVAL_MS:2000}
+      retry-multiplier: ${CSCHED_JMS_RETRY_MULTIPLIER:1.5}
+      max-retry-interval-ms: ${CSCHED_JMS_MAX_RETRY_INTERVAL_MS:30000}
+      connection-ttl-ms: ${CSCHED_JMS_CONNECTION_TTL_MS:60000}
+      call-timeout-ms: ${CSCHED_JMS_CALL_TIMEOUT_MS:15000}
+      session-cache-size: ${CSCHED_JMS_SESSION_CACHE_SIZE:10}

@@ -13,7 +13,6 @@ import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.LOCATION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.ROTA_PERIOD;
 
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -44,9 +43,6 @@ class RotaLocationPeriodHelperTest {
 
     @Mock
     private CourtScheduleJudiciaryService courtScheduleJudiciaryService;
-
-    @Mock
-    private Requester requester;
 
     @InjectMocks
     private RotaLocationPeriodHelper rotaLocationPeriodHelper;
@@ -174,41 +170,41 @@ class RotaLocationPeriodHelperTest {
                     .build();
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
-            when(referenceDataMapperService.getCourtRoomsMap(requester)).thenReturn(courtRoomsMap);
+            when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
 
             // when
-            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds, requester);
+            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds);
 
             // then
             assertNotNull(result);
             assertEquals(2, result.size());
             assertTrue(result.contains("OU001"));
             assertTrue(result.contains("OU002"));
-            verify(referenceDataMapperService).getCourtRoomsMap(requester);
+            verify(referenceDataMapperService).getCourtRoomsMap();
         }
 
         @Test
         @DisplayName("Should return empty list when location IDs is null")
         void shouldReturnEmptyListWhenLocationIdsIsNull() {
             // when
-            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(null, requester);
+            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(null);
 
             // then
             assertNotNull(result);
             assertTrue(result.isEmpty());
-            verify(referenceDataMapperService, never()).getCourtRoomsMap(any());
+            verify(referenceDataMapperService, never()).getCourtRoomsMap();
         }
 
         @Test
         @DisplayName("Should return empty list when location IDs is empty")
         void shouldReturnEmptyListWhenLocationIdsIsEmpty() {
             // when
-            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(emptyList(), requester);
+            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(emptyList());
 
             // then
             assertNotNull(result);
             assertTrue(result.isEmpty());
-            verify(referenceDataMapperService, never()).getCourtRoomsMap(any());
+            verify(referenceDataMapperService, never()).getCourtRoomsMap();
         }
 
         @Test
@@ -230,10 +226,10 @@ class RotaLocationPeriodHelperTest {
                     .build();
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
-            when(referenceDataMapperService.getCourtRoomsMap(requester)).thenReturn(courtRoomsMap);
+            when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
 
             // when
-            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds, requester);
+            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds);
 
             // then
             assertNotNull(result);
@@ -255,10 +251,10 @@ class RotaLocationPeriodHelperTest {
                     .withCourtRoomId(roomId1.toString())
                     .build();
             courtRoomsMap.put(roomId1, courtRoom1);
-            when(referenceDataMapperService.getCourtRoomsMap(requester)).thenReturn(courtRoomsMap);
+            when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
 
             // when
-            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds, requester);
+            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds);
 
             // then
             assertNotNull(result);
@@ -286,10 +282,10 @@ class RotaLocationPeriodHelperTest {
                     .build();
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
-            when(referenceDataMapperService.getCourtRoomsMap(requester)).thenReturn(courtRoomsMap);
+            when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
 
             // when
-            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds, requester);
+            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds);
 
             // then
             assertNotNull(result);
@@ -317,10 +313,10 @@ class RotaLocationPeriodHelperTest {
                     .build();
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
-            when(referenceDataMapperService.getCourtRoomsMap(requester)).thenReturn(courtRoomsMap);
+            when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
 
             // when
-            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds, requester);
+            final List<String> result = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locationIds);
 
             // then
             assertNotNull(result);

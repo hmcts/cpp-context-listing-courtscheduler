@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.util.UUID.randomUUID;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
-import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 

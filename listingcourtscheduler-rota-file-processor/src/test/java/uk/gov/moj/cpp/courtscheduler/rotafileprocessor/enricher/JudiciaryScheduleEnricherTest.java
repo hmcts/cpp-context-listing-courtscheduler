@@ -13,9 +13,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
@@ -53,9 +52,6 @@ class JudiciaryScheduleEnricherTest {
     @Mock
     private ReferenceDataMapperService referenceDataMapperService;
 
-    @Mock
-    private Requester requester;
-
     @BeforeEach
     public void setUp() {
         setField(judiciaryScheduleEnricher, "judiciaryBuilder", new JudiciaryBuilder());
@@ -70,14 +66,14 @@ class JudiciaryScheduleEnricherTest {
         setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.of(judiciary));
+        when(referenceDataMapperService.findByEmail(anyString())).thenReturn(Optional.of(judiciary));
         when(courtScheduleMap.get(anyString())).thenReturn(new CourtSchedule());
 
         final Map<String, String> errors = new HashMap<>();
         final Map<String, List<String>> missingSessionsByOuCode = new HashMap<>();
-        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, emptyList(), requester, randomUUID().toString(), errors, missingSessionsByOuCode);
+        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, emptyList(), randomUUID().toString(), errors, missingSessionsByOuCode);
 
-        verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
+        verify(referenceDataMapperService, times(3)).findByEmail(anyString());
         assertThat(courtScheduleJudiciaries.size(), is(3));
 
         final Optional<CourtScheduleJudiciary> courtScheduleJudiciary = courtScheduleJudiciaries.stream().findFirst();
@@ -98,7 +94,7 @@ class JudiciaryScheduleEnricherTest {
             assertNotNull(csj.getPosition());
         }
 
-        verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
+        verify(referenceDataMapperService, times(3)).findByEmail(anyString());
 
         verifyNoMoreInteractions(referenceDataMapperService);
     }
@@ -112,16 +108,16 @@ class JudiciaryScheduleEnricherTest {
         setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.empty());
+        when(referenceDataMapperService.findByEmail(anyString())).thenReturn(Optional.empty());
         final Map<String, CourtSchedule> courtScheduleMap = new HashMap<>();
         final CourtSchedule courtSchedule = courtSchedule();
         courtScheduleMap.put(courtSchedule.getListingProfileId(), courtSchedule);
 
         final Map<String, String> errors = new HashMap<>();
         final Map<String, List<String>> missingSessionsByOuCode = new HashMap<>();
-        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, List.of(courtSchedule), requester, randomUUID().toString(), errors, missingSessionsByOuCode);
+        final Collection<CourtScheduleJudiciary> courtScheduleJudiciaries = judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, false, List.of(courtSchedule), randomUUID().toString(), errors, missingSessionsByOuCode);
 
-        verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
+        verify(referenceDataMapperService, times(3)).findByEmail(anyString());
         assertThat(courtScheduleJudiciaries.size(), is(0));
 
         final Optional<CourtScheduleJudiciary> courtScheduleJudiciary = courtScheduleJudiciaries.stream().findFirst();
@@ -131,7 +127,7 @@ class JudiciaryScheduleEnricherTest {
             assertThat(csj.getJudiciaryId(), is(nullValue()));
         }
 
-        verify(referenceDataMapperService, times(3)).findByEmail(eq(requester), anyString());
+        verify(referenceDataMapperService, times(3)).findByEmail(anyString());
 
         // Verify that errors map is populated with missing judiciary information
         assertThat("Errors map should contain missing judiciary entries", errors.isEmpty(), is(false));
@@ -195,7 +191,7 @@ class JudiciaryScheduleEnricherTest {
                 .build();
 
         when(courtScheduleMap.get(anyString())).thenReturn(courtSchedule);
-        when(referenceDataMapperService.findByEmail(eq(requester), anyString())).thenReturn(Optional.of(getJudiciary()));
+        when(referenceDataMapperService.findByEmail(anyString())).thenReturn(Optional.of(getJudiciary()));
 
         final List<CourtSchedule> activeSchedules = List.of(
                 new CourtSchedule.CourtScheduleBuilder()
@@ -211,7 +207,7 @@ class JudiciaryScheduleEnricherTest {
         final String executionId = randomUUID().toString();
         final Map<String, String> errors = new HashMap<>();
         final Map<String, List<String>> missingSessionsByOuCode = new HashMap<>();
-        judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, true, activeSchedules, requester, executionId, errors, missingSessionsByOuCode);
+        judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, true, activeSchedules, executionId, errors, missingSessionsByOuCode);
 
         // Verify that missing sessions were collected in the map
         assertThat(missingSessionsByOuCode.containsKey("CABC90"), is(true));

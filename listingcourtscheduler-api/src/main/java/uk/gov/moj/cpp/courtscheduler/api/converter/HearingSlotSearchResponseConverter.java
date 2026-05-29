@@ -1,9 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+
+
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
+
 
 public class HearingSlotSearchResponseConverter {
 
