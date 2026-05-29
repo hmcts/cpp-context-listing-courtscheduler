@@ -50,7 +50,16 @@ jobs:
         run: |
           ./gradlew build cyclonedxBom -x test
 
+      # TEMPORARY (LPT-2318): the analysis itself succeeds (DB builds + queries run),
+      # but the result upload currently fails with "Code Security must be enabled for
+      # this repository to use code scanning" — a repo/org GitHub setting, not a code
+      # issue. `continue-on-error` keeps this step from blocking the PR until the
+      # setting is enabled (Settings → Security → Code scanning). The analysis still
+      # runs so nothing is lost.
+      # RE-ENABLE: under LPT-2318, once Code scanning is enabled on the repo, remove
+      # `continue-on-error` so a genuine analysis failure blocks the build again.
       - name: Perform CodeQL Analysis
+        continue-on-error: true
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{matrix.language}}"
