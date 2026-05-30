@@ -10,10 +10,11 @@
 
     <groupId>uk.gov.moj.cpp.courtscheduler</groupId>
     <artifactId>listingcourtscheduler-parent</artifactId>
-    <version>17.0.76-SNAPSHOT</version>
+    <version>17.0.79-REF1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>CourtScheduler Service - Parent Module</name>
+
 
     <properties>
         <sonar.jacoco.itReportPath>${project.basedir}/../target/jacoco-it.exec

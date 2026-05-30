@@ -48,6 +48,10 @@ public class AzureBlobClientService {
     private String rotaslStorageConnectionString;
 
     @Inject
+    @Value(key = "courtscheduler.rotaslStorageEndpoint", defaultValue = "")
+    private String rotaslStorageEndpoint;
+
+    @Inject
     @Value(key ="courtscheduler.rotaslStorageAccountName", defaultValue = "")
     private String rotaslStorageAccountName;
 
@@ -184,8 +188,15 @@ public class AzureBlobClientService {
     }
 
     private BlobServiceClient createBlobServiceClient() {
+        if (!StringUtils.isEmpty(rotaslStorageEndpoint)) {
+            return newBlobServiceClientBuilder()
+                    .endpoint(rotaslStorageEndpoint)
+                    .connectionString(rotaslStorageConnectionString)
+                    .buildClient();
+        }
+
         if (StringUtils.isEmpty(rotaslStorageAccountName)) {
-            return new BlobServiceClientBuilder()
+            return newBlobServiceClientBuilder()
                     .connectionString(rotaslStorageConnectionString)
                     .buildClient();
         }
@@ -195,7 +206,7 @@ public class AzureBlobClientService {
                 .putProperty(AZURE_TENANT_ID, storageApplicationParameters.getAzureLocalMiTenantId())
                 .build();
 
-        return new BlobServiceClientBuilder()
+        return newBlobServiceClientBuilder()
                 .endpoint(format("https://%s.blob.core.windows.net/", rotaslStorageAccountName))
                 .credential(new DefaultAzureCredentialBuilder()
                         .tenantId(storageApplicationParameters.getAzureLocalMiTenantId())
@@ -203,5 +214,10 @@ public class AzureBlobClientService {
                         .configuration(configuration)
                         .build())
                 .buildClient();
+    }
+
+    // Package-private so tests can stub it via a Mockito spy without a live Azure connection.
+    BlobServiceClientBuilder newBlobServiceClientBuilder() {
+        return new BlobServiceClientBuilder();
     }
 }
