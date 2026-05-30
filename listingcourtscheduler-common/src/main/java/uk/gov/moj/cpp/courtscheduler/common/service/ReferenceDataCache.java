@@ -52,10 +52,10 @@ public class ReferenceDataCache {
     @Inject
     private JsonObjectToObjectConverter jsonObjectToObjectConverter;
 
-    @Value("${redisCommonCacheEnabled:false}")
+    @Value("${redis.common-cache.enabled:false}")
     private String redisCommonCacheEnabled;
 
-    @Value("${redisCommonCacheKey5MinsTTL:300}")
+    @Value("${redis.common-cache.key-5-mins-ttl:300}")
     private String redisCommonCacheKey5MinsTTL;
 
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";

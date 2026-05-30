@@ -49,8 +49,10 @@ usersgroups:
 # Redis cache (existing semantics)
 redis:
   common-cache:
+    enabled: ${REDIS_COMMON_CACHE_ENABLED:false}
     host: ${REDIS_COMMON_CACHE_HOST:localhost}
     port: ${REDIS_COMMON_CACHE_PORT:6380}
     use-ssl: ${REDIS_COMMON_CACHE_USE_SSL:false}
     key-prefix: ${REDIS_COMMON_CACHE_KEY:courtscheduler}
     key-ttl-seconds: ${REDIS_COMMON_CACHE_KEY_TTL:86400}
+    key-5-mins-ttl: ${REDIS_COMMON_CACHE_KEY_5_MINS_TTL:300}
