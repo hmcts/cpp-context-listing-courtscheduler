@@ -56,3 +56,12 @@ redis:
     key-prefix: ${REDIS_COMMON_CACHE_KEY:courtscheduler}
     key-ttl-seconds: ${REDIS_COMMON_CACHE_KEY_TTL:86400}
     key-5-mins-ttl: ${REDIS_COMMON_CACHE_KEY_5_MINS_TTL:300}
+
+# Logging. The legacy WildFly deployment ran at root=ERROR; Spring Boot defaults
+# to INFO, which is far chattier. Default root to WARN to keep third-party noise
+# down, but keep this app's own packages at INFO so the rota-pipeline progress
+# lines stay visible. Both are overridable per env via the LOG_LEVEL_* env vars.
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}
+    uk.gov.moj.cpp.courtscheduler: ${LOG_LEVEL_COURTSCHEDULER:INFO}
