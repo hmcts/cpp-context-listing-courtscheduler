@@ -3,7 +3,7 @@
 # These keys bridge the deployment's env vars onto the property names the code
 # actually reads:
 #   - AzureBlobClientService       -> courtscheduler.rotasl*
-#   - StorageApplicationParameters -> azure.local.mi.*
+#   - StorageApplicationParameters -> the managed-identity keys under "azure: local: mi:"
 #
 # Higher environments (dev/test/prod clusters) authenticate with Workload Identity
 # via DefaultAzureCredential: set the storage account name + MI client/tenant and
