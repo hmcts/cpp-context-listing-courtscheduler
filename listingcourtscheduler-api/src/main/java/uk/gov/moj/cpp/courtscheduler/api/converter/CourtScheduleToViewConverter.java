@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import org.springframework.stereotype.Service;
+
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -11,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Service
 public class CourtScheduleToViewConverter {
 
     public static List<CourtSessionsView> getCourtSessionsViews(List<CourtSchedule> courtSchedules) {

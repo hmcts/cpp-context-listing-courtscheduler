@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import org.springframework.stereotype.Service;
+
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_SCHEDULE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COURT_SCHEDULE_ID_LIST;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.DURATION;
@@ -10,9 +12,10 @@ import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestPa
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.json.JsonObject;
-import javax.json.JsonValue;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
 
+@Service
 public class ValidateSessionAvailabilityRequestParamConverter implements Converter<JsonObject, ValidateSessionAvailabilityRequestParam> {
 
     @Override

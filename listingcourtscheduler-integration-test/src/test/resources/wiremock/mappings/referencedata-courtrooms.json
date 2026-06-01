@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/referencedata-query-api/query/api/rest/referencedata/courtrooms"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.referencedata.ou-courtrooms+json"
+    },
+    "jsonBody": {
+      "organisationunits": []
+    }
+  }
+}

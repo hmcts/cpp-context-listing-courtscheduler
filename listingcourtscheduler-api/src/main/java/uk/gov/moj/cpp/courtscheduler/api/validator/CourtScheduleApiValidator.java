@@ -1,10 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import org.springframework.stereotype.Service;
+
 import static java.lang.String.format;
 import static java.util.logging.Level.WARNING;
 import static java.util.logging.Logger.getGlobal;
-import static javax.json.Json.createObjectBuilder;
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static jakarta.json.Json.createObjectBuilder;
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
@@ -12,18 +14,19 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CR
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_AFTER_END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
 
-import uk.gov.justice.services.common.converter.LocalDates;
+// (removed) use java.time.LocalDate directly
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
 import java.time.format.DateTimeParseException;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Service
 public class CourtScheduleApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleApiValidator.class.getName());
 
@@ -50,8 +53,8 @@ public class CourtScheduleApiValidator {
 
         // Validate startDate <= endDate
         try {
-            final var start = LocalDates.from(courtScheduleRequestParam.sessionStartDate());
-            final var end = LocalDates.from(courtScheduleRequestParam.sessionEndDate());
+            final var start = java.time.LocalDate.parse(courtScheduleRequestParam.sessionStartDate());
+            final var end = java.time.LocalDate.parse(courtScheduleRequestParam.sessionEndDate());
             if (end.isBefore(start)) {
                 return buildErrorResponse(START_DATE_AFTER_END_DATE);
             }
@@ -72,7 +75,7 @@ public class CourtScheduleApiValidator {
 
     private boolean isInvalidDateFormat(final String date) {
         try {
-            LocalDates.from(date);
+            java.time.LocalDate.parse(date);
         } catch (final DateTimeParseException e) {
             getGlobal().log(WARNING, format("Invalid Date supplied: %s and exception", date), e);
             return true;

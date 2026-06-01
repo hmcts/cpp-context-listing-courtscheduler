@@ -1,7 +1,9 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
-import static javax.json.Json.createObjectBuilder;
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import org.springframework.stereotype.Service;
+
+import static jakarta.json.Json.createObjectBuilder;
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
@@ -23,11 +25,12 @@ import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 
 import java.util.List;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Service
 public class JudiciaryAvailabilityRuleApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(JudiciaryAvailabilityRuleApiValidator.class.getName());
     private static final String REQUEST_FIELD = "Request";

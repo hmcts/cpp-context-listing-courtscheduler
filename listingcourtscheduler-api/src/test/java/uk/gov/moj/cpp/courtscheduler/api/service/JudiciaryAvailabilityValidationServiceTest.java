@@ -35,7 +35,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     private JudiciaryAvailabilityRuleRepository repository;
 
     @Mock
-    private javax.persistence.EntityManager entityManager;
+    private jakarta.persistence.EntityManager entityManager;
 
     @Mock
     private uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
@@ -199,7 +199,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(1), today.plusDays(31));
         existingRule.setId(ruleId);
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         when(repository.findRulesByDateRange(today.plusDays(1), today.plusDays(31), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
@@ -215,7 +215,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(1), today.plusDays(31));
         existingRule.setId(ruleId);
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
 
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
@@ -231,7 +231,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(pastDate, today.plusDays(31));
         existingRule.setId(ruleId);
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         when(repository.findRulesByDateRange(pastDate, today.plusDays(31), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
@@ -248,7 +248,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(1), today.plusDays(31));
         existingRule.setId(ruleId);
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
 
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
@@ -271,7 +271,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String ruleId = randomUUID().toString();
         UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(1), today.plusDays(31));
 
-        when(repository.findBy(ruleId)).thenReturn(null);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.empty());
 
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
@@ -295,7 +295,7 @@ class JudiciaryAvailabilityValidationServiceTest {
                 createEntityRepeatDay(AvailabilityDayOfWeek.Monday)
         ));
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         when(repository.findRulesByDateRange(today.plusDays(10), today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule, otherRule));
 
@@ -317,7 +317,7 @@ class JudiciaryAvailabilityValidationServiceTest {
                 createEntityRepeatDay(AvailabilityDayOfWeek.Monday)
         ));
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         when(repository.findRulesByDateRange(today.plusDays(10), today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule)); // Only current rule
 
@@ -384,7 +384,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         JudiciaryAvailabilityRule existingRule = createExistingRule(oldStart, today.plusDays(40));
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         
         // Mock that there are assigned sessions in the removed date range (oldStart to newStart - 1)
         when(courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryAndDateRange(
@@ -408,7 +408,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), oldEnd);
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         
         // Mock that there are assigned sessions in the removed date range (newEnd + 1 to oldEnd)
         when(courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryAndDateRange(
@@ -432,7 +432,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         JudiciaryAvailabilityRule existingRule = createExistingRule(oldStart, today.plusDays(40));
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         
         // Mock that there are no assigned sessions in the removed date range
         when(courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryAndDateRange(
@@ -458,7 +458,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), oldEnd);
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         
         // Mock that there are no assigned sessions in the removed date range
         when(courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryAndDateRange(
@@ -489,7 +489,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), today.plusDays(40));
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         
         // Mock that there are assigned sessions in the unavailability date range
         when(courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryAndDateRange(
@@ -521,7 +521,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), today.plusDays(40));
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         
         // Mock that there are no assigned sessions in the unavailability date range
         when(courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryAndDateRange(
@@ -547,7 +547,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         JudiciaryAvailabilityRule existingRule = createExistingRule(oldStart, today.plusDays(40));
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         when(repository.findRulesByDateRange(newStart, today.plusDays(40), null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 
@@ -567,7 +567,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), oldEnd);
         existingRule.setId(ruleId);
 
-        when(repository.findBy(ruleId)).thenReturn(existingRule);
+        when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(existingRule));
         when(repository.findRulesByDateRange(today.plusDays(10), newEnd, null, judiciaryId))
                 .thenReturn(Arrays.asList(existingRule));
 

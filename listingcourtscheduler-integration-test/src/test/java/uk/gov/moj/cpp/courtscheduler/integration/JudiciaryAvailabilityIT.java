@@ -1,19 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
-import static io.netty.handler.codec.http.HttpResponseStatus.UNPROCESSABLE_ENTITY;
+
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -28,12 +28,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
-import javax.ws.rs.core.Response;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
+import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
 
@@ -1333,7 +1333,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_ADD, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
 
-        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY.code()));
+        assertThat(response.getStatus(), is(422));
         final String responseString = response.readEntity(String.class);
         assertTrue(responseString.contains("future") || responseString.contains("validationError"));
     }
@@ -1418,7 +1418,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_UPDATE, UPDATE_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
 
-        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY.code()));
+        assertThat(response.getStatus(), is(422));
         final String responseString = response.readEntity(String.class);
         assertTrue(responseString.contains("future") || responseString.contains("validationError"));
     }
@@ -1508,7 +1508,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_DELETE, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
 
-        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY.code()));
+        assertThat(response.getStatus(), is(422));
         final String responseString = response.readEntity(String.class);
         final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
         final JsonObject validationResult = responseJson.getJsonObject("validationResult");
@@ -1530,7 +1530,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final Response response = postCommand(AVAILABILITY_RULES_VALIDATE_DELETE, ADD_AVAILABILITY_RULE_CONTENT_TYPE, SYSTEM_USER_ID, requestPayload);
 
-        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY.code()));
+        assertThat(response.getStatus(), is(422));
         final String responseString = response.readEntity(String.class);
         assertTrue(responseString.contains("not found") || responseString.contains("validationError"));
     }

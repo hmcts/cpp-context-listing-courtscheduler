@@ -15,7 +15,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSI
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -31,8 +31,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Helper class for creating court schedule maps from rota file records.
  */
-@ApplicationScoped
+@Service
 public class RotaCourtScheduleHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaCourtScheduleHelper.class);
@@ -67,7 +67,6 @@ public class RotaCourtScheduleHelper {
      * @return a map of court listing profile IDs to sets of CourtSchedule UUIDs
      */
     public Map<String, Set<UUID>> createCourtScheduleMap(final Map<RotaPayload, Map<String, Map<String, String>>> records,
-                                                          final Requester requester,
                                                           final String executionId) {
         if (RotaUtils.isEmptyRecords(records)) {
             logger.warn("No records provided to create court schedule map");
@@ -86,7 +85,7 @@ public class RotaCourtScheduleHelper {
 
         courtListings.forEach((listingProfileId, listingProfile) -> {
             try {
-                processCourtListing(listingProfileId, listingProfile, requester, executionId,
+                processCourtListing(listingProfileId, listingProfile, executionId,
                         courtScheduleMap, missingReferenceDataMappingMap, missingSessionsByOuCode);
             } catch (final Exception ex) {
                 logger.error("Error processing court listing profile {}: {}", listingProfileId, ex.getMessage(), ex);
@@ -104,7 +103,6 @@ public class RotaCourtScheduleHelper {
 
     private void processCourtListing(final String listingProfileId,
                                      final Map<String, String> listingProfile,
-                                     final Requester requester,
                                      final String executionId,
                                      final Map<String, Set<UUID>> courtScheduleMap,
                                      final Map<String, String> missingReferenceDataMappingMap,
@@ -124,7 +122,7 @@ public class RotaCourtScheduleHelper {
             return;
         }
 
-        final CourtRoom courtRoom = venueCourtRoomHelper.getCourtRoom(listingProfile, requester, executionId, missingReferenceDataMappingMap);
+        final CourtRoom courtRoom = venueCourtRoomHelper.getCourtRoom(listingProfile, executionId, missingReferenceDataMappingMap);
         if (courtRoom == null) {
             logger.debug("Skipping court listing {} - could not determine court room", listingProfileId);
             return;

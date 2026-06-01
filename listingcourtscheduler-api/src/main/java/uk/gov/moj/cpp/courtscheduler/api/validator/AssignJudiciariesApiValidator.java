@@ -1,12 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
-import static javax.json.Json.createObjectBuilder;
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static jakarta.json.Json.createObjectBuilder;
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
@@ -23,11 +23,11 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.json.JsonObject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.json.JsonObject;
 
-@ApplicationScoped
+@Service
 public class AssignJudiciariesApiValidator {
 
     private ReferenceDataMapperService referenceDataMapperService;
@@ -45,7 +45,7 @@ public class AssignJudiciariesApiValidator {
         this.courtScheduleRepository = courtScheduleRepository;
     }
 
-    public JsonObject validate(final AssignJudiciariesRequest request, final Requester requester) {
+    public JsonObject validate(final AssignJudiciariesRequest request) {
         // Skip validation if skipValidations flag is set to true
         if (request != null && request.isSkipValidations()) {
             return EMPTY_JSON_OBJECT;
@@ -56,7 +56,7 @@ public class AssignJudiciariesApiValidator {
         if (request == null || isEmpty(request.getJudiciaries())) {
             errors.add("At least one judiciary assignment must be supplied");
         } else {
-            validateAssignments(request.getJudiciaries(), errors, requester);
+            validateAssignments(request.getJudiciaries(), errors);
         }
 
         if (errors.isEmpty()) {
@@ -68,7 +68,7 @@ public class AssignJudiciariesApiValidator {
                 .build();
     }
 
-    private void validateAssignments(final List<JudiciaryAssignment> assignments, final List<String> errors, final Requester requester) {
+    private void validateAssignments(final List<JudiciaryAssignment> assignments, final List<String> errors) {
         final Map<String, CourtSchedule> sessionsById = fetchSessionsById(assignments);
 
         for (int index = 0; index < assignments.size(); index++) {
@@ -78,7 +78,7 @@ public class AssignJudiciariesApiValidator {
                 continue;
             }
 
-            validateSingleAssignment(assignment, index, sessionsById, errors, requester);
+            validateSingleAssignment(assignment, index, sessionsById, errors);
         }
     }
 
@@ -101,23 +101,23 @@ public class AssignJudiciariesApiValidator {
     private void validateSingleAssignment(final JudiciaryAssignment assignment,
                                           final int index,
                                           final Map<String, CourtSchedule> sessionsById,
-                                          final List<String> errors,
-                                          final Requester requester) {
-        validateJudiciary(assignment, index, errors, requester);
+                                          final List<String> errors
+    ) {
+        validateJudiciary(assignment, index, errors);
         validateSessions(assignment, index, sessionsById, errors);
     }
 
     private void validateJudiciary(final JudiciaryAssignment assignment,
                                    final int index,
-                                   final List<String> errors,
-                                   final Requester requester) {
+                                   final List<String> errors
+    ) {
         final String judiciaryId = assignment.getJudiciaryId();
         if (isBlank(judiciaryId)) {
             errors.add(message(index, "Judiciary id is mandatory"));
             return;
         }
 
-        if (referenceDataMapperService.findById(requester, judiciaryId).isEmpty()) {
+        if (referenceDataMapperService.findById(judiciaryId).isEmpty()) {
             errors.add(message(index, "Judiciary not found: " + judiciaryId));
         }
     }

@@ -16,13 +16,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
 public class MissingReferenceDataMappingLogger {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MissingReferenceDataMappingLogger.class);

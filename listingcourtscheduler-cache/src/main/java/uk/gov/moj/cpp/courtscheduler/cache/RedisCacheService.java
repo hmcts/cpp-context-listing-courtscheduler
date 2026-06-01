@@ -2,12 +2,10 @@ package uk.gov.moj.cpp.courtscheduler.cache;
 
 import static java.util.Objects.isNull;
 
-import uk.gov.justice.services.common.configuration.Value;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-
-import javax.ejb.Stateless;
-import javax.inject.Inject;
 
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.RedisClient;
@@ -19,7 +17,13 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-@Stateless
+
+/**
+ * Migrated from {@code @Stateless} EJB + Justice Services {@code @Value} key/defaultValue
+ * configuration to a Spring {@code @Service} with {@code @Value("${...:default}")}
+ * placeholders bound to the {@code redis.common-cache.*} block in {@code application.yaml}.
+ */
+@Service
 public class RedisCacheService implements CacheService{
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisCacheService.class);
 
@@ -27,24 +31,19 @@ public class RedisCacheService implements CacheService{
     private static final Duration CONNECT_TIMEOUT_ONE_SEC = Duration.ofSeconds(3);
     private static final String DB_NAME = "0";
 
-    @Inject
-    @Value(key = "redisCommonCacheHost", defaultValue = "localhost")
+    @Value("${redis.common-cache.host:localhost}")
     private String host;
 
-    @Inject
-    @Value(key = "redisCommonCacheKey", defaultValue = "none")
+    @Value("${redis.common-cache.key-prefix:none}")
     private String key;
 
-    @Inject
-    @Value(key = "redisCommonCachePort", defaultValue = "6380")
+    @Value("${redis.common-cache.port:6380}")
     private String port;
 
-    @Inject
-    @Value(key = "redisCommonCacheUseSsl", defaultValue = "false")
+    @Value("${redis.common-cache.use-ssl:false}")
     private String useSsl;
 
-    @Inject
-    @Value(key = "redisCommonCacheKeyTTL", defaultValue = "86400")
+    @Value("${redis.common-cache.key-ttl-seconds:86400}")
     private String ttlSeconds;
 
     private RedisClient redisClient = null;

@@ -4,17 +4,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
 
-import javax.ejb.Stateless;
-import javax.ejb.TransactionAttribute;
-import javax.ejb.TransactionAttributeType;
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceException;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceException;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -22,7 +21,8 @@ import java.util.Objects;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository.getCourtScheduleToBeUpdated;
 
-@Stateless
+@Service
+@Transactional
 public class CourtScheduleRetryService {
 
     @Inject
@@ -30,13 +30,10 @@ public class CourtScheduleRetryService {
     @Inject
     CourtScheduleCriteria courtScheduleCriteria;
 
-    @Inject
-    CourtScheduleRepository repository;
-
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRetryService.class.getName());
 
 
-    @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CourtSchedule retryAndSave(CourtSchedule courtSchedule,boolean isForRotaFile) {
         List<CourtSchedule> persistedCourtSchedules = findPersistedSchedules(courtSchedule);
 
@@ -76,7 +73,7 @@ public class CourtScheduleRetryService {
         return null;
     }
 
-    @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void upsertOne(final CourtSchedule courtSchedule) {
         try {
             entityManager.persist(courtSchedule);
@@ -116,29 +113,10 @@ public class CourtScheduleRetryService {
     }
 
     public List<CourtSchedule> findPersistedSchedules(CourtSchedule courtSchedule) {
-        try {
-            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-            CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
-            courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
-            return entityManager.createQuery(criteriaQuery).getResultList();
-        } catch (Exception ex) {
-            LOGGER.warn("findPersistedSchedules criteria query failed: {}. Falling back to key lookup.", ex.getMessage());
-            try {
-                // Fallback: use repository method to find by core unique keys
-                var info = repository.findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
-                        courtSchedule.getCourtRoomId(),
-                        courtSchedule.getSessionDate(),
-                        courtSchedule.getBusinessType(),
-                        courtSchedule.getCourtSession());
-                if (info != null && info.getCourtScheduleId() != null) {
-                    CourtSchedule found = entityManager.find(CourtSchedule.class, info.getCourtScheduleId());
-                    return found != null ? List.of(found) : List.of();
-                }
-            } catch (Exception nested) {
-                LOGGER.warn("Fallback key lookup failed: {}", nested.getMessage());
-            }
-            return List.of();
-        }
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+        courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
+        return entityManager.createQuery(criteriaQuery).getResultList();
     }
 
     private boolean hasMaxSlotsChanged(CourtSchedule persistedCourtSchedule, CourtSchedule courtSchedule) {

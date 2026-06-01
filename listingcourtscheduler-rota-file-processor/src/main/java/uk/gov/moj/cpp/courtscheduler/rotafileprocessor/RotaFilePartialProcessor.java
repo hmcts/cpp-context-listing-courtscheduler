@@ -6,7 +6,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toMap;
-import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
+import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.START_DATE;
@@ -31,19 +31,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import javax.ejb.Asynchronous;
-import javax.ejb.Stateless;
-import javax.inject.Inject;
-import javax.transaction.Transactional;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Stateless
+@Service
 public class RotaFilePartialProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFilePartialProcessor.class);
@@ -68,9 +69,9 @@ public class RotaFilePartialProcessor {
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
-    @Asynchronous
-    @Transactional(REQUIRES_NEW)
-    public void processFullRotaFile(final Map<String, CourtSchedule> slots,
+    @Async
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public CompletableFuture<Void> processFullRotaFile(final Map<String, CourtSchedule> slots,
                                     final Map<String, CourtSchedule> slotsForMigrated,
                                     final Collection<CourtScheduleJudiciary> schedules,
                                     final Collection<CourtScheduleJudiciary> schedulesForMigrated,
@@ -104,12 +105,13 @@ public class RotaFilePartialProcessor {
             logger.info("DD-15703:processFullRotaFile: updating process_end_date after processing completes");
             rotaFileProcessHistoryService.update(rotaFileProcessHistory);
         }
+        return CompletableFuture.completedFuture(null);
     }
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
-    @Asynchronous
-    @Transactional(REQUIRES_NEW)
-    public void processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
+    @Async
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public CompletableFuture<Void> processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                         final Map<String, CourtSchedule> slotsForMigrated,
                                         final Collection<CourtScheduleJudiciary> schedules,
                                         final Collection<CourtScheduleJudiciary> schedulesForMigrated,
@@ -149,6 +151,7 @@ public class RotaFilePartialProcessor {
             logger.info("DD-15703:processSnapshotRotaFile: updating process_end_date after processing completes");
             rotaFileProcessHistoryService.update(rotaFileProcessHistory);
         }
+        return CompletableFuture.completedFuture(null);
     }
 
     private SlotAndScheduleInfo getExtractAndReceiveSlotAndScheduleInfo(final List<String> ouCodes,
@@ -161,9 +164,6 @@ public class RotaFilePartialProcessor {
                                                                         final String executionId) {
         // all existing slots including migrated and non-migrated
         final List<CourtSchedule> existingSlotList = sessionsService.getExtractedCourtSchedules(ouCodes, startDate, endDate);
-        final List<Object[]> allocatedScheduleJudiciaries = courtScheduleJudiciaryService.getAllocatedScheduleJudiciaryInfo(startDate, endDate, ouCodes);
-        final List<String> allocatedScheduleJudiciaryScheduleIds = isNotEmpty(allocatedScheduleJudiciaries) ? allocatedScheduleJudiciaries.stream().map(object -> (String) (object)[0]).toList() : emptyList();
-        final List<String> allocatedScheduleJudiciaryIds = isNotEmpty(allocatedScheduleJudiciaries) ? allocatedScheduleJudiciaries.stream().map(object -> (String) (object)[1]).toList() : emptyList();
 
         final List<String> incomingSlotProfileIds = slots.values().stream().map(CourtSchedule::getListingProfileId).toList();
         final Map<String, CourtSchedule> existingSlotMap = existingSlotList.stream().collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, courtSchedule -> courtSchedule));
@@ -205,11 +205,14 @@ public class RotaFilePartialProcessor {
         final Collection<CourtScheduleJudiciary> newCourtScheduleJudiciaries = schedules.stream()
                 .filter(schedule -> newSlotProfileIds.contains(schedule.getCourtListingProfileId())).toList();
         final Collection<CourtScheduleJudiciary> courtScheduleJudiciariesForMigratedExistingSlots = new ArrayList<>();
+        // Save every judiciary entry whose schedule already exists in the DB. The repository's
+        // save() is upsert on the (courtScheduleId, judiciaryId) composite key, so entries
+        // preserved by the DELETE-allocations guard above are simply updated rather than
+        // re-inserted — the previous "exclude allocated" filter dropped legitimate entries
+        // when the rota and DB shared judiciary IDs across schedules.
         schedulesForMigrated
                 .stream()
-                .filter(courtScheduleForMigrated -> existingSlotScheduleIds.contains(courtScheduleForMigrated.getCourtScheduleId())
-                        && !(allocatedScheduleJudiciaryScheduleIds.contains(courtScheduleForMigrated.getCourtScheduleId()) && allocatedScheduleJudiciaryIds.contains(courtScheduleForMigrated.getJudiciaryId()))
-                )
+                .filter(courtScheduleForMigrated -> existingSlotScheduleIds.contains(courtScheduleForMigrated.getCourtScheduleId()))
                 .forEach(courtScheduleJudiciary -> {
                     final CourtSchedule existingSlotCourtSchedule = existingSlotMap.get(courtScheduleJudiciary.getCourtScheduleId());
                     if (nonNull(existingSlotCourtSchedule) && nonNull(existingSlotCourtSchedule.getCourtScheduleId())) {

@@ -10,8 +10,8 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.justice.services.common.converter.ObjectToJsonObjectConverter;
-import uk.gov.justice.services.test.utils.framework.api.JsonObjectConvertersFactory;
+import uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter;
+
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
@@ -24,8 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.json.JsonArray;
-import javax.json.JsonObject;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ class AllocatedListingServiceTest {
     private AllocatedListingRepository allocatedListingRepository;
 
     @Spy
-    private ObjectToJsonObjectConverter objectToJsonObjectConverter = new JsonObjectConvertersFactory().objectToJsonObjectConverter();
+    private ObjectToJsonObjectConverter objectToJsonObjectConverter = new uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter(new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules());
 
 
     private final Long totalBooked = 100L;

@@ -1,12 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import org.springframework.stereotype.Service;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
 
+@Service
 public class FindJudiciaryAvailabilityConverter implements Converter<JsonObject, FindJudiciaryAvailabilityRequest> {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;

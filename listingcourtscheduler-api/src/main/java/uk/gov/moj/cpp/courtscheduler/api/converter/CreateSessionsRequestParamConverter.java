@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import org.springframework.stereotype.Service;
+
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
@@ -39,11 +41,12 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
 
+@Service
 public class CreateSessionsRequestParamConverter implements Converter<JsonObject, CreateSessionRequestParam> {
     @Override
     public CreateSessionRequestParam convert(final JsonObject jsonObject) {

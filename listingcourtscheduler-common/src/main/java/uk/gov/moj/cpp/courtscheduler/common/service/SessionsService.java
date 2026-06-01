@@ -29,7 +29,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefa
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toLocalTime;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
@@ -63,13 +63,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.transaction.Transactional;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
+import org.springframework.transaction.annotation.Transactional;
 
 
 import org.apache.commons.lang3.StringUtils;
@@ -77,7 +77,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
 public class SessionsService {
 
     private static final Logger logger = LoggerFactory.getLogger(SessionsService.class);
@@ -96,7 +96,7 @@ public class SessionsService {
     private CourtScheduleService courtScheduleService;
 
     @Transactional
-    public void create(CreateSessionRequestParam createSessionRequestParam, Requester requester) {
+    public void create(CreateSessionRequestParam createSessionRequestParam) {
         final List<CourtSchedule> courtScheduleList = new ArrayList<>();
         final List<Session> sessionList = createSessionRequestParam.getSessionList();
         final RepeatPattern repeatPattern = createSessionRequestParam.getRepeatPattern();
@@ -104,23 +104,23 @@ public class SessionsService {
         final LocalDate endDate = repeatPattern.getEndDate();
 
         if (repeatPattern.getFrequency().equals(RepeatFrequency.ONCE)) {
-            processOnceFrequency(sessionList, startDate, courtScheduleList, requester);
+            processOnceFrequency(sessionList, startDate, courtScheduleList);
         } else if (repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
-            processWeeklyFrequency(sessionList, startDate, endDate, repeatPattern.getRepeatFor(), courtScheduleList, requester);
+            processWeeklyFrequency(sessionList, startDate, endDate, repeatPattern.getRepeatFor(), courtScheduleList);
         } else if (repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_MONTH)) {
-            processMonthlyFrequency(sessionList, startDate, endDate, repeatPattern.getRepeatFor(), courtScheduleList, requester);
+            processMonthlyFrequency(sessionList, startDate, endDate, repeatPattern.getRepeatFor(), courtScheduleList);
         }
 
         saveCourtSchedules(courtScheduleList);
     }
 
-    public List<CourtSchedule> getCourtSchedules(CourtScheduleRequestParam courtScheduleRequestParam, Requester requester) {
+    public List<CourtSchedule> getCourtSchedules(CourtScheduleRequestParam courtScheduleRequestParam) {
         List<CourtSchedule> courtSchedules = courtScheduleRepository.getCourtSchedulesBy(courtScheduleRequestParam);
-        courtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester)));
+        courtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType())));
         return courtSchedules;
     }
 
-    public Result update(final UpdateCourtSchedule updateCourtSchedule, Requester requester) {
+    public Result update(final UpdateCourtSchedule updateCourtSchedule) {
         final String courtScheduleId = updateCourtSchedule.getCourtScheduleId();
         uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
         if (isNull(persistedCourtSchedule)) {
@@ -140,7 +140,7 @@ public class SessionsService {
         final String persistedBusinessType = persistedCourtSchedule.getBusinessType();
         
         // Check if the updated business type exists
-        Optional<BusinessType> updatedBusinessTypeOpt = referenceDataCache.getRotaBusinessTypeByCode(updateCourtSchedule.getBusinessType(), requester);
+        Optional<BusinessType> updatedBusinessTypeOpt = referenceDataCache.getRotaBusinessTypeByCode(updateCourtSchedule.getBusinessType());
         if (updatedBusinessTypeOpt.isEmpty()) {
             return new Result("Invalid business type", false);
         }
@@ -159,7 +159,7 @@ public class SessionsService {
             }
         }
         
-        if (isBusinessTypeChangeInvalid(updateCourtSchedule, requester, persistedBusinessType, updatedBusinessType)) {
+        if (isBusinessTypeChangeInvalid(updateCourtSchedule, persistedBusinessType, updatedBusinessType)) {
             return new Result(ErrorMessages.BUSINESS_TYPE_CHANGE_NOT_ALLOWED, false);
         }
 
@@ -172,17 +172,23 @@ public class SessionsService {
                 .map(AllocatedListingEachBooked::getHearingStartTime)
                 .max(Comparator.naturalOrder());
 
-        if (StringUtils.isNotEmpty(updateCourtSchedule.getSessionStartTime()) && StringUtils.isNotEmpty(updateCourtSchedule.getSessionEndTime())) {
-            final Date sessionStartTimeWithDate = DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionStartTime());
-            final Date sessionEndTimeWithDate = DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionEndTime());
+        // When the update payload omits sessionStartTime/sessionEndTime, fall back to the persisted
+        // values so the min/max-hearing-time validation still fires against existing allocated listings.
+        final Date sessionStartTimeWithDate = StringUtils.isNotEmpty(updateCourtSchedule.getSessionStartTime())
+                ? DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionStartTime())
+                : persistedCourtSchedule.getSessionStartTime();
+        final Date sessionEndTimeWithDate = StringUtils.isNotEmpty(updateCourtSchedule.getSessionEndTime())
+                ? DateUtils.combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionEndTime())
+                : persistedCourtSchedule.getSessionEndTime();
 
-            if (earliestHearingStartTime.isPresent() && sessionStartTimeWithDate.after(earliestHearingStartTime.get())) {
-                return new Result(SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME, false);
-            }
+        if (sessionStartTimeWithDate != null && earliestHearingStartTime.isPresent()
+                && sessionStartTimeWithDate.after(earliestHearingStartTime.get())) {
+            return new Result(SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME, false);
+        }
 
-            if (latestHearingStartTime.isPresent() && sessionEndTimeWithDate.before(latestHearingStartTime.get())) {
-                return new Result(SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME, false);
-            }
+        if (sessionEndTimeWithDate != null && latestHearingStartTime.isPresent()
+                && sessionEndTimeWithDate.before(latestHearingStartTime.get())) {
+            return new Result(SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME, false);
         }
 
         boolean isChanged = checkEditValuesModified(updateCourtSchedule, persistedCourtSchedule);
@@ -225,9 +231,9 @@ public class SessionsService {
             String jurisdiction = persistedJurisdiction;
 
             if (CROWN.equalsIgnoreCase(jurisdiction)) {
-                courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+                courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
             } else {
-                courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+                courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
             }
         } else {
             courtRoom = Optional.empty();
@@ -238,7 +244,7 @@ public class SessionsService {
         try {
             result = courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule, courtRoom);
         } catch (Exception exception) {
-            logger.error("update court schedule failing courScheduleId : {}", persistedCourtSchedule.getCourtScheduleId());
+            logger.error("update court schedule failing courScheduleId : {}", persistedCourtSchedule.getCourtScheduleId(), exception);
             result = new Result(ErrorMessages.DUPLICATE_SESSIONS, false);
         }
 
@@ -274,12 +280,12 @@ public class SessionsService {
                 !StringUtils.equals(updateCourtSchedule.getPanel(), persistedCourtSchedule.getPanel());
     }
 
-    private boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessType, final BusinessType updatedBusinessType) {
-        return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule, requester, persistedBusinessType, updatedBusinessType);
+    private boolean isBusinessTypeChangeInvalid(final UpdateCourtSchedule updateCourtSchedule, final String persistedBusinessType, final BusinessType updatedBusinessType) {
+        return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule, persistedBusinessType, updatedBusinessType);
     }
 
-    private boolean isBusinessTypeChangeAllowed(final UpdateCourtSchedule updateCourtSchedule, final Requester requester, final String persistedBusinessTypeCode, final BusinessType updatedBusinessType) {
-        final BusinessType persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + persistedBusinessTypeCode));
+    private boolean isBusinessTypeChangeAllowed(final UpdateCourtSchedule updateCourtSchedule, final String persistedBusinessTypeCode, final BusinessType updatedBusinessType) {
+        final BusinessType persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + persistedBusinessTypeCode));
         return persistedBusinessType.isSlot() == updatedBusinessType.isSlot() && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
     }
 
@@ -287,10 +293,10 @@ public class SessionsService {
         return (isSlotBased && updateCourtSchedule.getMaxDuration().equals(0)) || (!isSlotBased && updateCourtSchedule.getMaxSlots().equals(0));
     }
 
-    public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam, Requester requester) {
+    public JsonObject deleteCourtScheduleSessions(final SessionsParam sessionsParam) {
         final List<String> sessions = isEmpty(sessionsParam.getSessions())  ? new ArrayList<>() : sessionsParam.getSessions();
         final List<CourtSchedule> allocatedCourtSchedules = courtScheduleRepository.deleteCourtSchedule(sessions);
-        allocatedCourtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType(), requester)));
+        allocatedCourtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType())));
         List<AllocatedListingEachBooked> allocatedListingEachBooked = new ArrayList<>();
         if(!isEmpty(allocatedCourtSchedules)) {
             allocatedListingEachBooked = allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(allocatedCourtSchedules.stream()
@@ -625,21 +631,21 @@ public class SessionsService {
         return numberOfSavedJudiciaries.get();
     }
 
-    private String enrichBusinessDescription(final String businessType, final Requester requester) {
-        return referenceDataCache.getRotaBusinessTypeByCode(businessType, requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + businessType)).getTypeDescription();
+    private String enrichBusinessDescription(final String businessType) {
+        return referenceDataCache.getRotaBusinessTypeByCode(businessType).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + businessType)).getTypeDescription();
     }
 
-    private void processOnceFrequency(List<Session> sessionList, LocalDate startDate, List<CourtSchedule> courtScheduleList, Requester requester) {
+    private void processOnceFrequency(List<Session> sessionList, LocalDate startDate, List<CourtSchedule> courtScheduleList) {
         for (Session session : sessionList) {
             for (DayOfWeek dayOfWeek : session.getRepeatDays()) {
                 LocalDate sessionDateCandidate = startDate.with(TemporalAdjusters.nextOrSame(dayOfWeek));
-                CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, requester, session.getSessionStartTime(), session.getSessionEndTime());
+                CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, session.getSessionStartTime(), session.getSessionEndTime());
                 courtScheduleList.add(courtSchedule);
             }
         }
     }
 
-    private void processWeeklyFrequency(List<Session> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList, Requester requester) {
+    private void processWeeklyFrequency(List<Session> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList) {
         final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
         for (long weekNumber = 0; weekNumber <= weeksBetween; weekNumber += repeatFor) {
             for (Session session : sessionList) {
@@ -648,25 +654,25 @@ public class SessionsService {
                     if (sessionDateCandidate.isAfter(endDate)) {
                         continue;
                     }
-                    CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, requester, session.getSessionStartTime(), session.getSessionEndTime());
+                    CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, session.getSessionStartTime(), session.getSessionEndTime());
                     courtScheduleList.add(courtSchedule);
                 }
             }
         }
     }
 
-    private void processMonthlyFrequency(List<Session> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList, Requester requester) {
+    private void processMonthlyFrequency(List<Session> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList) {
         LocalDate currentDate = startDate;
 
         while (!currentDate.isAfter(endDate)) {
             for (Session session : sessionList) {
-                populateCourtScheduleListForMonth(session, currentDate, endDate, courtScheduleList, requester);
+                populateCourtScheduleListForMonth(session, currentDate, endDate, courtScheduleList);
             }
             currentDate = currentDate.plusMonths(repeatFor).withDayOfMonth(1);
         }
     }
 
-    private void populateCourtScheduleListForMonth(Session session, LocalDate monthStart, LocalDate endDate, List<CourtSchedule> courtScheduleList, Requester requester) {
+    private void populateCourtScheduleListForMonth(Session session, LocalDate monthStart, LocalDate endDate, List<CourtSchedule> courtScheduleList) {
         LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
         if (monthEnd.isAfter(endDate)) {
             monthEnd = endDate;
@@ -679,7 +685,7 @@ public class SessionsService {
                     !sessionDateCandidate.isAfter(monthEnd) &&
                     !sessionDateCandidate.isBefore(monthStart)) {
 
-                CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, requester, session.getSessionStartTime(), session.getSessionEndTime());
+                CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, session.getSessionStartTime(), session.getSessionEndTime());
                 courtScheduleList.add(courtSchedule);
             }
         }
@@ -714,7 +720,7 @@ public class SessionsService {
         return (date.getDayOfMonth() - firstOccurrence.getDayOfMonth()) / 7 + 1;
     }
 
-    private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate, Requester requester, String sessionStartTime, String sessionEndTime) {
+    private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate, String sessionStartTime, String sessionEndTime) {
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder();
 
         final DateUtils.SessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(session.getSessionType(), sessionStartTime, sessionEndTime);
@@ -737,7 +743,7 @@ public class SessionsService {
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate))
                 .withIsDraft(!isNull(session.isDraft()) && session.isDraft())
                 .withJurisdiction(!isNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction());
-        enrichSession(courtScheduleBuilder, session.getSlotsOrDuration(), requester);
+        enrichSession(courtScheduleBuilder, session.getSlotsOrDuration());
         return courtScheduleBuilder.build();
     }
 
@@ -748,13 +754,13 @@ public class SessionsService {
         courtScheduleRepository.saveCourtSchedules(courtScheduleEntities);
     }
 
-    private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsOrDuration, Requester requester) {
-        final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType(), requester).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
+    private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsOrDuration) {
+        final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType()).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
         CourtRoom courtRoom;
         if ("CROWN".equalsIgnoreCase(builder.getJurisdiction())) {
-            courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(builder.getCourtRoomId(), requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+            courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
         } else {
-            courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId(), requester).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+            courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
         }
 
         if (businessType.isSlot()) {
@@ -898,7 +904,7 @@ public class SessionsService {
     }
 
     public uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse assignCourtroom(
-            final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request, final Requester requester) {
+            final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request) {
 
         // Get all sessions by IDs
         final List<CourtSchedule> sessions = courtScheduleRepository.getCourtSchedulesByIdList(request.getCourtScheduleIds());
@@ -908,7 +914,7 @@ public class SessionsService {
 
         // Get courtroom details
         final Optional<CourtRoom> courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(
-                request.getCourtRoomId(), requester);
+                request.getCourtRoomId());
 
         if (courtRoom.isEmpty()) {
             // All sessions are ineligible if courtroom not found
@@ -1036,7 +1042,7 @@ public class SessionsService {
                     .map(s -> {
                         if (nonNull(s.getBusinessType())) {
                             try {
-                                s.setBusinessDescription(enrichBusinessDescription(s.getBusinessType(), requester));
+                                s.setBusinessDescription(enrichBusinessDescription(s.getBusinessType()));
                             } catch (RuntimeException e) {
                                 // If business type not found in reference data, set description to null
                                 // This allows the error group to be created even if reference data is incomplete

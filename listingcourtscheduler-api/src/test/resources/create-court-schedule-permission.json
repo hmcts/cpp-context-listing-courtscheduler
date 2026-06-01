@@ -1,6 +1,1 @@
-{
-"object":"CourtSchedule",
-"action":"Create",
-"key":"CourtSchedule_Create",
-"keyWithOutSource":"CourtSchedule_Create"
-}
+{"object":"CourtSchedule","action":"Create"}

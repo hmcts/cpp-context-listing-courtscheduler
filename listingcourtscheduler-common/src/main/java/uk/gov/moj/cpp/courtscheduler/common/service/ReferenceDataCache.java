@@ -10,11 +10,9 @@ import static java.util.Optional.ofNullable;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.matches;
 
-import uk.gov.justice.services.common.configuration.Value;
-import uk.gov.justice.services.common.converter.JsonObjectToObjectConverter;
-import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
-import uk.gov.justice.services.core.requester.Requester;
+import org.springframework.beans.factory.annotation.Value;
+import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverter;
+import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -29,9 +27,9 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.json.JsonObject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.json.JsonObject;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -39,7 +37,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
 public class ReferenceDataCache {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataCache.class);
     @Inject
@@ -54,19 +52,17 @@ public class ReferenceDataCache {
     @Inject
     private JsonObjectToObjectConverter jsonObjectToObjectConverter;
 
-    @Inject
-    @Value(key = "redisCommonCacheEnabled", defaultValue = "false")
+    @Value("${redis.common-cache.enabled:false}")
     private String redisCommonCacheEnabled;
 
-    @Inject
-    @Value(key = "redisCommonCacheKey5MinsTTL", defaultValue = "300")
+    @Value("${redis.common-cache.key-5-mins-ttl:300}")
     private String redisCommonCacheKey5MinsTTL;
 
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
 
-    private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     public static final String ROTA_BUSINESS_TYPE_CACHE_PREFIX = "RotaBusinessType_";
     public static final String ROTA_COURTROOM_CACHE_PREFIX = "RotaCourtRoom_";
@@ -81,79 +77,79 @@ public class ReferenceDataCache {
         //Default Constructor
     }
 
-    public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode, final Requester requester) {
+    public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode) {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getBusinessTypeByCodeFromTheCache(businessTypeCode,requester);
+            return getBusinessTypeByCodeFromTheCache(businessTypeCode);
         } else {
-            return referenceDataService.getRotaBusinessTypeByCode(businessTypeCode, requester);
+            return referenceDataService.getRotaBusinessTypeByCode(businessTypeCode);
         }
     }
 
-    public List<BusinessType> getRotaBusinessTypes(final Requester requester) {
+    public List<BusinessType> getRotaBusinessTypes() {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getBusinessTypesFromTheCache(requester);
+            return getBusinessTypesFromTheCache();
         } else {
-            return referenceDataService.getRotaBusinessTypes(requester);
+            return referenceDataService.getRotaBusinessTypes();
         }
     }
 
-    public List<Judiciary> getJudiciaries(final Requester requester) {
+    public List<Judiciary> getJudiciaries() {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getJudiciariesFromTheCache(requester);
+            return getJudiciariesFromTheCache();
         } else {
-            return referenceDataService.getJudiciariesMap(requester);
+            return referenceDataService.getJudiciariesMap();
         }
     }
 
-    public List<CourtRoom> getCourtRooms(final Requester requester) {
+    public List<CourtRoom> getCourtRooms() {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getCourtRoomsFromTheCache(requester);
+            return getCourtRoomsFromTheCache();
         } else {
-            return referenceDataService.getRotaCourtRoomMappings(requester);
+            return referenceDataService.getRotaCourtRoomMappings();
         }
     }
 
-    public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocations(final Requester requester) {
+    public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocations() {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getCourtRoomSessionAllocationsFromTheCache(requester);
+            return getCourtRoomSessionAllocationsFromTheCache();
         } else {
-            return referenceDataService.getCourtRoomSessionAllocationsMap(requester);
+            return referenceDataService.getCourtRoomSessionAllocationsMap();
         }
     }
 
-    public Optional<CourtRoom> getCourtRoomByVenue(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
+    public Optional<CourtRoom> getCourtRoomByVenue(final Venue venue, final Map<String, String> exceptionMessages) {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getCourtRoomByVenueFromTheCache(venue, exceptionMessages, requester);
+            return getCourtRoomByVenueFromTheCache(venue, exceptionMessages);
         } else {
-            return referenceDataService.getRotaCourtRoomByVenue(venue, exceptionMessages, requester);
+            return referenceDataService.getRotaCourtRoomByVenue(venue, exceptionMessages);
         }
     }
 
-    public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId, final Requester requester) {
+    public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId) {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getCourtRoomByIdFromTheCache(courtRoomId,requester);
+            return getCourtRoomByIdFromTheCache(courtRoomId);
         } else {
-            return referenceDataService.getRotaCourtRoomByCourtRoomId(courtRoomId, requester);
+            return referenceDataService.getRotaCourtRoomByCourtRoomId(courtRoomId);
         }
     }
 
-    public Optional<CourtRoom> getCpCourtRoomByCourtRoomId(final String courtRoomId, final Requester requester) {
+    public Optional<CourtRoom> getCpCourtRoomByCourtRoomId(final String courtRoomId) {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getCpCourtRoomByIdFromTheCache(courtRoomId, requester);
+            return getCpCourtRoomByIdFromTheCache(courtRoomId);
         } else {
-            return referenceDataService.getCpCourtRooms(requester).stream()
+            return referenceDataService.getCpCourtRooms().stream()
                     .filter(c -> c.getId().equals(courtRoomId))
                     .findFirst();
         }
     }
 
-    private Optional<BusinessType> getBusinessTypeByCodeFromTheCache(final String businessTypeCode,Requester requester) {
+    private Optional<BusinessType> getBusinessTypeByCodeFromTheCache(final String businessTypeCode) {
         final String cacheResult = cacheService.get(ROTA_BUSINESS_TYPE_CACHE_PREFIX + businessTypeCode);
 
         if (isNull(cacheResult)) {
             LOGGER.debug("no cache result found for BusinessTypeCode: {} in getBusinessTypeByCodeFromTheCache", businessTypeCode);
             final AtomicReference<BusinessType> businessTypeAtomicReference = new AtomicReference<>();
-            return processRotaBusinessTypeMap(businessTypeCode, businessTypeAtomicReference,requester);
+            return processRotaBusinessTypeMap(businessTypeCode, businessTypeAtomicReference);
         } else {
             LOGGER.debug("cacheResult has been found for BusinessTypeCode: {} in getBusinessTypeByCodeFromTheCache", businessTypeCode);
             final JsonObject cacheResultJsonObject = stringToJsonObjectConverter.convert(cacheResult);
@@ -162,12 +158,12 @@ public class ReferenceDataCache {
         }
     }
 
-    private List<BusinessType> getBusinessTypesFromTheCache(Requester requester) {
+    private List<BusinessType> getBusinessTypesFromTheCache() {
         final String cacheResult = cacheService.get(ROTA_BUSINESS_TYPES_CACHE_KEY);
 
         if (isNull(cacheResult)) {
             LOGGER.debug("no cache result found for businessTypes in getBusinessTypesFromTheCache");
-            return processRotaBusinessTypes(requester);
+            return processRotaBusinessTypes();
         } else {
             try {
                 LOGGER.debug("cacheResult has been found for BusinessTypes in getBusinessTypesFromTheCache");
@@ -180,12 +176,12 @@ public class ReferenceDataCache {
         }
     }
 
-    private List<Judiciary> getJudiciariesFromTheCache(final Requester requester) {
+    private List<Judiciary> getJudiciariesFromTheCache() {
         final String cacheResult = cacheService.get(ROTA_JUDICIARIES_CACHE_KEY);
 
         if (isNull(cacheResult)) {
             LOGGER.debug("no cache result found for judiciaries in getJudiciariesFromTheCache");
-            return processJudiciaries(requester);
+            return processJudiciaries();
         } else {
             try {
                 LOGGER.debug("cacheResult has been found for judiciaries in getJudiciariesFromTheCache for key: {}", ROTA_JUDICIARIES_CACHE_KEY);
@@ -197,12 +193,12 @@ public class ReferenceDataCache {
         }
     }
 
-    private List<CourtRoom> getCourtRoomsFromTheCache(final Requester requester) {
+    private List<CourtRoom> getCourtRoomsFromTheCache() {
         final String cacheResult = cacheService.get(ROTA_COURTROOMS_CACHE_KEY);
 
         if (isNull(cacheResult)) {
             LOGGER.debug("no cache result found for courtRooms in getCourtRoomsFromTheCache");
-            return processCourtRooms(requester);
+            return processCourtRooms();
         } else {
             try {
                 LOGGER.debug("cacheResult has been found for courtRooms in getCourtRoomsFromTheCache for key : {}", ROTA_COURTROOMS_CACHE_KEY);
@@ -214,12 +210,12 @@ public class ReferenceDataCache {
         }
     }
 
-    private List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsFromTheCache(final Requester requester) {
+    private List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsFromTheCache() {
         final String cacheResult = cacheService.get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY);
 
         if (isNull(cacheResult)) {
             LOGGER.debug("no cache result found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
-            return processCourtRoomSessionAllocations(requester);
+            return processCourtRoomSessionAllocations();
         } else {
             try {
                 LOGGER.debug("cacheResult has been found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
@@ -232,13 +228,13 @@ public class ReferenceDataCache {
         }
     }
 
-    private Optional<CourtRoom> getCourtRoomByIdFromTheCache(final String courtRoomId, final Requester requester) {
+    private Optional<CourtRoom> getCourtRoomByIdFromTheCache(final String courtRoomId) {
         final String cacheResult = cacheService.get(ROTA_COURTROOM_CACHE_PREFIX + courtRoomId);
 
         if (isNull(cacheResult)) {
             LOGGER.debug("no cache result found for courtroomId: {} in getCourtRoomByIdFromTheCache", courtRoomId);
             final AtomicReference<CourtRoom> courtRoomAtomicReference = new AtomicReference<>();
-            return processCourtRoomMap(courtRoomId, courtRoomAtomicReference,requester);
+            return processCourtRoomMap(courtRoomId, courtRoomAtomicReference);
         } else {
             LOGGER.debug("cacheResult has been found for courtroomId: {} in getBusinessTypeByCodeFromTheCache", courtRoomId);
             final JsonObject cacheResultJsonObject = stringToJsonObjectConverter.convert(cacheResult);
@@ -247,13 +243,13 @@ public class ReferenceDataCache {
         }
     }
 
-    private Optional<CourtRoom> getCpCourtRoomByIdFromTheCache(final String courtRoomId, final Requester requester) {
+    private Optional<CourtRoom> getCpCourtRoomByIdFromTheCache(final String courtRoomId) {
         final String cacheResult = cacheService.get(CP_COURTROOM_CACHE_PREFIX + courtRoomId);
 
         if (isNull(cacheResult)) {
             LOGGER.debug("no cache result found for cp courtroomId: {} in getCpCourtRoomByIdFromTheCache", courtRoomId);
             final AtomicReference<CourtRoom> courtRoomAtomicReference = new AtomicReference<>();
-            return processCpCourtRoomMap(courtRoomId, courtRoomAtomicReference, requester);
+            return processCpCourtRoomMap(courtRoomId, courtRoomAtomicReference);
         } else {
             LOGGER.debug("cacheResult has been found for cp courtroomId: {} in getCpCourtRoomByIdFromTheCache", courtRoomId);
             final JsonObject cacheResultJsonObject = stringToJsonObjectConverter.convert(cacheResult);
@@ -262,13 +258,13 @@ public class ReferenceDataCache {
         }
     }
 
-    private Optional<CourtRoom> getCourtRoomByVenueFromTheCache(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
+    private Optional<CourtRoom> getCourtRoomByVenueFromTheCache(final Venue venue, final Map<String, String> exceptionMessages) {
         final String cacheResult = cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, venue.getLocationId(), venue.getVenueName()));
 
         if (isNull(cacheResult)) {
             LOGGER.debug("no cache result found for venue: {} in getCourtRoomByVenueFromTheCache", venue);
             final AtomicReference<CourtRoom> courtRoomsForVenue = new AtomicReference<>();
-            return processCourtRoomMapByVenue(venue, courtRoomsForVenue, exceptionMessages, requester);
+            return processCourtRoomMapByVenue(venue, courtRoomsForVenue, exceptionMessages);
         } else {
             try {
                 LOGGER.debug("cacheResult has been found for venue: {} in getBusinessTypeByCodeFromTheCache", venue);
@@ -283,8 +279,8 @@ public class ReferenceDataCache {
         return Optional.empty();
     }
 
-    private List<BusinessType> processRotaBusinessTypes(Requester requester) {
-        final List<BusinessType> rotaBusinessTypes = referenceDataService.getRotaBusinessTypes(requester);
+    private List<BusinessType> processRotaBusinessTypes() {
+        final List<BusinessType> rotaBusinessTypes = referenceDataService.getRotaBusinessTypes();
 
         try {
             if (isNotEmpty(rotaBusinessTypes)) {
@@ -297,8 +293,8 @@ public class ReferenceDataCache {
         return emptyList();
     }
 
-    private List<Judiciary> processJudiciaries(final Requester requester) {
-        final List<Judiciary> judiciaries = referenceDataService.getJudiciariesMap(requester);
+    private List<Judiciary> processJudiciaries() {
+        final List<Judiciary> judiciaries = referenceDataService.getJudiciariesMap();
 
         try {
             if (isNotEmpty(judiciaries)) {
@@ -311,8 +307,8 @@ public class ReferenceDataCache {
         return emptyList();
     }
 
-    private List<CourtRoom> processCourtRooms(final Requester requester) {
-        final List<CourtRoom> courtRooms = referenceDataService.getRotaCourtRoomMappings(requester);
+    private List<CourtRoom> processCourtRooms() {
+        final List<CourtRoom> courtRooms = referenceDataService.getRotaCourtRoomMappings();
 
         try {
             if (isNotEmpty(courtRooms)) {
@@ -325,8 +321,8 @@ public class ReferenceDataCache {
         return emptyList();
     }
 
-    private List<CourtRoomSessionAllocation> processCourtRoomSessionAllocations(final Requester requester) {
-        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = referenceDataService.getCourtRoomSessionAllocationsMap(requester);
+    private List<CourtRoomSessionAllocation> processCourtRoomSessionAllocations() {
+        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = referenceDataService.getCourtRoomSessionAllocationsMap();
 
         try {
             if (isNotEmpty(courtRoomSessionAllocations)) {
@@ -339,8 +335,8 @@ public class ReferenceDataCache {
         return emptyList();
     }
 
-    private Optional<BusinessType> processRotaBusinessTypeMap(final String businessTypeCode, final AtomicReference<BusinessType> businessTypeForCode,Requester requester) {
-        final Map<String, BusinessType> rotaBusinessTypesMap = referenceDataService.getRotaBusinessTypesMap(requester);
+    private Optional<BusinessType> processRotaBusinessTypeMap(final String businessTypeCode, final AtomicReference<BusinessType> businessTypeForCode) {
+        final Map<String, BusinessType> rotaBusinessTypesMap = referenceDataService.getRotaBusinessTypesMap();
 
         if (!rotaBusinessTypesMap.isEmpty()) {
             rotaBusinessTypesMap.forEach((typeCode, businessType) -> {
@@ -359,8 +355,8 @@ public class ReferenceDataCache {
         return empty();
     }
 
-    private Optional<CourtRoom> processCourtRoomMap(final String courtRoomId, final AtomicReference<CourtRoom> courtRoomForId,Requester requester) {
-        final Map<UUID, CourtRoom> courtRoomsMap = referenceDataService.getCourtRoomsMap(requester);
+    private Optional<CourtRoom> processCourtRoomMap(final String courtRoomId, final AtomicReference<CourtRoom> courtRoomForId) {
+        final Map<UUID, CourtRoom> courtRoomsMap = referenceDataService.getCourtRoomsMap();
         if (!courtRoomsMap.isEmpty()) {
             courtRoomsMap.forEach((courtRoomUUID, courtRoom) -> {
                 try {
@@ -378,8 +374,8 @@ public class ReferenceDataCache {
         return empty();
     }
 
-    private Optional<CourtRoom> processCpCourtRoomMap(final String courtRoomId, final AtomicReference<CourtRoom> courtRoomForId, Requester requester) {
-        final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms(requester);
+    private Optional<CourtRoom> processCpCourtRoomMap(final String courtRoomId, final AtomicReference<CourtRoom> courtRoomForId) {
+        final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms();
         if (isNotEmpty(courtRooms)) {
             courtRooms.forEach(courtRoom -> {
                 try {
@@ -397,8 +393,8 @@ public class ReferenceDataCache {
         return empty();
     }
 
-    private Optional<CourtRoom> processCourtRoomMapByVenue(final Venue venue, final AtomicReference<CourtRoom> courtRoomsForVenue, final Map<String, String> exceptionMessages, final Requester requester) {
-        final List<CourtRoom> courtRooms = referenceDataService.getRotaCourtRoomMappings(requester);
+    private Optional<CourtRoom> processCourtRoomMapByVenue(final Venue venue, final AtomicReference<CourtRoom> courtRoomsForVenue, final Map<String, String> exceptionMessages) {
+        final List<CourtRoom> courtRooms = referenceDataService.getRotaCourtRoomMappings();
         if (isNotEmpty(courtRooms)) {
             final Map<Integer, Map<String, List<CourtRoom>>> courtRoomGroupByLocationIdAndVenueName = courtRooms.stream().collect(Collectors.groupingBy(CourtRoom::getRotaLocationId, Collectors.groupingBy(CourtRoom::getRotaVenueName)));
             courtRoomGroupByLocationIdAndVenueName.forEach((locationId, mapByVenueName) ->

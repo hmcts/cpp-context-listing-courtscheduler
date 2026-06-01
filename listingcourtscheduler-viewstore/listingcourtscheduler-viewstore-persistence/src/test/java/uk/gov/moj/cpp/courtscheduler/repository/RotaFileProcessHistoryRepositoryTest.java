@@ -1,9 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 
@@ -12,24 +11,22 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-import javax.inject.Inject;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.After;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 
-@RunWith(CdiTestRunner.class)
-public class RotaFileProcessHistoryRepositoryTest {
 
-    @Inject
+class RotaFileProcessHistoryRepositoryTest extends uk.gov.moj.cpp.courtscheduler.repository.AbstractRepositoryTest {
+
+    @Autowired
     private RotaFileProcessHistoryRepository rotaFileProcessHistoryRepository;
 
-    @After
+    @AfterEach
     public void tearDown() {
         List<RotaFileProcessHistory> all = rotaFileProcessHistoryRepository.findAll();
-        all.forEach(rotaFileProcessHistory -> rotaFileProcessHistoryRepository.remove(rotaFileProcessHistory));
+        all.forEach(rotaFileProcessHistory -> rotaFileProcessHistoryRepository.delete(rotaFileProcessHistory));
     }
 
     @Test
@@ -42,7 +39,7 @@ public class RotaFileProcessHistoryRepositoryTest {
         rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
 
         // then
-        RotaFileProcessHistory by = rotaFileProcessHistoryRepository.findBy(rotaFileProcessHistory.getExecutionId());
+        RotaFileProcessHistory by = rotaFileProcessHistoryRepository.findById(rotaFileProcessHistory.getExecutionId()).orElse(null);
 
         assertThat(by, notNullValue());
     }

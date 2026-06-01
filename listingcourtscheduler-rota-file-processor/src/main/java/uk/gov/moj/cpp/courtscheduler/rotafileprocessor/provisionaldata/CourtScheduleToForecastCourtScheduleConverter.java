@@ -4,9 +4,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 
 import java.time.LocalDate;
 
-import javax.enterprise.context.ApplicationScoped;
+import org.springframework.stereotype.Service;
 
-@ApplicationScoped
+@Service
 public class CourtScheduleToForecastCourtScheduleConverter {
 
     public CourtSchedule convertToProvisionalCourtSchedule(final CourtSchedule courtSchedule,

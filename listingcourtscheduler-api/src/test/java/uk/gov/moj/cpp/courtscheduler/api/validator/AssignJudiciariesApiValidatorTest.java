@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
@@ -19,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,9 +34,6 @@ class AssignJudiciariesApiValidatorTest {
 
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
-
-    @Mock
-    private Requester requester;
 
     @InjectMocks
     private AssignJudiciariesApiValidator validator;
@@ -62,12 +58,12 @@ class AssignJudiciariesApiValidatorTest {
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
 
-        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+        when(referenceDataMapperService.findById(eq(judiciaryId)))
                 .thenReturn(Optional.of(judiciary));
         when(courtScheduleRepository.findByCourtScheduleIds(any()))
                 .thenReturn(List.of(session));
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.isEmpty());
     }
@@ -84,7 +80,7 @@ class AssignJudiciariesApiValidatorTest {
                 .addJudiciary(assignment)
                 .build();
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.containsKey("errorMessage"));
         final String message = result.getString("errorMessage");
@@ -94,7 +90,7 @@ class AssignJudiciariesApiValidatorTest {
 
     @Test
     void shouldRequireAssignments() {
-        final JsonObject result = validator.validate(null, requester);
+        final JsonObject result = validator.validate(null);
         assertEquals("At least one judiciary assignment must be supplied", result.getString("errorMessage"));
     }
 
@@ -110,7 +106,7 @@ class AssignJudiciariesApiValidatorTest {
                 .withSkipValidations(true)
                 .build();
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.isEmpty());
     }
@@ -129,7 +125,7 @@ class AssignJudiciariesApiValidatorTest {
                 .withSkipValidations(false)
                 .build();
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.containsKey("errorMessage"));
         final String message = result.getString("errorMessage");
@@ -149,7 +145,7 @@ class AssignJudiciariesApiValidatorTest {
                 .addJudiciary(assignment)
                 .build();
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.containsKey("errorMessage"));
         final String message = result.getString("errorMessage");
@@ -175,12 +171,12 @@ class AssignJudiciariesApiValidatorTest {
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
 
-        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+        when(referenceDataMapperService.findById(eq(judiciaryId)))
                 .thenReturn(Optional.of(judiciary));
         when(courtScheduleRepository.findByCourtScheduleIds(any()))
                 .thenReturn(List.of(session));
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.isEmpty());
     }
@@ -204,12 +200,12 @@ class AssignJudiciariesApiValidatorTest {
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
 
-        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+        when(referenceDataMapperService.findById(eq(judiciaryId)))
                 .thenReturn(Optional.of(judiciary));
         when(courtScheduleRepository.findByCourtScheduleIds(any()))
                 .thenReturn(List.of(session));
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.isEmpty());
     }
@@ -232,12 +228,12 @@ class AssignJudiciariesApiValidatorTest {
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
 
-        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+        when(referenceDataMapperService.findById(eq(judiciaryId)))
                 .thenReturn(Optional.of(judiciary));
         when(courtScheduleRepository.findByCourtScheduleIds(any()))
                 .thenReturn(List.of(session));
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.isEmpty());
     }
@@ -257,12 +253,12 @@ class AssignJudiciariesApiValidatorTest {
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
 
-        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+        when(referenceDataMapperService.findById(eq(judiciaryId)))
                 .thenReturn(Optional.empty());
         when(courtScheduleRepository.findByCourtScheduleIds(any()))
                 .thenReturn(List.of(session));
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.containsKey("errorMessage"));
         final String message = result.getString("errorMessage");
@@ -285,12 +281,12 @@ class AssignJudiciariesApiValidatorTest {
                 .withId(judiciaryId)
                 .build();
 
-        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+        when(referenceDataMapperService.findById(eq(judiciaryId)))
                 .thenReturn(Optional.of(judiciary));
         when(courtScheduleRepository.findByCourtScheduleIds(any()))
                 .thenReturn(new ArrayList<>()); // Empty list means session not found
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.containsKey("errorMessage"));
         final String message = result.getString("errorMessage");
@@ -309,12 +305,12 @@ class AssignJudiciariesApiValidatorTest {
                 .addJudiciary(assignment)
                 .build();
 
-        when(referenceDataMapperService.findById(eq(requester), eq(judiciaryId)))
+        when(referenceDataMapperService.findById(eq(judiciaryId)))
                 .thenReturn(Optional.empty());
         when(courtScheduleRepository.findByCourtScheduleIds(any()))
                 .thenReturn(new ArrayList<>()); // Empty list means session not found
 
-        final JsonObject result = validator.validate(request, requester);
+        final JsonObject result = validator.validate(request);
 
         assertTrue(result.containsKey("errorMessage"));
         final String message = result.getString("errorMessage");

@@ -20,9 +20,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.START_DATE;
-import static uk.gov.moj.cpp.courtscheduler.rotafileprocessor.utils.FileUtil.getPayload;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
@@ -81,7 +80,7 @@ class RotaFilePartialProcessorTest {
     @Captor
     private ArgumentCaptor<List<String>> missingBusinessTypeCaptor;
 
-    private final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    private final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
 
     private static final String PSV_AS_EXISTING_BUSINESS_TYPE = "PSV";
     private static final String NCPT_AS_EXISTING_BUSINESS_TYPE = "NCPT";
@@ -208,7 +207,6 @@ class RotaFilePartialProcessorTest {
         when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(startDate), eq(endDate), anyList())).thenReturn(0);
         when(courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(eq(startDate), eq(endDate), anyList())).thenReturn(0);
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
-        when(courtScheduleJudiciaryService.getAllocatedScheduleJudiciaryInfo(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(emptyList());
         doNothing().when(sessionsService).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
 
         rotaFilePartialProcessor.processFullRotaFile(slots, slotsForMigrated, emptyList(), emptyList(), startDate, endDate, ouCodes, ouCodes, businessTypeMap, migratedMap, randomUUID().toString(), history, true);
@@ -232,7 +230,6 @@ class RotaFilePartialProcessorTest {
         when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(0);
         when(courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(0);
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
-        when(courtScheduleJudiciaryService.getAllocatedScheduleJudiciaryInfo(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(emptyList());
         doNothing().when(sessionsService).updateSlotsAndSchedules(any(SlotAndScheduleInfo.class), anyMap(), anyCollection(), anyMap(), anyList(), anyList());
 
         rotaFilePartialProcessor.processSnapshotRotaFile(slots, slotsForMigrated, emptyList(), emptyList(), startAndEndDate, ouCodes, ouCodes, businessTypeMap, migratedMap, randomUUID().toString(), history, false);

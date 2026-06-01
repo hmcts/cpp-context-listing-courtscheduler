@@ -1,8 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.common;
 
-import static javax.json.Json.createObjectBuilder;
+import static jakarta.json.Json.createObjectBuilder;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 public  class CommonUtils {
     public static JsonObject buildErrorResponse(String errorMessage) {

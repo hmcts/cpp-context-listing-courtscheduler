@@ -7,7 +7,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.REF_DATA_VENUE_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaUtils;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
@@ -18,8 +18,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 import java.util.Map;
 import java.util.Optional;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +30,8 @@ import org.slf4j.LoggerFactory;
  * - Judiciary identification and validation (by email)
  * - Venue identification and validation (by location ID, venue ID, and venue name)
  */
-@ApplicationScoped
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class RotaReferenceDataService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaReferenceDataService.class);
@@ -51,14 +52,14 @@ public class RotaReferenceDataService {
      * @param executionId the execution ID for logging purposes (can be null)
      * @return Optional containing the Judiciary if found, empty otherwise
      */
-    public Optional<Judiciary> validateAndFindJudiciaryByEmail(final Requester requester, final String email, final String executionId) {
+    public Optional<Judiciary> validateAndFindJudiciaryByEmail(final String email, final String executionId) {
         if (!isNotBlank(email)) {
             logger.debug("Judiciary email is empty or blank, returning empty Optional");
             return empty();
         }
 
         try {
-            final Optional<Judiciary> judiciaryOptional = referenceDataMapperService.findByEmail(requester, email);
+            final Optional<Judiciary> judiciaryOptional = referenceDataMapperService.findByEmail(email);
 
             if (judiciaryOptional.isPresent()) {
                 logger.info("Judiciary validation successful for email: {} - found judiciary ID: {}", 
@@ -97,7 +98,6 @@ public class RotaReferenceDataService {
      */
     public Optional<CourtRoom> validateAndFindVenue(final Venue venue,
                                                     final Map<String, String> exceptionMessages,
-                                                    final Requester requester,
                                                     final String executionId) {
         if (venue == null) {
             logger.warn("Venue is null, cannot validate venue");
@@ -121,7 +121,7 @@ public class RotaReferenceDataService {
 
         try {
             final Map<String, String> safeExceptionMessages = exceptionMessages != null ? exceptionMessages : new java.util.HashMap<>();
-            final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(venue, safeExceptionMessages, requester);
+            final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(venue, safeExceptionMessages);
 
             if (courtRoomOptional.isPresent()) {
                 logger.info("Venue validated successfully - locationId: {}, venueId: {}, venueName: {} - found court room: {}", 

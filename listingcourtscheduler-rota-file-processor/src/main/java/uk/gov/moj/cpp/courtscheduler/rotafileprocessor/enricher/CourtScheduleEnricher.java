@@ -20,7 +20,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTER
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_START_TIME;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
@@ -34,13 +34,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
 public class CourtScheduleEnricher {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleEnricher.class);
@@ -55,7 +55,6 @@ public class CourtScheduleEnricher {
                                final LocalDate sessionDate,
                                final Map<String, String> missingReferenceDataMappingMap,
                                final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
-                               final Requester requester,
                                final String executionId) {
         final CourtSchedule.CourtScheduleBuilder builder = new CourtSchedule.CourtScheduleBuilder();
         final String businessTypeCode = listingProfile.get(BUSINESS_TYPE);
@@ -63,12 +62,12 @@ public class CourtScheduleEnricher {
         final Integer locationId = Integer.parseInt(listingProfile.get(LOCATION_ID));
         final String venueName = listingProfile.get(VENUE_NAME);
         final Integer venueId = Integer.parseInt(listingProfile.get(VENUE_ID));
-        final Optional<CourtRoom> courtRoom = courtRoom(locationId, venueId, venueName, missingReferenceDataMappingMap, requester);
+        final Optional<CourtRoom> courtRoom = courtRoom(locationId, venueId, venueName, missingReferenceDataMappingMap);
         if (courtRoom.isPresent()) {
             final CourtRoom courtRoomDetail = courtRoom.get();
             populateCourtProperties(builder, courtRoomDetail);
             populateListingProperties(builder, listingProfile, sessionDate, courtSessionStr, businessTypeCode);
-            populateSessionAllocation(builder, businessTypeCode, sessionDate, courtSessionStr, courtRoomDetail, requester);
+            populateSessionAllocation(builder, businessTypeCode, sessionDate, courtSessionStr, courtRoomDetail);
 
             final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinRotaPeriod.stream()
                     .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(builder.getCourtRoomId())
@@ -116,10 +115,9 @@ public class CourtScheduleEnricher {
                                            final String businessTypeCode,
                                            final LocalDate sessionDate,
                                            final String courtSessionStr,
-                                           final CourtRoom courtRoomDetail,
-                                           final Requester requester) {
+                                           final CourtRoom courtRoomDetail) {
         final String listingSession = courtSession.getCourtSession(sessionDate, courtSessionStr);
-        final Optional<CourtRoomSessionAllocation> sessionAllocation = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(requester, courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessTypeCode);
+        final Optional<CourtRoomSessionAllocation> sessionAllocation = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessTypeCode);
         LOGGER.debug("called referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {} - with result : {}",
                 courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessTypeCode, sessionAllocation);
         if (sessionAllocation.isPresent()) {
@@ -147,7 +145,7 @@ public class CourtScheduleEnricher {
                 .withAvailableDuration(allocation.getMaxDurationMins());
     }
 
-    private Optional<CourtRoom> courtRoom(final Integer locationId, final Integer venueId, final String venueName, final Map<String, String> exceptionMessages, final Requester requester) {
-        return referenceDataMapperService.findByVenue(new Venue(locationId, venueId, venueName), exceptionMessages, requester);
+    private Optional<CourtRoom> courtRoom(final Integer locationId, final Integer venueId, final String venueName, final Map<String, String> exceptionMessages) {
+        return referenceDataMapperService.findByVenue(new Venue(locationId, venueId, venueName), exceptionMessages);
     }
 }

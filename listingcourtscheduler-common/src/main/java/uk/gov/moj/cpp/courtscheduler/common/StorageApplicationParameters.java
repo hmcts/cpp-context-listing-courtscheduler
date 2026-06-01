@@ -1,19 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.common;
 
-import uk.gov.justice.services.common.configuration.GlobalValue;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-
-@ApplicationScoped
+/**
+ * Migrated from Justice Services {@code @GlobalValue(key=..., defaultValue=...)}
+ * to Spring's {@code @Value("${...:default}")}.
+ */
+@Service
 public class StorageApplicationParameters {
 
-    @Inject
-    @GlobalValue(key = "azure.local.mi.clientId", defaultValue = "")
+    @Value("${azure.local.mi.clientId:}") // gitleaks:allow
     private String azureLocalMiClientId;
 
-    @Inject
-    @GlobalValue(key = "azure.local.mi.tenantId", defaultValue = "")
+    @Value("${azure.local.mi.tenantId:}") // gitleaks:allow
     private String azureLocalMiTenantId;
 
     public String getAzureLocalMiClientId() {

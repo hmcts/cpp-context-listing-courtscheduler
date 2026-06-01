@@ -2,7 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.lang.Integer.parseInt;
 
-import uk.gov.moj.cpp.courtscheduler.api.converter.ListToJsonArrayConverter;
+import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -12,16 +12,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.json.Json;
-import javax.json.JsonObject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class SlotsSearchService {
     private static final Logger LOGGER = LoggerFactory.getLogger(SlotsSearchService.class.getName());
 
