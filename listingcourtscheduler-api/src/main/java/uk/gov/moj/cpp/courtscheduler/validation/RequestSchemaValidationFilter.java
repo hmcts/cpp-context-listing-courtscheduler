@@ -1,11 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.validation;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SpecVersion;
-import com.networknt.schema.ValidationMessage;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,12 +9,18 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.everit.json.schema.Schema;
+import org.everit.json.schema.ValidationException;
+import org.everit.json.schema.loader.SchemaLoader;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
@@ -35,14 +36,21 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Justice Services / WildFly behaviour: a request body is validated against the JSON Schema
  * registered for its media type before the controller sees it.
  *
+ * <p>Uses <b>everit-json-schema</b> — the same library the legacy framework used — so validation
+ * is byte-for-byte faithful to WildFly, including draft-04 semantics. In particular {@code date}
+ * is not a defined format in draft-04, so {@code format: date} is ignored (everit only asserts the
+ * formats it recognises for the schema's draft). Structure, required, type, enum, pattern and
+ * {@code additionalProperties} are enforced. This is why the {@code /validate*} endpoints need no
+ * special-casing: everit lets a (format-only) imperfect payload through to the business validators,
+ * exactly as WildFly did.
+ *
  * <p>Faithful to the old behaviour:
  * <ul>
- *   <li>Only request bodies are validated — GET/HEAD/OPTIONS (no body) pass through, and
- *       responses are never validated.</li>
+ *   <li>Only request bodies are validated — GET/HEAD/OPTIONS (no body) pass through; responses are
+ *       never validated.</li>
  *   <li>A media type with no matching schema passes through unvalidated (e.g. the empty
  *       {@code remove.hearing.slots} DELETE body, or non-vendor content types).</li>
- *   <li>Validation failures return HTTP 400 with the framework error shape
- *       {@code {"error": "..."}} (see GlobalExceptionHandler).</li>
+ *   <li>Validation failures return HTTP 400 with the legacy framework error shape {@code {"error": "..."}}.</li>
  * </ul>
  *
  * <p>Media-type → schema mapping:
@@ -62,8 +70,7 @@ public class RequestSchemaValidationFilter extends OncePerRequestFilter {
     private static final String SCHEMA_NAME_PREFIX = "courtscheduler.";
 
     private final ObjectMapper objectMapper;
-    private final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V4);
-    private final Map<String, JsonSchema> schemaCache = new ConcurrentHashMap<>();
+    private final Map<String, Schema> schemaCache = new ConcurrentHashMap<>();
     private final Set<String> noSchema = ConcurrentHashMap.newKeySet();
 
     public RequestSchemaValidationFilter(final ObjectMapper objectMapper) {
@@ -86,7 +93,7 @@ public class RequestSchemaValidationFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
-        final JsonSchema schema = schemaFor(schemaName);
+        final Schema schema = schemaFor(schemaName);
         if (schema == null) {
             chain.doFilter(request, response);
             return;
@@ -96,27 +103,24 @@ public class RequestSchemaValidationFilter extends OncePerRequestFilter {
         final CachedBodyHttpServletRequest wrapped = new CachedBodyHttpServletRequest(request, body);
 
         if (body.length == 0) {
-            // Empty body against a schema that requires content -> let the controller/handler decide,
-            // preserving existing behaviour for endpoints that tolerate empty payloads.
+            // Empty body -> let the controller/handler decide, preserving behaviour for endpoints
+            // that tolerate empty payloads.
             chain.doFilter(wrapped, response);
             return;
         }
 
-        final JsonNode node;
+        final Object json;
         try {
-            node = objectMapper.readTree(body);
-        } catch (final IOException parseEx) {
+            json = new JSONTokener(new String(body, StandardCharsets.UTF_8)).nextValue();
+        } catch (final JSONException parseEx) {
             writeBadRequest(response, "Request body is not valid JSON");
             return;
         }
 
-        final Set<ValidationMessage> errors = schema.validate(node);
-        if (!errors.isEmpty()) {
-            final Set<String> messages = new TreeSet<>();
-            for (final ValidationMessage error : errors) {
-                messages.add(error.getMessage());
-            }
-            final String joined = String.join("; ", messages);
+        try {
+            schema.validate(json);
+        } catch (final ValidationException ve) {
+            final String joined = String.join("; ", ve.getAllMessages());
             LOG.debug("Request body failed schema {}: {}", schemaName, joined);
             writeBadRequest(response, joined);
             return;
@@ -151,11 +155,11 @@ public class RequestSchemaValidationFilter extends OncePerRequestFilter {
         return token + ".json";
     }
 
-    private JsonSchema schemaFor(final String schemaName) {
+    private Schema schemaFor(final String schemaName) {
         if (noSchema.contains(schemaName)) {
             return null;
         }
-        final JsonSchema cached = schemaCache.get(schemaName);
+        final Schema cached = schemaCache.get(schemaName);
         if (cached != null) {
             return cached;
         }
@@ -165,10 +169,11 @@ public class RequestSchemaValidationFilter extends OncePerRequestFilter {
             return null;
         }
         try (InputStream in = resource.getInputStream()) {
-            final JsonSchema compiled = schemaFactory.getSchema(in);
+            // SchemaLoader.load detects the draft from the schema's $schema (draft-04 here).
+            final Schema compiled = SchemaLoader.load(new JSONObject(new JSONTokener(in)));
             schemaCache.put(schemaName, compiled);
             return compiled;
-        } catch (final IOException e) {
+        } catch (final Exception e) {
             LOG.warn("Could not load request schema {}: {}", schemaName, e.getMessage());
             noSchema.add(schemaName);
             return null;
@@ -182,6 +187,8 @@ public class RequestSchemaValidationFilter extends OncePerRequestFilter {
         response.setStatus(HttpStatus.BAD_REQUEST.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         final Map<String, Object> body = new LinkedHashMap<>();
+        // Legacy framework error shape: the WildFly exception mapper rendered all 4xx bodies as
+        // {"error":"<msg>"} (see GlobalExceptionHandler#errorBody and CourtSchedulerIT).
         body.put("error", message);
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }

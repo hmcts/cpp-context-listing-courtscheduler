@@ -168,6 +168,17 @@ public class GlobalExceptionHandler {
         return errors.toString();
     }
 
+    /**
+     * A request whose {@code Accept} matches no producible media type must yield 406 Not Acceptable
+     * (as WildFly/JAX-RS did) — without this, the catch-all {@link #handleAny} would map it to 500,
+     * a client-visible regression. (Conforming clients sending the vendor {@code Accept} never hit this.)
+     */
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<Map<String, Object>> handleNotAcceptable(
+            final org.springframework.web.HttpMediaTypeNotAcceptableException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(errorBody(List.of(ex.getMessage())));
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleStatus(final ResponseStatusException ex) {
         final Map<String, Object> body = new LinkedHashMap<>();
