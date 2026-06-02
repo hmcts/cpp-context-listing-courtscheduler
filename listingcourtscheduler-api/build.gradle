@@ -56,6 +56,10 @@ dependencies {
     implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
+    // Draft-04 JSON Schema validation of inbound request bodies, replicating the
+    // legacy Justice Services media-type -> schema validation (see RequestSchemaValidationFilter).
+    implementation 'com.networknt:json-schema-validator:1.5.4'
+
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
@@ -207,4 +211,7 @@ tasks.named('test') {
 // Spring (CDI is gone) so the first wins.
 tasks.named('processResources') {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    // Package the legacy RAML JSON Schemas onto the runtime classpath so
+    // RequestSchemaValidationFilter can validate inbound request bodies against them.
+    from('src/raml/json/schema') { into 'request-schemas' }
 }

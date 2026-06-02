@@ -287,6 +287,13 @@ paths:
             application/vnd.courtscheduler.create.provisional.booking.response+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerCreateProvisionalBookingResponse'
+            # Backward compatibility: the legacy WildFly endpoint returned application/json
+            # (the RAML declared no response media type), so a legacy client sends
+            # `Accept: application/json`. Keep it producible, else strict content negotiation
+            # turns it into a 500 via the catch-all handler. See ProvisionalBookingIT.
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerCreateProvisionalBookingResponse'
     get:
       tags: [provisional-booking]
       operationId: getProvisionalBooking

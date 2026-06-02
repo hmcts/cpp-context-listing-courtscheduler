@@ -187,6 +187,59 @@ public abstract class AbstractIT {
     }
 
     /**
+     * POST with an explicit {@code Accept} header. The default {@link #postCommand} helper sets no
+     * Accept, so RestTemplate sends {@code *}/{@code *}, which matches any {@code produces} and so
+     * hides response content-negotiation mismatches. This variant lets a test send the specific
+     * Accept a legacy WildFly client would use (e.g. {@code application/json}) to verify the
+     * migrated endpoint does not reject it with 406.
+     */
+    protected Response postCommandWithAccept(final String path,
+                                             final String contentType,
+                                             final String accept,
+                                             final UUID userId,
+                                             final String body) {
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(contentType));
+        headers.setAccept(java.util.List.of(MediaType.parseMediaType(accept)));
+        if (userId != null) {
+            headers.set("CJSCPPUID", userId.toString());
+        }
+        final HttpEntity<String> entity = new HttpEntity<>(body, headers);
+        return toLegacyResponse(REST.exchange(URI.create(BASE_URL + path), HttpMethod.POST, entity, String.class));
+    }
+
+    /**
+     * POST with NO {@code Accept} header at all — faithfully mirrors the real cpp-context-hearing
+     * caller ({@code ProvisionalBookingService.bookSlots}, Apache HttpClient, which sets only
+     * Content-Type + CJSCPPUID). RestTemplate would otherwise auto-add an Accept for a String
+     * response, so an interceptor strips it after the request callback runs. The server treats an
+     * absent Accept as {@code *}/{@code *}.
+     */
+    protected Response postCommandWithoutAccept(final String path,
+                                                final String contentType,
+                                                final UUID userId,
+                                                final String body) {
+        final org.springframework.web.client.RestTemplate noAccept = new org.springframework.web.client.RestTemplate();
+        noAccept.setErrorHandler(new org.springframework.web.client.DefaultResponseErrorHandler() {
+            @Override
+            public boolean hasError(final org.springframework.http.client.ClientHttpResponse response) {
+                return false;
+            }
+        });
+        noAccept.getInterceptors().add((request, payloadBytes, execution) -> {
+            request.getHeaders().remove(org.springframework.http.HttpHeaders.ACCEPT);
+            return execution.execute(request, payloadBytes);
+        });
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(contentType));
+        if (userId != null) {
+            headers.set("CJSCPPUID", userId.toString());
+        }
+        final HttpEntity<String> entity = new HttpEntity<>(body, headers);
+        return toLegacyResponse(noAccept.exchange(URI.create(BASE_URL + path), HttpMethod.POST, entity, String.class));
+    }
+
+    /**
      * Wraps a Spring {@link ResponseEntity} as a JAX-RS {@link Response}, preserving status,
      * body, content-type and headers — so the existing legacy test assertions
      * ({@code response.getStatus()}, {@code response.readEntity(String.class)}, etc.) continue

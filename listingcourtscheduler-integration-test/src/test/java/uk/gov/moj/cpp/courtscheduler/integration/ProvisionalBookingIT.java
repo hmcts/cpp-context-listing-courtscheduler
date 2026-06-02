@@ -3,10 +3,12 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static jakarta.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
@@ -50,6 +52,64 @@ public class ProvisionalBookingIT extends AbstractIT {
         String responseString = response.readEntity(String.class); // Ensure to read the entity as String
         JSONObject responseJson = new JSONObject(responseString);
         assertThat(responseJson.get("bookingId"), notNullValue());
+    }
+
+    /**
+     * Backward-compatibility guard: a legacy WildFly client posted to this endpoint with
+     * {@code Accept: application/json} (the legacy default response type — the RAML declared no
+     * response media type for provisional booking). The migrated OpenAPI declares
+     * {@code produces: application/vnd.courtscheduler.create.provisional.booking.response+json},
+     * so with strict content negotiation a specific {@code Accept: application/json} must NOT be
+     * rejected with 406. (The happy-path test above doesn't catch this — it sends no Accept, so
+     * RestTemplate uses {@code *}/{@code *}, which matches any produces.)
+     */
+    @Test
+    void shouldAcceptLegacyApplicationJsonAcceptHeader() throws SQLException {
+        String courtScheduleId = UUID.randomUUID().toString();
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json")
+                .replace("COURTSCHEDULER_ID", courtScheduleId);
+
+        final Response response = postCommandWithAccept(
+                RELATIVE_PATH,
+                "application/vnd.courtscheduler.create.provisional.booking+json",
+                "application/json",
+                SYSTEM_USER_ID,
+                provisionalBookingPayload);
+
+        assertThat("legacy Accept: application/json must not be rejected with 406 Not Acceptable",
+                response.getStatus(), is(not(NOT_ACCEPTABLE.getStatusCode())));
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+    }
+
+    /**
+     * Mirrors the real production caller — cpp-context-hearing's
+     * {@code ProvisionalBookingService.bookSlots} (Apache HttpClient) sends
+     * {@code Content-Type: …create.provisional.booking+json}, {@code CJSCPPUID}, and
+     * NO {@code Accept} header. This is the traffic that actually hits the endpoint, so it
+     * must return 200 (an absent Accept is treated as {@code *}/{@code *}).
+     */
+    @Test
+    void shouldAcceptHearingCallerWithNoAcceptHeader() throws SQLException {
+        String courtScheduleId = UUID.randomUUID().toString();
+        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json")
+                .replace("COURTSCHEDULER_ID", courtScheduleId);
+
+        final Response response = postCommandWithoutAccept(
+                RELATIVE_PATH,
+                "application/vnd.courtscheduler.create.provisional.booking+json",
+                SYSTEM_USER_ID,
+                provisionalBookingPayload);
+
+        assertThat("real hearing caller sends no Accept header and must not be rejected",
+                response.getStatus(), is(OK.getStatusCode()));
     }
 
     @Test
