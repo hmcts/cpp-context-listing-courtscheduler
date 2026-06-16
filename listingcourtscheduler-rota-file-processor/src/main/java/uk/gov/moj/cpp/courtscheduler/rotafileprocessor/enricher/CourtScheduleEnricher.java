@@ -19,6 +19,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTER
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_START_TIME;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
 
 // (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
@@ -66,8 +67,16 @@ public class CourtScheduleEnricher {
         if (courtRoom.isPresent()) {
             final CourtRoom courtRoomDetail = courtRoom.get();
             populateCourtProperties(builder, courtRoomDetail);
-            populateListingProperties(builder, listingProfile, sessionDate, courtSessionStr, businessTypeCode);
-            populateSessionAllocation(builder, businessTypeCode, sessionDate, courtSessionStr, courtRoomDetail);
+            // Fetch session allocation up front so refdata-supplied start/end times
+            // can be applied during populateListingProperties (with custom time precedence).
+            final Optional<CourtRoomSessionAllocation> sessionAllocation =
+                    lookupSessionAllocation(businessTypeCode, sessionDate, courtSessionStr, courtRoomDetail);
+
+            populateListingProperties(builder, listingProfile, sessionDate, courtSessionStr, businessTypeCode, sessionAllocation);
+            sessionAllocation.ifPresent(allocation -> {
+                populateSessionAllocationProperties(builder, allocation);
+                LOGGER.info(format(SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG, allocation.getOucode(), allocation.getCourtRoomId(), builder.getSessionDate(), allocation.getCourtSession(), allocation.getRotaBusinessTypeCode(), allocation.getMaxSlot(), allocation.getMaxDurationMins()));
+            });
 
             final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinRotaPeriod.stream()
                     .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(builder.getCourtRoomId())
@@ -92,7 +101,8 @@ public class CourtScheduleEnricher {
                                            final Map<String, String> listingProfile,
                                            final LocalDate sessionDate,
                                            final String courtSessionStr,
-                                           final String businessType) {
+                                           final String businessType,
+                                           final Optional<CourtRoomSessionAllocation> sessionAllocation) {
         builder.withCourtScheduleId(randomUUID().toString())
                 .withListingProfileId(listingProfile.get(ID))
                 .withPanel(listingProfile.get(PANEL))
@@ -100,31 +110,36 @@ public class CourtScheduleEnricher {
                 .withSessionDate(sessionDate)
                 .withCourtSession(courtSessionStr);
 
+        // Precedence: refdata allocation time > hardcoded defaults.
+        // (Rota file rows do not carry custom session times; custom times are only honoured
+        // on the courtscheduler.create API path - see SessionsService.)
+        final String refDataStartTime = sessionAllocation.map(CourtRoomSessionAllocation::getSessionStartTime).orElse(null);
+        final String refDataEndTime = sessionAllocation.map(CourtRoomSessionAllocation::getSessionEndTime).orElse(null);
+
         if (AM_SESSION.equals(courtSessionStr)) {
-            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_MORNING_START_TIME))
-                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_MORNING_END_TIME));
+            final String startTime = resolveSessionTime(null, refDataStartTime, DEFAULT_MORNING_START_TIME);
+            final String endTime = resolveSessionTime(null, refDataEndTime, DEFAULT_MORNING_END_TIME);
+            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, startTime))
+                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, endTime));
         } else if (PM_SESSION.equals(courtSessionStr)) {
-            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_START_TIME))
-                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DEFAULT_AFTERNOON_END_TIME));
+            final String startTime = resolveSessionTime(null, refDataStartTime, DEFAULT_AFTERNOON_START_TIME);
+            final String endTime = resolveSessionTime(null, refDataEndTime, DEFAULT_AFTERNOON_END_TIME);
+            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, startTime))
+                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, endTime));
         }
         builder.withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
 
     }
 
-    private void populateSessionAllocation(final CourtSchedule.CourtScheduleBuilder builder,
-                                           final String businessTypeCode,
-                                           final LocalDate sessionDate,
-                                           final String courtSessionStr,
-                                           final CourtRoom courtRoomDetail) {
+    private Optional<CourtRoomSessionAllocation> lookupSessionAllocation(final String businessTypeCode,
+                                                                        final LocalDate sessionDate,
+                                                                        final String courtSessionStr,
+                                                                        final CourtRoom courtRoomDetail) {
         final String listingSession = courtSession.getCourtSession(sessionDate, courtSessionStr);
         final Optional<CourtRoomSessionAllocation> sessionAllocation = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessTypeCode);
         LOGGER.debug("called referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType - with ouCode : {}, courtRoomNumber: {}, listingSession: {}, businessType: {} - with result : {}",
                 courtRoomDetail.getOucode(), courtRoomDetail.getCppCourtRoomId(), listingSession, businessTypeCode, sessionAllocation);
-        if (sessionAllocation.isPresent()) {
-            final uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation allocation = sessionAllocation.get();
-            populateSessionAllocationProperties(builder, allocation);
-            LOGGER.info(format(SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG, allocation.getOucode(), allocation.getCourtRoomId(), builder.getSessionDate(), allocation.getCourtSession(), allocation.getRotaBusinessTypeCode(), allocation.getMaxSlot(), allocation.getMaxDurationMins()));
-        }
+        return sessionAllocation;
     }
 
     private void populateCourtProperties(final CourtSchedule.CourtScheduleBuilder builder, final CourtRoom courtRoomDetail) {

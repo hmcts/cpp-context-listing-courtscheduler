@@ -46,6 +46,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
@@ -124,6 +125,8 @@ class SessionsServiceTest {
     private CourtMigrationRepository courtMigrationRepository;
     @Mock
     private ReferenceDataCache referenceDataCache;
+    @Mock
+    private ReferenceDataMapperService referenceDataMapperService;
     @Mock
     private CourtScheduleToDeleteResponseConverter courtScheduleToDeleteResponseConverter;
     @InjectMocks
@@ -3079,7 +3082,7 @@ class SessionsServiceTest {
 
     private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule createPersistedCourtSchedule(
             final String courtScheduleId) {
-        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedSession = 
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedSession =
                 new uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule();
         persistedSession.setCourtScheduleId(courtScheduleId);
         persistedSession.setCourtRoomId("original-courtroom-id");
@@ -3087,5 +3090,156 @@ class SessionsServiceTest {
         persistedSession.setBusinessType("DVLA");
         persistedSession.setUpdatedOn(Calendar.getInstance().getTime());
         return persistedSession;
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Tests covering applyResolvedSessionTimes precedence on the API courtscheduler.create path.
+    // Precedence: customTime (from API request) > refdata CourtRoomSessionAllocation > defaults.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    void shouldApplyCustomSessionTimesWhenSuppliedOnApiRequestOverridingRefdataAndDefaults() {
+        final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
+        final Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(randomUUID().toString())
+                .withCourtRoomId("court-room-id")
+                .withSessionType(AM_SESSION)
+                .withPanelType("Adult")
+                .withSessionStartTime("09:15")
+                .withSessionEndTime("12:30")
+                .build();
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
+                .thenReturn(Optional.of(courtRoomWithRefdataKeys()));
+        // Refdata returns a competing time; custom must still win
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), any(), anyString(), anyString()))
+                .thenReturn(Optional.of(allocationWithTimes("10:30", "12:45")));
+
+        sessionsService.create(createSessionRequest);
+
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
+        final CourtSchedule captured = courtScheduleArgumentCaptor.getValue().get(0);
+        assertThat(sdf.format(captured.getSessionStartTime()), is("09:15"));
+        assertThat(sdf.format(captured.getSessionEndTime()), is("12:30"));
+    }
+
+    @Test
+    void shouldApplyRefdataSessionTimesWhenNoCustomTimesOnApiRequest() {
+        final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
+        final Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(randomUUID().toString())
+                .withCourtRoomId("court-room-id")
+                .withSessionType(AM_SESSION)
+                .withPanelType("Adult")
+                .build(); // no sessionStartTime/sessionEndTime
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
+                .thenReturn(Optional.of(courtRoomWithRefdataKeys()));
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), any(), anyString(), anyString()))
+                .thenReturn(Optional.of(allocationWithTimes("09:45", "12:15")));
+
+        sessionsService.create(createSessionRequest);
+
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
+        final CourtSchedule captured = courtScheduleArgumentCaptor.getValue().get(0);
+        // refdata times override hardcoded morning defaults (10:00 / 13:00)
+        assertThat(sdf.format(captured.getSessionStartTime()), is("09:45"));
+        assertThat(sdf.format(captured.getSessionEndTime()), is("12:15"));
+    }
+
+    @Test
+    void shouldFallBackToDefaultTimesWhenNeitherCustomNorRefdataTimesPresent() {
+        final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
+        final Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(randomUUID().toString())
+                .withCourtRoomId("court-room-id")
+                .withSessionType(AM_SESSION)
+                .withPanelType("Adult")
+                .build();
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
+                .thenReturn(Optional.of(courtRoomWithRefdataKeys()));
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), any(), anyString(), anyString()))
+                .thenReturn(Optional.empty());
+
+        sessionsService.create(createSessionRequest);
+
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
+        final CourtSchedule captured = courtScheduleArgumentCaptor.getValue().get(0);
+        assertThat(sdf.format(captured.getSessionStartTime()), is(DEFAULT_MORNING_START_TIME));
+        assertThat(sdf.format(captured.getSessionEndTime()), is(DEFAULT_MORNING_END_TIME));
+    }
+
+    @Test
+    void shouldUseAmAllocationStartAndPmAllocationEndForAllDaySession() {
+        final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
+        final Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(randomUUID().toString())
+                .withCourtRoomId("court-room-id")
+                .withSessionType(ALL_DAY)
+                .withPanelType("Adult")
+                .build();
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
+                .thenReturn(Optional.of(courtRoomWithRefdataKeys()));
+
+        // For ALL_DAY, lookup is performed twice: once with MONAM (for start), once with MONPM (for end).
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), any(), eq("MONAM"), anyString()))
+                .thenReturn(Optional.of(allocationWithTimes("09:00", "12:30")));
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), any(), eq("MONPM"), anyString()))
+                .thenReturn(Optional.of(allocationWithTimes("13:30", "17:30")));
+
+        sessionsService.create(createSessionRequest);
+
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
+        final CourtSchedule captured = courtScheduleArgumentCaptor.getValue().get(0);
+        // ALL_DAY pulls start from AM allocation and end from PM allocation
+        assertThat(sdf.format(captured.getSessionStartTime()), is("09:00"));
+        assertThat(sdf.format(captured.getSessionEndTime()), is("17:30"));
+    }
+
+    private CourtRoom courtRoomWithRefdataKeys() {
+        return CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId("court-room-id")
+                .withOucode("BAUOS05")
+                .withCppCourtRoomId(1234)
+                .withCourtRoomName("Court room 1")
+                .withOucodeL2Code("L2")
+                .withOucodeL3Name("Liverpool Street Court")
+                .build();
+    }
+
+    private CourtRoomSessionAllocation allocationWithTimes(final String start, final String end) {
+        return CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation()
+                .withId("alloc-1")
+                .withCourtRoomId(1234)
+                .withOucode("BAUOS05")
+                .withMaxSlot(8)
+                .withMaxDurationMins(60)
+                .withRotaBusinessTypeCode("DVLA")
+                .withCourtSession("MONAM")
+                .withSessionStartTime(start)
+                .withSessionEndTime(end)
+                .build();
     }
 }

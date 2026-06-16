@@ -29,6 +29,20 @@
       "courtroomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c"
     },
     {
+      "id": "f1f2f3f4-aaaa-bbbb-cccc-dddddddddddd",
+      "rotaLocationId": 9999,
+      "rotaVenueName": "Court Refdata Times Test",
+      "cppCourtRoomId": 7777,
+      "rotaVenueId": 0,
+      "oucode": "B12JR00",
+      "oucodeL3Name": "Northallerton Magistrates' Court",
+      "oucodeL2Name": "North Yorkshire",
+      "oucodeL2Code": "12",
+      "oucodeUUID": "22c69328-70af-3e27-80c5-1a79e24903d2",
+      "courtroomName": "Courtroom Refdata Test",
+      "courtroomId": "a1b2c3d4-e5f6-3a7b-8c9d-0e1f2a3b4c5d"
+    },
+    {
       "id": "0b60424c-8099-3f5c-87ff-683e0d9d19db",
       "rotaLocationId": 339,
       "rotaVenueName": "Ipswich Crown Court 2",

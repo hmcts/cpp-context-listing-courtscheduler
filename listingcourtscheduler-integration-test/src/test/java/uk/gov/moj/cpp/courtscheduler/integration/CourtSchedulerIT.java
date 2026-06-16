@@ -234,6 +234,71 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldCreateCourtScheduleWithRefdataSessionTimesAM() {
+        // Refdata fixture has MONAM allocation for cppCourtRoomId=7777 oucode=B12JR00 with
+        // sessionStartTime="09:30" / sessionEndTime="12:45". The payload supplies no custom
+        // start/end times, so refdata should win over the AM defaults (10:00 / 13:00).
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-session-times-am.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+        assertThat(courtSchedules.size(), is(greaterThanOrEqualTo(1)));
+        for (final CourtSchedule courtSchedule : courtSchedules) {
+            assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
+
+            final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+            final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+
+            assertThat(sdf.format(localStartTime), is("09:30"));
+            assertThat(sdf.format(localEndTime), is("12:45"));
+        }
+    }
+
+    @Test
+    void shouldCreateCourtScheduleWithRefdataSessionTimesAD() {
+        // Refdata fixture has MONAM (09:30/12:45) and MONPM (13:30/16:30) allocations for
+        // cppCourtRoomId=7777 oucode=B12JR00. For an ALL_DAY session the API path takes the
+        // start time from the AM allocation and the end time from the PM allocation.
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-session-times-ad.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+        assertThat(courtSchedules.size(), is(greaterThanOrEqualTo(1)));
+        for (final CourtSchedule courtSchedule : courtSchedules) {
+            assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
+
+            final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+            final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+
+            assertThat(sdf.format(localStartTime), is("09:30"));
+            assertThat(sdf.format(localEndTime), is("16:30"));
+        }
+    }
+
+    @Test
+    void shouldHonourCustomSessionTimesOverRefdataAndDefaults() {
+        // Refdata MONAM allocation says 09:30/12:45 but the request supplies 10:15/12:30
+        // explicitly. The custom times must win over both refdata and the hardcoded defaults.
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-custom-times-overrides-refdata.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+        assertThat(courtSchedules.size(), is(greaterThanOrEqualTo(1)));
+        for (final CourtSchedule courtSchedule : courtSchedules) {
+            assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
+
+            final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+            final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+
+            assertThat(sdf.format(localStartTime), is("10:15"));
+            assertThat(sdf.format(localEndTime), is("12:30"));
+        }
+    }
+
+    @Test
     void shouldReturnErrorWhenAMSessionEndTimeIsLate() {
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-invalid-end-time.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
@@ -1110,7 +1175,11 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSupportAdSplit(false);
         expected.setListingProfileId(USER_ID.toString()); // Set to current user to avoid "edited by another user" error
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0));
+        // Use 11:00 (not 10:00) so the gap survives the 1-hour London<->UTC shift during BST.
+        // localDateToDateWithTime treats the input as London local time, but the validator's
+        // sessionTimeFormatter renders the persisted instant in the JVM's default timezone (UTC
+        // here) - a 1-hour gap collapses in BST and the MIN_HEARING_TIME validation no longer fires.
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 11, 0));
         expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
         expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
         expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
