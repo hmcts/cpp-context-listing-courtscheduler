@@ -1825,7 +1825,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedSchedule);
 
-        // Mock allocated listing with hearing time at 09:00 (before session start at 10:00)
+        // Mock allocated listing with hearing time at 09:00 (before session start at 11:00)
         AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
         Date hearingTime = Date.from(sessionDate.atTime(9, 0).atZone(java.time.ZoneId.of("Europe/London")).toInstant());
         when(booked.getHearingStartTime()).thenReturn(hearingTime);

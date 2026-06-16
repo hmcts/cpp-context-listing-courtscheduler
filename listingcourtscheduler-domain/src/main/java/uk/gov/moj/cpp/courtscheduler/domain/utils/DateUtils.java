@@ -24,7 +24,9 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.Calendar;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.TimeZone;
 
@@ -228,6 +230,40 @@ public class DateUtils {
 
     public static String toMeridian(final String isoDateTime) {
         return getMeridian(Objects.requireNonNull(toZonedDateTime(isoDateTime)));
+    }
+
+    /**
+     * Builds the refdata listing-session key (e.g. "MONAM", "FRIPM") from a date and session type.
+     * Returns null if either argument is missing.
+     */
+    public static String toListingSession(final LocalDate sessionDate, final String session) {
+        if (sessionDate == null || isBlank(session)) {
+            return null;
+        }
+        return sessionDate.getDayOfWeek()
+                .getDisplayName(TextStyle.SHORT, Locale.UK)
+                .toUpperCase(Locale.UK) + session;
+    }
+
+    /**
+     * Resolves a session start/end time using the precedence:
+     *   1. customTime (e.g. value supplied on the API request) - takes precedence if non-blank
+     *   2. refDataTime (e.g. value from CourtRoomSessionAllocation refdata) - used if customTime is blank
+     *   3. defaultTime - fallback (typically a hardcoded DEFAULT_*_TIME constant)
+     *
+     * @param customTime  caller-supplied override (e.g. API request body), may be blank/null
+     * @param refDataTime time configured in reference data, may be blank/null
+     * @param defaultTime hardcoded default (must not be blank)
+     * @return the resolved time in HH:mm format
+     */
+    public static String resolveSessionTime(final String customTime, final String refDataTime, final String defaultTime) {
+        if (!isBlank(customTime)) {
+            return customTime;
+        }
+        if (!isBlank(refDataTime)) {
+            return refDataTime;
+        }
+        return defaultTime;
     }
 
     public static java.util.Date combineDateAndTime(final LocalDate date, final String time) {
