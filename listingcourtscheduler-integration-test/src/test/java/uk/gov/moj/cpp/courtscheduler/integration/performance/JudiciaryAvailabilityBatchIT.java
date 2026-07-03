@@ -1,14 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.integration.performance;
 
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.integration.AbstractIT;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder.RuleData;
 
-import javax.json.JsonArray;
-import javax.json.JsonObject;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -20,12 +20,12 @@ import java.util.Map;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 
 class JudiciaryAvailabilityBatchIT extends AbstractIT {
 

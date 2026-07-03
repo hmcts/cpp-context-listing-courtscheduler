@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata;
 import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.util.PropertiesLoader;

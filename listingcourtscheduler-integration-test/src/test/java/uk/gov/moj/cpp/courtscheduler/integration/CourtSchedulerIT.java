@@ -7,12 +7,12 @@ import static java.util.Date.from;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static javax.json.Json.createArrayBuilder;
-import static javax.json.Json.createObjectBuilder;
-import static javax.ws.rs.core.Response.Status.ACCEPTED;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.apache.activemq.artemis.utils.RandomUtil.randomSimpleString;
+import static jakarta.json.Json.createArrayBuilder;
+import static jakarta.json.Json.createObjectBuilder;
+import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
+import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,7 +22,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
@@ -43,10 +43,10 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getRandomFutu
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.localDateToDateWithTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.getUtcTimeStringForDate;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -72,11 +72,11 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonValue;
-import javax.ws.rs.core.Response;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonValue;
+import jakarta.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -132,8 +132,7 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithSessionTimes() {
-        // Payload times are London wall-clock; go via the London-aware helper so expected
-        // instants match the UTC values the backend stores in both BST and GMT.
+        //We send localtime
         final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         final java.util.Date expectedStartTime = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(10, 0));
         final java.util.Date expectedEndTime = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(12, 0));
@@ -1186,10 +1185,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
 
-        // Hearing 2h before session start so the 1h BST/UTC skew inside the validator
-        // (persisted session time is read in UTC, hearings are read in Europe/London) can't
-        // close the gap and silently bypass the check.
-        createAllocatedListing(expected, UUID.randomUUID(), UUID.randomUUID(), 60, "08:00");
+        // Create allocated listing with hearing time BEFORE session start time (09:00 is before 10:00)
+        createAllocatedListing(expected, UUID.randomUUID(), UUID.randomUUID(), 60, "09:00");
 
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
         String changedCourtRoomId = courtRoomId; // Use same courtroom to avoid court house validation error
@@ -1207,7 +1204,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
 
-        // Should fail because min hearing time (08:00) is before session start time (10:00) retrieved from persisted schedule
+        // Should fail because min hearing time (09:00) is before session start time (10:00) retrieved from persisted schedule
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String errorResponseMessage = response.readEntity(String.class);
         assertThat(errorResponseMessage, containsString(MIN_HEARING_TIME_AFTER_SESSION_START_TIME));
@@ -2940,7 +2937,7 @@ class CourtSchedulerIT extends AbstractIT {
     private CourtSchedule createTestCourtSchedule() {
         final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(randomUUID().toString());
-        courtSchedule.setListingProfileId("CS" + randomSimpleString().toString());
+        courtSchedule.setListingProfileId("CS" + randomUUID().toString().substring(0, 8));
         courtSchedule.setOuCode("B40IM00");
         courtSchedule.setSessionDate(LocalDate.now().plusDays(30));
         courtSchedule.setActive(true);
@@ -2965,8 +2962,8 @@ class CourtSchedulerIT extends AbstractIT {
         key.setCourtScheduleId(courtScheduleId);
         key.setJudiciaryId(randomUUID().toString());
         courtScheduleJudiciary.setId(key);
-        courtScheduleJudiciary.setCourtListingProfileId("CS" + randomSimpleString().toString());
-        courtScheduleJudiciary.setRotaJudiciaryId("ROTA" + randomSimpleString().toString());
+        courtScheduleJudiciary.setCourtListingProfileId("CS" + randomUUID().toString().substring(0, 8));
+        courtScheduleJudiciary.setRotaJudiciaryId("ROTA" + randomUUID().toString().substring(0, 8));
         courtScheduleJudiciary.setTitle("Mr");
         courtScheduleJudiciary.setForenames("John");
         courtScheduleJudiciary.setSurname("Doe");
@@ -3546,7 +3543,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -3555,7 +3552,7 @@ class CourtSchedulerIT extends AbstractIT {
         boolean draftSessionWithHearingInErrorGroup = jsonResponseArray.stream()
                 .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
-                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
                             .map(s -> s.asJsonObject())
                             .anyMatch(s -> draftSessionWithHearing.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -3566,7 +3563,7 @@ class CourtSchedulerIT extends AbstractIT {
         boolean draftSessionNoHearingInErrorGroup = jsonResponseArray.stream()
                 .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
-                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
                             .map(s -> s.asJsonObject())
                             .anyMatch(s ->  draftSessionNoHearings.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -3579,7 +3576,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> assignedSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -3635,7 +3632,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -3646,7 +3643,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> assignedSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -3699,7 +3696,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -3710,7 +3707,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> assignedSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -3813,7 +3810,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify ineligible session is in error group
         boolean foundIneligibleSession = jsonResponseArray.stream()
@@ -3821,7 +3818,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to an assigned session".equals(error)) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> ineligibleSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -3834,7 +3831,7 @@ class CourtSchedulerIT extends AbstractIT {
         boolean eligibleSessionInErrorGroup = jsonResponseArray.stream()
                 .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
-                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
                             .map(s -> s.asJsonObject())
                             .anyMatch(s -> eligibleSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -3900,7 +3897,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -3911,7 +3908,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("assign.courtroom endpoint is only valid for CROWN jurisdiction sessions".equals(error)) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> magistratesSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -3924,7 +3921,7 @@ class CourtSchedulerIT extends AbstractIT {
         boolean crownSessionInErrorGroup = jsonResponseArray.stream()
                 .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
-                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
                             .map(s -> s.asJsonObject())
                             .anyMatch(s -> crownSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -3990,7 +3987,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -4001,7 +3998,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("The new courtroom must belong to the same court centre as the session".equals(error)) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> wrongCourtCentreSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -4014,7 +4011,7 @@ class CourtSchedulerIT extends AbstractIT {
         boolean correctCourtCentreSessionInErrorGroup = jsonResponseArray.stream()
                 .map(JsonValue::asJsonObject)
                 .anyMatch(errorGroup -> {
-                    javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                    jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                     return sessions.stream()
                             .map(s -> s.asJsonObject())
                             .anyMatch(s -> correctCourtCentreSession.getCourtScheduleId().equals(s.getString("courtScheduleId")));
@@ -4083,7 +4080,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -4094,7 +4091,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if (error.contains("Duplicate session already exists")) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> newSessionId.toString().equals(s.getString("courtScheduleId")));
@@ -4165,7 +4162,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -4176,7 +4173,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if (error.contains("Duplicate session already exists")) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> newSessionId.toString().equals(s.getString("courtScheduleId")));
@@ -4247,7 +4244,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -4258,7 +4255,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if (error.contains("Duplicate session already exists")) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> newSessionId.toString().equals(s.getString("courtScheduleId")));
@@ -4414,7 +4411,7 @@ class CourtSchedulerIT extends AbstractIT {
 
         // Verify response has errorGroups key
         assertThat("Response should contain errorGroups", jsonResponse.containsKey("errorGroups"), is(true));
-        javax.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
+        jakarta.json.JsonArray jsonResponseArray = jsonResponse.getJsonArray("errorGroups");
 
         // Verify response is an array
         assertThat("Response should be an array", jsonResponseArray, notNullValue());
@@ -4425,7 +4422,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(errorGroup -> {
                     String error = errorGroup.getString("error");
                     if ("Cannot assign courtroom to a CROWN draft session with hearings booked".equals(error)) {
-                        javax.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
+                        jakarta.json.JsonArray sessions = errorGroup.getJsonArray("sessions");
                         return sessions.stream()
                                 .map(s -> s.asJsonObject())
                                 .anyMatch(s -> draftSessionId.toString().equals(s.getString("courtScheduleId")));

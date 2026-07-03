@@ -12,11 +12,6 @@
 9. [Configuration](#configuration)
 10. [Integration Points](#integration-points)
 
-### Endpoint deep-dives
-
-- [
-  `process_rota_files` — step-by-step flow with sequence diagram](docs/endpoints/process-rota-files.md)
-
 ---
 
 ## Overview

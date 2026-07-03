@@ -7,23 +7,21 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatu
 
 import java.util.List;
 
-import javax.inject.Inject;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import org.apache.deltaspike.testcontrol.api.junit.CdiTestRunner;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-@RunWith(CdiTestRunner.class)
-public class CourtMigrationRepositoryTest {
 
-    @Inject
+class CourtMigrationRepositoryTest extends uk.gov.moj.cpp.courtscheduler.repository.AbstractRepositoryTest {
+
+    @Autowired
     private CourtMigrationRepository courtMigrationRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         List<CourtSchedulerMigrationStatus> courtSchedulerMigrationStatusList = courtMigrationRepository.findAll();
-        courtSchedulerMigrationStatusList.forEach(courtSchedulerMigrationStatus -> courtMigrationRepository.remove(courtSchedulerMigrationStatus));
+        courtSchedulerMigrationStatusList.forEach(courtSchedulerMigrationStatus -> courtMigrationRepository.delete(courtSchedulerMigrationStatus));
     }
 
     @Test

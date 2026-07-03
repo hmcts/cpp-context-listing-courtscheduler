@@ -1,14 +1,17 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import org.springframework.stereotype.Service;
+
 import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
 
+@Service
 public class AssignCourtroomRequestConverter implements Converter<JsonObject, AssignCourtroomRequest> {
     @Override
     public AssignCourtroomRequest convert(final JsonObject jsonObject) {

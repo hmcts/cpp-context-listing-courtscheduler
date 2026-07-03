@@ -4,13 +4,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.criteria.CourtScheduleCriteria;
 
-import javax.persistence.EntityManager;
-import javax.persistence.TypedQuery;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -30,18 +29,15 @@ class CourtScheduleRetryServiceTest {
     private CourtScheduleRetryService service;
 
     private EntityManager entityManager;
-    private CourtScheduleRepository repository;
     private CourtScheduleCriteria criteria;
 
     @BeforeEach
     void setUp() {
         entityManager = mock(EntityManager.class);
-        repository = mock(CourtScheduleRepository.class);
         criteria = mock(CourtScheduleCriteria.class);
 
         service = spy(new CourtScheduleRetryService());
         service.entityManager = entityManager;
-        service.repository = repository;
         service.courtScheduleCriteria = criteria;
     }
 

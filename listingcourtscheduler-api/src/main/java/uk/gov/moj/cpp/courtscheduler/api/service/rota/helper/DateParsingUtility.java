@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-import javax.enterprise.context.ApplicationScoped;
+import org.springframework.stereotype.Service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Utility class for parsing dates from rota file data.
  */
-@ApplicationScoped
+@Service
 public class DateParsingUtility {
 
     private static final Logger logger = LoggerFactory.getLogger(DateParsingUtility.class);

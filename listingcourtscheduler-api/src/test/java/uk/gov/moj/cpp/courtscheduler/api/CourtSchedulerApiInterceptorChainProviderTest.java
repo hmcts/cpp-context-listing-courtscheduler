@@ -1,35 +1,22 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
+import org.junit.jupiter.api.Disabled;
 
-import uk.gov.justice.services.core.accesscontrol.LocalAccessControlInterceptor;
-import uk.gov.justice.services.core.audit.LocalAuditInterceptor;
-import uk.gov.justice.services.core.interceptor.InterceptorChainEntry;
-import uk.gov.justice.services.metrics.interceptor.IndividualActionMetricsInterceptor;
-import uk.gov.justice.services.metrics.interceptor.TotalActionMetricsInterceptor;
-
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-
+/**
+ * <strong>Removed — production class no longer exists.</strong>
+ *
+ * <p>The {@code CourtSchedulerApiInterceptorChainProvider} this test asserted on was a
+ * Justice Services framework hook ({@code uk.gov.justice.services.core.interceptor.InterceptorChainEntry})
+ * that registered a chain of CDI {@code @Interceptor} classes (audit, access control,
+ * metrics) for the legacy WildFly deployment. None of those interceptors exist in the
+ * Spring Boot port — audit is now a Spring {@code OncePerRequestFilter}
+ * ({@code config/AuditFilterConfig}), access control is {@code cp-auth-rules-filter},
+ * and request metrics come from Spring Boot Actuator + Micrometer.</p>
+ *
+ * <p>The placeholder class is kept so the file path remains visible in {@code git diff}
+ * (per the in-place rule) but the only honest test body is none — the production class
+ * was intentionally deleted, not migrated.</p>
+ */
+@Disabled("Production class removed — replaced by Spring filters/auto-configuration.")
 class CourtSchedulerApiInterceptorChainProviderTest {
-
-    @Test
-    void shouldReturnComponent() {
-        assertThat(new CourtSchedulerApiInterceptorChainProvider().component(), is("Courtscheduler.API"));
-    }
-
-    @Test
-    void shouldProvideDefaultInterceptorChainTypes() {
-        final List<InterceptorChainEntry> interceptorChainTypes = new CourtSchedulerApiInterceptorChainProvider().interceptorChainTypes();
-
-        assertThat(interceptorChainTypes, containsInAnyOrder(
-                new InterceptorChainEntry(1, TotalActionMetricsInterceptor.class),
-                new InterceptorChainEntry(2, IndividualActionMetricsInterceptor.class),
-                new InterceptorChainEntry(3000, LocalAuditInterceptor.class),
-                new InterceptorChainEntry(4000, LocalAccessControlInterceptor.class)
-        ));
-    }
 }

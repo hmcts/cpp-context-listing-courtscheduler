@@ -11,7 +11,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignmentFailureReason;
@@ -24,8 +23,8 @@ import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.List;
 import java.util.Optional;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceException;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,18 +53,15 @@ class JudiciaryAssignmentServiceTest {
     @Mock
     private RotaProcessLogService rotaProcessLogService;
 
-    @Mock
-    private Requester requester;
-
     @Test
     void shouldAssignJudiciaryToSession() {
         final String judiciaryId = "judiciary-1";
         final String sessionId = "session-1";
 
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
 
-        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), EXECUTION_ID);
 
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(1, response.getSuccessfulAssignments());
@@ -80,10 +76,10 @@ class JudiciaryAssignmentServiceTest {
         final String judiciaryId = "missing-judiciary";
         final String sessionId = "session-1";
 
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.empty());
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.empty());
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
 
-        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), EXECUTION_ID);
 
         // Service skips assignment when judiciary is null (validation should have caught this in validator)
         assertEquals(1, response.getRequestedAssignments());
@@ -98,10 +94,10 @@ class JudiciaryAssignmentServiceTest {
     void shouldSkipAssignmentWhenSessionMissing() {
         // When session is missing, service should skip the assignment (validation happens in validator layer)
         final String judiciaryId = "judiciary-1";
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of());
 
-        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, "unknown-session"), requester, EXECUTION_ID);
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, "unknown-session"), EXECUTION_ID);
 
         // Service skips assignment when session is null (validation should have caught this in validator)
         assertEquals(1, response.getRequestedAssignments());
@@ -114,13 +110,13 @@ class JudiciaryAssignmentServiceTest {
         final String judiciaryId = "judiciary-1";
         final String sessionId = "session-1";
 
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
         final PersistenceException persistenceException = new PersistenceException(
                 new SQLIntegrityConstraintViolationException("duplicate key constraint"));
         doThrow(persistenceException).when(entityManager).merge(any());
 
-        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), EXECUTION_ID);
 
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(0, response.getSuccessfulAssignments());
@@ -132,11 +128,11 @@ class JudiciaryAssignmentServiceTest {
         final String judiciaryId = "judiciary-1";
         final String sessionId = "session-1";
 
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
         doThrow(new RuntimeException("connection lost")).when(entityManager).merge(any());
 
-        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, sessionId), EXECUTION_ID);
 
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(0, response.getSuccessfulAssignments());
@@ -198,10 +194,10 @@ class JudiciaryAssignmentServiceTest {
                 .withSkipValidations(true)
                 .build();
 
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.empty());
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.empty());
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of());
 
-        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, requester, EXECUTION_ID);
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, EXECUTION_ID);
 
         // Should not record failures when skipValidations is true (skips assignment silently)
         assertEquals(1, response.getRequestedAssignments());
@@ -225,10 +221,10 @@ class JudiciaryAssignmentServiceTest {
                 .withSkipValidations(true)
                 .build();
 
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
 
-        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, requester, EXECUTION_ID);
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, EXECUTION_ID);
 
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(1, response.getSuccessfulAssignments());
@@ -243,11 +239,11 @@ class JudiciaryAssignmentServiceTest {
         final String sessionId = "session-1";
         final String rotaJudiciaryId = "rota-judge-123";
 
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(
-                buildRequestWithRotaJudiciaryId(judiciaryId, sessionId, rotaJudiciaryId), requester, EXECUTION_ID);
+                buildRequestWithRotaJudiciaryId(judiciaryId, sessionId, rotaJudiciaryId), EXECUTION_ID);
 
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(1, response.getSuccessfulAssignments());
@@ -266,11 +262,11 @@ class JudiciaryAssignmentServiceTest {
         final String sessionId = "session-1";
         final String cpUserId = "CP-" + judiciaryId;
 
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(
-                buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
+                buildRequest(judiciaryId, sessionId), EXECUTION_ID);
 
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(1, response.getSuccessfulAssignments());
@@ -290,11 +286,11 @@ class JudiciaryAssignmentServiceTest {
         final Judiciary judiciary = buildJudiciary(judiciaryId);
         judiciary.setCpUserId(null); // Clear cpUserId to test fallback to judiciaryId
 
-        when(referenceDataMapperService.findById(requester, judiciaryId)).thenReturn(Optional.of(judiciary));
+        when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(judiciary));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(
-                buildRequest(judiciaryId, sessionId), requester, EXECUTION_ID);
+                buildRequest(judiciaryId, sessionId), EXECUTION_ID);
 
         assertEquals(1, response.getRequestedAssignments());
         assertEquals(1, response.getSuccessfulAssignments());
@@ -315,8 +311,8 @@ class JudiciaryAssignmentServiceTest {
         final String sessionId1 = "session-1";
         final String sessionId2 = "session-2";
 
-        when(referenceDataMapperService.findById(requester, judiciaryId1)).thenReturn(Optional.of(buildJudiciary(judiciaryId1)));
-        when(referenceDataMapperService.findById(requester, judiciaryId2)).thenReturn(Optional.of(buildJudiciary(judiciaryId2)));
+        when(referenceDataMapperService.findById(judiciaryId1)).thenReturn(Optional.of(buildJudiciary(judiciaryId1)));
+        when(referenceDataMapperService.findById(judiciaryId2)).thenReturn(Optional.of(buildJudiciary(judiciaryId2)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(
                 of(buildCourtSchedule(sessionId1), buildCourtSchedule(sessionId2)));
 
@@ -331,7 +327,7 @@ class JudiciaryAssignmentServiceTest {
                         .build())
                 .build();
 
-        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, requester, EXECUTION_ID);
+        final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, EXECUTION_ID);
 
         assertEquals(2, response.getRequestedAssignments());
         assertEquals(2, response.getSuccessfulAssignments());

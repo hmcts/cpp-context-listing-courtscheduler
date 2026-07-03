@@ -1,64 +1,57 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import static javax.json.Json.createObjectBuilder;
-
-import uk.gov.justice.services.core.annotation.CustomServiceComponent;
-import uk.gov.justice.services.core.annotation.Handles;
-import uk.gov.justice.services.core.enveloper.Enveloper;
-import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaFileCaptureAndProcessTriggerService;
-import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaRedundantDataCleanerService;
-
-import javax.inject.Inject;
-import javax.json.JsonObject;
-
+import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaFileCaptureAndProcessTriggerService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaRedundantDataCleanerService;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.RotaslOpenApi;
 
-@CustomServiceComponent("Courtscheduler.API")
-public class RotaFileProcessorApi {
+/**
+ * Spring Boot replacement for the legacy WildFly {@code RotaFileProcessorApi}.
+ * Implements the OpenAPI-generated {@link RotaslOpenApi} — triggers rota file
+ * processing and clean-up (replaces legacy {@code @Handles
+ * courtscheduler.rotasl.process_rota_files} and {@code courtscheduler.rotasl
+ * .clean_redundant_rota_data}).
+ */
+@RestController
+public class RotaFileProcessorApi implements RotaslOpenApi {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RotaFileProcessorApi.class.getName());
-    private static final String ROTA_PROCESS_NEW = "new";
-    private static final String ROTA_PROCESS = "rotaProcess";
+    private static final Logger LOG = LoggerFactory.getLogger(RotaFileProcessorApi.class);
 
-    @Inject
-    private Enveloper enveloper;
+    private final RotaFileCaptureAndProcessTriggerService rotaFileCaptureAndProcessTriggerService;
+    private final RotaRedundantDataCleanerService rotaRedundantDataCleanerService;
 
-    @Inject
-    private Requester requester;
-
-    @Inject
-    private RotaFileCaptureAndProcessTriggerService rotaFileCaptureAndProcessTriggerService;
-
-    @Inject
-    private RotaRedundantDataCleanerService rotaRedundantDataCleanerService;
-
-    @Handles("courtscheduler.rotasl.process_rota_files")
-    public JsonEnvelope processRotaFiles(final JsonEnvelope envelope) {
-        LOGGER.info("processRotaFiles api called - courtscheduler.rotasl.process_rota_files");
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("calling rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
-        final boolean isForItTest = payload.getBoolean("forItTest", false);
-        final String rotaProcess = payload.containsKey(ROTA_PROCESS) && !payload.isNull(ROTA_PROCESS)
-                ? payload.getString(ROTA_PROCESS)
-                : ROTA_PROCESS_NEW;
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(requester, isForItTest, rotaProcess);
-        LOGGER.info("successfully called and completed - rotaFileProcessorService.captureRotaFilesAndProcessEach asynchronously");
-
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.process_rota_files").apply(createObjectBuilder().build());
+    public RotaFileProcessorApi(final RotaFileCaptureAndProcessTriggerService rotaFileCaptureAndProcessTriggerService,
+                                final RotaRedundantDataCleanerService rotaRedundantDataCleanerService) {
+        this.rotaFileCaptureAndProcessTriggerService = rotaFileCaptureAndProcessTriggerService;
+        this.rotaRedundantDataCleanerService = rotaRedundantDataCleanerService;
     }
 
-    @Handles("courtscheduler.rotasl.clean_redundant_rota_data")
-    public JsonEnvelope cleanRedundantRotaData(final JsonEnvelope envelope) {
-        LOGGER.info("cleanRedundantRotaData api called - courtscheduler.rotasl.clean_redundant_rota_data");
-        final JsonObject payload = envelope.payloadAsJsonObject();
-        LOGGER.info("calling rotaRedundantDataCleanerService.cleanDataForPreviousMonths asynchronously");
-        final int numberOfPreviousMonthsAndOlder = payload.getInt("numberOfPreviousMonthsAndOlder", 6);
-        rotaRedundantDataCleanerService.cleanDataForPreviousMonths(numberOfPreviousMonthsAndOlder);
-        LOGGER.info("successfully called and completed - rotaRedundantDataCleanerService.cleanDataForPreviousMonths asynchronously");
+    @Override
+    public ResponseEntity<Void> postProcessRotaFiles(final Map<String, Object> body) {
+        LOG.info("courtscheduler.rotasl.process_rota_files: {}", body);
+        final boolean forItTest = Boolean.TRUE.equals(body == null ? null : body.get("forItTest"));
+        // The body's {@code rotaProcess} value picks the processor inside
+        // {@link RotaFileCaptureAndProcessTriggerService#captureRotaFilesAndProcessEach}:
+        // {@code "old"} routes to {@code rotaFileProcessorService}, anything else (or
+        // a random UUID) to {@code newRotaFileProcessor}. Preserve the body value so
+        // the legacy IT classes can exercise both branches.
+        final Object rawProcess = body == null ? null : body.get("rotaProcess");
+        final String rotaProcess = rawProcess == null ? UUID.randomUUID().toString() : rawProcess.toString();
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(forItTest, rotaProcess);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
 
-        return enveloper.withMetadataFrom(envelope, "courtscheduler.rotasl.clean_redundant_rota_data").apply(createObjectBuilder().build());
+    @Override
+    public ResponseEntity<Void> postCleanRedundantRotaData(final Map<String, Object> body) {
+        LOG.info("courtscheduler.rotasl.clean_redundant_rota_data: {}", body);
+        final int months = body == null || body.get("months") == null ? 6 : ((Number) body.get("months")).intValue();
+        rotaRedundantDataCleanerService.cleanDataForPreviousMonths(months);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 }

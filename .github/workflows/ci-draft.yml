@@ -1,0 +1,25 @@
+name: Build and Publish (Non-Release)
+
+on:
+  # Run on every PR regardless of target branch — gating of publish/docker/deploy
+  # is done by the `is_publish` / `trigger_docker` / `trigger_deploy` inputs below
+  # which are conditional on `github.event_name == 'push'`.
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+      - 'dev/*'
+
+jobs:
+  ci-draft:
+    uses: ./.github/workflows/ci-build-publish.yml
+    secrets:
+      AZURE_DEVOPS_ARTIFACT_USERNAME: ${{ secrets.AZURE_DEVOPS_ARTIFACT_USERNAME }}
+      AZURE_DEVOPS_ARTIFACT_TOKEN: ${{ secrets.AZURE_DEVOPS_ARTIFACT_TOKEN }}
+      HMCTS_ADO_PAT: ${{ secrets.HMCTS_CP_ADO_PAT }}
+    with:
+      environment: dev
+      is_publish: ${{ github.event_name == 'push' }}
+      trigger_docker: ${{ github.event_name == 'push' }}
+      trigger_deploy: ${{ github.event_name == 'push' }}

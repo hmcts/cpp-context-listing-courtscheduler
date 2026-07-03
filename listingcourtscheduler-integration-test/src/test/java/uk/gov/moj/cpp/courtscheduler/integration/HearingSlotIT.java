@@ -1,30 +1,29 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
-import static io.smallrye.common.constraint.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static javax.json.Json.createReader;
-import static javax.ws.rs.core.Response.Status.ACCEPTED;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.json.Json.createReader;
+import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static uk.gov.justice.services.test.utils.core.http.RestPoller.poll;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.*;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.FileUtil.getPayload;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
-import uk.gov.justice.services.test.utils.core.http.RequestParams;
-import uk.gov.justice.services.test.utils.core.http.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
@@ -43,10 +42,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.ws.rs.core.Response;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
+import jakarta.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -57,7 +56,9 @@ class HearingSlotIT extends AbstractIT {
 
     private static final String RELATIVE_URL = "/hearingslots";
 
-    private static final ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper()
+            .findAndRegisterModules()
+            .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     @Test
     void shouldUpdateHearingSlot() throws SQLException {

@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import org.springframework.stereotype.Service;
+
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.time.LocalTime.of;
@@ -11,8 +13,8 @@ import static java.util.Comparator.comparing;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toSet;
-import static javax.json.Json.createObjectBuilder;
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static jakarta.json.Json.createObjectBuilder;
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_AFTER_END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
@@ -38,7 +40,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTER
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
@@ -74,13 +76,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.inject.Inject;
-import javax.json.JsonObject;
+import jakarta.inject.Inject;
+import jakarta.json.JsonObject;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Service
 public class SessionsApiValidator {
 
     private static final DateTimeFormatter TIME_FORMATTER = ofPattern("HH:mm");
@@ -106,7 +109,7 @@ public class SessionsApiValidator {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
-    public JsonObject getSessionsCreateValidation(final CreateSessionRequestParam createSessionRequestParam, final Requester requester) {
+    public JsonObject getSessionsCreateValidation(final CreateSessionRequestParam createSessionRequestParam) {
         final long totalStartTime = System.currentTimeMillis();
 
         final LocalDate patternStartDate = createSessionRequestParam.getRepeatPattern().getStartDate();
@@ -133,14 +136,14 @@ public class SessionsApiValidator {
 
         if(Objects.nonNull(createSessionRequestParam.getSessionToBeAdded())){
             stepStart = System.currentTimeMillis();
-            JsonObject result = validateSessionToBeAddedPath(createSessionRequestParam, patternStartDate, patternEndDate, repeatFrequency, requester);
+            JsonObject result = validateSessionToBeAddedPath(createSessionRequestParam, patternStartDate, patternEndDate, repeatFrequency);
             LOGGER.info("[PERF] validateSessionToBeAddedPath took {} ms", System.currentTimeMillis() - stepStart);
             LOGGER.info("[PERF] getSessionsCreateValidation total took {} ms", System.currentTimeMillis() - totalStartTime);
             return result;
         }
 
         stepStart = System.currentTimeMillis();
-        final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam, requester);
+        final JsonObject businessTypeAndCourtRoomValidationResult = validateBusinessTypesAndCourtRooms(createSessionRequestParam);
         LOGGER.info("[PERF] validateBusinessTypesAndCourtRooms took {} ms", System.currentTimeMillis() - stepStart);
         if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
             LOGGER.info("[PERF] getSessionsCreateValidation total took {} ms (early return: businessTypeAndCourtRoomValidation)", System.currentTimeMillis() - totalStartTime);
@@ -200,11 +203,11 @@ public class SessionsApiValidator {
 
     private JsonObject validateSessionToBeAddedPath(CreateSessionRequestParam createSessionRequestParam, 
                                                     LocalDate patternStartDate, LocalDate patternEndDate, 
-                                                    RepeatFrequency repeatFrequency, Requester requester) {
+                                                    RepeatFrequency repeatFrequency) {
         LOGGER.debug("getSessionsCreateValidation getSessionToBeAdded not null");
         
         long stepStart = System.currentTimeMillis();
-        final JsonObject addSessionValidationResult = validateAddedSessionPayload(createSessionRequestParam, repeatFrequency, requester);
+        final JsonObject addSessionValidationResult = validateAddedSessionPayload(createSessionRequestParam, repeatFrequency);
         LOGGER.info("[PERF] validateAddedSessionPayload took {} ms", System.currentTimeMillis() - stepStart);
         if(addSessionValidationResult != EMPTY_JSON_OBJECT){
             return addSessionValidationResult;
@@ -219,19 +222,19 @@ public class SessionsApiValidator {
         return result;
     }
 
-    private JsonObject validateBusinessTypesAndCourtRooms(CreateSessionRequestParam requestParam, Requester requester) {
+    private JsonObject validateBusinessTypesAndCourtRooms(CreateSessionRequestParam requestParam) {
         for (Session session : requestParam.getSessionList()) {
-            JsonObject error = validateSessionBusinessTypeAndCourtRoom(session, requester);
+            JsonObject error = validateSessionBusinessTypeAndCourtRoom(session);
             if (error != EMPTY_JSON_OBJECT) return error;
         }
         if (nonNull(requestParam.getSessionToBeAdded())) {
-            JsonObject error = validateSessionBusinessTypeAndCourtRoom(requestParam.getSessionToBeAdded(), requester);
+            JsonObject error = validateSessionBusinessTypeAndCourtRoom(requestParam.getSessionToBeAdded());
             if (error != EMPTY_JSON_OBJECT) return error;
         }
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateSessionBusinessTypeAndCourtRoom(Session session, Requester requester) {
+    private JsonObject validateSessionBusinessTypeAndCourtRoom(Session session) {
         final long totalStartTime = System.currentTimeMillis();
         
         JsonObject allDaySplitError = validateAllDaySplitForSession(session);
@@ -240,7 +243,7 @@ public class SessionsApiValidator {
         }
 
         long stepStart = System.currentTimeMillis();
-        Optional<BusinessType> businessTypeOpt = referenceDataCache.getRotaBusinessTypeByCode(session.getBusinessType(), requester);
+        Optional<BusinessType> businessTypeOpt = referenceDataCache.getRotaBusinessTypeByCode(session.getBusinessType());
         LOGGER.info("[PERF] getRotaBusinessTypeByCode took {} ms", System.currentTimeMillis() - stepStart);
         if (businessTypeOpt.isEmpty()) {
             return buildErrorResponse(BUSINESS_TYPE_NOT_FOUND + session.getBusinessType());
@@ -258,7 +261,7 @@ public class SessionsApiValidator {
         }
 
         stepStart = System.currentTimeMillis();
-        JsonObject result = validateCourtRoomForSession(session, sessionJurisdiction, requester);
+        JsonObject result = validateCourtRoomForSession(session, sessionJurisdiction);
         LOGGER.info("[PERF] validateCourtRoomForSession took {} ms", System.currentTimeMillis() - stepStart);
         LOGGER.info("[PERF] validateSessionBusinessTypeAndCourtRoom total took {} ms", System.currentTimeMillis() - totalStartTime);
         return result;
@@ -290,9 +293,9 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateCourtRoomForSession(Session session, String sessionJurisdiction, Requester requester) {
+    private JsonObject validateCourtRoomForSession(Session session, String sessionJurisdiction) {
         long stepStart = System.currentTimeMillis();
-        CourtRoomRetrievalResult retrievalResult = retrieveCourtRoomByJurisdiction(session.getCourtRoomId(), sessionJurisdiction, requester);
+        CourtRoomRetrievalResult retrievalResult = retrieveCourtRoomByJurisdiction(session.getCourtRoomId(), sessionJurisdiction);
         LOGGER.info("[PERF] retrieveCourtRoomByJurisdiction took {} ms", System.currentTimeMillis() - stepStart);
         
         JsonObject jurisdictionMismatchError = validateCourtRoomJurisdictionMismatch(retrievalResult, sessionJurisdiction);
@@ -314,13 +317,13 @@ public class SessionsApiValidator {
         return validateCourtRoomOucodeJurisdiction(courtRoom, sessionJurisdiction);
     }
 
-    private CourtRoomRetrievalResult retrieveCourtRoomByJurisdiction(String courtRoomId, String sessionJurisdiction, Requester requester) {
+    private CourtRoomRetrievalResult retrieveCourtRoomByJurisdiction(String courtRoomId, String sessionJurisdiction) {
         if (CROWN.equalsIgnoreCase(sessionJurisdiction)) {
             return new CourtRoomRetrievalResult(
-                    referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester), Optional.empty()
+                    referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId), Optional.empty()
             );
         } else {
-            Optional<CourtRoom> rotaCourtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester);
+            Optional<CourtRoom> rotaCourtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId);
             if (rotaCourtRoom.isEmpty()) {
                 rotaProcessLogService.saveRotaProcessLog(
                         uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog()
@@ -329,7 +332,7 @@ public class SessionsApiValidator {
                                 .build()
                 );
             }
-            Optional<CourtRoom> cpCourtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester);
+            Optional<CourtRoom> cpCourtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId);
             return new CourtRoomRetrievalResult(rotaCourtRoom, cpCourtRoom);
         }
     }
@@ -542,8 +545,8 @@ public class SessionsApiValidator {
     }
 
     private JsonObject validateAddedSessionPayload(final CreateSessionRequestParam createSessionRequestParam,
-                                                   final RepeatFrequency repeatFrequency,
-                                                   final Requester requester) {
+                                                   final RepeatFrequency repeatFrequency
+    ) {
         final long totalStartTime = System.currentTimeMillis();
         final Session sessionToBeAdded = createSessionRequestParam.getSessionToBeAdded();
         final long duplicateCheckStart = System.currentTimeMillis();
@@ -559,7 +562,7 @@ public class SessionsApiValidator {
         }
 
         long stepStart = System.currentTimeMillis();
-        JsonObject businessTypeAndCourtRoomValidationResult = validateSessionBusinessTypeAndCourtRoom(sessionToBeAdded, requester);
+        JsonObject businessTypeAndCourtRoomValidationResult = validateSessionBusinessTypeAndCourtRoom(sessionToBeAdded);
         LOGGER.info("[PERF] validateSessionBusinessTypeAndCourtRoom took {} ms", System.currentTimeMillis() - stepStart);
         if (businessTypeAndCourtRoomValidationResult != EMPTY_JSON_OBJECT) {
             LOGGER.info(PERF_VALIDATE_ADDED_SESSION_PAYLOAD_TOTAL_MS, System.currentTimeMillis() - totalStartTime);
@@ -567,7 +570,7 @@ public class SessionsApiValidator {
         }
 
         stepStart = System.currentTimeMillis();
-        JsonObject result = validateSessionToBeAdded(sessionToBeAdded, requester);
+        JsonObject result = validateSessionToBeAdded(sessionToBeAdded);
         LOGGER.info("[PERF] validateSessionToBeAdded took {} ms", System.currentTimeMillis() - stepStart);
         LOGGER.info(PERF_VALIDATE_ADDED_SESSION_PAYLOAD_TOTAL_MS, System.currentTimeMillis() - totalStartTime);
         return result;
@@ -648,7 +651,7 @@ public class SessionsApiValidator {
                 && isSessionTypeDuplicateOrNotValidForAllDay(existingSession, sessionToBeAdded);
     }
 
-    private JsonObject validateSessionToBeAdded(Session sessionToBeAdded, Requester requester) {
+    private JsonObject validateSessionToBeAdded(Session sessionToBeAdded) {
         SessionValidationParams params = new SessionValidationParams(
                 sessionToBeAdded.getMaxDurationForMorning(),
                 sessionToBeAdded.getMaxDurationForAfternoon(),
@@ -660,10 +663,10 @@ public class SessionsApiValidator {
                 null,
                 null
         );
-        return validateSession(params, true, requester);
+        return validateSession(params, true);
     }
 
-    JsonObject validateSession(final SessionValidationParams params, final boolean sessionToBeAdded, final Requester requester) {
+    JsonObject validateSession(final SessionValidationParams params, final boolean sessionToBeAdded) {
         if (ALL_DAY.equals(params.getSessionType()) && isNull(params.isAllDaySplit())) {
             return buildErrorResponse(ErrorMessages.ALL_DAY_SPLIT_MANDATORY_FOR_AD_SESSION);
         }
@@ -672,7 +675,7 @@ public class SessionsApiValidator {
             return scheduleValidationResult;
         }
         if (TRUE.equals(params.isAllDaySplit())) {
-            return validateAllDaySplit(params, sessionToBeAdded, requester);
+            return validateAllDaySplit(params, sessionToBeAdded);
         } else if (sessionToBeAdded && ObjectUtils.isEmpty(params.getSlotsOrDuration())) {
             return buildErrorResponse(ErrorMessages.DURATION_NOT_FOUND_FOR_REGULAR_SESSION);
         } else if (!sessionToBeAdded) {
@@ -776,7 +779,7 @@ public class SessionsApiValidator {
                 || params.getMaxDurationForAfternoon() < 0 || ObjectUtils.isEmpty(params.getMaxDurationForAfternoon());
     }
 
-    private JsonObject validateAllDaySplit(final SessionValidationParams params, final boolean sessionToBeAdded, final Requester requester) {
+    private JsonObject validateAllDaySplit(final SessionValidationParams params, final boolean sessionToBeAdded) {
         if (!ALL_DAY.equals(params.getSessionType())) {
             return buildErrorResponse(ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS);
         }
@@ -784,7 +787,7 @@ public class SessionsApiValidator {
         if (isInvalidMaxDuration(params)) {
             return buildErrorResponse(ErrorMessages.MAX_DURATION_AM_PM_PROVIDED_FOR_ALL_DAY_SPLIT_SESSION);
         }
-        final Optional<BusinessType> businessTypeOptional = referenceDataCache.getRotaBusinessTypeByCode(params.getBusinessType(), requester);
+        final Optional<BusinessType> businessTypeOptional = referenceDataCache.getRotaBusinessTypeByCode(params.getBusinessType());
         if (businessTypeOptional.isEmpty()) {
             return buildErrorResponse(BUSINESS_TYPE_NOT_FOUND + params.getBusinessType());
         }
@@ -868,19 +871,19 @@ public class SessionsApiValidator {
     }
 
     public JsonObject getSessionsUpdateValidation (UpdateCourtSchedule
-                                                           updateCourtSchedule, Requester requester){
+                                                           updateCourtSchedule){
         String jurisdiction = updateCourtSchedule.getJurisdiction();
         JsonObject jurisdictionValidation = validateUpdateJurisdiction(jurisdiction);
         if (jurisdictionValidation != EMPTY_JSON_OBJECT) {
             return jurisdictionValidation;
         }
 
-        JsonObject courtRoomValidation = validateCourtRoomForJurisdiction(updateCourtSchedule, requester);
+        JsonObject courtRoomValidation = validateCourtRoomForJurisdiction(updateCourtSchedule);
         if (!courtRoomValidation.isEmpty()) {
             return courtRoomValidation;
         }
 
-        JsonObject courtHouseValidation = validateCourtRoomBelongsToSameCourtHouse(updateCourtSchedule, requester);
+        JsonObject courtHouseValidation = validateCourtRoomBelongsToSameCourtHouse(updateCourtSchedule);
         if (!courtHouseValidation.isEmpty()) {
             return courtHouseValidation;
         }
@@ -901,7 +904,7 @@ public class SessionsApiValidator {
         }
 
         SessionValidationParams params = getSessionValidationParams(updateCourtSchedule);
-        return validateSession(params, false, requester);
+        return validateSession(params, false);
     }
 
     private JsonObject validateUpdateJurisdiction(String jurisdiction) {
@@ -994,15 +997,15 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateCourtRoomForJurisdiction(final UpdateCourtSchedule updateCourtSchedule, final Requester requester) {
+    private JsonObject validateCourtRoomForJurisdiction(final UpdateCourtSchedule updateCourtSchedule) {
         String courtRoomId = updateCourtSchedule.getCourtRoomId();
         if (isNull(courtRoomId) || courtRoomId.trim().isEmpty()) {
             return buildErrorResponse("Courtroom ID must be provided");
         }
 
         Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(updateCourtSchedule.getJurisdiction())
-                ? referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId, requester)
-                : referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId, requester);
+                ? referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)
+                : referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId);
 
         if (courtRoomOpt.isEmpty()) {
             return buildErrorResponse("Courtroom selected does not exist in Rota");
@@ -1010,7 +1013,7 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateCourtRoomBelongsToSameCourtHouse(final UpdateCourtSchedule updateCourtSchedule, final Requester requester) {
+    private JsonObject validateCourtRoomBelongsToSameCourtHouse(final UpdateCourtSchedule updateCourtSchedule) {
         // Retrieve the persisted court schedule to get the original court house ID
         CourtSchedule persistedCourtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
         if (isNull(persistedCourtSchedule)) {
@@ -1044,8 +1047,8 @@ public class SessionsApiValidator {
 
         // Retrieve the new courtroom from reference data
         Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(jurisdiction)
-                ? referenceDataCache.getCpCourtRoomByCourtRoomId(newCourtRoomId, requester)
-                : referenceDataCache.getRotaCourtRoomByCourtRoomId(newCourtRoomId, requester);
+                ? referenceDataCache.getCpCourtRoomByCourtRoomId(newCourtRoomId)
+                : referenceDataCache.getRotaCourtRoomByCourtRoomId(newCourtRoomId);
 
         if (courtRoomOpt.isEmpty()) {
             // Courtroom not found - this will be caught by validateCourtRoomForJurisdiction
@@ -1103,7 +1106,7 @@ public class SessionsApiValidator {
                 updateCourtSchedule.getSessionEndTime());
     }
 
-    public JsonObject getAssignCourtroomValidation(final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request, final Requester requester) {
+    public JsonObject getAssignCourtroomValidation(final uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest request) {
         if (isNull(request.getCourtScheduleIds()) || request.getCourtScheduleIds().isEmpty()) {
             return buildErrorResponse("At least one court schedule ID must be provided");
         }

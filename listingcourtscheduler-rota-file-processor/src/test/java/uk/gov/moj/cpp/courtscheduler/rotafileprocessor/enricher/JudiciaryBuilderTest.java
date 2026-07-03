@@ -5,7 +5,7 @@ import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;

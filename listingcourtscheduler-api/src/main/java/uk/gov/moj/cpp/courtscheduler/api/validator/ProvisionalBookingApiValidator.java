@@ -1,8 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import org.springframework.stereotype.Service;
+
 import static java.util.Optional.ofNullable;
-import static javax.json.Json.createObjectBuilder;
-import static javax.json.JsonValue.EMPTY_JSON_OBJECT;
+import static jakarta.json.Json.createObjectBuilder;
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.BOOKING_IDS;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
@@ -19,12 +21,13 @@ import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
 import java.util.List;
 import java.util.Optional;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+@Service
 public class ProvisionalBookingApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProvisionalBookingApiValidator.class.getName());
 

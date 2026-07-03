@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaProcessLogRepository;
 
-import javax.persistence.EntityManager;
+import jakarta.persistence.EntityManager;
 
 import io.github.benas.randombeans.api.EnhancedRandom;
 import org.junit.jupiter.api.Test;

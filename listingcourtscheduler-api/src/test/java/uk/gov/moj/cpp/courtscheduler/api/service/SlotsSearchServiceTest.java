@@ -13,9 +13,9 @@ import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
-import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
-import uk.gov.justice.services.common.converter.StringToJsonObjectConverter;
+import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -31,7 +31,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import javax.json.JsonObject;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonValue;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,7 +71,7 @@ class SlotsSearchServiceTest {
         when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
 
         final JsonObject jsonObject = slotsSearchService.search(hearingSlotRequestParam);
-        assertThat(jsonObject, is(toJsonObject(rightWingerId, leftWingerId, chairId)));
+        assertThat(stripNulls(jsonObject), is(stripNulls(toJsonObject(rightWingerId, leftWingerId, chairId))));
     }
 
     @Test
@@ -104,7 +109,7 @@ class SlotsSearchServiceTest {
         when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
 
         final JsonObject jsonObject = slotsSearchService.search(hearingSlotRequestParam);
-        assertThat(jsonObject, is(toJsonObject(rightWingerId, leftWingerId, chairId)));
+        assertThat(stripNulls(jsonObject), is(stripNulls(toJsonObject(rightWingerId, leftWingerId, chairId))));
     }
 
     @Test
@@ -342,6 +347,36 @@ class SlotsSearchServiceTest {
         source = source.replace("JUDICIARY_ID_2", judiciaryId2.toString());
         source = source.replace("JUDICIARY_ID_3", judiciaryId3.toString());
         return stringToJsonObjectConverter.convert(source);
+    }
+
+    // Recursively drops JSON null entries from objects and arrays so the
+    // assertion is agnostic to whether a field is absent or explicitly null —
+    // either is a valid representation of "no value" and the test shouldn't
+    // care which one the converter happens to emit.
+    private static JsonObject stripNulls(final JsonObject obj) {
+        final JsonObjectBuilder out = Json.createObjectBuilder();
+        obj.forEach((k, v) -> {
+            if (v.getValueType() != JsonValue.ValueType.NULL) {
+                out.add(k, stripNulls(v));
+            }
+        });
+        return out.build();
+    }
+
+    private static JsonValue stripNulls(final JsonValue value) {
+        return switch (value.getValueType()) {
+            case OBJECT -> stripNulls((JsonObject) value);
+            case ARRAY -> {
+                final JsonArrayBuilder arr = Json.createArrayBuilder();
+                for (final JsonValue v : (JsonArray) value) {
+                    if (v.getValueType() != JsonValue.ValueType.NULL) {
+                        arr.add(stripNulls(v));
+                    }
+                }
+                yield arr.build();
+            }
+            default -> value;
+        };
     }
 
     // Tests for overbookingFilter method

@@ -9,8 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 
-import javax.json.Json;
-import javax.json.JsonObject;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

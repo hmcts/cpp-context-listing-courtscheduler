@@ -15,10 +15,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
-import static uk.gov.moj.cpp.platform.test.utils.reflection.ReflectionUtil.setField;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
-import uk.gov.justice.services.common.converter.jackson.ObjectMapperProducer;
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
@@ -61,10 +59,7 @@ class RotaDataEnricherTest {
     @Mock
     private CourtScheduleEnricher courtScheduleEnricher;
 
-    @Mock
-    private Requester requester;
-
-    private ObjectMapper objectMapper = new ObjectMapperProducer().objectMapper();
+    private ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
 
     private static final String AM_SESSION = "AM";
     private static final String PM_SESSION = "PM";
@@ -95,14 +90,14 @@ class RotaDataEnricherTest {
                 .withCreatedOn(Calendar.getInstance().getTime())
                 .build());
 
-        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
-        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), eq(requester), anyString())).thenReturn(courtSchedule);
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
         final byte[] blobContent = givenBlobContent(file);
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester, randomUUID().toString(), missingReferenceDataMappingMap);
+        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, randomUUID().toString(), missingReferenceDataMappingMap);
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
@@ -141,15 +136,15 @@ class RotaDataEnricherTest {
                 .withCreatedOn(Calendar.getInstance().getTime())
                 .build());
 
-        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
-        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), eq(requester), anyString())).thenReturn(courtSchedule);
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(courtSchedule);
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
 
         final byte[] blobContent = givenBlobContent(file);
 
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, requester, randomUUID().toString(), missingReferenceDataMappingMap);
+        final Map<String, CourtSchedule> courtSchedules = rotaDataEnricher.enrichCourtListings(records, rotaPeriodCutOffDate, migratedMap, FALSE, courtScheduleList, randomUUID().toString(), missingReferenceDataMappingMap);
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
@@ -201,7 +196,7 @@ class RotaDataEnricherTest {
                 .withMaxDuration(0)
                 .withAvailableDuration(0)
                 .build();
-        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), eq(requester), anyString())).thenReturn(built);
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(built);
 
         // Second row triggers refdata lookup; refdata supplies custom AD start/end times
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
@@ -216,12 +211,12 @@ class RotaDataEnricherTest {
                 .withSessionStartTime("09:15")
                 .withSessionEndTime("16:30")
                 .build();
-        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(allocation));
 
         final Map<String, Boolean> migratedMap = Map.of(ouCode, FALSE);
         final Map<String, String> missing = new HashMap<>();
-        final Map<String, CourtSchedule> result = rotaDataEnricher.enrichCourtListings(records, sessionDate, migratedMap, FALSE, List.of(), requester, randomUUID().toString(), missing);
+        final Map<String, CourtSchedule> result = rotaDataEnricher.enrichCourtListings(records, sessionDate, migratedMap, FALSE, List.of(), randomUUID().toString(), missing);
 
         assertThat(result.size(), is(1));
         final CourtSchedule updated = result.get("L1");
@@ -261,16 +256,16 @@ class RotaDataEnricherTest {
                 .withCourtSession("AM")
                 .withSessionDate(sessionDate)
                 .build();
-        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), eq(requester), anyString())).thenReturn(built);
+        when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(built);
 
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
         // No allocation -> defaults must apply (ALL_DAY: 10:00 / 17:00)
-        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(eq(requester), anyString(), anyInt(), anyString(), anyString()))
+        when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(empty());
 
         final Map<String, Boolean> migratedMap = Map.of(ouCode, FALSE);
         final Map<String, String> missing = new HashMap<>();
-        final Map<String, CourtSchedule> result = rotaDataEnricher.enrichCourtListings(records, sessionDate, migratedMap, FALSE, List.of(), requester, randomUUID().toString(), missing);
+        final Map<String, CourtSchedule> result = rotaDataEnricher.enrichCourtListings(records, sessionDate, migratedMap, FALSE, List.of(), randomUUID().toString(), missing);
 
         final CourtSchedule updated = result.get("L1");
         assertThat(updated.getCourtSession(), is(ALL_DAY_SESSION));

@@ -1,12 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import org.springframework.stereotype.Service;
+
+import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
 
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
 
+@Service
 public class GetJudiciaryAvailabilityRuleResponseConverter extends BaseJudiciaryAvailabilityRuleResponseConverter
         implements Converter<GetJudiciaryAvailabilityRuleResponse, JsonObject> {
 

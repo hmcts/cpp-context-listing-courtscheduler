@@ -5,15 +5,15 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.LOCAT
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE_NAME;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
 import java.util.Map;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Helper class for venue and court room operations.
  */
-@ApplicationScoped
+@Service
 public class VenueCourtRoomHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(VenueCourtRoomHelper.class);
@@ -39,7 +39,6 @@ public class VenueCourtRoomHelper {
      * @return the CourtRoom if found, null otherwise
      */
     public CourtRoom getCourtRoom(final Map<String, String> listingProfile,
-                                  final Requester requester,
                                   final String executionId,
                                   final Map<String, String> missingReferenceDataMappingMap) {
         final String locationIdStr = listingProfile.get(LOCATION_ID);
@@ -51,7 +50,7 @@ public class VenueCourtRoomHelper {
             return null;
         }
 
-        return parseAndValidateVenue(locationIdStr, venueIdStr, venueName, requester, executionId, missingReferenceDataMappingMap);
+        return parseAndValidateVenue(locationIdStr, venueIdStr, venueName, executionId, missingReferenceDataMappingMap);
     }
 
     /**
@@ -68,7 +67,6 @@ public class VenueCourtRoomHelper {
     private CourtRoom parseAndValidateVenue(final String locationIdStr,
                                             final String venueIdStr,
                                             final String venueName,
-                                            final Requester requester,
                                             final String executionId,
                                             final Map<String, String> missingReferenceDataMappingMap) {
         try {
@@ -76,7 +74,7 @@ public class VenueCourtRoomHelper {
             final Integer venueId = Integer.parseInt(venueIdStr);
             final Venue venue = new Venue(locationId, venueId, venueName);
 
-            final CourtRoom courtRoom = referenceDataValidationService.validateAndFindVenue(venue, missingReferenceDataMappingMap, requester, executionId)
+            final CourtRoom courtRoom = referenceDataValidationService.validateAndFindVenue(venue, missingReferenceDataMappingMap, executionId)
                     .orElse(null);
             if (courtRoom != null) {
                 logger.info("Successfully validated venue and found court room - locationId: {}, venueId: {}, venueName: {}, courtRoomId: {}", 

@@ -8,9 +8,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 
 import java.util.List;
 
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
+import jakarta.json.Json;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
 
 import org.junit.jupiter.api.Test;
 

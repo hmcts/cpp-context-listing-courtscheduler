@@ -1,8 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
+import org.springframework.stereotype.Service;
+
 import static java.util.Optional.empty;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryAssignmentRequestHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleData;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryScheduleAssignment;
@@ -25,15 +27,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import javax.ejb.Stateless;
-import javax.ejb.TransactionAttribute;
-import javax.ejb.TransactionAttributeType;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Stateless
+@Service
+@org.springframework.transaction.annotation.Transactional
 public class RotaFileProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessor.class);
@@ -71,12 +74,12 @@ public class RotaFileProcessor {
     // PUBLIC API METHODS
     // ============================================================================
 
-    @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
-    public void downloadAndProcessForEachFile(final Requester requester, final BlobContent blobContent, final String blobName, final String leaseId) {
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void downloadAndProcessForEachFile(final BlobContent blobContent, final String blobName, final String leaseId) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
         final byte[] blobByteArray = blobContent.getBlobByteArray();
         try {
-            processBlob(blobName, blobByteArray, requester);
+            processBlob(blobName, blobByteArray);
             uploadAndCleanup(blobByteArray, blobName, leaseId);
         } catch (final RuntimeException ex) {
             logger.error("Error processing blob: {}", blobName, ex);
@@ -95,7 +98,7 @@ public class RotaFileProcessor {
      * @param blobByteArray  the content of the blob file
      * @param requester      the requester for making service calls
      */
-    private void processBlob(final String blobName, final byte[] blobByteArray, final Requester requester) {
+    private void processBlob(final String blobName, final byte[] blobByteArray) {
         if (!shouldProcessFile(blobName)) {
             return;
         }
@@ -113,7 +116,7 @@ public class RotaFileProcessor {
         // Extract locations and resolve OU codes
         final var locations = rotaLocationPeriodHelper.getLocationFromRecords(records);
         logger.info("Extracted {} location IDs from blob: {}", locations.size(), blobName);
-        final var ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations, requester);
+        final var ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations);
         logger.info("Resolved {} OU codes for blob: {}", ouCodes.size(), blobName);
 
         // Get rota period dates and delete unallocated court schedule judiciaries
@@ -124,12 +127,11 @@ public class RotaFileProcessor {
                 ouCodes);
         logger.info("Deleted {} unallocated court schedule judiciaries for blob: {}", deletedCount, blobName);
 
-        final ProcessingMaps processingMaps = createProcessingMaps(records, requester, executionId, blobName);
+        final ProcessingMaps processingMaps = createProcessingMaps(records, executionId, blobName);
 
         // Execute judiciary assignments from the rota feed
         executeJudiciaryAssignments(
                 processingMaps.judiciaryCourtScheduleMapFromRotaFeed(),
-                requester,
                 executionId,
                 blobName);
 
@@ -172,20 +174,19 @@ public class RotaFileProcessor {
      * @return ProcessingMaps containing the judiciary court schedule map with full assignment data
      */
     private ProcessingMaps createProcessingMaps(final Map<RotaPayload, Map<String, Map<String, String>>> records,
-                                                 final Requester requester,
                                                  final String executionId,
                                                  final String blobName) {
-        final Map<String, UUID> justiceIdJudiciaryIdMap = rotaJudiciaryHelper.createJudiciaryMap(records, requester, executionId);
+        final Map<String, UUID> justiceIdJudiciaryIdMap = rotaJudiciaryHelper.createJudiciaryMap(records, executionId);
         logger.info("Created judiciary map with {} entries for blob: {}", justiceIdJudiciaryIdMap.size(), blobName);
 
         final Map<String, Set<UUID>> courtListingProfileIdListOfCourscheduleIdMap =
-                rotaCourtScheduleHelper.createCourtScheduleMap(records, requester, executionId);
+                rotaCourtScheduleHelper.createCourtScheduleMap(records, executionId);
         logger.info("Created court schedule map with {} entries for blob: {}",
                 courtListingProfileIdListOfCourscheduleIdMap.size(), blobName);
 
         final Map<String, List<JudiciaryCourtScheduleData>> judiciaryIdListOfCourtScheduleIdMapFromRotaFeed =
                 rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
-                        records, justiceIdJudiciaryIdMap, courtListingProfileIdListOfCourscheduleIdMap, requester, executionId);
+                        records, justiceIdJudiciaryIdMap, courtListingProfileIdListOfCourscheduleIdMap, executionId);
         logger.info("Created judiciary court schedule map with {} entries for blob: {}",
                 judiciaryIdListOfCourtScheduleIdMapFromRotaFeed.size(), blobName);
 
@@ -205,7 +206,6 @@ public class RotaFileProcessor {
      */
     private void executeJudiciaryAssignments(
             final Map<String, List<JudiciaryCourtScheduleData>> judiciaryAssignmentDataMap,
-            final Requester requester,
             final String executionId,
             final String blobName) {
         if (judiciaryAssignmentDataMap.isEmpty()) {
@@ -221,7 +221,7 @@ public class RotaFileProcessor {
                 .toList();
 
         final AssignJudiciariesResponse assignResponse = processJudiciaryAssignments(
-                assignmentList, requester, executionId);
+                assignmentList, executionId);
         logger.info("Assigned judiciaries for blob: {} - requested: {}, successful: {}, failures: {}",
                 blobName, assignResponse.getRequestedAssignments(), assignResponse.getSuccessfulAssignments(),
                 assignResponse.getFailures().size());
@@ -294,11 +294,10 @@ public class RotaFileProcessor {
      */
     private AssignJudiciariesResponse processJudiciaryAssignments(
             final List<JudiciaryScheduleAssignment> assignmentList,
-            final Requester requester,
             final String executionId) {
         final var assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
         // Use repository for Rota processing (useRepository = true)
-        return judiciaryAssignmentService.assignJudiciaries(assignRequest, requester, executionId, true);
+        return judiciaryAssignmentService.assignJudiciaries(assignRequest, executionId, true);
     }
 
     // ============================================================================

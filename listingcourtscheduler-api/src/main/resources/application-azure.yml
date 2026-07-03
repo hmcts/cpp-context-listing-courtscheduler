@@ -1,0 +1,19 @@
+# Azure Blob Storage — used by the rota file processor.
+#
+# These keys bridge the deployment's env vars onto the property names the code
+# actually reads:
+#   - AzureBlobClientService       -> courtscheduler.rotasl*
+#   - StorageApplicationParameters -> the managed-identity keys under "azure: local: mi:"
+#
+# Higher environments (dev/test/prod clusters) authenticate with Workload Identity
+# via DefaultAzureCredential: set the storage account name + MI client/tenant and
+# leave the connection string empty. The connection string is only set for the
+# Azurite emulator, and that mapping lives in application-integration.yaml.
+courtscheduler:
+  rotaslStorageAccountName: ${AZURE_STORAGE_ACCOUNT_NAME:}  # gitleaks:allow
+
+azure:
+  local:
+    mi:
+      clientId: ${AZURE_CLIENT_ID:}   # gitleaks:allow
+      tenantId: ${AZURE_TENANT_ID:}   # gitleaks:allow

@@ -1,12 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+
+
 import java.time.DayOfWeek;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.json.JsonArray;
-import javax.json.JsonValue;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonValue;
+
 
 public class DayOfWeekConverter {
 

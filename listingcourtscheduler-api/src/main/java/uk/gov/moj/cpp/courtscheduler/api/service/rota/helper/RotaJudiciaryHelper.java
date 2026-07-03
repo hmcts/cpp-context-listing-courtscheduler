@@ -26,7 +26,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.DISTRICT_JUD
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 
-import uk.gov.justice.services.core.requester.Requester;
+// (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
@@ -45,8 +45,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
  * Helper class for all judiciary-related processing operations from rota file records.
  * Handles judiciary map creation, schedule enrichment, and judiciary court schedule mapping.
  */
-@ApplicationScoped
+@Service
 public class RotaJudiciaryHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaJudiciaryHelper.class);
@@ -82,7 +82,6 @@ public class RotaJudiciaryHelper {
      * @return a map of magistrate/judge IDs to Judiciary UUIDs
      */
     public Map<String, UUID> createJudiciaryMap(final Map<RotaPayload, Map<String, Map<String, String>>> records,
-                                                 final Requester requester,
                                                  final String executionId) {
         if (RotaUtils.isEmptyRecords(records)) {
             logger.warn("No records provided to create judiciary map");
@@ -93,8 +92,8 @@ public class RotaJudiciaryHelper {
         final Map<String, Map<String, String>> magistrates = RotaUtils.getRecordsByType(records, MAGISTRATES);
         final Map<String, Map<String, String>> districtJudges = RotaUtils.getRecordsByType(records, DISTRICT_JUDGES);
 
-        processJudiciaries(magistrates, MAGS_EMAIL, requester, executionId, judiciaryMap, "magistrate");
-        processJudiciaries(districtJudges, JUDGE_EMAIL, requester, executionId, judiciaryMap, "district judge");
+        processJudiciaries(magistrates, MAGS_EMAIL, executionId, judiciaryMap, "magistrate");
+        processJudiciaries(districtJudges, JUDGE_EMAIL, executionId, judiciaryMap, "district judge");
 
         logger.info("Created judiciary map with {} entries ({} magistrates, {} district judges)",
                 judiciaryMap.size(), magistrates.size(), districtJudges.size());
@@ -120,9 +119,8 @@ public class RotaJudiciaryHelper {
             final Map<RotaPayload, Map<String, Map<String, String>>> records,
             final Map<String, UUID> judiciaryMap,
             final Map<String, Set<UUID>> courtScheduleMap,
-            final Requester requester,
             final String executionId) {
-        final List<CourtScheduleJudiciary> scheduleJudiciaryList = createScheduleJudiciaryList(records, requester, executionId);
+        final List<CourtScheduleJudiciary> scheduleJudiciaryList = createScheduleJudiciaryList(records, executionId);
 
         if (scheduleJudiciaryList == null || scheduleJudiciaryList.isEmpty()) {
             logger.debug("No schedule judiciary list created to create judiciary court schedule map");
@@ -486,11 +484,10 @@ public class RotaJudiciaryHelper {
     public void enrichScheduleWithJudiciaryInfo(final Map<String, String> schedule,
                                                 final Map<String, Map<String, String>> judiciariesMap,
                                                 final String rotaJusticeId,
-                                                final Requester requester,
                                                 final String executionId,
                                                 final Map<String, String> errors) {
         schedule.putAll(getJudiciaryInfoFromRota(judiciariesMap, rotaJusticeId));
-        enrichJudiciaryFromCppRefdata(schedule, errors, requester, executionId);
+        enrichJudiciaryFromCppRefdata(schedule, errors, executionId);
     }
 
     // ============================================================================
@@ -499,7 +496,6 @@ public class RotaJudiciaryHelper {
 
     private void processJudiciaries(final Map<String, Map<String, String>> judiciaries,
                                     final String emailFieldName,
-                                    final Requester requester,
                                     final String executionId,
                                     final Map<String, UUID> judiciaryMap,
                                     final String judiciaryType) {
@@ -515,7 +511,7 @@ public class RotaJudiciaryHelper {
                 return;
             }
 
-            referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId)
+            referenceDataValidationService.validateAndFindJudiciaryByEmail(email, executionId)
                     .ifPresent(judiciary -> {
                         judiciaryMap.put(justiceId, UUID.fromString(judiciary.getId()));
                         logger.debug("Mapped {} {} to judiciary with ID: {}", judiciaryType, justiceId, judiciary.getId());
@@ -524,7 +520,6 @@ public class RotaJudiciaryHelper {
     }
 
     private List<CourtScheduleJudiciary> createScheduleJudiciaryList(final Map<RotaPayload, Map<String, Map<String, String>>> records,
-                                                                     final Requester requester,
                                                                      final String executionId) {
         if (RotaUtils.isEmptyRecords(records)) {
             logger.warn("No records provided to create schedule judiciary list");
@@ -543,7 +538,7 @@ public class RotaJudiciaryHelper {
 
         schedules.forEach(schedule -> {
             try {
-                processSchedule(schedule, judiciariesMap, requester, executionId, scheduleJudiciaryList, errors);
+                processSchedule(schedule, judiciariesMap, executionId, scheduleJudiciaryList, errors);
             } catch (final Exception ex) {
                 logger.error("Error processing schedule: {}", ex.getMessage(), ex);
             }
@@ -559,7 +554,6 @@ public class RotaJudiciaryHelper {
 
     private void processSchedule(final Map<String, String> judiciarySchedule,
                                  final Map<String, Map<String, String>> judiciariesMap,
-                                 final Requester requester,
                                  final String executionId,
                                  final List<CourtScheduleJudiciary> scheduleJudiciaryList,
                                  final Map<String, String> errors) {
@@ -569,7 +563,7 @@ public class RotaJudiciaryHelper {
             return;
         }
 
-        enrichScheduleWithJudiciaryInfo(judiciarySchedule, judiciariesMap, rotaJusticeId, requester, executionId, errors);
+        enrichScheduleWithJudiciaryInfo(judiciarySchedule, judiciariesMap, rotaJusticeId, executionId, errors);
 
         final String courtListingProfileId = judiciarySchedule.get(COURT_LISTING_PROFILE_ID);
         final String judiciaryId = judiciarySchedule.get(JUDICIARY_ID);
@@ -620,14 +614,13 @@ public class RotaJudiciaryHelper {
 
     private void enrichJudiciaryFromCppRefdata(final Map<String, String> schedule,
                                                final Map<String, String> errors,
-                                               final Requester requester,
                                                final String executionId) {
         final String email = schedule.get(EMAIL_ADDRESS);
         if (!isNotEmpty(email)) {
             return;
         }
 
-        referenceDataValidationService.validateAndFindJudiciaryByEmail(requester, email, executionId)
+        referenceDataValidationService.validateAndFindJudiciaryByEmail(email, executionId)
                 .ifPresentOrElse(
                         judiciary -> populateScheduleWithJudiciaryData(schedule, judiciary),
                         () -> logJudiciaryNotFoundError(schedule, errors, email)

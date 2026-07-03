@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
-import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
@@ -13,17 +12,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.transaction.Transactional;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import org.springframework.transaction.annotation.Transactional;
 
-@ApplicationScoped
+@Service
 public class CourtScheduleJudiciaryService {
 
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
-    @Transactional(REQUIRES_NEW)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public Map<String, List<CourtScheduleJudiciary>> findRelatedJudiciarySchedules(final List<String> snapshotSlotIds) {
         final Map<String, List<CourtScheduleJudiciary>> result = new HashMap<>();
 
@@ -51,7 +50,7 @@ public class CourtScheduleJudiciaryService {
         return result;
     }
 
-    @Transactional(REQUIRES_NEW)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
         return courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
     }

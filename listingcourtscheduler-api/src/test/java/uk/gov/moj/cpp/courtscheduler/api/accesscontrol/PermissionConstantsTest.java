@@ -4,7 +4,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.createCourtSchedulePermission;
 import static uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants.getCourtSchedulePermission;
-import static uk.gov.moj.cpp.courtscheduler.api.utils.FileUtil.getPayload;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;

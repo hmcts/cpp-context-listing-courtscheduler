@@ -1,8 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+
+
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+
 
 public class AllocatedSlotToHearingSlotSearchResponseConverter {
 

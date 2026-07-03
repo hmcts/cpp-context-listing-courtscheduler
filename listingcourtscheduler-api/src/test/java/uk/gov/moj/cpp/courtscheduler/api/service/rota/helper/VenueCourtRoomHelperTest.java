@@ -12,7 +12,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.justice.services.core.requester.Requester;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
@@ -33,9 +32,6 @@ class VenueCourtRoomHelperTest {
 
     @Mock
     private RotaReferenceDataService referenceDataValidationService;
-
-    @Mock
-    private Requester requester;
 
     @InjectMocks
     private VenueCourtRoomHelper venueCourtRoomHelper;
@@ -65,12 +61,12 @@ class VenueCourtRoomHelperTest {
 
         Venue venue = new Venue(100, 200, "Test Venue");
         when(referenceDataValidationService.validateAndFindVenue(
-                eq(venue), anyMap(), eq(requester), eq(executionId)))
+                eq(venue), anyMap(), eq(executionId)))
                 .thenReturn(Optional.of(expectedCourtRoom));
 
         // when
         CourtRoom result = venueCourtRoomHelper.getCourtRoom(
-                listingProfile, requester, executionId, missingReferenceDataMappingMap);
+                listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
         assertNotNull(result);
@@ -86,12 +82,11 @@ class VenueCourtRoomHelperTest {
 
         // when
         CourtRoom result = venueCourtRoomHelper.getCourtRoom(
-                listingProfile, requester, executionId, missingReferenceDataMappingMap);
+                listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
         assertThat(result, is(nullValue()));
-        verify(referenceDataValidationService, never()).validateAndFindVenue(
-                any(), anyMap(), any(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindVenue(any(), anyMap(), anyString());
     }
 
     @Test
@@ -102,12 +97,11 @@ class VenueCourtRoomHelperTest {
 
         // when
         CourtRoom result = venueCourtRoomHelper.getCourtRoom(
-                listingProfile, requester, executionId, missingReferenceDataMappingMap);
+                listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
         assertThat(result, is(nullValue()));
-        verify(referenceDataValidationService, never()).validateAndFindVenue(
-                any(), anyMap(), any(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindVenue(any(), anyMap(), anyString());
     }
 
     @Test
@@ -118,12 +112,11 @@ class VenueCourtRoomHelperTest {
 
         // when
         CourtRoom result = venueCourtRoomHelper.getCourtRoom(
-                listingProfile, requester, executionId, missingReferenceDataMappingMap);
+                listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
         assertThat(result, is(nullValue()));
-        verify(referenceDataValidationService, never()).validateAndFindVenue(
-                any(), anyMap(), any(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindVenue(any(), anyMap(), anyString());
     }
 
     @Test
@@ -135,12 +128,12 @@ class VenueCourtRoomHelperTest {
 
         Venue venue = new Venue(100, 200, "Test Venue");
         when(referenceDataValidationService.validateAndFindVenue(
-                eq(venue), anyMap(), eq(requester), eq(executionId)))
+                eq(venue), anyMap(), eq(executionId)))
                 .thenReturn(Optional.empty());
 
         // when
         CourtRoom result = venueCourtRoomHelper.getCourtRoom(
-                listingProfile, requester, executionId, missingReferenceDataMappingMap);
+                listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
         assertThat(result, is(nullValue()));
@@ -155,12 +148,11 @@ class VenueCourtRoomHelperTest {
 
         // when
         CourtRoom result = venueCourtRoomHelper.getCourtRoom(
-                listingProfile, requester, executionId, missingReferenceDataMappingMap);
+                listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
         assertThat(result, is(nullValue()));
-        verify(referenceDataValidationService, never()).validateAndFindVenue(
-                any(), anyMap(), any(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindVenue(any(), anyMap(), anyString());
     }
 
     @Test
@@ -172,12 +164,11 @@ class VenueCourtRoomHelperTest {
 
         // when
         CourtRoom result = venueCourtRoomHelper.getCourtRoom(
-                listingProfile, requester, executionId, missingReferenceDataMappingMap);
+                listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
         assertThat(result, is(nullValue()));
-        verify(referenceDataValidationService, never()).validateAndFindVenue(
-                any(), anyMap(), any(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindVenue(any(), anyMap(), anyString());
     }
 
     @Test
@@ -187,12 +178,11 @@ class VenueCourtRoomHelperTest {
 
         // when
         CourtRoom result = venueCourtRoomHelper.getCourtRoom(
-                listingProfile, requester, executionId, missingReferenceDataMappingMap);
+                listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
         assertThat(result, is(nullValue()));
-        verify(referenceDataValidationService, never()).validateAndFindVenue(
-                any(), anyMap(), any(), anyString());
+        verify(referenceDataValidationService, never()).validateAndFindVenue(any(), anyMap(), anyString());
     }
 }
 

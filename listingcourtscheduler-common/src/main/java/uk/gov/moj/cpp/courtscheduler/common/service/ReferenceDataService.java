@@ -5,20 +5,18 @@ import static java.lang.String.valueOf;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
-import static java.util.UUID.randomUUID;
-import static javax.json.Json.createObjectBuilder;
+
+
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
-import static uk.gov.justice.services.messaging.JsonEnvelope.envelopeFrom;
-import static uk.gov.justice.services.messaging.JsonEnvelope.metadataBuilder;
+
+
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.matches;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
-import uk.gov.justice.services.core.requester.Requester;
-import uk.gov.justice.services.messaging.JsonEnvelope;
-import uk.gov.justice.services.messaging.JsonObjects;
-import uk.gov.justice.services.messaging.MetadataBuilder;
+import uk.gov.moj.cpp.courtscheduler.common.JsonObjects;
+import uk.gov.moj.cpp.courtscheduler.common.service.CommonPlatformQueryClient;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
@@ -38,28 +36,49 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonString;
-import javax.json.JsonValue;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Migrated from Justice Services {@code Requester#requestAsAdmin(JsonEnvelope, JsonObject.class)}
+ * to {@link CommonPlatformQueryClient}: each query is now an explicit GET against the
+ * referencedata-query-api with the system user UUID injected as {@code CJSCPPUID}.
+ * The {@code Requester} parameter is dropped from each public method signature.
+ */
 @SuppressWarnings({"squid:S1312", "squid:S2629","squid:S6813","squid:S112"})
-@ApplicationScoped
+@Service
 public class ReferenceDataService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataService.class);
 
-    private static final String REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME = "referencedata.query.public-holidays";
-    private static final String REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME = "referencedata.query.rota-business-types";
-    private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME = "referencedata.query.cp-rota-courtroom-mappings";
-    private static final String REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME = "referencedata.query.judiciaries";
-    private static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME = "referencedata.query.courtroom-session-allocations";
-    private static final String REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME = "referencedata.query.courtrooms";
+    private static final String REFERENCEDATA_BASE_PATH = "/referencedata-query-api/query/api/rest/referencedata";
+    private static final String PUBLIC_HOLIDAYS_PATH = REFERENCEDATA_BASE_PATH + "/public-holidays";
+    private static final String ROTA_BUSINESS_TYPES_PATH = REFERENCEDATA_BASE_PATH + "/rota-business-types";
+    private static final String ROTA_COURT_ROOM_MAPPINGS_PATH = REFERENCEDATA_BASE_PATH + "/cp-rota-courtroom-mappings";
+    private static final String JUDICIARIES_PATH = REFERENCEDATA_BASE_PATH + "/judiciaries";
+    private static final String COURT_ROOM_SESSION_ALLOCATIONS_PATH = REFERENCEDATA_BASE_PATH + "/courtroom-session-allocations";
+    private static final String OU_COURT_ROOMS_PATH = REFERENCEDATA_BASE_PATH + "/courtrooms";
+
+    private static final String ACCEPT_PUBLIC_HOLIDAYS = "application/vnd.referencedata.query.public-holidays+json";
+    private static final String ACCEPT_ROTA_BUSINESS_TYPES = "application/vnd.referencedata.query.rota-business-types+json";
+    private static final String ACCEPT_ROTA_COURT_ROOM_MAPPINGS = "application/vnd.referencedata.query.cp-rota-courtroom-mappings+json";
+    // The upstream referencedata-query-api uses 'reference-data' (with hyphen) for the
+    // judiciaries endpoint and drops the 'query' segment — verified against
+    // ~/devenv/project/msjs/cpp-context-reference-data/referencedata-query/referencedata-query-api/src/raml/referencedata-query-api.raml line 1158.
+    private static final String ACCEPT_JUDICIARIES = "application/vnd.reference-data.judiciaries+json";
+    private static final String ACCEPT_COURT_ROOM_SESSION_ALLOCATIONS = "application/vnd.referencedata.query.courtroom-session-allocations+json";
+    // /courtrooms uses 'ou-courtrooms' as the response token, not 'query.courtrooms'.
+    // Verified against the referencedata-query-api RAML and matches the constant
+    // cp-court-list-publishing-service uses (ACCEPT_OU_COURTROOMS).
+    private static final String ACCEPT_OU_COURT_ROOMS = "application/vnd.referencedata.ou-courtrooms+json";
+
     private static final String PUBLIC_HOLIDAYS = "publicHolidays";
     private static final String DATE = "date";
     private static final String CP_ROTA_COURT_ROOM_MAPPINGS = "cpRotaCourtRoomMappings";
@@ -77,19 +96,16 @@ public class ReferenceDataService {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
-    public List<LocalDate> getPublicHolidays(final String division, final LocalDate fromDate, final LocalDate toDate, final Requester requester) {
+    @Inject
+    private CommonPlatformQueryClient commonPlatformQueryClient;
 
-        final MetadataBuilder metadataBuilder = metadataBuilder()
-                .withId(randomUUID())
-                .withName(REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME);
-
-        final JsonObject params = createObjectBuilder()
-                .add("division", division)
-                .add("dateFrom", fromDate.toString())
-                .add("dateTo", toDate.toString())
-                .build();
-
-        final JsonObject payload = requester.requestAsAdmin(envelopeFrom(metadataBuilder, params), JsonObject.class).payload();
+    public List<LocalDate> getPublicHolidays(final String division, final LocalDate fromDate, final LocalDate toDate) {
+        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
+                PUBLIC_HOLIDAYS_PATH,
+                ACCEPT_PUBLIC_HOLIDAYS,
+                Map.of("division", division,
+                        "dateFrom", fromDate.toString(),
+                        "dateTo", toDate.toString()));
         if (!payload.containsKey(PUBLIC_HOLIDAYS) || payload.getJsonArray(PUBLIC_HOLIDAYS).isEmpty()) {
             return emptyList();
         }
@@ -102,13 +118,9 @@ public class ReferenceDataService {
                 .toList();
     }
 
-    public List<CourtRoom> getRotaCourtRoomMappings(final Requester requester) {
-
-        final JsonEnvelope envelope =
-                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME).build(),
-                        createObjectBuilder().build());
-
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+    public List<CourtRoom> getRotaCourtRoomMappings() {
+        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
+                ROTA_COURT_ROOM_MAPPINGS_PATH, ACCEPT_ROTA_COURT_ROOM_MAPPINGS, Map.of());
         final int resultsCount = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS).orElseThrow(() -> new RuntimeException("No courtrooms  found: ")).size();
         LOGGER.debug("Total courtrooms found: {}", resultsCount);
         Set<String> seenCourtRoomIds = new HashSet<>();
@@ -128,7 +140,7 @@ public class ReferenceDataService {
                         }
                         return toCourtRoom(jsonObject);
                     } catch (Exception e) {
-                        LOGGER.error(format("Error while converting court room with ID: %d", jsonObject.getInt("cppCourtRoomId")));
+                        LOGGER.error(format("Error while converting court room with ID: %d", jsonObject.getInt("cppCourtRoomId")), e);
                         LOGGER.error(format("Skipping the failed records, %d records left", resultsCount - 1));
                         String cppCourtRoomId =
                                 jsonObject.containsKey("cppCourtRoomId") && !jsonObject.isNull("cppCourtRoomId")
@@ -177,14 +189,10 @@ public class ReferenceDataService {
                 .toList();
     }
 
-    public List<BusinessType> getRotaBusinessTypes(final Requester requester) {
-
-        final JsonEnvelope envelope =
-                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(ReferenceDataService.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME).build(),
-                        createObjectBuilder().add("jurisdiction", ALL).build());
-
-
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+    public List<BusinessType> getRotaBusinessTypes() {
+        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
+                ROTA_BUSINESS_TYPES_PATH, ACCEPT_ROTA_BUSINESS_TYPES,
+                Map.of("jurisdiction", ALL));
         final JsonArray rotaBusinessTypes = JsonObjects.getJsonArray(payload, "rotaBusinessTypes").orElseThrow(() -> new RuntimeException("No business type found: "));
         LOGGER.info("Number of rotaBusinessTypes returned: {}", rotaBusinessTypes.size());
         return rotaBusinessTypes
@@ -194,14 +202,14 @@ public class ReferenceDataService {
                 .toList();
     }
 
-    public Optional<BusinessType> getRotaBusinessTypeByCode(final String typeCode, final Requester requester) {
-        return getRotaBusinessTypes(requester).stream()
+    public Optional<BusinessType> getRotaBusinessTypeByCode(final String typeCode) {
+        return getRotaBusinessTypes().stream()
                 .filter(businessType -> businessType.getTypeCode().equals(typeCode))
                 .findFirst();
     }
 
-    public Map<String, BusinessType> getRotaBusinessTypesMap(final Requester requester) {
-        return getRotaBusinessTypes(requester).stream().collect(Collectors.toMap(
+    public Map<String, BusinessType> getRotaBusinessTypesMap() {
+        return getRotaBusinessTypes().stream().collect(Collectors.toMap(
                 BusinessType::getTypeCode,
                 b -> b,
                 (existing, replacement) -> {
@@ -211,18 +219,15 @@ public class ReferenceDataService {
         ));
     }
 
-    public Map<UUID, CourtRoom> getCourtRoomsMap(final Requester requester) {
-        return getRotaCourtRoomMappings(requester).stream()
+    public Map<UUID, CourtRoom> getCourtRoomsMap() {
+        return getRotaCourtRoomMappings().stream()
                 .filter(courtRoom -> nonNull(courtRoom.getCourtroomId()))
                 .collect(Collectors.toMap(courtRoom -> UUID.fromString(courtRoom.getCourtroomId()), c -> c));
     }
 
-    public List<CourtRoom> getCpCourtRooms(final Requester requester) {
-        final JsonEnvelope envelope =
-                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME).build(),
-                        createObjectBuilder().build());
-
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+    public List<CourtRoom> getCpCourtRooms() {
+        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
+                OU_COURT_ROOMS_PATH, ACCEPT_OU_COURT_ROOMS, Map.of());
 
         if (!payload.containsKey(ORGANISATION_UNITS)) {
             return emptyList();
@@ -241,11 +246,9 @@ public class ReferenceDataService {
                 .toList();
     }
 
-    public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId, final Requester requester) {
-        final JsonEnvelope envelope =
-                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME).build(),
-                        createObjectBuilder().build());
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+    public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId) {
+        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
+                ROTA_COURT_ROOM_MAPPINGS_PATH, ACCEPT_ROTA_COURT_ROOM_MAPPINGS, Map.of());
         JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
         if (isNull(courtRoomMappings)) {
             throw new RuntimeException("No court room found: " + courtRoomId);
@@ -261,14 +264,11 @@ public class ReferenceDataService {
         return isEmpty(courtRoomList) ? Optional.empty() : Optional.of(courtRoomList.get(0));
     }
 
-    public Optional<CourtRoom> getRotaCourtRoomByVenue(final Venue venue, final Map<String, String> exceptionMessages, final Requester requester) {
+    public Optional<CourtRoom> getRotaCourtRoomByVenue(final Venue venue, final Map<String, String> exceptionMessages) {
         LOGGER.debug("getRotaCourtRoomByVenue called - venue: {}", venue);
-        final JsonEnvelope envelope =
-                envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME).build(),
-                        createObjectBuilder().build());
-        LOGGER.debug("getRotaCourtRoomByVenue called - envelope created for venue: {} and request now will be sent", venue);
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
-        LOGGER.debug("getRotaCourtRoomByVenue called - envelope created for venue: {} and request has been sent and the response payload : {}", venue, payload);
+        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
+                ROTA_COURT_ROOM_MAPPINGS_PATH, ACCEPT_ROTA_COURT_ROOM_MAPPINGS, Map.of());
+        LOGGER.debug("getRotaCourtRoomByVenue called - request has been sent and the response payload : {}", payload);
         JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
         if (isNull(courtRoomMappings)) {
             throw new RuntimeException(format("No court room found with venue: %d-%d-%s", venue.getLocationId(), venue.getVenueId(), venue.getVenueName()));
@@ -299,10 +299,9 @@ public class ReferenceDataService {
         return isEmpty(courtRoomList) ? Optional.empty() : Optional.of(courtRoomList.get(0));
     }
 
-    public List<Judiciary> getJudiciariesMap(final Requester requester) {
-        final JsonEnvelope envelope = envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME).build(), createObjectBuilder().build());
-
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+    public List<Judiciary> getJudiciariesMap() {
+        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
+                JUDICIARIES_PATH, ACCEPT_JUDICIARIES, Map.of());
 
         final List<Judiciary> judiciaries = new ArrayList<>();
         JsonObjects.getJsonArray(payload, "judiciaries").ifPresent(judiciariesJsonArray -> {
@@ -316,22 +315,17 @@ public class ReferenceDataService {
         return judiciaries;
     }
 
-    public List<Judiciary> getJudiciariesWithSpecialismByIds(final List<String> judiciaryIds, final Requester requester) {
+    public List<Judiciary> getJudiciariesWithSpecialismByIds(final List<String> judiciaryIds) {
         if (judiciaryIds == null || judiciaryIds.isEmpty()) {
             return emptyList();
         }
 
-        // Join IDs with comma separator
         final String idsParam = String.join(",", judiciaryIds);
 
-        final JsonObject params = createObjectBuilder()
-                .add("ids", idsParam)
-                .add("withSpecialism", true)
-                .build();
-
-        final JsonEnvelope envelope = envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME).build(), params);
-
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
+                JUDICIARIES_PATH, ACCEPT_JUDICIARIES,
+                Map.of("ids", idsParam,
+                        "withSpecialism", true));
 
         final List<Judiciary> judiciaries = new ArrayList<>();
         JsonObjects.getJsonArray(payload, "judiciaries").ifPresent(judiciariesJsonArray -> {
@@ -344,10 +338,9 @@ public class ReferenceDataService {
         return judiciaries;
     }
 
-    public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsMap(final Requester requester) {
-        final JsonEnvelope envelope = envelopeFrom(metadataBuilder().withId(randomUUID()).withName(REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME).build(), createObjectBuilder().build());
-
-        final JsonObject payload = requester.requestAsAdmin(envelope, JsonObject.class).payload();
+    public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsMap() {
+        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
+                COURT_ROOM_SESSION_ALLOCATIONS_PATH, ACCEPT_COURT_ROOM_SESSION_ALLOCATIONS, Map.of());
 
         final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = new ArrayList<>();
         JsonObjects.getJsonArray(payload, "courtRoomSessionAllocations").ifPresent(courtRoomSessionAllocationsJsonArray -> {
@@ -386,7 +379,7 @@ public class ReferenceDataService {
                 .withOucodeL2Code(getStringOrElse(jsonObject, "oucodeL2Code", null))
                 .withOucodeUUID(jsonObject.getString("oucodeUUID"))
                 .withCourtRoomName(getStringOrElse(jsonObject, "courtroomName", null))
-                .withCourtRoomId(jsonObject.getString(COURTROOM_ID))
+                .withCourtRoomId(getStringOrElse(jsonObject, COURTROOM_ID, null))
                 .build();
     }
 
@@ -395,7 +388,7 @@ public class ReferenceDataService {
         JsonObjects.getJsonArray(jsonObject, "specialisms").ifPresent(specialismsJsonArray -> {
             for (JsonValue specialismValue : specialismsJsonArray) {
                 final String specialismString = specialismValue.getValueType() == JsonValue.ValueType.STRING
-                        ? ((javax.json.JsonString) specialismValue).getString()
+                        ? ((jakarta.json.JsonString) specialismValue).getString()
                         : specialismValue.toString();
                 try {
                     final uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType specialismType =

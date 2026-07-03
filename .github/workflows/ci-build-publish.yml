@@ -1,0 +1,269 @@
+name: CI Build and Publish
+
+on:
+  workflow_call:
+    secrets:
+      AZURE_DEVOPS_ARTIFACT_USERNAME:
+        required: true
+      AZURE_DEVOPS_ARTIFACT_TOKEN:
+        required: true
+      HMCTS_ADO_PAT:
+        required: true
+    inputs:
+      environment:
+        required: true
+        type: string
+        default: dev
+      is_release:
+        required: false
+        type: boolean
+        default: false
+      is_publish:
+        required: true
+        type: boolean
+      trigger_docker:
+        required: true
+        type: boolean
+      trigger_deploy:
+        required: true
+        type: boolean
+      run_integration_tests:
+        required: false
+        type: boolean
+        default: true
+
+
+jobs:
+  Artefact-Version:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    outputs:
+      artefact_version: ${{ inputs.is_release && steps.artefact.outputs.release_version || steps.artefact.outputs.draft_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate Artefact Version
+        id: artefact
+        uses: hmcts/artefact-version-action@v1
+        with:
+          release: ${{ inputs.is_release }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  Build:
+    # Compiles every module, runs unit tests across the whole build, and
+    # produces the Spring Boot fat jar from listingcourtscheduler-api. The IT
+    # subproject's `test` task is excluded here — it's driven by the
+    # Integration-Tests job below so docker compose only spins up once.
+    needs: [Artefact-Version]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    outputs:
+      repo_name: ${{ steps.repo_vars.outputs.repo_name }}
+      artefact_name: ${{ steps.repo_vars.outputs.artefact_name }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: current
+
+      - name: Gradle Build (compile + unit tests + bootJar)
+        env:
+          ARTEFACT_VERSION: ${{ needs.Artefact-Version.outputs.artefact_version }}
+        run: |
+          echo "Building with ARTEFACT_VERSION=$ARTEFACT_VERSION"
+          ./gradlew build \
+            -DARTEFACT_VERSION=$ARTEFACT_VERSION \
+            -x :listingcourtscheduler-integration-test:test
+
+      - name: Extract repo name
+        id: repo_vars
+        run: |
+          repo_name=${GITHUB_REPOSITORY##*/}
+          echo "repo_name=${repo_name}" >> $GITHUB_OUTPUT
+          echo "artefact_name=${repo_name}-${{ needs.Artefact-Version.outputs.artefact_version }}" >> $GITHUB_OUTPUT
+
+      - name: Upload Spring Boot fat jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-jar
+          path: listingcourtscheduler-api/build/libs/${{ steps.repo_vars.outputs.artefact_name }}.jar
+
+      - name: Upload unit test reports
+        if: always()
+        uses: ./.github/actions/upload-test-reports
+        with:
+          artifact_name: unit-test-reports
+          path: |
+            listingcourtscheduler-api/build/reports/tests/test/
+            listingcourtscheduler-api/build/test-results/test/
+            listingcourtscheduler-cache/build/reports/tests/test/
+            listingcourtscheduler-cache/build/test-results/test/
+            listingcourtscheduler-common/build/reports/tests/test/
+            listingcourtscheduler-common/build/test-results/test/
+            listingcourtscheduler-domain/build/reports/tests/test/
+            listingcourtscheduler-domain/build/test-results/test/
+            listingcourtscheduler-rota-file-processor/build/reports/tests/test/
+            listingcourtscheduler-rota-file-processor/build/test-results/test/
+            listingcourtscheduler-viewstore/listingcourtscheduler-viewstore-persistence/build/reports/tests/test/
+            listingcourtscheduler-viewstore/listingcourtscheduler-viewstore-persistence/build/test-results/test/
+
+  Integration-Tests:
+    # Drives :listingcourtscheduler-integration-test:test which itself spins
+    # up the docker-compose stack (postgres + wiremock + azurite + the
+    # bootJar in the api container) and tears it down via composeDown. The
+    # ubuntu-latest runner already has Docker; nothing else to install.
+    needs: [Artefact-Version, Build]
+    if: ${{ inputs.run_integration_tests }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: current
+
+      - name: Run integration tests
+        env:
+          ARTEFACT_VERSION: ${{ needs.Artefact-Version.outputs.artefact_version }}
+        run: |
+          echo "Running ITs with ARTEFACT_VERSION=$ARTEFACT_VERSION"
+          ./gradlew :listingcourtscheduler-integration-test:test \
+            -DARTEFACT_VERSION=$ARTEFACT_VERSION
+
+      - name: Upload integration test reports
+        if: always()
+        uses: ./.github/actions/upload-test-reports
+        with:
+          artifact_name: integration-test-reports
+          path: |
+            listingcourtscheduler-integration-test/build/reports/tests/test/
+            listingcourtscheduler-integration-test/build/test-results/test/
+
+  Provider-Deploy:
+    needs: [Artefact-Version, Build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: current
+
+      - name: Gradle Publish
+        if: ${{ inputs.is_publish }}
+        env:
+          ARTEFACT_VERSION: ${{ needs.Artefact-Version.outputs.artefact_version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AZURE_DEVOPS_ARTIFACT_USERNAME: ${{ secrets.AZURE_DEVOPS_ARTIFACT_USERNAME }}
+          AZURE_DEVOPS_ARTIFACT_TOKEN: ${{ secrets.AZURE_DEVOPS_ARTIFACT_TOKEN }}
+        run: |
+          if [ -z "$AZURE_DEVOPS_ARTIFACT_USERNAME" ]; then
+            echo "::warning::AZURE_DEVOPS_ARTIFACT_USERNAME is null or not set"
+          fi
+
+          if [ -z "$AZURE_DEVOPS_ARTIFACT_TOKEN" ]; then
+            echo "::warning::AZURE_DEVOPS_ARTIFACT_TOKEN is null or not set"
+          fi
+
+          echo "Publishing artefact for version: $ARTEFACT_VERSION"
+
+          ./gradlew publish \
+            -DARTEFACT_VERSION=$ARTEFACT_VERSION \
+            -DGITHUB_REPOSITORY=${{ github.repository }} \
+            -DGITHUB_ACTOR=${{ github.actor }} \
+            -DGITHUB_TOKEN=$GITHUB_TOKEN \
+            -DAZURE_DEVOPS_ARTIFACT_USERNAME=$AZURE_DEVOPS_ARTIFACT_USERNAME \
+            -DAZURE_DEVOPS_ARTIFACT_TOKEN=$AZURE_DEVOPS_ARTIFACT_TOKEN
+
+  Build-Docker:
+    needs: [Provider-Deploy, Build, Artefact-Version]
+    if: ${{ inputs.trigger_docker }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      # Download into the same build/libs/ layout the root Dockerfile expects
+      # (the ADO pipeline lands its downloaded jar in the same path).
+      - name: Download Spring Boot fat jar
+        uses: actions/download-artifact@v8
+        with:
+          name: app-jar
+          path: build/libs
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Packages
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image to GitHub
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ needs.Artefact-Version.outputs.artefact_version }}
+          build-args: |
+            BASE_IMAGE=eclipse-temurin:25-jre
+
+  Deploy:
+    needs: [Provider-Deploy, Build, Artefact-Version]
+    if: ${{ inputs.trigger_deploy }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract repo name
+        run: echo "REPO_NAME=${GITHUB_REPOSITORY##*/}" >> $GITHUB_ENV
+
+      - name: Trigger ADO pipeline
+        uses: hmcts/trigger-ado-pipeline@v2
+        with:
+          pipeline_id: 460
+          ado_pat: ${{ secrets.HMCTS_ADO_PAT }}
+          template_parameters: >
+            {
+              "GROUP_ID": "uk.gov.hmcts.cp",
+              "ARTIFACT_ID": "${{ env.REPO_NAME }}",
+              "ARTIFACT_VERSION": "${{ needs.Artefact-Version.outputs.artefact_version }}",
+              "TARGET_REPOSITORY": "${{ github.repository }}",
+              "agentDemand": "ubuntu-j25",
+              "baseImage": "hmcts/apm-services:25-jre"
+            }

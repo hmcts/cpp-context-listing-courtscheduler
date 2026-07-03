@@ -1,10 +1,11 @@
 package uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl;
 
-import uk.gov.moj.cpp.accesscontrol.drools.Outcome;
-import uk.gov.moj.cpp.accesscontrol.drools.Action;
+import uk.gov.moj.cpp.authz.drools.Outcome;
+import uk.gov.moj.cpp.authz.drools.Action;
 import uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants;
+import uk.gov.moj.cpp.courtscheduler.api.accesscontrol.SecurityGroupConstants;
 
-global uk.gov.moj.cpp.accesscontrol.common.providers.UserAndGroupProvider userAndGroupProvider;
+global uk.gov.moj.cpp.authz.http.providers.UserAndGroupProvider userAndGroupProvider;
 
 rule "API - Action - courtscheduler.create"
   when
@@ -64,7 +65,7 @@ end
 rule "API - Action - courtscheduler.get.court_schedule"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.get.court_schedule");
+    $action: Action(name == "courtscheduler.get");
         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -83,7 +84,7 @@ rule "API - Action - courtscheduler.validate.session.availability"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.validate.session.availability");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -92,7 +93,7 @@ rule "API - Action - courtscheduler.assign-judiciary"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.assign-judiciary");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -101,7 +102,7 @@ rule "API - Action - courtscheduler.update.hearing.slots"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.update.hearing.slots");
-         eval(userAndGroupProvider.isSystemUser($action));
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -109,7 +110,7 @@ end
 rule "API - Action - courtscheduler.judiciary.add.availability.rule"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.judiciary.add.availability.rule");
+    $action: Action(name == "POST /judiciaries/availability-rules/add");
          eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -118,7 +119,7 @@ end
 rule "API - Action - courtscheduler.judiciary.update.availability.rule"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.judiciary.update.availability.rule");
+    $action: Action(name == "POST /judiciaries/availability-rules/update");
          eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -127,7 +128,7 @@ end
 rule "API - Action - courtscheduler.judiciary.add.availability.rule.validate"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.judiciary.add.availability.rule.validate");
+    $action: Action(name == "POST /judiciaries/availability-rules/validate-add");
          eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -136,7 +137,7 @@ end
 rule "API - Action - courtscheduler.judiciary.update.availability.rule.validate"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.judiciary.update.availability.rule.validate");
+    $action: Action(name == "POST /judiciaries/availability-rules/validate-update");
          eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -145,7 +146,7 @@ end
 rule "API - Action - courtscheduler.judiciary.find.availability"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.judiciary.find.availability");
+    $action: Action(name == "GET /judiciaries/availability");
          eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -154,7 +155,7 @@ end
 rule "API - Action - courtscheduler.judiciary.find.availability.rule"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.judiciary.find.availability.rule");
+    $action: Action(name == "GET /judiciaries/availability-rules");
          eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -163,7 +164,7 @@ end
 rule "API - Action - courtscheduler.judiciary.get.availability.rule"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.judiciary.get.availability.rule");
+    $action: Action(name == "GET /judiciaries/availability-rules/{ruleId}");
          eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -172,7 +173,7 @@ end
 rule "API - Action - courtscheduler.judiciary.delete.availability.rule"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.judiciary.delete.availability.rule");
+    $action: Action(name == "POST /judiciaries/availability-rules/delete");
          eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -181,7 +182,7 @@ end
 rule "API - Action - courtscheduler.judiciary.delete.availability.rule.validate"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.judiciary.delete.availability.rule.validate");
+    $action: Action(name == "POST /judiciaries/availability-rules/validate-delete");
          eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
@@ -191,7 +192,7 @@ rule "API - Action - courtscheduler.search.update.hearing.slots"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.search.update.hearing.slots");
-         eval(userAndGroupProvider.isSystemUser($action));
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -200,7 +201,7 @@ rule "API - Action - courtscheduler.get.hearing.slots"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.get.hearing.slots");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -209,7 +210,7 @@ rule "API - Action - courtscheduler.remove.hearing.slots"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.remove.hearing.slots");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -218,7 +219,7 @@ rule "API - Action - courtscheduler.get.hearing.ids"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.get.hearing.ids");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -227,7 +228,7 @@ rule "API - Action - courtscheduler.search.book.hearing.slots"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.search.book.hearing.slots");
-      eval(userAndGroupProvider.isSystemUser($action));
+      eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -236,7 +237,7 @@ rule "API - Action - courtscheduler.list.hearings-in-court-sessions"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.list.hearings-in-court-sessions");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -245,7 +246,7 @@ rule "API - Action - courtscheduler.create.provisional.booking"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.create.provisional.booking");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -254,7 +255,7 @@ rule "API - Action - courtscheduler.get.provisional.booking"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.get.provisional.booking");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -263,7 +264,7 @@ rule "API - Action - courtscheduler.export.court_schedule"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.export.court_schedule");
-         eval(userAndGroupProvider.isSystemUser($action));
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -272,7 +273,7 @@ rule "API - Action - courtscheduler.export.court_schedule_judiciary"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.export.court_schedule_judiciary");
-         eval(userAndGroupProvider.isSystemUser($action));
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -281,7 +282,7 @@ rule "API - Action - courtscheduler.export.allocated_listings"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.export.allocated_listings");
-         eval(userAndGroupProvider.isSystemUser($action));
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -290,7 +291,16 @@ rule "API - Action - courtscheduler.oucode.migrate"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.oucode.migrate");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.oucode.recalculate.availability"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.oucode.recalculate.availability");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -299,7 +309,7 @@ rule "API - Action - courtscheduler.rotasl.process_rota_files"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.rotasl.process_rota_files");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -308,7 +318,7 @@ rule "API - Action - courtscheduler.rotasl.clean_redundant_rota_data"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.rotasl.clean_redundant_rota_data");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -317,7 +327,7 @@ rule "API - Action - courtscheduler.unassign.judiciary"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.unassign.judiciary");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
@@ -326,7 +336,7 @@ rule "API - Action - courtscheduler.search.court-schedules-by-id"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.search.court-schedules-by-id");
-        eval(userAndGroupProvider.isSystemUser($action));
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end

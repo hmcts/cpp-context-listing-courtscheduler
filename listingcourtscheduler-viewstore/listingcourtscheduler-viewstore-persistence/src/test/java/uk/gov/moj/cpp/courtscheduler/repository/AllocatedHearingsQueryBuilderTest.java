@@ -5,18 +5,18 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 
 import java.time.LocalDate;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class AllocatedHearingsQueryBuilderTest {
+class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.repository.AbstractRepositoryTest {
 
     @Test
     public void testConstructorWithMinimalParameters() {
@@ -557,7 +557,7 @@ public class AllocatedHearingsQueryBuilderTest {
         
         // Verify no duplicate keywords
         long selectCount = query.toLowerCase().chars().filter(ch -> ch == 's').count();
-        assertTrue("Query should contain proper SQL structure", query.contains("select"));
+        assertTrue(query.contains("select"), "Query should contain proper SQL structure");
     }
 
     @Test

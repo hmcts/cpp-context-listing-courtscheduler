@@ -28,9 +28,9 @@ import java.util.List;
 
 public class DatabaseSeeder {
 
-    private static final String USERNAME = "scsl";
-    private static final String PASSWORD = "scsl";
-    private static final String DATABASE = "scsl";
+    private static final String USERNAME = System.getProperty("db.user", "courtscheduler");
+    private static final String PASSWORD = System.getProperty("db.password", "courtscheduler");
+    private static final String DATABASE = System.getProperty("db.name", "courtscheduler");
     private static final java.util.Set<String> ALLOWED_JURISDICTIONS =
             java.util.Set.of(MAGISTRATES.getJurisdiction(), CROWN.getJurisdiction());
 
@@ -585,14 +585,47 @@ public class DatabaseSeeder {
 
 
     public void cleanDb() throws SQLException {
-        cleanProvisionalBookingTable();
-        cleanAllocatedListingTable();
-        cleanCourtScheduleTable();
-        cleanCourtScheduleJudiciaryTable();
-        cleanMigrationStatusTable();
-        cleanRotaFileProcessHistoryTable();
-        cleanRotaProcessLogTable();
-        cleanJudiciaryAvailabilityRuleTable();
+        // Async rota-file processing started by a previous test can still be running
+        // when the next @BeforeEach fires; its open transaction holds AccessShareLock
+        // on court_schedule while our TRUNCATE … CASCADE wants AccessExclusiveLock,
+        // and the two end up in a deadlock that Postgres breaks by killing one side.
+        // Retry on serialization-failure (40P01 = deadlock_detected) so the tear-down
+        // succeeds once the in-flight rota transaction has been rolled back.
+        runWithDeadlockRetry(this::cleanProvisionalBookingTable);
+        runWithDeadlockRetry(this::cleanAllocatedListingTable);
+        runWithDeadlockRetry(this::cleanCourtScheduleTable);
+        runWithDeadlockRetry(this::cleanCourtScheduleJudiciaryTable);
+        runWithDeadlockRetry(this::cleanMigrationStatusTable);
+        runWithDeadlockRetry(this::cleanRotaFileProcessHistoryTable);
+        runWithDeadlockRetry(this::cleanRotaProcessLogTable);
+        runWithDeadlockRetry(this::cleanJudiciaryAvailabilityRuleTable);
+    }
+
+    @FunctionalInterface
+    private interface SqlAction {
+        void run() throws SQLException;
+    }
+
+    private static void runWithDeadlockRetry(final SqlAction action) throws SQLException {
+        SQLException last = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                action.run();
+                return;
+            } catch (final SQLException e) {
+                last = e;
+                if (!"40P01".equals(e.getSQLState())) {
+                    throw e;
+                }
+                try {
+                    Thread.sleep(200L * (attempt + 1));
+                } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
+        throw last;
     }
 
     // Simple Pair class for internal use

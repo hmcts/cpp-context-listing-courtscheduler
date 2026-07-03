@@ -1,26 +1,26 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
-import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.transaction.Transactional;
+import org.springframework.stereotype.Service;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.springframework.transaction.annotation.Transactional;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaProcessLogRepository;
 
-@ApplicationScoped
+@Service
+@Transactional
 public class RotaProcessLogService {
 
     @Inject
     private RotaProcessLogRepository rotaProcessLogRepository;
 
-    @PersistenceContext(unitName = "courtscheduler-persistence-unit")
+    @PersistenceContext
     private EntityManager entityManager;
 
-    @Transactional(REQUIRES_NEW)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public RotaProcessLog saveRotaProcessLog(final RotaProcessLog rotaProcessLog) {
         this.entityManager.persist(rotaProcessLog);
         this.entityManager.flush();

@@ -1,5 +1,0 @@
-<kmodule xmlns="http://www.drools.org/xsd/kmodule">
-    <kbase name="Courtscheduler.API" packages="uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl" default="false">
-        <ksession name="COURT_SCHEDULER_API_SESSION" default="false" type="stateless"/>
-    </kbase>
-</kmodule>
