@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="024" author="arcadius.ahouansou"
+               logicalFilePath="024-add-index-on-court_room_id-for-table-court_room_session_allocation.xml">
+        <createIndex indexName="idx_court_room_session_allocation_court_room_id"
+                     tableName="court_room_session_allocation">
+            <column name="court_room_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,62 @@
+{
+  "results": 1,
+  "pageCount": 1,
+  "hearingSlots": [
+    {
+      "courtScheduleId": "0000fbb0-8579-4f2b-948e-c4e48a48e3f8",
+      "listingProfileId": null,
+      "ouCode": "CABC90",
+      "courtRoomId": "001c067d-eaca-4ce5-ad90-a366ef3e4bb6",
+      "courtRoomNumber": 1234,
+      "courtHouseId": "0b9417b8-91b4-385d-9e01-069855777c4f",
+      "courtHouseName": "Liverpool Mags Court",
+      "courtRoomName": "Court name1",
+      "operationalUnit": "UNN",
+      "businessType": "BYS",
+      "businessDescription": null,
+      "panel": "PANEL",
+      "courtSession": "AM",
+      "slotBased": false,
+      "active": true,
+      "sessionDate": "2020-12-01",
+      "maxSlots": 125,
+      "availableSlots": 125,
+      "maxDuration": 182,
+      "availableDuration": 182,
+      "judiciaries": [
+        {
+          "judiciaryId": "JUDICIARY_ID_1",
+          "position": "RIGHT_WINGER",
+          "active": false
+        },
+        {
+          "judiciaryId": "JUDICIARY_ID_2",
+          "position": "LEFT_WINGER",
+          "active": false
+        },
+        {
+          "judiciaryId": "JUDICIARY_ID_3",
+          "position": "CHAIR",
+          "active": false
+        }
+      ],
+      "slotStartTimes": [],
+      "createdOn": null,
+      "updatedOn": null,
+      "allDaySplit": false,
+      "maxDurationForMorning": 0,
+      "maxDurationForAfternoon": 0,
+      "totalBooked": 0,
+      "availableDurationForMorning": 0,
+      "availableDurationForAfternoon": 0,
+      "totalBookedForMorning": 0,
+      "totalBookedForAfternoon": 0,
+      "jurisdiction": "MAGISTRATES",
+      "sessionStartTime": "2020-12-01T10:00:00.000+00:00",
+      "sessionEndTime": "2020-12-01T13:00:00.000+00:00",
+      "nationalBreakTime": "2020-12-01T13:00:00.000+00:00",
+      "isOverbookingAllowed": true,
+      "isDraft": false
+    }
+  ]
+}

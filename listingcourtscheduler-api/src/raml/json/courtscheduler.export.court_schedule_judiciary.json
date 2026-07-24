@@ -1,0 +1,23 @@
+{
+  "courtScheduleJudiciaries": [
+    {
+      "id": {
+        "courtScheduleId": "efhSv",
+        "judiciaryId": "LjeqYsX"
+      },
+      "courtListingProfileId": "tHyUrZsFqaaDxFjkPg",
+      "rotaJudiciaryId": "HwygEIETjJnyjINizyJSefdiBoJUA",
+      "title": "ikcxhOIecSBBtlAnJQJXCUpKJEEc",
+      "forenames": "hpRoimHEXFWExeDKwABUQecDO",
+      "surname": "tkXXfXHSDoXWFvFOQnCgNwO",
+      "email": "pziCbIHCinras",
+      "judiciaryType": "yunoMtVLFKzCbaMxeTf",
+      "isBenchChairman": false,
+      "isDeputy": false,
+      "position": "EKzVHIeQgPEIamLQqEGGJXOnwRgdo",
+      "active": true,
+      "createdOn": "Aug 11, 2012, 11:55:18 AM",
+      "updatedOn": "Sep 14, 2020, 8:13:57 PM"
+    }
+  ]
+}

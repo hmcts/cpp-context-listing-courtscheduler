@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="029" author="baris.ozturkmen"
+               logicalFilePath="029-rename-primary-keys.xml">
+        <dropPrimaryKey tableName="court_schedule"></dropPrimaryKey>
+        <addPrimaryKey columnNames="id" tableName="court_schedule" constraintName="pk_court_schedule"/>
+        <dropPrimaryKey tableName="allocated_listings"></dropPrimaryKey>
+        <addPrimaryKey columnNames="id" tableName="allocated_listings" constraintName="pk_allocated_listings"/>
+        <dropPrimaryKey tableName="courtscheduler_migration_status"></dropPrimaryKey>
+        <addPrimaryKey columnNames="oucode" tableName="courtscheduler_migration_status" constraintName="pk_courtscheduler_migration_status"/>
+    </changeSet>
+</databaseChangeLog>

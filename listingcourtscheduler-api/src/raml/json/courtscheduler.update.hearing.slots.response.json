@@ -1,0 +1,12 @@
+{
+  "schedules": [
+    {
+      "courtScheduleId": "1",
+      "hearingDate": "2025-04-25"
+    },
+    {
+      "courtScheduleId": "2",
+      "hearingDate": "2025-04-26"
+    }
+  ]
+}

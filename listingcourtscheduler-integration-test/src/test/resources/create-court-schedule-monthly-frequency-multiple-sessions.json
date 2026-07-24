@@ -1,0 +1,94 @@
+{
+  "sessions": [
+    {
+      "courtCentreId": "22c69328-70af-3e27-80c5-1a79e24903d2",
+      "courtRoomId": "2bd129f3-780e-37dd-b9aa-48690f91b69c",
+      "sessionType": "AM",
+      "businessType": "TRL",
+      "duration": 25,
+      "panel": "ADULT",
+      "repeatDays": [
+        "Tuesday",
+        "Thursday"
+      ],
+      "sessionStartTime": "10:00",
+      "sessionEndTime": "12:00",
+      "isOverbookingAllowed": true,
+      "isDraft": false,
+      "jurisdiction": "MAGISTRATES",
+      "index": 1
+    },
+    {
+      "courtCentreId": "49db2271-1941-3847-a7fb-dbd92b035e40",
+      "courtRoomId": "41a41156-0ca9-3352-999e-8d26274bb1aa",
+      "sessionType": "PM",
+      "businessType": "DVLA",
+      "duration": 15,
+      "panel": "YOUTH",
+      "repeatDays": [
+        "Monday",
+        "Friday"
+      ],
+      "sessionStartTime": "14:00",
+      "sessionEndTime": "17:00",
+      "isOverbookingAllowed": true,
+      "isDraft": false,
+      "jurisdiction": "MAGISTRATES",
+      "index": 2
+    }
+  ],
+  "repeatPattern": {
+    "frequency": "EVERY_MONTH",
+    "repeatFor": 1,
+    "startDate": "START_DATE",
+    "endDate": "END_DATE"
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

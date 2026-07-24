@@ -1,0 +1,13 @@
+{
+  "hearingSlots": [
+    {
+      "duration": 20,
+      "hearingStartTime": "2024-07-10T09:01:01.001Z",
+      "sessionDate": "2024-07-10",
+      "session": "AM",
+      "courtRoomId": 2330,
+      "ouCode": "B01LY00",
+      "hearingId": "1034dbcd-5ccd-4e39-bffd-42d3c767fdb8"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jms.JmsAutoConfiguration
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+  liquibase:
+    enabled: true
+
+# Authz + audit are enabled in integration tests; WireMock stubs in
+# src/integrationTest/resources/wiremock/mappings respond to the identity URL.
+authz:
+  http:
+    enabled: true
+    identity-url-template: ${CSCHED_BASE_URL:http://localhost:8189}/usersgroups-query-api/query/api/rest/usersgroups/users/logged-in-user/permissions
+    user-id-header: "CJSCPPUID"
+    action-header: "CPP-ACTION"
+    accept-header: "application/vnd.usersgroups.get-logged-in-user-permissions+json"
+    drools-classpath-pattern: "classpath:/uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl/**/*.drl"
+    reload-on-each-request: false
+    action-required: false
+    deny-when-no-rules: true
+    exclude-path-prefixes:
+      - "/actuator"
+      - "/error"
+      - "/usersgroups-query-api/"
+
+audit:
+  http:
+    enabled: true
+    openapi-rest-spec: openapi/courtscheduler-api.openapi.yml
+
+# Disable JMS broker connection in integration tests (audit publish is no-op without broker)
+cp:
+  audit:
+    enabled: false
+
+courtscheduler:
+  envelope:
+    enabled: true
+  # Bridge AzureBlobClientService's @Value("${courtscheduler.rotaslStorageConnectionString:}")
+  # to the IT-only CSCHED_ROTASLSTORAGECONNECTIONSTRING env var (set by
+  # docker-compose.integration.yml to point at the Azurite emulator). Production uses
+  # managed-identity / DefaultAzureCredential and leaves this property empty, so the
+  # mapping lives here in the integration profile rather than the shared application.yaml.
+  rotaslStorageConnectionString: ${CSCHED_ROTASLSTORAGECONNECTIONSTRING:}
+
+management:
+  health:
+    jms:
+      enabled: false
+  endpoint:
+    health:
+      probes:
+        enabled: false
+
+logging:
+  level:
+    root: INFO
+    uk.gov.moj.cpp.courtscheduler: DEBUG
+    uk.gov.moj.cpp.authz: DEBUG
+    uk.gov.hmcts.cp.filter.audit: INFO

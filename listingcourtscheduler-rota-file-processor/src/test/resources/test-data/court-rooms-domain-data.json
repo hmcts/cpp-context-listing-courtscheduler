@@ -1,0 +1,42 @@
+[
+  {
+    "id": "d082fc9c-0087-3272-8e94-4e25e9f716bd",
+    "rotaLocationId": 175,
+    "rotaVenueName": "Court 4 Cheltenham",
+    "rotaVenueId": 17730,
+    "courtroomId": "81d92a3d-fcc3-3c13-895f-f1451898ac49",
+    "cppCourtRoomId": 650,
+    "oucode": "B53DJ00",
+    "oucodeUUID": "394f75cb-ce37-352e-9426-632bcaaa9e9e",
+    "oucodeL3Name": "Cheltenham Magistrates' Court",
+    "oucodeL2Name": "Gloucestershire",
+    "courtroomName": "Courtroom 04"
+  },
+  {
+    "id": "e082fc9c-0087-3272-8e94-4e25e9f716be",
+    "rotaLocationId": 177,
+    "rotaVenueName": "Kimbrose Way",
+    "rotaVenueId": 17734,
+    "courtroomId": "81d92a3d-fcc3-3c13-895f-f1451898ac50",
+    "cppCourtRoomId": 2035,
+    "oucode": "B01KR00",
+    "oucodeUUID": "0c28787f-536d-410c-ad22-ebb2810ec67a",
+    "oucodeL3Name": "Cheltenham County Court",
+    "oucodeL2Name": "Gloucestershire",
+    "courtroomName": "Courtroom 01"
+  },
+  {
+    "id": "02e22f64-f377-3e67-85f4-35a30a5faa76",
+    "rotaLocationId": 77,
+    "rotaVenueName": "Court 9",
+    "cppCourtRoomId": 2988,
+    "rotaVenueId": 0,
+    "oucode": "B43KQ00",
+    "oucodeL3Name": "Reading Magistrates' Court",
+    "oucodeL2Name": "Thames Valley",
+    "oucodeL2Code": "43",
+    "oucodeUUID": "49db2271-1941-3847-a7fb-dbd92b035e40",
+    "courtroomName": "Courtroom 09",
+    "courtroomId": "41a41156-0ca9-3352-999e-8d26274bb1aa"
+  }
+]

@@ -1,0 +1,7 @@
+{
+  "courtScheduleIdList": [
+    { "courtScheduleId": "12345678-90ab-cdef-0123-456789abcdef" },
+    { "courtScheduleId": "abcdef12-3456-7890-abcd-ef1234567890" }
+  ],
+  "duration": 3
+}

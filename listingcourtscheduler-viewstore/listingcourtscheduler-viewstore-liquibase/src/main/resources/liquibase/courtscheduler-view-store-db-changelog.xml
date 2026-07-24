@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- endsWithFilter restricts to .xml so Liquibase 5+ doesn't try to parse the CSV
+         data files in the changesets/csv subdirectory as changelogs. The CSV files
+         are referenced explicitly by individual <loadData> changesets. -->
+    <includeAll path="liquibase/courtscheduler-view-store-db-changesets" endsWithFilter=".xml"/>
+
+</databaseChangeLog>

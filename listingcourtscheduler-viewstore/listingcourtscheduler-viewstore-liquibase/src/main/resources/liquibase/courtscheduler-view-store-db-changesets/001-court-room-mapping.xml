@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="001" author="sshetty" logicalFilePath="001-court-room-mapping.xml">
+        <createTable tableName="court_room_mapping">
+            <column name="id" type="VARCHAR(100)"/>
+            <column name="location_id" type="NUMERIC">
+                <constraints nullable="false"/>
+            </column>
+            <column name="venue_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_house_name" type="VARCHAR(255)"/>
+            <column name="court_room_name" type="VARCHAR(255)"/>
+            <column name="operational_unit" type="VARCHAR(255)"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_court_room_mapping"
+                     tableName="court_room_mapping">
+            <column name="location_id"/>
+            <column name="venue_name"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>
