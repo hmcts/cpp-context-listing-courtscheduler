@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: listingcourtscheduler-api
+  # Legacy code (CourtScheduleRepository <-> CourtScheduleRetryService) had a
+  # cyclic CDI dependency that Spring rejects by default.
+  main:
+    allow-circular-references: true
+  jackson:
+    default-property-inclusion: non_null
+  config:
+    import:
+      - "optional:configtree:/mnt/secrets/rpe/"
+      - "optional:classpath:application-datasource.yml"
+      - "optional:classpath:application-server-management.yml"
+      - "optional:classpath:application-azure.yml"
+      - "optional:classpath:application-authz.yml"
+      - "optional:classpath:application-audit.yml"
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS:false}
+
+server:
+  port: ${SERVER_PORT:8083}
+  # Preserve the existing UI-facing URL: /listingcourtscheduler-api/rest/courtscheduler/<path>
+  servlet:
+    context-path: /listingcourtscheduler-api/rest/courtscheduler
+
+courtscheduler:
+  # System user UUID (CJSCPPUID) used on outbound HTTP calls to other CPP context-services
+  # in place of the Justice Services framework's Requester#requestAsAdmin(...).
+  system-user-id: ${COURTSCHEDULER_SYSTEM_USER_ID:}
+  http:
+    # Outbound HTTP timeouts for CommonPlatformQueryClient (referencedata + usersgroups).
+    # Without these, JDK HttpClient defaults to "no timeout" and a stuck peer can wedge
+    # the @Async rota pipeline indefinitely.
+    connect-timeout-seconds: ${CSCHED_HTTP_CONNECT_TIMEOUT_SECONDS:5}
+    read-timeout-seconds: ${CSCHED_HTTP_READ_TIMEOUT_SECONDS:30}
+  rota:
+    months-of-provisional-data-to-populate: ${ROTA_MONTHS_OF_PROVISIONAL_DATA:6}
+    cycle-to-populate-length: ${ROTA_CYCLE_LENGTH_DAYS:28}
+
+# External services — both referencedata and usersgroups are served from the
+# same CPP gateway base URL.
+referencedata:
+  base-url: ${CSCHED_BASE_URL:http://localhost:8080}
+usersgroups:
+  base-url: ${CSCHED_BASE_URL:http://localhost:8080}
+
+# Redis cache (existing semantics)
+redis:
+  common-cache:
+    enabled: ${REDIS_COMMON_CACHE_ENABLED:false}
+    host: ${REDIS_COMMON_CACHE_HOST:localhost}
+    port: ${REDIS_COMMON_CACHE_PORT:6380}
+    use-ssl: ${REDIS_COMMON_CACHE_USE_SSL:false}
+    key-prefix: ${REDIS_COMMON_CACHE_KEY:courtscheduler}
+    key-ttl-seconds: ${REDIS_COMMON_CACHE_KEY_TTL:86400}
+    key-5-mins-ttl: ${REDIS_COMMON_CACHE_KEY_5_MINS_TTL:300}
+
+# Logging. The legacy WildFly deployment ran at root=ERROR; Spring Boot defaults
+# to INFO, which is far chattier. Default root to WARN to keep third-party noise
+# down, but keep this app's own packages at INFO so the rota-pipeline progress
+# lines stay visible. Both are overridable per env via the LOG_LEVEL_* env vars.
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}
+    uk.gov.moj.cpp.courtscheduler: ${LOG_LEVEL_COURTSCHEDULER:INFO}

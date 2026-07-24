@@ -1,0 +1,14 @@
+{
+  "judiciaries": [
+    {
+      "id": "9f39f876-3ff6-32b5-926e-c588e36a87b8",
+      "titlePrefix": "Mr",
+      "titleJudicialPrefix": "Recorder",
+      "surname": "Ainsworth",
+      "forenames": "Mark J",
+      "judiciaryType": "Recorder",
+      "emailAddress": "mark.ainsworth@ejudiciary.net",
+      "specialisms": ["MURDER", "ATTEMPTED_MURDER"]
+    }
+  ]
+}

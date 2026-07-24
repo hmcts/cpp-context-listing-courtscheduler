@@ -1,0 +1,20 @@
+{
+  "results": 2,
+  "pageCount": 1,
+  "hearingIds": [
+    {
+      "hearingId": "66b454b5-dbc3-427f-8c83-37d809cfdd5b",
+      "courtScheduleId": "1d59f213-e21f-42e8-a2d2-14b90eefa032",
+      "hearingDate": "2025-06-10",
+      "hearingDayCount": 3,
+      "hearingDayPosition": 1
+    },
+    {
+      "hearingId": "4c02e55d-e96d-4d3e-9280-634dcfc3a259",
+      "courtScheduleId": "314158e0-d935-41bb-9602-2ed1c9484f99",
+      "hearingDate": "2025-06-11",
+      "hearingDayCount": 3,
+      "hearingDayPosition": 2
+    }
+  ]
+}

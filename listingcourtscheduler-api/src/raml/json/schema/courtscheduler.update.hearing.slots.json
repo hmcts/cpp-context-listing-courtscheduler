@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "hearingSlots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "hearingId": {
+            "type": "string"
+          },
+          "courtScheduleId": {
+            "type": "string"
+          },
+          "bookingId": {
+            "type": "string"
+          },
+          "hearingStartTime": {
+            "type": "string"
+          },
+          "isSlotBased": {
+            "type": "boolean"
+          },
+          "ouCode": {
+            "type": "string"
+          },
+          "courtRoomId": {
+            "type": "integer"
+          },
+          "session": {
+            "type": "string"
+          },
+          "sessionDate": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hearingId",
+          "ouCode",
+          "courtRoomId",
+          "session",
+          "sessionDate",
+          "duration"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+<changeSet id="008" author="samialpak" logicalFilePath="008-add-rename-column-court-room-mapping.xml">
+    <renameColumn tableName="court_room_mapping" oldColumnName="court_room_id" newColumnName="court_room_number" />
+</changeSet>
+</databaseChangeLog>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="043" author="koray.kaya" logicalFilePath="044-drop-is-overbooking-exempt-column-add-source-column-allocated-listings.xml">
+        <dropColumn tableName="allocated_listings" columnName="is_overbooking_exempt"/>
+        <addColumn tableName="allocated_listings">
+            <column name="source" type="VARCHAR(255)" defaultValue="DEFAULT">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

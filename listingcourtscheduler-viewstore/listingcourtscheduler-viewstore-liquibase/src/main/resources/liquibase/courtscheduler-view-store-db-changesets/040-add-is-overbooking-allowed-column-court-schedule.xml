@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="040.1" author="koray.kaya" logicalFilePath="040-add-is-overbooking-allowed-column-court-schedule.xml">
+        <addColumn tableName="court_schedule">
+            <column name="is_overbooking_allowed" type="BOOLEAN" defaultValue="false" />
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="040.2" author="koray.kaya"
+               logicalFilePath="040-add-is-overbooking-allowed-column-court-schedule.xml">
+        <!-- Step 1: Populate new default values for existing rows -->
+        <update tableName="court_schedule">
+            <column name="session_start_time" valueComputed="CASE
+        WHEN court_session = 'AM' THEN (session_start || ' 10:00:00')::timestamp
+        WHEN court_session = 'PM' THEN (session_start || ' 14:00:00')::timestamp
+        WHEN court_session = 'AD' THEN (session_start || ' 10:00:00')::timestamp
+        ELSE NULL
+    END"/>
+            <column name="session_end_time" valueComputed="CASE
+        WHEN court_session = 'AM' THEN (session_start || ' 13:00:00')::timestamp
+        WHEN court_session = 'PM' THEN (session_start || ' 17:00:00')::timestamp
+        WHEN court_session = 'AD' THEN (session_start || ' 17:00:00')::timestamp
+        ELSE NULL
+    END"/>
+        </update>
+    </changeSet>
+</databaseChangeLog>

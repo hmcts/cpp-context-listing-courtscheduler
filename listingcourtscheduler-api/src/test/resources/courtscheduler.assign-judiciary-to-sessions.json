@@ -1,0 +1,15 @@
+{
+  "courtScheduleIds": [
+    "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111"
+  ],
+  "judiciary": [
+    {
+      "judicialId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "judicialRoleType": {
+        "judiciaryType": "MAGISTRATE"
+      },
+      "isDeputy": false,
+      "isBenchChairman": true
+    }
+  ]
+}

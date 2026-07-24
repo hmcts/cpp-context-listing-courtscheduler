@@ -1,0 +1,589 @@
+{
+  "rotaBusinessTypes": [
+    {
+      "id": "ef53a0b9-008b-323b-b3f5-deeb73a1ad2b",
+      "seqNum": 10,
+      "typeCode": "APP",
+      "typeDescription": "Applications",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "c66d90c8-8ef2-36d8-b033-e24a6ee09c8c",
+      "seqNum": 20,
+      "typeCode": "BAIL",
+      "typeDescription": "Bail Case",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "125ac878-8a67-34d1-9ea8-63ce0244b18d",
+      "seqNum": 30,
+      "typeCode": "BRE",
+      "typeDescription": "Breaches",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "cd7110f3-56b8-3de2-b8fc-23043c6c2448",
+      "seqNum": 50,
+      "typeCode": "CJU",
+      "typeDescription": "Community Justice",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "e60737d7-40a7-49f5-a7c3-5a3608a39151",
+      "seqNum": 680,
+      "typeCode": "CJUT",
+      "typeDescription": "Community Justice Trials",
+      "slot": false,
+      "duration": true,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "b1749a7a-5967-49d7-a22b-54d09189369d",
+      "seqNum": 660,
+      "typeCode": "CM",
+      "typeDescription": "Child Maintenance",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "501e01d4-5ec1-32a3-af03-d3aa9af83693",
+      "seqNum": 60,
+      "typeCode": "CON",
+      "typeDescription": "Confiscation",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "48e90cb4-43fd-3101-884c-6627465765e9",
+      "seqNum": 70,
+      "typeCode": "COU",
+      "typeDescription": "Council Tax",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "af2d44aa-3f83-3cfd-9f16-42a3de6bf09b",
+      "seqNum": 80,
+      "typeCode": "CRC",
+      "typeDescription": "Crown Court",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "a3a3ef99-27e6-3bc8-8485-ac9fea74a48e",
+      "seqNum": 90,
+      "typeCode": "CUST",
+      "typeDescription": "Custody Case",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "9f7b3aa0-7fd8-4707-bdf0-c32ab3b48b86",
+      "seqNum": 600,
+      "typeCode": "DAA",
+      "typeDescription": "Domestic Abuse Adjournments",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "2d7c506e-1e67-465b-bbb7-3f2ac8e8e808",
+      "seqNum": 560,
+      "typeCode": "DAFL",
+      "typeDescription": "Domestic Abuse First Listing",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "45bcb2f7-664a-4729-96f7-056304588359",
+      "seqNum": 610,
+      "typeCode": "DAV",
+      "typeDescription": "Domestic Abuse Video links",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "1d00228f-ae2f-4b53-9200-cc2c7a773f87",
+      "seqNum": 540,
+      "typeCode": "DISQ",
+      "typeDescription": "Disq-Traffic Disqualification",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2024-03-26",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "a7836766-3529-47af-989e-024b815ebacf",
+      "seqNum": 640,
+      "typeCode": "DOGS",
+      "typeDescription": "Dogs Sentence",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "b2ab6d84-f582-4490-95d6-40a516be3d4e",
+      "seqNum": 650,
+      "typeCode": "DOGT",
+      "typeDescription": "Dogs Trials",
+      "slot": false,
+      "duration": true,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "48905d5d-849f-32d5-a849-9bcfad2e5926",
+      "seqNum": 100,
+      "typeCode": "DRR",
+      "typeDescription": "Drug Rehab Reviews",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "0c90ad7e-7c8d-3bd6-a52d-c4b7ec107a78",
+      "seqNum": 120,
+      "typeCode": "DVLA",
+      "typeDescription": "DVLA",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "e9be1fff-4ff3-32ba-aa8a-ce6dfb9b2c3d",
+      "seqNum": 130,
+      "typeCode": "DVP",
+      "typeDescription": "Domestic Abuse PSR",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "d617a54a-22f6-42eb-957e-1df7e740e7f1",
+      "seqNum": 700,
+      "typeCode": "DVSA",
+      "typeDescription": "DVSA",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-04-16",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "e19061e1-d3ad-34f8-afe2-1eb3d9ee0443",
+      "seqNum": 140,
+      "typeCode": "DVT",
+      "typeDescription": "Domestic Abuse Trials",
+      "slot": false,
+      "duration": true,
+      "validFrom": "2024-12-30",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "5fc8ddb9-355d-322c-9a0a-35ddf6f06509",
+      "seqNum": 160,
+      "typeCode": "ENF",
+      "typeDescription": "Enforcement",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "ddc64523-ace5-3dae-bb9b-1df4dbac0b85",
+      "seqNum": 170,
+      "typeCode": "EXT",
+      "typeDescription": "Extradition Courts",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "d5ab7c19-9281-3492-b838-a2db01e1e287",
+      "seqNum": 180,
+      "typeCode": "G1T",
+      "typeDescription": "Gateway 1 Trials",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "715a572e-b942-333f-8a84-e344f30d64f2",
+      "seqNum": 190,
+      "typeCode": "G2T",
+      "typeDescription": "Gateway 2 Trials",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "1cd5db23-8f5a-36b1-b8f8-a116ea2f64d4",
+      "seqNum": 200,
+      "typeCode": "GAP",
+      "typeDescription": "Guilty Anticipated Plea",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "9ae10156-2b09-432c-ba8b-30bf00c3d0d3",
+      "seqNum": 590,
+      "typeCode": "GAPA",
+      "typeDescription": "Guilty Anticipated Plea Adjournments",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "e7bfbe73-6c09-3402-9b9d-956107369a26",
+      "seqNum": 210,
+      "typeCode": "GEN",
+      "typeDescription": "General",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "56f576a0-d160-3dca-af92-21323227fe81",
+      "seqNum": 230,
+      "typeCode": "GW1",
+      "typeDescription": "Gateway 1 Non Trial",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "acddce54-d991-3db7-90ab-908df87f99e5",
+      "seqNum": 240,
+      "typeCode": "GW2",
+      "typeDescription": "Gateway 2 Non Trial",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "f3203d0d-50e2-3ddc-b0cb-26c677e2ca6d",
+      "seqNum": 250,
+      "typeCode": "IJ",
+      "typeDescription": "International Jurisdiction",
+      "slot": false,
+      "duration": true,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "5ae194bf-89ec-31bc-b290-bca1697e8b77",
+      "seqNum": 260,
+      "typeCode": "IJH",
+      "typeDescription": "International Jurisdiction Hearings",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "acc3a410-933f-35fe-b073-857eb1a3ac8c",
+      "seqNum": 270,
+      "typeCode": "IJV",
+      "typeDescription": "International Jurisdiction Video Link",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "97f0cc04-8290-334b-954f-21bfc8ae1dcb",
+      "seqNum": 300,
+      "typeCode": "LA",
+      "typeDescription": "Local Authority",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "45256669-3fb9-3165-b01b-08e92d2c8048",
+      "seqNum": 280,
+      "typeCode": "LAE",
+      "typeDescription": "Local Authority Education",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "db49c2af-f412-34ed-bc6f-5a2383a0f7b9",
+      "seqNum": 290,
+      "typeCode": "LIC",
+      "typeDescription": "Licensing Appeals",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "ec7721f2-5d2a-4e06-82f1-f6b799286614",
+      "seqNum": 690,
+      "typeCode": "NCFL",
+      "typeDescription": "Non CPS First Listing",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "2e99f7b4-9510-355f-bf6d-014ec9df42a4",
+      "seqNum": 320,
+      "typeCode": "NCPG",
+      "typeDescription": "Non CPS General",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "3948fc81-bd83-36c9-8ee0-861d35c2ebd7",
+      "seqNum": 330,
+      "typeCode": "NCPT",
+      "typeDescription": "Non CPS Trial",
+      "slot": false,
+      "duration": true,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "6fa077d7-0805-3f61-89fc-bf19e7875f0a",
+      "seqNum": 340,
+      "typeCode": "NGAP",
+      "typeDescription": "Not Guilty Anticipated Plea",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "08fc64a8-7d49-47d9-874f-8b4ac9618989",
+      "seqNum": 580,
+      "typeCode": "NGPA",
+      "typeDescription": "Not Guilty Anticipated Plea Adjournments",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "744e359b-30f5-3a90-82dd-2da8334337ad",
+      "seqNum": 360,
+      "typeCode": "PIA",
+      "typeDescription": "Plea in abscence",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "5aa15e6c-8ebb-3fcf-92f2-a0f15537f252",
+      "seqNum": 370,
+      "typeCode": "POCA",
+      "typeDescription": "Proceeds of Crime Applications",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "e7b81c0b-b4d6-42da-8b9c-46c320e4d8b2",
+      "seqNum": 670,
+      "typeCode": "PROT",
+      "typeDescription": "Protest Trials",
+      "slot": false,
+      "duration": true,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "fb07e036-c2ac-3639-a293-96b65be99891",
+      "seqNum": 380,
+      "typeCode": "PSR",
+      "typeDescription": "Pre-Sentence Report",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "c1aa4879-ab50-3daa-a192-e52509331d3d",
+      "seqNum": 390,
+      "typeCode": "PSV",
+      "typeDescription": "Problem Solving",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "88043bb3-604e-36fc-958f-3655a69619d2",
+      "seqNum": 410,
+      "typeCode": "RC",
+      "typeDescription": "Regulatory Cases",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "4b9d3657-3a1c-31d1-b535-8e3a005d655d",
+      "seqNum": 400,
+      "typeCode": "REM",
+      "typeDescription": "Remands",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "d913e7ad-6631-31e5-8a32-aeca7fb2868c",
+      "seqNum": 430,
+      "typeCode": "TER",
+      "typeDescription": "Terrorism",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "e3eff364-96ca-31a6-8c51-67f4ff370ee1",
+      "seqNum": 440,
+      "typeCode": "TFL",
+      "typeDescription": "Transport For London",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "14183775-2b3a-4b73-afcb-b54da85d5cf2",
+      "seqNum": 630,
+      "typeCode": "TFLT",
+      "typeDescription": "TFL Trials",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "9bb5c1b3-ac9b-3310-8006-6632f7260217",
+      "seqNum": 450,
+      "typeCode": "TPA",
+      "typeDescription": "Trains",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "b07f7628-5d78-30e6-a3ec-6b548d645b7d",
+      "seqNum": 460,
+      "typeCode": "TRF",
+      "typeDescription": "Traffic",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "8f092522-c76b-4737-8056-2b1d763e69b3",
+      "seqNum": 570,
+      "typeCode": "TRFL",
+      "typeDescription": "Traffic First Listing",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "0e9c19a2-6dda-3297-b2ac-0223e8c593dd",
+      "seqNum": 470,
+      "typeCode": "TRL",
+      "typeDescription": "Trial",
+      "slot": false,
+      "duration": true,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "153bad39-9d4a-3c4e-8831-07eecdcafa02",
+      "seqNum": 480,
+      "typeCode": "TRPA",
+      "typeDescription": "Trams",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "6b6d477f-d27c-3e1e-bb56-ae256838308b",
+      "seqNum": 490,
+      "typeCode": "TRT",
+      "typeDescription": "Traffic Trial",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "2e11a775-4702-3ecc-8907-2079af22be08",
+      "seqNum": 420,
+      "typeCode": "TVLO",
+      "typeDescription": "Television Licensing",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "660df064-0aa5-3cb3-9f49-3a0ea11df7e6",
+      "seqNum": 510,
+      "typeCode": "VIR",
+      "typeDescription": "Virtual Court",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "39e8ac54-f3ae-3e79-913e-7e94ac5b8fac",
+      "seqNum": 520,
+      "typeCode": "VLT",
+      "typeDescription": "Video Link Timed",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "2967d2f2-f57f-307b-8dfb-6c86353d1e99",
+      "seqNum": 530,
+      "typeCode": "VTR",
+      "typeDescription": "Video Link Trial",
+      "slot": true,
+      "duration": false,
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "1d00228f-ae2f-4b53-9200-cc2c7a773f88",
+      "seqNum": 550,
+      "typeCode": "YFL",
+      "typeDescription": "Youth First Listing",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2024-12-02",
+      "jurisdiction": "MAGISTRATES"
+    },
+    {
+      "id": "61fc441c-a322-4fa5-949d-6ed4a86a121f",
+      "seqNum": 620,
+      "typeCode": "YTHA",
+      "typeDescription": "Youth Adjournments",
+      "slot": true,
+      "duration": false,
+      "validFrom": "2025-02-13",
+      "jurisdiction": "MAGISTRATES"
+    }
+  ]
+}

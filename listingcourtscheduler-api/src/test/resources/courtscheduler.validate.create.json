@@ -1,0 +1,59 @@
+{
+  "sessions":
+  [
+    {
+      "courtCentreId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+      "courtRoomId": "9e4932f7-97b2-3010-b942-ddd2624e4dd8",
+      "sessionType": "AM",
+      "businessType": "DVLA",
+      "duration": 20,
+      "panel": "ADULT",
+      "repeatDays":
+      [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ]
+    },
+    {
+      "courtCentreId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+      "courtRoomId": "b4562684-9209-3ec4-a544-7f80dabd94d8",
+      "sessionType": "PM",
+      "businessType": "DVLA",
+      "duration": 20,
+      "panel": "ADULT",
+      "repeatDays":
+      [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ]
+    }
+  ],
+  "sessionToBeAdded":
+  {
+    "courtCentreId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+    "courtRoomId": "b4562684-9209-3ec4-a544-7f80dabd94d8",
+    "sessionType": "PM",
+    "businessType": "DVLA",
+    "duration": 20,
+    "panel": "ADULT",
+    "repeatDays":
+    [
+      "Monday"
+    ]
+  },
+  "repeatPattern":
+  {
+    "startDate": "2024-07-29",
+    "endDate": "2024-10-27",
+    "repeatFor": 1,
+    "frequency": "EVERY_WEEK"
+  }
+}

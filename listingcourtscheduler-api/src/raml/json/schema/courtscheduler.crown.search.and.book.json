@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "courtscheduler.crown.search.and.book — CROWN search-and-book, single OR multi-day. Multi-day when durationInMinutes > 360 OR endDate is after hearingDate. courtScheduleId is an OPTIONAL anchor.",
+  "type": "object",
+  "properties": {
+    "courtCentreId": { "type": "string" },
+    "hearingDate": { "type": "string", "format": "date" },
+    "endDate": { "type": "string", "format": "date" },
+    "durationInMinutes": { "type": "integer" },
+    "courtRoomId": { "type": "string" },
+    "earliestHearingTime": { "type": "string" },
+    "courtScheduleId": { "type": "string" },
+    "source": { "type": "string", "enum": ["CROWN_FB_LIST", "CROWN_FB_ADJOURN", "CROWN_FB_UPDATE"] }
+  },
+  "required": ["courtCentreId", "hearingDate"],
+  "additionalProperties": false
+}

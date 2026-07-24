@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "courtscheduler.mags.search.and.book — MAGISTRATES search-and-book (SPI route), single OR multi-day. MAGS never anchors (no courtScheduleId). Multi-day when durationInMinutes > 360 OR endDate is after hearingDate; multi-day sessions are CONSECUTIVE weekdays (one room + business type).",
+  "type": "object",
+  "properties": {
+    "courtCentreId": { "type": "string" },
+    "hearingDate": { "type": "string", "format": "date" },
+    "endDate": { "type": "string", "format": "date" },
+    "durationInMinutes": { "type": "integer" },
+    "courtRoomId": { "type": "string" },
+    "hearingStartTime": { "type": "string" },
+    "hearingSessionDateSearchCutOff": { "type": "string", "format": "date" },
+    "isPolice": { "type": "boolean" }
+  },
+  "required": ["courtCentreId", "hearingDate"],
+  "additionalProperties": false
+}

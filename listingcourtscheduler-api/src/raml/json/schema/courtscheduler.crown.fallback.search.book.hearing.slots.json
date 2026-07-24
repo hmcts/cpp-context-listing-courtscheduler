@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "hearingId": {
+      "type": "string"
+    },
+    "courtCentreId": {
+      "type": "string"
+    },
+    "courtRoomId": {
+      "type": "string"
+    },
+    "hearingDate": {
+      "type": "string"
+    },
+    "earliestHearingTime": {
+      "type": "string"
+    },
+    "durationInMinutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 360
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "CROWN_FB_LIST",
+        "CROWN_FB_ADJOURN",
+        "CROWN_FB_UPDATE"
+      ]
+    }
+  },
+  "required": [
+    "hearingId",
+    "courtCentreId",
+    "hearingDate",
+    "durationInMinutes",
+    "source"
+  ]
+}

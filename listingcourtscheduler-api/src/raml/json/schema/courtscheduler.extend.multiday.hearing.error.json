@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "NO_EXISTING_ALLOCATION",
+        "START_DATE_CHANGE_NOT_ALLOWED",
+        "NO_AVAILABILITY",
+        "INVALID_DATE_RANGE"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "unavailableDates": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "date"
+      }
+    }
+  },
+  "required": ["errorCode"],
+  "additionalProperties": false
+}

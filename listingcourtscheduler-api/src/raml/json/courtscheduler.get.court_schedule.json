@@ -1,0 +1,144 @@
+{
+  "courtSchedules": [
+    {
+      "courtRoomId": "WVjhGEBNvbbjpkzwxto",
+      "courtRoomNumber": 2345,
+      "sessions": [
+        {
+          "courtScheduleId": "RjmueCnClLfGZXNpngWHdOelSWXhE",
+          "listingProfileId": "bIAkijRvqQYzYSGk",
+          "ouCode": "SJQBDOnjjqrL",
+          "courtHouseId": "bOhSiTykkDcApEKLyotT",
+          "courtHouseName": "UelLISQnAtoiogGlveIhHdrc",
+          "courtRoomName": "MmoMdWqdUDTSsrQoerHDOLLOIqXeN",
+          "operationalUnit": "uEWrahOuMBmfaULmQrBTpyQyMUhRajH",
+          "businessType": "IVSEjnkyDFCUynMGPv",
+          "panel": "SkPeSEquziJSThLD",
+          "courtSession": "OssZYTmGGZgzm",
+          "active": true,
+          "slotBased": false,
+          "sessionDate": "Dec 27, 2027, 6:06:32 PM",
+          "maxSlots": 2097164855,
+          "maxDuration": 1569984805,
+          "availableSlots": -1819024539,
+          "availableDuration": -1716884195,
+          "totalBooked" : 120,
+          "judiciaries": [
+            {
+              "judiciaryId": "9f39f876-3ff6-32b5-926e-c588e36a87b8",
+              "title": "His Honour",
+              "forenames": "Mark J",
+              "surname": "Ainsworth",
+              "emailAddress": "mark.ainsworth@ejudiciary.net",
+              "judiciaryType": "Recorder",
+              "isBenchChairman": true,
+              "isDeputy": false
+            }
+          ],
+          "isDraft": false,
+          "jurisdiction": "MAGISTRATES"
+        },
+        {
+          "courtScheduleId": "AjmueCnClLfGZXNpngWHdOelSWXhE",
+          "listingProfileId": "bIAkijRvqQYzYSGk",
+          "ouCode": "SJQBDOnjjqrL",
+          "courtHouseId": "bOhSiTykkDcApEKLyotT",
+          "courtHouseName": "UelLISQnAtoiogGlveIhHdrc",
+          "courtRoomName": "MmoMdWqdUDTSsrQoerHDOLLOIqXeN",
+          "operationalUnit": "uEWrahOuMBmfaULmQrBTpyQyMUhRajH",
+          "businessType": "IVSEjnkyDFCUynMGPv",
+          "panel": "SkPeSEquziJSThLD",
+          "courtSession": "OssZYTmGGZgzm",
+          "active": true,
+          "slotBased": false,
+          "sessionDate": "Dec 27, 2027, 6:06:32 PM",
+          "maxSlots": 2097164855,
+          "maxDuration": 1569984805,
+          "availableSlots": -1819024539,
+          "availableDuration": -1716884195,
+          "totalBooked": 0,
+          "isDraft": false,
+          "jurisdiction": "CROWN"
+        }
+      ]
+    },
+    {
+      "courtRoomId": "asfadfgh",
+      "courtRoomNumber": 6788,
+      "sessions": [
+        {
+          "courtScheduleId": "RjmueCnClLfGZXNpngWfdgdOelSWXhE",
+          "listingProfileId": "bIAkijRvqQYzYSGk",
+          "ouCode": "SJQBDOnjjqrL",
+          "courtHouseId": "bOhSiTykkDcApEKLyotT",
+          "courtHouseName": "UelLISQnAtoiogGlveIhHdrc",
+          "courtRoomName": "MmoMdWqdUDTSsrQoerHDOLLOIqXeN",
+          "operationalUnit": "uEWrahOuMBmfaULmQrBTpyQyMUhRajH",
+          "businessType": "IVSEjnkyDFCUynMGPv",
+          "panel": "SkPeSEquziJSThLD",
+          "courtSession": "OssZYTmGGZgzm",
+          "active": true,
+          "slotBased": false,
+          "sessionDate": "Dec 27, 2027, 6:06:32 PM",
+          "maxSlots": 2097164855,
+          "maxDuration": 1569984805,
+          "availableSlots": -1819024539,
+          "availableDuration": -1716884195,
+          "totalBooked": 0,
+          "isDraft": false,
+          "jurisdiction": "MAGISTRATES"
+        },
+        {
+          "courtScheduleId": "dffg",
+          "listingProfileId": "bIAkijRvqQYzYSGk",
+          "ouCode": "SJQBDOnjjqrL",
+          "courtHouseId": "bOhSiTykkDcApEKLyotT",
+          "courtHouseName": "UelLISQnAtoiogGlveIhHdrc",
+          "courtRoomName": "MmoMdWqdUDTSsrQoerHDOLLOIqXeN",
+          "operationalUnit": "uEWrahOuMBmfaULmQrBTpyQyMUhRajH",
+          "businessType": "IVSEjnkyDFCUynMGPv",
+          "panel": "SkPeSEquziJSThLD",
+          "courtSession": "OssZYTmGGZgzm",
+          "active": true,
+          "slotBased": false,
+          "sessionDate": "Dec 27, 2027, 6:06:32 PM",
+          "maxSlots": 2097164855,
+          "maxDuration": 1569984805,
+          "availableSlots": -1819024539,
+          "availableDuration": -1716884195,
+          "totalBooked": 0,
+          "isDraft": false,
+          "jurisdiction": "CROWN"
+        },
+        {
+          "courtScheduleId": "dffg",
+          "listingProfileId": "bIAkijRvqQYzYSGk",
+          "ouCode": "SJQBDOnjjqrL",
+          "courtHouseId": "bOhSiTykkDcApEKLyotT",
+          "courtHouseName": "UelLISQnAtoiogGlveIhHdrc",
+          "courtRoomName": "MmoMdWqdUDTSsrQoerHDOLLOIqXeN",
+          "operationalUnit": "uEWrahOuMBmfaULmQrBTpyQyMUhRajH",
+          "businessType": "IVSEjnkyDFCUynMGPv",
+          "panel": "SkPeSEquziJSThLD",
+          "courtSession": "OssZYTmGGZgzm",
+          "active": true,
+          "slotBased": false,
+          "sessionDate": "Dec 27, 2027, 6:06:32 PM",
+          "maxSlots": 0,
+          "maxDuration": 0,
+          "availableSlots": 0,
+          "availableDuration": 0,
+          "totalBooked": 90,
+          "allDaySplit": true,
+          "maxDurationForMorning": 120,
+          "maxDurationForAfternoon": 60,
+          "availableDurationForMorning": 60,
+          "availableDurationForAfternoon": 30,
+          "isDraft": false,
+          "jurisdiction": "MAGISTRATES"
+        }
+      ]
+    }
+  ]
+}
+
