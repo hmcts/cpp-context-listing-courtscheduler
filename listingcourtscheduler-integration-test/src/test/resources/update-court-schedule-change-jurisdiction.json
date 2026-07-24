@@ -1,0 +1,12 @@
+{
+  "courtScheduleId": "COURT_SCHEDULE_ID",
+  "courtRoomId": "COURT_ROOM_ID",
+  "courtSession": "SESSION_TYPE",
+  "businessType": "BUSINESS_TYPE",
+  "jurisdiction": "CROWN",
+  "isDraft": false,
+  "maxSlots": 10
+}
+
+
+

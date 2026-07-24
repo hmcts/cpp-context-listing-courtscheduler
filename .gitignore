@@ -1,0 +1,75 @@
+# Java
+*.class
+
+# Package Files
+*.jar
+*.war
+*.ear
+*.rar
+*.puml
+
+# Keep the Gradle wrapper jar so fresh checkouts can bootstrap ./gradlew
+!gradle/wrapper/gradle-wrapper.jar
+
+# Thumbnails
+Thumbs.db
+
+# Object files (no binaries in git repos!)
+*.obj
+*.exe
+*.so
+*.zip
+*.tar
+*.gz
+
+# Mac
+.fseventsd/
+.Spotlight-V100/
+.Trashes/
+._.Trashes
+
+# Eclipse
+.classpath
+.compatibility
+.project
+.pydevproject
+.factorypath
+.checkstyle
+.metadata/
+.settings/
+.pmd
+.springBeans
+.tern-project
+
+# IntelliJ
+.idea/
+*.iml
+*.vscode/
+
+# Maven
+target/
+.mvn/
+
+# Gradle
+build/
+.gradle/
+
+# Claude Code session state
+.claude/
+
+# Subversion
+.svn/
+
+# Misc
+*~
+*.log
+*.orig
+*.sonar
+deployWars.sh
+buildContexts.sh
+
+
+lightning-jenkins.properties
+**/.DS_Store
+
+.vscode/settings.json

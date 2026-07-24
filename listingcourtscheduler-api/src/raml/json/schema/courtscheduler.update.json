@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "courtScheduleId": {
+      "$ref": "#/definitions/uuid"
+    },
+    "courtRoomId": {
+      "$ref": "#/definitions/uuid"
+    },
+    "courtSession": {
+      "type": "string",
+      "enum": [
+        "AM",
+        "PM",
+        "AD"
+      ]
+    },
+    "businessType": {
+      "type": "string"
+    },
+    "panel": {
+      "type": "string",
+      "enum": [
+        "YOUTH",
+        "ADULT"
+      ]
+    },
+    "maxSlots": {
+      "type": "integer"
+    },
+    "maxDuration": {
+      "type": "integer"
+    },
+    "maxDurationForMorning": {
+      "type": "integer"
+    },
+    "maxDurationForAfternoon": {
+      "type": "integer"
+    },
+    "allDaySplit": {
+      "type": "boolean"
+    },
+    "sessionStartTime": {
+      "type": "string",
+      "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "sessionEndTime": {
+      "type": "string",
+      "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "isOverbookingAllowed": {"type": "boolean"},
+    "jurisdiction": {
+      "type": "string",
+      "enum": ["MAGISTRATES", "CROWN"]
+    },
+    "isDraft": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "courtScheduleId",
+    "courtRoomId",
+    "courtSession",
+    "businessType",
+    "jurisdiction"
+  ],
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "allOf": [
+        {
+          "properties": {
+            "jurisdiction": { "enum": ["CROWN"] }
+          }
+            },
+            {
+              "required": ["isDraft"]
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "properties": {
+                "jurisdiction": { "enum": ["MAGISTRATES"] }
+              }
+            },
+            {
+              "not": {
+                "required": ["isDraft"]
+              }
+            },
+            {
+              "required": ["panel"]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+    }
+  }
+}

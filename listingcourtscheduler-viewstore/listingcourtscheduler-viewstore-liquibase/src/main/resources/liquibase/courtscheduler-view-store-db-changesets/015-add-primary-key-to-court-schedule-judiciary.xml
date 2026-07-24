@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="015" author="mohamed"
+               logicalFilePath="015-add-primary-key-to-court-schedule-judiciary.xml">
+
+        <addNotNullConstraint tableName="court_schedule_judiciary" columnName="judiciary_id"
+                              columnDataType="VARCHAR(100)"/>
+
+        <addPrimaryKey columnNames="court_schedule_id,judiciary_id"
+                       constraintName="combination_primary_key"
+                       tableName="court_schedule_judiciary"/>
+
+    </changeSet>
+</databaseChangeLog>

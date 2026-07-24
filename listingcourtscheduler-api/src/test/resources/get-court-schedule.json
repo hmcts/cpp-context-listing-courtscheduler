@@ -1,0 +1,9 @@
+{
+  "courtCentreId": "123",
+  "courtRoomId" : "123",
+  "businessType" : "124",
+  "sessionStartDate": "2024-12-10",
+  "sessionEndDate": "2024-12-10",
+  "pageSize": "10",
+  "pageNumber": "1"
+}

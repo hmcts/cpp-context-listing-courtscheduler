@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "errorGroups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "courtScheduleId": {
+                  "type": "string"
+                },
+                "listingProfileId": {
+                  "type": "string"
+                },
+                "ouCode": {
+                  "type": "string"
+                },
+                "courtRoomNumber": {
+                  "type": "integer"
+                },
+                "courtHouseId": {
+                  "type": "string"
+                },
+                "courtHouseName": {
+                  "type": "string"
+                },
+                "operationalUnit": {
+                  "type": "string"
+                },
+                "businessType": {
+                  "type": "string"
+                },
+                "businessDescription": {
+                  "type": "string"
+                },
+                "courtRoomId": {
+                  "type": "string"
+                },
+                "courtRoomName": {
+                  "type": "string"
+                },
+                "panel": {
+                  "type": "string"
+                },
+                "courtSession": {
+                  "type": "string"
+                },
+                "slotBased": {
+                  "type": "boolean"
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "sessionDate": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "maxSlots": {
+                  "type": "integer"
+                },
+                "maxDuration": {
+                  "type": "integer"
+                },
+                "availableSlots": {
+                  "type": "integer"
+                },
+                "availableDuration": {
+                  "type": "integer"
+                },
+                "totalBooked": {
+                  "type": "integer"
+                },
+                "allDaySplit": {
+                  "type": "boolean"
+                },
+                "maxDurationForMorning": {
+                  "type": "integer"
+                },
+                "maxDurationForAfternoon": {
+                  "type": "integer"
+                },
+                "minHearingTime": {
+                  "type": "string"
+                },
+                "maxHearingTime": {
+                  "type": "string"
+                },
+                "totalBookedForMorning": {
+                  "type": "integer"
+                },
+                "totalBookedForAfternoon": {
+                  "type": "integer"
+                },
+                "availableDurationForMorning": {
+                  "type": "integer"
+                },
+                "availableDurationForAfternoon": {
+                  "type": "integer"
+                },
+                "sessionStartTime": {
+                  "type": "string",
+                  "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+                },
+                "sessionEndTime": {
+                  "type": "string",
+                  "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+                },
+                "isOverbookingAllowed": {
+                  "type": "boolean"
+                },
+                "isDraft": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessions",
+          "error"
+        ]
+      }
+    }
+  },
+  "required": [
+    "errorGroups"
+  ]
+}
+

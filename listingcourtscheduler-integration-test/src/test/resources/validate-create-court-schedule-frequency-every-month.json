@@ -1,0 +1,35 @@
+{
+  "sessions": [],
+  "sessionToBeAdded": {
+    "courtCentreId": "8cea5952-851a-3142-8a0a-f80c91368ccd",
+    "courtRoomId": "e06e1734-aa04-3ec0-b14c-400edab8b831",
+    "sessionType": "AD",
+    "businessType": "FWT",
+    "duration": 100,
+    "allDaySplit": false,
+    "panel": "ADULT",
+    "repeatDays": ["Friday"],
+    "isDraft": true,
+    "index": 4,
+    "jurisdiction": "CROWN"
+  },
+  "repeatPattern": {
+    "frequency": "EVERY_MONTH",
+    "repeatFor": 1,
+    "startDate": "START_DATE",
+    "endDate": "END_DATE"
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
