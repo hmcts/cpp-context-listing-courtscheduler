@@ -1,0 +1,930 @@
+#%RAML 0.8
+title: Court Scheduler API
+baseUri: http://localhost:8080/listingcourtscheduler-api/rest/courtscheduler
+mediaType: application/json
+protocols: [ HTTP, HTTPS ]
+
+/courtschedule:
+  description: |
+    Create Court Schedule
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.create+json
+          name: courtscheduler.create
+      ...
+    body:
+      application/vnd.courtscheduler.create+json:
+        schema: !include json/schema/courtscheduler.create.json
+        example: !include json/courtscheduler.create.json
+    responses:
+      202:
+        description: OK
+
+  get:
+    description: |
+      Query via parameters
+      ...
+      (mapping):
+          responseType: application/vnd.courtscheduler.get+json
+          name: courtscheduler.get.court_schedule
+      ...
+    queryParameters:
+      courtCentreId:
+        type: string
+        required: true
+      courtRoomId:
+        type: string
+        required: false
+      businessType:
+        type: string
+        required: false
+      sessionStartDate:
+        type: string
+        required: true
+      sessionEndDate:
+        type: string
+        required: true
+      isDraft:
+        description: isDraft
+        type: boolean
+        required: false
+      pageSize:
+        description: Number of records to be displayed per page
+        type: string
+        required: true
+      pageNumber:
+        description: currentPageNumber details
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.get+json:
+            schema: !include json/schema/courtscheduler.get.court_schedule.json
+            example: !include json/courtscheduler.get.court_schedule.json
+
+/courtschedule/edit:
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.update+json
+          name: courtscheduler.update
+      ...
+    body:
+      application/vnd.courtscheduler.update+json:
+        schema: !include json/schema/courtscheduler.update.json
+        example: !include json/courtscheduler.update.json
+    responses:
+      202:
+        description: OK
+
+/courtschedule/assign.courtroom:
+  post:
+    description: |
+      Assign a courtroom to multiple court sessions at once.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.assign.courtroom+json
+          name: courtscheduler.assign.courtroom
+      ...
+    body:
+      application/vnd.courtscheduler.assign.courtroom+json:
+        schema: !include json/schema/courtscheduler.assign.courtroom.json
+        example: !include json/courtscheduler.assign.courtroom.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.assign.courtroom.response+json:
+            schema: !include json/schema/courtscheduler.assign.courtroom.response.json
+            example: !include json/courtscheduler.assign.courtroom.response.json
+
+/courtschedule/delete:
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.delete+json
+          name: courtscheduler.delete
+      ...
+    body:
+      application/vnd.courtscheduler.delete+json:
+        schema: !include json/schema/courtscheduler.delete.json
+        example: !include json/courtscheduler.delete.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.delete.response+json:
+            schema: !include json/schema/courtscheduler.delete.response.json
+            example: !include json/courtscheduler.delete.response.json
+
+/session:
+  post:
+    description: |
+      Assign or unassign a judiciary from court sessions.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.assign-judiciary+json
+          name: courtscheduler.assign-judiciary
+      (mapping):
+          requestType: application/vnd.courtscheduler.unassign.judiciary+json
+          name: courtscheduler.unassign.judiciary
+      ...
+    body:
+      application/vnd.courtscheduler.assign-judiciary+json:
+        schema: !include json/schema/courtscheduler.assign-judiciary.json
+        example: !include json/courtscheduler.assign-judiciary.json
+      application/vnd.courtscheduler.unassign.judiciary+json:
+        schema: !include json/schema/courtscheduler.unassign.judiciary.json
+        example: !include json/courtscheduler.unassign.judiciary.json
+    responses:
+      202:
+        description: Request accepted for processing.
+      400:
+        description: Bad Request - Cannot unassign judiciary (has allocated listings or not found)
+        body:
+          application/json:
+            example: |
+              {
+                "errorMessage": "Cannot unassign judiciary judge-456 from courtSchedule schedule-123: court schedule has allocated listings"
+              }
+
+/courtschedule/search.court-schedules-by-id:
+  description: |
+    Search Court Schedules by IDs
+  get:
+    description: |
+      Returns a list of court schedules based on provided courtScheduleIds.
+      ...
+      (mapping):
+          responseType: application/vnd.courtscheduler.search.court-schedules-by-id+json
+          name: courtscheduler.search.court-schedules-by-id
+      ...
+    queryParameters:
+      courtScheduleIds:
+        description: Comma-separated list of UUIDs
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.search.court-schedules-by-id+json:
+            schema: !include json/schema/courtscheduler.search.courtschedules.by.id.response.json
+            example: !include json/courtscheduler.search.courtschedules.by.id.response.json
+
+/hearings/{hearingId}:
+  post:
+    description: |
+      Move a hearing to a past-dated MAGISTRATES court-schedule session. Searches for a session
+      matching the exact startDate and courtCentreId, releases any prior allocation held by the
+      hearing, books the session, and returns the booked slot details. The hearing is identified
+      by the hearingId path parameter; it is not part of the request body.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.move-hearing-to-past-date+json
+          name: courtscheduler.move-hearing-to-past-date
+      ...
+    body:
+      application/vnd.courtscheduler.move-hearing-to-past-date+json:
+        schema: !include json/schema/courtscheduler.move-hearing-to-past-date.json
+        example: !include json/courtscheduler.move-hearing-to-past-date.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.move-hearing-to-past-date.response+json:
+            schema: !include json/schema/courtscheduler.move-hearing-to-past-date.response.json
+            example: !include json/courtscheduler.move-hearing-to-past-date.response.json
+      422:
+        description: |
+          Move failed. errorCode identifies the reason: FUTURE_DATE_NOT_ALLOWED when startDate is
+          after today, JURISDICTION_NOT_SUPPORTED when jurisdiction is CROWN, NO_SESSION_FOUND when
+          no MAGISTRATES court-schedule session exists for the given date and courtCentreId.
+        body:
+          application/vnd.courtscheduler.move-hearing-to-past-date.error+json:
+            schema: !include json/schema/courtscheduler.move-hearing-to-past-date.error.json
+            example: !include json/courtscheduler.move-hearing-to-past-date.error.json
+
+/hearingslots/{hearingId}:
+  delete:
+    description:  |
+      You can remove slots for the given hearing with hearingId through this DELETE request
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.remove.hearing.slots+json
+          name: courtscheduler.remove.hearing.slots
+      ...
+    body:
+      application/vnd.courtscheduler.remove.hearing.slots+json:
+    responses:
+      202:
+        description: Request Accepted
+
+/hearingslots:
+  put:
+    description:  |
+      You can allocate a hearing slot through this POST request
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.update.hearing.slots+json
+          name: courtscheduler.update.hearing.slots
+      ...
+    body:
+      application/vnd.courtscheduler.update.hearing.slots+json:
+        example:
+          !include json/courtscheduler.update.hearing.slots.json
+        schema:
+          !include json/schema/courtscheduler.update.hearing.slots.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.update.hearing.slots.response+json:
+            schema: !include json/schema/courtscheduler.update.hearing.slots.response.json
+            example: !include json/courtscheduler.update.hearing.slots.response.json
+
+  get:
+    description: |
+      Query via parameters
+        ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.get.hearing.slots+json
+            name: courtscheduler.get.hearing.slots
+        (mapping):
+            responseType: application/vnd.courtscheduler.get.hearing.ids+json
+            name: courtscheduler.get.hearing.ids
+        ...
+    queryParameters:
+      panel:
+        description: panel Type ( ADULT/YOUTH/ADULT,YOUTH)
+        type: string
+        required: true
+      sessionStartDate:
+        description: startDate
+        type: string
+        required: true
+      sessionEndDate:
+        description: endDate
+        type: string
+        required: true
+      exactHearingStartDateTime:
+        description: Optional parameter to perform an exact match on start_time. Must be in ISO date-time format in UTC i.e 2018-10-28T19:34:50.63Z. Used by court calendar only. secs/millisecs/nanos are stripped
+        type: string
+        required: false
+      oucodeL2Code:
+        description: Operational unit
+        type: string
+        required: false
+      ouCode:
+        description: Courthouse oucode
+        type: string
+        required: false
+      courtRoomId:
+        description: courtRoomId
+        type: string
+        required: false
+      courtRoomNumber:
+        description: courtRoomNumber
+        type: string
+        required: false
+      businessType:
+        description: businessType
+        type: string
+        required: false
+      courtSession:
+        description: AM/PM/AD or comma separeted --> AM,PM,AD
+        type: string
+        required: false
+      isSlotBased:
+        description: slot based or not
+        type: string
+        required: false
+      hearingStartTime:
+        description: hearingStartTime
+        type: string
+        required: false
+      duration:
+        description: to filter court schedules on
+        type: string
+        required: false
+      pageSize:
+        description: Number of records to be displayed per page
+        type: string
+        required: true
+      pageNumber:
+        description: currentPageNumber details
+        type: string
+        required: true
+      showOverbookedSlots:
+        description: Value which holds whether to showOverbookedSlots
+        type: boolean
+        required: false
+      caseIdentifier:
+        description: The channel from which the search happens (SPI, Online, API)
+        type: string
+        required: false
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.get.hearing.slots+json:
+            example: !include json/courtscheduler.get.hearing.slots.json
+            schema: !include json/schema/courtscheduler.get.hearing.slots.json
+          application/vnd.courtscheduler.get.hearing.ids+json:
+            example: !include json/courtscheduler.get.hearing.ids.json
+            schema: !include json/schema/courtscheduler.get.hearing.ids.json
+
+/list/hearingslots:
+  put:
+    description:  |
+      You can allocate hearing slots through this PUT
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.list.hearings-in-court-sessions+json
+          name: courtscheduler.list.hearings-in-court-sessions
+      ...
+    body:
+      application/vnd.courtscheduler.list.hearings-in-court-sessions+json:
+        example:
+          !include json/courtscheduler.list.hearings-in-court-sessions.json
+        schema:
+          !include json/schema/courtscheduler.list.hearings-in-court-sessions.json
+    responses:
+      200:
+        description: OK
+        body:
+          application/vnd.courtscheduler.list.hearings-in-court-sessions.response+json:
+            schema: !include json/schema/courtscheduler.list.hearings-in-court-sessions.response.json
+            example: !include json/courtscheduler.list.hearings-in-court-sessions.response.json
+
+/searchupdate/hearingslots:
+  put:
+    description:  |
+      You can search and allocate a hearing slot through this PUT when courtscheduler Id is null
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.search.update.hearing.slots+json
+          name: courtscheduler.search.update.hearing.slots
+      ...
+    body:
+      application/vnd.courtscheduler.search.update.hearing.slots+json:
+        example:
+          !include json/courtscheduler.search.update.hearing.slots.json
+        schema:
+          !include json/schema/courtscheduler.search.update.hearing.slots.json
+    responses:
+      204:
+        description: No Content
+
+/searchlist/hearingslots:
+  get:
+    description:  |
+      You can search and list the hearings in court sessions based on the input param combinations
+      Query via parameters
+      ...
+      (mapping):
+          responseType: application/vnd.courtscheduler.search.book.hearing.slots+json
+          name: courtscheduler.search.book.hearing.slots
+      ...
+    queryParameters:
+      hearingId:
+        description: HearingID
+        type: string
+        required: true
+      courtCentreId:
+        description: UUID of the court centre
+        type: string
+        required: true
+      courtRoomId:
+        description: courtRoomId
+        type: string
+        required: false
+      hearingDate:
+        description: hearingDate to Match Session_start (Local Date yyyy-MM-dd)
+        type: string
+        required: true
+      hearingSessionDateSearchCutOff:
+        description: hearingSessionDateSearchCutOff
+        type: string
+        required: false
+      hearingStartTime:
+        description: hearingStartTime
+        type: string
+        required: false
+      durationInMinutes:
+        description: durationInMinutes
+        type: integer
+        required: true
+      isPolice:
+        description: isPolice
+        type: boolean
+        required: false
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.search.book.hearing.slots+json:
+            example: !include json/courtscheduler.search.book.hearing.slots.json
+            schema: !include json/schema/courtscheduler.search.book.hearing.slots.json
+
+/provisionalBooking:
+  post:
+    description:  |
+      You can book slot provisionally by giving corresponding courtScheduleId(s) inside request body
+      ...
+        (mapping):
+            requestType: application/vnd.courtscheduler.create.provisional.booking+json
+            name: courtscheduler.create.provisional.booking
+      ...
+    body:
+      application/vnd.courtscheduler.create.provisional.booking+json:
+        schema:  !include json/schema/courtscheduler.create.provisional.booking.json
+        example:  !include json/courtscheduler.create.provisional.booking.json
+    responses:
+      200:
+        body:
+          example: !include json/courtscheduler.create.provisional.booking.response.json
+          schema:  !include json/schema/courtscheduler.create.provisional.booking.response.json
+
+  get:
+    description:  |
+      Query via parameters
+      ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.get.provisional.booking+json
+            name: courtscheduler.get.provisional.booking
+      ...
+    queryParameters:
+      bookingIds:
+        description: booking ids as comma separated
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.get.provisional.booking+json:
+            example: !include json/courtscheduler.get.provisional.booking.json
+            schema:  !include json/schema/courtscheduler.get.provisional.booking.json
+
+/mi/court_schedules:
+  get:
+    description: |
+      Query via parameters
+        ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.export.court_schedule+json
+            name: courtscheduler.export.court_schedule
+        ...
+    queryParameters:
+      fromDate:
+        description: from date of the data range
+        type: string
+        required: true
+      toDate:
+        description: to date of the data range
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.export.court_schedule+json:
+            example: !include json/courtscheduler.export.court_schedule.json
+            schema: !include json/schema/courtscheduler.export.court_schedule.json
+
+/mi/court_schedule_judiciaries:
+  get:
+    description: |
+      Query via parameters
+        ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.export.court_schedule_judiciary+json
+            name: courtscheduler.export.court_schedule_judiciary
+        ...
+    queryParameters:
+      fromDate:
+        description: from date of the data range
+        type: string
+        required: true
+      toDate:
+        description: to date of the data range
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.export.court_schedule_judiciary+json:
+            example: !include json/courtscheduler.export.court_schedule_judiciary.json
+            schema: !include json/schema/courtscheduler.export.court_schedule_judiciary.json
+
+/mi/allocated_listings:
+  get:
+    description: |
+      Query via parameters
+        ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.export.allocated_listings+json
+            name: courtscheduler.export.allocated_listings
+        ...
+    queryParameters:
+      fromDate:
+        description: from date of the data range
+        type: string
+        required: true
+      toDate:
+        description: to date of the data range
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.export.allocated_listings+json:
+            example: !include json/courtscheduler.export.allocated_listings.json
+            schema: !include json/schema/courtscheduler.export.allocated_listings.json
+
+/oucode/recalculate-availability:
+  post:
+    description: |
+      Recalculate availability for the given oucode
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.oucode.recalculate.availability+json
+          name: courtscheduler.oucode.recalculate.availability
+      ...
+    body:
+      application/vnd.courtscheduler.oucode.recalculate.availability+json:
+        schema: !include json/schema/courtscheduler.oucode.recalculate.availability.json
+        example: !include json/courtscheduler.oucode.recalculate.availability.json
+    responses:
+      202:
+        description: Recalculation accepted
+
+/oucode/migrate:
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.oucode.migrate+json
+          name: courtscheduler.oucode.migrate
+      ...
+    body:
+      application/vnd.courtscheduler.oucode.migrate+json:
+        schema: !include json/schema/courtscheduler.oucode.migrate.json
+        example: !include json/courtscheduler.oucode.migrate.json
+    responses:
+      202:
+        description: OK
+
+/rotasl/process-rota-files:
+  post:
+    description: |
+      unprocessed rotasl files should be pulled from azure container and being processed into scsl database for the schedule of the ljas
+        ...
+        (mapping):
+            requestType: application/vnd.courtscheduler.rotasl.process_rota_files+json
+            name: courtscheduler.rotasl.process_rota_files
+        ...
+    body:
+      application/vnd.courtscheduler.rotasl.process_rota_files+json:
+        schema: !include json/schema/courtscheduler.rotasl.process_rota_files.json
+        example: !include json/courtscheduler.rotasl.process_rota_files.json
+    responses:
+      202:
+        description: Request Accepted
+
+/rotasl/clean-redundant-rota-data:
+  post:
+    description: |
+      deleting rotasl processed redundant data older than N months
+        ...
+        (mapping):
+            requestType: application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json
+            name: courtscheduler.rotasl.clean_redundant_rota_data
+        ...
+    body:
+      application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json:
+        schema: !include json/schema/courtscheduler.rotasl.clean_redundant_rota_data.json
+        example: !include json/courtscheduler.rotasl.clean_redundant_rota_data.json
+    responses:
+      202:
+        description: Request Accepted
+
+/validate:
+  description: |
+    validate your request before you call the actual endpoint
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.validate.create+json
+          name: courtscheduler.validate.create
+      (mapping):
+          requestType: application/vnd.courtscheduler.validate.update+json
+          name: courtscheduler.validate.update
+      (mapping):
+          requestType: application/vnd.courtscheduler.validate.delete+json
+          name: courtscheduler.validate.delete
+      ...
+    body:
+      application/vnd.courtscheduler.validate.create+json:
+        schema: !include json/schema/courtscheduler.validate.create.json
+        example: !include json/courtscheduler.validate.create.json
+      application/vnd.courtscheduler.validate.update+json:
+        schema: !include json/schema/courtscheduler.validate.update.json
+        example: !include json/courtscheduler.validate.update.json
+      application/vnd.courtscheduler.validate.delete+json:
+        schema: !include json/schema/courtscheduler.validate.delete.json
+        example: !include json/courtscheduler.validate.delete.json
+
+    responses:
+      200:
+        description: OK
+      400:
+        body:
+          application/vnd.courtscheduler.validate.create.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+          application/vnd.courtscheduler.validate.update.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+          application/vnd.courtscheduler.validate.delete.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/validate-session-availability:
+  description: |
+    validate session availability before you call the actual endpoint
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.validate.session.availability+json
+          name: courtscheduler.validate.session.availability
+      ...
+    body:
+      application/vnd.courtscheduler.validate.session.availability+json:
+        schema: !include json/schema/courtscheduler.validate.session.availability.json
+        example: !include json/courtscheduler.validate.session.availability.json
+
+    responses:
+      200:
+        description: OK
+      400:
+        body:
+          application/vnd.courtscheduler.validate.session.availability.response+json:
+            schema: !include json/schema/courtscheduler.validate.session.availability.response.json
+            example: !include json/courtscheduler.validate.session.availability.response.json
+
+/judiciaries/availability-rules:
+  get:
+    description: |
+      Find judiciary availability rules.
+      ...
+      (mapping):
+        responseType: application/json
+        name: courtscheduler.judiciary.find.availability.rule
+      ...
+    queryParameters:
+      startDate:
+        description: Start date of the search range (Not in past)
+        type: string
+        required: true
+      endDate:
+        description: End date of the search range (Not in past)
+        type: string
+        required: true
+      courtCentreId:
+        description: Optional court centre ID to filter by
+        type: string
+        required: false
+      pageSize:
+        description: Optional page size for pagination. Default is 20
+        type: integer
+        required: false
+      pageNumber:
+        description: Optional page number for pagination. Default is 1
+        type: integer
+        required: false
+      withJudiciary:
+        description: Optional flag to include judiciaries in response. Default is true
+        type: boolean
+        required: false
+
+    responses:
+      200:
+        body:
+          application/json:
+            schema: !include json/schema/courtscheduler.find.judiciary.availability.rule.json
+            example: !include json/courtscheduler.find.judiciary.availability.rule.json
+
+/judiciaries/availability-rules/{ruleId}:
+  get:
+    description: |
+      Get a single judiciary availability rule by ruleId
+      ...
+      (mapping):
+            responseType: application/json
+            name: courtscheduler.judiciary.get.availability.rule
+      ...
+    queryParameters:
+      withJudiciary:
+        description: Include judiciary details in response
+        type: boolean
+        required: false
+        default: true
+    responses:
+      200:
+        description: OK
+        body:
+          application/json:
+            schema: !include json/schema/courtscheduler.judiciary.get.availability.rule.json
+            example: !include json/courtscheduler.judiciary.get.availability.rule.json
+
+/judiciaries/availability-rules/add:
+  post:
+    description: |
+      Add judiciary availability rule.
+      ...
+      (mapping):
+        requestType: application/json
+        name: courtscheduler.judiciary.add.availability.rule
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.add.availability.rule.json
+        example: !include json/courtscheduler.judiciary.add.availability.rule.json
+    responses:
+      200:
+        description: OK
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/update:
+  post:
+    description: |
+      Update judiciary availability rule.
+      ...
+      (mapping):
+        requestType: application/json
+        name: courtscheduler.judiciary.update.availability.rule
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.update.availability.rule.json
+        example: !include json/courtscheduler.judiciary.update.availability.rule.json
+    responses:
+      200:
+        description: OK
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/delete:
+  post:
+    description: |
+      Delete judiciary availability rule.
+      ...
+      (mapping):
+        requestType: application/json
+        name: courtscheduler.judiciary.delete.availability.rule
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.delete.availability.rule.json
+        example: !include json/courtscheduler.judiciary.delete.availability.rule.json
+    responses:
+      200:
+        description: OK
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+
+/judiciaries/availability:
+  get:
+    description: |
+      ...
+      (mapping):
+          responseType: application/json
+          name: courtscheduler.judiciary.find.availability
+      ...
+    queryParameters:
+      startDate:
+        description: Start date of the search range
+        type: string
+        required: true
+      endDate:
+        description: End date of the search range
+        type: string
+        required: true
+      courtCentreId:
+        description: Optional court centre ID to filter by
+        type: string
+        required: false
+      pageSize:
+        description: Optional page size for pagination. Default is 20
+        type: integer
+        required: false
+      pageNumber:
+        description: Optional page number for pagination. Default is 1
+        type: integer
+        required: false
+      withJudiciary:
+        description: Optional flag to include judiciaries in response. Default is true
+        type: boolean
+        required: false
+    responses:
+      200:
+        body:
+          application/json:
+            schema: !include json/schema/courtscheduler.find.judiciary.availability.json
+            example: !include json/courtscheduler.find.judiciary.availability.json
+
+/judiciaries/availability-rules/validate-add:
+  post:
+    description: |
+      Validate judiciary availability rule for creation.
+      ...
+      (mapping):
+          requestType: application/json
+          name: courtscheduler.judiciary.add.availability.rule.validate
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.add.availability.rule.json
+        example: !include json/courtscheduler.judiciary.add.availability.rule.json
+    responses:
+      200:
+        description: Validation successful
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/validate-update:
+  post:
+    description: |
+      Validate judiciary availability rule for update.
+      ...
+      (mapping):
+          requestType: application/json
+          name: courtscheduler.judiciary.update.availability.rule.validate
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.update.availability.rule.json
+        example: !include json/courtscheduler.judiciary.update.availability.rule.json
+    responses:
+      200:
+        description: Validation successful
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+
+/judiciaries/availability-rules/validate-delete:
+  post:
+    description: |
+      Validate judiciary availability rule for deletion.
+      Checks if the rule is already applied/assigned to a session and throws error if it is.
+      ...
+      (mapping):
+          requestType: application/json
+          name: courtscheduler.judiciary.delete.availability.rule.validate
+      ...
+    body:
+      application/json:
+        schema: !include json/schema/courtscheduler.judiciary.delete.availability.rule.json
+        example: !include json/courtscheduler.judiciary.delete.availability.rule.json
+    responses:
+      200:
+        description: Validation successful
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json
+      422:
+        description: Validation failed
+        body:
+          application/vnd.courtscheduler.validate.response+json:
+            schema: !include json/schema/courtscheduler.validate.response.json
+            example: !include json/courtscheduler.validate.response.json

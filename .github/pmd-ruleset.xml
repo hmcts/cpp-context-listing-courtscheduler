@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Custom Ruleset"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+         https://pmd.github.io/pmd-7.17.0/pmd-7.17.0.xsd">
+
+    <description>Custom ruleset including exclusions</description>
+
+    <rule ref="category/java/codestyle.xml/MethodNamingConventions">
+        <properties>
+            <!-- This regex allows underscores in JUnit 5 test method names -->
+            <property name="junit5TestPattern" value="^[a-z][a-zA-Z0-9_]*$"/>
+            <!-- And in non-test methods (legacy test helpers like
+                 `toJsonObject_WithSomeEmptyValues`). -->
+            <property name="methodPattern" value="^[a-z][a-zA-Z0-9_]*$"/>
+        </properties>
+    </rule>
+    <!-- Allow the legacy field names that the migration inherits from main:
+         logger (SLF4J), objectMapper (Jackson), sdf (SimpleDateFormat). -->
+    <rule ref="category/java/codestyle.xml/FieldNamingConventions">
+        <properties>
+            <property name="exclusions" value="serialVersionUID,serialPersistentFields,logger,objectMapper,sdf"/>
+        </properties>
+    </rule>
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="GuardLogStatement"/>
+        <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
+        <exclude name="UnitTestContainsTooManyAsserts"/>
+        <exclude name="PreserveStackTrace"/>
+        <exclude name="ImplicitFunctionalInterface"/>
+    </rule>
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="AtLeastOneConstructor"/>
+        <exclude name="CallSuperInConstructor"/>
+        <exclude name="LongVariable"/>
+        <exclude name="ShortVariable"/>
+        <exclude name="TooManyStaticImports"/>
+    </rule>
+    <rule ref="category/java/errorprone.xml">
+        <exclude name="InvalidLogMessageFormat"/>
+    </rule>
+    <rule ref="category/java/performance.xml"/>
+    <rule ref="category/java/security.xml"/>
+</ruleset>

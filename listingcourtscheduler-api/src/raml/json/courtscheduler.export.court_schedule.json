@@ -1,0 +1,28 @@
+{
+  "courtSchedules": [
+    {
+      "courtScheduleId": "RjmueCnClLfGZXNpngWHdOelSWXhE",
+      "listingProfileId": "bIAkijRvqQYzYSGk",
+      "ouCode": "SJQBDOnjjqrL",
+      "courtRoomId": "WVjhGEBNvbbjpkzwxto",
+      "courtRoomNumber": -432286829,
+      "courtHouseId": "bOhSiTykkDcApEKLyotT",
+      "courtHouseName": "UelLISQnAtoiogGlveIhHdrc",
+      "courtRoomName": "MmoMdWqdUDTSsrQoerHDOLLOIqXeN",
+      "operationalUnit": "uEWrahOuMBmfaULmQrBTpyQyMUhRajH",
+      "businessType": "IVSEjnkyDFCUynMGPv",
+      "panel": "SkPeSEquziJSThLD",
+      "courtSession": "OssZYTmGGZgzm",
+      "active": true,
+      "slotBased": false,
+      "sessionDate": "Dec 27, 2027, 6:06:32 PM",
+      "maxSlots": 2097164855,
+      "maxDuration": 1569984805,
+      "availableSlots": -1819024539,
+      "availableDuration": -1716884195,
+      "createdOn": "Dec 27, 2027, 6:06:32 PM",
+      "updatedOn": "Apr 24, 2017, 7:34:23 AM"
+    }
+  ]
+}
+

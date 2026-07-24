@@ -1,0 +1,23 @@
+{
+  "courtScheduleId": "6bd1853d-8a88-35e8-b4c4-342e2649daa2",
+  "listingProfileId": "CS2129874",
+  "ouCode": "B01LY00",
+  "courtRoomNumber": 2332,
+  "courtHouseName": "Lavender Hill Magistrates' Court",
+  "courtRoomName": "Courtroom 03",
+  "operationalUnit": "1",
+  "businessType": "DVB",
+  "courtSession": "PM",
+  "sessionDate": "2024-10-02",
+  "panel": "ADULT",
+  "maxSlots": 0,
+  "maxDuration": 0,
+  "availableSlots": 0,
+  "availableDuration": 0,
+  "active": true,
+  "createdOn": "2024-06-05T14:51:52.235Z",
+  "updatedOn": "2024-06-05T14:51:52.235Z",
+  "courtRoomId": "f1ead1d2-4b26-3230-b781-508d6aaafd26",
+  "slotBased": true,
+  "courtHouseId": "f8254db1-1683-483e-afb3-b87fde5a0a26"
+}

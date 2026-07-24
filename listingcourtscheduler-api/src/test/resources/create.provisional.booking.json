@@ -1,0 +1,13 @@
+{
+  "provisionalSlots" :
+    [
+      {
+        "courtScheduleId": "000f36bc-f33a-42ea-8a6c-8103636c5341",
+        "hearingStartTime": "2020-01-01T11:00:00.000Z"
+      },
+      {
+        "courtScheduleId": "001b1891-cbe9-45fe-a0b9-2168d50a25a2",
+        "hearingStartTime": "2020-01-01T11:00:00.000Z"
+      }
+    ]
+}

@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "courtSchedules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "courtRoomId": {
+            "type": "string"
+          },
+          "courtRoomName": {
+            "type": "string"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "courtScheduleId": {
+                  "type": "string"
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "availableDuration": {
+                  "type": "integer"
+                },
+                "availableSlots": {
+                  "type": "integer"
+                },
+                "businessType": {
+                  "type": "string"
+                },
+                "businessDescription": {
+                  "type": "string"
+                },
+                "courtHouseId": {
+                  "type": "string"
+                },
+                "courtHouseName": {
+                  "type": "string"
+                },
+                "courtRoomNumber": {
+                  "type": "integer"
+                },
+                "courtSession": {
+                  "type": "string"
+                },
+                "listingProfileId": {
+                  "type": "string"
+                },
+                "maxDuration": {
+                  "type": "integer"
+                },
+                "maxSlots": {
+                  "type": "integer"
+                },
+                "operationalUnit": {
+                  "type": "string"
+                },
+                "ouCode": {
+                  "type": "string"
+                },
+                "panel": {
+                  "type": "string"
+                },
+                "sessionDate": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "slotBased": {
+                  "type": "boolean"
+                },
+                "totalBooked": {
+                  "type": "number"
+                },
+                "allDaySplit": {
+                  "type": "boolean"
+                },
+                "maxDurationForMorning": {
+                  "type": "integer"
+                },
+                "maxDurationForAfternoon": {
+                  "type": "integer"
+                },
+                "totalBookedForMorning": {
+                  "type": "integer"
+                },
+                "totalBookedForAfternoon": {
+                  "type": "integer"
+                },
+                "availableDurationForMorning": {
+                    "type": "integer"
+                },
+                "availableDurationForAfternoon": {
+                    "type": "integer"
+                },
+                "isDraft": {
+                    "type": "boolean"
+                },
+                "jurisdiction": {
+                    "type": "string"
+                }
+              },
+              "required": [
+                "courtCentreId",
+                "session_date",
+                "businessType",
+                "panel"
+              ]
+            }
+          }
+        },
+        "required": [
+          "courtRoomId",
+          "courtRoomName",
+          "sessions"
+        ]
+      }
+    }
+  }
+}
