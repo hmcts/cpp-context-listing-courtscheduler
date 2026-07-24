@@ -1,0 +1,14 @@
+{
+  "days": [
+    {
+      "sessionDate": "2026-05-02",
+      "courtScheduleId": "5e2a3f91-9e5d-3e44-b664-d5345bb13be2",
+      "durationInMinutes": 360
+    },
+    {
+      "sessionDate": "2026-05-03",
+      "courtScheduleId": "6f3b4a02-af6e-4f55-c775-e6456cc24cf3",
+      "durationInMinutes": 360
+    }
+  ]
+}

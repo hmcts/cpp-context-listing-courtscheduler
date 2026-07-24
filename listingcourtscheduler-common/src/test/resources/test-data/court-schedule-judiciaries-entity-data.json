@@ -1,0 +1,42 @@
+[
+  {
+    "id": {
+      "courtScheduleId": "COURT_SCHEDULE_ID",
+      "judiciaryId": "89202350-af98-3d0e-b93e-a79697accf55"
+    },
+    "courtListingProfileId": "COURT_LISTING_PROFILE_ID",
+    "rotaJudiciaryId": "MA5786",
+    "title": "Mrs",
+    "forenames": "Victoria Caroline",
+    "surname": "Marchant",
+    "judiciaryType": "Magistrate",
+    "position": "LEFT_WINGER"
+  },
+  {
+    "id": {
+      "courtScheduleId": "COURT_SCHEDULE_ID",
+      "judiciaryId": "90242b37-1ced-38ec-8149-6b1426a2e19b"
+    },
+    "courtListingProfileId": "CS2334175",
+    "rotaJudiciaryId": "MA6412",
+    "title": "Mrs",
+    "forenames": "Valerie Ann",
+    "surname": "Woods",
+    "judiciaryType": "Magistrate",
+    "position": "CHAIR"
+  },
+  {
+    "id": {
+      "courtScheduleId": "COURT_SCHEDULE_ID",
+      "judiciaryId": "e41f9d9d-3044-3714-8985-f43e764e6485"
+    },
+    "courtScheduleId": "COURT_SCHEDULE_ID",
+    "courtListingProfileId": "CS2334175",
+    "rotaJudiciaryId": "MA5664",
+    "title": "Ms",
+    "forenames": "Valerie",
+    "surname": "Stewart",
+    "judiciaryType": "Magistrate",
+    "position": "RIGHT_WINGER"
+  }
+]

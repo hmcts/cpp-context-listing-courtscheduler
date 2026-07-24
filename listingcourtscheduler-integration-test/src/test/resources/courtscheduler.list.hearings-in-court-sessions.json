@@ -1,0 +1,30 @@
+{
+  "hearingSlots":
+  [
+    {
+      "hearingId": "HEARING_ID_1",
+      "courtScheduleIds":
+      [
+        {
+          "courtScheduleId": "COURT_SCHEDULE_ID_1_1",
+          "hearingStartTime": "HEARING_START_TIME_1_1",
+          "durationInMinutes": "DURATION_1_1"
+        }
+      ]
+    },
+    {
+      "hearingId": "HEARING_ID_2",
+      "courtScheduleIds":
+      [
+        {
+          "courtScheduleId": "COURT_SCHEDULE_ID_2_1",
+          "hearingStartTime": "HEARING_START_TIME_2_1"
+        },
+        {
+          "courtScheduleId": "COURT_SCHEDULE_ID_2_2",
+          "durationInMinutes": "DURATION_2_2"
+        }
+      ]
+    }
+  ]
+}

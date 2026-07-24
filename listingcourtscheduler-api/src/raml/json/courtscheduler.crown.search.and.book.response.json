@@ -1,0 +1,14 @@
+{
+  "hearingId": "7755fb96-e90a-4df2-8575-47841d8fbdd0",
+  "courtScheduleId": "5e2a3f91-9e5d-3e44-b664-d5345bb13be2",
+  "source": "CROWN_FB_LIST",
+  "sessions": [],
+  "courtRoomId": 731816,
+  "sessionDate": "2026-04-21",
+  "sessionStartTime": "2026-04-21T10:00:00.000Z",
+  "sessionEndTime": "2026-04-21T17:00:00.000Z",
+  "durationInMinutes": 300,
+  "isDraft": false,
+  "businessType": "CR",
+  "overbooked": false
+}

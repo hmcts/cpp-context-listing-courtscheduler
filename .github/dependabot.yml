@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/" # location of build.gradle
+    schedule:
+      interval: "daily" # or "weekly", "monthly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    ignore:
+      # Pinned to 2.4.1 — v3.x rewrote the cyclonedxBom DSL (includeConfigs/skipConfigs
+      # moved to cyclonedxDirectBom). Re-enable after migrating the DSL. See build.gradle.
+      - dependency-name: "org.cyclonedx.bom*"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/" # location of your workflow files
+    schedule:
+      interval: "weekly"

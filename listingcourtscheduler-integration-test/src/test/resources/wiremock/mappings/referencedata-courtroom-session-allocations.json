@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/referencedata-query-api/query/api/rest/referencedata/courtroom-session-allocations"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.referencedata.query.courtroom-session-allocations+json"
+    },
+    "jsonBody": {
+      "courtRoomSessionAllocations": []
+    }
+  }
+}

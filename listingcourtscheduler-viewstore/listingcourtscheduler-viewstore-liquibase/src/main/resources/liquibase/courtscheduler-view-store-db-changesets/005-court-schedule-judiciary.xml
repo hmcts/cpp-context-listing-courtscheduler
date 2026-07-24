@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="005" author="sshetty" logicalFilePath="005-court-schedule-judiciary.xml">
+        <createTable tableName="court_schedule_judiciary">
+            <column name="court_schedule_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="court_listing_profile_id" type="VARCHAR(100)"/>
+            <column name="judiciary_id" type="VARCHAR(100)"/>
+            <column name="rota_judiciary_id" type="VARCHAR(100)"/>
+            <column name="title" type="VARCHAR(100)"/>
+            <column name="forenames" type="VARCHAR(100)"/>
+            <column name="surname" type="VARCHAR(100)"/>
+            <column name="email" type="VARCHAR(100)"/>
+            <column name="judiciary_type" type="VARCHAR(100)"/>
+            <column name="is_bench_chairman" type="BOOLEAN"/>
+            <column name="is_deputy" type="BOOLEAN"/>
+            <column name="position" type="VARCHAR(100)"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_on" type="DATETIME"/>
+            <column name="updated_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_court_schedule_judiciary"
+                     tableName="court_schedule_judiciary">
+            <column name="court_schedule_id"/>
+            <column name="court_listing_profile_id"/>
+            <column name="active"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

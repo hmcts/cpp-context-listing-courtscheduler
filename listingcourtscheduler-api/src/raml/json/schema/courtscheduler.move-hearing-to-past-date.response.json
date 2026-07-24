@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "hearingId": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "courtScheduleId": {
+            "type": "string"
+          },
+          "sessionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "courtRoomId": {
+            "type": "string"
+          },
+          "businessType": {
+            "type": "string"
+          },
+          "isDraft": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "hearingId",
+    "sessions"
+  ]
+}

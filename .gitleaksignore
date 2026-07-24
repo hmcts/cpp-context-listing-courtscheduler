@@ -1,0 +1,6 @@
+# False positive: a historical commit's .gitignore added an entry for the Claude Code
+# machine-specific settings-override file. That entry is a path pattern, not a URL or
+# credential, but its dotted filename matches the custom internal-urls hostname regex.
+# The entry was redundant (the whole directory is already ignored) and has been removed
+# from .gitignore; this fingerprint suppresses the historical commit that introduced it.
+07c70d2d0ce223261d4e8aed2ea2e9d1ca989ff2:.gitignore:internal-urls:73

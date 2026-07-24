@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/referencedata-query-api/query/api/rest/referencedata/public-holidays"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.referencedata.query.public-holidays+json"
+    },
+    "jsonBody": {
+      "publicHolidays": []
+    }
+  }
+}

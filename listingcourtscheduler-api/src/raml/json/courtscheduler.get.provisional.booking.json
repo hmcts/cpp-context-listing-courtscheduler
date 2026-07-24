@@ -1,0 +1,102 @@
+{
+  "provisionalSlots": [
+    {
+      "courtScheduleId": "356e3370-efa2-391c-9540-2bc99325481e",
+      "listingProfileId": "CS2334175",
+      "ouCode": "B06IS00",
+      "courtRoomId": "661bcf82-6b71-3a41-8380-42d449f535c4",
+      "courtRoomNumber": 1610,
+      "courtHouseId": "e6986943-68d9-36fc-bbd0-68fa32efdd4f",
+      "courtHouseName": "Manchester City Magistrates' Court",
+      "courtRoomName": "Courtroom 11",
+      "operationalUnit": "6",
+      "businessType": "TRL",
+      "panel": "ADULT",
+      "courtSession": "AD",
+      "slotBased": false,
+      "sessionDate": "2020-04-06",
+      "maxSlots": 0,
+      "maxDuration": 0,
+      "availableSlots": 0,
+      "availableDuration": 0,
+      "judiciaries": [
+        {
+          "id": "89202350-af98-3d0e-b93e-a79697accf55",
+          "courtScheduleId": "356e3370-efa2-391c-9540-2bc99325481e",
+          "courtListingProfileId": "CS2334175",
+          "judiciaryType": "MAGISTRATE",
+          "isBenchChairman": false,
+          "isDeputy": true
+        },
+        {
+          "id": "90242b37-1ced-38ec-8149-6b1426a2e19b",
+          "courtScheduleId": "356e3370-efa2-391c-9540-2bc99325481e",
+          "courtListingProfileId": "CS2334175",
+          "judiciaryType": "MAGISTRATE",
+          "isBenchChairman": true,
+          "isDeputy": false
+        },
+        {
+          "id": "e41f9d9d-3044-3714-8985-f43e764e6485",
+          "courtScheduleId": "356e3370-efa2-391c-9540-2bc99325481e",
+          "courtListingProfileId": "CS2334175",
+          "judiciaryType": "MAGISTRATE",
+          "isBenchChairman": false,
+          "isDeputy": true
+        }
+      ],
+      "slotStartTimes": [],
+      "bookingId": "73284fc1-5727-4610-ac74-ac9fe8f97815",
+      "hearingStartTime": "2020-09-22T09:00:00.000Z"
+    },
+    {
+      "courtScheduleId": "356e3370-efa2-391c-9540-2bc99325481e",
+      "listingProfileId": "CS2334175",
+      "ouCode": "B06IS00",
+      "courtRoomId": "661bcf82-6b71-3a41-8380-42d449f535c4",
+      "courtRoomNumber": 1610,
+      "courtHouseId": "e6986943-68d9-36fc-bbd0-68fa32efdd4f",
+      "courtHouseName": "Manchester City Magistrates' Court",
+      "courtRoomName": "Courtroom 11",
+      "operationalUnit": "6",
+      "businessType": "TRL",
+      "panel": "ADULT",
+      "courtSession": "AD",
+      "slotBased": false,
+      "sessionDate": "2020-04-06",
+      "maxSlots": 0,
+      "maxDuration": 0,
+      "availableSlots": 0,
+      "availableDuration": 0,
+      "judiciaries": [
+        {
+          "id": "89202350-af98-3d0e-b93e-a79697accf55",
+          "courtScheduleId": "356e3370-efa2-391c-9540-2bc99325481e",
+          "courtListingProfileId": "CS2334175",
+          "judiciaryType": "MAGISTRATE",
+          "isBenchChairman": false,
+          "isDeputy": true
+        },
+        {
+          "id": "90242b37-1ced-38ec-8149-6b1426a2e19b",
+          "courtScheduleId": "356e3370-efa2-391c-9540-2bc99325481e",
+          "courtListingProfileId": "CS2334175",
+          "judiciaryType": "MAGISTRATE",
+          "isBenchChairman": true,
+          "isDeputy": false
+        },
+        {
+          "id": "e41f9d9d-3044-3714-8985-f43e764e6485",
+          "courtScheduleId": "356e3370-efa2-391c-9540-2bc99325481e",
+          "courtListingProfileId": "CS2334175",
+          "judiciaryType": "MAGISTRATE",
+          "isBenchChairman": false,
+          "isDeputy": true
+        }
+      ],
+      "slotStartTimes": [],
+      "bookingId": "fef98402-350d-4316-baed-2054aa562649",
+      "hearingStartTime": "2020-09-22T10:00:00.000Z"
+    }
+  ]
+}

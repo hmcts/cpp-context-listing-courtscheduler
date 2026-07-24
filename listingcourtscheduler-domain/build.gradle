@@ -1,0 +1,15 @@
+plugins {
+    id 'java-test-fixtures'
+}
+
+dependencies {
+    api 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'org.slf4j:slf4j-api'
+
+    // jakarta.json + parsson reference impl for the shared FileUtil#payloadToObject
+    testFixturesApi 'jakarta.json:jakarta.json-api:2.1.3'
+    testFixturesRuntimeOnly 'org.eclipse.parsson:parsson:1.1.9'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}

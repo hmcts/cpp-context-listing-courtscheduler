@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "courtSchedules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "courtScheduleId": { "type": "string" },
+          "courtHouseId": { "type": "string" },
+          "courtRoomId": { "type": "string" },
+          "courtRoomNumber": { "type": "integer" },
+          "sessionDate": { "type": "string", "format": "date" },
+          "sessionStartTime": { "type": "string" },
+          "isDraft": { "type": "boolean" },
+          "businessType": { "type": "string" },
+          "courtSession": { "type": "string" },
+          "availableDuration": { "type": "integer" }
+        },
+        "required": [
+          "courtScheduleId",
+          "sessionDate",
+          "courtHouseId",
+          "courtRoomId"
+        ]
+      }
+    }
+  },
+  "required": ["courtSchedules"]
+}

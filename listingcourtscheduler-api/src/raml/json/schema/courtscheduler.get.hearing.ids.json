@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "integer"
+    },
+    "pageCount": {
+      "type": "integer"
+    },
+    "hearingIds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "hearingId": {
+            "type": "string"
+          },
+          "courtScheduleId": {
+            "type": "string"
+          },
+          "hearingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "hearingDayCount": {
+            "type": "integer"
+          },
+          "hearingDayPosition": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hearingId",
+          "courtScheduleId",
+          "hearingDate",
+          "hearingDayCount",
+          "hearingDayPosition"
+        ]
+      }
+    }
+  },
+  "required": [
+    "results",
+    "pageCount",
+    "hearingIds"
+  ]
+}
