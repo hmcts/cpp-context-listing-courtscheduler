@@ -1,0 +1,26 @@
+[
+  {
+    "id": "0c90ad7e-7c8d-3bd6-a52d-c4b7ec107a78",
+    "seqNum": 120,
+    "typeCode": "DVLA",
+    "typeDescription": "DVLA",
+    "slot": true,
+    "duration": false
+  },
+  {
+    "id": "3948fc81-bd83-36c9-8ee0-861d35c2ebd7",
+    "seqNum": 330,
+    "typeCode": "NCPT",
+    "typeDescription": "Non CPS Trial",
+    "slot": false,
+    "duration": true
+  },
+  {
+    "id": "c1aa4879-ab50-3daa-a192-e52509331d3d",
+    "seqNum": 390,
+    "typeCode": "PSV",
+    "typeDescription": "Problem Solving",
+    "slot": true,
+    "duration": false
+  }
+]

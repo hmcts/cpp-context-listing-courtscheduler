@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "courtScheduleJudiciaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "courtListingProfileId": {
+            "type": "string"
+          },
+          "createdOn": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "forenames": {
+            "type": "string"
+          },
+          "id": {
+            "type": "object",
+            "properties": {
+              "courtScheduleId": {
+                "type": "string"
+              },
+              "judiciaryId": {
+                "type": "string"
+              }
+            }
+          },
+          "isBenchChairman": {
+            "type": "boolean"
+          },
+          "isDeputy": {
+            "type": "boolean"
+          },
+          "judiciaryType": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "rotaJudiciaryId": {
+            "type": "string"
+          },
+          "surname": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedOn": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

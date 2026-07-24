@@ -1,0 +1,116 @@
+plugins {
+    id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'org.springframework.boot' version '4.1.0' apply false
+    id 'org.openapi.generator' version '7.24.0' apply false
+    id 'org.cyclonedx.bom' version '2.4.1' apply false
+    id 'com.gorylenko.gradle-git-properties' version '4.0.1' apply false
+    id 'com.avast.gradle.docker-compose' version '0.17.21' apply false
+    id 'com.github.ben-manes.versions' version '0.54.0'
+    id 'pmd'
+}
+
+allprojects {
+    group = 'uk.gov.moj.cpp.courtscheduler'
+    version = System.getProperty('ARTEFACT_VERSION') ?: '0.0.999'
+}
+
+ext {
+    azureADOArtifactRepository = 'https://pkgs.dev.azure.com/hmcts/Artifacts/_packaging/hmcts-lib/maven/v1'
+    azureADOArtifactActor = System.getenv("AZURE_DEVOPS_ARTIFACT_USERNAME")
+    azureADOArtifactToken = System.getenv("AZURE_DEVOPS_ARTIFACT_TOKEN")
+}
+
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'pmd'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs << "-Xlint:unchecked"
+    }
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url = "https://repo.spring.io/milestone" }
+        maven {
+            url = rootProject.ext.azureADOArtifactRepository
+            if (rootProject.ext.azureADOArtifactActor && rootProject.ext.azureADOArtifactToken) {
+                credentials {
+                    username = rootProject.ext.azureADOArtifactActor
+                    password = rootProject.ext.azureADOArtifactToken
+                }
+            }
+        }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom 'org.springframework.boot:spring-boot-dependencies:4.1.0'
+            mavenBom "org.testcontainers:testcontainers-bom:${testcontainersBomVersion}"
+            mavenBom 'org.junit:junit-bom:6.1.2'
+        }
+    }
+
+    dependencies {
+        compileOnly "org.projectlombok:lombok:${lombokVersion}"
+        annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+        testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+        testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+        testImplementation 'org.junit.jupiter:junit-jupiter'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        // Pin the test JVM timezone to the operational TZ for the UK court service.
+        // Some tests (and the production SessionsApiValidator#getMinHearingTime) hard-code
+        // Europe/London when converting Date↔LocalTime, while sibling code uses
+        // systemDefault(). Without this pin, tests pass on dev machines but fail on
+        // CI runners that default to UTC (e.g. GitHub Actions ubuntu-latest).
+        systemProperty 'user.timezone', 'Europe/London'
+        testLogging {
+            events "passed", "skipped", "failed"
+            exceptionFormat = 'full'
+        }
+    }
+
+    pmd {
+        ruleSets = []
+        ignoreFailures = true
+    }
+    tasks.withType(Pmd).configureEach {
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+        }
+    }
+    tasks.matching { it.name == 'pmdMain' }.configureEach {
+        onlyIf { gradle.startParameter.taskNames.contains(name) }
+    }
+    tasks.matching { it.name == 'pmdTest' || it.name == 'pmdTestFixtures' }.configureEach { enabled = false }
+
+    tasks.withType(AbstractArchiveTask).configureEach {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+    }
+}
+
+// `./gradlew clean build` from the repo root invokes `build` on every subproject
+// via Gradle's task-selector semantics. `:listingcourtscheduler-integration-test:build`
+// runs `check` → `test`, and our IT subproject's `test` task IS the integration
+// runner (it depends on composeUp ⇒ composeBuild ⇒ :api:bootJar and is finalizedBy
+// composeDown). So a single `./gradlew clean build` builds every module, produces
+// the bootJar, builds the IT docker image, stands the stack up, runs all ITs, and
+// tears it back down — mirroring cp-court-list-publishing-service.
+

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="002" author="sshetty" logicalFilePath="002-court-room-session-allocation.xml">
+        <createTable tableName="court_room_session_allocation">
+            <column name="court_room_session_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="court_session" type="VARCHAR(10)"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="max_slot" type="NUMERIC"/>
+            <column name="max_duration_mins" type="NUMERIC"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_on" type="DATETIME"/>
+        </createTable>
+
+        <createIndex indexName="idx_court_room_session_allocation"
+                     tableName="court_room_session_allocation">
+            <column name="oucode"/>
+            <column name="court_room_id"/>
+            <column name="court_session"/>
+            <column name="rota_business_type"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

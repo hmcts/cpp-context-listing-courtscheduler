@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="013.01" author="arcadius"
+               logicalFilePath="013-add-index-on-updated-for-for-IFD-349.xml">
+        <createIndex indexName="idx_court_schedule_updated_on"
+                     tableName="court_schedule">
+            <column name="updated_on"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="013.02" author="arcadius"
+               logicalFilePath="013-add-index-on-updated-for-for-IFD-349.xml">
+        <createIndex indexName="idx_court_schedule_judiciary_updated_on"
+                     tableName="court_schedule_judiciary">
+            <column name="updated_on"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="013.03" author="arcadius"
+               logicalFilePath="013-add-index-on-updated-for-for-IFD-349.xml">
+        <createIndex indexName="idx_allocated_listing_updated_on"
+                     tableName="allocated_listings">
+            <column name="updated_on"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

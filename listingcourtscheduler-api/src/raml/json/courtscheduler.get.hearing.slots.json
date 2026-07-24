@@ -1,0 +1,59 @@
+{
+  "results": 1,
+  "pageCount": 1,
+  "hearingSlots": [
+    {
+      "courtScheduleId": "432c56e7-eb89-3f08-8dd2-84edd82ec14e",
+      "listingProfileId": "CS2995299",
+      "ouCode": "B01LY00",
+      "courtRoomId": "9e4932f7-97b2-3010-b942-ddd2624e4dd8",
+      "courtRoomNumber": 2330,
+      "courtHouseId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+      "courtHouseName": "Lavender Hill Magistrates' Court",
+      "courtRoomName": "Courtroom 01",
+      "operationalUnit": "1",
+      "businessType": "TRT",
+      "isSlotBased": "true",
+      "panel": "ADULT",
+      "courtSession": "AD",
+      "slotBased": true,
+      "sessionDate": "2021-05-05",
+      "maxSlots": 0,
+      "maxDuration": 0,
+      "availableSlots": -24,
+      "availableDuration": 0,
+      "judiciaries": [
+        {
+          "judiciaryId": "b1fe7c40-b329-362d-842d-5f3d03798840",
+          "courtScheduleId": "432c56e7-eb89-3f08-8dd2-84edd82ec14e",
+          "courtListingProfileId": "CS2995299",
+          "judiciaryType": "MAGISTRATE",
+          "benchChairman": true,
+          "deputy": false
+        }
+      ],
+      "slotStartTimes": [
+        {
+          "hearingStartTime": "2021-05-05T09:00:00.000Z",
+          "count": 20
+        },
+        {
+          "hearingStartTime": "2021-05-05T10:00:00.000Z",
+          "count": 1
+        },
+        {
+          "hearingStartTime": "2021-05-05T13:00:00.000Z",
+          "count": 1
+        },
+        {
+          "hearingStartTime": "2021-05-05T14:00:00.000Z",
+          "count": 1
+        },
+        {
+          "hearingStartTime": "2021-05-05T15:00:00.000Z",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

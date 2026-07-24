@@ -1,0 +1,23 @@
+{
+  "groups": [
+    { "groupId": "g-1", "groupName": "COURT_LISTING_OFFICERS", "prosecutingAuthority": null }
+  ],
+  "switchableRoles": [],
+  "permissions": [
+    { "permissionId": "p-1", "object": "CourtSchedule", "action": "Create", "description": "" },
+    { "permissionId": "p-2", "object": "CourtSchedule", "action": "View", "description": "" },
+    { "permissionId": "p-3", "object": "CourtSchedule", "action": "Edit", "description": "" },
+    { "permissionId": "p-4", "object": "CourtSchedule", "action": "Delete", "description": "" },
+    { "permissionId": "p-5", "object": "CourtSchedule", "action": "MiExtract", "description": "" },
+    { "permissionId": "p-6", "object": "HearingSlots", "action": "Create", "description": "" },
+    { "permissionId": "p-7", "object": "HearingSlots", "action": "View", "description": "" },
+    { "permissionId": "p-8", "object": "HearingSlots", "action": "Delete", "description": "" },
+    { "permissionId": "p-9", "object": "ProvisionalBooking", "action": "Create", "description": "" },
+    { "permissionId": "p-10", "object": "ProvisionalBooking", "action": "View", "description": "" },
+    { "permissionId": "p-11", "object": "RotaFileProcessor", "action": "Process", "description": "" },
+    { "permissionId": "p-12", "object": "JudiciaryAvailability", "action": "Create", "description": "" },
+    { "permissionId": "p-13", "object": "JudiciaryAvailability", "action": "View", "description": "" },
+    { "permissionId": "p-14", "object": "JudiciaryAvailability", "action": "Edit", "description": "" },
+    { "permissionId": "p-15", "object": "JudiciaryAvailability", "action": "Delete", "description": "" }
+  ]
+}

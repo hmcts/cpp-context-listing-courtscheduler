@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<rotaSchedule xmlns="http://com.moj.mcr.rota/v1/">
+    <rotaPeriod>
+        <justiceAreaType>LJA</justiceAreaType>
+        <justiceAreaName>South Essex</justiceAreaName>
+        <startDate>2020-01-01</startDate>
+        <endDate>2020-06-30</endDate>
+    </rotaPeriod>
+    <magistrates>
+        <magistrate id="MA19219">
+            <title>Mr</title>
+            <surname>SvenTS</surname>
+            <forenames>TienaTS</forenames>
+            <emailAddress>TienaTSSvenTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19172">
+            <title>Mrs</title>
+            <surname>ImogeneTS</surname>
+            <forenames>LannyTS</forenames>
+            <emailAddress>LannyTSImogeneTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA119458">
+            <title>Mr</title>
+            <surname>MargaretteTS</surname>
+            <forenames>CliveTS</forenames>
+            <emailAddress>CliveTSMargaretteTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19192">
+            <title>Ms</title>
+            <surname>RebeTS</surname>
+            <forenames>AnatoleTS</forenames>
+            <emailAddress>AnatoleTSRebeTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA121849">
+            <title>Mrs</title>
+            <surname>RowlandTS</surname>
+            <forenames>EmilineTS</forenames>
+            <emailAddress>EmilineTSRowlandTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19250">
+            <title>Mr</title>
+            <surname>RuthannTS</surname>
+            <forenames>TowneyTS</forenames>
+            <emailAddress>towneyts.aloysiusts.ruthannts@rotaemail.com</emailAddress>
+        </magistrate>
+        <magistrate id="MA19154">
+            <title>Mr</title>
+            <surname>JeffreyTS</surname>
+            <forenames>MarguriteTS</forenames>
+            <emailAddress>MarguriteTSJeffreyTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19189">
+            <title>Mrs</title>
+            <surname>StephiTS</surname>
+            <forenames>ClemensTS</forenames>
+            <emailAddress>ClemensTSStephiTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19276">
+            <title>Mr</title>
+            <surname>FloraTS</surname>
+            <forenames>LuciusTS</forenames>
+            <emailAddress>LuciusTSFloraTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA120101">
+            <title>Ms</title>
+            <surname>LarryTS</surname>
+            <forenames>OndreaTS</forenames>
+            <emailAddress>HollisTSMarchelleTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19199">
+            <title>Mr</title>
+            <surname>EttyTS</surname>
+            <forenames>RagnarTS</forenames>
+            <emailAddress>JaneczkaTSSeeTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19211">
+            <title>Mrs</title>
+            <surname>MerrilTS</surname>
+            <forenames>AddisTS</forenames>
+            <emailAddress>ClaudettaTSSonnyTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19282">
+            <title>Mrs</title>
+            <surname>MaynardTS</surname>
+            <forenames>AvivaTS</forenames>
+            <emailAddress>ShaughnTSMatildeTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19291">
+            <title>Ms</title>
+            <surname>HarwellTS</surname>
+            <forenames>ShoshanaTS</forenames>
+            <emailAddress>WebTSGabrilaTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA19217">
+            <title>Mr</title>
+            <surname>XeniaTS</surname>
+            <forenames>GradyTS</forenames>
+            <emailAddress>MeierTSRhodiaTS@moj.gov.uk</emailAddress>
+        </magistrate>
+        <magistrate id="MA119463">
+            <title>Ms</title>
+            <surname>NorriTS</surname>
+            <forenames>BubbaTS</forenames>
+            <emailAddress>BubbaTSNorriTS@moj.gov.uk</emailAddress>
+        </magistrate>
+    </magistrates>
+    <districtJudges>
+        <districtJudge id="DJ119">
+            <title></title>
+            <surname>ArlinaTS</surname>
+            <forenames>MartieTS</forenames>
+            <emailAddress></emailAddress>
+        </districtJudge>
+    </districtJudges>
+    <locations>
+        <location>
+            <locationId>4</locationId>
+            <name>lavender hill MC</name>
+        </location>
+    </locations>
+    <venues>
+        <venue>
+            <venueId>2330</venueId>
+            <name>Ct 01 LAV HILL</name>
+        </venue>
+        <venue>
+            <venueId>2331</venueId>
+            <name>Ct 02 LAV HILL</name>
+        </venue>
+        <venue>
+            <venueId>2332</venueId>
+            <name>Ct 03 LAV HILL</name>
+        </venue>
+    </venues>
+    <courtListingProfiles>
+        <courtListingProfile id="LH2294283">
+            <sessionDate>2020-01-29</sessionDate>
+            <session>PM</session>
+            <panel>ADULT</panel>
+            <business>VLT</business>
+            <venueId>2332</venueId>
+            <locationId>4</locationId>
+            <welshSpeaking>false</welshSpeaking>
+            <updatedDate>1970-01-01T00:00:00Z</updatedDate>
+        </courtListingProfile>
+    </courtListingProfiles>
+    <schedules>
+        <schedule id="LH2294283_CHAIR">
+            <courtListingProfile idref="LH2294283"/>
+            <justice  idref="MA19189"/>
+            <slot>CHAIR</slot>
+        </schedule>
+        <schedule id="LH2294283_LEFT_WINGER">
+            <courtListingProfile idref="LH2294283"/>
+            <justice  idref="MA19276"/>
+            <slot>LEFT_WINGER</slot>
+        </schedule>
+        <schedule id="LH2294283_RIGHT_WINGER">
+            <courtListingProfile idref="LH2294283"/>
+            <justice  idref="MA120101"/>
+            <slot>RIGHT_WINGER</slot>
+        </schedule>
+    </schedules>
+</rotaSchedule>

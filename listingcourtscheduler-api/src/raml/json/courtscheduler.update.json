@@ -1,0 +1,13 @@
+{
+  "courtScheduleId": "550e8400-e29b-41d4-a716-446655440000",
+  "courtRoomId": "550e8400-e29b-41d4-a716-446655440001",
+  "sessionType": "AM",
+  "businessType": "TRL",
+  "panel": "YOUTH",
+  "jurisdiction": "MAGISTRATES",
+  "isAllDaySplit": true,
+  "maxDurationForMorning": 240,
+  "maxDurationForAfternoon": 120,
+  "sessionStartTime": "10:00",
+  "sessionEndTime": "12:00"
+}

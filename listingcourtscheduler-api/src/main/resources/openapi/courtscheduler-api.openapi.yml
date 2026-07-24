@@ -1,0 +1,719 @@
+openapi: 3.0.3
+info:
+  title: Court Scheduler API
+  description: |
+    Spring Boot port of the existing RAML 0.8 contract under
+    listingcourtscheduler-api/src/raml/courtscheduler-api.raml.
+    Paths, query parameters, vendor media types and status codes are preserved
+    to keep the existing UI clients working without change.
+  version: 17.0.76
+servers:
+  - url: /listingcourtscheduler-api/rest/courtscheduler
+    description: Local / WildFly-equivalent context path
+
+tags:
+  - name: courtschedule
+  - name: hearingslots
+  - name: provisional-booking
+  - name: mi
+  - name: oucode
+  - name: rotasl
+  - name: validate
+  - name: judiciary-availability
+  - name: session
+
+paths:
+  /courtschedule:
+    post:
+      tags: [courtschedule]
+      operationId: postCourtschedulerCreateCourtschedule
+      summary: Create court schedules
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.create+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerCreate'
+      responses:
+        '202':
+          description: Accepted
+    get:
+      tags: [courtschedule]
+      operationId: getCourtschedule
+      summary: Query court schedules
+      parameters:
+        - { in: query, name: courtCentreId, required: true,  schema: { type: string } }
+        - { in: query, name: courtRoomId,   required: false, schema: { type: string } }
+        - { in: query, name: businessType,  required: false, schema: { type: string } }
+        - { in: query, name: sessionStartDate, required: true, schema: { type: string } }
+        - { in: query, name: sessionEndDate,   required: true, schema: { type: string } }
+        - { in: query, name: isDraft,    required: false, schema: { type: boolean } }
+        - { in: query, name: pageSize,   required: true,  schema: { type: string } }
+        - { in: query, name: pageNumber, required: true,  schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.get+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerGetCourtSchedule'
+
+  /courtschedule/edit:
+    post:
+      tags: [courtschedule]
+      operationId: postCourtschedulerUpdateCourtscheduleEdit
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.update+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerUpdate'
+      responses:
+        '202':
+          description: Accepted
+
+  /courtschedule/assign.courtroom:
+    post:
+      tags: [courtschedule]
+      operationId: postCourtschedulerAssignCourtroom
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.assign.courtroom+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerAssignCourtroom'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.assign.courtroom.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerAssignCourtroomResponse'
+
+  /courtschedule/delete:
+    post:
+      tags: [courtschedule]
+      operationId: postCourtschedulerDeleteCourtschedule
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.delete+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerDelete'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.delete.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerDeleteResponse'
+
+  /courtschedule/search.court-schedules-by-id:
+    get:
+      tags: [courtschedule]
+      operationId: getCourtschedulesByIds
+      parameters:
+        - in: query
+          name: courtScheduleIds
+          required: true
+          description: Comma-separated list of UUIDs
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.search.court-schedules-by-id+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerSearchCourtSchedulesByIdResponse'
+
+  /session:
+    post:
+      tags: [session]
+      operationId: postCourtschedulerSessionJudiciary
+      summary: Assign or unassign a judiciary from court sessions
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.assign-judiciary+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerAssignJudiciary'
+          application/vnd.courtscheduler.unassign.judiciary+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerUnassignJudiciary'
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /hearingslots:
+    put:
+      tags: [hearingslots]
+      operationId: putUpdateHearingSlots
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.update.hearing.slots+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerUpdateHearingSlots'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.update.hearing.slots.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerUpdateHearingSlotsResponse'
+    get:
+      tags: [hearingslots]
+      operationId: getHearingSlots
+      description: Returns either hearing slots or hearing ids depending on the produced media type negotiated.
+      parameters:
+        - in: query
+          name: panel
+          required: true
+          schema: { type: string }
+          description: "ADULT/YOUTH/ADULT,YOUTH"
+        - { in: query, name: sessionStartDate, required: true,  schema: { type: string } }
+        - { in: query, name: sessionEndDate,   required: true,  schema: { type: string } }
+        - { in: query, name: exactHearingStartDateTime, required: false, schema: { type: string } }
+        - { in: query, name: oucodeL2Code, required: false, schema: { type: string } }
+        - { in: query, name: ouCode,        required: false, schema: { type: string } }
+        - { in: query, name: courtRoomId,   required: false, schema: { type: string } }
+        - { in: query, name: courtRoomNumber, required: false, schema: { type: string } }
+        - { in: query, name: businessType,  required: false, schema: { type: string } }
+        - { in: query, name: courtSession,  required: false, schema: { type: string } }
+        - { in: query, name: isSlotBased,   required: false, schema: { type: string } }
+        - { in: query, name: hearingStartTime, required: false, schema: { type: string } }
+        - { in: query, name: duration,      required: false, schema: { type: string } }
+        - { in: query, name: pageSize,      required: true,  schema: { type: string } }
+        - { in: query, name: pageNumber,    required: true,  schema: { type: string } }
+        - { in: query, name: showOverbookedSlots, required: false, schema: { type: boolean } }
+        - { in: query, name: caseIdentifier, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.get.hearing.slots+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerGetHearingSlots'
+            application/vnd.courtscheduler.get.hearing.ids+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerGetHearingIds'
+
+  /hearingslots/{hearingId}:
+    delete:
+      tags: [hearingslots]
+      operationId: deleteHearingSlots
+      parameters:
+        - in: path
+          name: hearingId
+          required: true
+          schema: { type: string }
+      responses:
+        '202':
+          description: Accepted
+
+  /list/hearingslots:
+    put:
+      tags: [hearingslots]
+      operationId: putListHearingSlotsInCourtSessions
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.list.hearings-in-court-sessions+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerListHearingsInCourtSessions'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.list.hearings-in-court-sessions.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerListHearingsInCourtSessionsResponse'
+
+  /searchupdate/hearingslots:
+    put:
+      tags: [hearingslots]
+      operationId: putSearchUpdateHearingSlots
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.search.update.hearing.slots+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerSearchUpdateHearingSlots'
+      responses:
+        '204':
+          description: No Content
+
+  /searchlist/hearingslots:
+    get:
+      tags: [hearingslots]
+      operationId: getSearchListHearingSlots
+      parameters:
+        - { in: query, name: hearingId,    required: true,  schema: { type: string } }
+        - { in: query, name: courtCentreId, required: true, schema: { type: string } }
+        - { in: query, name: courtRoomId,  required: false, schema: { type: string } }
+        - { in: query, name: hearingDate,  required: true,  schema: { type: string } }
+        - { in: query, name: hearingSessionDateSearchCutOff, required: false, schema: { type: string } }
+        - { in: query, name: hearingStartTime, required: false, schema: { type: string } }
+        - { in: query, name: durationInMinutes, required: true, schema: { type: integer } }
+        - { in: query, name: isPolice,     required: false, schema: { type: boolean } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.search.book.hearing.slots+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerSearchBookHearingSlotsResponse'
+
+  /provisionalBooking:
+    post:
+      tags: [provisional-booking]
+      operationId: postCreateProvisionalBooking
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.create.provisional.booking+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerCreateProvisionalBooking'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.create.provisional.booking.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerCreateProvisionalBookingResponse'
+            # Backward compatibility: the legacy WildFly endpoint returned application/json
+            # (the RAML declared no response media type), so a legacy client sends
+            # `Accept: application/json`. Keep it producible, else strict content negotiation
+            # turns it into a 500 via the catch-all handler. See ProvisionalBookingIT.
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerCreateProvisionalBookingResponse'
+    get:
+      tags: [provisional-booking]
+      operationId: getProvisionalBooking
+      parameters:
+        - { in: query, name: bookingIds, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.get.provisional.booking+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerGetProvisionalBooking'
+
+  /mi/court_schedules:
+    get:
+      tags: [mi]
+      operationId: getMiCourtSchedules
+      parameters:
+        - { in: query, name: fromDate, required: true, schema: { type: string } }
+        - { in: query, name: toDate,   required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.export.court_schedule+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerExportCourtSchedule'
+
+  /mi/court_schedule_judiciaries:
+    get:
+      tags: [mi]
+      operationId: getMiCourtScheduleJudiciaries
+      parameters:
+        - { in: query, name: fromDate, required: true, schema: { type: string } }
+        - { in: query, name: toDate,   required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.export.court_schedule_judiciary+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerExportCourtScheduleJudiciary'
+
+  /mi/allocated_listings:
+    get:
+      tags: [mi]
+      operationId: getMiAllocatedListings
+      parameters:
+        - { in: query, name: fromDate, required: true, schema: { type: string } }
+        - { in: query, name: toDate,   required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.export.allocated_listings+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerExportAllocatedListings'
+
+  /oucode/recalculate-availability:
+    post:
+      tags: [oucode]
+      operationId: postOuCodeRecalculateAvailability
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.oucode.recalculate.availability+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerOucodeRecalculateAvailability'
+      responses:
+        '202':
+          description: Recalculation accepted
+
+  /oucode/migrate:
+    post:
+      tags: [oucode]
+      operationId: postOuCodeMigrate
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.oucode.migrate+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerOucodeMigrate'
+      responses:
+        '202':
+          description: Accepted
+
+  /rotasl/process-rota-files:
+    post:
+      tags: [rotasl]
+      operationId: postProcessRotaFiles
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.rotasl.process_rota_files+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerRotaslProcessRotaFiles'
+      responses:
+        '202':
+          description: Accepted
+
+  /rotasl/clean-redundant-rota-data:
+    post:
+      tags: [rotasl]
+      operationId: postCleanRedundantRotaData
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.rotasl.clean_redundant_rota_data+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerRotaslCleanRedundantRotaData'
+      responses:
+        '202':
+          description: Accepted
+
+  /validate:
+    post:
+      tags: [validate]
+      operationId: postValidate
+      summary: Validate a request before calling the actual endpoint
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.validate.create+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerValidateCreate'
+          application/vnd.courtscheduler.validate.update+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerValidateUpdate'
+          application/vnd.courtscheduler.validate.delete+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerValidateDelete'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Validation failed
+          content:
+            application/vnd.courtscheduler.validate.create.response+json:
+              schema: { $ref: '#/components/schemas/CourtschedulerValidateResponse' }
+            application/vnd.courtscheduler.validate.update.response+json:
+              schema: { $ref: '#/components/schemas/CourtschedulerValidateResponse' }
+            application/vnd.courtscheduler.validate.delete.response+json:
+              schema: { $ref: '#/components/schemas/CourtschedulerValidateResponse' }
+
+  /validate-session-availability:
+    post:
+      tags: [validate]
+      operationId: postValidateSessionAvailability
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.validate.session.availability+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerValidateSessionAvailability'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Validation failed
+          content:
+            application/vnd.courtscheduler.validate.session.availability.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+
+  /judiciaries/availability-rules:
+    get:
+      tags: [judiciary-availability]
+      operationId: findJudiciaryAvailabilityRules
+      parameters:
+        - { in: query, name: startDate,    required: true,  schema: { type: string } }
+        - { in: query, name: endDate,      required: true,  schema: { type: string } }
+        - { in: query, name: courtCentreId, required: false, schema: { type: string } }
+        - { in: query, name: pageSize,     required: false, schema: { type: integer, default: 20 } }
+        - { in: query, name: pageNumber,   required: false, schema: { type: integer, default: 1 } }
+        - { in: query, name: withJudiciary, required: false, schema: { type: boolean, default: true } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerFindJudiciaryAvailabilityRule'
+
+  /judiciaries/availability-rules/{ruleId}:
+    get:
+      tags: [judiciary-availability]
+      operationId: getJudiciaryAvailabilityRule
+      parameters:
+        - in: path
+          name: ruleId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: withJudiciary
+          required: false
+          schema: { type: boolean, default: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerGetJudiciaryAvailabilityRule'
+
+  /judiciaries/availability-rules/add:
+    post:
+      tags: [judiciary-availability]
+      operationId: addJudiciaryAvailabilityRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerAddJudiciaryAvailabilityRule'
+      responses:
+        '200':
+          description: OK
+        '422':
+          description: Validation failed
+          content:
+            application/vnd.courtscheduler.validate.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+
+  /judiciaries/availability-rules/update:
+    post:
+      tags: [judiciary-availability]
+      operationId: updateJudiciaryAvailabilityRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerUpdateJudiciaryAvailabilityRule'
+      responses:
+        '200':
+          description: OK
+        '422':
+          description: Validation failed
+          content:
+            application/vnd.courtscheduler.validate.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+
+  /judiciaries/availability-rules/delete:
+    post:
+      tags: [judiciary-availability]
+      operationId: deleteJudiciaryAvailabilityRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerDeleteJudiciaryAvailabilityRule'
+      responses:
+        '200':
+          description: OK
+        '422':
+          description: Validation failed
+          content:
+            application/vnd.courtscheduler.validate.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+
+  /judiciaries/availability-rules/validate-add:
+    post:
+      tags: [judiciary-availability]
+      operationId: validateAddJudiciaryAvailabilityRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerAddJudiciaryAvailabilityRule'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.validate.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/vnd.courtscheduler.validate.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+
+  /judiciaries/availability-rules/validate-update:
+    post:
+      tags: [judiciary-availability]
+      operationId: validateUpdateJudiciaryAvailabilityRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerUpdateJudiciaryAvailabilityRule'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.validate.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/vnd.courtscheduler.validate.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+
+  /judiciaries/availability-rules/validate-delete:
+    post:
+      tags: [judiciary-availability]
+      operationId: validateDeleteJudiciaryAvailabilityRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerDeleteJudiciaryAvailabilityRule'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.validate.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/vnd.courtscheduler.validate.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
+
+  /judiciaries/availability:
+    get:
+      tags: [judiciary-availability]
+      operationId: findJudiciaryAvailability
+      parameters:
+        - { in: query, name: startDate,    required: true,  schema: { type: string } }
+        - { in: query, name: endDate,      required: true,  schema: { type: string } }
+        - { in: query, name: courtCentreId, required: false, schema: { type: string } }
+        - { in: query, name: pageSize,     required: false, schema: { type: integer, default: 20 } }
+        - { in: query, name: pageNumber,   required: false, schema: { type: integer, default: 1 } }
+        - { in: query, name: withJudiciary, required: false, schema: { type: boolean, default: true } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerFindJudiciaryAvailability'
+
+components:
+  schemas:
+    # NOTE: All payload schemas below are intentionally permissive (additionalProperties: true)
+    # so the existing JSON request/response shapes from
+    # listingcourtscheduler-api/src/raml/json/schema/*.json continue to flow unchanged.
+    # Replace each of these with the strict schema from the corresponding RAML JSON Schema file
+    # before going to production. This file's primary purpose is to (1) feed cp-audit-filter-springboot
+    # and (2) generate Spring controller interfaces with the correct paths and media types.
+    PassthroughObject:
+      type: object
+      additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        errorMessage: { type: string }
+        errorMessages:
+          type: array
+          items: { type: string }
+        traceId: { type: string }
+        timestamp: { type: string, format: date-time }
+
+    CourtschedulerCreate:                       { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerUpdate:                       { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerDelete:                       { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerDeleteResponse:               { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerAssignCourtroom:              { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerAssignCourtroomResponse:      { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerGetCourtSchedule:             { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerSearchCourtSchedulesByIdResponse: { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerAssignJudiciary:              { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerUnassignJudiciary:            { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerUpdateHearingSlots:            { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerUpdateHearingSlotsResponse:    { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerGetHearingSlots:               { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerGetHearingIds:                 { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerListHearingsInCourtSessions:   { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerListHearingsInCourtSessionsResponse: { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerSearchUpdateHearingSlots:      { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerSearchBookHearingSlotsResponse: { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerCreateProvisionalBooking:         { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerCreateProvisionalBookingResponse: { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerGetProvisionalBooking:            { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerExportCourtSchedule:            { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerExportCourtScheduleJudiciary:   { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerExportAllocatedListings:        { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerOucodeRecalculateAvailability:  { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerOucodeMigrate:                  { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerRotaslProcessRotaFiles:         { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerRotaslCleanRedundantRotaData:   { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerValidateCreate:                 { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerValidateUpdate:                 { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerValidateDelete:                 { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerValidateSessionAvailability:    { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerValidateResponse:               { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerFindJudiciaryAvailabilityRule:  { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerGetJudiciaryAvailabilityRule:   { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerAddJudiciaryAvailabilityRule:   { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerUpdateJudiciaryAvailabilityRule: { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerDeleteJudiciaryAvailabilityRule: { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerFindJudiciaryAvailability:      { $ref: '#/components/schemas/PassthroughObject' }
