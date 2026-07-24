@@ -1,0 +1,217 @@
+plugins {
+    id 'application'
+    id 'org.springframework.boot'
+    id 'org.openapi.generator'
+    id 'org.cyclonedx.bom'
+    id 'com.gorylenko.gradle-git-properties'
+    id 'maven-publish'
+    id 'jacoco'
+}
+
+ext {
+    serverPort = project.findProperty('server.port') ?: '8083'
+}
+
+/* ---------------- OpenAPI server stubs ---------------- */
+openApiGenerate {
+    generatorName = 'spring'
+    inputSpec = "${projectDir}/src/main/resources/openapi/courtscheduler-api.openapi.yml".toString()
+    outputDir = "$buildDir/generated/openapi".toString()
+    apiPackage = 'uk.gov.moj.cpp.courtscheduler.openapi.api'
+    modelPackage = 'uk.gov.moj.cpp.courtscheduler.openapi.model'
+    invokerPackage = 'uk.gov.moj.cpp.courtscheduler.openapi.invoker'
+    apiNameSuffix = 'OpenApi'
+    configOptions = [
+            interfaceOnly       : 'true',
+            useSpringBoot3      : 'true',
+            useTags             : 'true',
+            useJakartaEe        : 'true',
+            dateLibrary         : 'java8',
+            openApiNullable     : 'false',
+            skipDefaultInterface: 'true',
+            useResponseEntity   : 'true'
+    ]
+}
+
+sourceSets.main.java.srcDir "$buildDir/generated/openapi/src/main/java"
+tasks.named('compileJava') { dependsOn tasks.named('openApiGenerate') }
+
+/* ---------------- Dependencies ---------------- */
+dependencies {
+    // Library subprojects (lib graph: cache + domain + common + persistence + rota-file-processor + liquibase)
+    implementation project(':listingcourtscheduler-cache')
+    implementation project(':listingcourtscheduler-domain')
+    implementation project(':listingcourtscheduler-common')
+    implementation project(':listingcourtscheduler-rota-file-processor')
+    implementation project(':listingcourtscheduler-viewstore:listingcourtscheduler-viewstore-persistence')
+    runtimeOnly    project(':listingcourtscheduler-viewstore:listingcourtscheduler-viewstore-liquibase')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-aspectj'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    implementation 'io.swagger.core.v3:swagger-annotations:2.2.52'
+    implementation 'jakarta.validation:jakarta.validation-api:3.1.1'
+    implementation 'jakarta.servlet:jakarta.servlet-api:6.1.0'
+    implementation 'org.openapitools:jackson-databind-nullable:0.2.10'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // Draft-04 JSON Schema validation of inbound request bodies, using everit (the same library
+    // the legacy Justice Services framework used) for exact parity — see RequestSchemaValidationFilter.
+    implementation 'com.github.erosb:everit-json-schema:1.14.6'
+
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
+
+    implementation 'net.logstash.logback:logstash-logback-encoder:9.0'
+    implementation 'org.apache.logging.log4j:log4j-to-slf4j'
+    implementation 'ch.qos.logback:logback-classic'
+    implementation 'ch.qos.logback:logback-core'
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.postgresql:postgresql'
+    implementation 'org.liquibase:liquibase-core'
+    implementation 'org.springframework.boot:spring-boot-liquibase'
+
+    implementation 'org.apache.commons:commons-collections4:4.5.0'
+    implementation 'commons-collections:commons-collections:3.2.2'
+
+    implementation 'org.hibernate.validator:hibernate-validator:9.1.2.Final'
+    implementation 'org.apache.commons:commons-lang3:3.20.0'
+    implementation 'org.apache.commons:commons-text:1.15.0'
+    implementation 'com.google.guava:guava:33.6.0-jre'
+
+    implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
+
+    implementation 'org.modelmapper:modelmapper:3.2.6'
+
+    implementation "com.github.erosb:everit-json-schema:${everitJsonSchemaVersion}"
+
+    implementation 'jakarta.json:jakarta.json-api:2.1.3'
+    runtimeOnly 'org.eclipse.parsson:parsson:1.1.9'
+
+    implementation 'io.lettuce:lettuce-core:7.6.0.RELEASE'
+
+    implementation "uk.gov.hmcts.cp:cp-auth-rules-filter:${cpAuthFilterVersion}"
+    implementation "uk.gov.hmcts.cp:cp-audit-filter-springboot:${cpAuditFilterVersion}"
+
+    annotationProcessor 'org.hibernate.orm:hibernate-jpamodelgen:7.4.4.Final'
+
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'junit', module: 'junit'
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
+    testImplementation 'io.micrometer:micrometer-tracing-test'
+    testImplementation "org.springframework.boot:spring-boot-starter-webmvc-test"
+    testImplementation "org.springframework.boot:spring-boot-starter-data-jpa-test"
+    testImplementation 'io.rest-assured:rest-assured:6.0.0'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'io.github.benas:random-beans:3.9.0'
+    testImplementation testFixtures(project(':listingcourtscheduler-domain'))
+}
+
+springBoot {
+    buildInfo {
+        properties {
+            name = project.name
+            version = project.version.toString()
+        }
+    }
+}
+
+gitProperties {
+    dotGitDirectory = file("${rootProject.projectDir}/.git")
+    failOnNoGitDirectory = false
+}
+
+cyclonedxBom {
+    includeConfigs = ["runtimeClasspath"]
+    skipConfigs = ["compileClasspath", "testImplementation", "testCompileClasspath", "testRuntimeClasspath"]
+    schemaVersion = "1.6"
+    componentVersion = providers.provider { project.version.toString() }
+    destination = layout.buildDirectory.dir("reports").get().asFile
+}
+
+jar {
+    enabled = true
+    archiveClassifier.set('plain')
+}
+
+bootJar {
+    archiveFileName = "${rootProject.name}-${project.version}.jar"
+    manifest {
+        attributes('Implementation-Version': project.version.toString())
+    }
+}
+
+application {
+    mainClass = 'uk.gov.moj.cpp.courtscheduler.Application'
+}
+
+/* ---------------- Publishing ----------------
+ * Publishes the Spring Boot fat jar (and the 'plain' classifier jar) to GitHub Packages
+ * and the HMCTS Azure DevOps Artifacts feed. Coordinates are pinned to match the ADO
+ * Deploy pipeline's expectations (see .github/workflows/ci-build-publish.yml `Deploy` job:
+ * GROUP_ID=uk.gov.hmcts.cp, ARTIFACT_ID=<repo-name>).
+ *
+ * Credentials/repository identifiers come from env vars in CI; locally a developer can
+ * still run `./gradlew publishToMavenLocal` without any of them.
+ */
+def githubActor = project.findProperty("github.actor") ?: System.getenv("GITHUB_ACTOR")
+def githubToken = project.findProperty("github.token") ?: System.getenv("GITHUB_TOKEN")
+def githubRepo  = System.getenv("GITHUB_REPOSITORY") ?: "hmcts/${rootProject.name}"
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId    = 'uk.gov.hmcts.cp'
+            artifactId = rootProject.name
+            version    = project.version
+
+            artifact(tasks.named('bootJar'))
+            artifact(tasks.named('jar'))
+
+            pom {
+                name = rootProject.name
+                url  = "https://github.com/${githubRepo}"
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url  = uri("https://maven.pkg.github.com/${githubRepo}")
+            credentials {
+                username = githubActor
+                password = githubToken
+            }
+        }
+        maven {
+            name = "AzureArtifacts"
+            url  = uri(rootProject.ext.azureADOArtifactRepository)
+            credentials {
+                username = rootProject.ext.azureADOArtifactActor
+                password = rootProject.ext.azureADOArtifactToken
+            }
+        }
+    }
+}
+
+tasks.named('test') {
+    // Run every test class even when one fails, so the failure list is comprehensive.
+    failFast = false
+    jvmArgs += [
+            "-javaagent:${configurations.testRuntimeClasspath.find { it.name.contains('mockito-core') }}", '-Xshare:off'
+    ]
+}
+
+// Multiple legacy modules each ship META-INF/beans.xml — no longer relevant under
+// Spring (CDI is gone) so the first wins.
+tasks.named('processResources') {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    // Package the legacy RAML JSON Schemas onto the runtime classpath so
+    // RequestSchemaValidationFilter can validate inbound request bodies against them.
+    from('src/raml/json/schema') { into 'request-schemas' }
+}

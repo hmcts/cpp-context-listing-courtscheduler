@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="034" author="samialpak" logicalFilePath="034-insert-oucodes-to-courtscheduler_migration_status.xml">
+        <loadData tableName="courtscheduler_migration_status"
+                  file="liquibase/courtscheduler-view-store-db-changesets/csv/courtschedulerMigrationStatus-additional1.csv"/>
+    </changeSet>
+</databaseChangeLog>

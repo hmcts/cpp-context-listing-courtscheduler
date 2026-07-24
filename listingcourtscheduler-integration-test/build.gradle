@@ -1,0 +1,133 @@
+// Test-only subproject: holds the full integration-test suite (legacy *IT classes
+// re-platformed onto Spring + the new *IntegrationTest classes added during the
+// migration). Never embedded in the api jar — its sole output is the `test` task.
+plugins {
+    id 'java-library'
+    id 'com.avast.gradle.docker-compose'
+}
+
+ext {
+    serverPort = project.findProperty('server.port') ?: '8083'
+}
+
+// Move the test sources to this module's `test` source set rather than relying on
+// the default `src/test/java`. This keeps things explicit.
+sourceSets {
+    test {
+        java.srcDirs = ['src/test/java']
+        resources.srcDirs = ['src/test/resources']
+    }
+    main {
+        java.srcDirs = []
+        resources.srcDirs = []
+    }
+}
+
+// No production artifact — disable jar publication so this module is purely tests.
+jar { enabled = false }
+
+configurations {
+    testRuntimeClasspath {
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    // Need access to the running app's classpath types only at compile time
+    // (e.g. Application.java for any reflection-based test helpers). The actual
+    // app under test runs inside Docker via docker-compose.
+    testImplementation project(':listingcourtscheduler-api')
+    testImplementation project(':listingcourtscheduler-common')
+    testImplementation project(':listingcourtscheduler-domain')
+    testImplementation testFixtures(project(':listingcourtscheduler-domain'))
+    testImplementation project(':listingcourtscheduler-rota-file-processor')
+    testImplementation project(':listingcourtscheduler-viewstore:listingcourtscheduler-viewstore-persistence')
+
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'junit', module: 'junit'
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
+    // Needed by the restored TestDurationListener / TestReportGenerator helpers
+    testImplementation 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    testImplementation 'org.postgresql:postgresql'
+    testImplementation 'com.google.guava:guava:33.6.0-jre'
+    testImplementation 'commons-collections:commons-collections:3.2.2'
+    testImplementation 'org.apache.commons:commons-collections4:4.5.0'
+    testImplementation 'org.apache.commons:commons-lang3'
+    // json-org used by ProvisionalBookingIT for JSONObject responseJson parsing
+    testImplementation 'org.json:json:20260522'
+    testImplementation 'org.wiremock:wiremock-standalone:3.13.2'
+    // jakarta.ws.rs API for the legacy IT classes' Response/MediaType types (no JAX-RS impl needed)
+    testImplementation 'jakarta.ws.rs:jakarta.ws.rs-api:4.0.0'
+    testRuntimeOnly  'org.glassfish.jersey.core:jersey-common:4.0.2'
+    // random-beans for the legacy AbstractIT.RANDOM utility
+    testImplementation('io.github.benas:random-beans:3.9.0') {
+        exclude group: 'org.objenesis', module: 'objenesis'
+    }
+    // Apache HttpClient — pulled in for HttpHeaders constants used by StubUtil
+    testImplementation 'org.apache.httpcomponents:httpcore:4.4.16'
+    // commons-io used by FileUtil
+    testImplementation 'commons-io:commons-io:2.22.0'
+    testImplementation 'io.rest-assured:rest-assured:6.0.0'
+    testImplementation 'org.awaitility:awaitility:4.3.0'
+    testImplementation 'jakarta.json:jakarta.json-api:2.1.3'
+    testRuntimeOnly  'org.eclipse.parsson:parsson:1.1.9'
+
+    // Azure clients for tests that upload XML rota files into Azurite
+    testImplementation('com.azure:azure-storage-blob:12.35.0') {
+        exclude group: 'com.azure', module: 'azure-core-http-netty'
+    }
+    testImplementation 'com.azure:azure-core-http-jdk-httpclient:1.1.5'
+}
+
+/* ---------------- Docker Compose (IT stack) ---------------- */
+// The IT image COPYs the api bootJar into the container, so composeBuild has to
+// wait for the api subproject's bootJar.
+def apiProject = project(':listingcourtscheduler-api')
+tasks.named('composeBuild') { dependsOn apiProject.tasks.named('bootJar') }
+
+dockerCompose {
+    useComposeFiles = ['docker/docker-compose.integration.yml']
+    startedServices = ['app', 'db', 'wiremock', 'azurite']
+
+    buildBeforeUp = true
+    waitForTcpPorts = false
+    upAdditionalArgs = ['--wait', '--wait-timeout', '180']
+
+    captureContainersOutput = true
+    removeOrphans = true
+    stopContainers = true
+    removeContainers = true
+
+    projectName = "${rootProject.name}-it".replaceAll('[^A-Za-z0-9]', '')
+
+    useDockerComposeV2 = true
+    dockerExecutable = 'docker'
+}
+
+tasks.named('test') {
+    description = "Runs integration tests against the IT docker-compose stack"
+    group = "verification"
+
+    dependsOn tasks.named('composeUp')
+    finalizedBy tasks.named('composeDown')
+
+    systemProperty 'app.baseUrl',
+            "http://localhost:${serverPort}/listingcourtscheduler-api/rest/courtscheduler"
+    systemProperty 'wiremock.baseUrl', 'http://localhost:8189'
+
+    jvmArgs = ['-Xshare:off']
+    testLogging {
+        showStandardStreams = true
+    }
+}
+
+tasks.named('processTestResources') {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    // Copy the docker-compose .env (single source of truth for the Azurite
+    // connection string) onto the test classpath so AzuriteFixture can read
+    // it with getResourceAsStream — same file the compose stack auto-loads.
+    from('docker/.env')
+}

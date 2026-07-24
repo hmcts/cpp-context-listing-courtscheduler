@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="011" author="samialpak" logicalFilePath="011-provisional-booking.xml">
+        <createTable tableName="provisional_booking">
+            <column name="booking_id" type="VARCHAR(100)" >
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_provisional_booking"/>
+            </column>
+            <column name="court_schedule_id" type="VARCHAR(100)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_provisional_booking"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="updated_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="created_on" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createIndex indexName="idx_provisional_booking"
+                     tableName="provisional_booking">
+            <column name="booking_id" />
+            <column name="court_schedule_id"/>
+            <column name="active"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

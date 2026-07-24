@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="003" author="sshetty" logicalFilePath="003-allocated-listings.xml">
+        <createTable tableName="allocated_listings">
+            <column name="id" type="VARCHAR(100)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="court_schedule_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="booking_id" type="VARCHAR(100)"/>
+            <column name="hearing_id" type="VARCHAR(100)"/>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_id" type="NUMERIC"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="duration" type="NUMERIC"/>
+            <column name="created_on" type="DATETIME"/>
+            <column name="updated_on" type="DATETIME"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

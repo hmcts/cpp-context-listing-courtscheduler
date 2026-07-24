@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="042" author="baris.ozturkmen" logicalFilePath="042-add_national_break_time_column.xml">
+        <addColumn tableName="court_schedule">
+            <column name="national_break_time" type="timestamp with time zone">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <sql>
+            UPDATE court_schedule
+            SET national_break_time = 
+                CASE 
+                    WHEN session_start_time AT TIME ZONE 'Europe/London' != session_start_time AT TIME ZONE 'UTC'
+                    THEN (DATE_TRUNC('day', session_start_time) + INTERVAL '12:00:00')::timestamp with time zone
+                    ELSE (DATE_TRUNC('day', session_start_time) + INTERVAL '13:00:00')::timestamp with time zone
+                END;
+        </sql>
+
+        <addNotNullConstraint tableName="court_schedule" columnName="national_break_time"/>
+    </changeSet>
+
+</databaseChangeLog> 

@@ -1,0 +1,34 @@
+{
+  "sessions": [
+    {
+      "courtCentreId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+      "courtRoomId": "9e4932f7-97b2-3010-b942-ddd2624e4dd8",
+      "sessionType": "AM",
+      "businessType": "c66d90c8-8ef2-36d8-b033-e24a6ee09c8c",
+      "duration": 1,
+      "panel": "ADULT",
+      "repeatDays": ["MON", "TUE", "WED"],
+      "sessionStartTime": "09:00",
+      "sessionEndTime": "16:00"
+    }
+  ],
+
+  "repeatPattern": {
+    "startDate": "2024-07-12",
+    "endDate": "2024-07-18",
+    "repeatFor": 1,
+    "frequency": "ONCE"
+  },
+
+  "sessionToBeAdded":  {
+    "courtCentreId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+    "courtRoomId": "9e4932f7-97b2-3010-b942-ddd2624e4dd8",
+    "sessionType": "PM",
+    "businessType": "c66d90c8-8ef2-36d8-b033-e24a6ee09c8c",
+    "duration": 10,
+    "panel": "YOUTH",
+    "repeatDays": ["MON", "TUE", "WED"],
+    "sessionStartTime": "10:00",
+    "sessionEndTime": "15:00"
+  }
+}

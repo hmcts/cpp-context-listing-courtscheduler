@@ -1,0 +1,29 @@
+{
+  "hearingSlots": [
+    {
+      "hearingId": "5771a96b-1c5a-45d1-b647-1bec5212cafc",
+      "courtScheduleIds": [
+        {
+          "courtScheduleId": "1771a96b-1c5a-45d1-b647-1bec5212cafc",
+          "hearingStartTime": "2020-05-13T03:00:00Z",
+          "durationInMinutes": 20,
+          "source": "DEFAULT"
+        }
+      ]
+    },
+    {
+      "hearingId": "6771a96b-1c5a-45d1-b647-1bec5212cafc",
+      "courtScheduleIds": [
+        {
+          "courtScheduleId": "5771a96b-1c5a-45d1-b647-1bec5212cafc",
+          "hearingStartTime": "2020-05-13T10:00:00Z",
+          "source": "DEFAULT"
+        },
+        {
+          "courtScheduleId": "2771a96b-1c5a-45d1-b647-1bec5212cafc",
+          "source": "DEFAULT"
+        }
+      ]
+    }
+  ]
+}

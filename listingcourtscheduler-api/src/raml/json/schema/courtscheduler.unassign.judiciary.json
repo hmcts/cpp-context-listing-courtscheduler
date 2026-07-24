@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": [
+    "judiciaries"
+  ],
+  "properties": {
+    "judiciaries": {
+      "type": "array",
+      "description": "List of judiciaries to unassign from sessions",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "judiciaryId",
+          "sessionIds"
+        ],
+        "properties": {
+          "judiciaryId": {
+            "type": "string",
+            "description": "The unique identifier of the judiciary to unassign"
+          },
+          "sessionIds": {
+            "type": "array",
+            "description": "List of session (court schedule) IDs to unassign the judiciary from",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "skipValidations": {
+      "type": "boolean",
+      "description": "If true, skip all validations for this request. Defaults to false."
+    }
+  }
+}
+

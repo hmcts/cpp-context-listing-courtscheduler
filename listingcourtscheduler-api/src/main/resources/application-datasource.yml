@@ -1,0 +1,45 @@
+# Datasource, JPA and Liquibase
+spring:
+  datasource:
+    url: ${CSCHED_DATASOURCE_URL:jdbc:postgresql://localhost:5432/scsl}
+    username: ${CSCHED_DATASOURCE_USERNAME:scsl}
+    password: ${CSCHED_DATASOURCE_PASSWORD:scsl}
+    driver-class-name: ${CSCHED_DATASOURCE_DRIVER:org.postgresql.Driver}
+    hikari:
+      pool-name: cp-hikari
+      maximum-pool-size: ${CSCHED_DB_POOL_SIZE:20}
+      minimum-idle: ${CSCHED_DB_MIN_IDLE:5}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      keepalive-time: 300000
+      validation-timeout: 5000
+      # MUST stay true. The rota pipeline runs orchestration outside a transaction
+      # (@Transactional(NOT_SUPPORTED)) and issues ad-hoc reads. With auto-commit=false
+      # each such read opens a Postgres transaction that is never committed, so the
+      # connection returns to the pool "idle in transaction" and Postgres kills it
+      # (idle_in_transaction_session_timeout / SQLSTATE 25P03) -> stale connection
+      # handed to the next run -> EOFException. auto-commit=true makes non-transactional
+      # statements commit immediately; Spring/Hibernate still toggle it off per managed tx.
+      auto-commit: true
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate.jdbc.time_zone: UTC
+      # Removed hibernate.connection.provider_disables_autocommit: it pairs with
+      # hikari auto-commit=false, which leaks idle-in-transaction connections on the
+      # non-transactional rota path (see datasource.hikari.auto-commit above).
+      hibernate.jdbc.batch_size: 50
+      hibernate.order_inserts: true
+      hibernate.order_updates: true
+
+  sql:
+    init:
+      mode: never
+
+  liquibase:
+    enabled: true
+    change-log: classpath:liquibase/courtscheduler-view-store-db-changelog.xml

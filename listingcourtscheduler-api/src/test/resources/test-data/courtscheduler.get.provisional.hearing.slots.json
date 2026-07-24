@@ -1,0 +1,22 @@
+[
+  {
+    "courtScheduleId": "01ec21a8-85a9-41c6-8b32-19835241640b",
+    "listingProfileId": "ITCS2129924",
+    "ouCode": "B53DJ00",
+    "courtRoomId": "81d92a3d-fcc3-3c13-895f-f1451898ac46",
+    "courtRoomNumber": 647,
+    "courtHouseName": "Cheltenham Magistrates\u0027 Court",
+    "courtRoomName": "Courtroom 01",
+    "operationalUnit": "01",
+    "businessType": "GAP",
+    "panel": "ADULT",
+    "courtSession": "AD",
+    "maxSlots": 0,
+    "maxDuration": 13,
+    "availableSlots": 0,
+    "availableDuration": 13,
+    "judiciaries": [],
+    "bookingId": "1c36d457-935d-4579-9fb0-0929d9b7f128",
+    "hearingStartTime": "2020-08-21T10:00:00.000Z"
+  }
+]

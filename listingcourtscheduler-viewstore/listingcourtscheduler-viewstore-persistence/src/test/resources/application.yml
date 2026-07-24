@@ -1,0 +1,15 @@
+# Test config for the @DataJpaTest-based repository tests.
+# A real Postgres container is started by the AbstractRepositoryTest via Testcontainers,
+# and Liquibase replays the production changelog against it before any test method runs.
+spring:
+  test:
+    database:
+      replace: NONE  # don't auto-replace the datasource that AbstractRepositoryTest configures
+  jpa:
+    hibernate:
+      ddl-auto: none  # schema comes from Liquibase
+    properties:
+      hibernate.jdbc.time_zone: UTC
+    show-sql: false
+  liquibase:
+    change-log: classpath:liquibase/courtscheduler-view-store-db-changelog.xml

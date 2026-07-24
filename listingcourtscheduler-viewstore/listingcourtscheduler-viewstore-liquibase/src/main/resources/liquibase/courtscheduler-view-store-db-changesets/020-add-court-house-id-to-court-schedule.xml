@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="020" author="arcadius"
+               logicalFilePath="020-add-court-house-id-to-court-schedule.xml">
+        <addColumn tableName="court_schedule">
+            <column name="court_house_id" type="VARCHAR(100)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="court_schedule" columnName="court_house_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

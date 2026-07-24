@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="030" author="baris.ozturkmen"
+               logicalFilePath="030-add_index_court_schedule_ampm_ad.xml">
+        <sql>
+            CREATE UNIQUE INDEX IF NOT EXISTS court_act_business_date_session_idx_am ON
+            court_schedule(oucode,court_room_id,  rota_business_type,
+            session_start, (REPLACE(court_session,'AD'::text,'AM'::text))
+            text_ops) where  active is TRUE;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS court_act_business_date_session_idx_pm ON
+            court_schedule(oucode,court_room_id,  rota_business_type,
+            session_start, (REPLACE(court_session,'AD'::text,'PM'::text))
+            text_ops) where  active is TRUE;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

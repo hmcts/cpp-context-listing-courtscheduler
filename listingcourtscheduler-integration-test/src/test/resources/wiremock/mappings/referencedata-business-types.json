@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/referencedata-query-api/query/api/rest/referencedata/rota-business-types"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.referencedata.query.rota-business-types+json"
+    },
+    "jsonBody": {
+      "rotaBusinessTypes": []
+    }
+  }
+}

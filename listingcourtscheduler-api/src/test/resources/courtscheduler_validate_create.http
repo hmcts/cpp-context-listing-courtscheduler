@@ -1,0 +1,129 @@
+POST localhost:8080/listingcourtscheduler-api/rest/courtscheduler/validate
+Content-Type: application/vnd.courtscheduler.validate.create+json
+CJSCPPUID: a085e359-6069-4694-8820-7810e7dfe762
+
+{
+  "sessions":
+  [
+    {
+      "courtCentreId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+      "courtRoomId": "9e4932f7-97b2-3010-b942-ddd2624e4dd8",
+      "sessionType": "AM",
+      "businessType": "DVLA",
+      "duration": 20,
+      "panel": "ADULT",
+      "repeatDays":
+      [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ]
+    },
+    {
+      "courtCentreId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+      "courtRoomId": "b4562684-9209-3ec4-a544-7f80dabd94d8",
+      "sessionType": "PM",
+      "businessType": "DVLA",
+      "duration": 20,
+      "panel": "ADULT",
+      "repeatDays":
+      [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ]
+    }
+  ],
+  "sessionToBeAdded":
+  {
+    "courtCentreId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
+    "courtRoomId": "b4562684-9209-3ec4-a544-7f80dabd94d8",
+    "sessionType": "PM",
+    "businessType": "DVLA",
+    "duration": 20,
+    "panel": "ADULT",
+    "repeatDays":
+    [
+      "Monday"
+    ]
+  },
+  "repeatPattern":
+  {
+    "startDate": "2024-07-29",
+    "endDate": "2024-10-27",
+    "repeatFor": 1,
+    "frequency": "EVERY_WEEK"
+  }
+}
+
+<> 2024-07-25T184216.504.txt
+<> 2024-07-25T182526.504.txt
+<> 2024-07-25T182206.504.txt
+<> 2024-07-22T162401.504.txt
+<> 2024-07-22T162037.503.html
+<> 2024-07-22T092322.500.html
+<> 2024-07-22T091431.503.html
+<> 2024-07-17T020640.504.txt
+<> 2024-07-17T020542.500.html
+<> 2024-07-17T020519.500.html
+<> 2024-07-17T015653.403.octet-stream
+<> 2024-07-15T095016.504.txt
+<> 2024-07-15T094910.504.txt
+<> 2024-07-11T110003.500.html
+<> 2024-07-04T034828.504.txt
+<> 2024-06-28T105634.500.html
+<> 2024-06-28T105330.500.html
+<> 2024-06-28T105145.500.html
+<> 2024-06-28T042039.500.html
+<> 2024-06-28T035926.500.html
+<> 2024-06-28T035910.500.html
+<> 2024-06-28T035845.500.html
+<> 2024-06-28T034928.403.octet-stream
+<> 2024-06-25T154126.500.html
+<> 2024-06-25T153049.500.html
+<> 2024-06-25T152300.500.html
+<> 2024-06-25T151401.500.html
+<> 2024-06-25T143754.500.html
+<> 2024-06-25T143534.500.html
+<> 2024-06-25T134512.500.html
+<> 2024-06-25T131350.500.html
+<> 2024-06-25T131020.500.html
+<> 2024-06-25T130955.500.html
+<> 2024-06-24T174608.504.txt
+<> 2024-06-24T174503.504.txt
+<> 2024-06-24T174324.504.txt
+<> 2024-06-24T161642.504.txt
+<> 2024-06-24T161516.504.txt
+<> 2024-06-24T161126.504.txt
+<> 2024-06-21T093531.500.html
+<> 2024-06-21T093406.500.html
+<> 2024-06-21T092920.500.html
+<> 2024-06-21T092843.500.html
+<> 2024-06-21T092034.500.html
+<> 2024-06-21T091828.500.html
+<> 2024-06-20T165728.503.txt
+<> 2024-06-20T151940.504.txt
+<> 2024-06-20T151546.504.txt
+<> 2024-06-20T151423.500.html
+<> 2024-06-20T150729.500.html
+<> 2024-06-06T093102.500.html
+<> 2024-06-06T092250.500.html
+<> 2024-06-06T084725.500.html
+<> 2024-06-06T083733.500.html
+<> 2024-06-06T082406.400.octet-stream
+<> 2024-06-06T082105.400.octet-stream
+<> 2024-06-06T081902.400.octet-stream
+<> 2024-06-06T081828.400.octet-stream
+<> 2024-06-06T081556.400.octet-stream
+<> 2024-06-06T081257.400.octet-stream
+<> 2024-06-06T075537.400.octet-stream
+<> 2024-06-06T075303.400.octet-stream
+<> 2024-06-06T074548.400.octet-stream
+
+###
