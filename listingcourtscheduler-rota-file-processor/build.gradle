@@ -1,0 +1,17 @@
+dependencies {
+    api project(':listingcourtscheduler-domain')
+    api project(':listingcourtscheduler-common')
+    api project(':listingcourtscheduler-viewstore:listingcourtscheduler-viewstore-persistence')
+
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework:spring-tx'
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'org.apache.commons:commons-collections4:4.5.0'
+    implementation 'commons-collections:commons-collections:3.2.2'
+    implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'commons-io:commons-io:2.22.0'
+    testImplementation 'io.github.benas:random-beans:3.9.0'
+    testImplementation testFixtures(project(':listingcourtscheduler-domain'))
+}

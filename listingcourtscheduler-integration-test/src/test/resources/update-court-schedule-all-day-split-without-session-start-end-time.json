@@ -1,0 +1,12 @@
+{
+  "courtScheduleId": "COURT_SCHEDULE_ID",
+  "courtRoomId": "COURT_ROOM_ID",
+  "courtSession": "SESSION_TYPE",
+  "businessType": "BUSINESS_TYPE",
+  "panel": "PANEL",
+  "jurisdiction": "MAGISTRATES",
+  "maxDuration": 10,
+  "allDaySplit": true,
+  "maxDurationForMorning": MAX_DURATION_FOR_MORNING,
+  "maxDurationForAfternoon": MAX_DURATION_FOR_AFTERNOON
+}

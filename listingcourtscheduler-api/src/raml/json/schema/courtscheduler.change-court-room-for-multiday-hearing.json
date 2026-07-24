@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "courtscheduler.change-court-room-for-multiday-hearing — re-allocates ONLY the submitted days of an existing multiday hearing onto the given sessions. Days not submitted are untouched. Validate-all-first: any invalid day fails the whole request with 422 and zero mutations.",
+  "type": "object",
+  "properties": {
+    "days": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "sessionDate": { "type": "string", "format": "date" },
+          "courtScheduleId": { "type": "string" },
+          "durationInMinutes": { "type": "integer", "maximum": 360 }
+        },
+        "required": ["sessionDate", "courtScheduleId", "durationInMinutes"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["days"],
+  "additionalProperties": false
+}

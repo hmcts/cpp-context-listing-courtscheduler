@@ -1,0 +1,130 @@
+{
+  "organisationunits": [
+    {
+      "id": "7e967376-eacf-4fca-9b30-21b0c5aad427",
+      "oucode": "B01BH00",
+      "lja": "2575",
+      "oucodeL1Code": "B",
+      "courtId": "35",
+      "oucodeL1Name": "Magistrates' Courts",
+      "oucodeL3Name": "Bexley Magistrates' Court",
+      "oucodeL3WelshName": "Llys Ynadon Bexley",
+      "address1": "Norwich Place",
+      "address2": "Bexleyheath",
+      "address3": "Kent",
+      "postcode": "DA6 7ND",
+      "defaultStartTime": "10:00:00",
+      "defaultDurationHrs": "07:00:00",
+      "oucodeL2Code": "1",
+      "oucodeL2Name": "London",
+      "region": "London",
+      "courtrooms": [
+        {
+          "id": "8e912353-3b5d-36c3-953e-ad3b94b19de3",
+          "venueName": "BEXLEY MAGISTRATES' COURT",
+          "courtroomId": 121,
+          "courtroomName": "Courtroom 01",
+          "venueId": 39
+        }
+      ]
+    },
+    {
+      "id": "785339c1-af71-3322-a55b-ba255e0db1c2",
+      "oucode": "C01CR00",
+      "lja": "1234",
+      "oucodeL1Code": "C",
+      "courtId": "100",
+      "oucodeL1Name": "Crown Courts",
+      "oucodeL3Name": "Test Crown Court",
+      "oucodeL3WelshName": "Llys Goron Profi",
+      "address1": "Test Street",
+      "address2": "Test City",
+      "address3": "Test County",
+      "postcode": "TE5T 1NG",
+      "defaultStartTime": "10:00:00",
+      "defaultDurationHrs": "07:00:00",
+      "oucodeL2Code": "01",
+      "oucodeL2Name": "Test Region",
+      "region": "Test Region",
+      "courtrooms": [
+        {
+          "id": "3fc02c0f-f92e-31da-9686-d626ac8ccdc3",
+          "venueName": "TEST CROWN COURT",
+          "courtroomId": 999,
+          "courtroomName": "Courtroom 01",
+          "venueId": 1
+        },
+        {
+          "id": "e06e1734-aa04-3ec0-b14c-400edab8b831",
+          "venueName": "TEST CROWN COURT",
+          "courtroomId": 1000,
+          "courtroomName": "Courtroom 02",
+          "venueId": 1
+        }
+      ]
+    },
+    {
+      "id": "49db2271-1941-3847-a7fb-dbd92b035e40",
+      "oucode": "B43KQ00",
+      "lja": "2575",
+      "oucodeL1Code": "B",
+      "courtId": "35",
+      "oucodeL1Name": "Magistrates' Courts",
+      "oucodeL3Name": "Reading Magistrates' Court",
+      "oucodeL3WelshName": "Llys Ynadon Reading",
+      "address1": "Reading",
+      "address2": "Reading",
+      "address3": "Berkshire",
+      "postcode": "RG1 1EA",
+      "defaultStartTime": "10:00:00",
+      "defaultDurationHrs": "07:00:00",
+      "oucodeL2Code": "43",
+      "oucodeL2Name": "Thames Valley",
+      "region": "Thames Valley",
+      "courtrooms": [
+        {
+          "id": "41a41156-0ca9-3352-999e-8d26274bb1aa",
+          "venueName": "Reading Magistrates' Court",
+          "courtroomId": 2988,
+          "courtroomName": "Courtroom 09",
+          "venueId": 1
+        }
+      ]
+    },
+    {
+      "id": "22c69328-70af-3e27-80c5-1a79e24903d2",
+      "oucode": "B12JR00",
+      "lja": "2575",
+      "oucodeL1Code": "B",
+      "courtId": "35",
+      "oucodeL1Name": "Magistrates' Courts",
+      "oucodeL3Name": "Northallerton Magistrates' Court",
+      "oucodeL3WelshName": "Llys Ynadon Northallerton",
+      "address1": "Northallerton",
+      "address2": "North Yorkshire",
+      "address3": "North Yorkshire",
+      "postcode": "DL7 8AD",
+      "defaultStartTime": "10:00:00",
+      "defaultDurationHrs": "07:00:00",
+      "oucodeL2Code": "12",
+      "oucodeL2Name": "North Yorkshire",
+      "region": "North Yorkshire",
+      "courtrooms": [
+        {
+          "id": "2bd129f3-780e-37dd-b9aa-48690f91b69c",
+          "venueName": "Northallerton Magistrates' Court",
+          "courtroomId": 1769,
+          "courtroomName": "Courtroom 01",
+          "venueId": 1
+        },
+        {
+          "id": "a1b2c3d4-e5f6-3a7b-8c9d-0e1f2a3b4c5d",
+          "venueName": "Northallerton Magistrates' Court",
+          "courtroomId": 7777,
+          "courtroomName": "Courtroom Refdata Test",
+          "venueId": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "courtScheduleId": "650e8400-e29b-41d4-a716-446655440000",
+  "courtRoomId": "550e8400-e29b-41d4-a716-446655440001",
+  "courtSession": "AM",
+  "businessType": "Business Type 1",
+  "panel": "YOUTH",
+  "maxSlots": 1,
+  "maxDuration": 1
+}

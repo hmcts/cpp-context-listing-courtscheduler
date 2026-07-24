@@ -1,0 +1,31 @@
+dependencies {
+    api project(':listingcourtscheduler-cache')
+    api project(':listingcourtscheduler-domain')
+    api project(':listingcourtscheduler-viewstore:listingcourtscheduler-viewstore-persistence')
+
+    api 'jakarta.json:jakarta.json-api:2.1.3'
+    api 'com.fasterxml.jackson.core:jackson-databind'
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation 'com.google.guava:guava:33.6.0-jre'
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'org.apache.commons:commons-collections4:4.5.0'
+    implementation 'commons-collections:commons-collections:3.2.2'
+    implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
+
+    api('com.azure:azure-storage-blob:12.35.0') {
+        exclude group: 'com.azure', module: 'azure-core-http-netty'
+    }
+    api('com.azure:azure-identity:1.18.4') {
+        exclude group: 'com.azure', module: 'azure-core-http-netty'
+    }
+    api 'com.azure:azure-core-http-jdk-httpclient:1.1.5'
+
+    runtimeOnly 'org.eclipse.parsson:parsson:1.1.9'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.github.benas:random-beans:3.9.0'
+    testImplementation testFixtures(project(':listingcourtscheduler-domain'))
+}

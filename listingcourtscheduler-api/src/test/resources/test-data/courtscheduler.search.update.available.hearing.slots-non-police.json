@@ -1,0 +1,22 @@
+{
+  "hearingSlots": [
+    {
+      "duration": 20,
+      "sessionDate": "2018-09-28",
+      "session": "AM",
+      "courtRoomId": "7",
+      "ouCode": "B01LY00",
+      "hearingId": "2669bdd9-2620-42e2-8310-43b66a91b4cf",
+      "prosecutor": "Traffic"
+    },
+    {
+      "duration": 21,
+      "sessionDate": "2018-09-30",
+      "session": "AD",
+      "courtRoomId": "23",
+      "ouCode": "B01LY00",
+      "hearingId": "1d5f0dd6-0c6c-42e7-b0b8-7314f81ddc72",
+      "prosecutor": "Traffic"
+    }
+  ]
+}

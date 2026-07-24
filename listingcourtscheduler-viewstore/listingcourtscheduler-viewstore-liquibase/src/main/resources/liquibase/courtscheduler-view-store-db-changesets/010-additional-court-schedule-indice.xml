@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <!-- using native SQL here as the "INCLUDE" clause is not supported by liquibase at the moment
+    https://www.liquibase.org/documentation/changes/create_index.html
+    The indexes below were suggested by azure sql server
+    -->
+    <changeSet id="010.1" author="arcadius" logicalFilePath="010-additional-court-schedule-indice.xml">
+        <sql>
+            CREATE INDEX idx_court_schedule_act_sst ON court_schedule (  active ASC  , session_start ASC  );
+        </sql>
+    </changeSet>
+
+    <changeSet  id="010.2" author="arcadius" logicalFilePath="010-additional-court-schedule-indice.xml">
+        <sql>
+            CREATE INDEX idx_court_schedule_cr_ss_ms ON court_schedule (court_room_number, session_start, max_slot);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

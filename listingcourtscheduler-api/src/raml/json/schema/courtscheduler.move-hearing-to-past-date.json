@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "courtscheduler.move-hearing-to-past-date — books a hearing onto past session(s), both jurisdictions, single OR multi-day. Multi-day books CONSECUTIVE weekday sessions (one room + business type) for both jurisdictions. The past-only rule is owned by the caller (listing); courtscheduler does not reject future dates.",
+  "type": "object",
+  "properties": {
+    "courtCentreId": { "type": "string" },
+    "jurisdiction": { "type": "string", "enum": ["CROWN", "MAGISTRATES"] },
+    "startDate": { "type": "string", "format": "date" },
+    "endDate": { "type": "string", "format": "date" },
+    "durationInMinutes": { "type": "integer" },
+    "courtScheduleId": { "type": "string" }
+  },
+  "required": ["courtCentreId", "jurisdiction", "startDate"],
+  "additionalProperties": false
+}

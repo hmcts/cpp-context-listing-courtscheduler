@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["DRAFT", "FINAL", "ALL"],
+      "default": "ALL"
+    },
+    "results": {
+      "type": "integer"
+    },
+    "pageCount": {
+      "type": "integer"
+    },
+    "hearingSlots": {
+      "type": "array",
+      "items": [
+        {
+          "type": "object",
+          "properties": {
+            "courtScheduleId": {
+              "type": "string"
+            },
+            "listingProfileId": {
+              "type": "string"
+            },
+            "ouCode": {
+              "type": "string"
+            },
+            "courtRoomId": {
+              "type": "string"
+            },
+            "courtRoomNumber": {
+              "type": "integer"
+            },
+            "courtHouseId": {
+              "type": "string"
+            },
+            "courtHouseName": {
+              "type": "string"
+            },
+            "courtRoomName": {
+              "type": "string"
+            },
+            "operationalUnit": {
+              "type": "string"
+            },
+            "businessType": {
+              "type": "string"
+            },
+            "isSlotBased": {
+              "type": "string"
+            },
+            "panel": {
+              "type": "string"
+            },
+            "courtSession": {
+              "type": "string"
+            },
+            "slotBased": {
+              "type": "boolean"
+            },
+            "sessionDate": {
+              "type": "string"
+            },
+            "maxSlots": {
+              "type": "integer"
+            },
+            "maxDuration": {
+              "type": "integer"
+            },
+            "availableSlots": {
+              "type": "integer"
+            },
+            "availableDuration": {
+              "type": "integer"
+            },
+            "draft": {
+              "type": "boolean"
+            },
+            "judiciaries": {
+              "type": "array",
+              "items": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "courtScheduleId": {
+                      "type": "string"
+                    },
+                    "courtListingProfileId": {
+                      "type": "string"
+                    },
+                    "judiciaryType": {
+                      "type": "string"
+                    },
+                    "isBenchChairman": {
+                      "type": "boolean"
+                    },
+                    "isDeputy": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "courtScheduleId",
+                    "courtListingProfileId",
+                    "judiciaryType",
+                    "isBenchChairman",
+                    "isDeputy"
+                  ]
+                }
+              ]
+            },
+            "slotStartTimes": {
+              "type": "array",
+              "items": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "sessionStartTime": {
+                      "type": "string"
+                    },
+                    "sessionEndTime": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "sessionStartTime",
+                    "sessionEndTime",
+                    "count"
+                  ]
+                }
+              ]
+            }
+          },
+          "required": [
+            "courtScheduleId",
+            "listingProfileId",
+            "ouCode",
+            "courtRoomId",
+            "courtRoomNumber",
+            "courtHouseId",
+            "courtHouseName",
+            "courtRoomName",
+            "operationalUnit",
+            "businessType",
+            "panel",
+            "courtSession",
+            "slotBased",
+            "sessionDate",
+            "maxSlots",
+            "maxDuration",
+            "availableSlots",
+            "availableDuration",
+            "judiciaries",
+            "slotStartTimes"
+          ]
+        }
+      ]
+    }
+  },
+  "required": [
+    "results",
+    "pageCount",
+    "hearingSlots"
+  ]
+}

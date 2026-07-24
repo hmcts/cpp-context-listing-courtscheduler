@@ -1,0 +1,718 @@
+{
+  "courtRoomSessionAllocations": [
+    {
+      "id": "69787fe1-a3ae-4123-99d0-95bb87474942",
+      "oucode": "B05BW00",
+      "courtRoomId": 282,
+      "maxSlot": 25,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "TRF",
+      "validFrom": "2024-06-05",
+      "validTo": "2024-12-30"
+    },
+    {
+      "id": "bc87c2b9-2b95-42e3-ae43-ca7379ecc95b",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxDurationMins": 180,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "a94eb2bc-9e71-4302-8a0f-ee768e4c63eb",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "e60c2ea5-d90f-4998-aba8-e202484ec159",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "feff32a0-ce0d-4643-ba67-f70313a5aefb",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxDurationMins": 180,
+      "courtSession": "TUEAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "fd7ee047-8e34-412d-90a7-145143b65eef",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "TUEAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "85565658-2cd6-4cb9-8696-d27e3f8175f9",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxDurationMins": 180,
+      "courtSession": "TUEPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "d772a4dc-90dc-4815-8498-e9b40ce1bdfb",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxDurationMins": 180,
+      "courtSession": "FRIPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "fb073dc6-da27-4e7e-83e9-74e9ef06ec1f",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxDurationMins": 180,
+      "courtSession": "WEDPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "697270b1-6a68-443d-9a35-71a1e66e1449",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxDurationMins": 180,
+      "courtSession": "WEDPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "f5b272db-801e-4b67-b725-ac5193290077",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxDurationMins": 180,
+      "courtSession": "WEDAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "e0ad6943-1bb3-49a8-9653-af04c094ddfa",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "WEDAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "d365c6ff-9fc0-4452-aa3f-d8514227c62c",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxDurationMins": 180,
+      "courtSession": "THUAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "c274c6c8-2014-42ac-8462-6c82a19726f6",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxDurationMins": 180,
+      "courtSession": "FRIAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "4aaa9391-73bf-41c5-bda9-0b1b89812163",
+      "oucode": "B01LY00",
+      "courtRoomId": 2330,
+      "maxSlot": 15,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "TVLO",
+      "validFrom": "2024-04-22",
+      "validTo": "2024-10-01"
+    },
+    {
+      "id": "fb22a736-f939-42d9-99c9-8ded71fc8711",
+      "oucode": "B01LY00",
+      "courtRoomId": 2330,
+      "maxSlot": 10,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-22",
+      "validTo": "2024-09-30"
+    },
+    {
+      "id": "9923e99d-24c1-4ff8-9d01-47d71f3a3c20",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxDurationMins": 180,
+      "courtSession": "THUPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "bdf55927-e4c1-4a69-acec-e79207b57096",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxDurationMins": 180,
+      "courtSession": "FRIPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "643fcf95-b2a4-4cf7-bbdd-f292837da19b",
+      "oucode": "B01LY00",
+      "courtRoomId": 2331,
+      "maxSlot": 20,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "TVLO",
+      "validFrom": "2024-06-01",
+      "validTo": "2025-04-30"
+    },
+    {
+      "id": "5fa40c3e-defa-4b00-9666-d4432d57f067",
+      "oucode": "B01LY00",
+      "courtRoomId": 2331,
+      "maxDurationMins": 180,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-06-01",
+      "validTo": "2025-04-30"
+    },
+    {
+      "id": "b4aed848-28e5-4822-a137-0b78b6ac949a",
+      "oucode": "B01OK00",
+      "courtRoomId": 2815,
+      "maxDurationMins": 360,
+      "courtSession": "THUAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-06-01",
+      "validTo": "2024-12-31"
+    },
+    {
+      "id": "b0468071-c602-4cb5-a23c-b503ced459a2",
+      "oucode": "B01OK00",
+      "courtRoomId": 2815,
+      "maxDurationMins": 180,
+      "courtSession": "THUPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-06-01",
+      "validTo": "2024-12-31"
+    },
+    {
+      "id": "9c260e0e-48b8-4205-8562-8453325aea03",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "a8236e7b-8db8-45ea-999e-560936da0b32",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxSlot": 50,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "DVB",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "e8c65cb0-0b12-456a-b3c2-a0f36228f1ee",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxSlot": 50,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "BRE",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "f6d88946-bf49-47ab-8842-8324372b32e0",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxSlot": 50,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "NCPG",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "ee8a2ab3-b23d-451b-a002-d22a8a27650b",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "b64aff1a-2c37-41eb-84f0-2c3e94fa2fe1",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxSlot": 50,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "DVB",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "dc3e942d-0658-4424-8ac0-402bea20b922",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxSlot": 50,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "NCPG",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "e69b3d1d-2c52-4df4-90f4-ec007b7dcfe0",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxSlot": 50,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "BRE",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "b7638692-6d4e-4240-b5ab-bbb3c7aab637",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxSlot": 50,
+      "courtSession": "TUEAM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "a51c073a-7c79-4e03-b5fa-a8fe8e1c716f",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxSlot": 50,
+      "courtSession": "TUEAM",
+      "rotaBusinessTypeCode": "GAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "de03ffc4-2160-4292-a22c-f493ca0c711e",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "TUEAM",
+      "rotaBusinessTypeCode": "NGAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "f10adbf5-a6a8-49df-a8a0-2e1599668b73",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "TUEAM",
+      "rotaBusinessTypeCode": "BRE",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "cc211c14-bde4-4af6-ae88-50028a228b2d",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxSlot": 50,
+      "courtSession": "TUEAM",
+      "rotaBusinessTypeCode": "PS",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "de6be1ee-d64b-4f91-b1ca-74df7ed81cd6",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxSlot": 50,
+      "courtSession": "TUEPM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "eddd5b37-dde1-48db-85e9-918bd47f5269",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxSlot": 50,
+      "courtSession": "TUEPM",
+      "rotaBusinessTypeCode": "PS",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "94192589-3264-40ed-9c92-cdd8e9fe2b13",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxSlot": 50,
+      "courtSession": "WEDAM",
+      "rotaBusinessTypeCode": "VLT",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "b2d2bac9-925e-499f-8269-ecc0343a1a19",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxSlot": 50,
+      "courtSession": "THUAM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "b335d864-5f66-42b7-97a7-2275421cf3d0",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "THUPM",
+      "rotaBusinessTypeCode": "GAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "f9553107-2ac4-472b-ae71-118e29534f9d",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "FRIPM",
+      "rotaBusinessTypeCode": "NGAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "e05a24b6-c0fc-46e4-b8a3-75098b2d98ac",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "TUEPM",
+      "rotaBusinessTypeCode": "BRE",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "d0b3bc26-9f38-4699-a0f8-7dedf2f65625",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxSlot": 50,
+      "courtSession": "WEDAM",
+      "rotaBusinessTypeCode": "GEN",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "dea0460c-416e-412b-9724-1ecb47ae13e5",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxSlot": 50,
+      "courtSession": "THUPM",
+      "rotaBusinessTypeCode": "GAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "bacab7fd-7026-450e-8647-be3ce66ecfb6",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "FRIAM",
+      "rotaBusinessTypeCode": "NGAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "ebbe2647-43e8-4646-a003-3ad4f4a9bc65",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxSlot": 50,
+      "courtSession": "FRIPM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "b2a7f6e3-ca3c-4313-8a6d-a21da40867a6",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxSlot": 50,
+      "courtSession": "TUEPM",
+      "rotaBusinessTypeCode": "GAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "b61bc6f1-37bd-4fd5-8c27-73dbf8190a24",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "TUEPM",
+      "rotaBusinessTypeCode": "NGAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "835fd1ac-c9cf-4d21-adbf-ddbc97cf2785",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxSlot": 50,
+      "courtSession": "WEDPM",
+      "rotaBusinessTypeCode": "GAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "b276be67-6d49-471c-a28c-2cc5d0a9f4e2",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "THUAM",
+      "rotaBusinessTypeCode": "GAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "f55b24af-5095-44ac-b7c5-0963829db8f0",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "WEDAM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "ed1e1a16-500c-4c4b-b1a0-aa87ba875e51",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxSlot": 50,
+      "courtSession": "FRIAM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "eccbb797-c145-4fd4-90f4-fd29fefb4160",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxSlot": 50,
+      "courtSession": "SATAM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "18daf424-6e4f-4b3a-814e-3e464654fdf2",
+      "oucode": "B52CM00",
+      "courtRoomId": 432,
+      "maxSlot": 50,
+      "courtSession": "WEDPM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "b8bc5724-d3b0-4dbe-828a-470b33abf77e",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxSlot": 50,
+      "courtSession": "WEDPM",
+      "rotaBusinessTypeCode": "GEN",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "fd463624-56e0-4ac2-a2f3-c20a671e857d",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxSlot": 50,
+      "courtSession": "SATPM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "f2b7a04b-c121-498c-ae56-41527a61f682",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxSlot": 50,
+      "courtSession": "THUAM",
+      "rotaBusinessTypeCode": "GAP",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "e942f08c-e417-4f2e-bfaf-5c685dd5fedf",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxSlot": 50,
+      "courtSession": "THUPM",
+      "rotaBusinessTypeCode": "REM",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "4cfbf9fd-f563-4ae3-b63f-12fcbae2433c",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxDurationMins": 180,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "82757d07-c502-4a5d-b316-618b5333e3d4",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "TUEPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "43a21241-48d9-4f64-ae11-be04a66b3df1",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxDurationMins": 180,
+      "courtSession": "WEDAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "cf282026-15ec-478a-a24f-a23b805845c1",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "THUPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "449124aa-2987-4479-9f72-6458de3a088e",
+      "oucode": "B52CM00",
+      "courtRoomId": 429,
+      "maxDurationMins": 180,
+      "courtSession": "FRIAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "dbc42ac4-2b69-4475-8b3c-74111b63837b",
+      "oucode": "B52CM00",
+      "courtRoomId": 427,
+      "maxDurationMins": 180,
+      "courtSession": "WEDAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "c5a80198-46a4-4ef0-a265-a24c1c43d0c4",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "WEDPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "9ce293a1-d261-4d85-b264-eb471a7c2a51",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "FRIPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "4995bebe-b3e5-49b4-bb6f-07153ba578c2",
+      "oucode": "B52CM00",
+      "courtRoomId": 434,
+      "maxDurationMins": 180,
+      "courtSession": "WEDPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "fccd5a17-205d-4a50-9a60-e8b47ae8b0a2",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "THUAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "0b6a6a39-755c-4806-a435-8bad4a2b3ac6",
+      "oucode": "B52CM00",
+      "courtRoomId": 437,
+      "maxDurationMins": 180,
+      "courtSession": "FRIAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-04-12",
+      "validTo": "2025-09-06"
+    },
+    {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "oucode": "B12JR00",
+      "courtRoomId": 7777,
+      "maxDurationMins": 180,
+      "courtSession": "MONAM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-01-01",
+      "validTo": "2099-12-31",
+      "sessionStartTime": "09:30",
+      "sessionEndTime": "12:45"
+    },
+    {
+      "id": "22222222-3333-4444-5555-666666666666",
+      "oucode": "B12JR00",
+      "courtRoomId": 7777,
+      "maxDurationMins": 180,
+      "courtSession": "MONPM",
+      "rotaBusinessTypeCode": "TRL",
+      "validFrom": "2024-01-01",
+      "validTo": "2099-12-31",
+      "sessionStartTime": "13:30",
+      "sessionEndTime": "16:30"
+    }
+  ]
+}
