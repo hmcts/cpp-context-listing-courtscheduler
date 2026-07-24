@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="017-01" author="arcadius"
+               logicalFilePath="017-add-hearing-start-time-to-allocated-listings.xml">
+
+        <addColumn tableName="allocated_listings">
+            <column name="hearing_start_time" type="timestamp with timezone"
+                                />
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="allocated_listings" columnName="hearing_start_time"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="017-02" author="arcadius"
+               logicalFilePath="017-add-hearing-start-time-to-allocated-listings.xml">
+
+        <createIndex tableName="allocated_listings"
+                     indexName="idx_allocated_listings_court_schedule_id">
+            <column name="court_schedule_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="allocated_listings"
+                       indexName="idx_allocated_listings_court_schedule_id"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

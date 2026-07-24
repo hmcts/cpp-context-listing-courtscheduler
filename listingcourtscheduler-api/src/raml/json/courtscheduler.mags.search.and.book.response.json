@@ -1,0 +1,12 @@
+{
+  "hearingId": "7755fb96-e90a-4df2-8575-47841d8fbdd0",
+  "sessions": [
+    {
+      "courtScheduleId": "5e2a3f91-9e5d-3e44-b664-d5345bb13be2",
+      "sessionDate": "2026-04-21",
+      "courtRoomId": "court-room-uuid-1",
+      "businessType": "MC",
+      "isDraft": false
+    }
+  ]
+}

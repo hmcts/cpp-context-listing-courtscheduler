@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="039" author="koray.kaya"
+               logicalFilePath="039-add-session_start_time-session_end_time-columns-court-schedule.xml">
+        <addColumn tableName="court_schedule">
+            <column name="session_start_time" type="timestamp with timezone"/>
+        </addColumn>
+        <addColumn tableName="court_schedule">
+            <column name="session_end_time" type="timestamp with timezone"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="040" author="koray.kaya"
+               logicalFilePath="039-add-session_start_time-session_end_time-columns-court-schedule.xml">
+        <!-- Step 2: Populate default values for existing rows -->
+        <update tableName="court_schedule">
+            <column name="session_start_time" valueComputed="CASE
+        WHEN court_session = 'AM' THEN (session_start || ' 10:00:00')::timestamp
+        WHEN court_session = 'PM' THEN (session_start || ' 14:00:00')::timestamp
+        WHEN court_session = 'AD' THEN (session_start || ' 00:01:00')::timestamp
+        ELSE NULL
+    END"/>
+            <column name="session_end_time" valueComputed="CASE
+        WHEN court_session = 'AM' THEN (session_start || ' 13:00:00')::timestamp
+        WHEN court_session = 'PM' THEN (session_start || ' 18:00:00')::timestamp
+        WHEN court_session = 'AD' THEN (session_start || ' 23:59:00')::timestamp
+        ELSE NULL
+    END"/>
+        </update>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,379 @@
+package uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl;
+
+import uk.gov.moj.cpp.authz.drools.Outcome;
+import uk.gov.moj.cpp.authz.drools.Action;
+import uk.gov.moj.cpp.courtscheduler.api.accesscontrol.SecurityGroupConstants;
+import uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants;
+
+global uk.gov.moj.cpp.authz.http.providers.UserAndGroupProvider userAndGroupProvider;
+
+rule "API - Action - courtscheduler.create"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.create");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.validate.create"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.validate.create");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.update.court_schedule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.update");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.validate.update"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.validate.update");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+
+rule "API - Action - courtscheduler.delete"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.delete");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.assign.courtroom"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.assign.courtroom");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.get.court_schedule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.validate.delete"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.validate.delete");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.validate.session.availability"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.validate.session.availability");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.assign-judiciary"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.assign-judiciary");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.assign-judiciary-to-sessions"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.assign-judiciary-to-sessions");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.update.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.update.hearing.slots");
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.add.availability.rule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "POST /judiciaries/availability-rules/add");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.update.availability.rule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "POST /judiciaries/availability-rules/update");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.add.availability.rule.validate"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "POST /judiciaries/availability-rules/validate-add");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.update.availability.rule.validate"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "POST /judiciaries/availability-rules/validate-update");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.find.availability"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "GET /judiciaries");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.search.available.judiciaries"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.search.available.judiciaries");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.find.availability.rule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "GET /judiciaries/availability-rules");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.get.availability.rule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "GET /judiciaries/availability-rules/{ruleId}");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.delete.availability.rule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "POST /judiciaries/availability-rules/delete");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.judiciary.delete.availability.rule.validate"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "POST /judiciaries/availability-rules/validate-delete");
+         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.get.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get.hearing.slots");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.release.sessions"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.release.sessions");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.get.hearing.ids"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get.hearing.ids");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.list.hearings-in-sessions"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.list.hearings-in-sessions");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.create.provisional.booking"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.create.provisional.booking");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.get.provisional.booking"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get.provisional.booking");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.export.court_schedule"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.export.court_schedule");
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.export.court_schedule_judiciary"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.export.court_schedule_judiciary");
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.export.allocated_listings"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.export.allocated_listings");
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.rotasl.process_rota_files"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.rotasl.process_rota_files");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.rotasl.clean_redundant_rota_data"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.rotasl.clean_redundant_rota_data");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.unassign.judiciary"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.unassign.judiciary");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.remove-all-judiciary"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.remove-all-judiciary");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.getCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.extend.multiday.hearing"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.extend.multiday.hearing");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.crown.search.and.book"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.crown.search.and.book");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.mags.search.and.book"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.mags.search.and.book");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.move-hearing-to-past-date"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.move-hearing-to-past-date");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.change-court-room-for-multiday-hearing"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.change-court-room-for-multiday-hearing");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.search.court-schedules-by-id"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.search.court-schedules-by-id");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+

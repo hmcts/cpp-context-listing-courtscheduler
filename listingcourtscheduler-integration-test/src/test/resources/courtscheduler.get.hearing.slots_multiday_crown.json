@@ -1,0 +1,11 @@
+{
+  "panel": "PANEL",
+  "sessionStartDate": "SESSION_START_DATE",
+  "sessionEndDate": "SESSION_END_DATE",
+  "ouCode": "OU_CODE",
+  "pageSize": "PAGE_SIZE",
+  "pageNumber": "PAGE_NUMBER",
+  "courtSession": "COURT_SESSION",
+  "availableDurationMins": "DURATION",
+  "jurisdiction": "JURISDICTION"
+}

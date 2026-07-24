@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="050" author="koray.kaya"
+               logicalFilePath="050-nullable-court-schedule-judiciary-ui-assignments.xml">
+        <dropNotNullConstraint tableName="court_schedule_judiciary" columnName="rota_judiciary_id"
+                               columnDataType="VARCHAR(100)"/>
+        <dropNotNullConstraint tableName="court_schedule_judiciary" columnName="court_listing_profile_id"
+                               columnDataType="VARCHAR(100)"/>
+        <dropNotNullConstraint tableName="court_schedule_judiciary" columnName="position"
+                               columnDataType="VARCHAR(100)"/>
+    </changeSet>
+</databaseChangeLog>

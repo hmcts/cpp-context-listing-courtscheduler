@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "numberOfPreviousMonthsAndOlder": {
+      "type": "number",
+      "default": 6,
+      "minimum": 6
+    }
+  }
+}

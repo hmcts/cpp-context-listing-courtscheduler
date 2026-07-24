@@ -1,0 +1,12 @@
+{
+  "hearingSlots": [
+    {
+      "duration": 20,
+      "sessionDate": "2020-05-13",
+      "session": "AM",
+      "courtRoomId": "2330",
+      "ouCode": "B01LY00",
+      "hearingId": "5771a96b-1c5a-45d1-b647-1bec5212cafc"
+    }
+  ]
+}

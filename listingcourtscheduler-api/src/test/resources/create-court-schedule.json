@@ -1,0 +1,32 @@
+{
+  "sessions": [
+    {
+      "courtCentreId": "550e8400-e29b-41d4-a716-446655440000",
+      "courtRoomId": "550e8400-e29b-41d4-a716-446655440001",
+      "sessionType": "AM",
+      "businessType": "Business Type 1",
+      "duration": 2,
+      "panel": "YOUTH",
+      "repeatDays": ["Monday", "Tuesday", "Friday"],
+      "sessionStartTime": "10:00",
+      "sessionEndTime": "12:00"
+    },
+    {
+      "courtCentreId": "550e8400-e29b-41d4-a716-446655440002",
+      "courtRoomId": "550e8400-e29b-41d4-a716-446655440003",
+      "sessionType": "PM",
+      "businessType": "Business Type 2",
+      "duration": 3,
+      "panel": "ADULT",
+      "repeatDays": ["Tuesday", "Thursday"],
+      "sessionStartTime": "14:00",
+      "sessionEndTime": "17:00"
+    }
+  ],
+  "repeatPattern": {
+    "frequency": "EVERY_WEEK",
+    "repeatFor": 4,
+    "startDate": "2025-01-01",
+    "endDate": "2025-01-29"
+  }
+}

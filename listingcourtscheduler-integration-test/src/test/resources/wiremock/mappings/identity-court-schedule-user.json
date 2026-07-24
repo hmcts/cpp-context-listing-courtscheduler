@@ -1,0 +1,25 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/usersgroups-query-api/query/api/rest/usersgroups/users/logged-in-user/permissions.*",
+    "headers": {
+      "CJSCPPUID": { "equalTo": "11111111-1111-1111-1111-111111111111" }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.usersgroups.get-logged-in-user-permissions+json"
+    },
+    "jsonBody": {
+      "groups": [
+        { "groupId": "g-1", "groupName": "COURT_LISTING_OFFICERS", "prosecutingAuthority": null }
+      ],
+      "switchableRoles": [],
+      "permissions": [
+        { "permissionId": "p-1", "object": "CourtSchedule", "action": "Create", "description": "" },
+        { "permissionId": "p-2", "object": "CourtSchedule", "action": "View", "description": "" }
+      ]
+    }
+  }
+}
