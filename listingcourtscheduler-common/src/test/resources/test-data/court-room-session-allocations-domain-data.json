@@ -1,0 +1,18 @@
+[
+  {
+    "id": "93231aab-a87e-3dbd-b334-402e07643f2f",
+    "oucode": "B01KR00",
+    "courtRoomId": 2035,
+    "maxSlot": 10,
+    "courtSession": "FRIPM",
+    "rotaBusinessTypeCode": "GEN"
+  },
+  {
+    "id": "980735b3-5b1c-4fe5-9001-06ce1b1695bb",
+    "oucode": "B53DJ00",
+    "courtRoomId": 650,
+    "maxDurationMins": 5,
+    "courtSession": "WEDPM",
+    "rotaBusinessTypeCode": "TRF"
+  }
+]

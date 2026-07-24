@@ -1,0 +1,24 @@
+# cp-auth-rules-filter:2.0.0 — replaces Justice Services interceptor chain.
+# UI sends only CJSCPPUID. The filter resolves Action.name from:
+#   1. CPP-ACTION request header if set, else
+#   2. the vendor segment of the request media type (application/vnd.<token>+json), else
+#   3. "<METHOD> <PATH>" as a fallback (used by /judiciaries/* which negotiate plain
+#      application/json — see the corresponding rules in courtscheduler-api.drl).
+# action-required is therefore false: the filter runs rule evaluation even when no
+# CPP-ACTION header is supplied; rules that don't match a synthesised Action.name
+# still result in deny-when-no-rules → 403.
+authz:
+  http:
+    enabled: ${CSCHED_AUTHZ_ENABLED:false}
+    identity-url-template: ${CSCHED_BASE_URL}/usersgroups-query-api/query/api/rest/usersgroups/users/logged-in-user/permissions
+    user-id-header: "CJSCPPUID"
+    action-header: "CPP-ACTION"
+    accept-header: "application/vnd.usersgroups.get-logged-in-user-permissions+json"
+    drools-classpath-pattern: "classpath:/uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl/**/*.drl"
+    reload-on-each-request: false
+    action-required: false
+    deny-when-no-rules: true
+    exclude-path-prefixes:
+      - "/actuator"
+      - "/error"
+      - "/usersgroups-query-api/"

@@ -1,0 +1,15 @@
+{
+  "panel": "ADULT",
+  "sessionStartDate": "2024-05-21",
+  "sessionEndDate": "2024-05-21",
+  "oucodeL2Code": "BA124",
+  "ouCode": "BA124",
+  "pageSize": "1",
+  "pageNumber": "1",
+  "courtRoomId": "ID1234",
+  "courtRoomNumber": "123",
+  "businessType": "buss",
+  "courtSession": "session",
+  "showOverbookedSlots": "true",
+  "caseIdentifier": "API"
+}

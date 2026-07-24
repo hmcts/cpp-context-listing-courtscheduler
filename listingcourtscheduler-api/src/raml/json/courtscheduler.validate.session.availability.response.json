@@ -1,0 +1,7 @@
+{
+  "validationResult": {
+    "status": "FAILURE",
+    "conflictingCourtScheduleId": "123e4567-e89b-12d3-a456-426655440000",
+    "validationError": "The court schedule conflicts with another court schedule"
+  }
+}

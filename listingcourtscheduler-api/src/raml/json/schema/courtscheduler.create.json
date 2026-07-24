@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "courtCentreId" : {"$ref": "#/definitions/uuid"},
+          "courtRoomId": {"$ref": "#/definitions/uuid"},
+          "sessionType": {
+            "type": "string",
+            "enum": ["AM", "PM", "AD"]
+          },
+          "businessType": {"type": "string"},
+          "duration": {"type": "number"},
+          "panel": {
+            "type": "string",
+            "enum": ["YOUTH", "ADULT"]
+          },
+          "repeatDays": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            }
+          },
+          "allDaySplit": {"type": "boolean"},
+          "maxDurationForMorning": {"type": "integer"},
+          "maxDurationForAfternoon": {"type": "integer"},
+          "sessionStartTime": {"type": "string"},
+          "sessionEndTime": {"type": "string"},
+          "isOverbookingAllowed": {"type": "boolean"},
+          "index": {"type": "integer"},
+          "isDraft": {"type": "boolean"},
+          "jurisdiction": {"type": "string", "enum": ["CROWN", "MAGISTRATES"]}
+        },
+        "required": ["courtCentreId","courtRoomId", "sessionType", "businessType", "repeatDays", "jurisdiction" ],
+        "allOf": [
+          {
+        "oneOf": [
+              {
+                "allOf": [
+          {
+                    "properties": { "jurisdiction": { "enum": ["CROWN"] } }
+                  },
+                  {
+            "required": ["isDraft"]
+                  }
+                ]
+          },
+              {
+                "allOf": [
+          {
+            "properties": { "jurisdiction": { "enum": ["MAGISTRATES"] } }
+                  },
+                  {
+                    "required": ["panel"]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "repeatPattern": {
+      "type": "object",
+      "properties": {
+        "frequency": {"type": "string",  "enum": ["ONCE", "EVERY_WEEK", "EVERY_MONTH"]},
+        "repeatFor" : {"type": "integer"},
+        "startDate": {"type": "string", "format": "date"},
+        "endDate": {"type": "string", "format": "date"}
+      },
+      "required": ["startDate", "repeatFor"]
+    }
+  },
+  "required": ["sessions", "repeatPattern"],
+  "definitions": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+    }
+  }
+}

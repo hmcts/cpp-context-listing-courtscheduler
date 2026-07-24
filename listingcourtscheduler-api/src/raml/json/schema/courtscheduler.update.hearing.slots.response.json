@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "schedules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "courtScheduleId": {
+            "type": "string"
+          },
+          "hearingDate": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "schedules"
+  ]
+}

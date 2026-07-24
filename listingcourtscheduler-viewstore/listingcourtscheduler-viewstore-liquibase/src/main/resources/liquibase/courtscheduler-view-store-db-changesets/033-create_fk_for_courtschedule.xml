@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="033" author="baris.ozturkmen"
+               logicalFilePath="033-create_fk_for_courtschedule.xml">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyTableName="allocated_listings" foreignKeyName="allocated_listings_court_schedule_id_fk"/>
+            </not>
+            <not>
+                <foreignKeyConstraintExists foreignKeyTableName="court_schedule_judiciary" foreignKeyName="court_schedule_judiciary_court_schedule_id_fk"/>
+            </not>
+        </preConditions>
+
+        <sql>
+            delete from allocated_listings where court_schedule_id in ( SELECT distinct al.court_schedule_id  FROM
+            allocated_listings al LEFT OUTER JOIN court_schedule cs
+            ON al.court_schedule_id = cs.id  where  cs.id is null);
+
+            delete from court_schedule_judiciary where court_schedule_id in ( SELECT distinct al.court_schedule_id  FROM
+            court_schedule_judiciary al LEFT OUTER JOIN court_schedule cs
+            ON al.court_schedule_id = cs.id  where  cs.id is null);
+
+            ALTER TABLE allocated_listings ADD CONSTRAINT allocated_listings_court_schedule_id_fk FOREIGN KEY (court_schedule_id) REFERENCES court_schedule(id);
+            ALTER TABLE court_schedule_judiciary
+            ADD CONSTRAINT court_schedule_judiciary_court_schedule_id_fk FOREIGN KEY (
+            court_schedule_id) REFERENCES court_schedule(id) ON DELETE CASCADE;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

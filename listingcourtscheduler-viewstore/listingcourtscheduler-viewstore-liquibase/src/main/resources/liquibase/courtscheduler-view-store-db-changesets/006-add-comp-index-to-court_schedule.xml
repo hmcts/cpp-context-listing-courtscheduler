@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+    <changeSet id="006" author="rajesh.narasimha"
+               logicalFilePath="006-add-comp-index-to-court_schedule.xml">
+
+        <createIndex tableName="court_schedule"
+                     indexName="compo_panel_idx">
+            <column name="panel"/>
+            <column name="session_start"/>
+            <column name="oucode"/>
+            <column name="rota_business_type"/>
+            <column name="court_session"/>
+            <column name="court_house_name"/>
+            <column name="court_room_name"/>
+            <column name="available_duration_mins"/>
+            <column name="active"/>
+        </createIndex>
+
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,7 @@
+{
+  "courtCentreId": "COURT_CENTRE_ID",
+  "sessionStartDate": "SESSION_START_DATE",
+  "sessionEndDate": "SESSION_END_DATE",
+  "pageSize": "PAGE_SIZE",
+  "pageNumber": "PAGE_NUMBER"
+}

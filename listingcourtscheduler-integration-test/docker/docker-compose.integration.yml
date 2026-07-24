@@ -1,0 +1,113 @@
+services:
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.34.0
+    container_name: CP_CSCHED_azurite
+    # Bind both sides of the port mapping to 10011 — same port as the Java
+    # tests' AzuriteFixture.BLOB_PORT — so the only difference between the
+    # host-side and app-side connection strings is the hostname.
+    # 10011 (not Azurite's default 10000) avoids clashing with a native
+    # Azurite a developer might already run on the standard port.
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10011 --skipApiVersionCheck
+    ports:
+      - "10011:10011"
+
+  db:
+    image: postgres:16-alpine
+    container_name: CP_CSCHED_DB_it
+    environment:
+      POSTGRES_DB: courtscheduler
+      POSTGRES_USER: courtscheduler
+      POSTGRES_PASSWORD: courtscheduler
+    ports:
+      - "55433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U courtscheduler -d courtscheduler"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  wiremock:
+    image: wiremock/wiremock:3.9.1
+    container_name: CP_CSCHED_wiremock
+    command: ["--disable-banner"]
+    ports:
+      - "8189:8080"
+    logging:
+      driver: "none"
+    volumes:
+      - ../src/test/resources/wiremock/mappings:/home/wiremock/mappings
+      - ../src/test/resources/wiremock/__files:/home/wiremock/__files
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/__admin/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    container_name: CP_CSCHED_app_it
+    build:
+      context: ../../listingcourtscheduler-api
+      dockerfile: docker/Dockerfile
+    ports:
+      - "${SERVER_PORT:-8083}:${SERVER_PORT:-8083}"
+    environment:
+      SERVER_PORT: ${SERVER_PORT:-8083}
+      SPRING_PROFILES_ACTIVE: integration
+
+      # Datasource
+      CSCHED_DATASOURCE_URL: jdbc:postgresql://db:5432/courtscheduler
+      CSCHED_DATASOURCE_USERNAME: courtscheduler
+      CSCHED_DATASOURCE_PASSWORD: courtscheduler
+      CSCHED_DATASOURCE_DRIVER: org.postgresql.Driver
+
+      # Disable JMS health
+      MANAGEMENT_HEALTH_JMS_ENABLED: "false"
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "false"
+
+      # Authz + Audit ENABLED in integration tests (proves filter wiring)
+      CSCHED_AUTHZ_ENABLED: "true"
+      CSCHED_HTTP_AUDIT_ENABLED: "true"
+      CSCHED_AUDIT_ENABLED: "false"
+
+      # Base URL for both referencedata + usersgroups query APIs points at
+      # WireMock running in the same compose network.
+      CSCHED_BASE_URL: "http://wiremock:8080"
+
+      # Spring Boot 4 disables OTLP metrics that fail at shutdown when no collector exists
+      MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED: "false"
+      MANAGEMENT_TRACING_ENABLED: "false"
+
+      # Liquibase explicitly enabled + changelog path (the legacy module bundles a
+      # liquibase.properties on the classpath that confuses Spring Boot 4's
+      # auto-configuration; force the values through env)
+      SPRING_LIQUIBASE_ENABLED: "true"
+      SPRING_LIQUIBASE_CHANGE_LOG: "classpath:liquibase/courtscheduler-view-store-db-changelog.xml"
+
+      # System-user UUID used as CJSCPPUID on outbound HTTP calls (in place of
+      # the Justice Services framework's Requester#requestAsAdmin). Tests use the
+      # SYSTEM_USERS-bearing identity stub at WireMock.
+      COURTSCHEDULER_SYSTEM_USER_ID: "22222222-2222-2222-2222-222222222222"
+
+      # Azurite (Azure Storage emulator) — drives RotaFileProcessor's blob client.
+      # The legacy AzureBlobClientService uses a connection-string when the account
+      # name is empty; pointing it at the in-network Azurite container lets the
+      # RotaFile* IT classes upload XML rota files and have the app pick them up.
+      # Defined in `.env` (auto-loaded by docker-compose from the same directory).
+      # AzuriteFixture in the test classpath reads the same .env and adapts the
+      # host portion for tests that run on the host JVM.
+      CSCHED_ROTASLSTORAGECONNECTIONSTRING: ${CSCHED_ROTASLSTORAGECONNECTIONSTRING}
+      CSCHED_ROTASLINPUTCONTAINERNAME: "schedulelistinginput"
+      CSCHED_ROTASLARCHIVECONTAINERNAME: "schedulelistingarchive"
+    depends_on:
+      db:
+        condition: service_healthy
+      wiremock:
+        condition: service_started
+      azurite:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${SERVER_PORT:-8083}/listingcourtscheduler-api/rest/courtscheduler/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 24

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "cd7110f3-56b8-3de2-b8fc-23043c6c2448",
+    "seqNum": 50,
+    "typeCode": "CJU",
+    "typeDescription": "Community Justice",
+    "slot": true,
+    "duration": false
+  },
+  {
+    "id": "3948fc81-bd83-36c9-8ee0-861d35c2ebd7",
+    "seqNum": 330,
+    "typeCode": "NCPT",
+    "typeDescription": "Non CPS Trial",
+    "slot": false,
+    "duration": true
+  }
+]

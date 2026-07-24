@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <changeSet id="023" author="samialpak"
+               logicalFilePath="023-add-venue-id-to-court-room-mapping.xml">
+
+        <sql>
+            TRUNCATE TABLE court_room_mapping;
+        </sql>
+
+        <addColumn tableName="court_room_mapping">
+            <column name="venue_id" type="NUMERIC">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <createIndex indexName="idx_court_room_mapping_venue_id_location_id"
+                     tableName="court_room_mapping">
+            <column name="location_id"/>
+            <column name="venue_id"/>
+        </createIndex>
+
+
+        <rollback>
+            <dropColumn tableName="court_room_mapping" columnName="venue_id"/>
+            <dropIndex tableName="court_room_mapping" indexName="idx_court_room_mapping_venue_id_location_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

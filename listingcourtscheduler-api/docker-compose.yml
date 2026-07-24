@@ -1,0 +1,83 @@
+version: '3.8'
+
+# Prod-style local-dev compose for listingcourtscheduler. Mirrors the layout used by
+# cp-court-list-publishing-service: a single Spring Boot service backed by a
+# Postgres instance, configured entirely through environment variables that match
+# the Helm chart used in CI deployments.
+#
+# This is *not* the integration-test stack (that lives at
+# listingcourtscheduler-integration-test/docker/docker-compose.integration.yml).
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: CP_CSCHED_DB
+    environment:
+      POSTGRES_DB: ${CSCHED_DATASOURCE_DB:-courtscheduler}
+      POSTGRES_USER: ${CSCHED_DATASOURCE_USERNAME:-courtscheduler}
+      POSTGRES_PASSWORD: ${CSCHED_DATASOURCE_PASSWORD:-courtscheduler}
+    ports:
+      - "${DB_PORT:-55434}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CSCHED_DATASOURCE_USERNAME:-courtscheduler} -d ${CSCHED_DATASOURCE_DB:-courtscheduler}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  listingcourtscheduler-api:
+    container_name: CP_CSCHED_app
+    env_file:
+      - ${ENV_FILE:-.env}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        http_proxy: ${http_proxy}
+        https_proxy: ${https_proxy}
+        no_proxy: ${no_proxy}
+        BASE_IMAGE: ${BASE_IMAGE:-eclipse-temurin:25-jdk}
+        SERVER_PORT: ${SERVER_PORT:-8083}
+        JAR_FILENAME: ${JAR_FILENAME:-cpp-context-listing-courtscheduler-0.0.999.jar}
+        JAR_FILE_PATH: ${JAR_FILE_PATH:-build/libs}
+        CERTS_DIR: ${CERTS_DIR:-./certs}
+    ports:
+      - "${SERVER_PORT:-8083}:${SERVER_PORT:-8083}"
+    environment:
+      SERVER_PORT: ${SERVER_PORT:-8083}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+
+      # Datasource — defaults wire the app at the sibling `db` service
+      CSCHED_DATASOURCE_URL: ${CSCHED_DATASOURCE_URL:-jdbc:postgresql://db:5432/courtscheduler}
+      CSCHED_DATASOURCE_USERNAME: ${CSCHED_DATASOURCE_USERNAME:-courtscheduler}
+      CSCHED_DATASOURCE_PASSWORD: ${CSCHED_DATASOURCE_PASSWORD:-courtscheduler}
+      CSCHED_DATASOURCE_DRIVER: org.postgresql.Driver
+
+      # Liquibase migrations
+      SPRING_LIQUIBASE_ENABLED: "true"
+      SPRING_LIQUIBASE_CHANGE_LOG: "classpath:liquibase/courtscheduler-view-store-db-changelog.xml"
+
+      # Outbound CPP services — supplied by callers (Helm/secrets) in real envs.
+      # Same gateway base URL fronts both referencedata and usersgroups query APIs.
+      CSCHED_BASE_URL: ${CSCHED_BASE_URL:-}
+      COURTSCHEDULER_SYSTEM_USER_ID: ${COURTSCHEDULER_SYSTEM_USER_ID:-}
+
+      # Azure Storage — production binds via Workload Identity / DefaultAzureCredential
+      AZURE_STORAGE_ACCOUNT_NAME: ${AZURE_STORAGE_ACCOUNT_NAME:-}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
+      CSCHED_ROTASLSTORAGECONNECTIONSTRING: ${CSCHED_ROTASLSTORAGECONNECTIONSTRING:-}
+      CSCHED_ROTASLINPUTCONTAINERNAME: ${CSCHED_ROTASLINPUTCONTAINERNAME:-schedulelistinginput}
+      CSCHED_ROTASLARCHIVECONTAINERNAME: ${CSCHED_ROTASLARCHIVECONTAINERNAME:-schedulelistingarchive}
+
+      # Authz + audit — env wiring matches application-authz.yml / application-audit.yml
+      CSCHED_AUTHZ_ENABLED: ${CSCHED_AUTHZ_ENABLED:-true}
+      CSCHED_HTTP_AUDIT_ENABLED: ${CSCHED_HTTP_AUDIT_ENABLED:-true}
+      CSCHED_AUDIT_ENABLED: ${CSCHED_AUDIT_ENABLED:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${SERVER_PORT:-8083}/listingcourtscheduler-api/rest/courtscheduler/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 24
