@@ -1140,7 +1140,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             final LocalDateTime sessionFromHearingStartTime = StringUtils.isNotBlank(allocatedSlot.getHearingStartTime()) ? (ZonedDateTime.parse(allocatedSlot.getHearingStartTime())).toLocalDateTime() : null;
             final LocalDate hearingSessionSearchCutOff = StringUtils.isNotBlank(allocatedSlot.getHearingSessionDateSearchCutOff()) ? LocalDate.parse(allocatedSlot.getHearingSessionDateSearchCutOff()) : null;
             final CourtSchedule courtScheduleFound = searchListHearingSlotFilterCriteria(allocatedSlot.getCourtCentreId(), LocalDate.parse(
-                    allocatedSlot.getSessionDate()), hearingSessionSearchCutOff ,sessionFromHearingStartTime, allocatedSlot.getCourtRoomUUId(), allocatedSlot.isPolice());
+                    allocatedSlot.getSessionDate()), hearingSessionSearchCutOff ,sessionFromHearingStartTime, allocatedSlot.getCourtRoomUUId(), allocatedSlot.isPolice(),
+                    allocatedSlot.getBusinessType());
 
             if (courtScheduleFound != null) {
                 ModelMapper modelMapper = new ModelMapper();
@@ -1283,25 +1284,26 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                                                                               LocalDate sessionEndDate,
                                                                               LocalDateTime sessionStartTime,
                                                                               String courtRoomId,
-                                                                              Boolean isPolice) {
-        LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria courtCentreId: {}, sessionDate: {}, sessionEndDate: {}, hearingStartTime: {}, courtRoomId: {}",
-                courtCentreId, sessionDate, sessionEndDate, sessionStartTime, courtRoomId);
+                                                                              Boolean isPolice,
+                                                                              String businessType) {
+        LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria courtCentreId: {}, sessionDate: {}, sessionEndDate: {}, hearingStartTime: {}, courtRoomId: {}, businessType: {}",
+                courtCentreId, sessionDate, sessionEndDate, sessionStartTime, courtRoomId, businessType);
 
         List<CourtSchedule> resultList;
         if (Boolean.TRUE.equals(isPolice)) {
-            resultList = getCourtSchedulesForPolice(courtCentreId, sessionDate, sessionEndDate, sessionStartTime, courtRoomId);
+            resultList = getCourtSchedulesForPolice(courtCentreId, sessionDate, sessionEndDate, sessionStartTime, courtRoomId, businessType);
         } else {
             //get court schedules for non-spi
-            resultList = getCourtSchedulesForNonPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId);
+            resultList = getCourtSchedulesForNonPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId, businessType);
         }
 
         return (resultList != null && !resultList.isEmpty()) ? resultList.get(0) : null;
     }
 
-    private List<CourtSchedule> getCourtSchedulesForPolice(String courtCentreId, LocalDate sessionDate, LocalDate sessionEndDate, LocalDateTime sessionStartTime, String courtRoomId) {
+    private List<CourtSchedule> getCourtSchedulesForPolice(String courtCentreId, LocalDate sessionDate, LocalDate sessionEndDate, LocalDateTime sessionStartTime, String courtRoomId, String businessType) {
         List<CourtSchedule> resultList;
         do {
-            resultList = performFallbackSearchForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId);
+            resultList = performFallbackSearchForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId, businessType);
             sessionDate = sessionDate.plusDays(1);
         } while (isSearchResultEmpty(resultList) && shouldContinueSearch(sessionDate, sessionEndDate));
         return resultList;
@@ -1311,16 +1313,16 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * Performs a fallback search strategy for police court schedules.
      * Tries multiple search combinations with progressively relaxed criteria.
      */
-    private List<CourtSchedule> performFallbackSearchForPolice(String courtCentreId, LocalDate sessionDate, LocalDateTime sessionStartTime, String courtRoomId) {
+    private List<CourtSchedule> performFallbackSearchForPolice(String courtCentreId, LocalDate sessionDate, LocalDateTime sessionStartTime, String courtRoomId, String businessType) {
         // 1st attempt: All parameters
         List<CourtSchedule> resultList = searchWithLogging("1st Call with All params",
-            () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId),
+            () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId, businessType),
             courtCentreId, sessionDate, sessionStartTime, courtRoomId);
 
         if (isSearchResultEmpty(resultList)) {
             // 2nd attempt: Remove sessionStartTime
             resultList = searchWithLogging("2nd Call with All params except sessionStartTime",
-                () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, courtRoomId),
+                () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, courtRoomId, businessType),
                 courtCentreId, sessionDate, null, courtRoomId);
             resultList = applyClosestTimeFilterIfNeeded(resultList, sessionStartTime);
         }
@@ -1328,14 +1330,14 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (isSearchResultEmpty(resultList)) {
             // 3rd attempt: Remove courtRoomId
             resultList = searchWithLogging("3rd Call with All params except courtRoom",
-                () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, null),
+                () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, null, businessType),
                 courtCentreId, sessionDate, sessionStartTime, null);
         }
 
         if (isSearchResultEmpty(resultList)) {
             // 4th attempt: Remove both sessionStartTime and courtRoomId
             resultList = searchWithLogging("4th Call with All params except courtRoom and hearingStartTime",
-                () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, null),
+                () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, null, null, businessType),
                 courtCentreId, sessionDate, null, null);
             resultList = applyClosestTimeFilterIfNeeded(resultList, sessionStartTime);
         }
@@ -1465,26 +1467,30 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
     }
 
-    private List<CourtSchedule> getCourtSchedulesForNonPolice(String courtCentreId, LocalDate sessionDate, LocalDateTime sessionStartTime, String courtRoomId) {
+    private List<CourtSchedule> getCourtSchedulesForNonPolice(String courtCentreId, LocalDate sessionDate, LocalDateTime sessionStartTime, String courtRoomId, String businessType) {
         List<CourtSchedule> resultList;
             LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria First Call with All params for courtCentreId: {} and sessionDate: {}", courtCentreId, sessionDate);
-            resultList = searchListQueryFilterCriteriaForNonPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId);
+            resultList = searchListQueryFilterCriteriaForNonPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId, businessType);
         return resultList;
     }
 
     private List<CourtSchedule> searchListQueryFilterCriteriaForNonPolice(String courtCentreId,
                                                                    LocalDate sessionDate,
                                                                    LocalDateTime sessionStartTime,
-                                                                   String courtRoomId) {
-        LOGGER.info("Criteria Query Params: courtCentreId {} sessionDate {} hearingStartTime {} courtRoomId {}", courtCentreId, sessionDate, sessionStartTime, courtRoomId);
+                                                                   String courtRoomId,
+                                                                   String businessType) {
+        LOGGER.info("Criteria Query Params: courtCentreId {} sessionDate {} hearingStartTime {} courtRoomId {} businessType {}", courtCentreId, sessionDate, sessionStartTime, courtRoomId, businessType);
 
         StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM " +
                 "court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
         Map<String, Object> params = new HashMap<>();
 
-        final List<String> businessType = List.of("NCFL");
+        // Explicit businessType (e.g. Enforcement's "ENF"/"ENF_AUTO") overrides the
+        // default non-police business type; existing non-Enforcement callers pass none and keep
+        // today's "NCFL" behaviour unchanged.
+        final List<String> businessTypes = StringUtils.isNotBlank(businessType) ? List.of(businessType) : List.of("NCFL");
         queryString.append(BUSINESS_TYPE_QUERY_CONDITION_STRING);
-        params.put(BUSINESS_TYPE, businessType);
+        params.put(BUSINESS_TYPE, businessTypes);
 
         queryString.append(COURTCENTREID_QUERY_CONDITION_STRING);
         params.put(COURT_CENTRE_ID, courtCentreId);
@@ -1515,16 +1521,20 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     private List<CourtSchedule> searchListQueryFilterCriteriaForPolice(String courtCentreId,
                                                               LocalDate sessionDate,
                                                               LocalDateTime sessionStartTime,
-                                                              String courtRoomId) {
-        LOGGER.info("Criteria Query Params: courtCentreId {} sessionDate {} hearingStartTime {} courtRoomId {}", courtCentreId, sessionDate, sessionStartTime, courtRoomId);
-        final List<String> businessType = List.of("YFL", "TRFL", "DAFL", "NGAP", "GAP", "REM");
+                                                              String courtRoomId,
+                                                              String businessType) {
+        LOGGER.info("Criteria Query Params: courtCentreId {} sessionDate {} hearingStartTime {} courtRoomId {} businessType {}", courtCentreId, sessionDate, sessionStartTime, courtRoomId, businessType);
+        // Explicit businessType (e.g. Enforcement's "ENF"/"ENF_AUTO") overrides the
+        // default police business types; existing callers pass none and keep today's behaviour.
+        final List<String> businessTypes = StringUtils.isNotBlank(businessType)
+                ? List.of(businessType) : List.of("YFL", "TRFL", "DAFL", "NGAP", "GAP", "REM");
 
         StringBuilder queryString = new StringBuilder("SELECT s.*, case when al.id is not null then true else false end as hasHearingsBooked " +
                 "FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
         Map<String, Object> params = new HashMap<>();
 
         queryString.append(BUSINESS_TYPE_QUERY_CONDITION_STRING);
-        params.put(BUSINESS_TYPE, businessType);
+        params.put(BUSINESS_TYPE, businessTypes);
 
         queryString.append(COURTCENTREID_QUERY_CONDITION_STRING);
         params.put(COURT_CENTRE_ID, courtCentreId);

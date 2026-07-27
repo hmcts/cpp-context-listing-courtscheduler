@@ -79,7 +79,8 @@ public interface CourtScheduleRepositoryCustom {
                                                       LocalDate sessionEndDate,
                                                       LocalDateTime sessionStartTime,
                                                       String courtRoomId,
-                                                      Boolean isPolice);
+                                                      Boolean isPolice,
+                                                      String businessType);
 
     int deleteRedundantRotaData(int numberOfDays);
 
