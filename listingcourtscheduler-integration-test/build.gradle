@@ -57,7 +57,7 @@ dependencies {
     testImplementation 'org.apache.commons:commons-collections4:4.5.0'
     testImplementation 'org.apache.commons:commons-lang3'
     // json-org used by ProvisionalBookingIT for JSONObject responseJson parsing
-    testImplementation 'org.json:json:20260522'
+    testImplementation 'org.json:json:20260719'
     testImplementation 'org.wiremock:wiremock-standalone:3.13.2'
     // jakarta.ws.rs API for the legacy IT classes' Response/MediaType types (no JAX-RS impl needed)
     testImplementation 'jakarta.ws.rs:jakarta.ws.rs-api:4.0.0'
@@ -70,7 +70,7 @@ dependencies {
     testImplementation 'org.apache.httpcomponents:httpcore:4.4.16'
     // commons-io used by FileUtil
     testImplementation 'commons-io:commons-io:2.22.0'
-    testImplementation 'io.rest-assured:rest-assured:6.0.0'
+    testImplementation 'io.rest-assured:rest-assured:6.0.1'
     testImplementation 'org.awaitility:awaitility:4.3.0'
     testImplementation 'jakarta.json:jakarta.json-api:2.1.3'
     testRuntimeOnly  'org.eclipse.parsson:parsson:1.1.9'
@@ -108,7 +108,7 @@ dockerCompose {
 }
 
 tasks.named('test') {
-    description = "Runs integration tests against the IT docker-compose stack (excludes performance/**, mirroring the Maven 'listingcourtscheduler-integration-test' profile)"
+    description = "Runs integration tests against the IT docker-compose stack"
     group = "verification"
 
     dependsOn tasks.named('composeUp')
