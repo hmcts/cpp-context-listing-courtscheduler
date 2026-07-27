@@ -9,7 +9,8 @@ public record HearingSlotSearchRequest(String hearingId,
                                        String hearingSessionDateSearchCutOff,
                                        String sessionStartTime,
                                        Integer durationInMinutes,
-                                       Boolean isPolice) {
+                                       Boolean isPolice,
+                                       String businessType) {
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -21,12 +22,14 @@ public record HearingSlotSearchRequest(String hearingId,
                 that.courtRoomId()) && Objects.equals(hearingSessionDateSearchCutOff(),
                 that.hearingSessionDateSearchCutOff()) && Objects.equals(sessionStartTime(),
                 that.sessionStartTime()) && Objects.equals(durationInMinutes(),
-                that.durationInMinutes()) && Objects.equals(isPolice(), that.isPolice());
+                that.durationInMinutes()) && Objects.equals(isPolice(), that.isPolice())
+                && Objects.equals(businessType(), that.businessType());
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(hearingId(), courtCentreId(), hearingSessionDate(), courtRoomId(),
-                hearingSessionDateSearchCutOff(), sessionStartTime(), durationInMinutes(), isPolice());
+                hearingSessionDateSearchCutOff(), sessionStartTime(), durationInMinutes(), isPolice(),
+                businessType());
     }
 }

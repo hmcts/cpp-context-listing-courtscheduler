@@ -20,10 +20,28 @@ class HearingSlotSearchRequestToAllocatedSlotConverterTest {
     @Test
     public void shouldConvertJsonObjectToRequestParam() {
         HearingSlotSearchRequest hearingSlotSearchRequest  = new HearingSlotSearchRequest("5771a96b-1c5a-45d1-b647-1bec5212cafc", "B01LY00", "2025-05-13",
-                null, null, null, null, true);
+                null, null, null, null, true, null);
         AllocatedSlot allocatedSlot = hearingSlotSearchRequestToAllocatedSlotConverter.convert(hearingSlotSearchRequest);
 
         assertNotNull(allocatedSlot);
         assertEquals("5771a96b-1c5a-45d1-b647-1bec5212cafc", allocatedSlot.getHearingId());
+    }
+
+    @Test
+    public void shouldCarryBusinessTypeThroughToAllocatedSlot() {
+        HearingSlotSearchRequest hearingSlotSearchRequest = new HearingSlotSearchRequest("5771a96b-1c5a-45d1-b647-1bec5212cafc", "B01LY00", "2025-05-13",
+                null, null, null, null, false, "ENF_AUTO");
+        AllocatedSlot allocatedSlot = hearingSlotSearchRequestToAllocatedSlotConverter.convert(hearingSlotSearchRequest);
+
+        assertEquals("ENF_AUTO", allocatedSlot.getBusinessType());
+    }
+
+    @Test
+    public void shouldLeaveBusinessTypeNullWhenNotProvided() {
+        HearingSlotSearchRequest hearingSlotSearchRequest = new HearingSlotSearchRequest("5771a96b-1c5a-45d1-b647-1bec5212cafc", "B01LY00", "2025-05-13",
+                null, null, null, null, false, null);
+        AllocatedSlot allocatedSlot = hearingSlotSearchRequestToAllocatedSlotConverter.convert(hearingSlotSearchRequest);
+
+        assertEquals(null, allocatedSlot.getBusinessType());
     }
 }

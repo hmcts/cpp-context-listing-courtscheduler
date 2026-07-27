@@ -21,6 +21,7 @@ public class HearingSlotSearchRequestToAllocatedSlotConverter {
                 hearingSlotSearchRequest.durationInMinutes() : 0);
         allocatedSlot.setHearingSessionDateSearchCutOff(hearingSlotSearchRequest.hearingSessionDateSearchCutOff());
         allocatedSlot.setPolice(hearingSlotSearchRequest.isPolice());
+        allocatedSlot.setBusinessType(hearingSlotSearchRequest.businessType());
 
         return allocatedSlot;
     }
