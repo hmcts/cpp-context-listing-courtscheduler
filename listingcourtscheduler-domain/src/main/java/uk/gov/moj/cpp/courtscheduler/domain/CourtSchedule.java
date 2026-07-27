@@ -6,7 +6,6 @@ import java.util.Date;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 @SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 public class CourtSchedule {
@@ -384,7 +383,6 @@ public class CourtSchedule {
         return sessionEndTime;
     }
 
-    @JsonProperty("isOverbookingAllowed")
     public boolean isOverbookingAllowed() {
         return isOverbookingAllowed;
     }
@@ -401,7 +399,6 @@ public class CourtSchedule {
         this.nationalBreakTime = nationalBreakTime;
     }
 
-    @JsonProperty("isDraft")
     public boolean isDraft() {
         return isDraft;
     }
