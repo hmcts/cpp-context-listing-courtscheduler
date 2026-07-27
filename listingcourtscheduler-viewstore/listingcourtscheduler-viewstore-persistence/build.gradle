@@ -10,7 +10,7 @@ dependencies {
     implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
     implementation 'org.slf4j:slf4j-api'
 
-    annotationProcessor 'org.hibernate.orm:hibernate-jpamodelgen:7.4.4.Final'
+    annotationProcessor 'org.hibernate.orm:hibernate-jpamodelgen:7.4.5.Final'
 }
 
 // Repository tests share a single @SpringBootConfiguration but each test class still
