@@ -135,11 +135,11 @@ public class SlotsUpdateService {
     }
 
     /**
-     * Expands [startDate, endDate] into sitting (Mon-Fri) days and books a session on every day in a
-     * single atomic call. All sessions are resolved first, so if any day has no matching session the
-     * whole move is rejected before any allocation is written (saveBookedSlots releases prior
-     * allocations for the hearing exactly once and then books every slot). Supports both jurisdictions
-     * and an optional room-scoped, time-of-day (range-containment) search.
+     * Expands [startDate, endDate] into sitting days (see {@link #sittingDays}) and books a session
+     * on every day in a single atomic call. All sessions are resolved first, so if any day has no
+     * matching session the whole move is rejected before any allocation is written (saveBookedSlots
+     * releases prior allocations for the hearing exactly once and then books every slot). Supports
+     * both jurisdictions and an optional room-scoped, time-of-day (range-containment) search.
      */
     public List<MoveHearingToPastDateResponse> moveHearingToPastDate(final String hearingId,
                                                                      final String courtCentreId,
@@ -153,10 +153,11 @@ public class SlotsUpdateService {
         final String effectiveJurisdiction = (jurisdiction == null || jurisdiction.isBlank())
                 ? MAGISTRATES_JURISDICTION : jurisdiction.toUpperCase();
         final LocalDate effectiveEndDate = endDate == null ? startDate : endDate;
-        final List<LocalDate> sittingDays = workingDays(startDate, effectiveEndDate);
+        final List<LocalDate> sittingDays = sittingDays(startDate, effectiveEndDate);
         if (sittingDays.isEmpty()) {
+            // only reachable when endDate is before startDate - an empty span has no day to book
             throw new MoveHearingToPastDateNoSessionException(
-                    "No sitting (weekday) day between " + startDate + " and " + effectiveEndDate);
+                    "No day between " + startDate + " and " + effectiveEndDate);
         }
 
         final List<CourtSchedule> sessions = new ArrayList<>();
@@ -189,17 +190,26 @@ public class SlotsUpdateService {
         return responses;
     }
 
-    private static List<LocalDate> workingDays(final LocalDate startDate, final LocalDate endDate) {
-        final List<LocalDate> days = new ArrayList<>();
+    /**
+     * Weekdays are always sitting days, and mid-span weekends in a mixed range stay skipped
+     * (multi-day hearings do not sit over the weekend). A span containing no weekday at all - a
+     * single Saturday/Sunday, or a Sat-Sun range - uses the requested days verbatim: weekend
+     * sessions are real (e.g. magistrates remand courts sit Saturdays), so whether such a day is
+     * bookable is the per-day session lookup's decision, not a calendar rule.
+     */
+    private static List<LocalDate> sittingDays(final LocalDate startDate, final LocalDate endDate) {
+        final List<LocalDate> allDays = new ArrayList<>();
+        final List<LocalDate> weekdays = new ArrayList<>();
         LocalDate cursor = startDate;
         while (!cursor.isAfter(endDate)) {
+            allDays.add(cursor);
             final DayOfWeek dow = cursor.getDayOfWeek();
             if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY) {
-                days.add(cursor);
+                weekdays.add(cursor);
             }
             cursor = cursor.plusDays(1);
         }
-        return days;
+        return weekdays.isEmpty() ? allDays : weekdays;
     }
 
     private static AllocatedSlot buildAllocatedSlotForPastDateMove(final String hearingId, final int durationInMinutes,

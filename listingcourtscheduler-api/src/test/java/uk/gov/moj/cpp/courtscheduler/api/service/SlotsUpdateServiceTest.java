@@ -285,6 +285,52 @@ class SlotsUpdateServiceTest {
         }
 
         @Test
+        void shouldBookSaturday_whenWeekendOnlySpanRequested() {
+            // Weekend sessions are real (magistrates remand courts sit Saturdays): a span containing
+            // no weekday - here a single Saturday - books the requested day. Whether a session exists
+            // on that day is the per-day lookup's decision, not a calendar rule.
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate saturday = LocalDate.of(2026, 7, 25);
+            final CourtSchedule session = buildSession(saturday);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(saturday), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(session));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(Result.SUCCESS());
+
+            final List<MoveHearingToPastDateResponse> responses =
+                    service.moveHearingToPastDate(hearingId, courtCentreId, null, saturday, saturday, "10:30", "10:50", MAGISTRATES, 20);
+
+            assertEquals(1, responses.size());
+            assertEquals("2026-07-25", responses.get(0).sessionDate());
+            assertEquals(session.getCourtScheduleId(), responses.get(0).courtScheduleId());
+        }
+
+        @Test
+        void shouldBookBothWeekendDays_forASaturdayToSundaySpan() {
+            // A weekend-only multi-day span (Sat-Sun) books every requested day; mixed spans keep
+            // skipping mid-span weekends (see shouldBookOnlyWorkingDaysAcrossAMultiDayRangeInOneAtomicCall).
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate saturday = LocalDate.of(2026, 7, 25);
+            final LocalDate sunday = LocalDate.of(2026, 7, 26);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(saturday), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildSession(saturday)));
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(sunday), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildSession(sunday)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(Result.SUCCESS());
+
+            final List<MoveHearingToPastDateResponse> responses =
+                    service.moveHearingToPastDate(hearingId, courtCentreId, null, saturday, sunday, "09:00", "12:00", MAGISTRATES, 30);
+
+            assertEquals(2, responses.size());
+            assertEquals("2026-07-25", responses.get(0).sessionDate());
+            assertEquals("2026-07-26", responses.get(1).sessionDate());
+        }
+
+        @Test
         void shouldSupportCrownJurisdiction() {
             final String hearingId = UUID.randomUUID().toString();
             final String courtCentreId = UUID.randomUUID().toString();
