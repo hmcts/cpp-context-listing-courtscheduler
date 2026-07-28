@@ -80,6 +80,25 @@ class MoveHearingToPastDateIT extends AbstractIT {
         assertThat(firstBookedSlot(response.readEntity(String.class)).getString("courtScheduleId"), is(sessionId));
     }
 
+    /** Weekend sessions are real (magistrates remand courts sit Saturdays): a Saturday target books
+     * like any other past day when a Saturday session exists - the calendar no longer rejects it. */
+    @Test
+    void shouldBookSaturdaySessionForPastDate() throws Exception {
+        final String centreId = randomUUID().toString();
+        final String roomId = randomUUID().toString();
+        final String hearingId = randomUUID().toString();
+        final LocalDate saturday = mostRecentSaturday();
+
+        final String sessionId = seedMagistratesSession(saturday, roomId, "NGAP", centreId, "C01CY00");
+
+        final Response response = postCommand(URL + "/" + hearingId, ACCEPT, SYSTEM_USER_ID,
+                movePayload(centreId, roomId, "MAGISTRATES", saturday, null, "12:00", 30));
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(firstBookedSlot(response.readEntity(String.class)).getString("courtScheduleId"), is(sessionId));
+        assertThat("allocated_listings row written", bookedScheduleIds(hearingId).size(), is(1));
+    }
+
     @Test
     void shouldBookOnlyWorkingDaysForAMultiDayRange() throws Exception {
         final String centreId = randomUUID().toString();
@@ -316,6 +335,15 @@ class MoveHearingToPastDateIT extends AbstractIT {
 
     private static LocalDate lastWorkingDayBeforeToday() {
         return pastWorkingDay(1);
+    }
+
+    /** most recent Saturday strictly before today - always past; proves weekend dates are bookable. */
+    private static LocalDate mostRecentSaturday() {
+        LocalDate day = LocalDate.now().minusDays(1);
+        while (day.getDayOfWeek() != DayOfWeek.SATURDAY) {
+            day = day.minusDays(1);
+        }
+        return day;
     }
 
     /** n-th working (Mon-Fri) day strictly before today. */
