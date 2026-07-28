@@ -4,6 +4,7 @@ import uk.gov.moj.cpp.authz.drools.Outcome;
 import uk.gov.moj.cpp.authz.drools.Action;
 import uk.gov.moj.cpp.courtscheduler.api.accesscontrol.SecurityGroupConstants;
 import uk.gov.moj.cpp.courtscheduler.api.accesscontrol.PermissionConstants;
+import uk.gov.moj.cpp.courtscheduler.api.accesscontrol.SecurityGroupConstants;
 
 global uk.gov.moj.cpp.authz.http.providers.UserAndGroupProvider userAndGroupProvider;
 
@@ -206,6 +207,15 @@ rule "API - Action - courtscheduler.judiciary.delete.availability.rule.validate"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.search.update.hearing.slots"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.search.update.hearing.slots");
+         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.get.hearing.slots"
   when
     $outcome: Outcome();
@@ -283,6 +293,24 @@ rule "API - Action - courtscheduler.export.allocated_listings"
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.export.allocated_listings");
          eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.oucode.migrate"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.oucode.migrate");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.oucode.recalculate.availability"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.oucode.recalculate.availability");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end

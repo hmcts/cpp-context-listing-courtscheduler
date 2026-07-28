@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.converter;
 
 import static java.util.Comparator.comparing;
+import static java.util.Objects.nonNull;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils.updateTotalBooked;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;

@@ -53,6 +53,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -97,6 +98,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -390,6 +392,13 @@ public class SessionsService {
         });
 
         return Result.SUCCESS();
+    }
+
+    @Transactional
+    public Result ouCodesRecalculateAvailability(OuCodeRecalculateAvailabilityRequest request) {
+
+        final int rowsAffected = courtScheduleRepository.getInconsistentCourtSchedulersByOucode(request.getOuCode());
+        return new Result(format("Recalculate availability for %s ouCode(s) affected %d rows", request.getOuCode(), rowsAffected), true);
     }
 
     public CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(final String courtRoomId,

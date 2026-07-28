@@ -36,6 +36,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNI
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_MORNING_START_TIME;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
+import org.junit.jupiter.api.Disabled;
 import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteResponseConverter;
@@ -55,6 +56,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
@@ -79,6 +82,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;

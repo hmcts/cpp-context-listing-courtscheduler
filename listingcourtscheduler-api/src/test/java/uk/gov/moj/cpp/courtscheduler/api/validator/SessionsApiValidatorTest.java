@@ -2640,8 +2640,10 @@ class SessionsApiValidatorTest {
                         .withCourtScheduleIds(List.of())
                         .build();
 
+        // When
         JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
 
+        // Then
         assertEquals("Court Schedule Ids cannot be empty", result.getString("errorMessage"));
     }
 
@@ -2657,6 +2659,7 @@ class SessionsApiValidatorTest {
         when(sessionsService.validateSessionAvailabilityListMode(List.of(courtScheduleId), 60))
                 .thenReturn(Optional.of("some error"));
 
+        // When
         JsonObject result = sessionsApiValidator.getSessionsAvailabilityValidation(requestParam);
 
         assertEquals("some error", result.getString("errorMessage"));

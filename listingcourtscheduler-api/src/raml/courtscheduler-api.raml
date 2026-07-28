@@ -589,6 +589,39 @@ protocols: [ HTTP, HTTPS ]
             example: !include json/courtscheduler.export.allocated_listings.json
             schema: !include json/schema/courtscheduler.export.allocated_listings.json
 
+/oucode/recalculate-availability:
+  post:
+    description: |
+      Recalculate availability for the given oucode
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.oucode.recalculate.availability+json
+          name: courtscheduler.oucode.recalculate.availability
+      ...
+    body:
+      application/vnd.courtscheduler.oucode.recalculate.availability+json:
+        schema: !include json/schema/courtscheduler.oucode.recalculate.availability.json
+        example: !include json/courtscheduler.oucode.recalculate.availability.json
+    responses:
+      202:
+        description: Recalculation accepted
+
+/oucode/migrate:
+  post:
+    description: |
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.oucode.migrate+json
+          name: courtscheduler.oucode.migrate
+      ...
+    body:
+      application/vnd.courtscheduler.oucode.migrate+json:
+        schema: !include json/schema/courtscheduler.oucode.migrate.json
+        example: !include json/courtscheduler.oucode.migrate.json
+    responses:
+      202:
+        description: OK
+
 /rotasl/process-rota-files:
   post:
     description: |

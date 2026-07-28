@@ -17,6 +17,7 @@ tags:
   - name: hearings
   - name: provisional-booking
   - name: mi
+  - name: oucode
   - name: rotasl
   - name: validate
   - name: judiciary-availability
@@ -293,6 +294,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/CourtschedulerListHearingsInSessionsResponse'
 
+  /list/hearingslots:
+    put:
+      tags: [hearingslots]
+      operationId: putListHearingSlotsInCourtSessions
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.list.hearings-in-court-sessions+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerListHearingsInCourtSessions'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.list.hearings-in-court-sessions.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerListHearingsInCourtSessionsResponse'
+
+  /searchupdate/hearingslots:
+    put:
+      tags: [hearingslots]
+      operationId: putSearchUpdateHearingSlots
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.search.update.hearing.slots+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerSearchUpdateHearingSlots'
+      responses:
+        '204':
+          description: No Content
+
+  /searchlist/hearingslots:
+    get:
+      tags: [hearingslots]
+      operationId: getSearchListHearingSlots
+      parameters:
+        - { in: query, name: hearingId,    required: true,  schema: { type: string } }
+        - { in: query, name: courtCentreId, required: true, schema: { type: string } }
+        - { in: query, name: courtRoomId,  required: false, schema: { type: string } }
+        - { in: query, name: hearingDate,  required: true,  schema: { type: string } }
+        - { in: query, name: hearingSessionDateSearchCutOff, required: false, schema: { type: string } }
+        - { in: query, name: hearingStartTime, required: false, schema: { type: string } }
+        - { in: query, name: durationInMinutes, required: true, schema: { type: integer } }
+        - { in: query, name: isPolice,     required: false, schema: { type: boolean } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.search.book.hearing.slots+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerSearchBookHearingSlotsResponse'
+
   /hearings/{hearingId}:
     post:
       tags: [hearings]
@@ -463,6 +517,34 @@ paths:
             application/vnd.courtscheduler.export.allocated_listings+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerExportAllocatedListings'
+
+  /oucode/recalculate-availability:
+    post:
+      tags: [oucode]
+      operationId: postOuCodeRecalculateAvailability
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.oucode.recalculate.availability+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerOucodeRecalculateAvailability'
+      responses:
+        '202':
+          description: Recalculation accepted
+
+  /oucode/migrate:
+    post:
+      tags: [oucode]
+      operationId: postOuCodeMigrate
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.oucode.migrate+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerOucodeMigrate'
+      responses:
+        '202':
+          description: Accepted
 
   /rotasl/process-rota-files:
     post:
@@ -789,6 +871,12 @@ components:
     CourtschedulerGetHearingIds:                 { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerListHearingsInSessions:        { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerListHearingsInSessionsResponse: { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerListHearingsInCourtSessions:    { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerListHearingsInCourtSessionsResponse: { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerSearchUpdateHearingSlots:       { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerSearchBookHearingSlotsResponse: { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerCrownSearchAndBook:            { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerCrownSearchAndBookResponse:    { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerMagsSearchAndBook:             { $ref: '#/components/schemas/PassthroughObject' }
@@ -811,6 +899,9 @@ components:
     CourtschedulerExportCourtSchedule:            { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerExportCourtScheduleJudiciary:   { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerExportAllocatedListings:        { $ref: '#/components/schemas/PassthroughObject' }
+
+    CourtschedulerOucodeRecalculateAvailability:  { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerOucodeMigrate:                  { $ref: '#/components/schemas/PassthroughObject' }
 
     CourtschedulerRotaslProcessRotaFiles:         { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerRotaslCleanRedundantRotaData:   { $ref: '#/components/schemas/PassthroughObject' }

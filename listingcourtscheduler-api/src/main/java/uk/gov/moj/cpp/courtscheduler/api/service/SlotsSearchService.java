@@ -260,6 +260,14 @@ public class SlotsSearchService {
         for (final CourtSchedule courtSchedule : courtSchedules) {
             if (courtSchedule.isOverbookingAllowed() || showoverbookedSlots || hasAvailableCapacity(courtSchedule, durationInt)) {
                 overbookingFilteredSchedules.add(courtSchedule);
+            } else {
+                if (courtSchedule.isSlotBased() && courtSchedule.getTotalBooked() < courtSchedule.getMaxSlots()) {
+                    overbookingFilteredSchedules.add(courtSchedule);
+                } else if (courtSchedule.isAllDaySplit() && ((courtSchedule.getMaxDurationForMorning() + courtSchedule.getMaxDurationForAfternoon())
+                            - (courtSchedule.getTotalBookedForMorning() + courtSchedule.getTotalBookedForAfternoon()) >= durationInt)
+                        || (((courtSchedule.getMaxDuration() - courtSchedule.getTotalBooked()) >= durationInt)
+                        && !courtSchedule.isSlotBased() && !courtSchedule.isAllDaySplit())) //extra checks to avoid zero duration sessions
+                    overbookingFilteredSchedules.add(courtSchedule);
             }
         }
         return overbookingFilteredSchedules;

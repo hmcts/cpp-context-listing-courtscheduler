@@ -348,6 +348,7 @@ Supports complex filtering:
 - `hearingStartTime`, `duration` (optional)
 - `pageSize`, `pageNumber` (required)
 - `showOverbookedSlots` (optional): Include overbooked slots
+- `caseIdentifier` (optional): Source channel
 
 **Response:** `application/vnd.courtscheduler.get.hearing.slots+json`
 
@@ -444,6 +445,15 @@ Supports complex filtering:
 **Response:** `application/vnd.courtscheduler.export.allocated_listings+json`
 
 ### Operational Endpoints
+
+#### POST `/oucode/recalculate-availability`
+**Purpose:** Recalculate availability for an OU code
+
+**Request:** `application/vnd.courtscheduler.oucode.recalculate.availability+json`
+
+**Business Logic:**
+- Recalculates availability for all court schedules for the OU code
+- Fixes inconsistencies in availability calculations
 
 #### POST `/oucode/migrate`
 **Purpose:** Mark OU codes as migrated/non-migrated

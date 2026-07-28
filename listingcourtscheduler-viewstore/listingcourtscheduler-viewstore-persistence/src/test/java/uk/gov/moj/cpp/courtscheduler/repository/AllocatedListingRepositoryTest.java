@@ -74,6 +74,10 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
+    public void shouldFindAllocatedListingsUpdatedBetweenDates() {
+    }
+
+    @Test
     public void shouldReturnTotalListedDurationForCourtscheduleId() {
         final String courtScheduleId = persistRandomCourtSchedule();
         AllocatedListing allocatedListing1 = random(AllocatedListing.class);

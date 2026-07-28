@@ -608,6 +608,62 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return isNotEmpty(resultList) ? (CourtSchedule) resultList.get(0) : null;
     }
 
+    @Transactional
+    public int getInconsistentCourtSchedulersByOucode(String ouCode) {
+        // Step 1: Find inconsistent slots
+        List<Object[]> inconsistentSlots = entityManager.createNativeQuery("""
+                        select
+                            cs.id,
+                            cs.is_slot_based,
+                            cs.max_slot,
+                            cs.available_slot,
+                            cs.max_duration_mins,
+                            cs.available_duration_mins,
+                            sum(al.duration) as total_duration
+                        from court_schedule cs
+                        join allocated_listings al on cs.id = al.court_schedule_id
+                        where cs.active = true
+                          and cs.support_ad_split = false
+                          and cs.oucode = :ouCode
+                          and cs.session_start > current_date
+                        group by cs.id, cs.is_slot_based, cs.max_slot, cs.available_slot, cs.max_duration_mins, cs.available_duration_mins
+                        having (
+                            (cs.is_slot_based = true and cs.max_slot - sum(al.duration) != cs.available_slot)
+                            or (cs.is_slot_based = false and cs.max_duration_mins - sum(al.duration) != cs.available_duration_mins)
+                        )
+                        """)
+                .setParameter(OU_CODE, ouCode)
+                .getResultList();
+
+        int updateCount = 0;
+
+        for (Object[] row : inconsistentSlots) {
+            String courtScheduleId = (String) row[0];
+            boolean isSlotBased = (boolean) row[1];
+            int maxSlot = ((Number) row[2]).intValue();
+            int availableSlot = ((Number) row[3]).intValue();
+            int maxDurationMins = ((Number) row[4]).intValue();
+            int availableDurationMins = ((Number) row[5]).intValue();
+            int totalDuration = ((Number) row[6]).intValue();
+
+            int correctedValue = isSlotBased ? (maxSlot - totalDuration) : (maxDurationMins - totalDuration);
+
+            CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, courtScheduleId);
+
+            if (courtSchedule != null) {
+                if (isSlotBased && correctedValue != availableSlot) {
+                    courtSchedule.setAvailableSlots(correctedValue);
+                } else if (!isSlotBased && correctedValue != availableDurationMins) {
+                    courtSchedule.setAvailableDuration(correctedValue);
+                }
+                courtSchedule.setUpdatedOn(new Date());
+                entityManager.merge(courtSchedule);
+                updateCount++;
+            }
+        }
+        return updateCount;
+    }
+
 
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesByIdList(List<String> courtScheduleIds) {
         if (isEmpty(courtScheduleIds)) {

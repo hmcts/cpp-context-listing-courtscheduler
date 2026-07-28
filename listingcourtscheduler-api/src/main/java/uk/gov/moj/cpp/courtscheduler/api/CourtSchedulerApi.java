@@ -30,6 +30,8 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciaryToSessionsConv
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeMigrateConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.OuCodeRecalculateAvailabilityConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
@@ -71,6 +73,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.OuCodeRecalculateAvailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
@@ -85,6 +89,7 @@ import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.CourtscheduleOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.HearingsOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.MiOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.OucodeOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.ProvisionalBookingOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.SessionOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.ValidateOpenApi;
@@ -104,6 +109,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.api.ValidateOpenApi;
 public class CourtSchedulerApi implements CourtscheduleOpenApi,
                                           SessionOpenApi,
                                           HearingsOpenApi,
+                                          OucodeOpenApi,
                                           MiOpenApi,
                                           ValidateOpenApi,
                                           ProvisionalBookingOpenApi {
@@ -145,6 +151,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private final HearingSlotsApiValidator hearingSlotsApiValidator;
     private final ListHearingSlotConverter listHearingSlotConverter;
 
+    private final OuCodeMigrateConverter ouCodeMigrateConverter;
+    private final OuCodeRecalculateAvailabilityConverter ouCodeRecalculateAvailabilityConverter;
+
     // --- MI exports
     private final MiService miService;
     private final MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter;
@@ -175,6 +184,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final ExtendMultidayHearingService extendMultidayHearingService,
                              final HearingSlotsApiValidator hearingSlotsApiValidator,
                              final ListHearingSlotConverter listHearingSlotConverter,
+                             final OuCodeMigrateConverter ouCodeMigrateConverter,
+                             final OuCodeRecalculateAvailabilityConverter ouCodeRecalculateAvailabilityConverter,
                              final MiService miService,
                              final MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter,
                              final ProvisionalBookingService provisionalBookingService,
@@ -201,6 +212,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.extendMultidayHearingService = extendMultidayHearingService;
         this.hearingSlotsApiValidator = hearingSlotsApiValidator;
         this.listHearingSlotConverter = listHearingSlotConverter;
+        this.ouCodeMigrateConverter = ouCodeMigrateConverter;
+        this.ouCodeRecalculateAvailabilityConverter = ouCodeRecalculateAvailabilityConverter;
         this.miService = miService;
         this.miFilterCriteriaRequestParamConverter = miFilterCriteriaRequestParamConverter;
         this.provisionalBookingService = provisionalBookingService;
@@ -723,6 +736,32 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     @SuppressWarnings("unchecked")
     private Map<String, Object> toResponseMap(final Object response) {
         return response == null ? new LinkedHashMap<>() : objectMapper.convertValue(response, Map.class);
+    }
+
+    /* ============================================================
+     *  OucodeOpenApi — OU code migrate / recalculate
+     * ============================================================ */
+
+    @Override
+    public ResponseEntity<Void> postOuCodeMigrate(final Map<String, Object> body) {
+        LOG.info("courtscheduler.oucode.migrate: {}", body);
+        final OuCodeMigrateRequest req = ouCodeMigrateConverter.convert(toJson(body));
+        final Result result = sessionsService.migrateOuCodes(req);
+        if (!result.isSuccess()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, result.getMsg());
+        }
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    @Override
+    public ResponseEntity<Void> postOuCodeRecalculateAvailability(final Map<String, Object> body) {
+        LOG.info("courtscheduler.oucode.recalculate.availability: {}", body);
+        final OuCodeRecalculateAvailabilityRequest req = ouCodeRecalculateAvailabilityConverter.convert(toJson(body));
+        final Result result = sessionsService.ouCodesRecalculateAvailability(req);
+        if (!result.isSuccess()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, result.getMsg());
+        }
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
     /* ============================================================

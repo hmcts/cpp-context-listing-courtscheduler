@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "ouCodes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "migrated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "ouCodes",
+    "migrated"
+  ]
+}

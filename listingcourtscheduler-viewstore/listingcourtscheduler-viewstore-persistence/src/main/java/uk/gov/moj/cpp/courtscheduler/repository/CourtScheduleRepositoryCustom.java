@@ -41,6 +41,8 @@ public interface CourtScheduleRepositoryCustom {
 
     CourtSchedule retrieveCourtScheduleWithListingById(String courtScheduleId);
 
+    int getInconsistentCourtSchedulersByOucode(String ouCode);
+
     List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesByIdList(List<String> courtScheduleIds);
 
     /** Attaches active judiciary assignments to the supplied domain schedules (SPRDT-1089). */

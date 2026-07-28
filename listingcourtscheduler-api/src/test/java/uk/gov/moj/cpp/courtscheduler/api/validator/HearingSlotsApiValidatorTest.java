@@ -45,6 +45,7 @@ class HearingSlotsApiValidatorTest {
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
 
+
     @BeforeEach
     void setUp() {
         courtScheduleRepository = mock(CourtScheduleRepository.class);

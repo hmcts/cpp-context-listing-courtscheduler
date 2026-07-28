@@ -25,6 +25,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.ADDING_UNAVAILABILITY_WOULD_AFFECT_SESSIONS;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.CANNOT_DELETE_ITINERARY_IN_USE;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.CHANGING_END_DATE_FROM_TO_WOULD_AFFECT;
+import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.CHANGING_START_DATE_AFFECTS_SESSIONS;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.DATE_RANGE_MUST_BE_3_YEARS_OR_LESS;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.END_DATE_MUST_BE_IN_FUTURE;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.JUDICIARY_ALREADY_ASSIGNED_DURING_DATES;
@@ -810,7 +811,7 @@ public class JudiciaryAvailabilityService {
         final LocalDate today = LocalDate.now();
         final boolean startDateChanged = !Objects.equals(existingRule.getFromDate(), request.getStartDate());
         final boolean endDateChanged = !Objects.equals(existingRule.getToDate(), request.getEndDate());
-        
+
         if (startDateChanged && request.getStartDate() != null && request.getStartDate().isBefore(today)) {
             return NEW_START_DATE_MUST_BE_IN_FUTURE;
         }
@@ -828,7 +829,7 @@ public class JudiciaryAvailabilityService {
         
         final boolean startDateChanged = !Objects.equals(existingRule.getFromDate(), request.getStartDate());
         final boolean endDateChanged = !Objects.equals(existingRule.getToDate(), request.getEndDate());
-        
+
         if (!startDateChanged && !endDateChanged) {
             return null;
         }

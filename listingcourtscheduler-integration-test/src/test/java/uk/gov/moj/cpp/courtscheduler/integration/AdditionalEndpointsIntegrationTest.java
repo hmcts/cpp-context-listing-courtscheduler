@@ -110,6 +110,26 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void postOuCodeMigrate_doesNotBlowUp() {
+        final ResponseEntity<String> response = post(
+                "/oucode/migrate",
+                SYSTEM_USER_ID,
+                "application/vnd.courtscheduler.oucode.migrate+json",
+                "{\"ouCodes\":[],\"migrated\":true}");
+        assertThat(response.getStatusCode().is5xxServerError()).isFalse();
+    }
+
+    @Test
+    void postOuCodeRecalculateAvailability_doesNotBlowUp() {
+        final ResponseEntity<String> response = post(
+                "/oucode/recalculate-availability",
+                SYSTEM_USER_ID,
+                "application/vnd.courtscheduler.oucode.recalculate.availability+json",
+                "{\"ouCodes\":[]}");
+        assertThat(response.getStatusCode().is5xxServerError()).isFalse();
+    }
+
+    @Test
     void postRotaslProcessRotaFiles_returns202() {
         final ResponseEntity<String> response = post(
                 "/rotasl/process-rota-files",

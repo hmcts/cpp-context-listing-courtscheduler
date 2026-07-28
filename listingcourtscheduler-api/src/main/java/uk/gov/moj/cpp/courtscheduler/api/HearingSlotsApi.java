@@ -11,12 +11,16 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotRequestParamConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestConverter;
+import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
+import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsSearchService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
@@ -24,6 +28,11 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.HearingslotsOpenApi;
 
 /**
@@ -43,25 +52,34 @@ public class HearingSlotsApi implements HearingslotsOpenApi {
 
     private final SlotsUpdateService slotsUpdateService;
     private final SlotsSearchService slotsSearchService;
+    private final SlotsRemoveService slotsRemoveService;
     private final AllocatedListingService allocatedListingService;
     private final HearingSlotsApiValidator hearingSlotsApiValidator;
     private final AllocatedSlotConverter allocatedSlotConverter;
     private final HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
+    private final HearingSlotSearchRequestConverter hearingSlotSearchRequestConverter;
+    private final ListHearingSlotConverter listHearingSlotConverter;
     private final ObjectMapper objectMapper;
 
     public HearingSlotsApi(final SlotsUpdateService slotsUpdateService,
                            final SlotsSearchService slotsSearchService,
+                           final SlotsRemoveService slotsRemoveService,
                            final AllocatedListingService allocatedListingService,
                            final HearingSlotsApiValidator hearingSlotsApiValidator,
                            final AllocatedSlotConverter allocatedSlotConverter,
                            final HearingSlotRequestParamConverter hearingSlotRequestParamConverter,
+                           final HearingSlotSearchRequestConverter hearingSlotSearchRequestConverter,
+                           final ListHearingSlotConverter listHearingSlotConverter,
                            final ObjectMapper objectMapper) {
         this.slotsUpdateService = slotsUpdateService;
         this.slotsSearchService = slotsSearchService;
+        this.slotsRemoveService = slotsRemoveService;
         this.allocatedListingService = allocatedListingService;
         this.hearingSlotsApiValidator = hearingSlotsApiValidator;
         this.allocatedSlotConverter = allocatedSlotConverter;
         this.hearingSlotRequestParamConverter = hearingSlotRequestParamConverter;
+        this.hearingSlotSearchRequestConverter = hearingSlotSearchRequestConverter;
+        this.listHearingSlotConverter = listHearingSlotConverter;
         this.objectMapper = objectMapper;
     }
 
@@ -161,4 +179,59 @@ public class HearingSlotsApi implements HearingslotsOpenApi {
         return out;
     }
 
+    /** PUT /list/hearingslots — allocate multiple hearing slots in court sessions. */
+    @Override
+    public ResponseEntity<Map<String, Object>> putListHearingSlotsInCourtSessions(final Map<String, Object> body) {
+        LOG.info("courtscheduler.list.hearings-in-court-sessions: {}", body);
+        final RequestedSlots requested = listHearingSlotConverter.convert(toJson(body));
+        final JsonObject validate = hearingSlotsApiValidator.listHearingSlotsValidation(requested.getHearingSlots());
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+        final ListHearingSlotsResponse response = slotsUpdateService.listHearingSlots(requested);
+        final Map<String, Object> result = new LinkedHashMap<>();
+        result.put("hearings", response.getHearings());
+        return ResponseEntity.ok(result);
+    }
+
+    /** PUT /searchupdate/hearingslots — search and allocate when courtScheduleId is null. */
+    @Override
+    public ResponseEntity<Void> putSearchUpdateHearingSlots(final Map<String, Object> body) {
+        LOG.info("courtscheduler.search.update.hearing.slots: {}", body);
+        final List<AllocatedSlot> slots = allocatedSlotConverter.convert(toJson(body)).getHearingSlots();
+        slotsUpdateService.searchUpdate(slots);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** GET /searchlist/hearingslots — search and list hearings in court sessions. */
+    @Override
+    @SkipEnvelope
+    public ResponseEntity<Map<String, Object>> getSearchListHearingSlots(final String hearingId,
+                                                                         final String courtCentreId,
+                                                                         final String hearingDate,
+                                                                         final Integer durationInMinutes,
+                                                                         final String courtRoomId,
+                                                                         final String hearingSessionDateSearchCutOff,
+                                                                         final String hearingStartTime,
+                                                                         final Boolean isPolice) {
+        final Map<String, Object> qp = new LinkedHashMap<>();
+        qp.put("hearingId", hearingId);
+        qp.put("courtCentreId", courtCentreId);
+        qp.put("hearingDate", hearingDate);
+        qp.put("durationInMinutes", durationInMinutes);
+        if (courtRoomId != null) qp.put("courtRoomId", courtRoomId);
+        if (hearingSessionDateSearchCutOff != null) qp.put("hearingSessionDateSearchCutOff", hearingSessionDateSearchCutOff);
+        if (hearingStartTime != null) qp.put("hearingStartTime", hearingStartTime);
+        if (isPolice != null) qp.put("isPolice", isPolice);
+
+        final HearingSlotSearchRequest req = hearingSlotSearchRequestConverter.convert(toJsonObject(qp));
+        final JsonObject validate = hearingSlotsApiValidator.searchAndBookRequestValidation(req);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+        final HearingSlotSearchAndBookResponse response = slotsUpdateService.searchAndBook(req);
+        final Map<String, Object> result = new LinkedHashMap<>();
+        result.put("hearingSlots", response);
+        return ResponseEntity.ok(result);
+    }
 }

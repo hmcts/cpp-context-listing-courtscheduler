@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 
 import static java.lang.String.format;
 import static java.util.Objects.isNull;
+import static java.util.logging.Level.WARNING;
+import static java.util.logging.Logger.getGlobal;
 import static jakarta.json.Json.createObjectBuilder;
 import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static org.apache.commons.lang3.StringUtils.isBlank;

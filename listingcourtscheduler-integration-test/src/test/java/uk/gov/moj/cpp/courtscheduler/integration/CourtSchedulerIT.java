@@ -54,6 +54,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
 import java.io.StringReader;
 import java.sql.SQLException;
@@ -62,6 +63,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Date;
@@ -90,6 +92,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class CourtSchedulerIT extends AbstractIT {
 
     private static final String BASE_RESOURCE_URL = "/courtschedule";
+    private static final String OUCODE_MIGRATE_URL = "/oucode/migrate";
     private static final String UPDATE_URL = "/edit";
     private static final String DELETE_URL = "/delete";
     private static final String SEARCH_BY_ID_URL = "/sessions";
@@ -130,6 +133,7 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String COURT_SCHEDULE_GET_CONTENT_TYPE = "application/vnd.courtscheduler.get+json";
     private static final String COURT_SCHEDULE_SEARCH_COURTSCHEDULES_BY_ID_CONTENT_TYPE = "application/vnd.courtscheduler.search.court-schedules-by-id+json";
     private static final String COURT_SCHEDULE_DELETE_CONTENT_TYPE = "application/vnd.courtscheduler.delete+json";
+    private static final String COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE = "application/vnd.courtscheduler.oucode.migrate+json";
     private static final String COURT_SCHEDULE_ASSIGN_COURTROOM_CONTENT_TYPE = "application/vnd.courtscheduler.assign.courtroom+json";
     private static final String ASSIGN_COURTROOM_URL = "/assign.courtroom";
 
@@ -689,6 +693,8 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldReturn400WhenDurationBasedScheduleHasInsufficientAvailability() throws SQLException {
         final CourtSchedule courtScheduleDuration = RANDOM.nextObject(CourtSchedule.class);
+        final Integer maxDurationForMorning = 120;
+        final Integer maxDurationForAfternoon = 60;
         courtScheduleDuration.setBusinessType("TRL");
         courtScheduleDuration.setSlotBased(false);
         courtScheduleDuration.setMaxDuration(0);
@@ -2630,6 +2636,27 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setIsDraft(false);
         courtSchedule.setActive(true);
         return courtSchedule;
+    }
+
+    @Test
+    void shouldMigrateOuCodes() throws Exception {
+        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        courtSchedulerMigrationStatus.setOuCode("B12345");
+        courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
+        courtSchedulerMigrationStatus.setMigrated(false);
+        databaseSeeder.insertCourtScheduleMigrationStatus(courtSchedulerMigrationStatus);
+
+        CourtSchedulerMigrationStatus schedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        schedulerMigrationStatus.setOuCode("C12345");
+        schedulerMigrationStatus.setCourtCentreId("100f36bc-f33a-42ea-8a6c-8103636c5341");
+        schedulerMigrationStatus.setMigrated(false);
+        databaseSeeder.insertCourtScheduleMigrationStatus(schedulerMigrationStatus);
+
+        String migrateOuCodePayload = getPayload("oucode-migrate-courtscheduler.json");
+
+        final Response response = postCommand(OUCODE_MIGRATE_URL, COURT_SCHEDULE_OUCODE_MIGRATE_CONTENT_TYPE, SYSTEM_USER_ID, migrateOuCodePayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
     @Test
