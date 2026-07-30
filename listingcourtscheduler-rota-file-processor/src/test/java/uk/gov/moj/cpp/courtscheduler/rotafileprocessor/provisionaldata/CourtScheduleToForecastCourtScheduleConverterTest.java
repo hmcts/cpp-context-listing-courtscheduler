@@ -8,9 +8,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,7 +43,7 @@ class CourtScheduleToForecastCourtScheduleConverterTest {
 
     @Test
     void shouldConvertToProvisionalCourtSchedule() {
-        final ArrayList judiciaries = new ArrayList();
+        final List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         judiciaries.add(judiciary().withRotaJudiciaryId("123").withPosition("CHAIR").build());
         final CourtSchedule courtScheduleExtracted = new CourtSchedule.CourtScheduleBuilder()
                 .withCourtScheduleId("0000fbb0-8579-4f2b-948e-c4e48a48e3f8")

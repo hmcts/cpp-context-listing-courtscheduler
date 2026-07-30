@@ -14,6 +14,7 @@ servers:
 tags:
   - name: courtschedule
   - name: hearingslots
+  - name: hearings
   - name: provisional-booking
   - name: mi
   - name: oucode
@@ -216,6 +217,45 @@ paths:
       responses:
         '202':
           description: Accepted
+
+  /hearings/{hearingId}:
+    post:
+      tags: [hearings]
+      operationId: postMoveHearingToPastDate
+      summary: |
+        Move a hearing to a past-dated MAGISTRATES court-schedule session, selected by the
+        Content-Type action courtscheduler.move-hearing-to-past-date. Searches for a session
+        matching the exact startDate and courtCentreId, books it, and returns the booked slot
+        details. The hearing is identified by the hearingId path parameter; it is not part of
+        the request body. Past-only and MAGISTRATES-only.
+      parameters:
+        - in: path
+          name: hearingId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.move-hearing-to-past-date+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerMoveHearingToPastDate'
+      responses:
+        '200':
+          description: Hearing booked onto the past-date session
+          content:
+            application/vnd.courtscheduler.move-hearing-to-past-date.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerMoveHearingToPastDateResponse'
+        '422':
+          description: |
+            Move failed. errorCode identifies the reason: FUTURE_DATE_NOT_ALLOWED when startDate
+            is after today, JURISDICTION_NOT_SUPPORTED when jurisdiction is CROWN, NO_SESSION_FOUND
+            when no MAGISTRATES court-schedule session exists for the given startDate and
+            courtCentreId (or the allocation could not be persisted). Body is {errorCode, message}.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerMoveHearingToPastDateError'
 
   /list/hearingslots:
     put:
@@ -684,6 +724,9 @@ components:
 
     CourtschedulerUpdateHearingSlots:            { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerUpdateHearingSlotsResponse:    { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerMoveHearingToPastDate:         { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerMoveHearingToPastDateResponse: { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerMoveHearingToPastDateError:    { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerGetHearingSlots:               { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerGetHearingIds:                 { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerListHearingsInCourtSessions:   { $ref: '#/components/schemas/PassthroughObject' }

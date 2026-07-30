@@ -1,0 +1,30 @@
+{
+  "bookedSlots": [
+    {
+      "hearingId": "7755fb96-e90a-4df2-8575-47841d8fbdd0",
+      "courtScheduleId": "5e2a3f91-9e5d-3e44-b664-d5345bb13be2",
+      "courtRoomId": "731816c1-5ee4-373a-9bda-840e13a5bcb0",
+      "sessionDate": "2026-07-01",
+      "sessionStartTime": "2026-07-01T09:00:00.000Z",
+      "sessionEndTime": "2026-07-01T12:00:00.000Z",
+      "durationInMinutes": 30,
+      "isDraft": false,
+      "businessType": "NGAP",
+      "source": "MOVE_TO_PAST_DATE",
+      "overbooked": false
+    },
+    {
+      "hearingId": "7755fb96-e90a-4df2-8575-47841d8fbdd0",
+      "courtScheduleId": "9d324f4f-6c3b-451f-ac1e-f459db781153",
+      "courtRoomId": "731816c1-5ee4-373a-9bda-840e13a5bcb0",
+      "sessionDate": "2026-07-02",
+      "sessionStartTime": "2026-07-02T09:00:00.000Z",
+      "sessionEndTime": "2026-07-02T12:00:00.000Z",
+      "durationInMinutes": 30,
+      "isDraft": false,
+      "businessType": "NGAP",
+      "source": "MOVE_TO_PAST_DATE",
+      "overbooked": false
+    }
+  ]
+}

@@ -84,4 +84,10 @@ public interface CourtScheduleRepositoryCustom {
     int deleteRedundantRotaData(int numberOfDays);
 
     void releaseOldAllocatedListings(String hearingId);
+
+    Optional<CourtSchedule> findSessionForMoveToPastDate(String courtCentreId,
+                                                         String courtRoomId,
+                                                         LocalDate sessionDate,
+                                                         LocalDateTime sessionStartTime,
+                                                         String jurisdiction);
 }
