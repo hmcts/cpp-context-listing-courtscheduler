@@ -79,6 +79,10 @@ subprojects {
         // systemDefault(). Without this pin, tests pass on dev machines but fail on
         // CI runners that default to UTC (e.g. GitHub Actions ubuntu-latest).
         systemProperty 'user.timezone', 'Europe/London'
+        // azure-sdk's JDK-HttpClient transport sets Content-Length explicitly; the JDK
+        // client restricts that header and azure-core logs a WARN per request (very noisy
+        // in the azurite-backed rota ITs). Allowing the header is the SDK-documented fix.
+        systemProperty 'jdk.httpclient.allowRestrictedHeaders', 'content-length'
         testLogging {
             events "passed", "skipped", "failed"
             exceptionFormat = 'full'

@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "FUTURE_DATE_NOT_ALLOWED",
+        "JURISDICTION_NOT_SUPPORTED",
+        "NO_SESSION_FOUND"
+      ]
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "errorCode"
+  ],
+  "additionalProperties": false
+}

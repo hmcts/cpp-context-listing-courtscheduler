@@ -1298,6 +1298,44 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return (resultList != null && !resultList.isEmpty()) ? resultList.get(0) : null;
     }
 
+    @Override
+    public Optional<CourtSchedule> findSessionForMoveToPastDate(final String courtCentreId,
+                                                                final String courtRoomId,
+                                                                final LocalDate sessionDate,
+                                                                final LocalDateTime sessionStartTime,
+                                                                final String jurisdiction) {
+        LOGGER.info("CourtScheduleRepository:findSessionForMoveToPastDate courtCentreId: {}, courtRoomId: {}, sessionDate: {}, sessionStartTime: {}, jurisdiction: {}",
+                courtCentreId, courtRoomId, sessionDate, sessionStartTime, jurisdiction);
+
+        final StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM " +
+                "court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
+        final Map<String, Object> params = new HashMap<>();
+        queryString.append(COURTCENTREID_QUERY_CONDITION_STRING);
+        params.put(COURT_CENTRE_ID, courtCentreId);
+        queryString.append(SESSION_START_QUERY_CONDITION_STRING);
+        params.put(SESSION_DATE, sessionDate);
+        queryString.append("AND s.jurisdiction = :jurisdiction ");
+        params.put("jurisdiction", jurisdiction);
+        // hearingStartTime range-containment: a 10:00 start lands an AM or AD session (whose window
+        // contains 10:00) but never a PM session that starts after lunch, and vice-versa.
+        if (sessionStartTime != null) {
+            queryString.append("AND (:hearingStartTime) between s.session_start_time and s.session_end_time ");
+            params.put(HEARING_START_TIME, sessionStartTime);
+        }
+        // when a room is supplied the search is scoped to that room, otherwise any room in the centre.
+        if (courtRoomId != null) {
+            queryString.append(COURT_ROOM_ID_QUERY_CONDITION_STRING);
+            params.put(COURT_ROOM_ID, courtRoomId);
+        }
+        queryString.append("order by s.is_draft asc, s.court_room_number asc");
+
+        final jakarta.persistence.Query selectQuery = entityManager.createNativeQuery(queryString.toString(), NATIVE_QUERY_COURT_SCHEDULE_MAPPING_VIEW);
+        params.forEach(selectQuery::setParameter);
+
+        final List<CourtSchedule> resultList = selectQuery.getResultList();
+        return resultList.isEmpty() ? Optional.empty() : Optional.of(resultList.get(0));
+    }
+
     private List<CourtSchedule> getCourtSchedulesForPolice(String courtCentreId, LocalDate sessionDate, LocalDate sessionEndDate, LocalDateTime sessionStartTime, String courtRoomId) {
         List<CourtSchedule> resultList;
         do {

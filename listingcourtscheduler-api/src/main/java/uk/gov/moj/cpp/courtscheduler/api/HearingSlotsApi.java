@@ -1,17 +1,22 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import java.io.StringReader;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -31,24 +36,33 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
+import uk.gov.moj.cpp.courtscheduler.exception.MoveHearingToPastDateNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.HearingslotsOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.HearingsOpenApi;
 
 /**
- * Implements {@link HearingslotsOpenApi} — replaces the legacy {@code @Handles} for
- * {@code courtscheduler.update.hearing.slots}, {@code courtscheduler.get.hearing.slots},
+ * Implements {@link HearingslotsOpenApi} and {@link HearingsOpenApi} — replaces the legacy
+ * {@code @Handles} for {@code courtscheduler.update.hearing.slots}, {@code courtscheduler.get.hearing.slots},
  * {@code courtscheduler.remove.hearing.slots}, {@code courtscheduler.list.hearings-in-court-sessions},
- * {@code courtscheduler.search.update.hearing.slots} and {@code courtscheduler.search.book.hearing.slots}.
+ * {@code courtscheduler.search.update.hearing.slots}, {@code courtscheduler.search.book.hearing.slots}
+ * and {@code courtscheduler.move-hearing-to-past-date}.
  *
  * <p>Lives alongside the other {@code *Api} classes in this package even though
  * there was no legacy WildFly {@code HearingSlotsApi.java} — the hearing-slot
  * action handlers were originally folded into {@link CourtSchedulerApi}.</p>
  */
 @RestController
-public class HearingSlotsApi implements HearingslotsOpenApi {
+public class HearingSlotsApi implements HearingslotsOpenApi, HearingsOpenApi {
 
     private static final Logger LOG = LoggerFactory.getLogger(HearingSlotsApi.class);
+
+    // A multi-day move books a full court day per sitting day; a single-day move uses the submitted window.
+    private static final int MULTI_DAY_DURATION_MINUTES = 360;
+    private static final MediaType MOVE_TO_PAST_DATE_RESPONSE_MT =
+            MediaType.parseMediaType("application/vnd.courtscheduler.move-hearing-to-past-date.response+json");
 
     private final SlotsUpdateService slotsUpdateService;
     private final SlotsSearchService slotsSearchService;
@@ -239,5 +253,72 @@ public class HearingSlotsApi implements HearingslotsOpenApi {
         final Map<String, Object> result = new LinkedHashMap<>();
         result.put("hearingSlots", response);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * POST /hearings/{hearingId} — move a hearing to past-dated session(s). Supports both jurisdictions
+     * (listing only calls this for MAGISTRATES today; CROWN stays listing-side until Phase 2), an
+     * optional room-scoped and time-of-day (range-containment) search, and a multi-day [startDate,
+     * endDate] span booked atomically (one booked slot per sitting day).
+     */
+    @Override
+    public ResponseEntity<Map<String, Object>> postMoveHearingToPastDate(final String hearingId,
+                                                                         final Map<String, Object> body) {
+        final JsonObject payload = toJsonObject(body);
+        LOG.info("courtscheduler.move-hearing-to-past-date requested for hearingId {}: {}", hearingId, payload);
+
+        final String courtCentreId = payload.getString("courtCentreId");
+        final String jurisdiction = payload.getString("jurisdiction");
+        final String courtRoomId = payload.getString("courtRoomId");
+        // startTime/endTime are absolute UTC instants (e.g. 2026-07-20T10:30:00.000Z); the day and
+        // time-of-day for the range-containment search AND the booked slots are derived from them.
+        final ZonedDateTime startInstant = ZonedDateTime.parse(payload.getString("startTime"));
+        final ZonedDateTime endInstant = payload.containsKey("endTime") && !payload.isNull("endTime")
+                ? ZonedDateTime.parse(payload.getString("endTime")) : startInstant;
+        final LocalDate startDate = startInstant.toLocalDate();
+        final LocalDate endDate = endInstant.toLocalDate();
+        final String hearingStartTime = String.format("%02d:%02d", startInstant.getHour(), startInstant.getMinute());
+        final String hearingEndTime = String.format("%02d:%02d", endInstant.getHour(), endInstant.getMinute());
+        // Duration rule: a multi-day move (endDate after startDate) books a full court day per sitting
+        // day; a single-day move uses the submitted window.
+        final int durationInMinutes = endDate.isAfter(startDate)
+                ? MULTI_DAY_DURATION_MINUTES
+                : (int) java.time.temporal.ChronoUnit.MINUTES.between(startInstant, endInstant);
+
+        final LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        if (startDate.isAfter(today) || endDate.isAfter(today)) {
+            return moveErrorResponse("FUTURE_DATE_NOT_ALLOWED",
+                    "startDate/endDate must not be after today");
+        }
+
+        try {
+            final List<MoveHearingToPastDateResponse> responses = slotsUpdateService.moveHearingToPastDate(
+                    hearingId, courtCentreId, courtRoomId, startDate, endDate, hearingStartTime, hearingEndTime, jurisdiction, durationInMinutes);
+            final Map<String, Object> responseBody = new LinkedHashMap<>();
+            responseBody.put("bookedSlots", objectMapper.convertValue(responses, new TypeReference<List<Map<String, Object>>>() {}));
+            return ResponseEntity.ok()
+                    .contentType(MOVE_TO_PAST_DATE_RESPONSE_MT)
+                    .body(responseBody);
+        } catch (MoveHearingToPastDateNoSessionException e) {
+            LOG.warn("Move hearing to past date no session: {}", e.getMessage());
+            // Keep the propagated message (team/pasthearings behaviour) - the listing side already
+            // normalises NO_SESSION_FOUND to its fixed user-facing copy.
+            return moveErrorResponse("NO_SESSION_FOUND", e.getMessage());
+        }
+    }
+
+    /**
+     * Bare {@code {errorCode, message}} 422 body: the legacy JAX-RS UnprocessableEntityException
+     * emitted its errors JsonObject as the entity, and listing's MoveHearingToPastDateException
+     * reads {@code errorCode} at the top level — GlobalExceptionHandler's {@code {"errors": ...}}
+     * wrapper would break that contract, so this endpoint returns the 422 directly.
+     */
+    private static ResponseEntity<Map<String, Object>> moveErrorResponse(final String errorCode, final String message) {
+        final Map<String, Object> errorBody = new LinkedHashMap<>();
+        errorBody.put("errorCode", errorCode);
+        errorBody.put("message", message == null ? "" : message);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(errorBody);
     }
 }
