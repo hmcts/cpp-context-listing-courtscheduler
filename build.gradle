@@ -5,7 +5,7 @@ plugins {
     id 'org.cyclonedx.bom' version '2.4.1' apply false
     id 'com.gorylenko.gradle-git-properties' version '4.0.1' apply false
     id 'com.avast.gradle.docker-compose' version '0.17.21' apply false
-    id 'com.github.ben-manes.versions' version '0.54.0'
+    id 'com.github.ben-manes.versions' version '0.56.0'
     id 'pmd'
 }
 
