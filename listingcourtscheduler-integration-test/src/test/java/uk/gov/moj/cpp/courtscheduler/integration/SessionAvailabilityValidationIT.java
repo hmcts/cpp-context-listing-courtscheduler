@@ -1,10 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -118,6 +120,32 @@ class SessionAvailabilityValidationIT extends AbstractIT {
 
         Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
 
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+    }
+
+    /**
+     * Backward-compatibility guard: cpp-context-listing's
+     * {@code HearingSlotsService.validateSessionAvailability()} (the real production caller)
+     * sends {@code Accept: application/json} (the legacy default — the RAML declared no response
+     * media type here either). The migrated OpenAPI declares
+     * {@code produces: application/vnd.courtscheduler.validate.session.availability.response+json},
+     * so with strict content negotiation that Accept header must NOT be rejected with 406. (The
+     * happy-path test above doesn't catch this — it sends no Accept, so RestTemplate uses
+     * {@code *}/{@code *}, which matches any produces.) Same fix as ProvisionalBookingIT.
+     */
+    @Test
+    void shouldAcceptLegacyApplicationJsonAcceptHeader() throws Exception {
+        String courtScheduleId = UUID.randomUUID().toString();
+        databaseSeeder.insertCourtSchedule(buildCourtSchedule(courtScheduleId, true, 5, false, "CROWN", "centre-1"));
+
+        final String payload = "{\"courtScheduleIdList\":["
+                + "{\"courtScheduleId\":\"" + courtScheduleId + "\"}"
+                + "],\"duration\":30}";
+
+        final Response response = postCommandWithAccept(VALIDATE_URL, CONTENT_TYPE, "application/json", SYSTEM_USER_ID, payload);
+
+        assertThat("legacy Accept: application/json must not be rejected with 406 Not Acceptable",
+                response.getStatus(), is(not(NOT_ACCEPTABLE.getStatusCode())));
         assertThat(response.getStatus(), is(OK.getStatusCode()));
     }
 
