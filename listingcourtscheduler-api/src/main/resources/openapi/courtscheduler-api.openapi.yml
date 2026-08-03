@@ -541,6 +541,14 @@ paths:
             application/vnd.courtscheduler.validate.session.availability.response+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerValidateResponse'
+            # Backward compatibility: the legacy WildFly endpoint declared no response media
+            # type, so listing's HearingSlotsService.validateSessionAvailability() sends
+            # `Accept: application/json`. Keep it producible, else strict content negotiation
+            # rejects the request with 406 before validation ever runs. Same fix as
+            # /provisionalBooking. See SessionAvailabilityValidationIT.
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerValidateResponse'
 
   /judiciaries/availability-rules:
     get:
