@@ -261,7 +261,8 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldCreateCourtScheduleWithRefdataSessionTimesAM() {
         // Refdata fixture has MONAM allocation for cppCourtRoomId=7777 oucode=B12JR00 with
         // sessionStartTime="09:30" / sessionEndTime="12:45". The payload supplies no custom
-        // start/end times, so refdata should win over the AM defaults (10:00 / 13:00).
+        // start/end times, so refdata wins over the AM start default (10:00) but the end time
+        // is always the fixed AM default (13:00) — never refdata-driven (SPRDT-809).
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-session-times-am.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -275,15 +276,16 @@ class CourtSchedulerIT extends AbstractIT {
             final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
 
             assertThat(sdf.format(localStartTime), is("09:30"));
-            assertThat(sdf.format(localEndTime), is("12:45"));
+            assertThat(sdf.format(localEndTime), is(DEFAULT_MORNING_END_TIME));
         }
     }
 
     @Test
     void shouldCreateCourtScheduleWithRefdataSessionTimesAD() {
         // Refdata fixture has MONAM (09:30/12:45) and MONPM (13:30/16:30) allocations for
-        // cppCourtRoomId=7777 oucode=B12JR00. For an ALL_DAY session the API path takes the
-        // start time from the AM allocation and the end time from the PM allocation.
+        // cppCourtRoomId=7777 oucode=B12JR00. For an ALL_DAY session the start time is taken
+        // from the AM allocation, but the end time is always the fixed AD default (17:00) —
+        // the MONPM allocation's end time is never consulted (SPRDT-809).
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-session-times-ad.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -297,7 +299,29 @@ class CourtSchedulerIT extends AbstractIT {
             final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
 
             assertThat(sdf.format(localStartTime), is("09:30"));
-            assertThat(sdf.format(localEndTime), is("16:30"));
+            assertThat(sdf.format(localEndTime), is(DEFAULT_ALL_DAY_END_TIME));
+        }
+    }
+
+    @Test
+    void shouldCreateCourtScheduleWithFixedSessionTimesForPmIgnoringRefdata() {
+        // Refdata fixture has a MONPM allocation for cppCourtRoomId=7777 oucode=B12JR00 with
+        // sessionStartTime="13:30" / sessionEndTime="16:30". PM sessions must never consult
+        // reference data at all — both times are always the fixed PM defaults (SPRDT-809).
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-present-pm.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+        assertThat(courtSchedules.size(), is(greaterThanOrEqualTo(1)));
+        for (final CourtSchedule courtSchedule : courtSchedules) {
+            assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
+
+            final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+            final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+
+            assertThat(sdf.format(localStartTime), is(DEFAULT_AFTERNOON_START_TIME));
+            assertThat(sdf.format(localEndTime), is(DEFAULT_AFTERNOON_END_TIME));
         }
     }
 

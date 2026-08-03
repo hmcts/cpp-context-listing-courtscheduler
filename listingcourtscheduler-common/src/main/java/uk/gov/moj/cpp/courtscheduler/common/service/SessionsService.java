@@ -773,13 +773,16 @@ public class SessionsService {
     }
 
     /**
-     * Resolves the session start/end times using precedence: 1. customStartTime / customEndTime
-     * supplied on the API request (if non-blank) 2. CourtRoomSessionAllocation refdata times for
-     * the (oucode, room, day-of-week + sessionType, businessType) 3. Hardcoded defaults from
-     * {@link DateUtils#getOrElseDefaultSessionStartAndEndTimeIfEmpty}
-     * <p>
-     * For ALL_DAY sessions, refdata start time is read from the AM allocation and the end time from
-     * the PM allocation when available.
+     * Resolves the session start/end times (SPRDT-809):
+     * <ul>
+     *   <li><b>End time</b> is always the fixed per-session-type default (AM 13:00, PM 17:00, AD 17:00) —
+     *       reference data is never consulted for the end.</li>
+     *   <li><b>Start time</b> for AM and ALL_DAY comes from {@code CourtRoomSessionAllocation} refdata for
+     *       the (oucode, room, day-of-week + sessionType, businessType) key, falling back to the hardcoded
+     *       default when absent. ALL_DAY reads its start from the AM allocation. PM always starts at the
+     *       fixed afternoon default and never queries reference data.</li>
+     *   <li>A custom start/end supplied on the API request overrides its own field regardless of type.</li>
+     * </ul>
      */
     private void applyResolvedSessionTimes(final CourtSchedule.CourtScheduleBuilder builder,
                                            final Session session,
@@ -789,25 +792,32 @@ public class SessionsService {
         final String sessionType = session.getSessionType();
         final String businessType = session.getBusinessType();
 
-        final String refDataStartTime;
-        final String refDataEndTime;
-        if (ALL_DAY.equals(sessionType)) {
-            final Optional<CourtRoomSessionAllocation> amAllocation = lookupAllocation(builder, AM_SESSION, sessionDate, businessType);
-            final Optional<CourtRoomSessionAllocation> pmAllocation = lookupAllocation(builder, PM_SESSION, sessionDate, businessType);
-            refDataStartTime = amAllocation.map(CourtRoomSessionAllocation::getSessionStartTime).orElse(null);
-            refDataEndTime = pmAllocation.map(CourtRoomSessionAllocation::getSessionEndTime).orElse(null);
-        } else {
-            final Optional<CourtRoomSessionAllocation> allocation = lookupAllocation(builder, sessionType, sessionDate, businessType);
-            refDataStartTime = allocation.map(CourtRoomSessionAllocation::getSessionStartTime).orElse(null);
-            refDataEndTime = allocation.map(CourtRoomSessionAllocation::getSessionEndTime).orElse(null);
-        }
+        final String refDataStartTime = resolveRefDataStartTime(builder, sessionType, sessionDate, businessType);
 
         final DateUtils.SessionStartAndEndTime defaults = getOrElseDefaultSessionStartAndEndTimeIfEmpty(sessionType, null, null);
         final String resolvedStart = resolveSessionTime(customStartTime, refDataStartTime, defaults.sessionStartTime());
-        final String resolvedEnd = resolveSessionTime(customEndTime, refDataEndTime, defaults.sessionEndTime());
+        final String resolvedEnd = resolveSessionTime(customEndTime, null, defaults.sessionEndTime());
 
         builder.withSessionStartTime(combineDateAndTime(sessionDate, resolvedStart))
                 .withSessionEndTime(combineDateAndTime(sessionDate, resolvedEnd));
+    }
+
+    /**
+     * Court-centre refdata start time — consulted for AM (directly) and ALL_DAY (via the AM allocation,
+     * matching the session it opens with) only. PM always starts at the fixed afternoon default and never
+     * queries reference data.
+     */
+    private String resolveRefDataStartTime(final CourtSchedule.CourtScheduleBuilder builder,
+                                           final String sessionType,
+                                           final LocalDate sessionDate,
+                                           final String businessType) {
+        if (PM_SESSION.equals(sessionType)) {
+            return null;
+        }
+        final String lookupSessionType = ALL_DAY.equals(sessionType) ? AM_SESSION : sessionType;
+        return lookupAllocation(builder, lookupSessionType, sessionDate, businessType)
+                .map(CourtRoomSessionAllocation::getSessionStartTime)
+                .orElse(null);
     }
 
     private Optional<CourtRoomSessionAllocation> lookupAllocation(final CourtSchedule.CourtScheduleBuilder builder,
