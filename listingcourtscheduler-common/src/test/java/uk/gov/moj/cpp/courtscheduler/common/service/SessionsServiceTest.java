@@ -112,9 +112,12 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 class SessionsServiceTest {
+    private static final Logger logger = LoggerFactory.getLogger(SessionsServiceTest.class);
     private static final Set<DayOfWeek> WEEK_DAYS_FIRST_HALF = new HashSet<>(Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY));
     private static final Set<DayOfWeek> WEEK_DAYS_SECOND_HALF = new HashSet<>(Arrays.asList(DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY));
     @Mock
@@ -1928,8 +1931,7 @@ class SessionsServiceTest {
 
                 courtRoomMap.put(UUID.fromString(courtRoomObj.getCourtroomId()), courtRoomObj);
             } catch (Exception e) {
-                System.out.println("courtRoom: " + ((JsonObject) courtRoom).getString("id"));
-                e.printStackTrace();
+                logger.warn("Failed to build test CourtRoom fixture for id: {}", ((JsonObject) courtRoom).getString("id"), e);
             }
         });
         return courtRoomMap;
