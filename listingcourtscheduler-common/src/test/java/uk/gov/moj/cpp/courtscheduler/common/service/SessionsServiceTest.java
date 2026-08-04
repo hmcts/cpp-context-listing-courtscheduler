@@ -3747,6 +3747,67 @@ class SessionsServiceTest {
     }
 
     @Test
+    void shouldNormaliseHourMinuteSecondFormatFromOrganisationUnitDefaultStartTime() {
+        // Confirmed live on ns-ste-ccm-22: organisation-unit defaultStartTime came back as
+        // "10:30:00" (HH:mm:ss), not "HH:mm" - combineDateAndTime's strict HH:mm parser threw
+        // DateTimeParseException and the whole courtschedule.create request 500'd.
+        final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
+        final String courtCentreId = randomUUID().toString();
+        final Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId("court-room-id")
+                .withSessionType(AM_SESSION)
+                .withPanelType("Adult")
+                .build();
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
+                .thenReturn(Optional.of(courtRoomWithRefdataKeys()));
+        when(referenceDataCache.getOrganisationUnit(eq(courtCentreId)))
+                .thenReturn(Optional.of(organisationUnitWithDefaultStartTime("10:30:00")));
+
+        sessionsService.create(createSessionRequest);
+
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
+        final CourtSchedule captured = courtScheduleArgumentCaptor.getValue().get(0);
+        assertThat(sdf.format(captured.getSessionStartTime()), is("10:30"));
+        assertThat(sdf.format(captured.getSessionEndTime()), is(DEFAULT_MORNING_END_TIME));
+    }
+
+    @Test
+    void shouldFallBackToDefaultStartTimeWhenOrganisationUnitDefaultStartTimeIsUnparseable() {
+        final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
+        final String courtCentreId = randomUUID().toString();
+        final Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId("court-room-id")
+                .withSessionType(AM_SESSION)
+                .withPanelType("Adult")
+                .build();
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
+                .thenReturn(Optional.of(courtRoomWithRefdataKeys()));
+        when(referenceDataCache.getOrganisationUnit(eq(courtCentreId)))
+                .thenReturn(Optional.of(organisationUnitWithDefaultStartTime("garbage")));
+
+        sessionsService.create(createSessionRequest);
+
+        verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
+        final CourtSchedule captured = courtScheduleArgumentCaptor.getValue().get(0);
+        assertThat(sdf.format(captured.getSessionStartTime()), is(DEFAULT_MORNING_START_TIME));
+        assertThat(sdf.format(captured.getSessionEndTime()), is(DEFAULT_MORNING_END_TIME));
+    }
+
+    @Test
     void shouldFallBackToDefaultTimesWhenNeitherCustomNorRefdataTimesPresent() {
         final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
         final String courtCentreId = randomUUID().toString();
