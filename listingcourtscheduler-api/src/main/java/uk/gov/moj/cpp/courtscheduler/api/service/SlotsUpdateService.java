@@ -700,9 +700,11 @@ public class SlotsUpdateService {
      * every day NOT submitted untouched.
      *
      * <p>Validates ALL requested days first: a day with no existing allocation throws {@link
-     * NoAllocationOnDateException}; a day whose target session doesn't exist, or lacks capacity,
-     * throws {@link NoSessionAvailableException}. Either way NOTHING is released or booked — not
-     * even days earlier in the request that were themselves valid.</p>
+     * NoAllocationOnDateException}; a day whose target session doesn't exist throws {@link
+     * NoSessionAvailableException}. Either way NOTHING is released or booked — not even days earlier
+     * in the request that were themselves valid. A target session that lacks capacity does NOT reject
+     * (court-calendar always-assign rule, F1): the day is booked and the overbooking is logged
+     * advisorily, since all court-calendar journeys are overbooking exempt (SPRDT-1224).</p>
      *
      * <p>A day whose requested {@code courtScheduleId} equals its CURRENT allocation is an
      * idempotent no-op: no release, no (re)booking, but the session is still included in the
@@ -755,12 +757,11 @@ public class SlotsUpdateService {
 
             final boolean isNoop = day.getCourtScheduleId().equals(current.getCourtScheduleId());
             if (!isNoop) {
-                final boolean sufficientCapacity = target.isOverbookingAllowed()
-                        || getEffectiveAvailableDuration(target) >= day.getDurationInMinutes();
-                if (!sufficientCapacity) {
-                    throw new NoSessionAvailableException("Session " + day.getCourtScheduleId()
-                            + " has insufficient capacity for hearing " + hearingId
-                            + " on " + day.getSessionDate());
+                final int available = getEffectiveAvailableDuration(target);
+                if (!target.isOverbookingAllowed() && available < day.getDurationInMinutes()) {
+                    LOGGER.info("[CHANGE-ROOM-MULTIDAY] Overbooking session {} on {} for hearingId {} — {}mins available, {}mins needed, overbookingAllowed=false (court-calendar always-assign rule)",
+                            day.getCourtScheduleId(), day.getSessionDate(), hearingId,
+                            available, day.getDurationInMinutes());
                 }
             }
 

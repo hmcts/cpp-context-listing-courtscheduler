@@ -2647,36 +2647,39 @@ class SlotsUpdateServiceTest {
         }
 
         @Test
-        void should_throwNoSessionAvailable_when_targetHasInsufficientCapacity() {
+        void should_bookOverbooked_when_targetHasInsufficientCapacityAndOverbookingNotAllowed() {
             final String hearingId = UUID.randomUUID().toString();
             final LocalDate d2 = LocalDate.of(2025, 3, 4);
             final List<AllocatedListing> existingAllocations = List.of(existingAllocation(hearingId, "cs2"));
             when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of("cs2")))
                     .thenReturn(List.of(buildSessionWithId(d2, "cs2")));
-            final CourtSchedule tightSession = buildSessionWithId(d2, "cs2b");
-            tightSession.setMaxDuration(100);
-            tightSession.setTotalBooked(0);
-            tightSession.setAvailableDuration(100);
+            final CourtSchedule fullSession = buildSessionWithId(d2, "cs2b");
+            fullSession.setMaxDuration(360);
+            fullSession.setTotalBooked(360);
+            fullSession.setAvailableDuration(0);
+            fullSession.setIsOverbookingAllowed(false);
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of("cs2b")))
-                    .thenReturn(List.of(tightSession));
+                    .thenReturn(List.of(fullSession));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result("", true));
 
             final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
                     .setHearingId(hearingId)
                     .setDays(List.of(new RequestedDay(d2, "cs2b", 300)));
 
-            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
-                    () -> service.changeCourtRoomForMultidayHearing(request));
+            final ChangeCourtRoomForMultidayHearingResponse response =
+                    service.changeCourtRoomForMultidayHearing(request);
 
-            verify(courtScheduleRepository, org.mockito.Mockito.never())
-                    .releaseAllocatedListingsForDates(any(), any());
-            verify(courtScheduleRepository, org.mockito.Mockito.never())
-                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+            verify(courtScheduleRepository).releaseAllocatedListingsForDates(hearingId, List.of(d2));
+            verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false), eq(false));
+            assertEquals(1, response.allocatedSchedules().size());
+            assertEquals("cs2b", response.allocatedSchedules().get(0).getCourtScheduleId());
         }
 
         @Test
         void should_mutateNothing_when_oneOfMultipleDaysIsInvalid() {
-            // d2 is valid, d3's target lacks capacity => the WHOLE request fails, and NOT EVEN d2
+            // d2 is valid, d3's target session is unknown => the WHOLE request fails, and NOT EVEN d2
             // is released or booked (validate-all-first).
             final String hearingId = UUID.randomUUID().toString();
             final LocalDate d2 = LocalDate.of(2025, 3, 4);
@@ -2687,13 +2690,10 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of("cs2", "cs3")))
                     .thenReturn(List.of(buildSessionWithId(d2, "cs2"), buildSessionWithId(d3, "cs3")));
 
-            final CourtSchedule validTarget = buildSessionWithId(d2, "cs2b"); // 360 available, sufficient
-            final CourtSchedule invalidTarget = buildSessionWithId(d3, "cs3b");
-            invalidTarget.setMaxDuration(100);
-            invalidTarget.setTotalBooked(0);
-            invalidTarget.setAvailableDuration(100); // insufficient for the requested 300
+            final CourtSchedule validTarget = buildSessionWithId(d2, "cs2b");
+            // cs3b is unknown (not returned) => target lookup yields null => NoSessionAvailableException
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of("cs2b", "cs3b")))
-                    .thenReturn(List.of(validTarget, invalidTarget));
+                    .thenReturn(List.of(validTarget));
 
             final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
                     .setHearingId(hearingId)
