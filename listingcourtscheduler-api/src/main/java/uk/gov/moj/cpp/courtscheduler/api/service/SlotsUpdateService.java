@@ -390,6 +390,7 @@ public class SlotsUpdateService {
     private static final String SOURCE_NONPOLICE = "NONPOLICE";
     private static final String SOURCE_MOVE = "MOVE";
     private static final String SOURCE_CHANGE_COURT_ROOM_MULTIDAY = "CHANGE_COURT_ROOM_MULTIDAY";
+    private static final String SOURCE_MULTIDAY_COURTROOM_CHANGE = "MULTIDAY_COURTROOM_CHANGE";
     private static final String JURISDICTION_CROWN = "CROWN";
 
     /**
@@ -700,9 +701,11 @@ public class SlotsUpdateService {
      * every day NOT submitted untouched.
      *
      * <p>Validates ALL requested days first: a day with no existing allocation throws {@link
-     * NoAllocationOnDateException}; a day whose target session doesn't exist, or lacks capacity,
-     * throws {@link NoSessionAvailableException}. Either way NOTHING is released or booked — not
-     * even days earlier in the request that were themselves valid.</p>
+     * NoAllocationOnDateException}; a day whose target session doesn't exist throws {@link
+     * NoSessionAvailableException}. Either way NOTHING is released or booked — not even days earlier
+     * in the request that were themselves valid. A target session that lacks capacity does NOT reject
+     * (court-calendar always-assign rule, F1): the day is booked and the overbooking is logged
+     * advisorily, since all court-calendar journeys are overbooking exempt (SPRDT-1224).</p>
      *
      * <p>A day whose requested {@code courtScheduleId} equals its CURRENT allocation is an
      * idempotent no-op: no release, no (re)booking, but the session is still included in the
@@ -738,7 +741,7 @@ public class SlotsUpdateService {
 
         final List<CourtSchedule> allocatedSchedules = new ArrayList<>();
         final List<LocalDate> datesToRelease = new ArrayList<>();
-        final Map<Integer, List<CourtSchedule>> toBookByDuration = new java.util.LinkedHashMap<>();
+        final Map<String, Map<Integer, List<CourtSchedule>>> toBookBySourceThenDuration = new java.util.LinkedHashMap<>();
 
         for (final RequestedDay day : request.getDays()) {
             final AllocatedListing current = existingByDate.get(day.getSessionDate());
@@ -754,20 +757,18 @@ public class SlotsUpdateService {
             }
 
             final boolean isNoop = day.getCourtScheduleId().equals(current.getCourtScheduleId());
-            if (!isNoop) {
-                final boolean sufficientCapacity = target.isOverbookingAllowed()
-                        || getEffectiveAvailableDuration(target) >= day.getDurationInMinutes();
-                if (!sufficientCapacity) {
-                    throw new NoSessionAvailableException("Session " + day.getCourtScheduleId()
-                            + " has insufficient capacity for hearing " + hearingId
-                            + " on " + day.getSessionDate());
-                }
-            }
 
             allocatedSchedules.add(target);
             if (!isNoop) {
+                final boolean overbooking = !target.isOverbookingAllowed()
+                        && getEffectiveAvailableDuration(target) < day.getDurationInMinutes();
+                final String daySource = overbooking
+                        ? SOURCE_MULTIDAY_COURTROOM_CHANGE : SOURCE_CHANGE_COURT_ROOM_MULTIDAY;
                 datesToRelease.add(day.getSessionDate());
-                toBookByDuration.computeIfAbsent(day.getDurationInMinutes(), k -> new ArrayList<>()).add(target);
+                toBookBySourceThenDuration
+                        .computeIfAbsent(daySource, k -> new java.util.LinkedHashMap<>())
+                        .computeIfAbsent(day.getDurationInMinutes(), k -> new ArrayList<>())
+                        .add(target);
             }
         }
 
@@ -778,8 +779,9 @@ public class SlotsUpdateService {
             // (CourtScheduleRepository#releaseOldAllocatedListings) before booking. That would wipe
             // out the untouched days' allocations we just deliberately preserved above via the
             // date-scoped releaseAllocatedListingsForDates. Use the no-release booking variant instead.
-            toBookByDuration.forEach((duration, sessions) ->
-                    persistSessionsWithoutHearingRelease(sessions, hearingId, duration, SOURCE_CHANGE_COURT_ROOM_MULTIDAY));
+            toBookBySourceThenDuration.forEach((source, byDuration) ->
+                    byDuration.forEach((duration, sessions) ->
+                            persistSessionsWithoutHearingRelease(sessions, hearingId, duration, source)));
         }
 
         return new ChangeCourtRoomForMultidayHearingResponse(
