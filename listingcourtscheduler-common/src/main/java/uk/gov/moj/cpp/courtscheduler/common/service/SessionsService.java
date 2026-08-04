@@ -31,6 +31,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils.updateTota
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.normaliseToHourMinute;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toLocalTime;
@@ -799,14 +800,25 @@ public class SessionsService {
     /**
      * Court centre (organisation-unit) default start time — consulted for AM and ALL_DAY only. PM
      * always starts at the fixed afternoon default and never queries reference data.
+     * <p>
+     * The upstream defaultStartTime has been observed in both {@code HH:mm} and {@code HH:mm:ss}
+     * form (confirmed live on ns-ste-ccm-22: {@code "10:30:00"}) — normalised via
+     * {@link DateUtils#normaliseToHourMinute} before use. An unparseable value falls back to the
+     * hardcoded default (logged at WARN) rather than failing {@code combineDateAndTime} downstream.
      */
     private String resolveRefDataStartTime(final Session session) {
         if (PM_SESSION.equals(session.getSessionType())) {
             return null;
         }
-        return referenceDataCache.getOrganisationUnit(session.getCourtCentreId())
+        final String rawStartTime = referenceDataCache.getOrganisationUnit(session.getCourtCentreId())
                 .map(OrganisationUnit::getDefaultStartTime)
                 .orElse(null);
+        final String normalisedStartTime = normaliseToHourMinute(rawStartTime);
+        if (StringUtils.isNotBlank(rawStartTime) && isNull(normalisedStartTime)) {
+            logger.warn("Unparseable organisation-unit defaultStartTime '{}' for courtCentreId {} - falling back to default start",
+                    rawStartTime, session.getCourtCentreId());
+        }
+        return normalisedStartTime;
     }
 
     private void saveCourtSchedules(List<CourtSchedule> courtScheduleList) {

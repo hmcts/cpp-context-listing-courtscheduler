@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.domain.utils;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.normaliseToHourMinute;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toListingSession;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
@@ -303,6 +304,38 @@ class DateUtilsTest {
     @Test
     void resolveSessionTimeShouldReturnNullWhenAllBlank() {
         assertThat(resolveSessionTime(null, null, null), is(nullValue()));
+    }
+
+    // ----- normaliseToHourMinute -----
+    // referencedata-query-api's organisation-unit defaultStartTime has been observed in both
+    // "HH:mm" and "HH:mm:ss" form (confirmed live on ns-ste-ccm-22: "10:30:00"). This must accept
+    // either without throwing.
+
+    @Test
+    void normaliseToHourMinuteShouldPassThroughHourMinuteFormat() {
+        assertThat(normaliseToHourMinute("10:30"), is("10:30"));
+    }
+
+    @Test
+    void normaliseToHourMinuteShouldStripSecondsFromHourMinuteSecondFormat() {
+        assertThat(normaliseToHourMinute("10:30:00"), is("10:30"));
+    }
+
+    @Test
+    void normaliseToHourMinuteShouldTrimWhitespace() {
+        assertThat(normaliseToHourMinute("  09:15:00  "), is("09:15"));
+    }
+
+    @Test
+    void normaliseToHourMinuteShouldReturnNullWhenBlank() {
+        assertThat(normaliseToHourMinute(null), is(nullValue()));
+        assertThat(normaliseToHourMinute(""), is(nullValue()));
+        assertThat(normaliseToHourMinute("   "), is(nullValue()));
+    }
+
+    @Test
+    void normaliseToHourMinuteShouldReturnNullWhenUnparseable() {
+        assertThat(normaliseToHourMinute("not-a-time"), is(nullValue()));
     }
 }
 
