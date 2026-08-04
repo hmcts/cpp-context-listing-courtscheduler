@@ -259,10 +259,10 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithRefdataSessionTimesAM() {
-        // Refdata fixture has MONAM allocation for cppCourtRoomId=7777 oucode=B12JR00 with
-        // sessionStartTime="09:30" / sessionEndTime="12:45". The payload supplies no custom
-        // start/end times, so refdata wins over the AM start default (10:00) but the end time
-        // is always the fixed AM default (13:00) — never refdata-driven (SPRDT-809).
+        // WireMock stub has organisation-unit id=22c69328-70af-3e27-80c5-1a79e24903d2 (this
+        // fixture's courtCentreId) with defaultStartTime="09:15". The payload supplies no custom
+        // start/end times, so the court-centre default wins over the AM start default (10:00) but
+        // the end time is always the fixed AM default (13:00) — never refdata-driven (SPRDT-809).
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-session-times-am.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -275,17 +275,16 @@ class CourtSchedulerIT extends AbstractIT {
             final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
             final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
 
-            assertThat(sdf.format(localStartTime), is("09:30"));
+            assertThat(sdf.format(localStartTime), is("09:15"));
             assertThat(sdf.format(localEndTime), is(DEFAULT_MORNING_END_TIME));
         }
     }
 
     @Test
     void shouldCreateCourtScheduleWithRefdataSessionTimesAD() {
-        // Refdata fixture has MONAM (09:30/12:45) and MONPM (13:30/16:30) allocations for
-        // cppCourtRoomId=7777 oucode=B12JR00. For an ALL_DAY session the start time is taken
-        // from the AM allocation, but the end time is always the fixed AD default (17:00) —
-        // the MONPM allocation's end time is never consulted (SPRDT-809).
+        // Same organisation-unit stub as the AM test (defaultStartTime="09:15") — AD sources its
+        // start from the same court-centre default, but the end time is always the fixed AD
+        // default (17:00), never refdata-driven (SPRDT-809).
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-session-times-ad.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -298,16 +297,16 @@ class CourtSchedulerIT extends AbstractIT {
             final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
             final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
 
-            assertThat(sdf.format(localStartTime), is("09:30"));
+            assertThat(sdf.format(localStartTime), is("09:15"));
             assertThat(sdf.format(localEndTime), is(DEFAULT_ALL_DAY_END_TIME));
         }
     }
 
     @Test
     void shouldCreateCourtScheduleWithFixedSessionTimesForPmIgnoringRefdata() {
-        // Refdata fixture has a MONPM allocation for cppCourtRoomId=7777 oucode=B12JR00 with
-        // sessionStartTime="13:30" / sessionEndTime="16:30". PM sessions must never consult
-        // reference data at all — both times are always the fixed PM defaults (SPRDT-809).
+        // Same organisation-unit stub as the AM/AD tests (defaultStartTime="09:15") is reachable
+        // for this fixture's courtCentreId, but PM sessions must never consult reference data at
+        // all — both times are always the fixed PM defaults (SPRDT-809).
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-present-pm.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -327,8 +326,9 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldHonourCustomSessionTimesOverRefdataAndDefaults() {
-        // Refdata MONAM allocation says 09:30/12:45 but the request supplies 10:15/12:30
-        // explicitly. The custom times must win over both refdata and the hardcoded defaults.
+        // The organisation-unit stub says defaultStartTime=09:15 but the request supplies
+        // 10:15/12:30 explicitly. The custom times must win over both refdata and the hardcoded
+        // defaults.
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-custom-times-overrides-refdata.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));

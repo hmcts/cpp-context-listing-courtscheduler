@@ -18,6 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnit;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
 import java.util.List;
@@ -72,6 +73,7 @@ public class ReferenceDataCache {
     public static final String ROTA_JUDICIARIES_CACHE_KEY = "RotaJudiciaries_";
     public static final String ROTA_COURTROOMS_CACHE_KEY = "RotaCourtRooms_";
     public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSessionAllocations_";
+    public static final String ORGANISATION_UNIT_CACHE_PREFIX = "OrganisationUnit_";
 
     public ReferenceDataCache() {
         //Default Constructor
@@ -130,6 +132,14 @@ public class ReferenceDataCache {
             return getCourtRoomByIdFromTheCache(courtRoomId);
         } else {
             return referenceDataService.getRotaCourtRoomByCourtRoomId(courtRoomId);
+        }
+    }
+
+    public Optional<OrganisationUnit> getOrganisationUnit(final String organisationUnitId) {
+        if (parseBoolean(redisCommonCacheEnabled)) {
+            return getOrganisationUnitFromTheCache(organisationUnitId);
+        } else {
+            return referenceDataService.getOrganisationUnit(organisationUnitId);
         }
     }
 
@@ -258,6 +268,20 @@ public class ReferenceDataCache {
         }
     }
 
+    private Optional<OrganisationUnit> getOrganisationUnitFromTheCache(final String organisationUnitId) {
+        final String cacheResult = cacheService.get(ORGANISATION_UNIT_CACHE_PREFIX + organisationUnitId);
+
+        if (isNull(cacheResult)) {
+            LOGGER.debug("no cache result found for organisationUnitId: {} in getOrganisationUnitFromTheCache", organisationUnitId);
+            return processOrganisationUnit(organisationUnitId);
+        } else {
+            LOGGER.debug("cacheResult has been found for organisationUnitId: {} in getOrganisationUnitFromTheCache", organisationUnitId);
+            final JsonObject cacheResultJsonObject = stringToJsonObjectConverter.convert(cacheResult);
+            final OrganisationUnit organisationUnit = jsonObjectToObjectConverter.convert(cacheResultJsonObject, OrganisationUnit.class);
+            return of(organisationUnit);
+        }
+    }
+
     private Optional<CourtRoom> getCourtRoomByVenueFromTheCache(final Venue venue, final Map<String, String> exceptionMessages) {
         final String cacheResult = cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, venue.getLocationId(), venue.getVenueName()));
 
@@ -333,6 +357,18 @@ public class ReferenceDataCache {
             LOGGER.error("exception whilst adding into the cache for CourtRoomSessionAllocations with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
         }
         return emptyList();
+    }
+
+    private Optional<OrganisationUnit> processOrganisationUnit(final String organisationUnitId) {
+        final Optional<OrganisationUnit> organisationUnit = referenceDataService.getOrganisationUnit(organisationUnitId);
+        organisationUnit.ifPresent(ou -> {
+            try {
+                cacheService.add(ORGANISATION_UNIT_CACHE_PREFIX + organisationUnitId, objectMapper.writeValueAsString(ou), redisCommonCacheKey5MinsTTL());
+            } catch (final JsonProcessingException jsonProcessingException) {
+                LOGGER.error("exception whilst adding into the cache for organisationUnitId: {} with exception: {}", organisationUnitId, jsonProcessingException.getMessage(), jsonProcessingException);
+            }
+        });
+        return organisationUnit;
     }
 
     private Optional<BusinessType> processRotaBusinessTypeMap(final String businessTypeCode, final AtomicReference<BusinessType> businessTypeForCode) {

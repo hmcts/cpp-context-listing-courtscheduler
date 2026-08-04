@@ -33,7 +33,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAn
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toListingSession;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toLocalTime;
 
 // (removed) replaced by Spring CommonPlatformQueryClient
@@ -45,13 +44,13 @@ import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnit;
 import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
@@ -123,8 +122,6 @@ public class SessionsService {
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
     @Inject
     private CourtScheduleService courtScheduleService;
-    @Inject
-    private ReferenceDataMapperService referenceDataMapperService;
 
     @Transactional
     public void create(CreateSessionRequestParam createSessionRequestParam) {
@@ -764,8 +761,6 @@ public class SessionsService {
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate))
                 .withIsDraft(!isNull(session.isDraft()) && session.isDraft())
                 .withJurisdiction(!isNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction());
-        // enrichSession populates oucode + courtRoomNumber on the builder, which we need
-        // before we can look up the CourtRoomSessionAllocation refdata.
         enrichSession(courtScheduleBuilder, session.getSlotsOrDuration());
 
         applyResolvedSessionTimes(courtScheduleBuilder, session, sessionDateCandidate, sessionStartTime, sessionEndTime);
@@ -777,10 +772,10 @@ public class SessionsService {
      * <ul>
      *   <li><b>End time</b> is always the fixed per-session-type default (AM 13:00, PM 17:00, AD 17:00) —
      *       reference data is never consulted for the end.</li>
-     *   <li><b>Start time</b> for AM and ALL_DAY comes from {@code CourtRoomSessionAllocation} refdata for
-     *       the (oucode, room, day-of-week + sessionType, businessType) key, falling back to the hardcoded
-     *       default when absent. ALL_DAY reads its start from the AM allocation. PM always starts at the
-     *       fixed afternoon default and never queries reference data.</li>
+     *   <li><b>Start time</b> for AM and ALL_DAY comes from the court centre's organisation-unit
+     *       {@code defaultStartTime} (looked up by {@code session.getCourtCentreId()}, the same UUID as
+     *       {@code organisation_unit.id}), falling back to the hardcoded default when absent. PM always
+     *       starts at the fixed afternoon default and never queries reference data.</li>
      *   <li>A custom start/end supplied on the API request overrides its own field regardless of type.</li>
      * </ul>
      */
@@ -790,9 +785,8 @@ public class SessionsService {
                                            final String customStartTime,
                                            final String customEndTime) {
         final String sessionType = session.getSessionType();
-        final String businessType = session.getBusinessType();
 
-        final String refDataStartTime = resolveRefDataStartTime(builder, sessionType, sessionDate, businessType);
+        final String refDataStartTime = resolveRefDataStartTime(session);
 
         final DateUtils.SessionStartAndEndTime defaults = getOrElseDefaultSessionStartAndEndTimeIfEmpty(sessionType, null, null);
         final String resolvedStart = resolveSessionTime(customStartTime, refDataStartTime, defaults.sessionStartTime());
@@ -803,33 +797,16 @@ public class SessionsService {
     }
 
     /**
-     * Court-centre refdata start time — consulted for AM (directly) and ALL_DAY (via the AM allocation,
-     * matching the session it opens with) only. PM always starts at the fixed afternoon default and never
-     * queries reference data.
+     * Court centre (organisation-unit) default start time — consulted for AM and ALL_DAY only. PM
+     * always starts at the fixed afternoon default and never queries reference data.
      */
-    private String resolveRefDataStartTime(final CourtSchedule.CourtScheduleBuilder builder,
-                                           final String sessionType,
-                                           final LocalDate sessionDate,
-                                           final String businessType) {
-        if (PM_SESSION.equals(sessionType)) {
+    private String resolveRefDataStartTime(final Session session) {
+        if (PM_SESSION.equals(session.getSessionType())) {
             return null;
         }
-        final String lookupSessionType = ALL_DAY.equals(sessionType) ? AM_SESSION : sessionType;
-        return lookupAllocation(builder, lookupSessionType, sessionDate, businessType)
-                .map(CourtRoomSessionAllocation::getSessionStartTime)
+        return referenceDataCache.getOrganisationUnit(session.getCourtCentreId())
+                .map(OrganisationUnit::getDefaultStartTime)
                 .orElse(null);
-    }
-
-    private Optional<CourtRoomSessionAllocation> lookupAllocation(final CourtSchedule.CourtScheduleBuilder builder,
-                                                                  final String sessionType,
-                                                                  final LocalDate sessionDate,
-                                                                  final String businessType) {
-        if (isNull(builder.getOuCode()) || isNull(builder.getCourtRoomNumber()) || isNull(businessType)) {
-            return Optional.empty();
-        }
-        final String listingSession = toListingSession(sessionDate, sessionType);
-        return referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                builder.getOuCode(), builder.getCourtRoomNumber(), listingSession, businessType);
     }
 
     private void saveCourtSchedules(List<CourtSchedule> courtScheduleList) {
