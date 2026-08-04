@@ -125,6 +125,32 @@
           "venueId": 1
         }
       ]
+    },
+    {
+      "id": "99999999-8888-7777-6666-555555555555",
+      "oucode": "B99ZZ00",
+      "lja": "9999",
+      "oucodeL1Code": "B",
+      "courtId": "99",
+      "oucodeL1Name": "Magistrates' Courts",
+      "oucodeL3Name": "No-Default Magistrates' Court",
+      "oucodeL3WelshName": "No-Default Magistrates' Court",
+      "address1": "Test Address",
+      "address2": "Test Region",
+      "address3": "Test Region",
+      "postcode": "TE5 7ST",
+      "oucodeL2Code": "99",
+      "oucodeL2Name": "Test Region",
+      "region": "Test Region",
+      "courtrooms": [
+        {
+          "id": "44444444-5555-6666-7777-888888888888",
+          "venueName": "No-Default Magistrates' Court",
+          "courtroomId": 9901,
+          "courtroomName": "Courtroom 02",
+          "venueId": 1
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/referencedata-query-api/query/api/rest/referencedata/organisation-units/22c69328-70af-3e27-80c5-1a79e24903d2"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.referencedata.query.organisation-unit+json"
+    },
+    "jsonBody": {
+      "id": "22c69328-70af-3e27-80c5-1a79e24903d2",
+      "defaultStartTime": "09:15"
+    }
+  }
+}
