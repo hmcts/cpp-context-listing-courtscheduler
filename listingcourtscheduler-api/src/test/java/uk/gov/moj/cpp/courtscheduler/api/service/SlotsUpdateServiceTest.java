@@ -2661,7 +2661,10 @@ class SlotsUpdateServiceTest {
             fullSession.setIsOverbookingAllowed(false);
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of("cs2b")))
                     .thenReturn(List.of(fullSession));
-            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false), eq(false)))
+            @SuppressWarnings("unchecked")
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            when(courtScheduleRepository.saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false), eq(false)))
                     .thenReturn(new Result("", true));
 
             final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
@@ -2673,6 +2676,11 @@ class SlotsUpdateServiceTest {
 
             verify(courtScheduleRepository).releaseAllocatedListingsForDates(hearingId, List.of(d2));
             verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false), eq(false));
+            final List<AllocatedSlot> booked = slotsCaptor.getAllValues().stream()
+                    .flatMap(List::stream).toList();
+            assertTrue(booked.stream().anyMatch(s -> "cs2b".equals(s.getCourtScheduleId())));
+            assertTrue(booked.stream().allMatch(s -> "MULTIDAY_COURTROOM_CHANGE".equals(s.getSource())));
+            assertEquals("CHANGE_COURT_ROOM_MULTIDAY", response.source());
             assertEquals(1, response.allocatedSchedules().size());
             assertEquals("cs2b", response.allocatedSchedules().get(0).getCourtScheduleId());
         }

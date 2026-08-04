@@ -194,6 +194,8 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
         assertThat(extractAllocatedScheduleIds(payload), hasItem(d2b));
         assertThat("day2 moved into the full, non-overbookable room2 session (court-calendar overbooking exempt)",
                 bookedScheduleIds(hearingId), containsInAnyOrder(d1, d2b));
+        assertThat("overbooked change-courtroom booking records the reason in allocated_listings.source",
+                sourceOf(hearingId, d2b), is("MULTIDAY_COURTROOM_CHANGE"));
     }
 
     // --- helpers ---
@@ -234,6 +236,13 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
                 .filter(al -> hearingId.equals(al.getHearingId()))
                 .map(AllocatedListing::getCourtScheduleId)
                 .collect(Collectors.toList());
+    }
+
+    private String sourceOf(final String hearingId, final String courtScheduleId) {
+        return databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()) && courtScheduleId.equals(al.getCourtScheduleId()))
+                .map(AllocatedListing::getSource)
+                .findFirst().orElse(null);
     }
 
     private static String body(final Response response) {

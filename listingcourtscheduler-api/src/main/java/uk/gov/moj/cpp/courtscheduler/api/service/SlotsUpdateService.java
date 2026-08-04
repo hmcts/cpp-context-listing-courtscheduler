@@ -390,6 +390,7 @@ public class SlotsUpdateService {
     private static final String SOURCE_NONPOLICE = "NONPOLICE";
     private static final String SOURCE_MOVE = "MOVE";
     private static final String SOURCE_CHANGE_COURT_ROOM_MULTIDAY = "CHANGE_COURT_ROOM_MULTIDAY";
+    private static final String SOURCE_MULTIDAY_COURTROOM_CHANGE = "MULTIDAY_COURTROOM_CHANGE";
     private static final String JURISDICTION_CROWN = "CROWN";
 
     /**
@@ -740,7 +741,7 @@ public class SlotsUpdateService {
 
         final List<CourtSchedule> allocatedSchedules = new ArrayList<>();
         final List<LocalDate> datesToRelease = new ArrayList<>();
-        final Map<Integer, List<CourtSchedule>> toBookByDuration = new java.util.LinkedHashMap<>();
+        final Map<String, Map<Integer, List<CourtSchedule>>> toBookBySourceThenDuration = new java.util.LinkedHashMap<>();
 
         for (final RequestedDay day : request.getDays()) {
             final AllocatedListing current = existingByDate.get(day.getSessionDate());
@@ -756,19 +757,18 @@ public class SlotsUpdateService {
             }
 
             final boolean isNoop = day.getCourtScheduleId().equals(current.getCourtScheduleId());
-            if (!isNoop) {
-                final int available = getEffectiveAvailableDuration(target);
-                if (!target.isOverbookingAllowed() && available < day.getDurationInMinutes()) {
-                    LOGGER.info("[CHANGE-ROOM-MULTIDAY] Overbooking session {} on {} for hearingId {} — {}mins available, {}mins needed, overbookingAllowed=false (court-calendar always-assign rule)",
-                            day.getCourtScheduleId(), day.getSessionDate(), hearingId,
-                            available, day.getDurationInMinutes());
-                }
-            }
 
             allocatedSchedules.add(target);
             if (!isNoop) {
+                final boolean overbooking = !target.isOverbookingAllowed()
+                        && getEffectiveAvailableDuration(target) < day.getDurationInMinutes();
+                final String daySource = overbooking
+                        ? SOURCE_MULTIDAY_COURTROOM_CHANGE : SOURCE_CHANGE_COURT_ROOM_MULTIDAY;
                 datesToRelease.add(day.getSessionDate());
-                toBookByDuration.computeIfAbsent(day.getDurationInMinutes(), k -> new ArrayList<>()).add(target);
+                toBookBySourceThenDuration
+                        .computeIfAbsent(daySource, k -> new java.util.LinkedHashMap<>())
+                        .computeIfAbsent(day.getDurationInMinutes(), k -> new ArrayList<>())
+                        .add(target);
             }
         }
 
@@ -779,8 +779,9 @@ public class SlotsUpdateService {
             // (CourtScheduleRepository#releaseOldAllocatedListings) before booking. That would wipe
             // out the untouched days' allocations we just deliberately preserved above via the
             // date-scoped releaseAllocatedListingsForDates. Use the no-release booking variant instead.
-            toBookByDuration.forEach((duration, sessions) ->
-                    persistSessionsWithoutHearingRelease(sessions, hearingId, duration, SOURCE_CHANGE_COURT_ROOM_MULTIDAY));
+            toBookBySourceThenDuration.forEach((source, byDuration) ->
+                    byDuration.forEach((duration, sessions) ->
+                            persistSessionsWithoutHearingRelease(sessions, hearingId, duration, source)));
         }
 
         return new ChangeCourtRoomForMultidayHearingResponse(
