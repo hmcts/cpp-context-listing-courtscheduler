@@ -185,6 +185,7 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
 
         book(hearingId, d1, day1, DURATION_MINUTES);
         book(hearingId, d2, day2, DURATION_MINUTES);
+        book(UUID.randomUUID().toString(), d2b, day2, DURATION_MINUTES);
 
         final Response response = callChangeCourtRoom(hearingId, dayEntry(day2, d2b, DURATION_MINUTES));
 
