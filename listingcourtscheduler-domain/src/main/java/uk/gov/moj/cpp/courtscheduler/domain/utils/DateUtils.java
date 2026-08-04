@@ -247,9 +247,9 @@ public class DateUtils {
 
     /**
      * Resolves a session start/end time using the precedence: 1. customTime (e.g. value supplied on
-     * the API request) - takes precedence if non-blank 2. refDataTime (e.g. value from
-     * CourtRoomSessionAllocation refdata) - used if customTime is blank 3. defaultTime - fallback
-     * (typically a hardcoded DEFAULT_*_TIME constant)
+     * the API request) - takes precedence if non-blank 2. refDataTime (e.g. value from reference data,
+     * e.g. an organisation-unit's default start time) - used if customTime is blank 3. defaultTime -
+     * fallback (typically a hardcoded DEFAULT_*_TIME constant)
      *
      * @param customTime  caller-supplied override (e.g. API request body), may be blank/null
      * @param refDataTime time configured in reference data, may be blank/null
@@ -264,6 +264,24 @@ public class DateUtils {
             return refDataTime;
         }
         return defaultTime;
+    }
+
+    /**
+     * Normalises a reference-data time value to strict {@code HH:mm} form. Upstream referencedata
+     * has been observed returning both {@code HH:mm} and {@code HH:mm:ss} for the same field (e.g.
+     * organisation-unit {@code defaultStartTime}) - {@link LocalTime#parse(CharSequence)} (ISO-8601,
+     * seconds optional) accepts either. Returns null for a blank or genuinely unparseable value, so
+     * callers can fall back to a hardcoded default instead of failing the request.
+     */
+    public static String normaliseToHourMinute(final String time) {
+        if (isBlank(time)) {
+            return null;
+        }
+        try {
+            return LocalTime.parse(time.trim()).format(TIME_FORMATTER);
+        } catch (final java.time.format.DateTimeParseException e) {
+            return null;
+        }
     }
 
     public static java.util.Date combineDateAndTime(final LocalDate date, final String time) {
