@@ -32,12 +32,13 @@ import org.junit.jupiter.api.Test;
  * <p>The request carries a {@code courtCentreId}, a {@code hearingDate}, a small
  * {@code durationInMinutes} (≤360 selects the single-day path), and optionally a
  * {@code courtRoomId}. No {@code courtScheduleId} anchor is supplied — the engine picks any
- * available session at the centre+date, relaxing MAGS rota matching (no businessType filter).
+ * session at the centre+date, relaxing MAGS rota matching (no businessType filter) and ignoring
+ * remaining capacity entirely (search-and-book is overbooking-exempt, SPRDT-1159).
  *
  * <p>Sister unit tests live in {@code SlotsUpdateServiceTest.CrownFallbackSearchAndBook}; these ITs
  * cover behaviours that need the real DB: native SQL predicate correctness against
- * {@code court_schedule.court_house_id}, availability-driven tier selection, and idempotency via
- * {@code allocated_listings} inspection.
+ * {@code court_schedule.court_house_id}, capacity-exempt selection, on-the-fly session creation
+ * attributes, and idempotency via {@code allocated_listings} inspection.
  */
 class CrownFallbackSearchAndBookIT extends AbstractIT {
 
@@ -143,15 +144,97 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(body.getString("source"), is("CROWN_FB_ADJOURN"));
     }
 
-    // NOTE: source-label IT coverage intentionally omitted.
+    @Test
+    void shouldBookSessionRegardlessOfRemainingCapacity() throws Exception {
+        // SPRDT-1159: search-and-book is overbooking-exempt — a session whose remaining capacity is
+        // below the requested duration (and which does NOT allow overbooking) still gets booked.
+        // Before this change the strict pass skipped it and the relaxed pass required
+        // is_overbooking_allowed=true, so this request would have found no session.
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        final String sessionId = seedSession(date, roomId, "CR", centreId, "C01CY00", false, false, 5);
+
+        final Response response = callFallback(hearingId, centreId, roomId, date, 10, "CROWN_FB_LIST");
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        assertThat(body.getString("courtScheduleId"), is(sessionId));
+        assertThat("overbooked flag reports the capacity shortfall", body.getBoolean("overbooked"), is(true));
+    }
+
+    @Test
+    void shouldAutoCreateFinalLngAdSessionWhenRoomSuppliedAndNoSessionOnDate() throws Exception {
+        // SPRDT-1159 auto-create shape (room pinned): duration-based AD session, businessType LNG,
+        // fixed 360-minute capacity, overbooking disallowed, FINAL (is_draft=false).
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        // Template session at the same centre+room but on a different date: the target date has no
+        // session, so the engine must create one, copying only residual metadata from this template.
+        seedSession(date.plusDays(7), roomId, "CR", centreId, "C01CY00", false, false, 300);
+
+        final Response response = callFallback(hearingId, centreId, roomId, date, 10, "CROWN_FB_LIST");
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        final String createdId = body.getString("courtScheduleId");
+        assertThat(body.getBoolean("isDraft"), is(false));
+
+        final CourtSchedule created = databaseReader.courtScheduleById(createdId);
+        assertThat(created.getBusinessType(), is("LNG"));
+        assertThat(created.getCourtSession(), is("AD"));
+        assertThat(created.getMaxDuration(), is(360));
+        assertThat(created.getIsOverbookingAllowed(), is(false));
+        assertThat(created.getIsDraft(), is(false));
+        assertThat(created.isSlotBased(), is(false));
+        assertThat(created.getSupportAdSplit(), is(false));
+        assertThat(created.getCourtRoomId(), is(roomId));
+        assertThat(created.getSessionDate(), is(date));
+    }
+
+    @Test
+    void shouldAutoCreateDraftGencAdSessionWhenRoomOmittedAndNoSessionOnDate() throws Exception {
+        // SPRDT-1159 auto-create shape (no room): duration-based AD session, businessType GENC,
+        // fixed 360-minute capacity, overbooking disallowed, DRAFT (is_draft=true).
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        seedSession(date.plusDays(7), roomId, "CR", centreId, "C01CY00", false, false, 300);
+
+        final Response response = callFallback(hearingId, centreId, null, date, 10, "CROWN_FB_LIST");
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        final String createdId = body.getString("courtScheduleId");
+        assertThat(body.getBoolean("isDraft"), is(true));
+
+        final CourtSchedule created = databaseReader.courtScheduleById(createdId);
+        assertThat(created.getBusinessType(), is("GENC"));
+        assertThat(created.getCourtSession(), is("AD"));
+        assertThat(created.getMaxDuration(), is(360));
+        assertThat(created.getIsOverbookingAllowed(), is(false));
+        assertThat(created.getIsDraft(), is(true));
+        assertThat(created.isSlotBased(), is(false));
+        assertThat(created.getSupportAdSplit(), is(false));
+    }
+
+    // NOTE: allocated_listings.source IT coverage intentionally omitted.
     //
-    // End-to-end verification that the caller's CROWN_FB_LIST/ADJOURN/UPDATE label lands on
+    // End-to-end verification that the EXEMPT_SAB / AUTO_CREATE_SAB marker lands on
     // allocated_listings.source requires the Crown fallback path's follow-up UPDATE to run within
     // the command-handler's JTA transaction — which the current plumbing (save-based override
     // through AllocatedListingRepository.updateSourceByHearingId) doesn't reliably guarantee
-    // outside the command-dispatch boundary. The label IS correctly set on the AllocatedSlot
+    // outside the command-dispatch boundary. The marker IS correctly set on the AllocatedSlot
     // before the save pipeline and is covered at the unit-test level by
-    // SlotsUpdateServiceTest.CrownFallbackSearchAndBook.shouldPropagateSourceLabelToAllocatedSlot.
+    // SlotsUpdateServiceTest.CrownFallbackSearchAndBook.shouldStampExemptSabSourceOnAllocatedSlot
+    // and .shouldAutoCreateSessionAndBookWhenSearchReturnsEmpty.
     //
     // Tracked as a follow-up: the label-persistence flow needs either (a) a dedicated
     // @Transactional wrapper service method, or (b) the existing saveAllocatedListing pipeline

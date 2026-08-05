@@ -171,8 +171,14 @@ public class SlotsUpdateService {
         // hearing allocates onto it in this same response.
         final CrownFallbackSearchResult searchResult = found.orElseGet(() -> autoCreateSession(request));
 
+        // allocated_listings.source records HOW the allocation was made: EXEMPT_SAB for an
+        // overbooking-exempt search-and-book onto an existing session, AUTO_CREATE_SAB when the
+        // session was created on the fly. The caller's CROWN_FB_* label stays on the response
+        // and in the logs for per-caller traceability.
+        final String allocationSource = found.isPresent() ? SOURCE_EXEMPT_SAB : SOURCE_AUTO_CREATE_SAB;
+
         final CourtSchedule session = searchResult.session();
-        final AllocatedSlot slot = buildAllocatedSlot(request, session);
+        final AllocatedSlot slot = buildAllocatedSlot(request, session, allocationSource);
         final Result persistResult = courtScheduleRepository.saveBookedSlots(new ArrayList<>(List.of(slot)), false, false);
         if (!persistResult.isSuccess()) {
             throw new CrownFallbackNoSessionException(
@@ -180,16 +186,16 @@ public class SlotsUpdateService {
                             + ": " + persistResult.getMsg());
         }
 
-        // The existing saveBookedSlots pipeline doesn't reliably propagate the caller-supplied
-        // source label to allocated_listings.source (observed null on IT in some branches of
-        // getUpdatedAllocatedSlots). Force the source explicitly so per-caller observability
-        // (CROWN_FB_LIST / CROWN_FB_ADJOURN / CROWN_FB_UPDATE) is preserved on the DB row.
+        // The existing saveBookedSlots pipeline doesn't reliably propagate the slot's source to
+        // allocated_listings.source (observed null on IT in some branches of
+        // getUpdatedAllocatedSlots). Force it explicitly so the EXEMPT_SAB / AUTO_CREATE_SAB
+        // marker is guaranteed on the DB row.
         allocatedListingRepository.updateSourceByHearingId(
-                request.getHearingId(), request.getSource());
+                request.getHearingId(), allocationSource);
 
-        LOGGER.info("[CROWN-FB] Success - hearingId: {}, courtScheduleId: {}, isDraft: {}, overbooked: {}, source: {}",
+        LOGGER.info("[CROWN-FB] Success - hearingId: {}, courtScheduleId: {}, isDraft: {}, overbooked: {}, source: {}, allocationSource: {}",
                 request.getHearingId(), session.getCourtScheduleId(), session.isDraft(),
-                searchResult.overbooked(), request.getSource());
+                searchResult.overbooked(), request.getSource(), allocationSource);
 
         return toResponse(request, searchResult);
     }
@@ -203,7 +209,6 @@ public class SlotsUpdateService {
         final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(
                 request.getCourtCentreId(),
                 request.getHearingDate(),
-                request.getDurationInMinutes(),
                 request.getCourtRoomId(),
                 request.getEarliestHearingTime());
         if (created.isEmpty()) {
@@ -238,7 +243,8 @@ public class SlotsUpdateService {
         }
     }
 
-    private static AllocatedSlot buildAllocatedSlot(final CrownFallbackRequest request, final CourtSchedule session) {
+    private static AllocatedSlot buildAllocatedSlot(final CrownFallbackRequest request, final CourtSchedule session,
+                                                    final String allocationSource) {
         final AllocatedSlot slot = new AllocatedSlot();
         slot.setHearingId(request.getHearingId());
         slot.setCourtScheduleId(session.getCourtScheduleId());
@@ -247,7 +253,7 @@ public class SlotsUpdateService {
         slot.setOuCode(session.getOuCode());
         slot.setDuration(request.getDurationInMinutes());
         slot.setSessionDate(session.getSessionDate().toString());
-        slot.setSource(request.getSource());
+        slot.setSource(allocationSource);
         if (request.hasEarliestHearingTime()) {
             slot.setHearingStartTime(request.getEarliestHearingTime());
         } else if (session.getSessionStartTime() != null) {
@@ -417,6 +423,12 @@ public class SlotsUpdateService {
     private static final String SOURCE_MOVE = "MOVE";
     private static final String SOURCE_CHANGE_COURT_ROOM_MULTIDAY = "CHANGE_COURT_ROOM_MULTIDAY";
     private static final String SOURCE_MULTIDAY_COURTROOM_CHANGE = "MULTIDAY_COURTROOM_CHANGE";
+    // SPRDT-1159 single-day Crown fallback allocations: EXEMPT_SAB = overbooking-exempt
+    // search-and-book onto an existing session; AUTO_CREATE_SAB = booked onto a session created
+    // on the fly. Stamped on allocated_listings.source; the caller's CROWN_FB_* label stays on
+    // the response/logs only.
+    private static final String SOURCE_EXEMPT_SAB = "EXEMPT_SAB";
+    private static final String SOURCE_AUTO_CREATE_SAB = "AUTO_CREATE_SAB";
     private static final String JURISDICTION_CROWN = "CROWN";
 
     /**
