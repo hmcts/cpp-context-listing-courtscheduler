@@ -77,7 +77,16 @@ public class DateUtils {
         if (isBlank(isoDate)) {
             return null;
         }
-        return LocalDateTime.parse(isoDate, ISO_8601_FORMATTER).atOffset(ZoneOffset.UTC);
+        try {
+            return LocalDateTime.parse(isoDate, ISO_8601_FORMATTER).atOffset(ZoneOffset.UTC);
+        } catch (final java.time.format.DateTimeParseException e) {
+            // Callers legitimately send other ISO-8601 zoned forms — e.g. listing's crown fallback
+            // sends ZonedDateTime.toString() output such as "2026-08-06T09:00Z[UTC]" (zone-id
+            // suffix, seconds omitted when zero) — which the strict millisecond-Z pattern rejects.
+            // Normalise any parseable zoned/offset form to UTC; genuinely unparseable input still
+            // throws DateTimeParseException as before.
+            return ZonedDateTime.parse(isoDate).withZoneSameInstant(ZoneOffset.UTC).toOffsetDateTime();
+        }
     }
 
     public static String toIsoString(final LocalDateTime localDateTime) {
