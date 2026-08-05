@@ -789,24 +789,138 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                     // ouCode, courtRoomId). convertForOverbooking() leaves sessionDate null, which
                     // trips a NullPointerException when SlotsUpdateService renders the response.
                     final CourtSchedule entity = candidate.get();
-                    final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule domain =
-                            uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                                    .withCourtScheduleId(entity.getCourtScheduleId())
-                                    .withOuCode(entity.getOuCode())
-                                    .withCourtRoomId(entity.getCourtRoomId())
-                                    .withCourtHouseId(entity.getCourtHouseId())
-                                    .withBusinessType(entity.getBusinessType())
-                                    .withCourtSession(entity.getCourtSession())
-                                    .withSessionDate(entity.getSessionDate())
-                                    .withIsDraft(entity.getIsDraft())
-                                    .withSessionStartTime(entity.getSessionStartTime())
-                                    .withSessionEndTime(entity.getSessionEndTime())
-                                    .build();
-                    return Optional.of(new CrownFallbackSearchResult(domain, overbookingAllowed));
+                    return Optional.of(new CrownFallbackSearchResult(
+                            toCrownFallbackDomain(entity), overbookingAllowed));
                 }
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * SPRDT-1159 on-the-fly session creation: called when {@link #searchCrownFallbackSlots} finds
+     * nothing. Creates a session from the request parameters — FINAL ({@code is_draft=false}) when a
+     * courtRoomId was supplied, DRAFT otherwise — and copies the metadata the request cannot carry
+     * (listing profile, ouCode, court house/room names, panel, capacity knobs) from the latest active
+     * session at the court centre (room-scoped first when a room is supplied). Empty when the centre
+     * has no session at all to copy from — a court centre that has never been seeded is a
+     * configuration problem this fallback must not paper over.
+     */
+    @Override
+    @Transactional
+    public Optional<CrownFallbackSearchResult> createCrownFallbackSession(
+            final String courtCentreId,
+            final LocalDate hearingDate,
+            final int durationInMinutes,
+            final String courtRoomId,
+            final String earliestHearingTime) {
+
+        final boolean hasCourtRoomId = courtRoomId != null && !courtRoomId.isBlank();
+        Optional<CourtSchedule> template = findLatestActiveSessionTemplate(courtCentreId, hasCourtRoomId ? courtRoomId : null);
+        if (template.isEmpty() && hasCourtRoomId) {
+            template = findLatestActiveSessionTemplate(courtCentreId, null);
+        }
+        if (template.isEmpty()) {
+            return Optional.empty();
+        }
+        final CourtSchedule t = template.get();
+
+        final LocalTime startTime = resolveAutoSessionStartTime(earliestHearingTime, t);
+        final int capacityMinutes = Math.max(t.getMaxDuration() != null ? t.getMaxDuration() : 0, durationInMinutes);
+
+        final CourtSchedule created = new CourtSchedule();
+        created.setCourtScheduleId(java.util.UUID.randomUUID().toString());
+        created.setListingProfileId(t.getListingProfileId());
+        created.setOuCode(t.getOuCode());
+        created.setCourtHouseId(courtCentreId);
+        created.setCourtHouseName(t.getCourtHouseName());
+        // court_room_id is NOT NULL, and DRAFT sessions carry a room in the DB (rooms are stripped
+        // from draft responses downstream, ADR-005) — so the DRAFT case borrows the template's room.
+        // Room name/number always come from the template; when the requested room has never had a
+        // session they are display-metadata approximations, the id is authoritative.
+        created.setCourtRoomId(hasCourtRoomId ? courtRoomId : t.getCourtRoomId());
+        created.setCourtRoomNumber(t.getCourtRoomNumber());
+        created.setCourtRoomName(t.getCourtRoomName());
+        created.setOperationalUnit(t.getOperationalUnit());
+        created.setBusinessType(t.getBusinessType());
+        created.setPanel(t.getPanel());
+        created.setCourtSession(t.getCourtSession());
+        created.setActive(true);
+        created.setSlotBased(false);
+        created.setSessionDate(hearingDate);
+        created.setMaxSlots(t.getMaxSlots());
+        created.setAvailableSlots(t.getMaxSlots());
+        created.setMaxDuration(capacityMinutes);
+        created.setAvailableDuration(capacityMinutes);
+        created.setHasHearingsBooked(false);
+        created.setSupportAdSplit(t.getSupportAdSplit());
+        created.setMaxAdMorningDuration(t.getMaxAdMorningDuration());
+        created.setMaxAdAfternoonDuration(t.getMaxAdAfternoonDuration());
+        created.setIsOverbookingAllowed(t.getIsOverbookingAllowed());
+        created.setIsDraft(!hasCourtRoomId);
+        created.setJurisdiction(t.getJurisdiction());
+        created.setNationalBreakTime(t.getNationalBreakTime());
+        created.setSessionStartTime(Date.from(hearingDate.atTime(startTime).atZone(ZoneOffset.UTC).toInstant()));
+        created.setSessionEndTime(Date.from(hearingDate.atTime(startTime).plusMinutes(capacityMinutes).atZone(ZoneOffset.UTC).toInstant()));
+
+        entityManager.persist(created);
+        entityManager.flush();
+
+        return Optional.of(new CrownFallbackSearchResult(toCrownFallbackDomain(created), false));
+    }
+
+    /**
+     * Start time for an auto-created session: the requested earliestHearingTime when parseable,
+     * else the template session's time of day, else 10:00.
+     */
+    private static LocalTime resolveAutoSessionStartTime(final String earliestHearingTime, final CourtSchedule template) {
+        if (earliestHearingTime != null && !earliestHearingTime.isBlank()) {
+            try {
+                return ZonedDateTime.parse(earliestHearingTime).toLocalTime();
+            } catch (final java.time.format.DateTimeParseException e) {
+                LOGGER.warn("[CROWN-FB][AUTO-SESSION] Unparseable earliestHearingTime '{}' — falling back to template/default start time", earliestHearingTime);
+            }
+        }
+        if (template.getSessionStartTime() != null) {
+            return template.getSessionStartTime().toInstant().atZone(ZoneOffset.UTC).toLocalTime();
+        }
+        return LocalTime.of(10, 0);
+    }
+
+    private Optional<CourtSchedule> findLatestActiveSessionTemplate(final String courtCentreId, final String courtRoomId) {
+        final StringBuilder sql = new StringBuilder(
+                "SELECT s.id FROM court_schedule s WHERE s.active = true AND s.court_house_id = :courtCentreId ");
+        if (courtRoomId != null) {
+            sql.append(" AND s.court_room_id = :courtRoomId ");
+        }
+        sql.append(" ORDER BY s.session_start DESC ");
+        final jakarta.persistence.Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter(COURT_CENTRE_ID, courtCentreId);
+        if (courtRoomId != null) {
+            query.setParameter(COURT_ROOM_ID, courtRoomId);
+        }
+        query.setMaxResults(1);
+        @SuppressWarnings("unchecked")
+        final List<String> ids = query.getResultList();
+        if (ids.isEmpty()) {
+            return Optional.empty();
+        }
+        return ofNullable(entityManager.find(CourtSchedule.class, ids.get(0)));
+    }
+
+    private static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule toCrownFallbackDomain(final CourtSchedule entity) {
+        return uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(entity.getCourtScheduleId())
+                .withOuCode(entity.getOuCode())
+                .withCourtRoomId(entity.getCourtRoomId())
+                .withCourtHouseId(entity.getCourtHouseId())
+                .withBusinessType(entity.getBusinessType())
+                .withCourtSession(entity.getCourtSession())
+                .withSessionDate(entity.getSessionDate())
+                .withIsDraft(entity.getIsDraft())
+                .withSessionStartTime(entity.getSessionStartTime())
+                .withSessionEndTime(entity.getSessionEndTime())
+                .build();
     }
 
     private Optional<CourtSchedule> findCrownFallbackCandidate(
