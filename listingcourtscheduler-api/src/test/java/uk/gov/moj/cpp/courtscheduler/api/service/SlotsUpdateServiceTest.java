@@ -1447,9 +1447,11 @@ class SlotsUpdateServiceTest {
             final CourtSchedule created = buildSession(createdScheduleId, request.getHearingDate(), false, "CR");
             when(courtScheduleRepository.createCrownFallbackSession(
                     eq(request.getCourtCentreId()), eq(request.getHearingDate()),
-                    eq(request.getDurationInMinutes()), eq(request.getCourtRoomId()), eq(request.getEarliestHearingTime())))
+                    eq(request.getCourtRoomId()), eq(request.getEarliestHearingTime())))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(created, false)));
-            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result("", true));
 
             final CrownFallbackResponse response = service.crownFallbackSearchAndBook(request);
@@ -1459,7 +1461,10 @@ class SlotsUpdateServiceTest {
             assertEquals(false, response.overbooked());
             verify(courtScheduleRepository).createCrownFallbackSession(
                     eq(request.getCourtCentreId()), eq(request.getHearingDate()),
-                    eq(request.getDurationInMinutes()), eq(request.getCourtRoomId()), eq(request.getEarliestHearingTime()));
+                    eq(request.getCourtRoomId()), eq(request.getEarliestHearingTime()));
+            // Allocation via on-the-fly session creation is stamped AUTO_CREATE_SAB on the DB row.
+            assertEquals("AUTO_CREATE_SAB", slotCaptor.getValue().get(0).getSource());
+            verify(allocatedListingRepository).updateSourceByHearingId(hearingId, "AUTO_CREATE_SAB");
         }
 
         @Test
@@ -1472,7 +1477,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.empty());
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.empty());
-            when(courtScheduleRepository.createCrownFallbackSession(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+            when(courtScheduleRepository.createCrownFallbackSession(any(), any(), any(), any()))
                     .thenReturn(Optional.empty());
 
             Assertions.assertThrows(CrownFallbackNoSessionException.class,
@@ -1526,7 +1531,10 @@ class SlotsUpdateServiceTest {
         }
 
         @Test
-        void shouldPropagateSourceLabelToAllocatedSlot() {
+        void shouldStampExemptSabSourceOnAllocatedSlot() {
+            // SPRDT-1159: allocated_listings.source records HOW the allocation was made — EXEMPT_SAB
+            // for search-and-book onto an existing session. The caller's CROWN_FB_* label stays on
+            // the response only (asserted elsewhere).
             final String hearingId = UUID.randomUUID().toString();
             final CrownFallbackRequest request = validRequest(hearingId).setSource("CROWN_FB_ADJOURN");
 
@@ -1540,11 +1548,14 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result("", true));
 
-            service.crownFallbackSearchAndBook(request);
+            final CrownFallbackResponse response = service.crownFallbackSearchAndBook(request);
 
             final List<AllocatedSlot> persisted = slotCaptor.getValue();
             assertEquals(1, persisted.size());
-            assertEquals("CROWN_FB_ADJOURN", persisted.get(0).getSource());
+            assertEquals("EXEMPT_SAB", persisted.get(0).getSource());
+            verify(allocatedListingRepository).updateSourceByHearingId(hearingId, "EXEMPT_SAB");
+            // response still echoes the caller's label
+            assertEquals("CROWN_FB_ADJOURN", response.source());
         }
 
         private CrownFallbackRequest validRequest(final String hearingId) {
