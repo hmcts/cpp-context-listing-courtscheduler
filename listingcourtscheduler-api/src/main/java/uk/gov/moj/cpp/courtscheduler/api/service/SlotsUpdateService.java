@@ -166,13 +166,12 @@ public class SlotsUpdateService {
                 request.getCourtRoomId(),
                 request.getEarliestHearingTime());
 
-        if (found.isEmpty()) {
-            throw new CrownFallbackNoSessionException(
-                    "No Crown session available at courtCentreId=" + request.getCourtCentreId()
-                            + " on " + request.getHearingDate());
-        }
+        // SPRDT-1159: no bookable session on the requested date/room -> create one on the fly from
+        // the request parameters (FINAL when a courtRoomId was supplied, DRAFT otherwise) so the
+        // hearing allocates onto it in this same response.
+        final CrownFallbackSearchResult searchResult = found.orElseGet(() -> autoCreateSession(request));
 
-        final CourtSchedule session = found.get().session();
+        final CourtSchedule session = searchResult.session();
         final AllocatedSlot slot = buildAllocatedSlot(request, session);
         final Result persistResult = courtScheduleRepository.saveBookedSlots(new ArrayList<>(List.of(slot)), false, false);
         if (!persistResult.isSuccess()) {
@@ -190,9 +189,36 @@ public class SlotsUpdateService {
 
         LOGGER.info("[CROWN-FB] Success - hearingId: {}, courtScheduleId: {}, isDraft: {}, overbooked: {}, source: {}",
                 request.getHearingId(), session.getCourtScheduleId(), session.isDraft(),
-                found.get().overbooked(), request.getSource());
+                searchResult.overbooked(), request.getSource());
 
-        return toResponse(request, found.get());
+        return toResponse(request, searchResult);
+    }
+
+    /**
+     * SPRDT-1159: creates a session on the fly when the fallback search finds nothing — FINAL when
+     * the request carries a courtRoomId, DRAFT otherwise — so the hearing allocates onto it in the
+     * same response. Logged at ERROR with a stable marker so auto-created sessions are traceable.
+     */
+    private CrownFallbackSearchResult autoCreateSession(final CrownFallbackRequest request) {
+        final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(
+                request.getCourtCentreId(),
+                request.getHearingDate(),
+                request.getDurationInMinutes(),
+                request.getCourtRoomId(),
+                request.getEarliestHearingTime());
+        if (created.isEmpty()) {
+            throw new CrownFallbackNoSessionException(
+                    "No Crown session available at courtCentreId=" + request.getCourtCentreId()
+                            + " on " + request.getHearingDate()
+                            + " and auto-creation found no session at the centre to copy metadata from");
+        }
+        final CourtSchedule session = created.get().session();
+        LOGGER.error("[CROWN-FB][AUTO-SESSION] No bookable session found — auto-created {} session"
+                        + " courtScheduleId={} at courtCentreId={} courtRoomId={} on {} for hearingId={} (source={})",
+                Boolean.TRUE.equals(session.isDraft()) ? "DRAFT" : "FINAL",
+                session.getCourtScheduleId(), request.getCourtCentreId(), request.getCourtRoomId(),
+                request.getHearingDate(), request.getHearingId(), request.getSource());
+        return created.get();
     }
 
     private static void validateCrownFallbackRequest(final CrownFallbackRequest request) {

@@ -53,6 +53,17 @@ public interface CourtScheduleRepositoryCustom {
      * Crown-only fallback search — strict on centre + date, relaxed on businessType/court_session
      * and (optionally) courtRoomId, trying non-draft/draft tiers with and without overbooking.
      */
+    /**
+     * SPRDT-1159 on-the-fly session creation for the Crown fallback: FINAL when a courtRoomId was
+     * supplied, DRAFT otherwise; metadata copied from the latest active session at the court centre.
+     * Empty when the centre has no session to copy from.
+     */
+    Optional<CrownFallbackSearchResult> createCrownFallbackSession(String courtCentreId,
+                                                                   java.time.LocalDate hearingDate,
+                                                                   int durationInMinutes,
+                                                                   String courtRoomId,
+                                                                   String earliestHearingTime);
+
     Optional<CrownFallbackSearchResult> searchCrownFallbackSlots(String courtCentreId,
                                                                  LocalDate hearingDate,
                                                                  int durationInMinutes,

@@ -1433,12 +1433,46 @@ class SlotsUpdateServiceTest {
         }
 
         @Test
-        void shouldThrowNoSessionExceptionWhenRepositoryReturnsEmpty() {
+        void shouldAutoCreateSessionAndBookWhenSearchReturnsEmpty() {
+            // SPRDT-1159: no bookable session on the requested date/room -> courtscheduler creates one
+            // on the fly from the request parameters and the hearing books onto it in the same response.
+            final String hearingId = UUID.randomUUID().toString();
+            final CrownFallbackRequest request = validRequest(hearingId);
+            final String createdScheduleId = UUID.randomUUID().toString();
+
+            when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.empty());
+            when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                    .thenReturn(Optional.empty());
+
+            final CourtSchedule created = buildSession(createdScheduleId, request.getHearingDate(), false, "CR");
+            when(courtScheduleRepository.createCrownFallbackSession(
+                    eq(request.getCourtCentreId()), eq(request.getHearingDate()),
+                    eq(request.getDurationInMinutes()), eq(request.getCourtRoomId()), eq(request.getEarliestHearingTime())))
+                    .thenReturn(Optional.of(new CrownFallbackSearchResult(created, false)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result("", true));
+
+            final CrownFallbackResponse response = service.crownFallbackSearchAndBook(request);
+
+            assertEquals(createdScheduleId, response.courtScheduleId());
+            assertEquals(false, response.isDraft());
+            assertEquals(false, response.overbooked());
+            verify(courtScheduleRepository).createCrownFallbackSession(
+                    eq(request.getCourtCentreId()), eq(request.getHearingDate()),
+                    eq(request.getDurationInMinutes()), eq(request.getCourtRoomId()), eq(request.getEarliestHearingTime()));
+        }
+
+        @Test
+        void shouldThrowNoSessionExceptionWhenSearchEmptyAndAutoCreateHasNoTemplateSession() {
+            // Auto-creation needs an existing session at the centre to copy metadata from; a centre
+            // that has never been seeded still surfaces the no-session error.
             final String hearingId = UUID.randomUUID().toString();
             final CrownFallbackRequest request = validRequest(hearingId);
 
             when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.empty());
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                    .thenReturn(Optional.empty());
+            when(courtScheduleRepository.createCrownFallbackSession(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.empty());
 
             Assertions.assertThrows(CrownFallbackNoSessionException.class,
