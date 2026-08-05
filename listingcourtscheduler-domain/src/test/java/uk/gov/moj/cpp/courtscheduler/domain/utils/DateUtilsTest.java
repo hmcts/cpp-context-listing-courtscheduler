@@ -30,6 +30,32 @@ class DateUtilsTest {
     }
 
     @Test
+    void shouldParseStrictMillisecondZuluFormToOffsetDateTime() {
+        final OffsetDateTime actual = DateUtils.toOffsetDateTime("2026-08-06T09:00:00.000Z");
+        assertThat(actual, is(OffsetDateTime.of(2026, 8, 6, 9, 0, 0, 0, ZoneOffset.UTC)));
+    }
+
+    @Test
+    void shouldParseZonedDateTimeToStringFormToOffsetDateTime() {
+        // ZonedDateTime.toString() output as sent by listing's crown fallback: zone-id suffix and
+        // seconds omitted when zero (SPRDT-1159).
+        final OffsetDateTime actual = DateUtils.toOffsetDateTime("2026-08-06T09:00Z[UTC]");
+        assertThat(actual, is(OffsetDateTime.of(2026, 8, 6, 9, 0, 0, 0, ZoneOffset.UTC)));
+    }
+
+    @Test
+    void shouldParseOffsetFormToOffsetDateTimeNormalisedToUtc() {
+        final OffsetDateTime actual = DateUtils.toOffsetDateTime("2026-08-06T10:00:00+01:00");
+        assertThat(actual, is(OffsetDateTime.of(2026, 8, 6, 9, 0, 0, 0, ZoneOffset.UTC)));
+    }
+
+    @Test
+    void shouldStillThrowOnUnparseableDateTime() {
+        Assertions.assertThrows(java.time.format.DateTimeParseException.class,
+                () -> DateUtils.toOffsetDateTime("not-a-date"));
+    }
+
+    @Test
     void shouldConvertToLocalDateIfTooLong() {
         final Date actual = toSqlDate("2018-09-28T12:00:00.000000000Z");
         assertThat(actual.toString(), is("2018-09-28"));
