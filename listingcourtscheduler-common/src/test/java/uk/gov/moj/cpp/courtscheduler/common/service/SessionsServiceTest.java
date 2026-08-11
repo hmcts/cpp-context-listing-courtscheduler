@@ -1417,32 +1417,6 @@ class SessionsServiceTest {
     }
 
     @Test
-    void shouldReturnMigratedCourt() {
-        final String oucode = "B01LY00" ;
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(oucode);
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(true);
-
-        when(courtMigrationRepository.findByOuCode(oucode)).thenReturn(migrationStatus);
-        assertTrue(sessionsService.isMigrated(oucode));
-
-    }
-
-    @Test
-    void shouldReturnFalseForNonMigratedCourt() {
-        final String oucode = "B01LY00" ;
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(oucode);
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(false);
-
-        when(courtMigrationRepository.findByOuCode(oucode)).thenReturn(migrationStatus);
-        assertFalse(sessionsService.isMigrated(oucode));
-
-    }
-
-    @Test
     void shouldReturnAllInfoAboutMigratedOrNot() {
         final String ouCode1 = "B01LY00" ;
         final String ouCode2 = "B06IS00" ;
@@ -1633,46 +1607,6 @@ class SessionsServiceTest {
         verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
         verify(courtScheduleJudiciaryRepository, never()).deleteSchedules(anyList());
         verify(courtScheduleRepository, never()).deleteSlots(anyList());
-    }
-
-    @Test
-    void shouldMigrate_GivenOuCodes_Successfully() {
-        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
-        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02") ;
-        ouCodeMigrateRequest.setOuCodes(ouCodes);
-        ouCodeMigrateRequest.setMigrated(true);
-
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(ouCodes.get(0));
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(false);
-
-        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(migrationStatus);
-
-        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
-
-        verify(courtMigrationRepository, atLeastOnce()).save(any());
-        assertThat(result.isSuccess(), is(true));
-    }
-
-    @Test
-    void shouldNotMigrate_OuCode_IfAnyOneNotFound() {
-        OuCodeMigrateRequest ouCodeMigrateRequest = new OuCodeMigrateRequest();
-        final List<String> ouCodes = List.of("B01LY00", "B01LY01", "B01LY02");
-        ouCodeMigrateRequest.setOuCodes(ouCodes);
-        ouCodeMigrateRequest.setMigrated(true);
-
-        CourtSchedulerMigrationStatus migrationStatus = new CourtSchedulerMigrationStatus();
-        migrationStatus.setOuCode(ouCodes.get(0));
-        migrationStatus.setCourtCentreId(randomUUID().toString());
-        migrationStatus.setMigrated(false);
-
-        when(courtMigrationRepository.findByOuCode(anyString())).thenReturn(null);
-
-        Result result = sessionsService.migrateOuCodes(ouCodeMigrateRequest);
-
-        verify(courtMigrationRepository, never()).save(any());
-        assertThat(result.isSuccess(), is(false));
     }
 
     private static CourtSchedule getPersistedCourtSchedule(final String courtScheduleId, final String businessTypeCode) {

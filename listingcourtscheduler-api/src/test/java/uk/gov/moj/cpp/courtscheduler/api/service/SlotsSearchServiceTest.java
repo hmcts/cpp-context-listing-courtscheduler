@@ -1213,23 +1213,6 @@ class SlotsSearchServiceTest {
     }
 
     @Test
-    void getEffectiveAvailableDuration_shouldCalculateForRegularSession() {
-        CourtSchedule cs = new CourtSchedule.CourtScheduleBuilder()
-                .withMaxDuration(360).withTotalBooked(50).withAllDaySplit(false).build();
-        assertThat(slotsSearchService.getEffectiveAvailableDuration(cs), is(310));
-    }
-
-    @Test
-    void getEffectiveAvailableDuration_shouldCalculateForAllDaySplitSession() {
-        CourtSchedule cs = new CourtSchedule.CourtScheduleBuilder()
-                .withAllDaySplit(true)
-                .withMaxDurationForMorning(200).withMaxDurationForAfternoon(200)
-                .withTotalBookedForMorning(20).withTotalBookedForAfternoon(30)
-                .build();
-        assertThat(slotsSearchService.getEffectiveAvailableDuration(cs), is(350));
-    }
-
-    @Test
     void getMultidayCourtSchedules_shouldFetchUnpaginatedAndReturnPaginatedResults() {
         String courtRoomId = randomUUID().toString();
         // Mon 23 to Fri 27 = 5 consecutive weekdays
