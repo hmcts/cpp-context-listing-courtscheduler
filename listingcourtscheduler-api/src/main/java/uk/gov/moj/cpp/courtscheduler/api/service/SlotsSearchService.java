@@ -3,12 +3,12 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.lang.Integer.parseInt;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
+import uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -190,7 +190,7 @@ public class SlotsSearchService {
         LocalDate currentDate = startDate;
         for (int day = 0; day < daysNeeded; day++) {
             if (day > 0) {
-                currentDate = getNextBusinessDay(currentDate);
+                currentDate = SessionAvailability.getNextBusinessDay(currentDate);
             }
             final CourtSchedule daySchedule = dateMap.get(currentDate);
             if (daySchedule == null) {
@@ -199,19 +199,11 @@ public class SlotsSearchService {
             // When showOverbookedSlots is true, include sessions regardless of capacity.
             if (!showOverbookedSlots
                     && !daySchedule.isOverbookingAllowed()
-                    && getEffectiveAvailableDuration(daySchedule) < FULL_DAY_DURATION_MINS) {
+                    && SessionAvailability.getEffectiveAvailableDuration(daySchedule) < FULL_DAY_DURATION_MINS) {
                 return false;
             }
         }
         return true;
-    }
-
-    static LocalDate getNextBusinessDay(final LocalDate date) {
-        LocalDate next = date.plusDays(1);
-        while (next.getDayOfWeek() == DayOfWeek.SATURDAY || next.getDayOfWeek() == DayOfWeek.SUNDAY) {
-            next = next.plusDays(1);
-        }
-        return next;
     }
 
     private String buildGroupingKey(CourtSchedule cs) {
@@ -220,14 +212,6 @@ public class SlotsSearchService {
 
     private static CourtSchedule preferNonOverbooking(CourtSchedule existing, CourtSchedule incoming) {
         return existing.isOverbookingAllowed() ? incoming : existing;
-    }
-
-    int getEffectiveAvailableDuration(CourtSchedule cs) {
-        if (cs.isAllDaySplit()) {
-            return (cs.getMaxDurationForMorning() + cs.getMaxDurationForAfternoon())
-                    - (cs.getTotalBookedForMorning() + cs.getTotalBookedForAfternoon());
-        }
-        return cs.getMaxDuration() - cs.getTotalBooked();
     }
 
     private List<CourtSchedule> deduplicateSchedules(List<CourtSchedule> schedules) {
@@ -269,11 +253,7 @@ public class SlotsSearchService {
         if (courtSchedule.isSlotBased()) {
             return courtSchedule.getTotalBooked() < courtSchedule.getMaxSlots();
         }
-        if (courtSchedule.isAllDaySplit()) {
-            return (courtSchedule.getMaxDurationForMorning() + courtSchedule.getMaxDurationForAfternoon())
-                    - (courtSchedule.getTotalBookedForMorning() + courtSchedule.getTotalBookedForAfternoon()) >= durationInt;
-        }
-        return (courtSchedule.getMaxDuration() - courtSchedule.getTotalBooked()) >= durationInt;
+        return SessionAvailability.getEffectiveAvailableDuration(courtSchedule) >= durationInt;
     }
 
     private static Optional<Integer> parseDurationToOptional(final String duration) {

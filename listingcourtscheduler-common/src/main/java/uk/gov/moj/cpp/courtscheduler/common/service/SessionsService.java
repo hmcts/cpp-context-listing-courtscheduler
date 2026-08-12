@@ -52,7 +52,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnit;
-import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -86,7 +85,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -351,10 +349,6 @@ public class SessionsService {
         }
     }
 
-    public boolean isMigrated(final String ouCode) {
-        return courtMigrationRepository.findByOuCode(ouCode).isMigrated();
-    }
-
     public boolean isMigratedByCourtCentreId(final String courtCentreId) {
         return courtMigrationRepository.findByCourtCentreId(courtCentreId).isMigrated();
     }
@@ -362,32 +356,6 @@ public class SessionsService {
     public Map<String, Boolean> migratedMapByOuCode() {
         return courtMigrationRepository.findAll().stream()
                 .collect(Collectors.toMap(CourtSchedulerMigrationStatus::getOuCode, CourtSchedulerMigrationStatus::isMigrated));
-    }
-
-    public Result migrateOuCodes(OuCodeMigrateRequest ouCodeMigrateRequest) {
-        List<String> ouCodes = ouCodeMigrateRequest.getOuCodes();
-        boolean migrated = ouCodeMigrateRequest.isMigrated();
-        List<CourtSchedulerMigrationStatus> courtSchedulerMigrationStatusList = new ArrayList<>();
-        final AtomicBoolean isOuCodeNotPresent = new AtomicBoolean(false);
-
-        ouCodes.forEach(ouCode -> {
-            CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = courtMigrationRepository.findByOuCode(ouCode);
-            if (isNull(courtSchedulerMigrationStatus)) {
-                isOuCodeNotPresent.set(true);
-            }
-            courtSchedulerMigrationStatusList.add(courtSchedulerMigrationStatus);
-        });
-
-        if (isOuCodeNotPresent.get()) {
-            return new Result("One of the OuCode not present for migrate", false);
-        }
-
-        courtSchedulerMigrationStatusList.forEach(courtSchedulerMigrationStatus -> {
-            courtSchedulerMigrationStatus.setMigrated(migrated);
-            courtMigrationRepository.save(courtSchedulerMigrationStatus);
-        });
-
-        return Result.SUCCESS();
     }
 
     public CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(final String courtRoomId,

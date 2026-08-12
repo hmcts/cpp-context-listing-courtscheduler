@@ -65,6 +65,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         assertThat(extractSessionIds(payload), contains(sessionId));
         assertThat("one allocated_listings row booked for the hearing",
                 bookedScheduleIds(hearingId), contains(sessionId));
+        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
     }
 
     // --- (b) single-day CROWN (no anchor → centre search) ---
@@ -86,6 +87,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         assertThat(extractSessionIds(payload), contains(sessionId));
         assertThat("one allocated_listings row booked for the hearing",
                 bookedScheduleIds(hearingId), contains(sessionId));
+        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
     }
 
     // --- (c) multi-day MAGS (consecutive weekdays) ---
@@ -109,6 +111,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         assertThat(extractSessionIds(payload), contains(d1, d2));
         assertThat("both consecutive days booked for the hearing",
                 bookedScheduleIds(hearingId), containsInAnyOrder(d1, d2));
+        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
     }
 
     // --- (d) multi-day CROWN (no anchor → centre consecutive search) ---
@@ -131,6 +134,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         assertThat(extractSessionIds(payload), contains(d1, d2));
         assertThat("both consecutive days booked for the hearing",
                 bookedScheduleIds(hearingId), containsInAnyOrder(d1, d2));
+        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
     }
 
     // --- helpers ---
@@ -157,6 +161,14 @@ class MoveHearingToPastDateIT extends AbstractIT {
         return databaseReader.allocatedListings().stream()
                 .filter(al -> hearingId.equals(al.getHearingId()))
                 .map(AllocatedListing::getCourtScheduleId)
+                .collect(Collectors.toList());
+    }
+
+    private List<String> bookedSources(final String hearingId) {
+        return databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .map(AllocatedListing::getSource)
+                .distinct()
                 .collect(Collectors.toList());
     }
 

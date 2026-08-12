@@ -4,8 +4,6 @@ import static java.lang.String.format;
 import static jakarta.json.Json.createArrayBuilder;
 import static jakarta.json.Json.createObjectBuilder;
 
-import uk.gov.moj.cpp.courtscheduler.api.converter.AllocatedSlotToHearingSlotSearchResponseConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.HearingSlotSearchRequestToAllocatedSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.ChangeCourtRoomForMultidayHearingRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ChangeCourtRoomForMultidayHearingResponse;
@@ -16,8 +14,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookResponse;
@@ -129,20 +125,6 @@ public class SlotsUpdateService {
         response.setHearings(listHearingSlots);
 
         return response;
-    }
-
-    public Result searchUpdate(final List<AllocatedSlot> slots) {
-        Result result;
-        if("Police".equalsIgnoreCase(slots.get(0).getProsecutor())) {
-            result = courtScheduleRepository.saveBookedSlots(slots, false, true);
-        } else {
-            result = courtScheduleRepository.saveBookedSlots(slots, false, false);
-        }
-        if(result.isSuccess()) {
-            result.setCourtRoomId(slots.get(0).getCourtRoomUUId());
-            result.setCourtRoomName(slots.get(0).getCourtRoom());
-        }
-        return result;
     }
 
     public CrownFallbackResponse crownFallbackSearchAndBook(final CrownFallbackRequest request) {
@@ -308,115 +290,6 @@ public class SlotsUpdateService {
             return null;
         }
     }
-
-    public HearingSlotSearchAndBookResponse searchAndBook(final HearingSlotSearchRequest hearingSlotSearchRequest) {
-        HearingSlotSearchAndBookResponse hearingSlotSearchAndBookResponse = new HearingSlotSearchAndBookResponse();
-        AllocatedSlot allocatedSlot = HearingSlotSearchRequestToAllocatedSlotConverter.convert(hearingSlotSearchRequest);
-        List<AllocatedSlot> allocatedSlots = new ArrayList<>(List.of(allocatedSlot));
-        boolean isSearchSuccessful = courtScheduleRepository.searchBookHearingSlots(allocatedSlots);
-        if(isSearchSuccessful && CollectionUtils.isNotEmpty(allocatedSlots))
-            hearingSlotSearchAndBookResponse = AllocatedSlotToHearingSlotSearchResponseConverter.convert(allocatedSlots.get(0), hearingSlotSearchRequest.hearingId());
-        return hearingSlotSearchAndBookResponse;
-    }
-
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> multiDaySearchAndBook(
-            final String courtScheduleId, final int durationInMinutes, final String hearingId) {
-        LOGGER.info("[MULTIDAY-SEARCH] Received request - hearingId: {}, anchorCourtScheduleId: {}, durationInMinutes: {}",
-                hearingId, courtScheduleId, durationInMinutes);
-
-        final int daysNeeded = durationInMinutes / MINUTES_IN_DAY;
-        if (daysNeeded < 2) {
-            LOGGER.info("[MULTIDAY-SEARCH] Rejected - hearingId: {}, daysNeeded={} (< 2), durationInMinutes: {} insufficient for multiday",
-                    hearingId, daysNeeded, durationInMinutes);
-            return Collections.emptyList();
-        }
-
-        LOGGER.info("[MULTIDAY-SEARCH] hearingId: {}, daysNeeded: {}, searching from anchorCourtScheduleId: {}",
-                hearingId, daysNeeded, courtScheduleId);
-
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> rawCandidates =
-                courtScheduleRepository.findConsecutiveSessions(courtScheduleId, daysNeeded);
-
-        // Dedupe duplicate rows sharing a session_date so the consecutive-day check downstream
-        // doesn't see [Apr20, Apr20, Apr21] as a gap. F1: prefer the row per date that can actually
-        // take the per-day booking (falling back to an overbookable row) so a full non-overbookable
-        // sibling never shadows a bookable duplicate.
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> candidates =
-                dedupeByDatePreferringBookable(rawCandidates, durationInMinutes / daysNeeded);
-
-        // A candidate day may be one this hearing already occupies — a single→multi-day conversion
-        // anchors on the hearing's own currently-booked session. totalBooked is a live
-        // SUM(al.duration) over allocated_listings and saveBookedSlots' internal release only runs
-        // AFTER the availability check below, so without reclaiming, the hearing's own minutes
-        // reject the anchor day outright and the conversion can never book.
-        reclaimHearingsOwnCapacity(candidates, allocatedListingRepository.findByHearingId(hearingId));
-
-        LOGGER.info("[MULTIDAY-SEARCH] hearingId: {}, candidatesFound: {} (raw: {}), candidateCourtScheduleIds: [{}]",
-                hearingId, candidates.size(), rawCandidates.size(), formatSessionSummaries(candidates));
-
-        if (candidates.size() < daysNeeded) {
-            LOGGER.info("[MULTIDAY-SEARCH] Rejected - hearingId: {}, found {} candidate sessions but need {}, returning empty",
-                    hearingId, candidates.size(), daysNeeded);
-            return Collections.emptyList();
-        }
-
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> sessions = candidates.subList(0, daysNeeded);
-
-        if (!areConsecutiveBusinessDays(sessions, hearingId)) {
-            LOGGER.info("[MULTIDAY-SEARCH] Rejected - hearingId: {}, sessions are not consecutive business days: [{}]",
-                    hearingId, formatSessionSummaries(sessions));
-            return Collections.emptyList();
-        }
-
-        // F1 (court-calendar always-assign rule): capacity shortfall no longer rejects the block —
-        // days booked beyond capacity are logged advisorily and the booking proceeds.
-        logSessionsBookedBeyondCapacity(sessions, hearingId, durationInMinutes / daysNeeded);
-
-        // Book all sessions by creating allocated_listings records via searchBookHearingSlots
-        final int durationPerDay = durationInMinutes / daysNeeded;
-        final List<AllocatedSlot> slotsToBook = sessions.stream()
-                .map(session -> {
-                    AllocatedSlot slot = new AllocatedSlot();
-                    slot.setCourtScheduleId(session.getCourtScheduleId());
-                    slot.setHearingId(hearingId);
-                    slot.setDuration(durationPerDay);
-                    slot.setSessionDate(session.getSessionDate().toString());
-                    slot.setOuCode(session.getOuCode());
-                    slot.setCourtRoom(session.getCourtRoomName());
-                    slot.setCourtRoomUUId(session.getCourtRoomId());
-                    // allocated_listings.source is NOT NULL. Multiday bookings come from CROWN
-                    // listing enrichment (never police), so align with the search-and-book flow
-                    // which sets NONPOLICE for non-police bookings.
-                    slot.setSource(SOURCE_NONPOLICE);
-                    if (session.getSessionStartTime() != null) {
-                        slot.setHearingStartTime(DateUtils.toIsoString(new Timestamp(session.getSessionStartTime().getTime())));
-                    }
-                    return slot;
-                })
-                .toList();
-
-        LOGGER.info("[MULTIDAY-SEARCH] Booking - hearingId: {}, durationPerDay: {}, courtScheduleIds: [{}]",
-                hearingId, durationPerDay, sessions.stream()
-                        .map(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::getCourtScheduleId)
-                        .collect(Collectors.joining(", ")));
-
-        final Result bookResult = courtScheduleRepository.saveBookedSlots(new ArrayList<>(slotsToBook), false, false);
-        if (!bookResult.isSuccess()) {
-            LOGGER.info("[MULTIDAY-SEARCH] Booking failed - hearingId: {}, reason: {}", hearingId, bookResult.getMsg());
-            return Collections.emptyList();
-        }
-
-        LOGGER.info("[MULTIDAY-SEARCH] Success - hearingId: {}, bookedDays: {}, courtScheduleIds: [{}], dates: [{}]",
-                hearingId, sessions.size(),
-                sessions.stream().map(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::getCourtScheduleId)
-                        .collect(Collectors.joining(", ")),
-                sessions.stream().map(s -> s.getSessionDate().toString())
-                        .collect(Collectors.joining(", ")));
-        return sessions;
-    }
-
-    // ─── SPRDT-1089: resource-based booking engine (Phase 1) ──────────────────
-    // Stubs only — Stage 5 implements the logic. Tests in SlotsUpdateServiceTest define the contract.
 
     private static final String SOURCE_MOVE_TO_PAST_DATE = "MOVE_TO_PAST_DATE";
     private static final String SOURCE_NONPOLICE = "NONPOLICE";
@@ -729,7 +602,7 @@ public class SlotsUpdateService {
                     request.getHearingId(), prior.get().getCourtScheduleId());
             courtScheduleRepository.releaseOldAllocatedListings(request.getHearingId());
         }
-        persistSessions(sessions, request.getHearingId(), false, perDay, SOURCE_NONPOLICE);
+        persistSessions(sessions, request.getHearingId(), false, perDay, SOURCE_MOVE_TO_PAST_DATE);
 
         return new MoveHearingToPastDateResponse(request.getHearingId(), SOURCE_MOVE_TO_PAST_DATE, sessions);
     }
@@ -1044,33 +917,6 @@ public class SlotsUpdateService {
         return uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.getNextBusinessDay(date);
     }
 
-    static boolean allSessionsHaveSufficientAvailability(
-            final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> sessions,
-            final String hearingId) {
-        for (final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session : sessions) {
-            if (session.isOverbookingAllowed()) {
-                LOGGER.info("[MULTIDAY-SEARCH] hearingId: {}, session {} on {} - overbooking allowed, skipping availability check",
-                        hearingId, session.getCourtScheduleId(), session.getSessionDate());
-                continue;
-            }
-            final int available = getEffectiveAvailableDuration(session);
-            if (available < MINUTES_IN_DAY) {
-                LOGGER.info("[MULTIDAY-SEARCH] Rejected - hearingId: {}, session {} on {} has only {}mins available (need {}mins)",
-                        hearingId, session.getCourtScheduleId(), session.getSessionDate(), available, MINUTES_IN_DAY);
-                return false;
-            }
-            LOGGER.info("[MULTIDAY-SEARCH] hearingId: {}, session {} on {} - available: {}mins, sufficient",
-                    hearingId, session.getCourtScheduleId(), session.getSessionDate(), available);
-        }
-        return true;
-    }
-
-    private static String formatSessionSummaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> sessions) {
-        return sessions.stream()
-                .map(s -> s.getCourtScheduleId() + " (" + s.getSessionDate() + ")")
-                .collect(Collectors.joining(", "));
-    }
-
     static List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> dedupeByDatePreferringBookable(
             final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> sessions,
             final int requiredPerDayMinutes) {
@@ -1103,22 +949,6 @@ public class SlotsUpdateService {
         }
         // neither fits: prefer the row where overbooking is explicitly allowed
         return !existing.isOverbookingAllowed() && incoming.isOverbookingAllowed() ? incoming : existing;
-    }
-
-    static List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> dedupeByDatePreferringNonOverbooking(
-            final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> sessions) {
-        final java.util.LinkedHashMap<LocalDate, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> byDate =
-                new java.util.LinkedHashMap<>();
-        for (final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule cs : sessions) {
-            if (cs.getSessionDate() == null) {
-                continue;
-            }
-            byDate.merge(cs.getSessionDate(), cs, (existing, incoming) ->
-                    existing.isOverbookingAllowed() ? incoming : existing);
-        }
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> out = new ArrayList<>(byDate.values());
-        out.sort(java.util.Comparator.comparing(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::getSessionDate));
-        return out;
     }
 
     static int getEffectiveAvailableDuration(final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule cs) {
