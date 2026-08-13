@@ -1521,12 +1521,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             params.put(COURT_ROOM_ID, requestParam.courtRoomId());
         }
 
+        // Must mirror appendOptionalPredicates exactly — a bound parameter with no predicate
+        // (or a predicate with no bound parameter) is an immediate JPA failure.
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             params.put(BUSINESS_TYPE, requestParam.businessType());
-        } else {
-            if (isNotEmpty(requestParam.isSlotBased())) {
+            if (requestParam.isCrownMultiDaySearch() && isNotEmpty(requestParam.isSlotBased())) {
                 params.put("slotBased", requestParam.isSlotBased());
             }
+        } else if (isNotEmpty(requestParam.isSlotBased())) {
+            params.put("slotBased", requestParam.isSlotBased());
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
@@ -1591,12 +1594,18 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             query.append(" AND cs.court_room_id = :courtRoomId");
         }
 
+        // SPRDT-1276: for a CROWN multi-day search only, businessType and isSlotBased are
+        // independent predicates rather than alternatives. The historic if/else means supplying a
+        // businessType silently drops the is_slot_based filter, which would let slot-based
+        // sessions back into the search that forces isSlotBased=false. MAGISTRATES (and CROWN at
+        // or under a full day) keep the original either/or behaviour untouched.
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             query.append(" AND cs.rota_business_type = :businessType");
-        } else {
-            if (isNotEmpty(requestParam.isSlotBased())) {
+            if (requestParam.isCrownMultiDaySearch() && isNotEmpty(requestParam.isSlotBased())) {
                 query.append(" AND cs.is_slot_based = :slotBased");
             }
+        } else if (isNotEmpty(requestParam.isSlotBased())) {
+            query.append(" AND cs.is_slot_based = :slotBased");
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {

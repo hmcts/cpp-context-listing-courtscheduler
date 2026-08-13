@@ -146,6 +146,146 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertTrue(result.isEmpty());
     }
 
+    // SPRDT-1276: the CROWN multiday search forces courtSession=AD / isSlotBased=false. These two
+    // tests pin the repository half of that contract: the court_session predicate actually filters,
+    // and businessType no longer suppresses the is_slot_based predicate.
+
+    @Test
+    public void getMultidayHearingSlotCandidatesShouldExcludeAmSessionsWhenCourtSessionIsAd() {
+        // Two rooms, both with consecutive Mon+Tue sessions. CR01 sits AM, CR02 sits AD.
+        // A 2-day CROWN search must see CR02 only — before the fix an absent/AM court_session
+        // let the AM room through, which is the AM session on the ticket's screenshot.
+        final LocalDate monday  = LocalDate.of(2026, 6, 15);
+        final LocalDate tuesday = LocalDate.of(2026, 6, 16);
+        final String ouCode = "B99MC02";
+
+        for (LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR01", "TRF", "AM"));
+            courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR02", "TRF", "AD"));
+        }
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                tuesday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, null, "AD", false, null,
+                false, "720", null, "CROWN");
+
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(cs -> "CR02".equals(cs.getCourtRoomId())));
+    }
+
+    @Test
+    public void getMultidayHearingSlotCandidatesShouldApplyBothBusinessTypeAndIsSlotBasedForCrown() {
+        // Two rooms with the same businessType and the same consecutive days: CR01 duration-based,
+        // CR02 slot-based. Supplying businessType used to suppress the is_slot_based predicate
+        // (if/else), so both rooms came back. For a CROWN >360 search both predicates now apply
+        // and CR02 must drop out.
+        //
+        // The rooms must differ: unique index court_act_business_date_session_idx_am keys on
+        // (oucode, court_room_id, rota_business_type, session_start, court_session[AD->AM],
+        // is_draft), so one room cannot hold two sessions differing only by is_slot_based.
+        final LocalDate monday  = LocalDate.of(2026, 6, 22);
+        final LocalDate tuesday = LocalDate.of(2026, 6, 23);
+        final String ouCode = "B99MC03";
+
+        for (LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR01", "TRF", "AD"));
+            final CourtSchedule slotBased = createCourtSchedule(ouCode, "ADULT", date, "CR02", "TRF", "AD");
+            slotBased.setSlotBased(true);
+            courtScheduleRepository.save(slotBased);
+        }
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                tuesday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", "AD", false, null,
+                false, "720", null, "CROWN");
+
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isSlotBased));
+        assertTrue(result.stream().allMatch(cs -> "CR01".equals(cs.getCourtRoomId())));
+    }
+
+    @Test
+    public void getCourtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForMagistrates() {
+        // MAGISTRATES regression guard for SPRDT-1276. The CROWN >360 carve-out must not reach
+        // here: businessType is supplied, so the caller's isSlotBased=true stays IGNORED and the
+        // duration-based row is still returned. If the carve-out ever loses its jurisdiction
+        // gate, the is_slot_based=true predicate is appended and this returns 0.
+        final LocalDate monday = LocalDate.of(2026, 7, 6);
+        final String ouCode = "B99MG01";
+
+        final CourtSchedule magsSchedule = createCourtSchedule(ouCode, "ADULT", monday, "CR01", "TRF", "AM");
+        magsSchedule.setJurisdiction("MAGISTRATES");
+        courtScheduleRepository.save(magsSchedule);
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", null, true, null,
+                false, "60", null, "MAGISTRATES");
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
+    @Test
+    public void getCourtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForMagistratesOverAFullDay() {
+        // The threshold alone must not trigger the carve-out — a MAGISTRATES search for 720
+        // minutes is still an ordinary search. Same expectation as the single-day MAGS case.
+        final LocalDate monday = LocalDate.of(2026, 7, 13);
+        final String ouCode = "B99MG02";
+
+        final CourtSchedule magsSchedule = createCourtSchedule(ouCode, "ADULT", monday, "CR01", "TRF", "AM");
+        magsSchedule.setJurisdiction("MAGISTRATES");
+        courtScheduleRepository.save(magsSchedule);
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", null, true, null,
+                false, "720", null, "MAGISTRATES");
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
+    @Test
+    public void getCourtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForSingleDayCrown() {
+        // CROWN at or below a full day is also outside the carve-out — 360 is not "> 360".
+        final LocalDate monday = LocalDate.of(2026, 7, 20);
+        final String ouCode = "B99CR01";
+
+        courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", monday, "CR01", "TRF", "AD"));
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", null, true, null,
+                false, "360", null, "CROWN");
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
     // -----------------------------------------------------------------------
     // Tests for getCourtScheduleJudiciariesByCourtScheduleIds
     // -----------------------------------------------------------------------
@@ -398,6 +538,14 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         cs.setCourtScheduleId(courtScheduleId);
         courtScheduleRepository.save(cs);
         return courtScheduleId;
+    }
+
+    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
+                                              final String courtRoomId, final String businessType,
+                                              final String courtSession) {
+        final CourtSchedule schedule = createCourtSchedule(ouCode, panel, sessionDate, courtRoomId, businessType);
+        schedule.setCourtSession(courtSession);
+        return schedule;
     }
 
     private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
