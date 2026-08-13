@@ -45,6 +45,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -1580,6 +1581,96 @@ class SlotsSearchServiceTest {
 
         assertThat(jsonObject.getInt("results"), is(dbTotalCount));
         assertThat(jsonObject.getInt("pageCount"), is(5)); // ceil(50/10) = 5
+    }
+
+    // ---- SPRDT-1276: CROWN >360 forces courtSession=AD and isSlotBased=false ----
+
+    @Test
+    void multidayCrownSearch_shouldForceCourtSessionToAdWhenCallerSendsAm() {
+        when(courtScheduleRepository.getMultidayHearingSlotCandidates(any(), anyInt())).thenReturn(List.of());
+
+        // The reported defect: a 720-minute CROWN search that asks for AM sessions.
+        slotsSearchService.search(new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, "AM", true, null, true,
+                "720", "DRAFT", "CROWN"));
+
+        assertThat(capturedMultidayRequest().courtSession(), is("AD"));
+        assertThat(capturedMultidayRequest().isSlotBased(), is(false));
+    }
+
+    @Test
+    void multidayCrownSearch_shouldDefaultCourtSessionToAdWhenCallerSendsNone() {
+        when(courtScheduleRepository.getMultidayHearingSlotCandidates(any(), anyInt())).thenReturn(List.of());
+
+        // An absent courtSession previously meant "no court_session predicate at all", which is
+        // how AM sessions reached the response for the exact curl on the ticket.
+        slotsSearchService.search(new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, null, null, null, true,
+                "720", "DRAFT", "CROWN"));
+
+        assertThat(capturedMultidayRequest().courtSession(), is("AD"));
+        assertThat(capturedMultidayRequest().isSlotBased(), is(false));
+    }
+
+    @Test
+    void multidayCrownSearch_shouldForceSessionDefaultsEvenWhenBusinessTypeSupplied() {
+        when(courtScheduleRepository.getMultidayHearingSlotCandidates(any(), anyInt())).thenReturn(List.of());
+
+        slotsSearchService.search(new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, "TRIAL", "PM", true, null, true,
+                "720", "DRAFT", "CROWN"));
+
+        final HearingSlotRequestParam forwarded = capturedMultidayRequest();
+        assertThat(forwarded.courtSession(), is("AD"));
+        assertThat(forwarded.isSlotBased(), is(false));
+        // businessType still narrows the search — it is no longer an alternative to isSlotBased.
+        assertThat(forwarded.businessType(), is("TRIAL"));
+    }
+
+    @Test
+    void singleDayCrownSearch_shouldLeaveCallerSessionParamsUntouched() {
+        when(courtScheduleRepository.getCourtSchedules(any())).thenReturn(Pair.of(0, List.of()));
+
+        // 360 is not multiday (the threshold is strictly greater than), so nothing is forced.
+        final HearingSlotRequestParam param = new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, "AM", true, null, true,
+                "360", "DRAFT", "CROWN");
+
+        slotsSearchService.search(param);
+
+        final ArgumentCaptor<HearingSlotRequestParam> captor =
+                ArgumentCaptor.forClass(HearingSlotRequestParam.class);
+        verify(courtScheduleRepository).getCourtSchedules(captor.capture());
+        assertThat(captor.getValue().courtSession(), is("AM"));
+        assertThat(captor.getValue().isSlotBased(), is(true));
+    }
+
+    @Test
+    void multidayMagistratesSearch_shouldLeaveCallerSessionParamsUntouched() {
+        when(courtScheduleRepository.getCourtSchedules(any())).thenReturn(Pair.of(0, List.of()));
+
+        // The forcing is CROWN-only — MAGISTRATES never enters the multiday branch.
+        slotsSearchService.search(new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, "AM", true, null, true,
+                "720", "DRAFT", "MAGISTRATES"));
+
+        final ArgumentCaptor<HearingSlotRequestParam> captor =
+                ArgumentCaptor.forClass(HearingSlotRequestParam.class);
+        verify(courtScheduleRepository).getCourtSchedules(captor.capture());
+        assertThat(captor.getValue().courtSession(), is("AM"));
+        assertThat(captor.getValue().isSlotBased(), is(true));
+    }
+
+    private HearingSlotRequestParam capturedMultidayRequest() {
+        final ArgumentCaptor<HearingSlotRequestParam> captor =
+                ArgumentCaptor.forClass(HearingSlotRequestParam.class);
+        verify(courtScheduleRepository).getMultidayHearingSlotCandidates(captor.capture(), anyInt());
+        return captor.getValue();
     }
 
     // ---- Multiday helper methods ----

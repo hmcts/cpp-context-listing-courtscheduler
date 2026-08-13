@@ -146,6 +146,69 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertTrue(result.isEmpty());
     }
 
+    // SPRDT-1276: the CROWN multiday search forces courtSession=AD / isSlotBased=false. These two
+    // tests pin the repository half of that contract: the court_session predicate actually filters,
+    // and businessType no longer suppresses the is_slot_based predicate.
+
+    @Test
+    public void getMultidayHearingSlotCandidatesShouldExcludeAmSessionsWhenCourtSessionIsAd() {
+        // Two rooms, both with consecutive Mon+Tue sessions. CR01 sits AM, CR02 sits AD.
+        // A 2-day CROWN search must see CR02 only — before the fix an absent/AM court_session
+        // let the AM room through, which is the AM session on the ticket's screenshot.
+        final LocalDate monday  = LocalDate.of(2026, 6, 15);
+        final LocalDate tuesday = LocalDate.of(2026, 6, 16);
+        final String ouCode = "B99MC02";
+
+        for (LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR01", "TRF", "AM"));
+            courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR02", "TRF", "AD"));
+        }
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                tuesday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, null, "AD", false, null,
+                false, "720", null, "CROWN");
+
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(cs -> "CR02".equals(cs.getCourtRoomId())));
+    }
+
+    @Test
+    public void getMultidayHearingSlotCandidatesShouldApplyBothBusinessTypeAndIsSlotBased() {
+        // Both predicates supplied together. Previously an if/else meant only rota_business_type
+        // was appended; now both are, so the bound :slotBased parameter must have a predicate to
+        // bind to — a mismatch here fails the query outright rather than returning wrong rows.
+        final LocalDate monday  = LocalDate.of(2026, 6, 22);
+        final LocalDate tuesday = LocalDate.of(2026, 6, 23);
+        final String ouCode = "B99MC03";
+
+        for (LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR01", "TRF", "AD"));
+        }
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                tuesday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", "AD", false, null,
+                false, "720", null, "CROWN");
+
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isSlotBased));
+    }
+
     // -----------------------------------------------------------------------
     // Tests for getCourtScheduleJudiciariesByCourtScheduleIds
     // -----------------------------------------------------------------------
@@ -398,6 +461,14 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         cs.setCourtScheduleId(courtScheduleId);
         courtScheduleRepository.save(cs);
         return courtScheduleId;
+    }
+
+    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
+                                              final String courtRoomId, final String businessType,
+                                              final String courtSession) {
+        final CourtSchedule schedule = createCourtSchedule(ouCode, panel, sessionDate, courtRoomId, businessType);
+        schedule.setCourtSession(courtSession);
+        return schedule;
     }
 
     private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,

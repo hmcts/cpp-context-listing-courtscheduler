@@ -34,6 +34,14 @@ public class SlotsSearchService {
     static final int FULL_DAY_DURATION_MINS = 360;
     private static final String CROWN = "CROWN";
     private static final String UNPAGINATED_PAGE_SIZE = "10000";
+    // SPRDT-1276: a CROWN search for more than a full day can only ever be satisfied by whole,
+    // duration-based days, so the caller's session filters are not a preference to honour — they
+    // are noise. AM/PM sessions and slot-based sessions are structurally incapable of holding a
+    // multi-day hearing, and letting them through is what put AM sessions in the 720-minute
+    // response. Both values are forced, whatever the caller sent (including nothing at all,
+    // which previously meant "no court_session predicate" rather than "AD only").
+    static final String MULTIDAY_COURT_SESSION = "AD";
+    static final Boolean MULTIDAY_IS_SLOT_BASED = Boolean.FALSE;
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -94,7 +102,9 @@ public class SlotsSearchService {
         final int duration = parseInt(requestParam.duration());
         final int daysNeeded = duration / FULL_DAY_DURATION_MINS;
 
-        LOGGER.info("Multiday CROWN search: duration={}, daysNeeded={}", duration, daysNeeded);
+        LOGGER.info("Multiday CROWN search: duration={}, daysNeeded={}, courtSession forced {}->{}, isSlotBased forced {}->{}",
+                duration, daysNeeded, requestParam.courtSession(), MULTIDAY_COURT_SESSION,
+                requestParam.isSlotBased(), MULTIDAY_IS_SLOT_BASED);
 
         // Extend end date to account for weekends within the multiday window.
         // +1 extra day ensures sessions on the last look-ahead day are included: the DB query uses
@@ -104,13 +114,15 @@ public class SlotsSearchService {
         final int weekendBuffer = 2 * ((daysNeeded / 5) + 1);
         final String extendedEndDate = originalEndDate.plusDays(daysNeeded + weekendBuffer).toString();
 
-        // Fetch all schedules in extended date range (unpaginated) to check consecutive availability
+        // Fetch all schedules in extended date range (unpaginated) to check consecutive availability.
+        // courtSession/isSlotBased are overridden here rather than passed through — see the
+        // MULTIDAY_* constants.
         final HearingSlotRequestParam unpaginatedRequest = new HearingSlotRequestParam(
                 requestParam.panel(), requestParam.sessionStartDate(), extendedEndDate,
                 requestParam.exactHearingStartDateTime(), requestParam.oucodeL2Code(), requestParam.ouCode(),
                 UNPAGINATED_PAGE_SIZE, "1",
                 requestParam.courtRoomId(), requestParam.courtRoomNumber(), requestParam.businessType(),
-                requestParam.courtSession(), requestParam.isSlotBased(), requestParam.hearingStartTime(),
+                MULTIDAY_COURT_SESSION, MULTIDAY_IS_SLOT_BASED, requestParam.hearingStartTime(),
                 requestParam.showOverbookedSlots(),
                 requestParam.duration(), requestParam.status(), requestParam.jurisdiction());
 

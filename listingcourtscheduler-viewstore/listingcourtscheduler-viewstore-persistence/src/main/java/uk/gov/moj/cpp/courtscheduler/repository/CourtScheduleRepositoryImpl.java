@@ -1523,10 +1523,12 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             params.put(BUSINESS_TYPE, requestParam.businessType());
-        } else {
-            if (isNotEmpty(requestParam.isSlotBased())) {
-                params.put("slotBased", requestParam.isSlotBased());
-            }
+        }
+
+        // Must mirror appendOptionalPredicates exactly — a bound parameter with no predicate
+        // (or a predicate with no bound parameter) is an immediate JPA failure.
+        if (isNotEmpty(requestParam.isSlotBased())) {
+            params.put("slotBased", requestParam.isSlotBased());
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
@@ -1593,10 +1595,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             query.append(" AND cs.rota_business_type = :businessType");
-        } else {
-            if (isNotEmpty(requestParam.isSlotBased())) {
-                query.append(" AND cs.is_slot_based = :slotBased");
-            }
+        }
+
+        // SPRDT-1276: businessType and isSlotBased are independent predicates, not alternatives.
+        // They used to be an if/else, so supplying a businessType silently dropped the
+        // is_slot_based filter — which would have let slot-based sessions back into the CROWN
+        // multi-day search that now forces isSlotBased=false. Keep them decoupled: businessType
+        // narrows, isSlotBased narrows, and both apply when both are supplied.
+        if (isNotEmpty(requestParam.isSlotBased())) {
+            query.append(" AND cs.is_slot_based = :slotBased");
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
