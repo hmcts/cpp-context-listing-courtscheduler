@@ -54,7 +54,7 @@ dependencies {
     testImplementation 'org.postgresql:postgresql'
     testImplementation 'com.google.guava:guava:33.6.0-jre'
     testImplementation 'commons-collections:commons-collections:3.2.2'
-    testImplementation 'org.apache.commons:commons-collections4:4.5.0'
+    testImplementation 'org.apache.commons:commons-collections4:4.6.0'
     testImplementation 'org.apache.commons:commons-lang3'
     // json-org used by ProvisionalBookingIT for JSONObject responseJson parsing
     testImplementation 'org.json:json:20260719'
