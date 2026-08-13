@@ -1666,6 +1666,18 @@ class SlotsSearchServiceTest {
         assertThat(captor.getValue().isSlotBased(), is(true));
     }
 
+    @Test
+    void isMultidayCrownSearch_shouldReturnFalseForMalformedDuration() {
+        // The predicate is now evaluated on every hearing-slots query, MAGISTRATES included,
+        // so a duration it cannot parse must answer false rather than throw.
+        final HearingSlotRequestParam param = new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, null, null, null, true,
+                "not-a-number", "DRAFT", "CROWN");
+
+        assertThat(slotsSearchService.isMultidayCrownSearch(param), is(false));
+    }
+
     private HearingSlotRequestParam capturedMultidayRequest() {
         final ArgumentCaptor<HearingSlotRequestParam> captor =
                 ArgumentCaptor.forClass(HearingSlotRequestParam.class);

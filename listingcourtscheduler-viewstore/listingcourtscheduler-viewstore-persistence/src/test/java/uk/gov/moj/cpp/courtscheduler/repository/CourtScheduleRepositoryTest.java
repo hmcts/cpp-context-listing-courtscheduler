@@ -181,16 +181,24 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void getMultidayHearingSlotCandidatesShouldApplyBothBusinessTypeAndIsSlotBased() {
-        // Both predicates supplied together. Previously an if/else meant only rota_business_type
-        // was appended; now both are, so the bound :slotBased parameter must have a predicate to
-        // bind to — a mismatch here fails the query outright rather than returning wrong rows.
+    public void getMultidayHearingSlotCandidatesShouldApplyBothBusinessTypeAndIsSlotBasedForCrown() {
+        // Two rooms with the same businessType and the same consecutive days: CR01 duration-based,
+        // CR02 slot-based. Supplying businessType used to suppress the is_slot_based predicate
+        // (if/else), so both rooms came back. For a CROWN >360 search both predicates now apply
+        // and CR02 must drop out.
+        //
+        // The rooms must differ: unique index court_act_business_date_session_idx_am keys on
+        // (oucode, court_room_id, rota_business_type, session_start, court_session[AD->AM],
+        // is_draft), so one room cannot hold two sessions differing only by is_slot_based.
         final LocalDate monday  = LocalDate.of(2026, 6, 22);
         final LocalDate tuesday = LocalDate.of(2026, 6, 23);
         final String ouCode = "B99MC03";
 
         for (LocalDate date : List.of(monday, tuesday)) {
             courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR01", "TRF", "AD"));
+            final CourtSchedule slotBased = createCourtSchedule(ouCode, "ADULT", date, "CR02", "TRF", "AD");
+            slotBased.setSlotBased(true);
+            courtScheduleRepository.save(slotBased);
         }
 
         HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
@@ -207,6 +215,75 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
 
         assertEquals(2, result.size());
         assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isSlotBased));
+        assertTrue(result.stream().allMatch(cs -> "CR01".equals(cs.getCourtRoomId())));
+    }
+
+    @Test
+    public void getCourtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForMagistrates() {
+        // MAGISTRATES regression guard for SPRDT-1276. The CROWN >360 carve-out must not reach
+        // here: businessType is supplied, so the caller's isSlotBased=true stays IGNORED and the
+        // duration-based row is still returned. If the carve-out ever loses its jurisdiction
+        // gate, the is_slot_based=true predicate is appended and this returns 0.
+        final LocalDate monday = LocalDate.of(2026, 7, 6);
+        final String ouCode = "B99MG01";
+
+        final CourtSchedule magsSchedule = createCourtSchedule(ouCode, "ADULT", monday, "CR01", "TRF", "AM");
+        magsSchedule.setJurisdiction("MAGISTRATES");
+        courtScheduleRepository.save(magsSchedule);
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", null, true, null,
+                false, "60", null, "MAGISTRATES");
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
+    @Test
+    public void getCourtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForMagistratesOverAFullDay() {
+        // The threshold alone must not trigger the carve-out — a MAGISTRATES search for 720
+        // minutes is still an ordinary search. Same expectation as the single-day MAGS case.
+        final LocalDate monday = LocalDate.of(2026, 7, 13);
+        final String ouCode = "B99MG02";
+
+        final CourtSchedule magsSchedule = createCourtSchedule(ouCode, "ADULT", monday, "CR01", "TRF", "AM");
+        magsSchedule.setJurisdiction("MAGISTRATES");
+        courtScheduleRepository.save(magsSchedule);
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", null, true, null,
+                false, "720", null, "MAGISTRATES");
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
+    @Test
+    public void getCourtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForSingleDayCrown() {
+        // CROWN at or below a full day is also outside the carve-out — 360 is not "> 360".
+        final LocalDate monday = LocalDate.of(2026, 7, 20);
+        final String ouCode = "B99CR01";
+
+        courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", monday, "CR01", "TRF", "AD"));
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", null, true, null,
+                false, "360", null, "CROWN");
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
     }
 
     // -----------------------------------------------------------------------

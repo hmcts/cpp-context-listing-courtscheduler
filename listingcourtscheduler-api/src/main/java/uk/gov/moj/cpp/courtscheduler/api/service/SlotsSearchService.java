@@ -31,8 +31,7 @@ import org.slf4j.LoggerFactory;
 @org.springframework.transaction.annotation.Transactional
 public class SlotsSearchService {
     private static final Logger LOGGER = LoggerFactory.getLogger(SlotsSearchService.class.getName());
-    static final int FULL_DAY_DURATION_MINS = 360;
-    private static final String CROWN = "CROWN";
+    static final int FULL_DAY_DURATION_MINS = HearingSlotRequestParam.FULL_DAY_DURATION_MINS;
     private static final String UNPAGINATED_PAGE_SIZE = "10000";
     // SPRDT-1276: a CROWN search for more than a full day can only ever be satisfied by whole,
     // duration-based days, so the caller's session filters are not a preference to honour — they
@@ -91,11 +90,9 @@ public class SlotsSearchService {
     }
 
     boolean isMultidayCrownSearch(HearingSlotRequestParam param) {
-        if (!CROWN.equalsIgnoreCase(param.jurisdiction())) {
-            return false;
-        }
-        Optional<Integer> durationOpt = parseDurationToOptional(param.duration());
-        return durationOpt.isPresent() && durationOpt.get() > FULL_DAY_DURATION_MINS;
+        // Single definition, shared with the viewstore query builder — the two must not be able
+        // to disagree about which searches get the forced AD / duration-based session filters.
+        return param.isCrownMultiDaySearch();
     }
 
     Pair<Integer, List<CourtSchedule>> getMultidayCourtSchedules(HearingSlotRequestParam requestParam) {

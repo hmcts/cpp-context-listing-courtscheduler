@@ -21,6 +21,37 @@ public record HearingSlotRequestParam(String panel,
                                       String status,
                                       String jurisdiction) {
 
+    private static final String CROWN = "CROWN";
+
+    /**
+     * A CROWN hearing longer than a single sitting day. 360 is the full-day duration used
+     * throughout the scheduler (see {@code SessionAvailability.FULL_DAY_DURATION_MINS}); it is
+     * restated here because {@code listingcourtscheduler-domain} sits below the module that
+     * owns that constant, and both the API search service and the viewstore query builder need
+     * to agree on this one predicate.
+     */
+    public static final int FULL_DAY_DURATION_MINS = 360;
+
+    /**
+     * SPRDT-1276: the discriminator for "this search can only be satisfied by whole,
+     * duration-based days". MAGISTRATES never satisfies it, so every rule keyed on this method
+     * is CROWN-only by construction.
+     *
+     * <p>A malformed duration answers {@code false} rather than throwing: this is evaluated on
+     * every hearing-slots query, including MAGISTRATES ones that never parsed the duration
+     * before, and it must not introduce a new failure mode for them.</p>
+     */
+    public boolean isCrownMultiDaySearch() {
+        if (!CROWN.equalsIgnoreCase(jurisdiction) || duration == null || duration.isBlank()) {
+            return false;
+        }
+        try {
+            return Integer.parseInt(duration.trim()) > FULL_DAY_DURATION_MINS;
+        } catch (final NumberFormatException e) {
+            return false;
+        }
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
