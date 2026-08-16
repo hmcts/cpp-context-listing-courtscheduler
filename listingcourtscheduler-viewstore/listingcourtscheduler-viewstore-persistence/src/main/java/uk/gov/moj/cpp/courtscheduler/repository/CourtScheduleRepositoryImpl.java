@@ -1161,8 +1161,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     @Override
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findAdSessionsInRange(
             final String ouCode, final String courtRoomId, final String businessType,
-            final LocalDate fromInclusive, final LocalDate toInclusive) {
-        return queryAdWeekdaySessions(ouCode, courtRoomId, businessType, fromInclusive, toInclusive, null);
+            final LocalDate fromInclusive, final LocalDate toInclusive, final Boolean isDraft) {
+        return queryAdWeekdaySessions(ouCode, courtRoomId, businessType, fromInclusive, toInclusive, isDraft);
     }
 
     private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> queryAdWeekdaySessions(
@@ -1174,12 +1174,17 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 WHERE s.active = true
                   AND s.oucode = :ouCode
                   AND s.court_room_id = :courtRoomId
-                  AND s.rota_business_type = :businessType
                   AND s.court_session = 'AD'
                   AND EXTRACT(DOW FROM s.session_start) NOT IN (0, 6)
                   AND s.session_start >= :startDate
                   AND s.session_start <= :endDate
                 """);
+        // A same-room continuation keeps the block's business type; the SPRDT-1273 extend path
+        // passes null when the tail is pinned to the caller's main courtroom, whose sessions may
+        // run under any business type.
+        if (businessType != null) {
+            queryStr.append("  AND s.rota_business_type = :businessType\n");
+        }
         // CROWN anchor consecutive: all days must share the anchor's draft state (isDraft non-null).
         // The extend path passes null to leave draft state unconstrained.
         if (isDraft != null) {
@@ -1189,7 +1194,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final jakarta.persistence.Query query = entityManager.createNativeQuery(queryStr.toString());
         query.setParameter(OU_CODE, ouCode);
         query.setParameter(COURT_ROOM_ID, courtRoomId);
-        query.setParameter(BUSINESS_TYPE, businessType);
+        if (businessType != null) {
+            query.setParameter(BUSINESS_TYPE, businessType);
+        }
         query.setParameter(START_DATE, java.sql.Date.valueOf(fromInclusive));
         query.setParameter(END_DATE, java.sql.Date.valueOf(toInclusive));
         if (isDraft != null) {
