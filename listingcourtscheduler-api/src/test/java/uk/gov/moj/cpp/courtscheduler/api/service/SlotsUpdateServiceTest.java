@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.lenient;
@@ -80,6 +81,9 @@ class SlotsUpdateServiceTest {
     @Mock
     private Logger logger;
 
+    @Mock
+    private uk.gov.moj.cpp.courtscheduler.common.service.ExtendMultidayHearingService extendMultidayHearingService;
+
     @InjectMocks
     private SlotsUpdateService service;
 
@@ -88,6 +92,7 @@ class SlotsUpdateServiceTest {
         setField(service, "courtScheduleRepository", courtScheduleRepository);
         setField(service, "provisionalBookingRepository", provisionalBookingRepository);
         setField(service, "allocatedListingRepository", allocatedListingRepository);
+        setField(service, "extendMultidayHearingService", extendMultidayHearingService);
     }
 
     @Test
@@ -508,12 +513,20 @@ class SlotsUpdateServiceTest {
             existing.setHearingStartTime(java.sql.Timestamp.valueOf("2026-04-21 09:00:00"));
 
             when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.of(existing));
+            // SPRDT-1274: the replay resolves the room UUID from the allocated session — the
+            // allocated_listings row only carries the legacy Integer room number.
+            final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule allocatedSession =
+                    new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule();
+            allocatedSession.setCourtScheduleId(existing.getCourtScheduleId());
+            allocatedSession.setCourtRoomId("731816c1-5ee4-373a-9bda-840e13a5bcb0");
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(existing.getCourtScheduleId())))
+                    .thenReturn(List.of(allocatedSession));
 
             final CrownFallbackResponse response = service.crownFallbackSearchAndBook(request);
 
             assertEquals(hearingId, response.hearingId());
             assertEquals(existing.getCourtScheduleId(), response.courtScheduleId());
-            assertEquals(existing.getCourtRoomId(), response.courtRoomId());
+            assertEquals("731816c1-5ee4-373a-9bda-840e13a5bcb0", response.courtRoomId());
             assertEquals(10, response.durationInMinutes());
             assertEquals("CROWN_FB_LIST", response.source());
             verify(courtScheduleRepository, org.mockito.Mockito.never())
@@ -775,7 +788,7 @@ class SlotsUpdateServiceTest {
             assertEquals(scheduleId, response.courtScheduleId());
             assertEquals("CROWN_FB_LIST", response.source());
             // flat fallback fields surfaced for single-day (SPRDT-1089)
-            assertEquals(731816, response.courtRoomId());
+            assertEquals("731816", response.courtRoomId());
             assertEquals("2026-09-01", response.sessionDate());
             assertEquals(Boolean.FALSE, response.isDraft());
             assertEquals(Boolean.FALSE, response.overbooked());
@@ -1210,6 +1223,12 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.getCourtSchedulesByIdList(
                     List.of(anchorId, "cs-existing-day2", "cs-existing-day3")))
                     .thenReturn(existingSessions);
+            // SPRDT-1273: same start date → resize family, delegated to the extend/shrink service,
+            // which no-ops here (requested 1080 mins = 3 business days = the existing block).
+            when(extendMultidayHearingService.extend(
+                    eq(hearingId), eq(LocalDate.of(2026, 9, 7)), eq(LocalDate.of(2026, 9, 9)),
+                    eq(1080), isNull(), isNull(), eq(360)))
+                    .thenReturn(new java.util.ArrayList<>(existingSessions));
 
             final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
 
@@ -1317,18 +1336,17 @@ class SlotsUpdateServiceTest {
             assertEquals("MOVE", response.source());
         }
 
-        // ─── Single→multi-day conversion (update-hearing-for-listing anchored on the hearing's
-        // own booked session). The idempotency guard is anchor-strict AND block-size-strict:
-        // same anchor + same day count = retry; same anchor + DIFFERENT day count = resize,
-        // which must go through the move path (release + reclaim + re-book), not be swallowed
-        // as a replay that returns the old block with the extra day(s) never booked. ───
+        // ─── SPRDT-1273: with existing rows the decision is hearing-state-driven. Same start
+        // date = RESIZE, delegated to ExtendMultidayHearingService: EXTEND books only the tail
+        // days (existing rows and their rooms untouched), SHRINK releases only the tail rows,
+        // and an unchanged end date is a no-op that returns the current block. A different
+        // start date is a MOVE (release + reclaim + re-book). ───
 
         @Test
-        void should_extendSingleDayHearingToMultiDay_when_anchoredOnItsOwnBookedSession() {
-            // The reported bug: hearing holds ONE allocated_listings row (its single-day booking
-            // on 2026-07-20); update-hearing-for-listing requests 720 mins (2 days) anchored on
-            // that SAME session. Anchor matches the block's first (only) day but the day count
-            // differs (1 existing vs 2 requested) → RESIZE: release the old row and book both days.
+        void should_extendSingleDayHearingToMultiDay_when_sameStartRequestsMoreDays() {
+            // Hearing holds ONE allocated_listings row (its single-day booking on 2026-07-20);
+            // update-hearing-for-listing requests 720 mins (2 days) from the same start date.
+            // RESIZE → extend: the existing row is untouched and only the tail day is booked.
             final String hearingId = UUID.randomUUID().toString();
             final LocalDate day1 = LocalDate.of(2026, 7, 20); // Monday
             final LocalDate day2 = LocalDate.of(2026, 7, 21); // Tuesday
@@ -1338,14 +1356,6 @@ class SlotsUpdateServiceTest {
                     existingAllocationWithDuration(hearingId, anchorId, 360));
             final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> existingSessions = List.of(
                     buildSessionWithId(day1, anchorId));
-
-            // Re-search: the anchor day still shows fully consumed by the hearing's own
-            // not-yet-released booking; day 2 is free. reclaimHearingsOwnCapacity nets day 1 out.
-            final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule ownFullyBookedDay1 =
-                    buildSession(day1, 360, 360, false);
-            ownFullyBookedDay1.setCourtScheduleId(anchorId);
-            final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule freshDay2 =
-                    buildSessionWithId(day2, "cs-new-day2");
 
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
                     .setHearingId(hearingId)
@@ -1357,32 +1367,129 @@ class SlotsUpdateServiceTest {
             when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(anchorId)))
                     .thenReturn(existingSessions);
-            when(courtScheduleRepository.findConsecutiveSessions(anchorId, 2))
-                    .thenReturn(List.of(ownFullyBookedDay1, freshDay2));
-            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
-                    .thenReturn(new Result("", true));
+            when(extendMultidayHearingService.extend(eq(hearingId), eq(day1), eq(day2), eq(720), isNull(), isNull(), eq(360)))
+                    .thenReturn(new java.util.ArrayList<>(List.of(
+                            buildSessionWithId(day1, anchorId),
+                            buildSessionWithId(day2, "cs-new-day2"))));
 
             final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
 
-            verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
-            @SuppressWarnings("unchecked")
-            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
-            verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
-            assertEquals(2, slotsCaptor.getValue().size());
-            assertTrue(slotsCaptor.getValue().stream().allMatch(s -> hearingId.equals(s.getHearingId())));
-            // 720 total split across the 2 booked days
-            assertTrue(slotsCaptor.getValue().stream().allMatch(s -> s.getDuration() == 360));
+            // The resize never releases the block wholesale — that was the SPRDT-1273 bug.
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(extendMultidayHearingService).extend(eq(hearingId), eq(day1), eq(day2), eq(720), isNull(), isNull(), eq(360));
             assertEquals(2, response.sessions().size());
+            assertEquals(anchorId, response.sessions().get(0).getCourtScheduleId());
             assertEquals(day1, response.sessions().get(0).getSessionDate());
             assertEquals(day2, response.sessions().get(1).getSessionDate());
         }
 
         @Test
+        void should_moveNotResize_when_sameStartButAnchorOutsideExistingBlock() {
+            // The unallocated→allocated flow: the hearing holds DRAFT sessions and the update
+            // anchors on a NEW (final) session for the SAME start date. The caller is choosing
+            // different sessions — a MOVE. A resize here would no-op (same size) and silently
+            // swallow the allocation.
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate day1 = LocalDate.of(2026, 9, 7);
+            final LocalDate day2 = LocalDate.of(2026, 9, 8);
+            final String draftDay1 = "cs-draft-day1";
+            final String draftDay2 = "cs-draft-day2";
+            final String newFinalAnchor = "cs-final-day1";
+
+            final List<AllocatedListing> existingAllocations = List.of(
+                    existingAllocationWithDuration(hearingId, draftDay1, 360),
+                    existingAllocationWithDuration(hearingId, draftDay2, 360));
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(draftDay1, draftDay2)))
+                    .thenReturn(List.of(buildSessionWithId(day1, draftDay1), buildSessionWithId(day2, draftDay2)));
+            when(courtScheduleRepository.findConsecutiveSessions(newFinalAnchor, 2))
+                    .thenReturn(List.of(
+                            buildSessionWithId(day1, newFinalAnchor),
+                            buildSessionWithId(day2, "cs-final-day2")));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result("", true));
+
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .setHearingId(hearingId)
+                    .setCourtCentreId(UUID.randomUUID().toString())
+                    .setHearingDate(day1)
+                    .setCourtScheduleId(newFinalAnchor)
+                    .setDurationInMinutes(720);
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            verify(extendMultidayHearingService, org.mockito.Mockito.never())
+                    .extend(any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any(), org.mockito.ArgumentMatchers.anyInt());
+            verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
+            assertEquals(2, response.sessions().size());
+            assertEquals("MOVE", response.source());
+        }
+
+        @Test
+        void should_passRequestedCourtRoom_when_resizeCarriesMainCourtRoomId() {
+            // SPRDT-1273: the submitted main courtroom travels to the extend service so the tail
+            // days are booked into it (not into the anchor session's room).
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate day1 = LocalDate.of(2026, 7, 20);
+            final LocalDate day2 = LocalDate.of(2026, 7, 21);
+            final String anchorId = "cs-own-day1";
+            final String mainRoom = "731816c1-5ee4-373a-9bda-840e13a5bcb0";
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(
+                    existingAllocationWithDuration(hearingId, anchorId, 360)));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(anchorId)))
+                    .thenReturn(List.of(buildSessionWithId(day1, anchorId)));
+            when(extendMultidayHearingService.extend(eq(hearingId), eq(day1), eq(day2), eq(720), eq(mainRoom), isNull(), eq(360)))
+                    .thenReturn(new java.util.ArrayList<>(List.of(
+                            buildSessionWithId(day1, anchorId),
+                            buildSessionWithId(day2, "cs-new-day2"))));
+
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .setHearingId(hearingId)
+                    .setCourtCentreId(UUID.randomUUID().toString())
+                    .setHearingDate(day1)
+                    .setCourtScheduleId(anchorId)
+                    .setCourtRoomId(mainRoom)
+                    .setDurationInMinutes(720);
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            verify(extendMultidayHearingService).extend(eq(hearingId), eq(day1), eq(day2), eq(720), eq(mainRoom), isNull(), eq(360));
+            assertEquals(2, response.sessions().size());
+        }
+
+        @Test
+        void should_honourRequestedEndDate_when_resizeSuppliesEndDate() {
+            // endDate on the request wins over the duration-derived business-day expansion.
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate day1 = LocalDate.of(2026, 7, 20);
+            final LocalDate requestedEnd = LocalDate.of(2026, 7, 24);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(
+                    existingAllocationWithDuration(hearingId, "cs-own-day1", 360)));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of("cs-own-day1")))
+                    .thenReturn(List.of(buildSessionWithId(day1, "cs-own-day1")));
+            when(extendMultidayHearingService.extend(eq(hearingId), eq(day1), eq(requestedEnd), eq(720), isNull(), isNull(), eq(144)))
+                    .thenReturn(new java.util.ArrayList<>(List.of(buildSessionWithId(day1, "cs-own-day1"))));
+
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .setHearingId(hearingId)
+                    .setCourtCentreId(UUID.randomUUID().toString())
+                    .setHearingDate(day1)
+                    .setEndDate(requestedEnd)
+                    .setCourtScheduleId("cs-own-day1")
+                    .setDurationInMinutes(720);
+
+            service.crownSearchAndBook(request);
+
+            verify(extendMultidayHearingService).extend(eq(hearingId), eq(day1), eq(requestedEnd), eq(720), isNull(), isNull(), eq(144));
+        }
+
+        @Test
         void should_shrinkBlock_when_requestedFewerDaysThanExistingBlock() {
-            // Resize in the other direction: a 3-day block re-requested for 720 mins (2 days),
-            // anchored on its first day. Not an idempotent replay — the move path books exactly
-            // the 2 requested days and releases the third.
+            // Resize in the other direction: a 3-day block re-requested for 720 mins (2 days) from
+            // the same start date. Delegated to the extend/shrink service, which releases ONLY the
+            // tail row — never the whole block.
             final String hearingId = UUID.randomUUID().toString();
             final LocalDate day1 = LocalDate.of(2026, 9, 7);  // Monday
             final LocalDate day2 = LocalDate.of(2026, 9, 8);  // Tuesday
@@ -1400,12 +1507,6 @@ class SlotsUpdateServiceTest {
                     buildSessionWithId(day2, csDay2),
                     buildSessionWithId(day3, csDay3));
 
-            // Re-search finds the hearing's own day1/day2 still showing fully consumed — reclaimed.
-            final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule ownDay1 = buildSession(day1, 360, 360, false);
-            ownDay1.setCourtScheduleId(csDay1);
-            final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule ownDay2 = buildSession(day2, 360, 360, false);
-            ownDay2.setCourtScheduleId(csDay2);
-
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
                     .setHearingId(hearingId)
                     .setCourtCentreId(UUID.randomUUID().toString())
@@ -1416,19 +1517,17 @@ class SlotsUpdateServiceTest {
             when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(csDay1, csDay2, csDay3)))
                     .thenReturn(existingSessions);
-            when(courtScheduleRepository.findConsecutiveSessions(csDay1, 2))
-                    .thenReturn(List.of(ownDay1, ownDay2));
-            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
-                    .thenReturn(new Result("", true));
+            when(extendMultidayHearingService.extend(eq(hearingId), eq(day1), eq(day2), eq(720), isNull(), isNull(), eq(360)))
+                    .thenReturn(new java.util.ArrayList<>(List.of(
+                            buildSessionWithId(day1, csDay1),
+                            buildSessionWithId(day2, csDay2))));
 
             final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
 
-            verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
-            @SuppressWarnings("unchecked")
-            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
-            verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
-            assertEquals(2, slotsCaptor.getValue().size());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+            verify(extendMultidayHearingService).extend(eq(hearingId), eq(day1), eq(day2), eq(720), isNull(), isNull(), eq(360));
             assertEquals(2, response.sessions().size());
         }
 
@@ -1456,6 +1555,11 @@ class SlotsUpdateServiceTest {
             when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(anchorId, "cs-existing-day2")))
                     .thenReturn(existingSessions);
+            // Same start + same day count → the extend/shrink service no-ops and hands back the block.
+            when(extendMultidayHearingService.extend(
+                    eq(hearingId), eq(LocalDate.of(2026, 9, 7)), eq(LocalDate.of(2026, 9, 8)),
+                    eq(720), isNull(), isNull(), eq(360)))
+                    .thenReturn(new java.util.ArrayList<>(existingSessions));
 
             final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
 

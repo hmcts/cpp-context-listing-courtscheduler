@@ -81,12 +81,18 @@ public interface CourtScheduleRepositoryCustom {
                                                                                               LocalDate fromDate,
                                                                                               int daysNeeded);
 
-    /** AD weekday sessions for a room/businessType in a date range, draft state unconstrained (extend path). */
+    /**
+     * AD weekday sessions for a room in a date range. businessType and isDraft are optional
+     * filters (null = unconstrained). The extend path (SPRDT-1273) passes the block's own draft
+     * state so an allocated hearing's tail days only ever book FINAL sessions — a draft tail
+     * session would strip every day's courtroom downstream (ADR-005).
+     */
     List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findAdSessionsInRange(String ouCode,
                                                                                    String courtRoomId,
                                                                                    String businessType,
                                                                                    LocalDate fromInclusive,
-                                                                                   LocalDate toInclusive);
+                                                                                   LocalDate toInclusive,
+                                                                                   Boolean isDraft);
 
     /** Discovery + re-hydrate path for multi-day Crown searches (SPRDT-903 perf fix #4). */
     List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getMultidayHearingSlotCandidates(HearingSlotRequestParam requestParam,

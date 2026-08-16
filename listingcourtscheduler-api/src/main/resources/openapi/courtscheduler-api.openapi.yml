@@ -344,43 +344,15 @@ paths:
         '422':
           description: |
             Booking failed with errorCode NO_SESSION_FOUND when no session (or qualifying
-            consecutive run) is available for the request, or NO_ALLOCATION_ON_DATE when
+            consecutive run) is available for the request, NO_ALLOCATION_ON_DATE when
             change-court-room-for-multiday-hearing is requested for a date the hearing isn't
-            currently allocated on.
+            currently allocated on, or — for a crown.search.and.book resize of an existing
+            multi-day block (same start date, different end date) — NO_AVAILABILITY (with
+            unavailableDates) or INVALID_DATE_RANGE from the in-place extend/shrink.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-    patch:
-      tags: [hearings]
-      operationId: patchExtendMultidayHearing
-      summary: Extend, shrink, or no-op a CROWN multi-day hearing booking
-      parameters:
-        - in: path
-          name: hearingId
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/vnd.courtscheduler.extend.multiday.hearing+json:
-            schema:
-              $ref: '#/components/schemas/CourtschedulerExtendMultidayHearing'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/vnd.courtscheduler.extend.multiday.hearing.response+json:
-              schema:
-                $ref: '#/components/schemas/CourtschedulerExtendMultidayHearingResponse'
-        '422':
-          description: |
-            Booking cannot be extended. errorCode: NO_EXISTING_ALLOCATION,
-            START_DATE_CHANGE_NOT_ALLOWED, NO_AVAILABILITY, INVALID_DATE_RANGE.
-          content:
-            application/vnd.courtscheduler.extend.multiday.hearing.error+json:
-              schema:
-                $ref: '#/components/schemas/CourtschedulerExtendMultidayHearingError'
 
   /provisionalBooking:
     post:
@@ -803,9 +775,6 @@ components:
     CourtschedulerMagsSearchAndBookResponse:     { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerMoveHearingToPastDate:         { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerMoveHearingToPastDateResponse: { $ref: '#/components/schemas/PassthroughObject' }
-    CourtschedulerExtendMultidayHearing:         { $ref: '#/components/schemas/PassthroughObject' }
-    CourtschedulerExtendMultidayHearingResponse: { $ref: '#/components/schemas/PassthroughObject' }
-    CourtschedulerExtendMultidayHearingError:    { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerChangeCourtRoomForMultidayHearing: { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerChangeCourtRoomForMultidayHearingResponse: { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerAssignJudiciaryToSessions:     { $ref: '#/components/schemas/PassthroughObject' }

@@ -36,7 +36,8 @@
       }
     },
     "courtRoomId": {
-      "type": "integer"
+      "type": "string",
+      "description": "court_schedule.court_room_id UUID of the booked session (single-day only; null for draft sessions)"
     },
     "sessionDate": {
       "type": "string",
