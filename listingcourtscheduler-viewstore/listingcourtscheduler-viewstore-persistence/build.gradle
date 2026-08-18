@@ -5,7 +5,7 @@ dependencies {
 
     implementation 'org.modelmapper:modelmapper:3.2.6'
     implementation 'org.apache.commons:commons-lang3'
-    implementation 'org.apache.commons:commons-collections4:4.5.0'
+    implementation 'org.apache.commons:commons-collections4:4.6.0'
     implementation 'commons-collections:commons-collections:3.2.2'
     implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
     implementation 'org.slf4j:slf4j-api'
