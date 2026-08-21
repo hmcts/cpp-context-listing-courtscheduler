@@ -23,6 +23,11 @@ public class CrownSearchAndBookRequest {
     private int durationInMinutes;
     private String courtScheduleId;
     private String source;
+    // SPRDT-1283: optional caller-supplied centre metadata, passed through to the single-day
+    // fallback so a session can be auto-created at a centre with no session to copy from.
+    private String ouCode;
+    private String courtCentreName;
+    private String courtRoomName;
 
     public String getHearingId() {
         return hearingId;
@@ -102,6 +107,33 @@ public class CrownSearchAndBookRequest {
 
     public CrownSearchAndBookRequest setSource(final String source) {
         this.source = source;
+        return this;
+    }
+
+    public String getOuCode() {
+        return ouCode;
+    }
+
+    public CrownSearchAndBookRequest setOuCode(final String ouCode) {
+        this.ouCode = ouCode;
+        return this;
+    }
+
+    public String getCourtCentreName() {
+        return courtCentreName;
+    }
+
+    public CrownSearchAndBookRequest setCourtCentreName(final String courtCentreName) {
+        this.courtCentreName = courtCentreName;
+        return this;
+    }
+
+    public String getCourtRoomName() {
+        return courtRoomName;
+    }
+
+    public CrownSearchAndBookRequest setCourtRoomName(final String courtRoomName) {
+        this.courtRoomName = courtRoomName;
         return this;
     }
 
