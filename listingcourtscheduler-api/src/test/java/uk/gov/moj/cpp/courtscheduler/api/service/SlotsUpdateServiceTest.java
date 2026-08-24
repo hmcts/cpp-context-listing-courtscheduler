@@ -594,9 +594,7 @@ class SlotsUpdateServiceTest {
                     .thenReturn(Optional.empty());
 
             final CourtSchedule created = buildSession(createdScheduleId, request.getHearingDate(), false, "CR");
-            when(courtScheduleRepository.createCrownFallbackSession(
-                    eq(request.getCourtCentreId()), eq(request.getHearingDate()),
-                    eq(request.getCourtRoomId()), eq(request.getEarliestHearingTime())))
+            when(courtScheduleRepository.createCrownFallbackSession(eq(request)))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(created, false)));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
@@ -608,9 +606,9 @@ class SlotsUpdateServiceTest {
             assertEquals(createdScheduleId, response.courtScheduleId());
             assertEquals(false, response.isDraft());
             assertEquals(false, response.overbooked());
-            verify(courtScheduleRepository).createCrownFallbackSession(
-                    eq(request.getCourtCentreId()), eq(request.getHearingDate()),
-                    eq(request.getCourtRoomId()), eq(request.getEarliestHearingTime()));
+            // SPRDT-1283: the full request travels to the repository so a never-seeded centre can
+            // build the session from the request's own metadata (ouCode/centre/room names).
+            verify(courtScheduleRepository).createCrownFallbackSession(eq(request));
             // Allocation via on-the-fly session creation is stamped AUTO_CREATE_SAB on the DB row.
             assertEquals("AUTO_CREATE_SAB", slotCaptor.getValue().get(0).getSource());
             verify(allocatedListingRepository).updateSourceByHearingId(hearingId, "AUTO_CREATE_SAB");
@@ -618,20 +616,72 @@ class SlotsUpdateServiceTest {
 
         @Test
         void shouldThrowNoSessionExceptionWhenSearchEmptyAndAutoCreateHasNoTemplateSession() {
-            // Auto-creation needs an existing session at the centre to copy metadata from; a centre
-            // that has never been seeded still surfaces the no-session error.
+            // SPRDT-1283: creation is refused only when the centre has no session to copy metadata
+            // from AND the request carries no ouCode to build one from scratch.
             final String hearingId = UUID.randomUUID().toString();
             final CrownFallbackRequest request = validRequest(hearingId);
 
             when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.empty());
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.empty());
-            when(courtScheduleRepository.createCrownFallbackSession(any(), any(), any(), any()))
+            when(courtScheduleRepository.createCrownFallbackSession(any(CrownFallbackRequest.class)))
                     .thenReturn(Optional.empty());
 
             Assertions.assertThrows(CrownFallbackNoSessionException.class,
                     () -> service.crownFallbackSearchAndBook(request));
             verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void shouldClampAllocatedListingStartTimeToSessionStartWhenRequestedTimeIsOutsideSessionWindow() {
+            // SPRDT-1283 part 2: allocated_listings reflects the SESSION. A requested time outside
+            // the booked session's window is clamped to the session start (the listing viewstore
+            // keeps the user time — SPRDT-1274 — so the two stores deliberately diverge here).
+            final String hearingId = UUID.randomUUID().toString();
+            final CrownFallbackRequest request = validRequest(hearingId)
+                    .setEarliestHearingTime("2026-04-21T17:00:00Z");
+
+            when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.empty());
+            final CourtSchedule session = buildSession(UUID.randomUUID().toString(), LocalDate.parse("2026-04-21"), false, "CR");
+            session.setSessionStartTime(java.sql.Timestamp.from(java.time.Instant.parse("2026-04-21T10:00:00Z")));
+            session.setSessionEndTime(java.sql.Timestamp.from(java.time.Instant.parse("2026-04-21T16:00:00Z")));
+            when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                    .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
+                    .thenReturn(new Result("", true));
+
+            service.crownFallbackSearchAndBook(request);
+
+            final String persistedStartTime = slotCaptor.getValue().get(0).getHearingStartTime();
+            assertEquals(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString(
+                            new java.sql.Timestamp(session.getSessionStartTime().getTime())),
+                    persistedStartTime);
+        }
+
+        @Test
+        void shouldKeepRequestedStartTimeOnAllocatedListingWhenInsideSessionWindow() {
+            // Inside the session window the requested time is accurate w.r.t. the session and is
+            // kept — the same rule getAdjustedHearingStartTime applies on the other booking paths.
+            final String hearingId = UUID.randomUUID().toString();
+            final CrownFallbackRequest request = validRequest(hearingId)
+                    .setEarliestHearingTime("2026-04-21T11:00:00Z");
+
+            when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.empty());
+            final CourtSchedule session = buildSession(UUID.randomUUID().toString(), LocalDate.parse("2026-04-21"), false, "CR");
+            session.setSessionStartTime(java.sql.Timestamp.from(java.time.Instant.parse("2026-04-21T10:00:00Z")));
+            session.setSessionEndTime(java.sql.Timestamp.from(java.time.Instant.parse("2026-04-21T16:00:00Z")));
+            when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                    .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
+                    .thenReturn(new Result("", true));
+
+            service.crownFallbackSearchAndBook(request);
+
+            assertEquals("2026-04-21T11:00:00Z", slotCaptor.getValue().get(0).getHearingStartTime());
         }
 
         @Test

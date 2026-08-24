@@ -23,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
@@ -758,6 +759,18 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     private static final String AUTO_SESSION_COURT_SESSION = "AD";
     private static final int AUTO_SESSION_MAX_DURATION_MINS = 360;
 
+    // SPRDT-1283 template-free auto-create defaults: used only when the centre has no session at
+    // all to copy metadata from. ouCode must come from the request (the court calendar reads
+    // sessions by ouCode); display metadata falls back to the request's names; the remaining
+    // NOT NULL columns take these fixed values.
+    private static final String AUTO_SESSION_PROFILE_ID = "CROWN-FB-AUTO";
+    private static final String AUTO_SESSION_PANEL = "ADULT";
+    private static final String AUTO_SESSION_ROOM_NAME = "Courtroom";
+    private static final int AUTO_SESSION_ROOM_NUMBER = 0;
+    private static final int AUTO_SESSION_HALF_DAY_MINS = 180;
+    private static final String AUTO_SESSION_JURISDICTION = "CROWN";
+    private static final LocalTime AUTO_SESSION_BREAK_TIME = LocalTime.of(13, 0);
+
 
     /**
      * Crown-only fallback search. Matches strictly on ouCode + sessionDate; relaxes businessType,
@@ -813,48 +826,56 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * {@value #AUTO_SESSION_BUSINESS_TYPE_ROOM_PINNED} when a courtRoomId was supplied, DRAFT with
      * {@value #AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE} otherwise. Metadata the request cannot carry
      * (listing profile, ouCode, court house/room names, panel) is copied from the latest active
-     * session at the court centre (room-scoped first when a room is supplied). Empty when the centre
-     * has no session at all to copy from — a court centre that has never been seeded is a
-     * configuration problem this fallback must not paper over.
+     * session at the court centre (room-scoped first when a room is supplied).
+     *
+     * <p>SPRDT-1283: a centre with no session at all to copy from no longer blocks creation — the
+     * session is built from the request's own metadata (ouCode/courtCentreName/courtRoomName) plus
+     * fixed defaults, starting at the requested hearing time. ouCode is the one field that cannot
+     * be defaulted (the court calendar reads sessions by ouCode), so empty is returned only when
+     * neither a template nor a request ouCode exists.</p>
      */
     @Override
     @Transactional
-    public Optional<CrownFallbackSearchResult> createCrownFallbackSession(
-            final String courtCentreId,
-            final LocalDate hearingDate,
-            final String courtRoomId,
-            final String earliestHearingTime) {
+    public Optional<CrownFallbackSearchResult> createCrownFallbackSession(final CrownFallbackRequest request) {
 
-        final boolean hasCourtRoomId = courtRoomId != null && !courtRoomId.isBlank();
+        final String courtCentreId = request.getCourtCentreId();
+        final LocalDate hearingDate = request.getHearingDate();
+        final String courtRoomId = request.getCourtRoomId();
+        final boolean hasCourtRoomId = request.hasCourtRoomId();
+
         Optional<CourtSchedule> template = findLatestActiveSessionTemplate(courtCentreId, hasCourtRoomId ? courtRoomId : null);
         if (template.isEmpty() && hasCourtRoomId) {
             template = findLatestActiveSessionTemplate(courtCentreId, null);
         }
-        if (template.isEmpty()) {
+        if (template.isEmpty() && !request.hasOuCode()) {
             return Optional.empty();
         }
-        final CourtSchedule t = template.get();
+        final CourtSchedule t = template.orElse(null);
 
-        final LocalTime startTime = resolveAutoSessionStartTime(earliestHearingTime, t);
+        final LocalTime startTime = resolveAutoSessionStartTime(request.getEarliestHearingTime(), t);
 
         final CourtSchedule created = new CourtSchedule();
         created.setCourtScheduleId(java.util.UUID.randomUUID().toString());
-        created.setListingProfileId(t.getListingProfileId());
-        created.setOuCode(t.getOuCode());
+        created.setListingProfileId(t != null ? t.getListingProfileId() : AUTO_SESSION_PROFILE_ID);
+        created.setOuCode(t != null ? t.getOuCode() : request.getOuCode());
         created.setCourtHouseId(courtCentreId);
-        created.setCourtHouseName(t.getCourtHouseName());
+        created.setCourtHouseName(t != null ? t.getCourtHouseName()
+                : firstNonBlank(request.getCourtCentreName(), request.getOuCode()));
         // court_room_id is NOT NULL, and DRAFT sessions carry a room in the DB (rooms are stripped
-        // from draft responses downstream, ADR-005) — so the DRAFT case borrows the template's room.
-        // Room name/number always come from the template; when the requested room has never had a
-        // session they are display-metadata approximations, the id is authoritative.
-        created.setCourtRoomId(hasCourtRoomId ? courtRoomId : t.getCourtRoomId());
-        created.setCourtRoomNumber(t.getCourtRoomNumber());
-        created.setCourtRoomName(t.getCourtRoomName());
-        created.setOperationalUnit(t.getOperationalUnit());
+        // from draft responses downstream, ADR-005) — so the DRAFT case borrows the template's room,
+        // or a stable per-centre virtual room when the centre has no template. Room name/number are
+        // display-metadata approximations, the id is authoritative.
+        created.setCourtRoomId(hasCourtRoomId ? courtRoomId
+                : (t != null ? t.getCourtRoomId() : autoSessionVirtualRoomId(courtCentreId)));
+        created.setCourtRoomNumber(t != null ? t.getCourtRoomNumber() : AUTO_SESSION_ROOM_NUMBER);
+        created.setCourtRoomName(t != null ? t.getCourtRoomName()
+                : firstNonBlank(request.getCourtRoomName(), AUTO_SESSION_ROOM_NAME));
+        created.setOperationalUnit(t != null ? t.getOperationalUnit()
+                : firstNonBlank(request.getCourtCentreName(), request.getOuCode()));
         created.setBusinessType(hasCourtRoomId
                 ? AUTO_SESSION_BUSINESS_TYPE_ROOM_PINNED
                 : AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE);
-        created.setPanel(t.getPanel());
+        created.setPanel(t != null ? t.getPanel() : AUTO_SESSION_PANEL);
         created.setCourtSession(AUTO_SESSION_COURT_SESSION);
         created.setActive(true);
         // Duration-based session: is_slot_based=false AND support_ad_split=false — the pair the
@@ -862,17 +883,18 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         created.setSlotBased(false);
         created.setSupportAdSplit(false);
         created.setSessionDate(hearingDate);
-        created.setMaxSlots(t.getMaxSlots());
-        created.setAvailableSlots(t.getMaxSlots());
+        created.setMaxSlots(t != null ? t.getMaxSlots() : 0);
+        created.setAvailableSlots(t != null ? t.getMaxSlots() : 0);
         created.setMaxDuration(AUTO_SESSION_MAX_DURATION_MINS);
         created.setAvailableDuration(AUTO_SESSION_MAX_DURATION_MINS);
         created.setHasHearingsBooked(false);
-        created.setMaxAdMorningDuration(t.getMaxAdMorningDuration());
-        created.setMaxAdAfternoonDuration(t.getMaxAdAfternoonDuration());
+        created.setMaxAdMorningDuration(t != null ? t.getMaxAdMorningDuration() : AUTO_SESSION_HALF_DAY_MINS);
+        created.setMaxAdAfternoonDuration(t != null ? t.getMaxAdAfternoonDuration() : AUTO_SESSION_HALF_DAY_MINS);
         created.setIsOverbookingAllowed(false);
         created.setIsDraft(!hasCourtRoomId);
-        created.setJurisdiction(t.getJurisdiction());
-        created.setNationalBreakTime(t.getNationalBreakTime());
+        created.setJurisdiction(t != null ? t.getJurisdiction() : AUTO_SESSION_JURISDICTION);
+        created.setNationalBreakTime(t != null ? t.getNationalBreakTime()
+                : Date.from(hearingDate.atTime(AUTO_SESSION_BREAK_TIME).atZone(ZoneOffset.UTC).toInstant()));
         created.setSessionStartTime(Date.from(hearingDate.atTime(startTime).atZone(ZoneOffset.UTC).toInstant()));
         created.setSessionEndTime(Date.from(hearingDate.atTime(startTime).plusMinutes(AUTO_SESSION_MAX_DURATION_MINS).atZone(ZoneOffset.UTC).toInstant()));
 
@@ -894,10 +916,24 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 LOGGER.warn("[CROWN-FB][AUTO-SESSION] Unparseable earliestHearingTime '{}' — falling back to template/default start time", earliestHearingTime);
             }
         }
-        if (template.getSessionStartTime() != null) {
+        if (template != null && template.getSessionStartTime() != null) {
             return template.getSessionStartTime().toInstant().atZone(ZoneOffset.UTC).toLocalTime();
         }
         return LocalTime.of(10, 0);
+    }
+
+    /**
+     * Stable per-centre virtual room for a DRAFT session auto-created at a centre with no template
+     * session: court_room_id is NOT NULL, and a deterministic UUID stops repeat auto-creates from
+     * fabricating a new room per booking (the draft-tier candidate search reuses the session anyway).
+     */
+    private static String autoSessionVirtualRoomId(final String courtCentreId) {
+        return java.util.UUID.nameUUIDFromBytes(
+                ("CROWN-FB-ROOM:" + courtCentreId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+    }
+
+    private static String firstNonBlank(final String preferred, final String fallback) {
+        return preferred != null && !preferred.isBlank() ? preferred : fallback;
     }
 
     private Optional<CourtSchedule> findLatestActiveSessionTemplate(final String courtCentreId, final String courtRoomId) {

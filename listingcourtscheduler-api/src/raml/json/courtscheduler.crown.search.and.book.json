@@ -2,5 +2,8 @@
   "courtCentreId": "b21a7d44-3e0c-4f6a-8b2d-1c9e5f7a3d20",
   "hearingDate": "2026-07-06",
   "durationInMinutes": 1080,
-  "courtScheduleId": "c0ffee00-1111-2222-3333-444455556666"
+  "courtScheduleId": "c0ffee00-1111-2222-3333-444455556666",
+  "ouCode": "C99XX00",
+  "courtCentreName": "Example Crown Court",
+  "courtRoomName": "Courtroom 7"
 }

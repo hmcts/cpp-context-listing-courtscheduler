@@ -91,7 +91,8 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate date = LocalDate.now().plusDays(14);
 
-        // no seeded sessions → fallback exhausts all tiers
+        // no seeded sessions AND no ouCode on the request → auto-create has neither a template nor
+        // request metadata to build from (SPRDT-1283), so the fallback still exhausts all tiers
         final Response response = callFallback(hearingId, centreId, null, date, 10, "CROWN_FB_LIST");
 
         assertThat(response.getStatus(), is(422));
@@ -223,6 +224,133 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(created.getIsDraft(), is(true));
         assertThat(created.isSlotBased(), is(false));
         assertThat(created.getSupportAdSplit(), is(false));
+    }
+
+    @Test
+    void shouldAutoCreateSessionAtNeverSeededCentreWhenOuCodeSupplied() throws Exception {
+        // SPRDT-1283 part 1: a centre with NO session at all to copy metadata from no longer blocks
+        // auto-creation — the session is built from the request's own metadata (ouCode/names) and
+        // starts at the requested hearing time.
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+        final String hearingTime = date + "T11:30:00Z";
+
+        // deliberately NO seeded session anywhere at this centre
+        final Response response = postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID,
+                Json.createObjectBuilder()
+                        .add("courtCentreId", centreId)
+                        .add("courtRoomId", roomId)
+                        .add("hearingDate", date.toString())
+                        .add("durationInMinutes", 60)
+                        .add("earliestHearingTime", hearingTime)
+                        .add("source", "CROWN_FB_LIST")
+                        .add("ouCode", "C99XX00")
+                        .add("courtCentreName", "Never Seeded Crown Court")
+                        .add("courtRoomName", "Courtroom 7")
+                        .build().toString());
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        final String createdId = body.getString("courtScheduleId");
+        assertThat(body.getBoolean("isDraft"), is(false));
+
+        final CourtSchedule created = databaseReader.courtScheduleById(createdId);
+        assertThat(created.getOuCode(), is("C99XX00"));
+        assertThat(created.getCourtHouseId(), is(centreId));
+        assertThat(created.getCourtHouseName(), is("Never Seeded Crown Court"));
+        assertThat(created.getCourtRoomId(), is(roomId));
+        assertThat(created.getCourtRoomName(), is("Courtroom 7"));
+        assertThat(created.getListingProfileId(), is("CROWN-FB-AUTO"));
+        assertThat(created.getBusinessType(), is("LNG"));
+        assertThat(created.getCourtSession(), is("AD"));
+        assertThat(created.getIsDraft(), is(false));
+        assertThat(created.getMaxDuration(), is(360));
+        assertThat(created.getSessionDate(), is(date));
+        // session starts at the requested hearing time — compared as the stored UTC wall-clock
+        // (the app runs in UTC; asserting instants would break under a non-UTC test JVM)
+        assertThat(new java.sql.Timestamp(created.getSessionStartTime().getTime()).toLocalDateTime(),
+                is(date.atTime(11, 30)));
+
+        final List<AllocatedListing> booked = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat("hearing booked onto the auto-created session", booked.size(), is(1));
+        assertThat(booked.get(0).getCourtScheduleId(), is(createdId));
+    }
+
+    @Test
+    void shouldAutoCreateDraftSessionAtNeverSeededCentreWhenRoomOmitted() throws Exception {
+        // SPRDT-1283 part 1 (no-room variant): with no template session and no courtRoomId the
+        // session is created DRAFT/GENC on a stable per-centre virtual room — proving every
+        // NOT NULL column is satisfiable without a template.
+        final String centreId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        final Response response = postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID,
+                Json.createObjectBuilder()
+                        .add("courtCentreId", centreId)
+                        .add("hearingDate", date.toString())
+                        .add("durationInMinutes", 60)
+                        .add("source", "CROWN_FB_LIST")
+                        .add("ouCode", "C99XX00")
+                        .build().toString());
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        final String createdId = body.getString("courtScheduleId");
+        assertThat(body.getBoolean("isDraft"), is(true));
+
+        final CourtSchedule created = databaseReader.courtScheduleById(createdId);
+        assertThat(created.getOuCode(), is("C99XX00"));
+        assertThat(created.getBusinessType(), is("GENC"));
+        assertThat(created.getIsDraft(), is(true));
+        // no name supplied -> ouCode stands in for display metadata; room is the virtual room
+        assertThat(created.getCourtHouseName(), is("C99XX00"));
+        assertThat(created.getCourtRoomId(), is(UUID.nameUUIDFromBytes(
+                ("CROWN-FB-ROOM:" + centreId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()));
+    }
+
+    @Test
+    void shouldClampAllocatedListingStartTimeToSessionStartWhenRequestedTimeOutsideSessionWindow() throws Exception {
+        // SPRDT-1283 part 2: allocated_listings reflects the SESSION — a requested hearing time
+        // outside the booked session's window lands as the session's start time on the row (the
+        // listing viewstore keeps the user time; the divergence is accepted by design).
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        // seeded session runs 10:00-17:00; the hearing asks for 23:00 — far enough outside the
+        // window that no test-JVM-vs-app timezone offset can pull it back inside
+        final String sessionId = seedSession(date, roomId, "CR", centreId, "C01CY00", false, false, 360);
+
+        final Response response = postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID,
+                Json.createObjectBuilder()
+                        .add("courtCentreId", centreId)
+                        .add("courtRoomId", roomId)
+                        .add("hearingDate", date.toString())
+                        .add("durationInMinutes", 60)
+                        .add("earliestHearingTime", date + "T23:00:00Z")
+                        .add("source", "CROWN_FB_LIST")
+                        .build().toString());
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(parse(body(response)).getString("courtScheduleId"), is(sessionId));
+
+        final List<AllocatedListing> booked = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat(booked.size(), is(1));
+        // Compare DB wall-clocks: the stored value must equal what the seeder stored for the
+        // session's start (both round-trip through the same JDBC rendering, so the comparison is
+        // timezone-robust); the out-of-window 23:00 user time must NOT survive.
+        final Date seededSessionStart = Date.from(date.atTime(10, 0).toInstant(ZoneOffset.UTC));
+        assertThat("row carries the SESSION start, not the out-of-window user time",
+                new java.sql.Timestamp(booked.get(0).getHearingStartTime().getTime()).toLocalDateTime(),
+                is(new java.sql.Timestamp(seededSessionStart.getTime()).toLocalDateTime()));
     }
 
     // NOTE: allocated_listings.source IT coverage intentionally omitted.

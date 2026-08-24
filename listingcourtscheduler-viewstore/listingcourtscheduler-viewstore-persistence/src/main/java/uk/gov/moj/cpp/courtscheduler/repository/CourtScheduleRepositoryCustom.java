@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -53,12 +54,11 @@ public interface CourtScheduleRepositoryCustom {
      * SPRDT-1159 on-the-fly session creation for the Crown fallback: a duration-based AD session with
      * a fixed 360-minute capacity and overbooking disallowed — FINAL/LNG when a courtRoomId was
      * supplied, DRAFT/GENC otherwise; residual metadata copied from the latest active session at the
-     * court centre. Empty when the centre has no session to copy from.
+     * court centre. SPRDT-1283: when the centre has no session to copy from, the session is built
+     * from the request's own metadata (requires ouCode on the request); empty only when neither a
+     * template nor a request ouCode is available.
      */
-    Optional<CrownFallbackSearchResult> createCrownFallbackSession(String courtCentreId,
-                                                                   java.time.LocalDate hearingDate,
-                                                                   String courtRoomId,
-                                                                   String earliestHearingTime);
+    Optional<CrownFallbackSearchResult> createCrownFallbackSession(CrownFallbackRequest request);
 
     /**
      * Crown-only fallback search — strict on centre + date, relaxed on businessType/court_session

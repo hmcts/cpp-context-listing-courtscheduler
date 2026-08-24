@@ -583,7 +583,12 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
                 .setEarliestHearingTime(getStringOrNull(payload, "earliestHearingTime"))
                 .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"))
-                .setSource(getStringOrNull(payload, "source"));
+                .setSource(getStringOrNull(payload, "source"))
+                // SPRDT-1283: optional centre metadata for auto-creating a session at a
+                // never-seeded centre (single-day fallback only).
+                .setOuCode(getStringOrNull(payload, "ouCode"))
+                .setCourtCentreName(getStringOrNull(payload, "courtCentreName"))
+                .setCourtRoomName(getStringOrNull(payload, "courtRoomName"));
 
         final JsonObject validationError = hearingSlotsApiValidator.crownSearchAndBookValidation(sabRequest);
         if (!validationError.isEmpty()) {

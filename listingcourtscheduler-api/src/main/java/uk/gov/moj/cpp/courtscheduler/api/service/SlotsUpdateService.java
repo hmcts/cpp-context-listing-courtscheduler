@@ -38,6 +38,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -192,16 +193,15 @@ public class SlotsUpdateService {
      * same response. Logged at ERROR with a stable marker so auto-created sessions are traceable.
      */
     private CrownFallbackSearchResult autoCreateSession(final CrownFallbackRequest request) {
-        final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(
-                request.getCourtCentreId(),
-                request.getHearingDate(),
-                request.getCourtRoomId(),
-                request.getEarliestHearingTime());
+        final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(request);
         if (created.isEmpty()) {
+            // SPRDT-1283: only reachable when the centre has no session to copy metadata from AND
+            // the caller supplied no ouCode to build one from scratch.
             throw new CrownFallbackNoSessionException(
                     "No Crown session available at courtCentreId=" + request.getCourtCentreId()
                             + " on " + request.getHearingDate()
-                            + " and auto-creation found no session at the centre to copy metadata from");
+                            + " and auto-creation was not possible: the centre has no session to copy"
+                            + " metadata from and the request carried no ouCode");
         }
         final CourtSchedule session = created.get().session();
         LOGGER.error("[CROWN-FB][AUTO-SESSION] No bookable session found — auto-created {} session"
@@ -240,12 +240,35 @@ public class SlotsUpdateService {
         slot.setDuration(request.getDurationInMinutes());
         slot.setSessionDate(session.getSessionDate().toString());
         slot.setSource(allocationSource);
-        if (request.hasEarliestHearingTime()) {
-            slot.setHearingStartTime(request.getEarliestHearingTime());
-        } else if (session.getSessionStartTime() != null) {
-            slot.setHearingStartTime(DateUtils.toIsoString(new Timestamp(session.getSessionStartTime().getTime())));
-        }
+        // SPRDT-1283: allocated_listings reflects the SESSION — the requested time survives only
+        // when it falls inside the session window (the same clamp rule getAdjustedHearingStartTime
+        // applies on the other booking paths). The listing viewstore keeps the user-supplied time
+        // regardless (SPRDT-1274); the two stores diverging on out-of-window times is accepted.
+        slot.setHearingStartTime(resolveAllocatedListingStartTime(request, session));
         return slot;
+    }
+
+    private static String resolveAllocatedListingStartTime(final CrownFallbackRequest request, final CourtSchedule session) {
+        final String sessionStartIso = session.getSessionStartTime() != null
+                ? DateUtils.toIsoString(new Timestamp(session.getSessionStartTime().getTime())) : null;
+        if (!request.hasEarliestHearingTime()) {
+            return sessionStartIso;
+        }
+        if (session.getSessionStartTime() == null || session.getSessionEndTime() == null) {
+            return request.getEarliestHearingTime();
+        }
+        try {
+            // toOffsetDateTime keeps the TRUE instant (lenient zoned parse); toExactTimestamp would
+            // re-stamp the UTC wall-clock as local time and shift the epoch on non-UTC JVMs.
+            final Instant requested = DateUtils.toOffsetDateTime(request.getEarliestHearingTime()).toInstant();
+            final boolean withinSession = !requested.isBefore(session.getSessionStartTime().toInstant())
+                    && !requested.isAfter(session.getSessionEndTime().toInstant());
+            return withinSession ? request.getEarliestHearingTime() : sessionStartIso;
+        } catch (final RuntimeException e) {
+            LOGGER.warn("[CROWN-FB] Unparseable earliestHearingTime '{}' — allocated_listings takes the session start time",
+                    request.getEarliestHearingTime());
+            return sessionStartIso;
+        }
     }
 
     /**
@@ -740,7 +763,10 @@ public class SlotsUpdateService {
                 .setHearingDate(request.getHearingDate())
                 .setEarliestHearingTime(request.getEarliestHearingTime())
                 .setDurationInMinutes(request.getDurationInMinutes())
-                .setSource(request.getSource());
+                .setSource(request.getSource())
+                .setOuCode(request.getOuCode())
+                .setCourtCentreName(request.getCourtCentreName())
+                .setCourtRoomName(request.getCourtRoomName());
     }
 
     /** Multi-day when duration exceeds one court day OR an explicit date range is supplied (ADR-003 Option B). */

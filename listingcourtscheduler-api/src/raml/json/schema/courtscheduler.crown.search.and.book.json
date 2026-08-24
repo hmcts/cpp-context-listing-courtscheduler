@@ -10,7 +10,10 @@
     "courtRoomId": { "type": "string" },
     "earliestHearingTime": { "type": "string" },
     "courtScheduleId": { "type": "string" },
-    "source": { "type": "string", "enum": ["CROWN_FB_LIST", "CROWN_FB_ADJOURN", "CROWN_FB_UPDATE"] }
+    "source": { "type": "string", "enum": ["CROWN_FB_LIST", "CROWN_FB_ADJOURN", "CROWN_FB_UPDATE"] },
+    "ouCode": { "type": "string", "description": "SPRDT-1283: centre ouCode so the single-day fallback can auto-create a session at a centre with no session to copy metadata from" },
+    "courtCentreName": { "type": "string", "description": "SPRDT-1283: centre display name for the auto-created session" },
+    "courtRoomName": { "type": "string", "description": "SPRDT-1283: room display name for the auto-created session" }
   },
   "required": ["courtCentreId", "hearingDate"],
   "additionalProperties": false
