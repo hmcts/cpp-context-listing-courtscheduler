@@ -52,12 +52,12 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-web'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     testImplementation 'org.postgresql:postgresql'
-    testImplementation 'com.google.guava:guava:33.6.0-jre'
+    testImplementation 'com.google.guava:guava:33.7.1-jre'
     testImplementation 'commons-collections:commons-collections:3.2.2'
-    testImplementation 'org.apache.commons:commons-collections4:4.5.0'
+    testImplementation 'org.apache.commons:commons-collections4:4.6.0'
     testImplementation 'org.apache.commons:commons-lang3'
     // json-org used by ProvisionalBookingIT for JSONObject responseJson parsing
-    testImplementation 'org.json:json:20260719'
+    testImplementation 'org.json:json:20260814'
     testImplementation 'org.wiremock:wiremock-standalone:3.13.2'
     // jakarta.ws.rs API for the legacy IT classes' Response/MediaType types (no JAX-RS impl needed)
     testImplementation 'jakarta.ws.rs:jakarta.ws.rs-api:4.0.0'
@@ -76,10 +76,10 @@ dependencies {
     testRuntimeOnly  'org.eclipse.parsson:parsson:1.1.9'
 
     // Azure clients for tests that upload XML rota files into Azurite
-    testImplementation('com.azure:azure-storage-blob:12.35.0') {
+    testImplementation('com.azure:azure-storage-blob:12.35.1') {
         exclude group: 'com.azure', module: 'azure-core-http-netty'
     }
-    testImplementation 'com.azure:azure-core-http-jdk-httpclient:1.1.5'
+    testImplementation 'com.azure:azure-core-http-jdk-httpclient:1.1.6'
 }
 
 /* ---------------- Docker Compose (IT stack) ---------------- */
