@@ -260,7 +260,10 @@ public class SessionsService {
             String jurisdiction = persistedJurisdiction;
 
             if (CROWN.equalsIgnoreCase(jurisdiction)) {
-                courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+                // a courtroom shared between court centres has one membership per centre; use the session's centre
+                courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(courtRoomId, persistedCourtSchedule.getCourtHouseId())
+                        .or(() -> referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId))
+                        .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
             } else {
                 courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
             }
@@ -800,7 +803,10 @@ public class SessionsService {
         final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType()).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
         CourtRoom courtRoom;
         if ("CROWN".equalsIgnoreCase(builder.getJurisdiction())) {
-            courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+            // a courtroom shared between court centres has one membership per centre; use the session's centre
+            courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(builder.getCourtRoomId(), builder.getCourtHouseId())
+                    .or(() -> referenceDataCache.getCpCourtRoomByCourtRoomId(builder.getCourtRoomId()))
+                    .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
         } else {
             courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
         }
@@ -1198,11 +1204,11 @@ public class SessionsService {
                 .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, s -> s));
 
 
-        // Get courtroom details
-        final Optional<CourtRoom> courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(
+        // Get courtroom details; a courtroom shared between court centres has one entry per centre membership
+        final List<CourtRoom> courtRoomMemberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(
                 request.getCourtRoomId());
 
-        if (courtRoom.isEmpty()) {
+        if (courtRoomMemberships.isEmpty()) {
             // All sessions are ineligible if courtroom not found
             final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView> notFoundSessions = 
                     request.getCourtScheduleIds().stream()
@@ -1220,7 +1226,10 @@ public class SessionsService {
             return response;
         }
 
-        final String courtRoomCourtCentreId = courtRoom.get().getOucodeUUID();
+        final Set<String> courtRoomCourtCentreIds = courtRoomMemberships.stream()
+                .map(CourtRoom::getOucodeUUID)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
         // Track sessions with their error reasons
         final List<Pair<CourtSchedule, String>> sessionsWithErrors = new ArrayList<>();
@@ -1246,7 +1255,7 @@ public class SessionsService {
 
             // Check if courtroom belongs to the same court centre as the session
             final String sessionCourtCentreId = session.getCourtHouseId();
-            if (isNull(sessionCourtCentreId) || isNull(courtRoomCourtCentreId) || !sessionCourtCentreId.equals(courtRoomCourtCentreId)) {
+            if (isNull(sessionCourtCentreId) || !courtRoomCourtCentreIds.contains(sessionCourtCentreId)) {
                 sessionsWithErrors.add(Pair.of(session, "The new courtroom must belong to the same court centre as the session"));
                 continue;
             }
@@ -1304,7 +1313,12 @@ public class SessionsService {
         // Apply courtroom to eligible sessions and track failures
         for (final CourtSchedule session : eligibleSessions) {
             try {
-                assignCourtroomToSession(session.getCourtScheduleId(), request.getCourtRoomId(), courtRoom.get());
+                // eligible sessions passed the centre check, so a membership for their court house always exists
+                final CourtRoom courtRoomForSession = courtRoomMemberships.stream()
+                        .filter(c -> session.getCourtHouseId().equals(c.getOucodeUUID()))
+                        .findFirst()
+                        .orElse(courtRoomMemberships.get(0));
+                assignCourtroomToSession(session.getCourtScheduleId(), request.getCourtRoomId(), courtRoomForSession);
 
                 // Success - no error to add
             } catch (Exception e) {

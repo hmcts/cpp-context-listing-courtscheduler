@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
@@ -21,7 +22,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.RO
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_COURTROOM_CACHE_PREFIX;
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY;
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_JUDICIARIES_CACHE_KEY;
-import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.CP_COURTROOM_CACHE_PREFIX;
+import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.CP_COURTROOMS_BY_ID_CACHE_PREFIX;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
@@ -433,17 +434,17 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
         setCpCourtRoomCache();
         referenceDataCache.getCpCourtRoomByCourtRoomId(COURT_ROOM_ID);
-        verify(cacheService).get(CP_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID);
+        verify(cacheService).get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID);
     }
 
     @Test
     void shouldReturnCpCourtRoomFromCacheWhenCacheEnabledHoweverNotInTheCache() {
         setCommonCacheEnabled();
-        when(cacheService.get(CP_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
+        when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
 
         referenceDataCache.getCpCourtRoomByCourtRoomId(COURT_ROOM_ID);
-        verify(cacheService).get(CP_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID);
+        verify(cacheService).get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID);
         verify(referenceDataService).getCpCourtRooms();
     }
 
@@ -454,6 +455,39 @@ class ReferenceDataCacheTest {
 
         referenceDataCache.getCpCourtRoomByCourtRoomId(COURT_ROOM_ID);
         verify(referenceDataService).getCpCourtRooms();
+    }
+
+    @Test
+    void shouldReturnAllCourtCentreMembershipsForCpCourtRoomSharedBetweenCourtCentres() {
+        setCommonCacheDisabled();
+        final String centreA = "161141dc-a01f-3b0a-85d1-7a90a8099b6a";
+        final String centreB = "049b5d11-e3dd-356f-b742-bd5e71eb7af6";
+        when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
+                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreA).build(),
+                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreB).build()));
+
+        final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
+        assertEquals(2, memberships.size());
+
+        final Optional<CourtRoom> courtRoomForCentreB = referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(COURT_ROOM_ID, centreB);
+        assertTrue(courtRoomForCentreB.isPresent());
+        assertEquals(centreB, courtRoomForCentreB.get().getOucodeUUID());
+    }
+
+    @Test
+    void shouldCacheAllMembershipsOfCpCourtRoomSharedBetweenCourtCentresWhenCacheEnabled() {
+        setCommonCacheEnabled();
+        final String centreA = "161141dc-a01f-3b0a-85d1-7a90a8099b6a";
+        final String centreB = "049b5d11-e3dd-356f-b742-bd5e71eb7af6";
+        when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
+        when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
+                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreA).build(),
+                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreB).build()));
+
+        final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
+
+        assertEquals(2, memberships.size());
+        verify(cacheService).add(eq(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID), contains(centreB));
     }
 
     private void setBusinessTypeCache() {
@@ -506,7 +540,7 @@ class ReferenceDataCacheTest {
     }
 
     private void setCpCourtRoomCache() {
-        when(cacheService.get(CP_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn("{\"id\":\"" + COURT_ROOM_ID + "\"}");
+        when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn("[{\"id\":\"" + COURT_ROOM_ID + "\"}]");
     }
 
     private void setCourtRoomByVenueCache() {

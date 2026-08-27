@@ -3223,8 +3223,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session1, session2));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId1))
@@ -3257,8 +3257,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(emptyList());
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(emptyList());
 
         // When
         final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
@@ -3292,8 +3292,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(emptyList());
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
 
         // When
         final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
@@ -3330,8 +3330,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
@@ -3371,8 +3371,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
@@ -3411,8 +3411,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
@@ -3458,8 +3458,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
                 eq(courtRoomId), eq(sessionDate), anyString(), anyList(), eq(courtCentreId), eq(courtScheduleId)))
                 .thenReturn(List.of(duplicateSession));
@@ -3511,8 +3511,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(eligibleSession, ineligibleSession));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eligibleSessionId))
@@ -3563,8 +3563,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
