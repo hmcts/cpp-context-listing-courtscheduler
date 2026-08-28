@@ -6,7 +6,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework:spring-tx'
     implementation 'org.apache.commons:commons-lang3'
-    implementation 'org.apache.commons:commons-collections4:4.5.0'
+    implementation 'org.apache.commons:commons-collections4:4.6.0'
     implementation 'commons-collections:commons-collections:3.2.2'
     implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
 
