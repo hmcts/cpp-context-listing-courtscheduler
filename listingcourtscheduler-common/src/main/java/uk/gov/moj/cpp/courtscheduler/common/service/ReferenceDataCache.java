@@ -158,7 +158,7 @@ public class ReferenceDataCache {
             return getCpCourtRoomsByIdFromTheCache(courtRoomId);
         } else {
             return referenceDataService.getCpCourtRooms().stream()
-                    .filter(c -> c.getId().equals(courtRoomId))
+                    .filter(c -> nonNull(c.getId()) && c.getId().equals(courtRoomId))
                     .collect(Collectors.toList());
         }
     }
@@ -432,8 +432,13 @@ public class ReferenceDataCache {
     private List<CourtRoom> processCpCourtRoomsMap(final String courtRoomId) {
         final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms();
         if (isNotEmpty(courtRooms)) {
+            final long idLessCourtRooms = courtRooms.stream().filter(c -> isNull(c.getId())).count();
+            if (idLessCourtRooms > 0) {
+                LOGGER.warn("Skipping {} CP courtroom(s) without an id in the ou-courtrooms reference data", idLessCourtRooms);
+            }
             // a shared courtroom appears once per court centre it belongs to, so cache all memberships per id
             final Map<String, List<CourtRoom>> courtRoomsById = courtRooms.stream()
+                    .filter(c -> nonNull(c.getId()))
                     .collect(Collectors.groupingBy(CourtRoom::getId));
             courtRoomsById.forEach((id, memberships) -> {
                 try {

@@ -475,6 +475,35 @@ class ReferenceDataCacheTest {
     }
 
     @Test
+    void shouldIgnoreCpCourtRoomsWithoutIdWhenPopulatingCacheOnMiss() {
+        // toCpCourtRoom allows a null id; an id-less courtroom in the reference data must be
+        // skipped, not break cache population for every other courtroom
+        setCommonCacheEnabled();
+        when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
+        when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
+                CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomName("no id").build(),
+                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+
+        final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
+
+        assertEquals(1, memberships.size());
+        assertEquals(COURT_ROOM_ID, memberships.get(0).getId());
+    }
+
+    @Test
+    void shouldIgnoreCpCourtRoomsWithoutIdWhenCacheDisabled() {
+        setCommonCacheDisabled();
+        when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
+                CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomName("no id").build(),
+                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+
+        final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
+
+        assertEquals(1, memberships.size());
+        assertEquals(COURT_ROOM_ID, memberships.get(0).getId());
+    }
+
+    @Test
     void shouldCacheAllMembershipsOfCpCourtRoomSharedBetweenCourtCentresWhenCacheEnabled() {
         setCommonCacheEnabled();
         final String centreA = "161141dc-a01f-3b0a-85d1-7a90a8099b6a";

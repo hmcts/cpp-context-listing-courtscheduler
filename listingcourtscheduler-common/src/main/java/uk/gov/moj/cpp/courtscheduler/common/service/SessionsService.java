@@ -260,10 +260,7 @@ public class SessionsService {
             String jurisdiction = persistedJurisdiction;
 
             if (CROWN.equalsIgnoreCase(jurisdiction)) {
-                // a courtroom shared between court centres has one membership per centre; use the session's centre
-                courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(courtRoomId, persistedCourtSchedule.getCourtHouseId())
-                        .or(() -> referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId))
-                        .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+                courtRoom = Optional.of(getCpCourtRoomForCourtCentre(courtRoomId, persistedCourtSchedule.getCourtHouseId()));
             } else {
                 courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
             }
@@ -803,10 +800,7 @@ public class SessionsService {
         final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType()).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
         CourtRoom courtRoom;
         if ("CROWN".equalsIgnoreCase(builder.getJurisdiction())) {
-            // a courtroom shared between court centres has one membership per centre; use the session's centre
-            courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(builder.getCourtRoomId(), builder.getCourtHouseId())
-                    .or(() -> referenceDataCache.getCpCourtRoomByCourtRoomId(builder.getCourtRoomId()))
-                    .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+            courtRoom = getCpCourtRoomForCourtCentre(builder.getCourtRoomId(), builder.getCourtHouseId());
         } else {
             courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
         }
@@ -835,6 +829,25 @@ public class SessionsService {
             builder.withCourtHouseName(courtRoom.getOucodeL3Name());
             builder.withOperationalUnit(courtRoom.getOucodeL2Code());
         }
+    }
+
+    /**
+     * A CP courtroom shared between court centres has one membership per centre, each carrying
+     * that centre's OU-derived fields (ouCode, court house name, operational unit). The
+     * membership for the session's own centre must be used; enriching from another centre's
+     * membership would persist the wrong court house details. Validation guarantees a matching
+     * membership exists, so a miss here means stale reference data and the request must fail.
+     * Only a session with no court centre id at all (legacy data) falls back to an arbitrary
+     * membership, as there is nothing to match against.
+     */
+    private CourtRoom getCpCourtRoomForCourtCentre(final String courtRoomId, final String courtCentreId) {
+        if (isNull(courtCentreId)) {
+            logger.warn("No court centre id for session using courtroom {}; enriching from an arbitrary court centre membership", courtRoomId);
+            return referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)
+                    .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId));
+        }
+        return referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(courtRoomId, courtCentreId)
+                .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId + " in court centre " + courtCentreId));
     }
 
     public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor) {
