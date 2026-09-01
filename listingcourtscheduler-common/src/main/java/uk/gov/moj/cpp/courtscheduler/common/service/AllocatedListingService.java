@@ -12,6 +12,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +48,11 @@ public class AllocatedListingService {
     @Transactional
     public int deleteRedundantRotaData(final int numberOfPreviousMonths) {
         return allocatedListingRepository.deleteRedundantRotaData(numberOfPreviousMonths * 30);
+    }
+
+    @Transactional
+    public int purgeExpiredReservedSessions() {
+        return allocatedListingRepository.deleteExpiredReservedSessions(LocalDate.now().minusDays(1));
     }
 
 

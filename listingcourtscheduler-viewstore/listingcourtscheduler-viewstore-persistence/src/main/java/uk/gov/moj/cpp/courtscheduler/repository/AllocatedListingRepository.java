@@ -83,6 +83,15 @@ public interface AllocatedListingRepository
             """, nativeQuery = true)
     int deleteRedundantRotaData(@Param("numberOfDays") int numberOfDays);
 
+    /** Deletes allocated_listings rows whose expiresAt date equals the given date (purges yesterday's expired, unconfirmed reserved sessions). */
+    @Modifying
+    @Transactional
+    @Query(value = """
+            DELETE FROM allocated_listings
+             WHERE expires_at::date = :expiryDate
+            """, nativeQuery = true)
+    int deleteExpiredReservedSessions(@Param("expiryDate") LocalDate expiryDate);
+
     /** Rows for a hearing ordered by the joined session's start — multiday callers rely on this ordering. */
     @Query(value = """
             SELECT al.*

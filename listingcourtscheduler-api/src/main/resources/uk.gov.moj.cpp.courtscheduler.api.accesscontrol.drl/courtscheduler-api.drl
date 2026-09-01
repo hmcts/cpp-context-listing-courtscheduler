@@ -305,6 +305,15 @@ rule "API - Action - courtscheduler.rotasl.clean_redundant_rota_data"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.purge-expired-reserved-sessions"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.purge-expired-reserved-sessions");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.unassign.judiciary"
   when
     $outcome: Outcome();

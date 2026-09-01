@@ -58,6 +58,10 @@ public class AllocatedListing {
     @Column(name = "source", nullable = false)
     private String source;
 
+    @Column(name = "expires_at")
+    @Temporal(TemporalType.TIMESTAMP)
+    private java.util.Date expiresAt;
+
     public AllocatedListing() {
         //For JPA
     }
@@ -158,6 +162,14 @@ public class AllocatedListing {
         this.source = source;
     }
 
+    public Date getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(Date expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -190,6 +202,7 @@ public class AllocatedListing {
                 ", updatedOn=" + updatedOn +
                 ", createdOn=" + createdOn +
                 ", source=" + source +
+                ", expiresAt=" + expiresAt +
                 '}';
     }
 }

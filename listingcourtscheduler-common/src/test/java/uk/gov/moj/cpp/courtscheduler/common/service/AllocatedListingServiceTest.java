@@ -77,6 +77,16 @@ class AllocatedListingServiceTest {
         assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
     }
 
+    @Test
+    void shouldPurgeExpiredReservedSessions() {
+        final int numberOfDeleted = 3;
+        when(allocatedListingRepository.deleteExpiredReservedSessions(eq(LocalDate.now().minusDays(1)))).thenReturn(numberOfDeleted);
+
+        final int expectedNumberOfDeletion = allocatedListingService.purgeExpiredReservedSessions();
+        verify(allocatedListingRepository, atLeastOnce()).deleteExpiredReservedSessions(eq(LocalDate.now().minusDays(1)));
+        assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
+    }
+
     private List<AllocatedListingTotalBooked> getAllocatedListingTotalBooked(final List<String> courtScheduleIds) {
         return courtScheduleIds.stream()
                 .map(courtScheduleId -> new AllocatedListingTotalBooked(courtScheduleId, totalBooked))

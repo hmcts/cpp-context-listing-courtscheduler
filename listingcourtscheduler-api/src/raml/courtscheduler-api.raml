@@ -145,6 +145,23 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.search.court-schedules-by-id+json:
             schema: !include json/schema/courtscheduler.search.courtschedules.by.id.response.json
             example: !include json/courtscheduler.search.courtschedules.by.id.response.json
+  post:
+    description: |
+      Purge allocated listings (reserved sessions) whose expiresAt fell on the previous day.
+      Intended to be called once a day (around 03:00) by a scheduled job to clean up
+      unconfirmed bookings that were never confirmed before expiry.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.purge-expired-reserved-sessions+json
+          name: courtscheduler.purge-expired-reserved-sessions
+      ...
+    body:
+      application/vnd.courtscheduler.purge-expired-reserved-sessions+json:
+        schema: !include json/schema/courtscheduler.purge-expired-reserved-sessions.json
+        example: !include json/courtscheduler.purge-expired-reserved-sessions.json
+    responses:
+      202:
+        description: Request Accepted
 
 /sessions/judiciaries:
   post:

@@ -4,6 +4,7 @@ import static java.util.Arrays.asList;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.hasItems;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.core.Is.is;
@@ -445,6 +446,37 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         assertEquals(2, remaining.size());
         assertEquals("CS-DEL-DAY1", remaining.get(0).getCourtScheduleId());
         assertEquals("CS-DEL-DAY2", remaining.get(1).getCourtScheduleId());
+    }
+
+    @Test
+    public void shouldDeleteExpiredReservedSessionsExpiringYesterday() {
+        final LocalDate yesterday = LocalDate.now().minusDays(1);
+        final LocalDate today = LocalDate.now();
+        final LocalDate twoDaysAgo = LocalDate.now().minusDays(2);
+
+        final AllocatedListing expiredYesterday = createAllocateListing(
+                "AL-EXP-YDAY", "BK-EXP-YDAY", persistRandomCourtSchedule(), randomUUID().toString());
+        expiredYesterday.setExpiresAt(Date.from(yesterday.atStartOfDay(UTC_ZONE).toInstant()));
+        allocatedListingRepository.saveAndFlush(expiredYesterday);
+
+        final AllocatedListing expiringToday = createAllocateListing(
+                "AL-EXP-TODAY", "BK-EXP-TODAY", persistRandomCourtSchedule(), randomUUID().toString());
+        expiringToday.setExpiresAt(Date.from(today.atStartOfDay(UTC_ZONE).toInstant()));
+        allocatedListingRepository.saveAndFlush(expiringToday);
+
+        final AllocatedListing expiredTwoDaysAgo = createAllocateListing(
+                "AL-EXP-2DAYS", "BK-EXP-2DAYS", persistRandomCourtSchedule(), randomUUID().toString());
+        expiredTwoDaysAgo.setExpiresAt(Date.from(twoDaysAgo.atStartOfDay(UTC_ZONE).toInstant()));
+        allocatedListingRepository.saveAndFlush(expiredTwoDaysAgo);
+
+        final int deleted = allocatedListingRepository.deleteExpiredReservedSessions(yesterday);
+
+        assertEquals(1, deleted);
+        final List<String> remainingIds = allocatedListingRepository.findAll().stream()
+                .map(AllocatedListing::getId)
+                .toList();
+        assertThat(remainingIds, hasItems("AL-EXP-TODAY", "AL-EXP-2DAYS"));
+        assertThat(remainingIds, not(hasItem("AL-EXP-YDAY")));
     }
 
     private void seedScheduleAndAllocation(final String courtScheduleId, final LocalDate sessionDate,

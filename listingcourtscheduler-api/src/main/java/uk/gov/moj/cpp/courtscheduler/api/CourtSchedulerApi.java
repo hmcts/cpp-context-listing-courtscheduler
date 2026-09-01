@@ -47,6 +47,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidato
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.UnprocessableEntityException;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
+import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
@@ -121,6 +122,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     // --- court schedule CRUD
     private final SessionsService sessionsService;
+    private final AllocatedListingService allocatedListingService;
     private final SessionsApiValidator sessionsApiValidator;
     private final CourtScheduleApiValidator courtScheduleApiValidator;
     private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
@@ -155,6 +157,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     public CourtSchedulerApi(final ObjectMapper objectMapper,
                              final HttpServletRequest request,
                              final SessionsService sessionsService,
+                             final AllocatedListingService allocatedListingService,
                              final SessionsApiValidator sessionsApiValidator,
                              final CourtScheduleApiValidator courtScheduleApiValidator,
                              final CreateSessionsRequestParamConverter createSessionsRequestParamConverter,
@@ -180,6 +183,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.objectMapper = objectMapper;
         this.request = request;
         this.sessionsService = sessionsService;
+        this.allocatedListingService = allocatedListingService;
         this.sessionsApiValidator = sessionsApiValidator;
         this.courtScheduleApiValidator = courtScheduleApiValidator;
         this.createSessionsRequestParamConverter = createSessionsRequestParamConverter;
@@ -495,6 +499,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         }
 
         judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    /** POST /sessions — purge allocated listings (reserved sessions) whose expiresAt was yesterday. */
+    @Override
+    public ResponseEntity<Void> postPurgeExpiredReservedSessions(final Map<String, Object> body) {
+        LOG.info("courtscheduler.purge-expired-reserved-sessions requested");
+        final int purged = allocatedListingService.purgeExpiredReservedSessions();
+        LOG.info("courtscheduler.purge-expired-reserved-sessions purged {} allocated listing(s)", purged);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 

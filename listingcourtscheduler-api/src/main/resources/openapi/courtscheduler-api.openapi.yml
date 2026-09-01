@@ -126,6 +126,19 @@ paths:
             application/vnd.courtscheduler.search.court-schedules-by-id+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerSearchCourtSchedulesByIdResponse'
+    post:
+      tags: [session]
+      operationId: postPurgeExpiredReservedSessions
+      summary: Purge allocated listings (reserved sessions) whose expiresAt was yesterday.
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.purge-expired-reserved-sessions+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerPurgeExpiredReservedSessions'
+      responses:
+        '202':
+          description: Accepted
 
   /sessions/judiciaries:
     post:
@@ -760,6 +773,7 @@ components:
     CourtschedulerAssignCourtroomResponse:      { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerGetCourtSchedule:             { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerSearchCourtSchedulesByIdResponse: { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerPurgeExpiredReservedSessions:     { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerAssignJudiciary:              { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerUnassignJudiciary:            { $ref: '#/components/schemas/PassthroughObject' }
 

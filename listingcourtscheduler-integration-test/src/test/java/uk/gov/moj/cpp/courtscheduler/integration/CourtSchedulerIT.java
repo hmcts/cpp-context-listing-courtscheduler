@@ -100,6 +100,7 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String ASSIGN_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.assign-judiciary+json";
     private static final String UNASSIGN_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.unassign.judiciary+json";
     private static final String REMOVE_ALL_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.remove-all-judiciary+json";
+    private static final String PURGE_EXPIRED_RESERVED_SESSIONS_CONTENT_TYPE = "application/vnd.courtscheduler.purge-expired-reserved-sessions+json";
     private static final String ASSIGN_JUDICIARY_TO_SESSIONS_URL = "/sessions/bulk-assign-judiciaries";
     private static final String ASSIGN_JUDICIARY_TO_SESSIONS_CONTENT_TYPE =
             "application/vnd.courtscheduler.assign-judiciary-to-sessions+json";
@@ -5201,6 +5202,51 @@ class CourtSchedulerIT extends AbstractIT {
             assertTrue(returnedIds.contains(expected.getCourtScheduleId()),
                     "Response should contain courtScheduleId: " + expected.getCourtScheduleId());
         }
+    }
+
+    @Test
+    void shouldPurgeAllocatedListingsWhoseExpiresAtWasYesterday() throws Exception {
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final AllocatedListing expiredYesterday = createTestAllocatedListing(
+                randomUUID().toString(), courtSchedule.getCourtScheduleId());
+        databaseSeeder.insertAllocatedListing(expiredYesterday);
+        databaseSeeder.updateAllocatedListingExpiresAt(expiredYesterday.getId(),
+                Date.from(LocalDate.now().minusDays(1).atStartOfDay(UTC_ZONE).toInstant()));
+
+        final AllocatedListing expiringToday = createTestAllocatedListing(
+                randomUUID().toString(), courtSchedule.getCourtScheduleId());
+        databaseSeeder.insertAllocatedListing(expiringToday);
+        databaseSeeder.updateAllocatedListingExpiresAt(expiringToday.getId(),
+                Date.from(LocalDate.now().atStartOfDay(UTC_ZONE).toInstant()));
+
+        final Response response = postCommand(SEARCH_BY_ID_URL,
+                PURGE_EXPIRED_RESERVED_SESSIONS_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                "{}");
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final List<String> remainingIds = databaseReader.allocatedListings().stream()
+                .map(AllocatedListing::getId)
+                .toList();
+        assertFalse(remainingIds.contains(expiredYesterday.getId()));
+        assertTrue(remainingIds.contains(expiringToday.getId()));
+    }
+
+    private AllocatedListing createTestAllocatedListing(final String id, final String courtScheduleId) {
+        final AllocatedListing allocatedListing = new AllocatedListing();
+        allocatedListing.setId(id);
+        allocatedListing.setBookingId("BOOKING-" + id);
+        allocatedListing.setCourtScheduleId(courtScheduleId);
+        allocatedListing.setHearingId(randomUUID().toString());
+        allocatedListing.setCourtRoomId(1);
+        allocatedListing.setHearingStartTime(Date.from(LocalDate.now().plusDays(30).atTime(10, 0).atZone(UTC_ZONE).toInstant()));
+        allocatedListing.setDuration(120);
+        allocatedListing.setOucode("BA124");
+        allocatedListing.setRotaBusinessType("BUSS");
+        return allocatedListing;
     }
 
     private static LocalDate getNextWeekdayMonToWed() {
