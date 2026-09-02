@@ -83,6 +83,22 @@ public interface AllocatedListingRepository
             """, nativeQuery = true)
     int deleteRedundantRotaData(@Param("numberOfDays") int numberOfDays);
 
+    /**
+     * Deletes allocated_listings rows whose expiresAt is before the given cutoff instant —
+     * purges all expired, unconfirmed reserved sessions, not just those expiring exactly one day
+     * ago. Comparing against a real instant (rather than casting expires_at to a date) also avoids
+     * the comparison depending on the Postgres session's timezone setting. Self-healing: a missed
+     * daily run doesn't strand rows the way an exact-date match would, since the next run's cutoff
+     * still covers them.
+     */
+    @Modifying
+    @Transactional
+    @Query(value = """
+            DELETE FROM allocated_listings
+             WHERE expires_at < :cutoff
+            """, nativeQuery = true)
+    int deleteExpiredReservedSessions(@Param("cutoff") Instant cutoff);
+
     /** Rows for a hearing ordered by the joined session's start — multiday callers rely on this ordering. */
     @Query(value = """
             SELECT al.*

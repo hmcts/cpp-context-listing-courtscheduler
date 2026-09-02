@@ -5,6 +5,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -18,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -74,6 +76,23 @@ class AllocatedListingServiceTest {
 
         final int expectedNumberOfDeletion = allocatedListingService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
         verify(allocatedListingRepository, atLeastOnce()).deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder * 30));
+        assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
+    }
+
+    @Test
+    void shouldPurgeExpiredReservedSessions() {
+        final int numberOfDeleted = 3;
+        when(allocatedListingRepository.deleteExpiredReservedSessions(any(Instant.class))).thenReturn(numberOfDeleted);
+
+        final Instant before = Instant.now();
+        final int expectedNumberOfDeletion = allocatedListingService.purgeExpiredReservedSessions();
+        final Instant after = Instant.now();
+
+        // Instant.now() is called twice more (once here, once inside the service) than the assertion
+        // needs exact equality for — pin it to a [before, after] window around the call instead.
+        final org.mockito.ArgumentCaptor<Instant> cutoffCaptor = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        verify(allocatedListingRepository, atLeastOnce()).deleteExpiredReservedSessions(cutoffCaptor.capture());
+        assertTrue(!cutoffCaptor.getValue().isBefore(before) && !cutoffCaptor.getValue().isAfter(after));
         assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
     }
 

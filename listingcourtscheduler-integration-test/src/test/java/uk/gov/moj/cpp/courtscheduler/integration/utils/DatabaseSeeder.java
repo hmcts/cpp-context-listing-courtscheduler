@@ -43,6 +43,9 @@ public class DatabaseSeeder {
     private static final String UPDATE_SESSION_END_TIME_SQL =
             "UPDATE court_schedule SET session_end_time = ? WHERE id = ?";
 
+    private static final String UPDATE_ALLOCATED_LISTING_EXPIRES_AT_SQL =
+            "UPDATE allocated_listings SET expires_at = ? WHERE id = ?";
+
     private static final String ALLOCATED_LISTING_INSERT_SQL = "INSERT INTO allocated_listings (" +
             "id, court_schedule_id, booking_id, hearing_id, oucode, court_room_id, rota_business_type," +
             "duration, hearing_start_time, updated_on, created_on) \n" +
@@ -263,6 +266,17 @@ public class DatabaseSeeder {
 
             ps.setTimestamp(1, new java.sql.Timestamp(sessionEndTime.getTime()));
             ps.setString(2, courtScheduleId);
+
+            ps.executeUpdate();
+        }
+    }
+
+    public void updateAllocatedListingExpiresAt(String allocatedListingId, java.util.Date expiresAt) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement ps = connection.prepareStatement(UPDATE_ALLOCATED_LISTING_EXPIRES_AT_SQL)) {
+
+            ps.setTimestamp(1, new Timestamp(expiresAt.getTime()));
+            ps.setString(2, allocatedListingId);
 
             ps.executeUpdate();
         }
