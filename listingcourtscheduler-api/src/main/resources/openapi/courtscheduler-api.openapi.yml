@@ -129,7 +129,7 @@ paths:
     post:
       tags: [session]
       operationId: postPurgeExpiredReservedSessions
-      summary: Purge allocated listings (reserved sessions) whose expiresAt was yesterday.
+      summary: Purge allocated listings (reserved sessions) whose expiresAt is before today (UTC).
       requestBody:
         required: true
         content:

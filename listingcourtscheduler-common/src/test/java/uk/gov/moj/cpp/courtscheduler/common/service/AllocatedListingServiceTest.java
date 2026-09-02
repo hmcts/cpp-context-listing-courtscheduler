@@ -19,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -80,10 +81,12 @@ class AllocatedListingServiceTest {
     @Test
     void shouldPurgeExpiredReservedSessions() {
         final int numberOfDeleted = 3;
-        when(allocatedListingRepository.deleteExpiredReservedSessions(eq(LocalDate.now().minusDays(1)))).thenReturn(numberOfDeleted);
+        final java.time.Instant startOfTodayUtc =
+                LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant();
+        when(allocatedListingRepository.deleteExpiredReservedSessions(eq(startOfTodayUtc))).thenReturn(numberOfDeleted);
 
         final int expectedNumberOfDeletion = allocatedListingService.purgeExpiredReservedSessions();
-        verify(allocatedListingRepository, atLeastOnce()).deleteExpiredReservedSessions(eq(LocalDate.now().minusDays(1)));
+        verify(allocatedListingRepository, atLeastOnce()).deleteExpiredReservedSessions(eq(startOfTodayUtc));
         assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
     }
 

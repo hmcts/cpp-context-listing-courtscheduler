@@ -147,7 +147,8 @@ protocols: [ HTTP, HTTPS ]
             example: !include json/courtscheduler.search.courtschedules.by.id.response.json
   post:
     description: |
-      Purge allocated listings (reserved sessions) whose expiresAt fell on the previous day.
+      Purge allocated listings (reserved sessions) whose expiresAt is before the start of today
+      (UTC) — i.e. any backlog, not just yesterday's, so a missed daily run is self-healing.
       Intended to be called once a day (around 03:00) by a scheduled job to clean up
       unconfirmed bookings that were never confirmed before expiry.
       ...

@@ -449,7 +449,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldDeleteExpiredReservedSessionsExpiringYesterday() {
+    public void shouldDeleteAllReservedSessionsExpiredBeforeCutoff() {
         final LocalDate yesterday = LocalDate.now().minusDays(1);
         final LocalDate today = LocalDate.now();
         final LocalDate twoDaysAgo = LocalDate.now().minusDays(2);
@@ -469,14 +469,19 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         expiredTwoDaysAgo.setExpiresAt(Date.from(twoDaysAgo.atStartOfDay(UTC_ZONE).toInstant()));
         allocatedListingRepository.saveAndFlush(expiredTwoDaysAgo);
 
-        final int deleted = allocatedListingRepository.deleteExpiredReservedSessions(yesterday);
+        // Cutoff = start of today: everything strictly before it is purged in one pass — both
+        // yesterday's AND two-days-ago's rows — proving a missed run's backlog is self-healing
+        // rather than permanently stranded (the old exact-date-match behaviour this replaces).
+        final int deleted = allocatedListingRepository.deleteExpiredReservedSessions(
+                today.atStartOfDay(UTC_ZONE).toInstant());
 
-        assertEquals(1, deleted);
+        assertEquals(2, deleted);
         final List<String> remainingIds = allocatedListingRepository.findAll().stream()
                 .map(AllocatedListing::getId)
                 .toList();
-        assertThat(remainingIds, hasItems("AL-EXP-TODAY", "AL-EXP-2DAYS"));
+        assertThat(remainingIds, hasItem("AL-EXP-TODAY"));
         assertThat(remainingIds, not(hasItem("AL-EXP-YDAY")));
+        assertThat(remainingIds, not(hasItem("AL-EXP-2DAYS")));
     }
 
     private void seedScheduleAndAllocation(final String courtScheduleId, final LocalDate sessionDate,

@@ -13,6 +13,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,9 +51,18 @@ public class AllocatedListingService {
         return allocatedListingRepository.deleteRedundantRotaData(numberOfPreviousMonths * 30);
     }
 
+    /**
+     * Purges allocated_listings rows whose expiresAt is before the start of today (UTC) — self-
+     * healing against a missed daily run, since it isn't scoped to exactly "yesterday". The cutoff
+     * is computed in UTC explicitly (not {@code LocalDate.now()}/{@code Instant.now()} truncated to
+     * the JVM's default zone) to match how reservations stamp expiresAt (see
+     * SlotsUpdateService#reserveUnconfirmedHearing), so the purge boundary lines up regardless of
+     * the deployment's default timezone.
+     */
     @Transactional
     public int purgeExpiredReservedSessions() {
-        return allocatedListingRepository.deleteExpiredReservedSessions(LocalDate.now().minusDays(1));
+        return allocatedListingRepository.deleteExpiredReservedSessions(
+                LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant());
     }
 
 
