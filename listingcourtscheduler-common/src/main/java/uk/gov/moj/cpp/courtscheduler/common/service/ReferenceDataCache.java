@@ -4,6 +4,7 @@ import static java.lang.Boolean.parseBoolean;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
@@ -67,7 +68,7 @@ public class ReferenceDataCache {
 
     public static final String ROTA_BUSINESS_TYPE_CACHE_PREFIX = "RotaBusinessType_";
     public static final String ROTA_COURTROOM_CACHE_PREFIX = "RotaCourtRoom_";
-    public static final String CP_COURTROOM_CACHE_PREFIX = "CpCourtRoom_";
+    public static final String CP_COURTROOMS_BY_ID_CACHE_PREFIX = "CpCourtRoomsById_";
     public static final String ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX = "RotaCourtRoomByVenue_%d_%s";
     public static final String ROTA_BUSINESS_TYPES_CACHE_KEY = "RotaBusinessTypes";
     public static final String ROTA_JUDICIARIES_CACHE_KEY = "RotaJudiciaries_";
@@ -144,13 +145,28 @@ public class ReferenceDataCache {
     }
 
     public Optional<CourtRoom> getCpCourtRoomByCourtRoomId(final String courtRoomId) {
+        return getCpCourtRoomsByCourtRoomId(courtRoomId).stream().findFirst();
+    }
+
+    /**
+     * A courtroom can be shared between court centres, in which case the ou-courtrooms
+     * reference data nests the same courtroom id under each organisation unit it belongs to.
+     * Returns one entry per court centre membership (empty if the courtroom does not exist).
+     */
+    public List<CourtRoom> getCpCourtRoomsByCourtRoomId(final String courtRoomId) {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getCpCourtRoomByIdFromTheCache(courtRoomId);
+            return getCpCourtRoomsByIdFromTheCache(courtRoomId);
         } else {
             return referenceDataService.getCpCourtRooms().stream()
-                    .filter(c -> c.getId().equals(courtRoomId))
-                    .findFirst();
+                    .filter(c -> nonNull(c.getId()) && c.getId().equals(courtRoomId))
+                    .collect(Collectors.toList());
         }
+    }
+
+    public Optional<CourtRoom> getCpCourtRoomByCourtRoomIdAndCourtCentreId(final String courtRoomId, final String courtCentreId) {
+        return getCpCourtRoomsByCourtRoomId(courtRoomId).stream()
+                .filter(c -> nonNull(courtCentreId) && courtCentreId.equals(c.getOucodeUUID()))
+                .findFirst();
     }
 
     private Optional<BusinessType> getBusinessTypeByCodeFromTheCache(final String businessTypeCode) {
@@ -253,18 +269,21 @@ public class ReferenceDataCache {
         }
     }
 
-    private Optional<CourtRoom> getCpCourtRoomByIdFromTheCache(final String courtRoomId) {
-        final String cacheResult = cacheService.get(CP_COURTROOM_CACHE_PREFIX + courtRoomId);
+    private List<CourtRoom> getCpCourtRoomsByIdFromTheCache(final String courtRoomId) {
+        final String cacheResult = cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + courtRoomId);
 
         if (isNull(cacheResult)) {
-            LOGGER.debug("no cache result found for cp courtroomId: {} in getCpCourtRoomByIdFromTheCache", courtRoomId);
-            final AtomicReference<CourtRoom> courtRoomAtomicReference = new AtomicReference<>();
-            return processCpCourtRoomMap(courtRoomId, courtRoomAtomicReference);
+            LOGGER.debug("no cache result found for cp courtroomId: {} in getCpCourtRoomsByIdFromTheCache", courtRoomId);
+            return processCpCourtRoomsMap(courtRoomId);
         } else {
-            LOGGER.debug("cacheResult has been found for cp courtroomId: {} in getCpCourtRoomByIdFromTheCache", courtRoomId);
-            final JsonObject cacheResultJsonObject = stringToJsonObjectConverter.convert(cacheResult);
-            final CourtRoom courtRoom = jsonObjectToObjectConverter.convert(cacheResultJsonObject, CourtRoom.class);
-            return of(courtRoom);
+            LOGGER.debug("cacheResult has been found for cp courtroomId: {} in getCpCourtRoomsByIdFromTheCache", courtRoomId);
+            try {
+                return objectMapper.readValue(cacheResult, new TypeReference<>() {
+                });
+            } catch (final JsonProcessingException jsonProcessingException) {
+                LOGGER.error("exception whilst reading cacheResult and converting to List<CourtRoom> for cp courtRoomId: {} with exception: {}", courtRoomId, jsonProcessingException.getMessage(), jsonProcessingException);
+            }
+            return emptyList();
         }
     }
 
@@ -410,23 +429,28 @@ public class ReferenceDataCache {
         return empty();
     }
 
-    private Optional<CourtRoom> processCpCourtRoomMap(final String courtRoomId, final AtomicReference<CourtRoom> courtRoomForId) {
+    private List<CourtRoom> processCpCourtRoomsMap(final String courtRoomId) {
         final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms();
         if (isNotEmpty(courtRooms)) {
-            courtRooms.forEach(courtRoom -> {
+            final long idLessCourtRooms = courtRooms.stream().filter(c -> isNull(c.getId())).count();
+            if (idLessCourtRooms > 0) {
+                LOGGER.warn("Skipping {} CP courtroom(s) without an id in the ou-courtrooms reference data", idLessCourtRooms);
+            }
+            // a shared courtroom appears once per court centre it belongs to, so cache all memberships per id
+            final Map<String, List<CourtRoom>> courtRoomsById = courtRooms.stream()
+                    .filter(c -> nonNull(c.getId()))
+                    .collect(Collectors.groupingBy(CourtRoom::getId));
+            courtRoomsById.forEach((id, memberships) -> {
                 try {
-                    cacheService.add(CP_COURTROOM_CACHE_PREFIX + courtRoom.getId(), objectMapper.writeValueAsString(courtRoom));
-                    if (courtRoomId.equals(courtRoom.getId())) {
-                        courtRoomForId.set(courtRoom);
-                    }
+                    cacheService.add(CP_COURTROOMS_BY_ID_CACHE_PREFIX + id, objectMapper.writeValueAsString(memberships));
                 } catch (final JsonProcessingException jsonProcessingException) {
-                    LOGGER.error("exception whilst adding into the cache for cp courtRoomId: {} with exception: {}", courtRoom.getId(), jsonProcessingException.getMessage(), jsonProcessingException);
+                    LOGGER.error("exception whilst adding into the cache for cp courtRoomId: {} with exception: {}", id, jsonProcessingException.getMessage(), jsonProcessingException);
                 }
             });
 
-            return ofNullable(courtRoomForId.get());
+            return courtRoomsById.getOrDefault(courtRoomId, emptyList());
         }
-        return empty();
+        return emptyList();
     }
 
     private Optional<CourtRoom> processCourtRoomMapByVenue(final Venue venue, final AtomicReference<CourtRoom> courtRoomsForVenue, final Map<String, String> exceptionMessages) {

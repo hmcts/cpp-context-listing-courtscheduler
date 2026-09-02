@@ -8,10 +8,12 @@ import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -163,11 +165,12 @@ class SessionsServiceTest {
     void shouldCreateCourtSchedulesWithCrownJurisdictionFetchingCpCourtRoom() {
         // Given
         final LocalDate startDate = LocalDate.of(2024, 6, 20);
+        final String courtCentreId = randomUUID().toString();
         final Session session = Session.SessionBuilder.session()
                 .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
                 .withSlotsOrDuration(2)
                 .withBusinessType("DVLA")
-                .withCourtCentreId(randomUUID().toString())
+                .withCourtCentreId(courtCentreId)
                 .withCourtRoomId("court-room-id")
                 .withSessionType("AM")
                 .withPanelType("Adult")
@@ -178,17 +181,88 @@ class SessionsServiceTest {
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
 
-        // Ensure getCpCourtRoomByCourtRoomId is called, NOT getRotaCourtRoomByCourtRoomId
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq("court-room-id")))
-                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId("court-room-id").build()));
+        // Ensure the CP courtroom lookup is used, NOT getRotaCourtRoomByCourtRoomId
+        when(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("court-room-id"), eq(courtCentreId)))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId("court-room-id").withOucodeUUID(courtCentreId).build()));
 
         // When
         sessionsService.create(createSessionRequest);
 
         // Then
-        verify(referenceDataCache).getCpCourtRoomByCourtRoomId(eq("court-room-id"));
+        verify(referenceDataCache).getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("court-room-id"), eq(courtCentreId));
         verify(referenceDataCache, never()).getRotaCourtRoomByCourtRoomId(any());
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(any(List.class));
+    }
+
+    @Test
+    void shouldFailCrownSessionCreationWhenCourtRoomHasNoMembershipForSessionsCourtCentre() {
+        // Guard against enriching from another centre's membership: if the courtroom has no
+        // membership for the session's centre (stale reference data), creation must fail fast
+        final LocalDate startDate = LocalDate.of(2024, 6, 20);
+        final String courtCentreId = randomUUID().toString();
+        final Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId("court-room-id")
+                .withSessionType("AM")
+                .withPanelType("Adult")
+                .withJurisdiction("CROWN")
+                .build();
+
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("court-room-id"), eq(courtCentreId)))
+                .thenReturn(Optional.empty());
+
+        final RuntimeException exception = assertThrows(RuntimeException.class, () -> sessionsService.create(createSessionRequest));
+
+        assertThat(exception.getMessage(), containsString("in court centre " + courtCentreId));
+        verify(referenceDataCache, never()).getCpCourtRoomByCourtRoomId(any());
+        verify(courtScheduleRepository, never()).saveCourtSchedules(any(List.class));
+    }
+
+    @Test
+    void shouldEnrichCrownSessionFromCourtCentreMatchedMembershipWhenCourtRoomIsShared() {
+        // Given a courtroom shared between court centres: the membership matching the
+        // session's court centre must be used for enrichment, without the fallback lookup
+        final LocalDate startDate = LocalDate.of(2024, 6, 20);
+        final String courtCentreId = randomUUID().toString();
+        final Session session = Session.SessionBuilder.session()
+                .withRepeatDays(Collections.singleton(DayOfWeek.MONDAY))
+                .withSlotsOrDuration(2)
+                .withBusinessType("DVLA")
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId("court-room-id")
+                .withSessionType("AM")
+                .withPanelType("Adult")
+                .withJurisdiction("CROWN")
+                .build();
+
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
+        when(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("court-room-id"), eq(courtCentreId)))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom()
+                        .withCourtRoomId("court-room-id")
+                        .withOucodeUUID(courtCentreId)
+                        .withOucode("C45GU00")
+                        .withOucodeL3Name("Guildford Crown Court")
+                        .build()));
+
+        // When
+        sessionsService.create(createSessionRequest);
+
+        // Then
+        verify(referenceDataCache, never()).getCpCourtRoomByCourtRoomId(any());
+        final ArgumentCaptor<List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule>> savedSchedules =
+                ArgumentCaptor.forClass(List.class);
+        verify(courtScheduleRepository).saveCourtSchedules(savedSchedules.capture());
+        assertThat(savedSchedules.getValue().isEmpty(), is(false));
+        assertThat(savedSchedules.getValue().get(0).getOuCode(), is("C45GU00"));
+        assertThat(savedSchedules.getValue().get(0).getCourtHouseName(), is("Guildford Crown Court"));
     }
 
     @Test
@@ -1071,6 +1145,7 @@ class SessionsServiceTest {
         persistedCourtSchedule.setCourtRoomId("old-room");
         persistedCourtSchedule.setJurisdiction("CROWN");
         persistedCourtSchedule.setSlotBased(true);
+        persistedCourtSchedule.setCourtHouseId(randomUUID().toString());
 
         UpdateCourtSchedule updateCourtSchedule = UpdateCourtSchedule.UpdateCourtScheduleBuilder.courtSchedule()
                 .withCourtScheduleId(courtScheduleId)
@@ -1085,7 +1160,7 @@ class SessionsServiceTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "CROWN"));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq("new-room")))
+        when(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("new-room"), eq(persistedCourtSchedule.getCourtHouseId())))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId("new-room").build()));
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
 
@@ -1093,6 +1168,80 @@ class SessionsServiceTest {
 
         assertThat(result.isSuccess(), is(true));
         verify(referenceDataCache, never()).getRotaCourtRoomByCourtRoomId(anyString());
+    }
+
+    @Test
+    void shouldFailCrownCourtroomUpdateWhenCourtRoomHasNoMembershipForSessionsCourtHouse() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setCourtRoomId("old-room");
+        persistedCourtSchedule.setJurisdiction("CROWN");
+        persistedCourtSchedule.setSlotBased(true);
+        persistedCourtSchedule.setCourtHouseId(randomUUID().toString());
+
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtSchedule.UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId("new-room")
+                .withBusinessType("DVLA")
+                .withSessionType(persistedCourtSchedule.getCourtSession())
+                .withPanel(persistedCourtSchedule.getPanel())
+                .withJurisdiction("CROWN")
+                .withMaxSlots(10)
+                .build();
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "CROWN"));
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("new-room"), eq(persistedCourtSchedule.getCourtHouseId())))
+                .thenReturn(Optional.empty());
+
+        final RuntimeException exception = assertThrows(RuntimeException.class, () -> sessionsService.update(updateCourtSchedule));
+
+        assertThat(exception.getMessage(), containsString("in court centre " + persistedCourtSchedule.getCourtHouseId()));
+        verify(referenceDataCache, never()).getCpCourtRoomByCourtRoomId(anyString());
+        verify(courtScheduleRepository, never()).update(any(), any(), any());
+    }
+
+    @Test
+    void shouldUpdateCrownCourtroomUsingCourtCentreMatchedMembershipWhenCourtRoomIsShared() {
+        final String courtScheduleId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        persistedCourtSchedule.setCourtRoomId("old-room");
+        persistedCourtSchedule.setJurisdiction("CROWN");
+        persistedCourtSchedule.setSlotBased(true);
+        persistedCourtSchedule.setCourtHouseId(courtHouseId);
+
+        UpdateCourtSchedule updateCourtSchedule = UpdateCourtSchedule.UpdateCourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(courtScheduleId)
+                .withCourtRoomId("new-room")
+                .withBusinessType("DVLA")
+                .withSessionType(persistedCourtSchedule.getCourtSession())
+                .withPanel(persistedCourtSchedule.getPanel())
+                .withJurisdiction("CROWN")
+                .withMaxSlots(10)
+                .build();
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "CROWN"));
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        // the shared courtroom's membership for the session's own court house must be selected
+        when(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("new-room"), eq(courtHouseId)))
+                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom()
+                        .withCourtRoomId("new-room")
+                        .withOucodeUUID(courtHouseId)
+                        .withOucode("C45GU00")
+                        .build()));
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        Result result = sessionsService.update(updateCourtSchedule);
+
+        assertThat(result.isSuccess(), is(true));
+        verify(referenceDataCache, never()).getCpCourtRoomByCourtRoomId(anyString());
+        final ArgumentCaptor<Optional<CourtRoom>> courtRoomCaptor = ArgumentCaptor.forClass(Optional.class);
+        verify(courtScheduleRepository).update(any(), any(), courtRoomCaptor.capture());
+        assertThat(courtRoomCaptor.getValue().isPresent(), is(true));
+        assertThat(courtRoomCaptor.getValue().get().getOucode(), is("C45GU00"));
     }
 
     @Test
@@ -3223,8 +3372,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session1, session2));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId1))
@@ -3244,6 +3393,69 @@ class SessionsServiceTest {
     }
 
     @Test
+    void shouldAssignCourtroomSharedBetweenCourtCentresUsingTheSessionsOwnCentre() {
+        // Given a courtroom with two court centre memberships; the session belongs to the
+        // SECOND one, which previously failed the centre check and enriched from the wrong OU
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String otherCourtCentreId = randomUUID().toString();
+        final String sessionCourtCentreId = randomUUID().toString();
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule session = createDomainCourtSchedule(
+                courtScheduleId, "CROWN", sessionCourtCentreId, true);
+
+        final CourtRoom membershipInOtherCentre = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(otherCourtCentreId)
+                .withCourtRoomName("Courtroom 01 (Chichester)")
+                .withOucode("C47LW00")
+                .withCppCourtRoomId(1)
+                .withOucodeL3Name("Lewes Crown Court")
+                .withOucodeL2Code("47")
+                .build();
+        final CourtRoom membershipInSessionCentre = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(sessionCourtCentreId)
+                .withCourtRoomName("Courtroom 01 (Chichester)")
+                .withOucode("C45GU00")
+                .withCppCourtRoomId(1)
+                .withOucodeL3Name("Guildford Crown Court")
+                .withOucodeL2Code("45")
+                .build();
+
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedSession =
+                createPersistedCourtSchedule(courtScheduleId);
+
+        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
+                .assignCourtroomRequestBuilder()
+                .withCourtScheduleIds(List.of(courtScheduleId))
+                .withCourtRoomId(courtRoomId)
+                .build();
+
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
+                .thenReturn(List.of(session));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(membershipInOtherCentre, membershipInSessionCentre));
+        when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
+                .thenReturn(emptyList());
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSession);
+        doAnswer(invocation -> null).when(courtScheduleRepository).save(any());
+
+        // When
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+
+        // Then: assignment succeeds and enriches from the session's own centre membership
+        assertNotNull(response);
+        assertTrue(response.getErrorGroups().isEmpty(), "No error groups expected for a shared courtroom matching the session's centre");
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> savedSession =
+                ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule.class);
+        verify(courtScheduleRepository).save(savedSession.capture());
+        assertThat(savedSession.getValue().getOuCode(), is("C45GU00"));
+        assertThat(savedSession.getValue().getCourtHouseName(), is("Guildford Crown Court"));
+    }
+
+    @Test
     void shouldReturnErrorWhenCourtroomNotFound() {
         // Given
         final String courtScheduleId = randomUUID().toString();
@@ -3257,8 +3469,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(emptyList());
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(emptyList());
 
         // When
         final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
@@ -3292,8 +3504,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(emptyList());
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
 
         // When
         final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
@@ -3330,8 +3542,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
@@ -3371,8 +3583,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
@@ -3411,8 +3623,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(referenceDataCache.getRotaBusinessTypeByCode(anyString()))
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
@@ -3458,8 +3670,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(
                 eq(courtRoomId), eq(sessionDate), anyString(), anyList(), eq(courtCentreId), eq(courtScheduleId)))
                 .thenReturn(List.of(duplicateSession));
@@ -3511,8 +3723,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(eligibleSession, ineligibleSession));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(eligibleSessionId))
@@ -3563,8 +3775,8 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(anyList()))
                 .thenReturn(List.of(session));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
-                .thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
                 .thenReturn(emptyList());
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
