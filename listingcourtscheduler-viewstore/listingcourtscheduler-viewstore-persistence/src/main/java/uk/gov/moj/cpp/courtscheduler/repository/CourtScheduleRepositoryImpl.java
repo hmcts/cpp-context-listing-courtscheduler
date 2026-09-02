@@ -2301,6 +2301,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 allocatedListing.setDuration(allocatedSlot.isSlotBased() ? SLOT_DEFAULT : allocatedSlot.getDuration());
                 allocatedListing.setHearingStartTime(toExactTimestamp(allocatedSlot.getHearingStartTime()));
                 allocatedListing.setSource(allocatedSlot.getSource());
+                allocatedListing.setExpiresAt(allocatedSlot.getExpiresAt());
                 LOGGER.info("bookSlotsWithoutCourtScheduleId saveAllocatedListing {}", allocatedListing);
                 this.allocatedListingRepository.save(allocatedListing);
             } else {

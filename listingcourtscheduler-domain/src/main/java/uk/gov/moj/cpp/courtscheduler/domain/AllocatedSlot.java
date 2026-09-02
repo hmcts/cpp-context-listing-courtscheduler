@@ -23,6 +23,7 @@ public class AllocatedSlot {
     private boolean isPolice;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private String source;
+    private java.util.Date expiresAt;
 
     @SuppressWarnings("squid:S1186")
     public AllocatedSlot() {
@@ -170,6 +171,14 @@ public class AllocatedSlot {
         this.source = source;
     }
 
+    public java.util.Date getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(final java.util.Date expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
     @SuppressWarnings("squid:S1067")
     @Override
     public boolean equals(final Object o) {
@@ -197,14 +206,15 @@ public class AllocatedSlot {
                 Objects.equals(hearingSessionDateSearchCutOff, that.hearingSessionDateSearchCutOff) &&
                 Objects.equals(isPolice, that.isPolice) &&
                 Objects.equals(judiciaries, that.judiciaries) &&
-                Objects.equals(source, that.source);
+                Objects.equals(source, that.source) &&
+                Objects.equals(expiresAt, that.expiresAt);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(duration, sessionDate, hearingStartTime, session,
                 courtRoomId, ouCode,courtCentreId, hearingId, courtScheduleId, isSlotBased, bookingId, prosecutor, courtRoom,
-                courtRoomUUId, hearingSessionDateSearchCutOff, isPolice, judiciaries, source);
+                courtRoomUUId, hearingSessionDateSearchCutOff, isPolice, judiciaries, source, expiresAt);
     }
 
     @Override
@@ -228,6 +238,7 @@ public class AllocatedSlot {
                 ", isPolice='" + isPolice + '\'' +
                 ", judiciaries=" + judiciaries +
                 ", source='" + source + '\'' +
+                ", expiresAt=" + expiresAt +
                 '}';
     }
 }

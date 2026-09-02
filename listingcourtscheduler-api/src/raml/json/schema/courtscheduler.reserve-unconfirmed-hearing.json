@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "hearingStartTime": {
+      "type": "string"
+    },
+    "isSlotBased": {
+      "type": "boolean"
+    },
+    "duration": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "hearingStartTime",
+    "isSlotBased",
+    "duration"
+  ]
+}

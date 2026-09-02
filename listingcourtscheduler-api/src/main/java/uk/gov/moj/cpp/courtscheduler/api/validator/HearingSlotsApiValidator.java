@@ -26,6 +26,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.domain.ReserveUnconfirmedHearingRequest;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -254,6 +255,26 @@ public class HearingSlotsApiValidator {
         }
         if (request.getStartDate() == null) {
             return getMessage("startDate");
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    /**
+     * Validates a {@code courtscheduler.reserve-unconfirmed-hearing} request (LPT-2433).
+     * {@code sessionId}/{@code unconfirmedHearingId} come from the path and are validated by the
+     * controller as non-blank; here we validate the body: {@code hearingStartTime} is mandatory
+     * and must be a valid zoned date-time, {@code duration} must be positive.
+     */
+    public JsonObject reserveUnconfirmedHearingValidation(final ReserveUnconfirmedHearingRequest request) {
+        LOGGER.info("Validating reserveUnconfirmedHearing: hearingStartTime={}, isSlotBased={}, duration={}",
+                request.getHearingStartTime(), request.isSlotBased(), request.getDuration());
+
+        if (isBlank(request.getHearingStartTime())) {
+            return getMessage("hearingStartTime");
+        }
+        validateHearingStartTime(request.getHearingStartTime());
+        if (request.getDuration() <= 0) {
+            return buildErrorResponse("duration must be greater than zero");
         }
         return EMPTY_JSON_OBJECT;
     }

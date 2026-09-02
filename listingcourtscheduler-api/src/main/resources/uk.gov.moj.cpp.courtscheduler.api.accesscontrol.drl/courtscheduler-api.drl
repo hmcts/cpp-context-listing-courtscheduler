@@ -314,6 +314,15 @@ rule "API - Action - courtscheduler.purge-expired-reserved-sessions"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.reserve-unconfirmed-hearing"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.reserve-unconfirmed-hearing");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.unassign.judiciary"
   when
     $outcome: Outcome();
