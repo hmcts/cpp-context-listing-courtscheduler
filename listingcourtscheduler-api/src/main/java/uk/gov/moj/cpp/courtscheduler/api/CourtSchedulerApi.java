@@ -502,7 +502,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
-    /** POST /sessions — purge allocated listings (reserved sessions) whose expiresAt is in the past. */
+    /** POST /sessions — purge allocated listings (reserved sessions) whose expiresAt has already passed. */
     @Override
     public ResponseEntity<Void> postPurgeExpiredReservedSessions(final Map<String, Object> body) {
         LOG.info("courtscheduler.purge-expired-reserved-sessions requested");

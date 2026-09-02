@@ -5205,7 +5205,7 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
-    void shouldPurgeAllocatedListingsWhoseExpiresAtWasYesterday() throws Exception {
+    void shouldPurgeAllocatedListingsWhoseExpiresAtHasAlreadyPassed() throws Exception {
         final CourtSchedule courtSchedule = createTestCourtSchedule();
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -5215,11 +5215,14 @@ class CourtSchedulerIT extends AbstractIT {
         databaseSeeder.updateAllocatedListingExpiresAt(expiredYesterday.getId(),
                 Date.from(LocalDate.now().minusDays(1).atStartOfDay(UTC_ZONE).toInstant()));
 
-        final AllocatedListing expiringToday = createTestAllocatedListing(
+        // The purge cutoff is Instant.now(), not "start of today" — a midnight-today expiry would
+        // already be in the past by the time this test runs, so "not yet expired" must be set in
+        // the FUTURE (tomorrow) to actually exercise the not-purged branch.
+        final AllocatedListing notYetExpired = createTestAllocatedListing(
                 randomUUID().toString(), courtSchedule.getCourtScheduleId());
-        databaseSeeder.insertAllocatedListing(expiringToday);
-        databaseSeeder.updateAllocatedListingExpiresAt(expiringToday.getId(),
-                Date.from(LocalDate.now().atStartOfDay(UTC_ZONE).toInstant()));
+        databaseSeeder.insertAllocatedListing(notYetExpired);
+        databaseSeeder.updateAllocatedListingExpiresAt(notYetExpired.getId(),
+                Date.from(LocalDate.now().plusDays(1).atStartOfDay(UTC_ZONE).toInstant()));
 
         final Response response = postCommand(SEARCH_BY_ID_URL,
                 PURGE_EXPIRED_RESERVED_SESSIONS_CONTENT_TYPE,
@@ -5232,7 +5235,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .map(AllocatedListing::getId)
                 .toList();
         assertFalse(remainingIds.contains(expiredYesterday.getId()));
-        assertTrue(remainingIds.contains(expiringToday.getId()));
+        assertTrue(remainingIds.contains(notYetExpired.getId()));
     }
 
     private AllocatedListing createTestAllocatedListing(final String id, final String courtScheduleId) {
