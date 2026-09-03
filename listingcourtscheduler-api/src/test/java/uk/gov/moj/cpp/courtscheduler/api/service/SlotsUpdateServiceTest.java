@@ -96,7 +96,6 @@ class SlotsUpdateServiceTest {
         setField(service, "provisionalBookingRepository", provisionalBookingRepository);
         setField(service, "allocatedListingRepository", allocatedListingRepository);
         setField(service, "extendMultidayHearingService", extendMultidayHearingService);
-        setField(service, "reserveUnconfirmedHearingTtlDays", 1);
     }
 
     @Test

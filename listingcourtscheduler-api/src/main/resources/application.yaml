@@ -29,11 +29,6 @@ courtscheduler:
   # System user UUID (CJSCPPUID) used on outbound HTTP calls to other CPP context-services
   # in place of the Justice Services framework's Requester#requestAsAdmin(...).
   system-user-id: ${COURTSCHEDULER_SYSTEM_USER_ID:}
-  reserve-unconfirmed-hearing:
-    # Hold length from reservation until expires_at (LPT-2433) — a fixed Duration from the
-    # reservation instant, so every reservation gets the same hold regardless of time of day.
-    # Purge (courtscheduler.purge-expired-reserved-sessions) sweeps anything past its expiresAt.
-    ttl-days: ${COURTSCHEDULER_RESERVE_TTL_DAYS:1}
   http:
     # Outbound HTTP timeouts for CommonPlatformQueryClient (referencedata + usersgroups).
     # Without these, JDK HttpClient defaults to "no timeout" and a stuck peer can wedge

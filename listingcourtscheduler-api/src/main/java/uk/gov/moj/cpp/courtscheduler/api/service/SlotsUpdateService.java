@@ -41,9 +41,9 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
 import java.sql.Timestamp;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -53,7 +53,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 import jakarta.json.JsonArrayBuilder;
@@ -84,9 +83,6 @@ public class SlotsUpdateService {
     private AllocatedListingRepository allocatedListingRepository;
     @Inject
     private ExtendMultidayHearingService extendMultidayHearingService;
-
-    @Value("${courtscheduler.reserve-unconfirmed-hearing.ttl-days:1}")
-    private int reserveUnconfirmedHearingTtlDays;
 
     public JsonObject update(final List<AllocatedSlot> slots) {
         final Result slotUpdateResult;
@@ -158,11 +154,11 @@ public class SlotsUpdateService {
                 .findFirst()
                 .orElseThrow(() -> new NoSessionAvailableException("No session found for sessionId " + sessionId));
 
-        // A fixed Duration from now gives every reservation the same hold length regardless of
-        // time of day — a midnight-boundary TTL would let one made at 11pm expire in an hour while
-        // one made at 9am lasts ~39 hours for the same reserveUnconfirmedHearingTtlDays. Matches
-        // the purge job's own Instant.now() cutoff (AllocatedListingService#purgeExpiredReservedSessions).
-        final Date expiresAt = Date.from(Instant.now().plus(Duration.ofDays(reserveUnconfirmedHearingTtlDays)));
+        // Expires at 23:59 UTC on the day the reservation is made. Instant.truncatedTo(DAYS) lands
+        // on UTC midnight with no LocalDate/ZoneOffset conversion needed — Instant has no zone to
+        // be ambiguous about, unlike LocalDate.now() (JVM-default-zone dependent).
+        final Date expiresAt = Date.from(Instant.now().truncatedTo(ChronoUnit.DAYS)
+                .plus(23, ChronoUnit.HOURS).plus(59, ChronoUnit.MINUTES));
 
         final AllocatedSlot slot = new AllocatedSlot();
         slot.setCourtScheduleId(sessionId);
