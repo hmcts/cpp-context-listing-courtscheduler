@@ -179,7 +179,17 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         // session, so the engine must create one, copying only residual metadata from this template.
         seedSession(date.plusDays(7), roomId, "CR", centreId, "C01CY00", false, false, 300);
 
-        final Response response = callFallback(hearingId, centreId, roomId, date, 10, "CROWN_FB_LIST");
+        // An afternoon hearing time: the created session must still end at 17:00 (SPRDT-1324), not
+        // at start + the 360-minute capacity, which would have put it at 18:30.
+        final Response response = postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID,
+                Json.createObjectBuilder()
+                        .add("courtCentreId", centreId)
+                        .add("courtRoomId", roomId)
+                        .add("hearingDate", date.toString())
+                        .add("durationInMinutes", 10)
+                        .add("earliestHearingTime", date + "T12:30:00Z")
+                        .add("source", "CROWN_FB_LIST")
+                        .build().toString());
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final JsonObject body = parse(body(response));
@@ -196,6 +206,10 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(created.getSupportAdSplit(), is(false));
         assertThat(created.getCourtRoomId(), is(roomId));
         assertThat(created.getSessionDate(), is(date));
+        assertThat(new java.sql.Timestamp(created.getSessionStartTime().getTime()).toLocalDateTime(),
+                is(date.atTime(12, 30)));
+        assertThat(new java.sql.Timestamp(created.getSessionEndTime().getTime()).toLocalDateTime(),
+                is(date.atTime(17, 0)));
     }
 
     @Test
@@ -224,6 +238,9 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(created.getIsDraft(), is(true));
         assertThat(created.isSlotBased(), is(false));
         assertThat(created.getSupportAdSplit(), is(false));
+        // SPRDT-1324: the DRAFT variant ends at the same fixed all-day default
+        assertThat(new java.sql.Timestamp(created.getSessionEndTime().getTime()).toLocalDateTime(),
+                is(date.atTime(17, 0)));
     }
 
     @Test
@@ -272,6 +289,9 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         // (the app runs in UTC; asserting instants would break under a non-UTC test JVM)
         assertThat(new java.sql.Timestamp(created.getSessionStartTime().getTime()).toLocalDateTime(),
                 is(date.atTime(11, 30)));
+        // SPRDT-1324: an AD session ends at the fixed all-day default, never start + capacity
+        assertThat(new java.sql.Timestamp(created.getSessionEndTime().getTime()).toLocalDateTime(),
+                is(date.atTime(17, 0)));
 
         final List<AllocatedListing> booked = databaseReader.allocatedListings().stream()
                 .filter(al -> hearingId.equals(al.getHearingId()))
