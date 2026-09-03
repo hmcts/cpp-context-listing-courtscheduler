@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -18,10 +20,12 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -538,6 +542,45 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         cs.setCourtScheduleId(courtScheduleId);
         courtScheduleRepository.save(cs);
         return courtScheduleId;
+    }
+
+    /**
+     * SPRDT-1324: an auto-created AD session ends at the fixed all-day default (17:00) whatever the
+     * requested hearing time is, rather than start + the session's 360-minute capacity. A 12:30
+     * request used to produce an 18:30 end time, which put the session past the court day.
+     */
+    @Test
+    public void createCrownFallbackSessionShouldEndAtFivePmRegardlessOfStartTime() {
+        final String ouCode = random(String.class);
+        final String courtCentreId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2026, 8, 28);
+
+        // The template only supplies metadata to copy; it sits on an earlier date because an active
+        // session for the same room, business type and date would collide with the created one on the
+        // AM/PM uniqueness index.
+        final CourtSchedule template = createCourtSchedule(ouCode, "ADULT", sessionDate.minusDays(7), courtRoomId, "LNG", "AD");
+        template.setCourtHouseId(courtCentreId);
+        courtScheduleRepository.save(template);
+
+        final CrownFallbackRequest request = new CrownFallbackRequest()
+                .setHearingId(randomUUID().toString())
+                .setCourtCentreId(courtCentreId)
+                .setCourtRoomId(courtRoomId)
+                .setHearingDate(sessionDate)
+                .setEarliestHearingTime(sessionDate + "T12:30:00Z")
+                .setDurationInMinutes(10)
+                .setSource("CROWN_FB_LIST");
+
+        final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(request);
+
+        assertTrue(created.isPresent());
+        final LocalTime startTime = created.get().session().getSessionStartTime().toInstant()
+                .atZone(ZoneOffset.UTC).toLocalTime();
+        final LocalTime endTime = created.get().session().getSessionEndTime().toInstant()
+                .atZone(ZoneOffset.UTC).toLocalTime();
+        assertEquals(LocalTime.of(12, 30), startTime);
+        assertEquals(LocalTime.of(17, 0), endTime);
     }
 
     private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
