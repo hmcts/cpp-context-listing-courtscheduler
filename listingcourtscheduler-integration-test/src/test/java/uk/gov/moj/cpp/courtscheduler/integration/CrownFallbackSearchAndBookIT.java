@@ -5,6 +5,7 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -180,7 +181,8 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         seedSession(date.plusDays(7), roomId, "CR", centreId, "C01CY00", false, false, 300);
 
         // An afternoon hearing time: the created session must still end at 17:00 (SPRDT-1324), not
-        // at start + the 360-minute capacity, which would have put it at 18:30.
+        // at start + the 360-minute capacity, which would have put it at 18:30. 17:00 is a
+        // Europe/London wall-clock time (16:00 UTC while BST applies), so it is asserted in that zone.
         final Response response = postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID,
                 Json.createObjectBuilder()
                         .add("courtCentreId", centreId)
@@ -208,7 +210,7 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(created.getSessionDate(), is(date));
         assertThat(new java.sql.Timestamp(created.getSessionStartTime().getTime()).toLocalDateTime(),
                 is(date.atTime(12, 30)));
-        assertThat(new java.sql.Timestamp(created.getSessionEndTime().getTime()).toLocalDateTime(),
+        assertThat(created.getSessionEndTime().toInstant().atZone(LONDON_ZONE).toLocalDateTime(),
                 is(date.atTime(17, 0)));
     }
 
@@ -239,7 +241,7 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(created.isSlotBased(), is(false));
         assertThat(created.getSupportAdSplit(), is(false));
         // SPRDT-1324: the DRAFT variant ends at the same fixed all-day default
-        assertThat(new java.sql.Timestamp(created.getSessionEndTime().getTime()).toLocalDateTime(),
+        assertThat(created.getSessionEndTime().toInstant().atZone(LONDON_ZONE).toLocalDateTime(),
                 is(date.atTime(17, 0)));
     }
 
@@ -290,7 +292,7 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(new java.sql.Timestamp(created.getSessionStartTime().getTime()).toLocalDateTime(),
                 is(date.atTime(11, 30)));
         // SPRDT-1324: an AD session ends at the fixed all-day default, never start + capacity
-        assertThat(new java.sql.Timestamp(created.getSessionEndTime().getTime()).toLocalDateTime(),
+        assertThat(created.getSessionEndTime().toInstant().atZone(LONDON_ZONE).toLocalDateTime(),
                 is(date.atTime(17, 0)));
 
         final List<AllocatedListing> booked = databaseReader.allocatedListings().stream()

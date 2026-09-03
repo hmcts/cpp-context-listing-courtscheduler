@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
@@ -17,6 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -545,9 +547,11 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     }
 
     /**
-     * SPRDT-1324: an auto-created AD session ends at the fixed all-day default (17:00) whatever the
-     * requested hearing time is, rather than start + the session's 360-minute capacity. A 12:30
-     * request used to produce an 18:30 end time, which put the session past the court day.
+     * SPRDT-1324: an auto-created AD session ends at the fixed all-day default (17:00 Europe/London)
+     * whatever the requested hearing time is, rather than start + the session's 360-minute capacity.
+     * A 12:30 request used to produce an 18:30 end time, which put the session past the court day.
+     * The date is in British Summer Time so the test also proves the end is a London wall-clock
+     * time (16:00 UTC), not 17:00 UTC.
      */
     @Test
     public void createCrownFallbackSessionShouldEndAtFivePmRegardlessOfStartTime() {
@@ -577,10 +581,13 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertTrue(created.isPresent());
         final LocalTime startTime = created.get().session().getSessionStartTime().toInstant()
                 .atZone(ZoneOffset.UTC).toLocalTime();
-        final LocalTime endTime = created.get().session().getSessionEndTime().toInstant()
-                .atZone(ZoneOffset.UTC).toLocalTime();
+        final Instant sessionEnd = created.get().session().getSessionEndTime().toInstant();
         assertEquals(LocalTime.of(12, 30), startTime);
-        assertEquals(LocalTime.of(17, 0), endTime);
+        // 17:00 is a Europe/London wall-clock time, like every other session time in the viewstore
+        // (DateUtils.combineDateAndTime, TimezoneUtils.calculateNationalBreakTime). 2026-08-28 is in
+        // BST, so the stored instant must be 16:00 UTC — 17:00 UTC would show as 18:00 on the calendar.
+        assertEquals(sessionDate.atTime(17, 0), sessionEnd.atZone(LONDON_ZONE).toLocalDateTime());
+        assertEquals(LocalTime.of(16, 0), sessionEnd.atZone(ZoneOffset.UTC).toLocalTime());
     }
 
     private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
