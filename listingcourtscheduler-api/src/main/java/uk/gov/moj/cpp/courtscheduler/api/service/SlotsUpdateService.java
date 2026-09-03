@@ -74,6 +74,8 @@ public class SlotsUpdateService {
     public static final String SCHEDULES = "schedules";
 
     private static final String SOURCE_RESERVED_UNCONFIRMED = "RESERVED_UNCONFIRMED";
+    private static final int END_OF_DAY_HOUR = 23;
+    private static final int END_OF_DAY_MINUTE = 59;
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -158,7 +160,7 @@ public class SlotsUpdateService {
         // on UTC midnight with no LocalDate/ZoneOffset conversion needed — Instant has no zone to
         // be ambiguous about, unlike LocalDate.now() (JVM-default-zone dependent).
         final Date expiresAt = Date.from(Instant.now().truncatedTo(ChronoUnit.DAYS)
-                .plus(23, ChronoUnit.HOURS).plus(59, ChronoUnit.MINUTES));
+                .plus(END_OF_DAY_HOUR, ChronoUnit.HOURS).plus(END_OF_DAY_MINUTE, ChronoUnit.MINUTES));
 
         final AllocatedSlot slot = new AllocatedSlot();
         slot.setCourtScheduleId(sessionId);
