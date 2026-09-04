@@ -9,6 +9,7 @@ import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_ALL_DAY_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toExactTimestamp;
@@ -758,6 +759,16 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     private static final String AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE = "GENC";
     private static final String AUTO_SESSION_COURT_SESSION = "AD";
     private static final int AUTO_SESSION_MAX_DURATION_MINS = 360;
+    /**
+     * SPRDT-1324: an AD session's end time is the fixed all-day default (17:00), never
+     * start + capacity — a session starting at 12:30 still ends at 17:00, matching the rule
+     * {@code SessionsService} applies to every other session-creation route
+     * ({@link uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils#DEFAULT_ALL_DAY_END_TIME}).
+     * Like every other session time it is a Europe/London wall-clock time, so the stored instant is
+     * 16:00 UTC while BST applies. Capacity stays {@value #AUTO_SESSION_MAX_DURATION_MINS} minutes
+     * and is unaffected.
+     */
+    private static final LocalTime AUTO_SESSION_END_TIME = LocalTime.parse(DEFAULT_ALL_DAY_END_TIME);
 
     // SPRDT-1283 template-free auto-create defaults: used only when the centre has no session at
     // all to copy metadata from. ouCode must come from the request (the court calendar reads
@@ -822,7 +833,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     /**
      * SPRDT-1159 on-the-fly session creation: called when {@link #searchCrownFallbackSlots} finds
      * nothing. Creates a duration-based AD session with a fixed {@value #AUTO_SESSION_MAX_DURATION_MINS}-minute
-     * capacity and overbooking disallowed — FINAL ({@code is_draft=false}) with businessType
+     * capacity and overbooking disallowed. The session starts at the requested hearing time and, per
+     * SPRDT-1324, ends at the fixed all-day default {@value uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils#DEFAULT_ALL_DAY_END_TIME}
+     * Europe/London rather than start + capacity. FINAL ({@code is_draft=false}) with businessType
      * {@value #AUTO_SESSION_BUSINESS_TYPE_ROOM_PINNED} when a courtRoomId was supplied, DRAFT with
      * {@value #AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE} otherwise. Metadata the request cannot carry
      * (listing profile, ouCode, court house/room names, panel) is copied from the latest active
@@ -896,7 +909,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         created.setNationalBreakTime(t != null ? t.getNationalBreakTime()
                 : Date.from(hearingDate.atTime(AUTO_SESSION_BREAK_TIME).atZone(ZoneOffset.UTC).toInstant()));
         created.setSessionStartTime(Date.from(hearingDate.atTime(startTime).atZone(ZoneOffset.UTC).toInstant()));
-        created.setSessionEndTime(Date.from(hearingDate.atTime(startTime).plusMinutes(AUTO_SESSION_MAX_DURATION_MINS).atZone(ZoneOffset.UTC).toInstant()));
+        // The end is a London wall-clock time (BST-aware); the start is the requested UTC instant.
+        created.setSessionEndTime(Date.from(hearingDate.atTime(AUTO_SESSION_END_TIME).atZone(TimezoneUtils.LONDON_ZONE).toInstant()));
 
         entityManager.persist(created);
         entityManager.flush();
