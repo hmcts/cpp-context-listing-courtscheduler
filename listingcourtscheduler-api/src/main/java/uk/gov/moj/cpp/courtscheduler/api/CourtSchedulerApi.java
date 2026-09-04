@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -533,7 +534,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                                                                              final String unconfirmedHearingId,
                                                                              final Map<String, Object> body) {
         LOG.info("courtscheduler.reserve-unconfirmed-hearing sessionId={}, unconfirmedHearingId={}, body={}",
-                sessionId, unconfirmedHearingId, body);
+                Encode.forJava(sessionId), Encode.forJava(unconfirmedHearingId), body);
         final JsonObject payload = toJsonObject(body);
         final ReserveUnconfirmedHearingRequest reserveRequest = new ReserveUnconfirmedHearingRequest()
                 .setHearingStartTime(getStringOrNull(payload, "hearingStartTime"))

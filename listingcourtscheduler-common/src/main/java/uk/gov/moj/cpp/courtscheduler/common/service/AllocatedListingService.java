@@ -12,7 +12,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
-import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,18 +52,14 @@ public class AllocatedListingService {
     }
 
     /**
-     * Purges allocated_listings rows whose expiresAt has already passed. {@code Instant.now()} is
-     * zone-free by construction (no JVM-default-zone ambiguity to worry about) and purges a
-     * reservation as soon as its TTL boundary is crossed — unlike a "start of today" cutoff, which
-     * would leave a reservation that expires exactly at a midnight boundary unpurged for a whole
-     * extra day, since {@code expires_at < cutoff} never holds when both sides land on the same
-     * instant (reservations stamp expiresAt at midnight — see
-     * SlotsUpdateService#reserveUnconfirmedHearing). Self-healing against a missed daily run either
-     * way, since it isn't scoped to exactly "yesterday".
+     * Purges allocated_listings rows whose expiresAt (a calendar date, no time-of-day — see
+     * SlotsUpdateService#reserveUnconfirmedHearing) is before today. ZoneOffset.UTC keeps the
+     * cutoff deterministic regardless of the JVM's default zone. Self-healing against a missed
+     * daily run, since it isn't scoped to exactly "yesterday".
      */
     @Transactional
     public int purgeExpiredReservedSessions() {
-        return allocatedListingRepository.deleteExpiredReservedSessions(Instant.now());
+        return allocatedListingRepository.deleteExpiredReservedSessions(LocalDate.now(ZoneOffset.UTC));
     }
 
 

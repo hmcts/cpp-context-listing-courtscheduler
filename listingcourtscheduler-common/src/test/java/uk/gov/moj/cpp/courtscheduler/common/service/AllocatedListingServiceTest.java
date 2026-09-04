@@ -19,8 +19,8 @@ import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -82,17 +82,13 @@ class AllocatedListingServiceTest {
     @Test
     void shouldPurgeExpiredReservedSessions() {
         final int numberOfDeleted = 3;
-        when(allocatedListingRepository.deleteExpiredReservedSessions(any(Instant.class))).thenReturn(numberOfDeleted);
+        when(allocatedListingRepository.deleteExpiredReservedSessions(any(LocalDate.class))).thenReturn(numberOfDeleted);
 
-        final Instant before = Instant.now();
         final int expectedNumberOfDeletion = allocatedListingService.purgeExpiredReservedSessions();
-        final Instant after = Instant.now();
 
-        // Instant.now() is called twice more (once here, once inside the service) than the assertion
-        // needs exact equality for — pin it to a [before, after] window around the call instead.
-        final org.mockito.ArgumentCaptor<Instant> cutoffCaptor = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        final org.mockito.ArgumentCaptor<LocalDate> cutoffCaptor = org.mockito.ArgumentCaptor.forClass(LocalDate.class);
         verify(allocatedListingRepository, atLeastOnce()).deleteExpiredReservedSessions(cutoffCaptor.capture());
-        assertTrue(!cutoffCaptor.getValue().isBefore(before) && !cutoffCaptor.getValue().isAfter(after));
+        assertEquals(LocalDate.now(ZoneOffset.UTC), cutoffCaptor.getValue());
         assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
     }
 

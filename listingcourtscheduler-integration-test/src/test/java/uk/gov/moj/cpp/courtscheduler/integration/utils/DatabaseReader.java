@@ -297,7 +297,8 @@ public class DatabaseReader {
         allocatedListing.setSource(resultSet.getString("source"));
         allocatedListing.setCreatedOn(resultSet.getDate("created_on"));
         allocatedListing.setUpdatedOn(resultSet.getDate("updated_on"));
-        allocatedListing.setExpiresAt(resultSet.getTimestamp("expires_at"));
+        final java.sql.Date expiresAt = resultSet.getDate("expires_at");
+        allocatedListing.setExpiresAt(expiresAt == null ? null : expiresAt.toLocalDate());
 
         return allocatedListing;
     }

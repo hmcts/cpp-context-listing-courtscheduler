@@ -43,7 +43,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -74,8 +74,6 @@ public class SlotsUpdateService {
     public static final String SCHEDULES = "schedules";
 
     private static final String SOURCE_RESERVED_UNCONFIRMED = "RESERVED_UNCONFIRMED";
-    private static final int END_OF_DAY_HOUR = 23;
-    private static final int END_OF_DAY_MINUTE = 59;
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -156,11 +154,10 @@ public class SlotsUpdateService {
                 .findFirst()
                 .orElseThrow(() -> new NoSessionAvailableException("No session found for sessionId " + sessionId));
 
-        // Expires at 23:59 UTC on the day the reservation is made. Instant.truncatedTo(DAYS) lands
-        // on UTC midnight with no LocalDate/ZoneOffset conversion needed — Instant has no zone to
-        // be ambiguous about, unlike LocalDate.now() (JVM-default-zone dependent).
-        final Date expiresAt = Date.from(Instant.now().truncatedTo(ChronoUnit.DAYS)
-                .plus(END_OF_DAY_HOUR, ChronoUnit.HOURS).plus(END_OF_DAY_MINUTE, ChronoUnit.MINUTES));
+        // Expires at the end of the day the reservation is made, as a calendar date rather than an
+        // instant — the purge job only cares whether "today" has moved past this date, not the
+        // time of day. ZoneOffset.UTC keeps this deterministic regardless of the JVM's default zone.
+        final LocalDate expiresAt = LocalDate.now(ZoneOffset.UTC);
 
         final AllocatedSlot slot = new AllocatedSlot();
         slot.setCourtScheduleId(sessionId);
@@ -177,7 +174,7 @@ public class SlotsUpdateService {
         throwIfPersistFailed(result, hearingId);
 
         return new ReserveUnconfirmedHearingResponse(
-                sessionId, hearingId, DateUtils.toIsoString(new Timestamp(expiresAt.getTime())),
+                sessionId, hearingId, expiresAt.toString(),
                 request.isSlotBased(), request.getDuration(), request.getHearingStartTime(), SOURCE_RESERVED_UNCONFIRMED);
     }
 

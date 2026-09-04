@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.Objects;
 
@@ -59,8 +60,7 @@ public class AllocatedListing {
     private String source;
 
     @Column(name = "expires_at")
-    @Temporal(TemporalType.TIMESTAMP)
-    private java.util.Date expiresAt;
+    private LocalDate expiresAt;
 
     public AllocatedListing() {
         //For JPA
@@ -162,11 +162,11 @@ public class AllocatedListing {
         this.source = source;
     }
 
-    public Date getExpiresAt() {
+    public LocalDate getExpiresAt() {
         return expiresAt;
     }
 
-    public void setExpiresAt(Date expiresAt) {
+    public void setExpiresAt(LocalDate expiresAt) {
         this.expiresAt = expiresAt;
     }
 

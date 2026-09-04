@@ -7,7 +7,7 @@
     <changeSet id="052" author="ertugrul.duran"
                logicalFilePath="052-add-expires-at-column-allocated-listings.xml">
         <addColumn tableName="allocated_listings">
-            <column name="expires_at" type="timestamp with timezone"/>
+            <column name="expires_at" type="date"/>
         </addColumn>
 
         <rollback>

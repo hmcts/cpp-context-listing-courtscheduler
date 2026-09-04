@@ -2161,7 +2161,7 @@ class SlotsUpdateServiceTest {
             final AllocatedListing priorReservation = new AllocatedListing();
             priorReservation.setHearingId(hearingId);
             priorReservation.setCourtScheduleId(UUID.randomUUID().toString());
-            priorReservation.setExpiresAt(new Date());
+            priorReservation.setExpiresAt(LocalDate.now());
 
             when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(priorReservation));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(sessionId))).thenReturn(List.of(session));

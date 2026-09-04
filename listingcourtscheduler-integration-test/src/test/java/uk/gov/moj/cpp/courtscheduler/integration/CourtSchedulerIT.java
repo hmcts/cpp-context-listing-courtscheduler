@@ -5215,17 +5215,15 @@ class CourtSchedulerIT extends AbstractIT {
         final AllocatedListing expiredYesterday = createTestAllocatedListing(
                 randomUUID().toString(), courtSchedule.getCourtScheduleId());
         databaseSeeder.insertAllocatedListing(expiredYesterday);
-        databaseSeeder.updateAllocatedListingExpiresAt(expiredYesterday.getId(),
-                Date.from(LocalDate.now().minusDays(1).atStartOfDay(UTC_ZONE).toInstant()));
+        databaseSeeder.updateAllocatedListingExpiresAt(expiredYesterday.getId(), LocalDate.now().minusDays(1));
 
-        // The purge cutoff is Instant.now(), not "start of today" — a midnight-today expiry would
-        // already be in the past by the time this test runs, so "not yet expired" must be set in
-        // the FUTURE (tomorrow) to actually exercise the not-purged branch.
+        // The purge cutoff is today's date, not "start of today" as an instant — a today-dated
+        // expiry isn't purged until the day rolls over, so "not yet expired" must be set in the
+        // FUTURE (tomorrow) to actually exercise the not-purged branch.
         final AllocatedListing notYetExpired = createTestAllocatedListing(
                 randomUUID().toString(), courtSchedule.getCourtScheduleId());
         databaseSeeder.insertAllocatedListing(notYetExpired);
-        databaseSeeder.updateAllocatedListingExpiresAt(notYetExpired.getId(),
-                Date.from(LocalDate.now().plusDays(1).atStartOfDay(UTC_ZONE).toInstant()));
+        databaseSeeder.updateAllocatedListingExpiresAt(notYetExpired.getId(), LocalDate.now().plusDays(1));
 
         final Response response = postCommand(SEARCH_BY_ID_URL,
                 PURGE_EXPIRED_RESERVED_SESSIONS_CONTENT_TYPE,
