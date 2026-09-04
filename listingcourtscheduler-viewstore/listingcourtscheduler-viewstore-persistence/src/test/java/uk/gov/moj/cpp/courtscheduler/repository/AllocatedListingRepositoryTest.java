@@ -456,24 +456,24 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
 
         final AllocatedListing expiredYesterday = createAllocateListing(
                 "AL-EXP-YDAY", "BK-EXP-YDAY", persistRandomCourtSchedule(), randomUUID().toString());
-        expiredYesterday.setExpiresAt(Date.from(yesterday.atStartOfDay(UTC_ZONE).toInstant()));
+        expiredYesterday.setExpiresAt(yesterday);
         allocatedListingRepository.saveAndFlush(expiredYesterday);
 
         final AllocatedListing expiringToday = createAllocateListing(
                 "AL-EXP-TODAY", "BK-EXP-TODAY", persistRandomCourtSchedule(), randomUUID().toString());
-        expiringToday.setExpiresAt(Date.from(today.atStartOfDay(UTC_ZONE).toInstant()));
+        expiringToday.setExpiresAt(today);
         allocatedListingRepository.saveAndFlush(expiringToday);
 
         final AllocatedListing expiredTwoDaysAgo = createAllocateListing(
                 "AL-EXP-2DAYS", "BK-EXP-2DAYS", persistRandomCourtSchedule(), randomUUID().toString());
-        expiredTwoDaysAgo.setExpiresAt(Date.from(twoDaysAgo.atStartOfDay(UTC_ZONE).toInstant()));
+        expiredTwoDaysAgo.setExpiresAt(twoDaysAgo);
         allocatedListingRepository.saveAndFlush(expiredTwoDaysAgo);
 
-        // Cutoff = start of today: everything strictly before it is purged in one pass — both
-        // yesterday's AND two-days-ago's rows — proving a missed run's backlog is self-healing
-        // rather than permanently stranded (the old exact-date-match behaviour this replaces).
-        final int deleted = allocatedListingRepository.deleteExpiredReservedSessions(
-                today.atStartOfDay(UTC_ZONE).toInstant());
+        // Cutoff = today: everything strictly before it is purged in one pass — both yesterday's
+        // AND two-days-ago's rows — proving a missed run's backlog is self-healing rather than
+        // permanently stranded (the old exact-date-match behaviour this replaces). A row expiring
+        // today itself isn't purged until the day rolls over.
+        final int deleted = allocatedListingRepository.deleteExpiredReservedSessions(today);
 
         assertEquals(2, deleted);
         final List<String> remainingIds = allocatedListingRepository.findAll().stream()

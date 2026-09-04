@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -23,7 +24,7 @@ public class AllocatedSlot {
     private boolean isPolice;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private String source;
-    private java.util.Date expiresAt;
+    private LocalDate expiresAt;
 
     @SuppressWarnings("squid:S1186")
     public AllocatedSlot() {
@@ -171,11 +172,11 @@ public class AllocatedSlot {
         this.source = source;
     }
 
-    public java.util.Date getExpiresAt() {
+    public LocalDate getExpiresAt() {
         return expiresAt;
     }
 
-    public void setExpiresAt(final java.util.Date expiresAt) {
+    public void setExpiresAt(final LocalDate expiresAt) {
         this.expiresAt = expiresAt;
     }
 
