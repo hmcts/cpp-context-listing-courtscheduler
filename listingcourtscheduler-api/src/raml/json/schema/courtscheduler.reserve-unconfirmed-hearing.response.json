@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "courtScheduleId": {
+      "type": "string"
+    },
+    "hearingId": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "type": "string"
+    },
+    "isSlotBased": {
+      "type": "boolean"
+    },
+    "duration": {
+      "type": "integer"
+    },
+    "hearingStartTime": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "courtScheduleId",
+    "hearingId",
+    "expiresAt"
+  ]
+}

@@ -11,6 +11,7 @@ import static jakarta.json.Json.createArrayBuilder;
 import static jakarta.json.Json.createObjectBuilder;
 import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.anyOf;
@@ -22,6 +23,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
@@ -101,6 +103,7 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String UNASSIGN_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.unassign.judiciary+json";
     private static final String REMOVE_ALL_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.remove-all-judiciary+json";
     private static final String PURGE_EXPIRED_RESERVED_SESSIONS_CONTENT_TYPE = "application/vnd.courtscheduler.purge-expired-reserved-sessions+json";
+    private static final String RESERVE_UNCONFIRMED_HEARING_CONTENT_TYPE = "application/vnd.courtscheduler.reserve-unconfirmed-hearing+json";
     private static final String ASSIGN_JUDICIARY_TO_SESSIONS_URL = "/sessions/bulk-assign-judiciaries";
     private static final String ASSIGN_JUDICIARY_TO_SESSIONS_CONTENT_TYPE =
             "application/vnd.courtscheduler.assign-judiciary-to-sessions+json";
@@ -5266,6 +5269,68 @@ class CourtSchedulerIT extends AbstractIT {
             next = next.plusDays(1);
         }
         return next;
+    }
+
+    @Test
+    void shouldReserveUnconfirmedHearingAndPopulateExpiresAt() throws Exception {
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+        final String hearingId = randomUUID().toString();
+
+        final String payload = "{"
+                + "\"hearingStartTime\":\"2026-10-01T10:00:00Z\","
+                + "\"isSlotBased\":true,"
+                + "\"duration\":60"
+                + "}";
+
+        final Response response = putCommand(
+                "/sessions/" + courtSchedule.getCourtScheduleId() + "/hearings/" + hearingId,
+                RESERVE_UNCONFIRMED_HEARING_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                payload);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+
+        final AllocatedListing persisted = databaseReader.allocatedListings().stream()
+                .filter(allocation -> hearingId.equals(allocation.getHearingId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(persisted.getCourtScheduleId(), is(courtSchedule.getCourtScheduleId()));
+        assertThat(persisted.getSource(), is("RESERVED_UNCONFIRMED"));
+        assertNotNull(persisted.getExpiresAt());
+
+        final CourtSchedule updatedSchedule = databaseReader.courtScheduleById(courtSchedule.getCourtScheduleId());
+        assertThat(updatedSchedule.getAvailableSlots(), is(9));
+    }
+
+    @Test
+    void shouldRejectReserveWhenHearingAlreadyHasConfirmedAllocation() throws Exception {
+        final CourtSchedule confirmedSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(confirmedSchedule);
+        final String hearingId = randomUUID().toString();
+
+        final AllocatedListing confirmedAllocation = createTestAllocatedListing(
+                randomUUID().toString(), confirmedSchedule.getCourtScheduleId());
+        confirmedAllocation.setHearingId(hearingId);
+        databaseSeeder.insertAllocatedListing(confirmedAllocation);
+        // expires_at is left null by insertAllocatedListing => a CONFIRMED booking.
+
+        final CourtSchedule targetSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(targetSchedule);
+
+        final String payload = "{"
+                + "\"hearingStartTime\":\"2026-10-01T10:00:00Z\","
+                + "\"isSlotBased\":true,"
+                + "\"duration\":60"
+                + "}";
+
+        final Response response = putCommand(
+                "/sessions/" + targetSchedule.getCourtScheduleId() + "/hearings/" + hearingId,
+                RESERVE_UNCONFIRMED_HEARING_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                payload);
+
+        assertThat(response.getStatus(), is(CONFLICT.getStatusCode()));
     }
 
 }

@@ -35,6 +35,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.domain.ReserveUnconfirmedHearingRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.ReserveUnconfirmedHearingResponse;
+import uk.gov.moj.cpp.courtscheduler.exception.ConfirmedBookingExistsException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
@@ -2064,6 +2067,116 @@ class SlotsUpdateServiceTest {
             allocation.setCourtScheduleId(courtScheduleId);
             allocation.setSource("NONPOLICE");
             return allocation;
+        }
+    }
+
+    @Nested
+    class ReserveUnconfirmedHearing {
+
+        @Test
+        void shouldReserveUnconfirmedHearingAndStampExpiresAt() {
+            final String sessionId = UUID.randomUUID().toString();
+            final String hearingId = UUID.randomUUID().toString();
+            final CourtSchedule session = buildSessionWithId(LocalDate.of(2026, 9, 10), sessionId);
+            session.setActive(true);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(Collections.emptyList());
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(sessionId))).thenReturn(List.of(session));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(new Result("", true));
+
+            final ReserveUnconfirmedHearingRequest request = new ReserveUnconfirmedHearingRequest()
+                    .setHearingStartTime("2026-09-10T10:00:00+01:00")
+                    .setSlotBased(true)
+                    .setDuration(60);
+
+            final ReserveUnconfirmedHearingResponse response =
+                    service.reserveUnconfirmedHearing(sessionId, hearingId, request);
+
+            assertEquals(sessionId, response.courtScheduleId());
+            assertEquals(hearingId, response.hearingId());
+            assertEquals("RESERVED_UNCONFIRMED", response.source());
+            assertNotNull(response.expiresAt());
+
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+            verify(courtScheduleRepository).saveBookedSlots(captor.capture(), eq(false), eq(false));
+            final AllocatedSlot bookedSlot = captor.getValue().get(0);
+            assertEquals(sessionId, bookedSlot.getCourtScheduleId());
+            assertEquals(hearingId, bookedSlot.getHearingId());
+            assertEquals(session.getOuCode(), bookedSlot.getOuCode());
+            assertEquals("RESERVED_UNCONFIRMED", bookedSlot.getSource());
+            assertNotNull(bookedSlot.getExpiresAt());
+        }
+
+        @Test
+        void shouldThrowNoSessionAvailableExceptionWhenSessionMissing() {
+            final String sessionId = UUID.randomUUID().toString();
+            final String hearingId = UUID.randomUUID().toString();
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(Collections.emptyList());
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(sessionId))).thenReturn(Collections.emptyList());
+
+            final ReserveUnconfirmedHearingRequest request = new ReserveUnconfirmedHearingRequest()
+                    .setHearingStartTime("2026-09-10T10:00:00+01:00")
+                    .setSlotBased(true)
+                    .setDuration(60);
+
+            Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.reserveUnconfirmedHearing(sessionId, hearingId, request));
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void shouldRejectReserveWhenHearingAlreadyHasConfirmedAllocation() {
+            final String sessionId = UUID.randomUUID().toString();
+            final String hearingId = UUID.randomUUID().toString();
+            final AllocatedListing confirmed = new AllocatedListing();
+            confirmed.setHearingId(hearingId);
+            confirmed.setCourtScheduleId(UUID.randomUUID().toString());
+            confirmed.setExpiresAt(null);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(confirmed));
+
+            final ReserveUnconfirmedHearingRequest request = new ReserveUnconfirmedHearingRequest()
+                    .setHearingStartTime("2026-09-10T10:00:00+01:00")
+                    .setSlotBased(true)
+                    .setDuration(60);
+
+            Assertions.assertThrows(ConfirmedBookingExistsException.class,
+                    () -> service.reserveUnconfirmedHearing(sessionId, hearingId, request));
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .getCourtSchedulesByIdList(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void shouldAllowReserveWhenExistingAllocationIsItselfUnconfirmed() {
+            final String sessionId = UUID.randomUUID().toString();
+            final String hearingId = UUID.randomUUID().toString();
+            final CourtSchedule session = buildSessionWithId(LocalDate.of(2026, 9, 10), sessionId);
+            session.setActive(true);
+            final AllocatedListing priorReservation = new AllocatedListing();
+            priorReservation.setHearingId(hearingId);
+            priorReservation.setCourtScheduleId(UUID.randomUUID().toString());
+            priorReservation.setExpiresAt(new Date());
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(priorReservation));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(sessionId))).thenReturn(List.of(session));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(new Result("", true));
+
+            final ReserveUnconfirmedHearingRequest request = new ReserveUnconfirmedHearingRequest()
+                    .setHearingStartTime("2026-09-10T10:00:00+01:00")
+                    .setSlotBased(true)
+                    .setDuration(60);
+
+            final ReserveUnconfirmedHearingResponse response =
+                    service.reserveUnconfirmedHearing(sessionId, hearingId, request);
+
+            assertEquals(sessionId, response.courtScheduleId());
+            verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false));
         }
     }
 }

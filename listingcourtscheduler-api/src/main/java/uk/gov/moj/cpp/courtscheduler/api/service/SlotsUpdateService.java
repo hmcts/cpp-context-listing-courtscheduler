@@ -21,10 +21,13 @@ import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.ReserveUnconfirmedHearingRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.ReserveUnconfirmedHearingResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.common.service.ExtendMultidayHearingService;
 import uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.exception.ConfirmedBookingExistsException;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
@@ -40,6 +43,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -68,6 +72,10 @@ public class SlotsUpdateService {
     public static final String HEARING_DATE = "hearingDate";
     public static final String COURT_SCHEDULE_ID = "courtScheduleId";
     public static final String SCHEDULES = "schedules";
+
+    private static final String SOURCE_RESERVED_UNCONFIRMED = "RESERVED_UNCONFIRMED";
+    private static final int END_OF_DAY_HOUR = 23;
+    private static final int END_OF_DAY_MINUTE = 59;
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -119,6 +127,58 @@ public class SlotsUpdateService {
         });
 
         return createObjectBuilder().add(SCHEDULES, hearingDaysJsonArrBuilder).build();
+    }
+
+    /**
+     * Reserve an unconfirmed hearing against a session (LPT-2433): books it through the same
+     * capacity-decrementing pipeline as a real booking, but stamps {@code expires_at} on the
+     * resulting {@code allocated_listings} row so the purge job (also LPT-2433) sweeps it up if
+     * it's never confirmed. Rejects with {@link ConfirmedBookingExistsException} when the hearing
+     * already has a CONFIRMED allocation elsewhere ({@code expires_at IS NULL}) — otherwise the
+     * shared pipeline's hearing-wide release would silently drop the real booking. Re-reserving
+     * over an existing UNCONFIRMED reservation is allowed (refreshes/moves it).
+     */
+    public ReserveUnconfirmedHearingResponse reserveUnconfirmedHearing(final String sessionId, final String hearingId,
+                                                                       final ReserveUnconfirmedHearingRequest request) {
+        final boolean hasConfirmedAllocation = allocatedListingRepository.findByHearingId(hearingId).stream()
+                .anyMatch(allocation -> allocation.getExpiresAt() == null);
+        if (hasConfirmedAllocation) {
+            throw new ConfirmedBookingExistsException(
+                    "Hearing " + hearingId + " already has a confirmed allocation — cannot reserve");
+        }
+
+        // findCourtScheduleById projects via convertForOverbooking, which only populates
+        // courtScheduleId/isOverbookingAllowed/active — not ouCode/sessionDate, which this method
+        // needs. getCourtSchedulesByIdList uses the full-fields projection instead (same fix
+        // toResponseFromExisting applies above for the same reason).
+        final CourtSchedule session = courtScheduleRepository.getCourtSchedulesByIdList(List.of(sessionId)).stream()
+                .filter(CourtSchedule::isActive)
+                .findFirst()
+                .orElseThrow(() -> new NoSessionAvailableException("No session found for sessionId " + sessionId));
+
+        // Expires at 23:59 UTC on the day the reservation is made. Instant.truncatedTo(DAYS) lands
+        // on UTC midnight with no LocalDate/ZoneOffset conversion needed — Instant has no zone to
+        // be ambiguous about, unlike LocalDate.now() (JVM-default-zone dependent).
+        final Date expiresAt = Date.from(Instant.now().truncatedTo(ChronoUnit.DAYS)
+                .plus(END_OF_DAY_HOUR, ChronoUnit.HOURS).plus(END_OF_DAY_MINUTE, ChronoUnit.MINUTES));
+
+        final AllocatedSlot slot = new AllocatedSlot();
+        slot.setCourtScheduleId(sessionId);
+        slot.setHearingId(hearingId);
+        slot.setOuCode(session.getOuCode());
+        slot.setSessionDate(session.getSessionDate().toString());
+        slot.setDuration(request.getDuration());
+        slot.setHearingStartTime(request.getHearingStartTime());
+        slot.setSlotBased(request.isSlotBased());
+        slot.setSource(SOURCE_RESERVED_UNCONFIRMED);
+        slot.setExpiresAt(expiresAt);
+
+        final Result result = courtScheduleRepository.saveBookedSlots(new ArrayList<>(List.of(slot)), false, false);
+        throwIfPersistFailed(result, hearingId);
+
+        return new ReserveUnconfirmedHearingResponse(
+                sessionId, hearingId, DateUtils.toIsoString(new Timestamp(expiresAt.getTime())),
+                request.isSlotBased(), request.getDuration(), request.getHearingStartTime(), SOURCE_RESERVED_UNCONFIRMED);
     }
 
     public ListHearingSlotsResponse listHearingSlots(final RequestedSlots hearingSlots) {

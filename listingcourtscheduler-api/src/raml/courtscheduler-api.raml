@@ -262,6 +262,42 @@ protocols: [ HTTP, HTTPS ]
       202:
         description: Request Accepted
 
+/sessions/{sessionId}/hearings/{unconfirmedHearingId}:
+  uriParameters:
+    sessionId:
+      description: The session (court schedule) the hearing is reserved against
+      type: string
+    unconfirmedHearingId:
+      description: The hearing being reserved
+      type: string
+  put:
+    description: |
+      Reserve an unconfirmed hearing against a session (LPT-2433). Books the hearing through the
+      same capacity-decrementing pipeline as a real booking, except the resulting allocation is
+      marked with an expiry so it is picked up by courtscheduler.purge-expired-reserved-sessions
+      if it is never confirmed. Rejects with 409 if the hearing already has a CONFIRMED allocation
+      elsewhere.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.reserve-unconfirmed-hearing+json
+          responseType: application/vnd.courtscheduler.reserve-unconfirmed-hearing.response+json
+          name: courtscheduler.reserve-unconfirmed-hearing
+      ...
+    body:
+      application/vnd.courtscheduler.reserve-unconfirmed-hearing+json:
+        schema: !include json/schema/courtscheduler.reserve-unconfirmed-hearing.json
+        example: !include json/courtscheduler.reserve-unconfirmed-hearing.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.reserve-unconfirmed-hearing.response+json:
+            schema: !include json/schema/courtscheduler.reserve-unconfirmed-hearing.response.json
+            example: !include json/courtscheduler.reserve-unconfirmed-hearing.response.json
+      404:
+        description: No session found for sessionId
+      409:
+        description: The hearing already has a confirmed allocation
+
 /hearingslots:
   put:
     description:  |

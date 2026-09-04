@@ -1,0 +1,9 @@
+{
+  "courtScheduleId": "3f4a8f5e-6b0e-4d8a-9c8b-1a2b3c4d5e6f",
+  "hearingId": "7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
+  "expiresAt": "2026-09-03T00:00:00Z",
+  "isSlotBased": true,
+  "duration": 60,
+  "hearingStartTime": "2026-09-02T10:00:00+01:00",
+  "source": "RESERVED_UNCONFIRMED"
+}
