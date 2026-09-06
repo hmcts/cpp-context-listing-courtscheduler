@@ -219,7 +219,8 @@ public class HearingSlotsApi implements HearingslotsOpenApi {
                                                                          final String courtRoomId,
                                                                          final String hearingSessionDateSearchCutOff,
                                                                          final String hearingStartTime,
-                                                                         final Boolean isPolice) {
+                                                                         final Boolean isPolice,
+                                                                         final String businessType) {
         final Map<String, Object> qp = new LinkedHashMap<>();
         qp.put("hearingId", hearingId);
         qp.put("courtCentreId", courtCentreId);
@@ -229,6 +230,7 @@ public class HearingSlotsApi implements HearingslotsOpenApi {
         if (hearingSessionDateSearchCutOff != null) qp.put("hearingSessionDateSearchCutOff", hearingSessionDateSearchCutOff);
         if (hearingStartTime != null) qp.put("hearingStartTime", hearingStartTime);
         if (isPolice != null) qp.put("isPolice", isPolice);
+        if (businessType != null) qp.put("businessType", businessType);
 
         final HearingSlotSearchRequest req = hearingSlotSearchRequestConverter.convert(toJsonObject(qp));
         final JsonObject validate = hearingSlotsApiValidator.searchAndBookRequestValidation(req);

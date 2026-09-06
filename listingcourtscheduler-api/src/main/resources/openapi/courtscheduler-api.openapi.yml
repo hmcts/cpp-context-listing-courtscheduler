@@ -262,6 +262,7 @@ paths:
         - { in: query, name: hearingStartTime, required: false, schema: { type: string } }
         - { in: query, name: durationInMinutes, required: true, schema: { type: integer } }
         - { in: query, name: isPolice,     required: false, schema: { type: boolean } }
+        - { in: query, name: businessType, required: false, schema: { type: string } }
       responses:
         '200':
           description: OK

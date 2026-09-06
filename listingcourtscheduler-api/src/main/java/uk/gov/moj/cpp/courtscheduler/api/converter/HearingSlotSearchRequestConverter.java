@@ -27,7 +27,9 @@ public class HearingSlotSearchRequestConverter implements Converter<JsonObject, 
                 jsonObject.getInt(RequestParameterConstant.DURATION_MINUTES.getLabel()) : null;
         final Boolean isPolice = jsonObject.containsKey(RequestParameterConstant.IS_POLICE.getLabel()) ?
                 jsonObject.getBoolean(RequestParameterConstant.IS_POLICE.getLabel()) : false;
+        final String businessType = jsonObject.containsKey(RequestParameterConstant.BUSINESS_TYPE.getLabel()) ?
+                jsonObject.getString(RequestParameterConstant.BUSINESS_TYPE.getLabel()) : null;
 
-        return new HearingSlotSearchRequest(hearingId, courtCentreId, hearingSessionDate, courtRoomId, hearingSessionDateCutOff, sessionStartTime, durationMinutes, isPolice);
+        return new HearingSlotSearchRequest(hearingId, courtCentreId, hearingSessionDate, courtRoomId, hearingSessionDateCutOff, sessionStartTime, durationMinutes, isPolice, businessType);
     }
 }
