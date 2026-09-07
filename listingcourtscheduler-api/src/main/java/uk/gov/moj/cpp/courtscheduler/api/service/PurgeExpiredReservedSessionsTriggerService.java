@@ -21,7 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Fires the daily purge of expired, unconfirmed {@code allocated_listings} reservations
- * (LPT-2433) at 01:00 UTC by enqueuing a {@link PurgeExpiredReservedSessionsTask} job.
+ * (LPT-2433) by enqueuing a {@link PurgeExpiredReservedSessionsTask} job. The schedule defaults
+ * to 01:00 UTC but is driven entirely by {@code courtscheduler.purge-expired-reserved-sessions.cron}
+ * / {@code .cron-zone} (application.yaml — {@code CSCHED_PURGE_EXPIRED_RESERVED_SESSIONS_CRON}
+ * / {@code _CRON_ZONE} env vars), so ops can retune it per environment without a code change.
  *
  * <p>task-manager-service's worker-locked {@code jobs} table means concurrent replicas don't
  * double-purge in any way that matters, even though every replica's own {@code @Scheduled}
@@ -38,7 +41,8 @@ public class PurgeExpiredReservedSessionsTriggerService {
     @Inject
     private ExecutionService executionService;
 
-    @Scheduled(cron = "0 0 1 * * *", zone = "UTC")
+    @Scheduled(cron = "${courtscheduler.purge-expired-reserved-sessions.cron:0 0 1 * * *}",
+            zone = "${courtscheduler.purge-expired-reserved-sessions.cron-zone:UTC}")
     @Transactional
     public void triggerDailyPurge() {
         LOG.info("courtscheduler.purge-expired-reserved-sessions daily trigger firing");

@@ -38,6 +38,23 @@ courtscheduler:
   rota:
     months-of-provisional-data-to-populate: ${ROTA_MONTHS_OF_PROVISIONAL_DATA:6}
     cycle-to-populate-length: ${ROTA_CYCLE_LENGTH_DAYS:28}
+  purge-expired-reserved-sessions:
+    # Daily task-manager-service trigger for PurgeExpiredReservedSessionsTask (LPT-2433).
+    # Standard 6-field Spring cron: sec min hour day-of-month month day-of-week.
+    cron: ${CSCHED_PURGE_EXPIRED_RESERVED_SESSIONS_CRON:0 0 1 * * *}
+    cron-zone: ${CSCHED_PURGE_EXPIRED_RESERVED_SESSIONS_CRON_ZONE:UTC}
+
+# uk.gov.hmcts.cp:task-manager-service's `jobs` table (see PurgeExpiredReservedSessionsTask). This
+# project's task-manager-service dependency excludes the library's transitive Flyway deps — old
+# flyway-core has no Postgres 16 dialect support and this project manages schema with Liquibase
+# (changeset 053) anyway — so this flag is a no-op today (the library's own
+# TaskManagerFlywayAutoConfiguration is @ConditionalOnClass(Flyway), which is absent from the
+# classpath). Set explicitly to false, rather than left implicit, so a later change that re-adds
+# Flyway to this project's classpath doesn't silently spring the library's migration into life
+# alongside Liquibase's, racing to create the same table twice.
+taskmanager:
+  schema:
+    enabled: false
 
 # External services — both referencedata and usersgroups are served from the
 # same CPP gateway base URL.
