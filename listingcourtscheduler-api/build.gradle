@@ -98,6 +98,18 @@ dependencies {
     implementation "uk.gov.hmcts.cp:cp-auth-rules-filter:${cpAuthFilterVersion}"
     implementation "uk.gov.hmcts.cp:cp-audit-filter-springboot:${cpAuditFilterVersion}"
 
+    // Async DB-backed job queue (worker-locked, retry-capable) — used by
+    // PurgeExpiredReservedSessionsTriggerService/-Task. See LPT-2433. Excludes the library's
+    // transitive Flyway deps: this project manages schema (including the library's own `jobs`
+    // table — see liquibase changeset 053) with Liquibase, and the bundled flyway-core has no
+    // Postgres 16 dialect support on its own (task-manager-service doesn't also pull in
+    // flyway-database-postgresql), so leaving it on the classpath just breaks Spring Boot's
+    // auto-configured Flyway bean at startup for no benefit.
+    implementation("uk.gov.hmcts.cp:task-manager-service:${jobManagerVersion}") {
+        exclude group: 'org.flywaydb', module: 'flyway-core'
+        exclude group: 'org.springframework.boot', module: 'spring-boot-flyway'
+    }
+
     annotationProcessor 'org.hibernate.orm:hibernate-jpamodelgen:7.4.4.Final'
 
     testImplementation('org.springframework.boot:spring-boot-starter-test') {

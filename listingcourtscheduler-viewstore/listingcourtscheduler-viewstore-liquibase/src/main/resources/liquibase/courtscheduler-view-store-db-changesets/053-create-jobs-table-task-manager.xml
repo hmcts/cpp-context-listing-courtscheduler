@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <!--
+      Schema for uk.gov.hmcts.cp:task-manager-service's uk.gov.hmcts.cp.taskmanager.persistence.entity.Job
+      entity (used by PurgeExpiredReservedSessionsScheduler/-Task — see LPT-2433). The library ships this
+      same table via its own Flyway migration (classpath:db/taskmanager/V1__create_jobs_table.sql +
+      V2__alter-column-retry_attempts_remaining_nullable.sql), but this project manages schema with
+      Liquibase, not Flyway, so the table is created here instead — Flyway isn't on this project's
+      classpath, so the library's TaskManagerFlywayAutoConfiguration (@ConditionalOnClass(Flyway))
+      never activates and there's no double-migration risk.
+    -->
+    <changeSet id="053" author="ertugrul.duran"
+               logicalFilePath="053-create-jobs-table-task-manager.xml">
+        <createTable tableName="jobs">
+            <column name="job_id" type="uuid">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="assigned_task_name" type="text"/>
+            <column name="assigned_task_start_time" type="timestamp with timezone"/>
+            <column name="job_data" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="int" defaultValueNumeric="10">
+                <constraints nullable="false"/>
+            </column>
+            <column name="retry_attempts_remaining" type="int" defaultValueNumeric="0"/>
+            <column name="worker_id" type="uuid"/>
+            <column name="worker_lock_time" type="timestamp with timezone"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="jobs"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

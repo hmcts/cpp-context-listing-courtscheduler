@@ -112,7 +112,7 @@ tasks.named('test') {
     group = "verification"
 
     dependsOn tasks.named('composeUp')
-    finalizedBy tasks.named('composeDown')
+//    finalizedBy tasks.named('composeDown')
 
     // Maven parity: the legacy IT profile ran **/*IT.java but excluded **/performance/**;
     // performance runs were opt-in via -Pperformance-test. Keep that split here — run the
