@@ -313,9 +313,22 @@ public class SessionsService {
         return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule, persistedBusinessType, updatedBusinessType);
     }
 
+    /**
+     * SPRDT-1351: a session persisted under a retired business type (the SPRDT-1291 consolidation
+     * retires CROWN "FWT") can no longer have its slot/duration nature resolved from reference data.
+     * Moving such a session onto a current type is exactly the correction the court needs to make, so
+     * the change is permitted and only the update's own parameters are validated against the new
+     * type. Known persisted types keep the slot-nature-must-match rule.
+     */
     private boolean isBusinessTypeChangeAllowed(final UpdateCourtSchedule updateCourtSchedule, final String persistedBusinessTypeCode, final BusinessType updatedBusinessType) {
-        final BusinessType persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + persistedBusinessTypeCode));
-        return persistedBusinessType.isSlot() == updatedBusinessType.isSlot() && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
+        final Optional<BusinessType> persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode);
+        if (persistedBusinessType.isEmpty()) {
+            logger.warn("{}{} - session persisted under a retired business type; allowing the change to {}",
+                    BUSINESS_TYPE_NOT_FOUND, persistedBusinessTypeCode, updatedBusinessType.getTypeCode());
+            return isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
+        }
+        return persistedBusinessType.get().isSlot() == updatedBusinessType.isSlot()
+                && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
     }
 
     private static boolean isUpdateRequestParamsAreValidForUpdate(final UpdateCourtSchedule updateCourtSchedule, final boolean isSlotBased) {
@@ -623,8 +636,20 @@ public class SessionsService {
         return numberOfSavedJudiciaries.get();
     }
 
+    /**
+     * SPRDT-1351: display enrichment must survive a retired business type. Sessions persisted under a
+     * code that reference data no longer carries (the SPRDT-1291 consolidation retires CROWN "FWT")
+     * would otherwise fail every read, search and delete response that enriches them. The code itself
+     * stands in for the missing description so the session stays visible and editable.
+     */
     private String enrichBusinessDescription(final String businessType) {
-        return referenceDataCache.getRotaBusinessTypeByCode(businessType).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + businessType)).getTypeDescription();
+        return referenceDataCache.getRotaBusinessTypeByCode(businessType)
+                .map(BusinessType::getTypeDescription)
+                .orElseGet(() -> {
+                    logger.warn("{}{} - session persisted under a retired business type; using the code as its description",
+                            BUSINESS_TYPE_NOT_FOUND, businessType);
+                    return businessType;
+                });
     }
 
     private void processOnceFrequency(List<Session> sessionList, LocalDate startDate, List<CourtSchedule> courtScheduleList) {
