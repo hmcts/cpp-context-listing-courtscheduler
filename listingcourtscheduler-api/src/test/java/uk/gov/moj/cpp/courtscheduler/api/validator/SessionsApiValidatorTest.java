@@ -2364,7 +2364,7 @@ class SessionsApiValidatorTest {
                 .withCourtCentreId(courtCentreId)
                 .withCourtRoomId(courtRoomId)
                 .withSessionType("AD")
-                .withBusinessType("FWT")
+                .withBusinessType("LGT")
                 .withSlotsOrDuration(100)
                 .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
@@ -2384,8 +2384,8 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
-        BusinessType businessType = new BusinessType("FWT", 1, "Description", "Category", false, true, "CROWN");
-        when(referenceDataCache.getRotaBusinessTypeByCode("FWT")).thenReturn(Optional.of(businessType));
+        BusinessType businessType = new BusinessType("LGT", 1, "Description", "Category", false, true, "CROWN");
+        when(referenceDataCache.getRotaBusinessTypeByCode("LGT")).thenReturn(Optional.of(businessType));
         stubCrownCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
@@ -2503,7 +2503,7 @@ class SessionsApiValidatorTest {
                 .withCourtCentreId(courtCentreId)
                 .withCourtRoomId(courtRoomId)
                 .withSessionType("AD")
-                .withBusinessType("FWT")
+                .withBusinessType("LGT")
                 .withSlotsOrDuration(100)
                 .withPanelType("ADULT")
                 .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
@@ -2523,8 +2523,8 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
-        BusinessType businessType = new BusinessType("FWT", 1, "Description", "Category", false, true, "CROWN");
-        when(referenceDataCache.getRotaBusinessTypeByCode("FWT")).thenReturn(Optional.of(businessType));
+        BusinessType businessType = new BusinessType("LGT", 1, "Description", "Category", false, true, "CROWN");
+        when(referenceDataCache.getRotaBusinessTypeByCode("LGT")).thenReturn(Optional.of(businessType));
         stubCrownCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
                 .thenReturn(EMPTY_JSON_OBJECT);
@@ -2565,7 +2565,7 @@ class SessionsApiValidatorTest {
         UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
                 .withCourtScheduleId(courtScheduleId)
                 .withCourtRoomId(newCourtRoomId)
-                .withBusinessType("FWT")
+                .withBusinessType("LGT")
                 .withSessionType("AM")
                 .withPanel("ADULT")
                 .withJurisdiction("CROWN")
@@ -2588,7 +2588,7 @@ class SessionsApiValidatorTest {
                 .thenReturn(List.of(booked));
 
         stubCrownCourtRoomAvailable(newCourtRoomId);
-        stubBusinessType("FWT", "CROWN", true, false);
+        stubBusinessType("LGT", "CROWN", true, false);
 
         // When
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
@@ -2605,7 +2605,7 @@ class SessionsApiValidatorTest {
         UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
                 .withCourtScheduleId(courtScheduleId)
                 .withCourtRoomId(courtRoomId)
-                .withBusinessType("FWT")
+                .withBusinessType("LGT")
                 .withSessionType("AM")
                 .withPanel("ADULT")
                 .withJurisdiction("CROWN")
@@ -2628,7 +2628,7 @@ class SessionsApiValidatorTest {
                 .thenReturn(List.of(booked));
 
         stubCrownCourtRoomAvailable(courtRoomId);
-        stubBusinessType("FWT", "CROWN", true, false);
+        stubBusinessType("LGT", "CROWN", true, false);
 
         // When
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
@@ -2647,7 +2647,7 @@ class SessionsApiValidatorTest {
         UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
                 .withCourtScheduleId(courtScheduleId)
                 .withCourtRoomId(newCourtRoomId)
-                .withBusinessType("FWT")
+                .withBusinessType("LGT")
                 .withSessionType("AM")
                 .withPanel("ADULT")
                 .withJurisdiction("CROWN")
@@ -2670,7 +2670,7 @@ class SessionsApiValidatorTest {
                 .thenReturn(emptyList()); // No hearings booked
 
         stubCrownCourtRoomAvailable(newCourtRoomId);
-        stubBusinessType("FWT", "CROWN", true, false);
+        stubBusinessType("LGT", "CROWN", true, false);
 
         // When
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);

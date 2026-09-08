@@ -856,29 +856,29 @@ class SlotsSearchServiceTest {
     void filterForMultidayAvailability_shouldGroupByBusinessType() {
         // Same courtroom & ouCode, different business types:
         // APPLS on 08, 09, 11 (gap on 10 - NOT consecutive for 3 days)
-        // FWT   on 08, 09, 10 (consecutive for 3 days)
+        // LGT   on 08, 09, 10 (consecutive for 3 days)
         String courtRoomId = randomUUID().toString();
         String ouCode = "C03CL00";
         List<CourtSchedule> schedules = List.of(
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-11"), 360, 0, false, "APPLS", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", ouCode)
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", ouCode)
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 3, false);
 
-        // Only FWT should qualify - APPLS has a gap on 10th
+        // Only LGT should qualify - APPLS has a gap on 10th
         assertThat(result, hasSize(1));
-        assertThat(result.get(0).getBusinessType(), is("FWT"));
+        assertThat(result.get(0).getBusinessType(), is("LGT"));
         assertThat(result.get(0).getSessionDate(), is(parse("2026-04-08")));
     }
 
     @Test
     void filterForMultidayAvailability_shouldGroupByBusinessType_emptyWhenFourDaysNeeded() {
-        // Same data as shouldGroupByBusinessType: APPLS has 08,09,11 (gap); FWT has 08,09,10 (3 consecutive)
+        // Same data as shouldGroupByBusinessType: APPLS has 08,09,11 (gap); LGT has 08,09,10 (3 consecutive)
         // Asking for 4 consecutive days - neither business type qualifies
         String courtRoomId = randomUUID().toString();
         String ouCode = "C03CL00";
@@ -886,9 +886,9 @@ class SlotsSearchServiceTest {
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-11"), 360, 0, false, "APPLS", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", ouCode)
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", ouCode)
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 4, false);
@@ -897,34 +897,34 @@ class SlotsSearchServiceTest {
     }
 
     @Test
-    void filterForMultidayAvailability_shouldGroupByBusinessType_twoDaysFromAPPLSAndFWT() {
-        // Same data: APPLS has 08,09,11; FWT has 08,09,10
-        // Asking for 2 consecutive days - APPLS 08→09 qualifies, FWT 08→09 and 09→10 qualify
+    void filterForMultidayAvailability_shouldGroupByBusinessType_twoDaysFromAPPLSAndLGT() {
+        // Same data: APPLS has 08,09,11; LGT has 08,09,10
+        // Asking for 2 consecutive days - APPLS 08→09 qualifies, LGT 08→09 and 09→10 qualify
         String courtRoomId = randomUUID().toString();
         String ouCode = "C03CL00";
         List<CourtSchedule> schedules = List.of(
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-11"), 360, 0, false, "APPLS", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", ouCode)
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", ouCode)
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 2, false);
 
-        // APPLS: 08→09 valid (1 start). FWT: 08→09 valid, 09→10 valid (2 starts) → 3 total
+        // APPLS: 08→09 valid (1 start). LGT: 08→09 valid, 09→10 valid (2 starts) → 3 total
         assertThat(result, hasSize(3));
         // Results sorted by sessionDate; two entries share the 8th (order within same date is non-deterministic)
         assertThat(result.get(0).getSessionDate(), is(parse("2026-04-08")));
         assertThat(result.get(1).getSessionDate(), is(parse("2026-04-08")));
         assertThat(result.get(2).getSessionDate(), is(parse("2026-04-09")));
-        assertThat(result.get(2).getBusinessType(), is("FWT"));
+        assertThat(result.get(2).getBusinessType(), is("LGT"));
         // Both business types appear for the 8th
         List<String> typesOn8th = result.stream()
                 .filter(cs -> cs.getSessionDate().equals(parse("2026-04-08")))
                 .map(CourtSchedule::getBusinessType).sorted().toList();
-        assertThat(typesOn8th, is(List.of("APPLS", "FWT")));
+        assertThat(typesOn8th, is(List.of("APPLS", "LGT")));
     }
 
     @Test
@@ -932,12 +932,12 @@ class SlotsSearchServiceTest {
         // Same courtroom & businessType, different ouCodes
         String courtRoomId = randomUUID().toString();
         List<CourtSchedule> schedules = List.of(
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", "C03CL00"),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", "C03CL00"),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", "C03CL00"),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", "C03CL00"),
                 // C03CL00 missing 10th
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", "C05LV00"),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", "C05LV00"),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", "C05LV00")
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", "C05LV00"),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", "C05LV00"),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", "C05LV00")
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 3, false);
@@ -949,16 +949,16 @@ class SlotsSearchServiceTest {
 
     @Test
     void filterForMultidayAvailability_shouldReturnBothBusinessTypesWhenBothHaveConsecutiveDays() {
-        // Both APPLS and FWT have 3 consecutive days in the same courtroom
+        // Both APPLS and LGT have 3 consecutive days in the same courtroom
         String courtRoomId = randomUUID().toString();
         String ouCode = "C03CL00";
         List<CourtSchedule> schedules = List.of(
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "APPLS", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", ouCode)
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", ouCode)
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 3, false);

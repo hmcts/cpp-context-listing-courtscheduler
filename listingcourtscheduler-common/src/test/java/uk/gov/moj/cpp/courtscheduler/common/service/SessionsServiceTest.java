@@ -1138,6 +1138,69 @@ class SessionsServiceTest {
         assertThat(result.isSuccess(), is(true));
     }
 
+    /**
+     * SPRDT-1351: the SPRDT-1291 consolidation retires CROWN business types (e.g. "FWT"), so a
+     * session persisted under one can no longer resolve its own slot nature. Moving it onto a
+     * current type is the correction the court needs, so the update must succeed rather than 500 on
+     * the retired persisted code.
+     */
+    @Test
+    void shouldAllowBusinessTypeChangeWhenPersistedTypeHasBeenRetired() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "RETIRED_BT");
+        persistedCourtSchedule.setJurisdiction("CROWN");
+
+        final UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("LNG");
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setSessionStartTime("11:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setMaxSlots(0);
+        updateCourtSchedule.setJurisdiction(null);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("RETIRED_BT"))).thenReturn(Optional.empty());
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("LNG"))).thenReturn(returnBusinessTypeObject("LNG", false, "CROWN"));
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+
+        final Result result = sessionsService.update(updateCourtSchedule);
+
+        assertThat(result.isSuccess(), is(true));
+    }
+
+    /**
+     * SPRDT-1351: read/display enrichment falls back to the persisted code when reference data no
+     * longer carries it, so sessions on a retired business type stay visible instead of failing the
+     * whole response.
+     */
+    @Test
+    void shouldFallBackToBusinessTypeCodeAsDescriptionWhenTypeHasBeenRetired() {
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule deleted =
+                new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule();
+        deleted.setCourtScheduleId(randomUUID().toString());
+        deleted.setBusinessType("RETIRED_BT");
+        deleted.setSessionDate(parse("2026-09-08"));
+        deleted.setSessionStartTime(new java.util.Date());
+        deleted.setSessionEndTime(new java.util.Date());
+
+        final SessionsParam sessionsParam = new SessionsParam();
+        sessionsParam.setSessions(List.of(deleted.getCourtScheduleId()));
+
+        when(courtScheduleRepository.deleteCourtSchedule(anyList())).thenReturn(List.of(deleted));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("RETIRED_BT"))).thenReturn(Optional.empty());
+        when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
+
+        final JsonObject response = sessionsService.deleteCourtScheduleSessions(sessionsParam);
+
+        assertNotNull(response);
+        assertThat(deleted.getBusinessDescription(), is("RETIRED_BT"));
+    }
+
     @Test
     void shouldUseCpCourtRoomLookupWhenUpdatingCrownCourtroom() {
         final String courtScheduleId = randomUUID().toString();

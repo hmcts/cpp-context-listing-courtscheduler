@@ -4989,7 +4989,7 @@ class CourtSchedulerIT extends AbstractIT {
         String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
 
         draftSession.setCourtScheduleId(courtScheduleId.toString());
-        draftSession.setBusinessType("FWT");
+        draftSession.setBusinessType("LGT");
         draftSession.setSlotBased(true);
         draftSession.setMaxSlots(15);
         draftSession.setAvailableSlots(10); // Some slots booked
@@ -5014,7 +5014,7 @@ class CourtSchedulerIT extends AbstractIT {
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", draftSession.getCourtScheduleId());
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", newCourtRoomId);
-        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "FWT");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "LGT");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", AM_SESSION);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", "ADULT");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"jurisdiction\": \"MAGISTRATES\"", "\"jurisdiction\": \"CROWN\"");
@@ -5037,7 +5037,7 @@ class CourtSchedulerIT extends AbstractIT {
         String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
 
         draftSession.setCourtScheduleId(courtScheduleId.toString());
-        draftSession.setBusinessType("FWT");
+        draftSession.setBusinessType("LGT");
         draftSession.setSlotBased(true);
         draftSession.setMaxSlots(15);
         draftSession.setAvailableSlots(10); // Some slots booked
@@ -5062,7 +5062,7 @@ class CourtSchedulerIT extends AbstractIT {
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", draftSession.getCourtScheduleId());
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", courtRoomId);
-        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "FWT");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "LGT");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", AM_SESSION);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", "ADULT");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"jurisdiction\": \"MAGISTRATES\"", "\"jurisdiction\": \"CROWN\"");
@@ -5086,7 +5086,7 @@ class CourtSchedulerIT extends AbstractIT {
         String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
 
         draftSession.setCourtScheduleId(draftSessionId.toString());
-        draftSession.setBusinessType("FWT");
+        draftSession.setBusinessType("LGT");
         draftSession.setSlotBased(true);
         draftSession.setMaxSlots(15);
         draftSession.setAvailableSlots(10); // Some slots booked
