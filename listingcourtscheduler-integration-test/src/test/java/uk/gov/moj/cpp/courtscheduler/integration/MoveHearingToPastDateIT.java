@@ -6,6 +6,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -39,6 +40,10 @@ import org.junit.jupiter.api.Test;
  * same centre search when no {@code courtScheduleId} anchor is supplied. Dates are in the past to
  * mirror the "move to past date" intent — the past-only rule itself is owned by the caller (listing),
  * so courtscheduler books whatever consecutive sessions it finds.
+ *
+ * <p>Cases (e)/(f) additionally arrange an EXISTING future booking (via
+ * {@code DatabaseSeeder#insertAllocatedListing}) and assert the prior sessions are paid back —
+ * allocated_listings rows released and available_duration_mins restored — for single- and multi-day CROWN.
  *
  * <p>Sister unit tests live in {@code SlotsUpdateServiceTest.MoveHearingToPastDate}.
  */
@@ -137,6 +142,90 @@ class MoveHearingToPastDateIT extends AbstractIT {
         assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
     }
 
+
+    // --- (e) CROWN single-day with an EXISTING future booking → prior session paid back ---
+
+    /**
+     * The listing-side flow that matters in production: the hearing is already booked onto a FUTURE
+     * session when it is moved to a past date. courtscheduler must release that prior allocation
+     * (allocated_listings row removed, the session's available_duration_mins restored) and book the
+     * past session, so the future capacity is paid back rather than leaked.
+     */
+    @Test
+    void shouldMoveCrownSingleDayHearingToPastDateAndPayBackPriorFutureSession() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate futureDay = futureMonday();
+        final LocalDate pastDay = pastMonday();
+
+        // Currently booked: a future session fully consumed by this hearing (0 mins left).
+        final String futureSession = seedSession(futureDay, roomId, "CR", centreId, "OU-CRN3", "CROWN", 0);
+        book(hearingId, futureSession, futureDay, 360, "OU-CRN3");
+        // Target: a past session with full capacity.
+        final String pastSession = seedSession(pastDay, roomId, "CR", centreId, "OU-CRN3", "CROWN", 360);
+
+        final Response response = callMove(centreId, "CROWN", pastDay, null, 360, hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(extractSessionIds(body(response)), contains(pastSession));
+
+        assertThat("hearing now booked on the past session only",
+                bookedScheduleIds(hearingId), contains(pastSession));
+        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
+        assertThat("prior future session's capacity paid back in full",
+                databaseReader.courtScheduleById(futureSession).getAvailableDuration(), is(360));
+        assertThat("past session's capacity consumed by the moved hearing",
+                databaseReader.courtScheduleById(pastSession).getAvailableDuration(), is(0));
+    }
+
+    // --- (f) CROWN multi-day with an EXISTING future block → EVERY prior day paid back ---
+
+    /**
+     * Multi-day CROWN hearing already holding a 2-day future block. Moving it to a past date must
+     * release BOTH prior rows (not just the first — the hearing has one allocated_listings row per
+     * day) and restore each future session's capacity, then book the consecutive past run.
+     */
+    @Test
+    void shouldMoveCrownMultiDayHearingToPastDateAndPayBackAllPriorFutureSessions() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate futureDay1 = futureMonday();
+        final LocalDate futureDay2 = futureDay1.plusDays(1);
+        final LocalDate pastDay1 = pastMonday();
+        final LocalDate pastDay2 = pastDay1.plusDays(1);
+
+        // Currently booked: Mon+Tue future block, both days fully consumed by this hearing.
+        final String f1 = seedSession(futureDay1, roomId, "CR", centreId, "OU-CRN4", "CROWN", 0);
+        final String f2 = seedSession(futureDay2, roomId, "CR", centreId, "OU-CRN4", "CROWN", 0);
+        book(hearingId, f1, futureDay1, 360, "OU-CRN4");
+        book(hearingId, f2, futureDay2, 360, "OU-CRN4");
+        // Target: consecutive past Mon+Tue in the same room + business type.
+        final String p1 = seedSession(pastDay1, roomId, "CR", centreId, "OU-CRN4", "CROWN", 360);
+        final String p2 = seedSession(pastDay2, roomId, "CR", centreId, "OU-CRN4", "CROWN", 360);
+
+        // durationInMinutes 720 => 2 days needed.
+        final Response response = callMove(centreId, "CROWN", pastDay1, null, 720, hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(extractSessionIds(body(response)), contains(p1, p2));
+
+        assertThat("hearing now booked on the two past sessions only",
+                bookedScheduleIds(hearingId), containsInAnyOrder(p1, p2));
+        assertThat("no allocation left on either prior future session",
+                allocationsOnSchedules(hearingId, f1, f2), is(empty()));
+        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
+        assertThat("first future session's capacity paid back in full",
+                databaseReader.courtScheduleById(f1).getAvailableDuration(), is(360));
+        assertThat("second future session's capacity paid back in full",
+                databaseReader.courtScheduleById(f2).getAvailableDuration(), is(360));
+        assertThat("first past session's capacity consumed by the moved hearing",
+                databaseReader.courtScheduleById(p1).getAvailableDuration(), is(0));
+        assertThat("second past session's capacity consumed by the moved hearing",
+                databaseReader.courtScheduleById(p2).getAvailableDuration(), is(0));
+    }
+
     // --- helpers ---
 
     /** POST move-hearing-to-past-date. hearingId travels in the path only; no courtScheduleId anchor. */
@@ -172,6 +261,34 @@ class MoveHearingToPastDateIT extends AbstractIT {
                 .collect(Collectors.toList());
     }
 
+    private List<String> allocationsOnSchedules(final String hearingId, final String... courtScheduleIds) {
+        final List<String> ids = List.of(courtScheduleIds);
+        return databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()) && ids.contains(al.getCourtScheduleId()))
+                .map(AllocatedListing::getCourtScheduleId)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Book {@code hearingId} directly onto {@code courtScheduleId} — the established IT pattern for
+     * arranging "hearing already allocated to session X" (see {@code ChangeCourtRoomForMultidayHearingIT},
+     * {@code HearingIdIT}). The session's available_duration is NOT adjusted here; seed it explicitly.
+     */
+    private void book(final String hearingId, final String courtScheduleId, final LocalDate sessionDate,
+                      final int durationMinutes, final String ouCode) throws java.sql.SQLException {
+        final AllocatedListing allocatedListing = new AllocatedListing();
+        allocatedListing.setId(UUID.randomUUID().toString());
+        allocatedListing.setBookingId(UUID.randomUUID().toString());
+        allocatedListing.setCourtScheduleId(courtScheduleId);
+        allocatedListing.setHearingId(hearingId);
+        allocatedListing.setOucode(ouCode);
+        allocatedListing.setCourtRoomId(1);
+        allocatedListing.setRotaBusinessType("CR");
+        allocatedListing.setDuration(durationMinutes);
+        allocatedListing.setHearingStartTime(Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC)));
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+    }
+
     private static String body(final Response response) {
         return response.readEntity(String.class);
     }
@@ -196,6 +313,15 @@ class MoveHearingToPastDateIT extends AbstractIT {
         return d;
     }
 
+    /** A Monday comfortably in the future - the hearing's CURRENT booking before it is moved to the past. */
+    private static LocalDate futureMonday() {
+        LocalDate d = LocalDate.now().plusWeeks(4);
+        while (d.getDayOfWeek() != DayOfWeek.MONDAY) {
+            d = d.plusDays(1);
+        }
+        return d;
+    }
+
     /**
      * Insert an {@code court_session=AD}, {@code active=true} court_schedule at the centre and return its id.
      * {@code court_house_id} is set to {@code courtCentreId} — the column the centre search keys on.
@@ -206,6 +332,17 @@ class MoveHearingToPastDateIT extends AbstractIT {
                                final String courtCentreId,
                                final String ouCode,
                                final String jurisdiction) throws java.sql.SQLException {
+        return seedSession(sessionDate, courtRoomId, businessType, courtCentreId, ouCode, jurisdiction, 360);
+    }
+
+    /** As above, with an explicit {@code available_duration_mins} so a session can be seeded as already fully committed (0). */
+    private String seedSession(final LocalDate sessionDate,
+                               final String courtRoomId,
+                               final String businessType,
+                               final String courtCentreId,
+                               final String ouCode,
+                               final String jurisdiction,
+                               final int availableDurationMinutes) throws java.sql.SQLException {
         final String id = UUID.randomUUID().toString();
         final Date sessionStart = Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
         final Date sessionEnd = Date.from(sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC));
@@ -229,7 +366,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         cs.setMaxSlots(0);
         cs.setMaxDuration(360);
         cs.setAvailableSlots(0);
-        cs.setAvailableDuration(360);
+        cs.setAvailableDuration(availableDurationMinutes);
         cs.setSupportAdSplit(false);
         cs.setMaxAdMorningDuration(180);
         cs.setMaxAdAfternoonDuration(180);
