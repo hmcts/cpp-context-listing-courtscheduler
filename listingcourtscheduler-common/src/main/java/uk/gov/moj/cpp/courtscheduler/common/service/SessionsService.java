@@ -260,7 +260,7 @@ public class SessionsService {
             String jurisdiction = persistedJurisdiction;
 
             if (CROWN.equalsIgnoreCase(jurisdiction)) {
-                courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+                courtRoom = Optional.of(getCpCourtRoomForCourtCentre(courtRoomId, persistedCourtSchedule.getCourtHouseId()));
             } else {
                 courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
             }
@@ -800,7 +800,7 @@ public class SessionsService {
         final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType()).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
         CourtRoom courtRoom;
         if ("CROWN".equalsIgnoreCase(builder.getJurisdiction())) {
-            courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+            courtRoom = getCpCourtRoomForCourtCentre(builder.getCourtRoomId(), builder.getCourtHouseId());
         } else {
             courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
         }
@@ -829,6 +829,25 @@ public class SessionsService {
             builder.withCourtHouseName(courtRoom.getOucodeL3Name());
             builder.withOperationalUnit(courtRoom.getOucodeL2Code());
         }
+    }
+
+    /**
+     * A CP courtroom shared between court centres has one membership per centre, each carrying
+     * that centre's OU-derived fields (ouCode, court house name, operational unit). The
+     * membership for the session's own centre must be used; enriching from another centre's
+     * membership would persist the wrong court house details. Validation guarantees a matching
+     * membership exists, so a miss here means stale reference data and the request must fail.
+     * Only a session with no court centre id at all (legacy data) falls back to an arbitrary
+     * membership, as there is nothing to match against.
+     */
+    private CourtRoom getCpCourtRoomForCourtCentre(final String courtRoomId, final String courtCentreId) {
+        if (isNull(courtCentreId)) {
+            logger.warn("No court centre id for session using courtroom {}; enriching from an arbitrary court centre membership", courtRoomId);
+            return referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)
+                    .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId));
+        }
+        return referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(courtRoomId, courtCentreId)
+                .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId + " in court centre " + courtCentreId));
     }
 
     public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor) {
@@ -1198,11 +1217,11 @@ public class SessionsService {
                 .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, s -> s));
 
 
-        // Get courtroom details
-        final Optional<CourtRoom> courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(
+        // Get courtroom details; a courtroom shared between court centres has one entry per centre membership
+        final List<CourtRoom> courtRoomMemberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(
                 request.getCourtRoomId());
 
-        if (courtRoom.isEmpty()) {
+        if (courtRoomMemberships.isEmpty()) {
             // All sessions are ineligible if courtroom not found
             final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView> notFoundSessions = 
                     request.getCourtScheduleIds().stream()
@@ -1220,7 +1239,10 @@ public class SessionsService {
             return response;
         }
 
-        final String courtRoomCourtCentreId = courtRoom.get().getOucodeUUID();
+        final Set<String> courtRoomCourtCentreIds = courtRoomMemberships.stream()
+                .map(CourtRoom::getOucodeUUID)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
         // Track sessions with their error reasons
         final List<Pair<CourtSchedule, String>> sessionsWithErrors = new ArrayList<>();
@@ -1246,7 +1268,7 @@ public class SessionsService {
 
             // Check if courtroom belongs to the same court centre as the session
             final String sessionCourtCentreId = session.getCourtHouseId();
-            if (isNull(sessionCourtCentreId) || isNull(courtRoomCourtCentreId) || !sessionCourtCentreId.equals(courtRoomCourtCentreId)) {
+            if (isNull(sessionCourtCentreId) || !courtRoomCourtCentreIds.contains(sessionCourtCentreId)) {
                 sessionsWithErrors.add(Pair.of(session, "The new courtroom must belong to the same court centre as the session"));
                 continue;
             }
@@ -1304,7 +1326,12 @@ public class SessionsService {
         // Apply courtroom to eligible sessions and track failures
         for (final CourtSchedule session : eligibleSessions) {
             try {
-                assignCourtroomToSession(session.getCourtScheduleId(), request.getCourtRoomId(), courtRoom.get());
+                // eligible sessions passed the centre check, so a membership for their court house always exists
+                final CourtRoom courtRoomForSession = courtRoomMemberships.stream()
+                        .filter(c -> session.getCourtHouseId().equals(c.getOucodeUUID()))
+                        .findFirst()
+                        .orElse(courtRoomMemberships.get(0));
+                assignCourtroomToSession(session.getCourtScheduleId(), request.getCourtRoomId(), courtRoomForSession);
 
                 // Success - no error to add
             } catch (Exception e) {

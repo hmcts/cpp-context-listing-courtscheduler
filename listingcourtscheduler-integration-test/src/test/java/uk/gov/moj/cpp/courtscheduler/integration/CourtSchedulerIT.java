@@ -602,6 +602,22 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldAcceptValidateCreateForCourtroomSharedBetweenCourtCentres() {
+        // Courtroom 77777777-... is nested under BOTH C01CR00 and C45GU00 in the ou-courtrooms
+        // stub; the session targets C45GU00, the LATER of the two memberships. Considering only
+        // one arbitrary membership used to fail this with "belongs to a different court centre".
+        final LocalDate startDate = now().plusDays(1);
+        final String createCourtSchedulePayload = getPayload("validate-create-court-schedule-crown-shared-courtroom.json")
+                .replace("START_DATE", startDate.format(ofPattern("yyyy-MM-dd")));
+
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String responseBody = response.readEntity(String.class);
+        assertThat("Response should be empty JSON object for successful validation", responseBody, is("{}"));
+    }
+
+    @Test
     void shouldAcceptValidateCreateWithEveryWeekFrequency() {
         // Given
         final LocalDate startDate = now().plusDays(1);

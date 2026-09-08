@@ -105,6 +105,8 @@ class SessionsApiValidatorTest {
                 .build();
         lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
+        lenient().when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         lenient().when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
     }
@@ -117,6 +119,8 @@ class SessionsApiValidatorTest {
                 .build();
         lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
+        lenient().when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
+                .thenReturn(List.of(courtRoom));
         lenient().when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.empty());
     }
@@ -507,6 +511,53 @@ class SessionsApiValidatorTest {
     }
 
     @Test
+    void shouldNotReturnCourtCentreErrorWhenCourtRoomIsSharedBetweenCourtCentres() {
+        // A CP courtroom can be nested under more than one organisation unit in the
+        // ou-courtrooms reference data. The session's court centre matches the SECOND
+        // membership, which previously failed because only one arbitrary entry was considered.
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        String otherCourtCentreId = randomUUID().toString();
+
+        Session session = session()
+                .withCourtCentreId(courtCentreId)
+                .withCourtRoomId(courtRoomId)
+                .withSessionType("AM")
+                .withBusinessType("DVLA")
+                .withPanelType("ADULT")
+                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
+                .withJurisdiction("CROWN")
+                .withIsDraft(true)
+                .withSlotsOrDuration(60)
+                .build();
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+
+        BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
+        when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
+
+        CourtRoom membershipInOtherCentre = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(otherCourtCentreId)
+                .withOucode("C")
+                .build();
+        CourtRoom membershipInSessionCentre = CourtRoom.CourtRoomBuilder.aCourtRoom()
+                .withCourtRoomId(courtRoomId)
+                .withOucodeUUID(courtCentreId)
+                .withOucode("C")
+                .build();
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId))
+                .thenReturn(List.of(membershipInOtherCentre, membershipInSessionCentre));
+
+        JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
     void shouldReturnErrorWhenBusinessTypeJurisdictionMismatch() {
         LocalDate futureDate = LocalDate.now().plusDays(1);
         Session session = session()
@@ -664,7 +715,7 @@ class SessionsApiValidatorTest {
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of());
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -702,7 +753,7 @@ class SessionsApiValidatorTest {
                 .withOucodeUUID(courtCentreId) // different from mismatchedCourtCentreId
                 .withOucode("B")
                 .build();
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of(courtRoom));
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -733,7 +784,7 @@ class SessionsApiValidatorTest {
 
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of());
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -785,7 +836,7 @@ class SessionsApiValidatorTest {
                 .withOucodeUUID(courtCentreId) // valid for existing, invalid for sessionToBeAdded
                 .withOucode("B")
                 .build();
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.of(courtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of(courtRoom));
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -816,7 +867,7 @@ class SessionsApiValidatorTest {
         BusinessType businessType = new BusinessType("DVLA", 1, "Description", "Category", true, false, "CROWN");
         when(referenceDataCache.getRotaBusinessTypeByCode("DVLA")).thenReturn(Optional.of(businessType));
         // For CROWN, courtroom must exist in CP; not found returns "Courtroom does not exist"
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of());
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -853,7 +904,7 @@ class SessionsApiValidatorTest {
                 .withCourtRoomId(courtRoomId)
                 .withOucodeUUID(courtCentreId)
                 .build();
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.of(cpCourtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of(cpCourtRoom));
 
         JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -2133,8 +2184,8 @@ class SessionsApiValidatorTest {
                 .withCourtRoomId(newCourtRoomId)
                 .withOucodeUUID(differentCourtHouseId) // Different court house
                 .build();
-        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(newCourtRoomId)))
-                .thenReturn(Optional.of(newCourtRoom));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(newCourtRoomId)))
+                .thenReturn(List.of(newCourtRoom));
 
         JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
