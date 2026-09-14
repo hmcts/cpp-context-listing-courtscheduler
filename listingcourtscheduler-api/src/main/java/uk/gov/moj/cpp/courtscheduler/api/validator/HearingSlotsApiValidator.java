@@ -236,15 +236,17 @@ public class HearingSlotsApiValidator {
     }
 
     /**
-     * Validates a {@code courtscheduler.move-hearing-to-past-date} request (SPRDT-1089, AC7).
+     * Validates a {@code courtscheduler.move-hearing-to-past-date} request (SPRDT-1089, AC7;
+     * courtRoomId/startTime added to mirror main's stricter required set).
      *
-     * <p>{@code hearingId}, {@code jurisdiction} and {@code startDate} are mandatory.
-     * {@code courtScheduleId} is an OPTIONAL CROWN anchor. Returns {@code EMPTY_JSON_OBJECT} when valid.
-     * The past-only rule is owned by the caller (listing); it is not enforced here.</p>
+     * <p>{@code hearingId}, {@code jurisdiction}, {@code courtRoomId} and {@code startDate}
+     * (derived from {@code startTime}) are mandatory. {@code courtScheduleId} is an OPTIONAL CROWN
+     * anchor. Returns {@code EMPTY_JSON_OBJECT} when valid. The past-only rule is owned by the
+     * caller (listing); it is not enforced here.</p>
      */
     public JsonObject moveHearingToPastDateValidation(final MoveHearingToPastDateRequest request) {
-        LOGGER.info("Validating moveHearingToPastDate: hearingId={}, courtCentreId={}, jurisdiction={}, startDate={}",
-                request.getHearingId(), request.getCourtCentreId(), request.getJurisdiction(), request.getStartDate());
+        LOGGER.info("Validating moveHearingToPastDate: hearingId={}, courtCentreId={}, courtRoomId={}, jurisdiction={}, startDate={}",
+                request.getHearingId(), request.getCourtCentreId(), request.getCourtRoomId(), request.getJurisdiction(), request.getStartDate());
 
         if (isBlank(request.getHearingId())) {
             return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
@@ -252,8 +254,11 @@ public class HearingSlotsApiValidator {
         if (isBlank(request.getJurisdiction())) {
             return getMessage("jurisdiction");
         }
+        if (isBlank(request.getCourtRoomId())) {
+            return getMessage("courtRoomId");
+        }
         if (request.getStartDate() == null) {
-            return getMessage("startDate");
+            return getMessage("startTime");
         }
         return EMPTY_JSON_OBJECT;
     }

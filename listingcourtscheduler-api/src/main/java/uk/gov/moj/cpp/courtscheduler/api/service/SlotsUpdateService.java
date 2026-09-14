@@ -587,15 +587,18 @@ public class SlotsUpdateService {
     }
 
     /**
-     * Move a hearing to a (typically past) date (SPRDT-1089, AC7). Releases the prior allocation, then
-     * books CONSECUTIVE weekday sessions in one room + business type at the centre — CROWN via an optional
-     * {@code courtScheduleId} anchor or a centre search, MAGISTRATES always via the centre search.
-     * source=MOVE_TO_PAST_DATE. The past-only rule is owned by the caller (listing); courtscheduler books
-     * whatever consecutive sessions it finds and does not reject future dates.
+     * Move a hearing to a (typically past) date (SPRDT-1089, AC7; courtRoomId added to mirror
+     * main's contract — see the review artifact this reconciles). Releases the prior allocation,
+     * then books CONSECUTIVE weekday sessions in one room + business type at the centre — CROWN via
+     * an optional {@code courtScheduleId} anchor or a {@code courtRoomId}-scoped centre search,
+     * MAGISTRATES always via the (equally {@code courtRoomId}-scoped) centre search. When the anchor
+     * is used, its own room already applies and {@code courtRoomId} is not separately enforced.
+     * source=MOVE_TO_PAST_DATE. The past-only rule is owned by the caller (listing); courtscheduler
+     * books whatever consecutive sessions it finds and does not reject future dates.
      */
     public MoveHearingToPastDateResponse moveHearingToPastDate(final MoveHearingToPastDateRequest request) {
-        LOGGER.info("[MOVE-PAST] hearingId: {}, centre: {}, jurisdiction: {}, startDate: {}, endDate: {}, durationMins: {}",
-                request.getHearingId(), request.getCourtCentreId(), request.getJurisdiction(),
+        LOGGER.info("[MOVE-PAST] hearingId: {}, centre: {}, courtRoomId: {}, jurisdiction: {}, startDate: {}, endDate: {}, durationMins: {}",
+                request.getHearingId(), request.getCourtCentreId(), request.getCourtRoomId(), request.getJurisdiction(),
                 request.getStartDate(), request.getEndDate(), request.getDurationInMinutes());
 
         final int daysNeeded = daysNeeded(request.getDurationInMinutes(), request.getStartDate(), request.getEndDate());
@@ -610,14 +613,14 @@ public class SlotsUpdateService {
             final List<CourtSchedule> candidates = request.hasCourtScheduleId()
                     ? courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded)
                     : courtScheduleRepository.findConsecutiveSessionsForCentre(
-                            request.getCourtCentreId(), request.getStartDate(), daysNeeded);
+                            request.getCourtCentreId(), request.getStartDate(), daysNeeded, request.getCourtRoomId());
             sessions = selectConsecutiveSessions(candidates, daysNeeded, request.getHearingId(), perDay);
         } else {
             // MAGISTRATES: consecutive past weekdays in the centre (same room + business type),
             // mirroring the CROWN no-anchor path — no sparse allocation.
             sessions = selectConsecutiveSessions(
                     courtScheduleRepository.findConsecutiveSessionsForCentre(
-                            request.getCourtCentreId(), request.getStartDate(), daysNeeded),
+                            request.getCourtCentreId(), request.getStartDate(), daysNeeded, request.getCourtRoomId()),
                     daysNeeded, request.getHearingId(), perDay);
         }
 

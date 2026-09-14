@@ -1792,7 +1792,7 @@ class SlotsUpdateServiceTest {
                     .setDurationInMinutes(720);
 
             lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(
-                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2)))
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(null)))
                     .thenReturn(pastSessions);
             lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
                     .thenReturn(new Result("", true));
@@ -1805,6 +1805,35 @@ class SlotsUpdateServiceTest {
                     org.mockito.ArgumentCaptor.forClass(List.class);
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
             assertTrue(slotsCaptor.getValue().stream().allMatch(s -> "MOVE_TO_PAST_DATE".equals(s.getSource())));
+        }
+
+        @Test
+        void should_scopeSearchToRequestedRoom_when_courtRoomIdSupplied() {
+            // Main-contract alignment: courtRoomId (when supplied) scopes the centre search to that room.
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> pastSessions =
+                    buildConsecutiveSessions(LocalDate.of(2025, 3, 3), 2);
+
+            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
+                    .setHearingId(hearingId)
+                    .setCourtCentreId(courtCentreId)
+                    .setCourtRoomId(courtRoomId)
+                    .setJurisdiction("CROWN")
+                    .setStartDate(LocalDate.of(2025, 3, 3))
+                    .setDurationInMinutes(720);
+
+            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(courtRoomId)))
+                    .thenReturn(pastSessions);
+            lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result("", true));
+
+            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(request);
+            assertEquals(2, response.sessions().size());
+            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(courtRoomId));
         }
 
         @Test
@@ -1823,13 +1852,15 @@ class SlotsUpdateServiceTest {
                     .setStartDate(LocalDate.of(2025, 3, 3))
                     .setDurationInMinutes(720);
 
-            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2)))
+            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(null)))
                     .thenReturn(consecutivePast);
             lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
                     .thenReturn(new Result("", true));
 
             service.moveHearingToPastDate(request);
-            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2));
+            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(null));
         }
 
         @Test
@@ -1847,7 +1878,7 @@ class SlotsUpdateServiceTest {
             service.moveHearingToPastDate(request);
 
             verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
-                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(3));
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(3), eq(null));
         }
     }
 

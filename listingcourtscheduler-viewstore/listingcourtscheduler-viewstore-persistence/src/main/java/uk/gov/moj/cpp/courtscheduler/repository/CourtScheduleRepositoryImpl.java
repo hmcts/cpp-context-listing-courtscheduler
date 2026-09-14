@@ -1134,9 +1134,20 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     @Override
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findConsecutiveSessionsForCentre(
             final String courtCentreId, final LocalDate fromDate, final int daysNeeded) {
+        return findConsecutiveSessionsForCentre(courtCentreId, fromDate, daysNeeded, null);
+    }
+
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findConsecutiveSessionsForCentre(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId) {
         // Candidate (room, business type) pairs in the centre that have a session on the start date,
-        // ordered so the earliest/most-populated room is tried first.
-        final String roomQuery = """
+        // ordered so the earliest/most-populated room is tried first. courtRoomId (when supplied)
+        // scopes the candidates to that single room, aligning with main's contract where the caller
+        // names the room to search within rather than leaving it to courtscheduler's discretion. The
+        // filter is appended conditionally (rather than bound as a nullable param) to match this
+        // repository's existing convention for optional native-query filters (see
+        // queryAdWeekdaySessions's businessType/isDraft handling below).
+        final StringBuilder roomQuery = new StringBuilder("""
                 SELECT s.court_room_id, s.rota_business_type
                 FROM court_schedule s
                 WHERE s.active = true
@@ -1144,12 +1155,20 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                   AND s.court_session = 'AD'
                   AND EXTRACT(DOW FROM s.session_start) NOT IN (0, 6)
                   AND DATE(s.session_start) = :fromDate
+                """);
+        if (courtRoomId != null) {
+            roomQuery.append("  AND s.court_room_id = :courtRoomId\n");
+        }
+        roomQuery.append("""
                 GROUP BY s.court_room_id, s.rota_business_type
                 ORDER BY s.court_room_id, s.rota_business_type
-                """;
-        final jakarta.persistence.Query roomJpaQuery = entityManager.createNativeQuery(roomQuery);
+                """);
+        final jakarta.persistence.Query roomJpaQuery = entityManager.createNativeQuery(roomQuery.toString());
         roomJpaQuery.setParameter(COURT_CENTRE_ID, courtCentreId);
         roomJpaQuery.setParameter("fromDate", java.sql.Date.valueOf(fromDate));
+        if (courtRoomId != null) {
+            roomJpaQuery.setParameter("courtRoomId", courtRoomId);
+        }
 
         @SuppressWarnings("unchecked")
         final List<Object[]> rooms = roomJpaQuery.getResultList();
