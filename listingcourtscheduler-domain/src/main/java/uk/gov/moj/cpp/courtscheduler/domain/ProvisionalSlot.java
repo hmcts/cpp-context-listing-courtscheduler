@@ -6,6 +6,8 @@ public class ProvisionalSlot {
 
     private String hearingStartTime;
 
+    private Integer duration;
+
     public ProvisionalSlot() {
     }
 
@@ -32,9 +34,18 @@ public class ProvisionalSlot {
         this.hearingStartTime = hearingStartTime;
     }
 
+    public Integer getDuration() {
+        return duration;
+    }
+
+    public void setDuration(final Integer duration) {
+        this.duration = duration;
+    }
+
     public static final class ProvisionalSlotBuilder {
         private String courtScheduleId;
         private String hearingStartTime;
+        private Integer duration;
 
         private ProvisionalSlotBuilder() {
         }
@@ -53,10 +64,16 @@ public class ProvisionalSlot {
             return this;
         }
 
+        public ProvisionalSlotBuilder withDuration(Integer duration) {
+            this.duration = duration;
+            return this;
+        }
+
         public ProvisionalSlot build() {
             ProvisionalSlot provisionalSlot = new ProvisionalSlot();
             provisionalSlot.setCourtScheduleId(courtScheduleId);
             provisionalSlot.setHearingStartTime(hearingStartTime);
+            provisionalSlot.setDuration(duration);
             return provisionalSlot;
         }
     }

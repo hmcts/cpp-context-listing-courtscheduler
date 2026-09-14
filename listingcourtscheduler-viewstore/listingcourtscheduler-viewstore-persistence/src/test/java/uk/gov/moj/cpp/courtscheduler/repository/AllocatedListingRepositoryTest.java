@@ -4,7 +4,6 @@ import static java.util.Arrays.asList;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.hasItems;
-import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.core.Is.is;
@@ -448,40 +447,102 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         assertEquals("CS-DEL-DAY2", remaining.get(1).getCourtScheduleId());
     }
 
+    // -----------------------------------------------------------------------
+    // Tests for releaseExpiredReservations (defect fix: the nightly purge must restore
+    // court_schedule capacity, not just delete the allocated_listings row — a bare DELETE
+    // permanently burns a slot per expired reservation). Replaces the old
+    // shouldDeleteAllReservedSessionsExpiredBeforeCutoff test, which asserted only against the
+    // now-removed deleteExpiredReservedSessions bare-DELETE method; its three behaviours
+    // (expired-yesterday purged, expiring-today retained, missed-run backlog self-heals) are
+    // preserved below, plus the capacity-restoration assertion the old test never made.
+    // -----------------------------------------------------------------------
+
     @Test
-    public void shouldDeleteAllReservedSessionsExpiredBeforeCutoff() {
-        final LocalDate yesterday = LocalDate.now().minusDays(1);
-        final LocalDate today = LocalDate.now();
-        final LocalDate twoDaysAgo = LocalDate.now().minusDays(2);
+    public void shouldReleaseExpiredReservationAndRestoreCapacity() {
+        final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
+        final CourtSchedule session = random(CourtSchedule.class);
+        session.setSlotBased(true);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(3); // one slot already consumed by the reservation below
+        courtScheduleRepository.saveAndFlush(session);
 
-        final AllocatedListing expiredYesterday = createAllocateListing(
-                "AL-EXP-YDAY", "BK-EXP-YDAY", persistRandomCourtSchedule(), randomUUID().toString());
-        expiredYesterday.setExpiresAt(yesterday);
-        allocatedListingRepository.saveAndFlush(expiredYesterday);
+        final AllocatedListing expired = createAllocateListing(
+                "AL-EXPIRED", "BK-EXPIRED", session.getCourtScheduleId(), "HEARING-EXPIRED");
+        expired.setExpiresAt(today.minusDays(1));
+        allocatedListingRepository.saveAndFlush(expired);
 
+        final int released = courtScheduleRepository.releaseExpiredReservations(today);
+
+        assertEquals(1, released);
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-EXPIRED").isEmpty(), is(true));
+        assertThat(courtScheduleRepository.findBy(session.getCourtScheduleId()).getAvailableSlots(), is(4));
+    }
+
+    @Test
+    public void shouldNotReleaseReservationsExpiringToday() {
+        final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
+        final String courtScheduleId = persistRandomCourtSchedule();
         final AllocatedListing expiringToday = createAllocateListing(
-                "AL-EXP-TODAY", "BK-EXP-TODAY", persistRandomCourtSchedule(), randomUUID().toString());
+                "AL-TODAY", "BK-TODAY", courtScheduleId, "HEARING-TODAY");
         expiringToday.setExpiresAt(today);
         allocatedListingRepository.saveAndFlush(expiringToday);
 
+        assertEquals(0, courtScheduleRepository.releaseExpiredReservations(today));
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-TODAY").size(), is(1));
+    }
+
+    @Test
+    public void shouldNotReleaseConfirmedBookings() {
+        final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
+        final String courtScheduleId = persistRandomCourtSchedule();
+        final AllocatedListing confirmed = createAllocateListing(
+                "AL-CONFIRMED", "BK-CONFIRMED", courtScheduleId, "HEARING-CONFIRMED");
+        confirmed.setExpiresAt(null);
+        allocatedListingRepository.saveAndFlush(confirmed);
+
+        assertEquals(0, courtScheduleRepository.releaseExpiredReservations(today));
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-CONFIRMED").size(), is(1));
+    }
+
+    @Test
+    public void shouldReleaseBacklogOfExpiredReservationsInOnePassAndRestoreCapacity() {
+        // A missed daily run can leave both a yesterday-expiry and a two-days-ago-expiry row
+        // outstanding at once. The cutoff isn't scoped to exactly "yesterday", so one pass clears
+        // the whole backlog and restores capacity for every released session — proving the purge
+        // is self-healing rather than permanently stranding rows an exact-date match would miss.
+        final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
+        final LocalDate yesterday = today.minusDays(1);
+        final LocalDate twoDaysAgo = today.minusDays(2);
+
+        final CourtSchedule sessionYesterday = random(CourtSchedule.class);
+        sessionYesterday.setSlotBased(true);
+        sessionYesterday.setMaxSlots(4);
+        sessionYesterday.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(sessionYesterday);
+
+        final CourtSchedule sessionTwoDaysAgo = random(CourtSchedule.class);
+        sessionTwoDaysAgo.setSlotBased(true);
+        sessionTwoDaysAgo.setMaxSlots(4);
+        sessionTwoDaysAgo.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(sessionTwoDaysAgo);
+
+        final AllocatedListing expiredYesterday = createAllocateListing(
+                "AL-BACKLOG-YDAY", "BK-BACKLOG-YDAY", sessionYesterday.getCourtScheduleId(), "HEARING-BACKLOG-YDAY");
+        expiredYesterday.setExpiresAt(yesterday);
+        allocatedListingRepository.saveAndFlush(expiredYesterday);
+
         final AllocatedListing expiredTwoDaysAgo = createAllocateListing(
-                "AL-EXP-2DAYS", "BK-EXP-2DAYS", persistRandomCourtSchedule(), randomUUID().toString());
+                "AL-BACKLOG-2DAY", "BK-BACKLOG-2DAY", sessionTwoDaysAgo.getCourtScheduleId(), "HEARING-BACKLOG-2DAY");
         expiredTwoDaysAgo.setExpiresAt(twoDaysAgo);
         allocatedListingRepository.saveAndFlush(expiredTwoDaysAgo);
 
-        // Cutoff = today: everything strictly before it is purged in one pass — both yesterday's
-        // AND two-days-ago's rows — proving a missed run's backlog is self-healing rather than
-        // permanently stranded (the old exact-date-match behaviour this replaces). A row expiring
-        // today itself isn't purged until the day rolls over.
-        final int deleted = allocatedListingRepository.deleteExpiredReservedSessions(today);
+        final int released = courtScheduleRepository.releaseExpiredReservations(today);
 
-        assertEquals(2, deleted);
-        final List<String> remainingIds = allocatedListingRepository.findAll().stream()
-                .map(AllocatedListing::getId)
-                .toList();
-        assertThat(remainingIds, hasItem("AL-EXP-TODAY"));
-        assertThat(remainingIds, not(hasItem("AL-EXP-YDAY")));
-        assertThat(remainingIds, not(hasItem("AL-EXP-2DAYS")));
+        assertEquals(2, released);
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-BACKLOG-YDAY").isEmpty(), is(true));
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-BACKLOG-2DAY").isEmpty(), is(true));
+        assertThat(courtScheduleRepository.findBy(sessionYesterday.getCourtScheduleId()).getAvailableSlots(), is(4));
+        assertThat(courtScheduleRepository.findBy(sessionTwoDaysAgo.getCourtScheduleId()).getAvailableSlots(), is(4));
     }
 
     private void seedScheduleAndAllocation(final String courtScheduleId, final LocalDate sessionDate,

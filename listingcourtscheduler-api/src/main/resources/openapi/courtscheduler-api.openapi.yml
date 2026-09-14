@@ -220,38 +220,6 @@ paths:
         '202':
           description: Accepted
 
-  /sessions/{sessionId}/hearings/{unconfirmedHearingId}:
-    put:
-      tags: [session]
-      operationId: putReserveUnconfirmedHearing
-      summary: Reserve an unconfirmed hearing against a session (LPT-2433)
-      parameters:
-        - in: path
-          name: sessionId
-          required: true
-          schema: { type: string }
-        - in: path
-          name: unconfirmedHearingId
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/vnd.courtscheduler.reserve-unconfirmed-hearing+json:
-            schema:
-              $ref: '#/components/schemas/CourtschedulerReserveUnconfirmedHearing'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/vnd.courtscheduler.reserve-unconfirmed-hearing.response+json:
-              schema:
-                $ref: '#/components/schemas/CourtschedulerReserveUnconfirmedHearingResponse'
-        '404':
-          description: No session found for sessionId
-        '409':
-          description: The hearing already has a confirmed allocation
-
   /hearingslots:
     put:
       tags: [hearingslots]
@@ -407,6 +375,11 @@ paths:
         required: true
         content:
           application/vnd.courtscheduler.create.provisional.booking+json:
+            # Body is bound as Map<String, Object> (see PassthroughObject below); real request
+            # validation happens against src/raml/json/schema/courtscheduler.create.provisional.booking.json
+            # via RequestSchemaValidationFilter. Each provisionalSlots[] item there now also
+            # accepts an optional integer "duration" (minutes) — additive, not required, so
+            # existing callers are unaffected.
             schema:
               $ref: '#/components/schemas/CourtschedulerCreateProvisionalBooking'
       responses:
@@ -435,6 +408,20 @@ paths:
             application/vnd.courtscheduler.get.provisional.booking+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerGetProvisionalBooking'
+
+  /provisionalBooking/status:
+    get:
+      tags: [provisional-booking]
+      operationId: getBookingStatus
+      parameters:
+        - { in: query, name: bookingIds, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.get.booking-status+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerGetBookingStatus'
 
   /mi/court_schedules:
     get:
@@ -806,8 +793,6 @@ components:
     CourtschedulerGetCourtSchedule:             { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerSearchCourtSchedulesByIdResponse: { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerPurgeExpiredReservedSessions:     { $ref: '#/components/schemas/PassthroughObject' }
-    CourtschedulerReserveUnconfirmedHearing:        { $ref: '#/components/schemas/PassthroughObject' }
-    CourtschedulerReserveUnconfirmedHearingResponse: { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerAssignJudiciary:              { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerUnassignJudiciary:            { $ref: '#/components/schemas/PassthroughObject' }
 
@@ -832,6 +817,7 @@ components:
     CourtschedulerCreateProvisionalBooking:         { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerCreateProvisionalBookingResponse: { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerGetProvisionalBooking:            { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerGetBookingStatus:                 { $ref: '#/components/schemas/PassthroughObject' }
 
     CourtschedulerExportCourtSchedule:            { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerExportCourtScheduleJudiciary:   { $ref: '#/components/schemas/PassthroughObject' }

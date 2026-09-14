@@ -6,6 +6,7 @@ import java.util.Objects;
 
 public class Hearing {
     private String hearingId;
+    private String bookingId;
     private String courtScheduleId;
     private String hearingStartTime;
     private Integer duration;
@@ -18,6 +19,14 @@ public class Hearing {
 
     public void setHearingId(String hearingId) {
         this.hearingId = hearingId;
+    }
+
+    public String getBookingId() {
+        return bookingId;
+    }
+
+    public void setBookingId(String bookingId) {
+        this.bookingId = bookingId;
     }
 
     public String getCourtScheduleId() {

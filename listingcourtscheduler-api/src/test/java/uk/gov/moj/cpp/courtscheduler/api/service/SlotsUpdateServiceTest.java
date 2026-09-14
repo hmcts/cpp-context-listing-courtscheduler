@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -35,9 +36,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.ReserveUnconfirmedHearingRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.ReserveUnconfirmedHearingResponse;
-import uk.gov.moj.cpp.courtscheduler.exception.ConfirmedBookingExistsException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
@@ -141,6 +139,94 @@ class SlotsUpdateServiceTest {
 
             service.update(allocatedSlots);
         });
+    }
+
+    // -----------------------------------------------------------------------
+    // CRITICAL 2: a booking's sessions resolve from reservations first, legacy
+    // provisional_booking second; only "neither" is a not-found.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldConfirmAReservationBackedBookingWithoutAnyLegacyProvisionalBookingRow() throws Exception {
+        // Since Task 5 nothing writes provisional_booking, so reading only that table made every
+        // new booking throw ProvisionalSlotNotFoundException and never reach the
+        // isProvisionalSlot=true call that releases the reservation.
+        final List<AllocatedSlot> allocatedSlots = bookingBasedSlots();
+        final String bookingId = allocatedSlots.get(0).getBookingId();
+        final String courtScheduleId = allocatedSlots.get(0).getCourtScheduleId();
+
+        final AllocatedListing reservation = new AllocatedListing();
+        reservation.setHearingId(bookingId);
+        reservation.setCourtScheduleId(courtScheduleId);
+        reservation.setHearingStartTime(new Date(1_600_000_000_000L));
+        reservation.setExpiresAt(LocalDate.now());
+
+        when(allocatedListingRepository.findByHearingId(bookingId)).thenReturn(List.of(reservation));
+        when(courtScheduleRepository.saveBookedSlots(any(), anyBoolean(), anyBoolean())).thenReturn(new Result("", true));
+
+        service.update(allocatedSlots);
+
+        // isProvisionalSlot=true is the only flag that reaches persistHearingSlots' release of the
+        // bookingId-keyed hold, so the confirm path must still take it for a reservation.
+        verify(courtScheduleRepository).saveBookedSlots(allocatedSlots, true, false);
+        // and the legacy table must not be consulted when a reservation answered the question
+        verify(provisionalBookingRepository, never()).getCourtScheduleInfo(any());
+    }
+
+    @Test
+    void shouldFallBackToLegacyProvisionalBookingWhenTheBookingHasNoReservation() throws Exception {
+        // Pre-go-live magistrates drafts have only a provisional_booking row and no TTL, so this
+        // fallback has to keep working indefinitely.
+        final List<AllocatedSlot> allocatedSlots = bookingBasedSlots();
+        final String bookingId = allocatedSlots.get(0).getBookingId();
+        final String courtScheduleId = allocatedSlots.get(0).getCourtScheduleId();
+
+        when(allocatedListingRepository.findByHearingId(bookingId)).thenReturn(Collections.emptyList());
+        when(provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId)))
+                .thenReturn(Map.of(courtScheduleId, new Date(1_600_000_000_000L)));
+        when(courtScheduleRepository.saveBookedSlots(any(), anyBoolean(), anyBoolean())).thenReturn(new Result("", true));
+
+        service.update(allocatedSlots);
+
+        verify(courtScheduleRepository).saveBookedSlots(allocatedSlots, true, false);
+    }
+
+    @Test
+    void shouldIgnoreAConfirmedAllocationWhenResolvingABookingsSessions() throws Exception {
+        // expires_at, not source, is the discriminator: a row with a null expiry under the same
+        // key is a confirmed booking, not a hold, and must not answer for the booking.
+        final List<AllocatedSlot> allocatedSlots = bookingBasedSlots();
+        final String bookingId = allocatedSlots.get(0).getBookingId();
+
+        final AllocatedListing confirmed = new AllocatedListing();
+        confirmed.setHearingId(bookingId);
+        confirmed.setCourtScheduleId(allocatedSlots.get(0).getCourtScheduleId());
+        confirmed.setExpiresAt(null);
+
+        when(allocatedListingRepository.findByHearingId(bookingId)).thenReturn(List.of(confirmed));
+        when(provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId))).thenReturn(Collections.emptyMap());
+
+        Assertions.assertThrows(uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException.class,
+                () -> service.update(allocatedSlots));
+    }
+
+    @Test
+    void shouldThrowProvisionalSlotNotFoundOnlyWhenBothSourcesAreEmpty() throws Exception {
+        final List<AllocatedSlot> allocatedSlots = bookingBasedSlots();
+        final String bookingId = allocatedSlots.get(0).getBookingId();
+
+        when(allocatedListingRepository.findByHearingId(bookingId)).thenReturn(Collections.emptyList());
+        when(provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId))).thenReturn(Collections.emptyMap());
+
+        Assertions.assertThrows(uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException.class,
+                () -> service.update(allocatedSlots));
+
+        verify(courtScheduleRepository, never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+    }
+
+    private static List<AllocatedSlot> bookingBasedSlots() {
+        final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots-with-bookingid.json");
+        return new AllocatedSlotConverter().convert(payload).getHearingSlots();
     }
 
     @Test
@@ -2070,113 +2156,4 @@ class SlotsUpdateServiceTest {
         }
     }
 
-    @Nested
-    class ReserveUnconfirmedHearing {
-
-        @Test
-        void shouldReserveUnconfirmedHearingAndStampExpiresAt() {
-            final String sessionId = UUID.randomUUID().toString();
-            final String hearingId = UUID.randomUUID().toString();
-            final CourtSchedule session = buildSessionWithId(LocalDate.of(2026, 9, 10), sessionId);
-            session.setActive(true);
-
-            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(Collections.emptyList());
-            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(sessionId))).thenReturn(List.of(session));
-            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(new Result("", true));
-
-            final ReserveUnconfirmedHearingRequest request = new ReserveUnconfirmedHearingRequest()
-                    .setHearingStartTime("2026-09-10T10:00:00+01:00")
-                    .setSlotBased(true)
-                    .setDuration(60);
-
-            final ReserveUnconfirmedHearingResponse response =
-                    service.reserveUnconfirmedHearing(sessionId, hearingId, request);
-
-            assertEquals(sessionId, response.courtScheduleId());
-            assertEquals(hearingId, response.hearingId());
-            assertEquals("RESERVED_UNCONFIRMED", response.source());
-            assertNotNull(response.expiresAt());
-
-            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
-            verify(courtScheduleRepository).saveBookedSlots(captor.capture(), eq(false), eq(false));
-            final AllocatedSlot bookedSlot = captor.getValue().get(0);
-            assertEquals(sessionId, bookedSlot.getCourtScheduleId());
-            assertEquals(hearingId, bookedSlot.getHearingId());
-            assertEquals(session.getOuCode(), bookedSlot.getOuCode());
-            assertEquals("RESERVED_UNCONFIRMED", bookedSlot.getSource());
-            assertNotNull(bookedSlot.getExpiresAt());
-        }
-
-        @Test
-        void shouldThrowNoSessionAvailableExceptionWhenSessionMissing() {
-            final String sessionId = UUID.randomUUID().toString();
-            final String hearingId = UUID.randomUUID().toString();
-
-            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(Collections.emptyList());
-            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(sessionId))).thenReturn(Collections.emptyList());
-
-            final ReserveUnconfirmedHearingRequest request = new ReserveUnconfirmedHearingRequest()
-                    .setHearingStartTime("2026-09-10T10:00:00+01:00")
-                    .setSlotBased(true)
-                    .setDuration(60);
-
-            Assertions.assertThrows(NoSessionAvailableException.class,
-                    () -> service.reserveUnconfirmedHearing(sessionId, hearingId, request));
-
-            verify(courtScheduleRepository, org.mockito.Mockito.never())
-                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
-        }
-
-        @Test
-        void shouldRejectReserveWhenHearingAlreadyHasConfirmedAllocation() {
-            final String sessionId = UUID.randomUUID().toString();
-            final String hearingId = UUID.randomUUID().toString();
-            final AllocatedListing confirmed = new AllocatedListing();
-            confirmed.setHearingId(hearingId);
-            confirmed.setCourtScheduleId(UUID.randomUUID().toString());
-            confirmed.setExpiresAt(null);
-
-            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(confirmed));
-
-            final ReserveUnconfirmedHearingRequest request = new ReserveUnconfirmedHearingRequest()
-                    .setHearingStartTime("2026-09-10T10:00:00+01:00")
-                    .setSlotBased(true)
-                    .setDuration(60);
-
-            Assertions.assertThrows(ConfirmedBookingExistsException.class,
-                    () -> service.reserveUnconfirmedHearing(sessionId, hearingId, request));
-
-            verify(courtScheduleRepository, org.mockito.Mockito.never())
-                    .getCourtSchedulesByIdList(any());
-            verify(courtScheduleRepository, org.mockito.Mockito.never())
-                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
-        }
-
-        @Test
-        void shouldAllowReserveWhenExistingAllocationIsItselfUnconfirmed() {
-            final String sessionId = UUID.randomUUID().toString();
-            final String hearingId = UUID.randomUUID().toString();
-            final CourtSchedule session = buildSessionWithId(LocalDate.of(2026, 9, 10), sessionId);
-            session.setActive(true);
-            final AllocatedListing priorReservation = new AllocatedListing();
-            priorReservation.setHearingId(hearingId);
-            priorReservation.setCourtScheduleId(UUID.randomUUID().toString());
-            priorReservation.setExpiresAt(LocalDate.now());
-
-            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(priorReservation));
-            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(sessionId))).thenReturn(List.of(session));
-            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(new Result("", true));
-
-            final ReserveUnconfirmedHearingRequest request = new ReserveUnconfirmedHearingRequest()
-                    .setHearingStartTime("2026-09-10T10:00:00+01:00")
-                    .setSlotBased(true)
-                    .setDuration(60);
-
-            final ReserveUnconfirmedHearingResponse response =
-                    service.reserveUnconfirmedHearing(sessionId, hearingId, request);
-
-            assertEquals(sessionId, response.courtScheduleId());
-            verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false));
-        }
-    }
 }

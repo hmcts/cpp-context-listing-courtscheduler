@@ -2,6 +2,10 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
+    "bookingId": {
+      "description": "Reuse this booking rather than minting a new one. Sent when a clerk re-picks a session for a draft that already holds a bookingReference: because a reservation's hearing_id is its bookingId, the booking pipeline releases the previous pick's rows before taking the new ones, so the abandoned session's capacity is restored in the same transaction. Absent on a first pick, in which case an id is minted and returned.",
+      "type": "string"
+    },
     "provisionalSlots": {
       "type": "array",
       "items": {
@@ -12,6 +16,10 @@
           },
           "hearingStartTime": {
             "type": "string"
+          },
+          "duration": {
+            "description": "Hearing duration in minutes. Required for duration-based sessions, where the reservation decrements available_duration by this amount.",
+            "type": "integer"
           }
         },
         "required": [

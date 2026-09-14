@@ -260,6 +260,15 @@ rule "API - Action - courtscheduler.get.provisional.booking"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.get.booking-status"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.get.booking-status");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.export.court_schedule"
   when
     $outcome: Outcome();
@@ -309,15 +318,6 @@ rule "API - Action - courtscheduler.purge-expired-reserved-sessions"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.purge-expired-reserved-sessions");
-        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
-  then
-    $outcome.setSuccess(true);
-end
-
-rule "API - Action - courtscheduler.reserve-unconfirmed-hearing"
-  when
-    $outcome: Outcome();
-    $action: Action(name == "courtscheduler.reserve-unconfirmed-hearing");
         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);

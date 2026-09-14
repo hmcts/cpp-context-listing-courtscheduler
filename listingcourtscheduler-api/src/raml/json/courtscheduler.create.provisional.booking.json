@@ -1,12 +1,15 @@
 {
+  "bookingId": "9f1c2d3e-4a5b-6c7d-8e9f-0a1b2c3d4e5f",
   "provisionalSlots" : [
     {
       "courtScheduleId": "f2ea88af-5cd9-339c-8e2c-405df1f55ea6",
-      "hearingStartTime": "2020-01-01T11:00:00.000Z"
+      "hearingStartTime": "2020-01-01T11:00:00.000Z",
+      "duration": 60
     },
     {
       "courtScheduleId": "074d6f74-6e16-3351-8592-b083d02a3d80",
-      "hearingStartTime": "2020-01-01T11:00:00.000Z"
+      "hearingStartTime": "2020-01-01T11:00:00.000Z",
+      "duration": 60
     }
   ]
 }

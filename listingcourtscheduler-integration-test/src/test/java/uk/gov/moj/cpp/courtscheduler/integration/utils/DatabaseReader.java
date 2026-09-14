@@ -295,6 +295,7 @@ public class DatabaseReader {
         // getTimestamp, not getDate — java.sql.Date drops the time-of-day and throws on toInstant()
         allocatedListing.setHearingStartTime(resultSet.getTimestamp("hearing_start_time"));
         allocatedListing.setSource(resultSet.getString("source"));
+        allocatedListing.setBookingId(resultSet.getString("booking_id"));
         allocatedListing.setCreatedOn(resultSet.getDate("created_on"));
         allocatedListing.setUpdatedOn(resultSet.getDate("updated_on"));
         final java.sql.Date expiresAt = resultSet.getDate("expires_at");

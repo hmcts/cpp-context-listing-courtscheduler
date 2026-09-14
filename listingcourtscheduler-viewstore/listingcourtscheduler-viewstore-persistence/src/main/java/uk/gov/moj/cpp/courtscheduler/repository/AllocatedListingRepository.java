@@ -48,6 +48,15 @@ public interface AllocatedListingRepository
     /** Spring Data generates the JPQL: {@code SELECT al FROM AllocatedListing al WHERE al.hearingId = :hearingId}. */
     List<AllocatedListing> findByHearingId(String hearingId);
 
+    /**
+     * Confirmed rows only, by construction. A reservation carries its bookingId in
+     * {@code hearing_id} and leaves {@code booking_id} null (see
+     * {@code ReservationService.toReservedSlot}); only the row written when a booking is
+     * confirmed is stamped with {@code booking_id}. So a non-empty result here means the
+     * booking was shared, with no {@code expires_at} filter needed to say so.
+     */
+    List<AllocatedListing> findByBookingId(String bookingId);
+
     /** Spring Data generates the JPQL: {@code SELECT al FROM AllocatedListing al WHERE al.courtScheduleId = :courtScheduleId}. */
     List<AllocatedListing> findByCourtScheduleId(String courtScheduleId);
 
@@ -84,19 +93,18 @@ public interface AllocatedListingRepository
     int deleteRedundantRotaData(@Param("numberOfDays") int numberOfDays);
 
     /**
-     * Deletes allocated_listings rows whose expiresAt (a calendar date, no time-of-day) is before
-     * the given cutoff date — purges all expired, unconfirmed reserved sessions, not just those
-     * expiring exactly one day ago. A reservation expiring "today" survives until the day rolls
-     * over. Self-healing: a missed daily run doesn't strand rows the way an exact-date match
-     * would, since the next run's cutoff still covers them.
+     * Reservation rows whose expiresAt (a calendar date, no time-of-day) is strictly before the
+     * cutoff. Returns rows rather than deleting them so the caller can perform the full
+     * three-step release — a bare DELETE would strand the capacity on court_schedule.
+     * Self-healing: not scoped to "yesterday", so a missed daily run's backlog is still swept.
      */
-    @Modifying
-    @Transactional
     @Query(value = """
-            DELETE FROM allocated_listings
-             WHERE expires_at < :cutoff
+            SELECT al.*
+            FROM allocated_listings al
+            WHERE al.expires_at IS NOT NULL
+              AND al.expires_at < :cutoff
             """, nativeQuery = true)
-    int deleteExpiredReservedSessions(@Param("cutoff") LocalDate cutoff);
+    List<AllocatedListing> findExpiredReservedSessions(@Param("cutoff") LocalDate cutoff);
 
     /** Rows for a hearing ordered by the joined session's start — multiday callers rely on this ordering. */
     @Query(value = """
@@ -230,9 +238,15 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
 
         // Re-uses the method-name query Spring Data generates on the main interface, via
         // a lookup so this Custom impl doesn't require the main interface bean.
+        //
+        // expiresAt IS NULL excludes reservations. A reservation's hearing_id is a minted
+        // bookingId, not a hearing that any downstream MI consumer can resolve, so exporting one
+        // as a hearing would put a phantom row in every extract for as long as the hold lives.
+        // Confirmed bookings — the only real hearings — always have a null expiresAt.
         final List<AllocatedListing> allocatedListings = entityManager.createQuery(
                         "SELECT al FROM AllocatedListing al "
-                                + "WHERE al.updatedOn > :fromDate AND al.updatedOn < :toDate",
+                                + "WHERE al.updatedOn > :fromDate AND al.updatedOn < :toDate "
+                                + "AND al.expiresAt IS NULL",
                         AllocatedListing.class)
                 .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()))
                 .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()))

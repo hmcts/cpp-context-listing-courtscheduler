@@ -1,0 +1,7 @@
+{
+  "bookings": [
+    { "bookingId": "4e29c1fa-7d3b-4f21-9c88-1a2b3c4d7ac1", "safeToShare": true,  "status": "RESERVED" },
+    { "bookingId": "b7c2f04e-55a1-4c19-8f0d-9e7a6b5c9d31", "safeToShare": true,  "status": "SHARED" },
+    { "bookingId": "e1d4a903-2f77-4b60-a1c5-3d8e9f0b2a44", "safeToShare": false, "status": "NONE" }
+  ]
+}

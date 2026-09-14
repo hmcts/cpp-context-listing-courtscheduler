@@ -5,6 +5,7 @@ import java.util.Objects;
 
 public class HearingSlot {
     private String hearingId;
+    private String bookingId;
     private List<RequestedCourtSchedule> courtScheduleIds;
 
     public String getHearingId() {
@@ -13,6 +14,14 @@ public class HearingSlot {
 
     public void setHearingId(String hearingId) {
         this.hearingId = hearingId;
+    }
+
+    public String getBookingId() {
+        return bookingId;
+    }
+
+    public void setBookingId(String bookingId) {
+        this.bookingId = bookingId;
     }
 
     public List<RequestedCourtSchedule> getCourtScheduleIds() {

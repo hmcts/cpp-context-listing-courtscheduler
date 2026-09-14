@@ -262,42 +262,6 @@ protocols: [ HTTP, HTTPS ]
       202:
         description: Request Accepted
 
-/sessions/{sessionId}/hearings/{unconfirmedHearingId}:
-  uriParameters:
-    sessionId:
-      description: The session (court schedule) the hearing is reserved against
-      type: string
-    unconfirmedHearingId:
-      description: The hearing being reserved
-      type: string
-  put:
-    description: |
-      Reserve an unconfirmed hearing against a session (LPT-2433). Books the hearing through the
-      same capacity-decrementing pipeline as a real booking, except the resulting allocation is
-      marked with an expiry so it is picked up by courtscheduler.purge-expired-reserved-sessions
-      if it is never confirmed. Rejects with 409 if the hearing already has a CONFIRMED allocation
-      elsewhere.
-      ...
-      (mapping):
-          requestType: application/vnd.courtscheduler.reserve-unconfirmed-hearing+json
-          responseType: application/vnd.courtscheduler.reserve-unconfirmed-hearing.response+json
-          name: courtscheduler.reserve-unconfirmed-hearing
-      ...
-    body:
-      application/vnd.courtscheduler.reserve-unconfirmed-hearing+json:
-        schema: !include json/schema/courtscheduler.reserve-unconfirmed-hearing.json
-        example: !include json/courtscheduler.reserve-unconfirmed-hearing.json
-    responses:
-      200:
-        body:
-          application/vnd.courtscheduler.reserve-unconfirmed-hearing.response+json:
-            schema: !include json/schema/courtscheduler.reserve-unconfirmed-hearing.response.json
-            example: !include json/courtscheduler.reserve-unconfirmed-hearing.response.json
-      404:
-        description: No session found for sessionId
-      409:
-        description: The hearing already has a confirmed allocation
-
 /hearingslots:
   put:
     description:  |
@@ -546,6 +510,34 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.get.provisional.booking+json:
             example: !include json/courtscheduler.get.provisional.booking.json
             schema:  !include json/schema/courtscheduler.get.provisional.booking.json
+
+/provisionalBooking/status:
+  get:
+    description:  |
+      Reports, for each booking id, whether the draft that carries it is still safe to share, and
+      why. Used by the pre-share gate in the results UI, which must block the share synchronously
+      because sharing itself is asynchronous.
+
+      status is RESERVED (a reservation still holds capacity), SHARED (already shared — the
+      confirmed row carries this booking id), LEGACY (a draft saved before reserve-a-slot
+      shipped), or NONE (the hold expired and was purged). safeToShare is status != NONE, so a
+      re-share of an already-shared result is not blocked.
+      ...
+        (mapping):
+            responseType: application/vnd.courtscheduler.get.booking-status+json
+            name: courtscheduler.get.booking-status
+      ...
+    queryParameters:
+      bookingIds:
+        description: booking ids as comma separated
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.get.booking-status+json:
+            example: !include json/courtscheduler.get.booking-status.json
+            schema:  !include json/schema/courtscheduler.get.booking-status.json
 
 /mi/court_schedules:
   get:

@@ -18,7 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -72,18 +71,16 @@ import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.ReserveUnconfirmedHearingRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.ReserveUnconfirmedHearingResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.exception.ConfirmedBookingExistsException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
+import uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
 import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.CourtscheduleOpenApi;
@@ -523,40 +520,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
-    /**
-     * PUT /sessions/{sessionId}/hearings/{unconfirmedHearingId} — reserve an unconfirmed hearing
-     * against a session (LPT-2433): books through the normal capacity-decrementing pipeline but
-     * marks the resulting allocation with an expiry so the purge job sweeps it up if never
-     * confirmed.
-     */
-    @Override
-    public ResponseEntity<Map<String, Object>> putReserveUnconfirmedHearing(final String sessionId,
-                                                                             final String unconfirmedHearingId,
-                                                                             final Map<String, Object> body) {
-        LOG.info("courtscheduler.reserve-unconfirmed-hearing sessionId={}, unconfirmedHearingId={}, body={}",
-                Encode.forJava(sessionId), Encode.forJava(unconfirmedHearingId), body);
-        final JsonObject payload = toJsonObject(body);
-        final ReserveUnconfirmedHearingRequest reserveRequest = new ReserveUnconfirmedHearingRequest()
-                .setHearingStartTime(getStringOrNull(payload, "hearingStartTime"))
-                .setSlotBased(getBooleanOrFalse(payload, "isSlotBased"))
-                .setDuration(payload.containsKey("duration") ? payload.getInt("duration") : 0);
-
-        final JsonObject validationError = hearingSlotsApiValidator.reserveUnconfirmedHearingValidation(reserveRequest);
-        if (!validationError.isEmpty()) {
-            throw new ValidationException(validationError);
-        }
-
-        try {
-            final ReserveUnconfirmedHearingResponse response =
-                    slotsUpdateService.reserveUnconfirmedHearing(sessionId, unconfirmedHearingId, reserveRequest);
-            return ResponseEntity.ok(toResponseMap(response));
-        } catch (NoSessionAvailableException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        } catch (ConfirmedBookingExistsException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
-        }
-    }
-
     /* ============================================================
      *  HearingsOpenApi — SPRDT-1089 booking family on /hearings/*
      * ============================================================ */
@@ -860,8 +823,12 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
-        final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots);
-        return ResponseEntity.ok(JsonValueConverter.toMap(response));
+        try {
+            final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots);
+            return ResponseEntity.ok(JsonValueConverter.toMap(response));
+        } catch (NoCapacityException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        }
     }
 
     @Override
@@ -872,6 +839,14 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             throw new ValidationException(validate);
         }
         final JsonObject response = provisionalBookingService.fetchProvisionalSlots(bookingIds);
+        return ResponseEntity.ok(JsonValueConverter.toMap(response));
+    }
+
+    /** GET /provisionalBooking/status — is each booking id still held? */
+    @Override
+    public ResponseEntity<Map<String, Object>> getBookingStatus(final String bookingIds) {
+        LOG.info("courtscheduler.get.booking-status bookingIds={}", bookingIds);
+        final JsonObject response = provisionalBookingService.getBookingStatus(bookingIds);
         return ResponseEntity.ok(JsonValueConverter.toMap(response));
     }
 }

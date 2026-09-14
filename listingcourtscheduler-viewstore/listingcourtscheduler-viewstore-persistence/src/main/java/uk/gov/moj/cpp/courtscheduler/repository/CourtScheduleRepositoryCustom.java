@@ -149,4 +149,10 @@ public interface CourtScheduleRepositoryCustom {
 
     /** Date-scoped sibling of {@link #releaseOldAllocatedListings(String)}. */
     void releaseAllocatedListingsForDates(String hearingId, java.util.List<java.time.LocalDate> dates);
+
+    /**
+     * Releases every reservation whose expiresAt is before {@code cutoff}, restoring each
+     * session's capacity. Returns the number of rows released.
+     */
+    int releaseExpiredReservations(LocalDate cutoff);
 }

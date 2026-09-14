@@ -1088,7 +1088,13 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         updateCourtSchedule(updateAllocatedSlots);
         saveAllocatedListing(updateAllocatedSlots);
         if (isProvisionalSlot) {
-            deleteProvisionalBooking(slots.get(0).getBookingId());
+            final String bookingId = slots.get(0).getBookingId();
+            // Release the hold the clerk took at slot-pick time. Keyed on the bookingId, so the
+            // pipeline's hearing-wide release (which uses the real hearing id) does not cover it.
+            // A no-op when there is nothing to release — legacy drafts have only a
+            // provisional_booking row, which deleteProvisionalBooking still soft-deletes.
+            releaseOldAllocatedListings(bookingId);
+            deleteProvisionalBooking(bookingId);
         }
     }
 
@@ -1273,6 +1279,20 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
          List<Hearing> hearings = flattenHearingSlots(slots);
 
+        // BUG-3 Task 1: release the hold taken at slot-pick time before the loop below charges
+        // each session for the real booking. The hold is keyed on the bookingId, so the
+        // hearing-wide release inside the loop (keyed on the real hearing id) does not cover it.
+        // Without this the session is decremented twice — once by the hold, once by the booking —
+        // until the 01:00 purge. Released once per distinct booking, before the loop, so a
+        // multi-session booking is released as a unit rather than re-attempted per session.
+        // No-op when there is nothing to release: a pre-go-live draft has only a
+        // provisional_booking row.
+        slots.getHearingSlots().stream()
+                .map(HearingSlot::getBookingId)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .forEach(this::releaseOldAllocatedListings);
+
          hearings.forEach(hearing -> {
              uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = entityManager.find(CourtSchedule.class, hearing.getCourtScheduleId());
             if (cs != null) {
@@ -1299,6 +1319,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 //prepare allocated listing
                 uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedlisting = new AllocatedListing();
                 allocatedlisting.setHearingId(hearing.getHearingId());
+                allocatedlisting.setBookingId(hearing.getBookingId());
                 allocatedlisting.setCourtScheduleId(hearing.getCourtScheduleId());
                 allocatedlisting.setCourtRoomId(cs.getCourtRoomNumber());
                 allocatedlisting.setOucode(cs.getOuCode());
@@ -2334,7 +2355,11 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             provisionalBooking.setActive(false);
             this.provisionalBookingRepository.save(provisionalBooking);
         } else {
-            LOGGER.error(format("CHECK: bookingid not found %s", bookingId));
+            // Not an error since reserve-a-slot shipped: a booking now holds capacity through a
+            // reservation in allocated_listings and writes no provisional_booking row at all, so
+            // "no legacy row" is the normal case on every successful confirm. Only legacy drafts
+            // still have a row here, which is why the call itself stays.
+            LOGGER.debug("No legacy provisional_booking row to soft-delete for bookingId {}", bookingId);
         }
     }
 
@@ -2379,6 +2404,26 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     private List<AllocatedListing> getExistingAllocatedListings(final String hearingId) {
         return allocatedListingRepository.findByHearingId(hearingId);
+    }
+
+    /**
+     * Releases every reservation whose expiresAt is before {@code cutoff}: removes the
+     * allocated_listings rows and restores each session's capacity via the same three-step
+     * release {@link #releaseOldAllocatedListings(String)} performs. A bare DELETE would strand
+     * the capacity on court_schedule permanently, since the row that tracked it is gone.
+     * "No reservation found" is a no-op, not an error.
+     */
+    @Override
+    @Transactional
+    public int releaseExpiredReservations(final LocalDate cutoff) {
+        final List<AllocatedListing> expired = allocatedListingRepository.findExpiredReservedSessions(cutoff);
+        if (expired.isEmpty()) {
+            return 0;
+        }
+        expired.forEach(allocatedListingRepository::remove);
+        releaseCourtScheduleAllocatedSlotsForBookingId(expired);
+        releaseAllocatedSlotsOrDurationFromCourtSchedule(expired);
+        return expired.size();
     }
 
     private Map<String, List<SlotStartTime>> getCountBasedAllocatedListing(final Set<String> courtScheduleIds, final Map<String, CourtSchedule> courtScheduleMap) {
@@ -2740,6 +2785,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             for (RequestedCourtSchedule requestedCourtSchedule : hearingSlot.getCourtScheduleIds()) {
                 Hearing hearing = new Hearing();
                 hearing.setHearingId(hearingSlot.getHearingId());
+                hearing.setBookingId(hearingSlot.getBookingId());
                 hearing.setCourtScheduleId(requestedCourtSchedule.getCourtScheduleId());
                 hearing.setHearingStartTime(requestedCourtSchedule.getHearingStartTime());
                 hearing.setDuration(requestedCourtSchedule.getDurationInMinutes());

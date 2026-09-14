@@ -11,6 +11,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -36,6 +37,9 @@ public class AllocatedListingService {
     private AllocatedListingRepository allocatedListingRepository;
 
     @Inject
+    private CourtScheduleRepository courtScheduleRepository;
+
+    @Inject
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
 
     @Transactional
@@ -52,14 +56,13 @@ public class AllocatedListingService {
     }
 
     /**
-     * Purges allocated_listings rows whose expiresAt (a calendar date, no time-of-day — see
-     * SlotsUpdateService#reserveUnconfirmedHearing) is before today. ZoneOffset.UTC keeps the
-     * cutoff deterministic regardless of the JVM's default zone. Self-healing against a missed
-     * daily run, since it isn't scoped to exactly "yesterday".
+     * Releases allocated_listings rows whose expiresAt is before today, restoring each session's
+     * capacity. ZoneOffset.UTC keeps the cutoff deterministic regardless of the JVM's default
+     * zone. Self-healing against a missed daily run, since it isn't scoped to exactly "yesterday".
      */
     @Transactional
     public int purgeExpiredReservedSessions() {
-        return allocatedListingRepository.deleteExpiredReservedSessions(LocalDate.now(ZoneOffset.UTC));
+        return courtScheduleRepository.releaseExpiredReservations(LocalDate.now(ZoneOffset.UTC));
     }
 
 

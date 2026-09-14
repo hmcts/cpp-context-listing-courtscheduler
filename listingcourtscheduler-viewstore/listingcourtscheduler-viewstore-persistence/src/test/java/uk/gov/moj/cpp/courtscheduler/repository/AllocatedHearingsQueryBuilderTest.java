@@ -117,7 +117,7 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
         // Then
         assertThat(query, containsString("DENSE_RANK() OVER (  PARTITION BY al.hearing_id ORDER BY cast(al.hearing_start_time as date)) AS hearing_day_position"));
         assertThat(query, containsString("count(*) over() as totalCount"));
-        assertThat(query, containsString("(select count(1) from allocated_listings al2 where al2.hearing_id =al.hearing_id) as hearing_day_count"));
+        assertThat(query, containsString("(select count(1) from allocated_listings al2 where al2.hearing_id =al.hearing_id and al2.expires_at is null) as hearing_day_count"));
     }
 
     @Test
@@ -683,5 +683,37 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
         HearingSlotRequestParam requestParamAll = createBasicRequestParamWithStatus("ALL");
         AllocatedHearingsQueryBuilder builderAll = new AllocatedHearingsQueryBuilder(requestParamAll);
         assertThat(builderAll.getAllocatedHearingsQuery(), not(containsString("is_draft")));
+    }
+
+    @Test
+    void shouldExcludeReservationsFromAllocatedHearings() {
+        // Given
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "MAGISTRATES", // panel
+                "2026-10-01", // sessionStartDate
+                "2026-10-31", // sessionEndDate
+                null, // exactHearingStartDateTime
+                null, // oucodeL2Code
+                null, // ouCode
+                "20", // pageSize
+                "1", // pageNumber
+                null, // courtRoomId
+                null, // courtRoomNumber
+                null, // businessType
+                null, // courtSession
+                null, // isSlotBased
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // duration
+                null, // status
+                null // jurisdiction
+        );
+
+        // When
+        final String query = new AllocatedHearingsQueryBuilder(requestParam).getAllocatedHearingsQuery();
+
+        // Then
+        assertThat(query, containsString("al.expires_at is null"));
+        assertThat(query, containsString("al2.expires_at is null"));
     }
 }

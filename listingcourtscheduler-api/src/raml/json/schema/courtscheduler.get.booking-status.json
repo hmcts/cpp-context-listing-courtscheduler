@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bookings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bookingId": { "type": "string" },
+          "safeToShare": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["RESERVED", "SHARED", "LEGACY", "NONE"] }
+        },
+        "required": ["bookingId", "safeToShare", "status"]
+      }
+    }
+  },
+  "required": ["bookings"]
+}

@@ -44,10 +44,14 @@ public class AllocatedHearingsQueryBuilder {
 
     private void generateAllocatedHearingsQuery() {
         final StringBuilder queryStrBuilder = new StringBuilder("select al.hearing_id, al.court_schedule_id, cast(al.hearing_start_time as date), ");
-        queryStrBuilder.append("(select count(1) from allocated_listings al2 where al2.hearing_id =al.hearing_id) as hearing_day_count, ");
+        queryStrBuilder.append("(select count(1) from allocated_listings al2 where al2.hearing_id =al.hearing_id and al2.expires_at is null) as hearing_day_count, ");
         queryStrBuilder.append("DENSE_RANK() OVER (  PARTITION BY al.hearing_id ORDER BY cast(al.hearing_start_time as date)) AS hearing_day_position, ");
         queryStrBuilder.append(" count(*) over() as totalCount from allocated_listings al, court_schedule cs ");
         queryStrBuilder.append("where al.court_schedule_id = cs.id and cs.active = true ");
+        // A reservation (expires_at set) holds capacity but has no hearing behind it — its
+        // hearing_id is a bookingId. Including it here would inflate the paged total that
+        // listing passes straight through to the court calendar, so pages render short.
+        queryStrBuilder.append("and al.expires_at is null ");
         queryStrBuilder.append("and cs.panel in (:panel) ");
         queryStrBuilder.append("and cs.session_start >= :sessionStartDate ");
         queryStrBuilder.append("and cs.session_start <= :sessionEndDate ");

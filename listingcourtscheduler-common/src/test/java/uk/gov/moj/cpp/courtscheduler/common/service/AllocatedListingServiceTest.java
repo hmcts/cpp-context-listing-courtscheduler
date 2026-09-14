@@ -18,6 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -45,6 +46,9 @@ class AllocatedListingServiceTest {
 
     @Mock
     private AllocatedListingRepository allocatedListingRepository;
+
+    @Mock
+    private CourtScheduleRepository courtScheduleRepository;
 
     @Spy
     private ObjectToJsonObjectConverter objectToJsonObjectConverter = new uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter(new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules());
@@ -80,16 +84,16 @@ class AllocatedListingServiceTest {
     }
 
     @Test
-    void shouldPurgeExpiredReservedSessions() {
-        final int numberOfDeleted = 3;
-        when(allocatedListingRepository.deleteExpiredReservedSessions(any(LocalDate.class))).thenReturn(numberOfDeleted);
+    void shouldPurgeExpiredReservedSessionsRestoringCapacity() {
+        final int numberOfReleased = 3;
+        when(courtScheduleRepository.releaseExpiredReservations(any(LocalDate.class))).thenReturn(numberOfReleased);
 
-        final int expectedNumberOfDeletion = allocatedListingService.purgeExpiredReservedSessions();
+        final int actual = allocatedListingService.purgeExpiredReservedSessions();
 
         final org.mockito.ArgumentCaptor<LocalDate> cutoffCaptor = org.mockito.ArgumentCaptor.forClass(LocalDate.class);
-        verify(allocatedListingRepository, atLeastOnce()).deleteExpiredReservedSessions(cutoffCaptor.capture());
+        verify(courtScheduleRepository, atLeastOnce()).releaseExpiredReservations(cutoffCaptor.capture());
         assertEquals(LocalDate.now(ZoneOffset.UTC), cutoffCaptor.getValue());
-        assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
+        assertThat(actual, is(numberOfReleased));
     }
 
     private List<AllocatedListingTotalBooked> getAllocatedListingTotalBooked(final List<String> courtScheduleIds) {
