@@ -1181,10 +1181,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final LocalDate toInclusive = fromDate.plusDays((long) daysNeeded + weekendBuffer);
 
         for (final Object[] room : rooms) {
-            final String courtRoomId = (String) room[0];
+            final String candidateRoomId = (String) room[0];
             final String businessType = (String) room[1];
             final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> run = queryAdWeekdaySessionsInCentre(
-                    courtCentreId, courtRoomId, businessType, fromDate, toInclusive);
+                    courtCentreId, candidateRoomId, businessType, fromDate, toInclusive);
             if (run.size() >= daysNeeded) {
                 return run;
             }
