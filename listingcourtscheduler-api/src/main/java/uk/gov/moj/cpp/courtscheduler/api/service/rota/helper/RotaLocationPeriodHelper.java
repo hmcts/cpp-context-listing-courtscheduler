@@ -1,8 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 // (removed) Requester replaced by Spring CommonPlatformQueryClient
+
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
@@ -12,11 +14,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 /**
  * Helper class for location, OU code, and rota period processing operations from rota file records.
@@ -128,6 +129,32 @@ public class RotaLocationPeriodHelper {
      */
     public RotaPeriodDateInfoProvider getRotaPeriodDates(final Map<RotaPayload, Map<String, Map<String, String>>> records) {
         return new RotaPeriodDateInfoProvider(records);
+    }
+
+    /**
+     * Builds a map of the unallocated court schedule judiciaries that
+     * {@link #deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod} would delete for the given
+     * rota period and OU codes, keyed by courtScheduleId. Each value carries the row data:
+     * courtScheduleId, judiciaryId, courtListingProfileId, rotaJudiciaryId, title, forenames,
+     * surname, email, judiciaryType, isBenchChairman, isDeputy, position and active.
+     *
+     * @param rotaPeriodStartDate the start date of the rota period
+     * @param rotaPeriodEndDate   the end date of the rota period
+     * @param ouCodes             the list of OU codes to process
+     * @return map of courtScheduleId to the court schedule judiciaries for that schedule
+     */
+    public Map<String, List<CourtScheduleJudiciary>> getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final LocalDate rotaPeriodStartDate,
+            final LocalDate rotaPeriodEndDate,
+            final List<String> ouCodes) {
+        final Map<String, List<CourtScheduleJudiciary>> courtScheduleJudiciaryMap =
+                courtScheduleJudiciaryService.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+                        rotaPeriodStartDate, rotaPeriodEndDate, ouCodes);
+
+        logger.info("Captured {} court schedules with unallocated judiciaries for rota period {} to {}",
+                courtScheduleJudiciaryMap.size(), rotaPeriodStartDate, rotaPeriodEndDate);
+
+        return courtScheduleJudiciaryMap;
     }
 
     /**

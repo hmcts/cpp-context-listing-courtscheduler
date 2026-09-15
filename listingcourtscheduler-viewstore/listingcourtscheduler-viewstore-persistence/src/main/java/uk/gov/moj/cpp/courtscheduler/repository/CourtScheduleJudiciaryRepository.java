@@ -70,6 +70,28 @@ public interface CourtScheduleJudiciaryRepository
                                               @Param("courtScheduleId") String courtScheduleId,
                                               @Param("judiciaryId") String judiciaryId);
 
+    /**
+     * Joins court_schedule, court_schedule_judiciary and allocated_listings for the supplied
+     * court schedule IDs. Returns one row per (hearing, judiciary) combination:
+     * court_schedule_id, hearing_id, judiciary_id, judiciary_type, is_bench_chairman, is_deputy.
+     */
+    @Query(value = "SELECT cs.id AS court_schedule_id, al.hearing_id, csj.judiciary_id, csj.judiciary_type, "
+            + "csj.is_bench_chairman, csj.is_deputy "
+            + "FROM court_schedule cs "
+            + "JOIN court_schedule_judiciary csj ON csj.court_schedule_id = cs.id AND csj.active = true "
+            + "JOIN allocated_listings al ON al.court_schedule_id = cs.id "
+            + "WHERE cs.id IN (:courtScheduleIds) AND cs.active = true",
+            nativeQuery = true)
+    List<Object[]> findJudiciaryHearingInfoByCourtScheduleIds(@Param("courtScheduleIds") List<String> courtScheduleIds);
+
+    /** Selects the rows that {@link #deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod} would delete — same predicate. */
+    @Query(value = "SELECT csj.* FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN "
+            + " (SELECT cs.id FROM court_schedule cs WHERE cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND active = true)",
+            nativeQuery = true)
+    List<CourtScheduleJudiciary> findUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(@Param("startDate") LocalDate startDate,
+                                                                                            @Param("endDate") LocalDate endDate,
+                                                                                            @Param("ouCodes") List<String> ouCodes);
+
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN "
