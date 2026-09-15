@@ -376,6 +376,59 @@ class RotaLocationPeriodHelperTest {
     }
 
     @Nested
+    @DisplayName("Get Unallocated Court Schedule Judiciaries Tests")
+    class GetUnallocatedCourtScheduleJudiciariesTests {
+
+        @Test
+        @DisplayName("Should return unallocated court schedule judiciaries keyed by court schedule ID")
+        void shouldReturnUnallocatedCourtScheduleJudiciariesKeyedByCourtScheduleId() {
+            // given
+            final LocalDate startDate = LocalDate.parse("2024-01-01");
+            final LocalDate endDate = LocalDate.parse("2024-12-31");
+            final List<String> ouCodes = List.of("OU001");
+            final String courtScheduleId = UUID.randomUUID().toString();
+            final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary judiciary =
+                    uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary()
+                            .withCourtScheduleId(courtScheduleId)
+                            .withJudiciaryId("jud-1")
+                            .build();
+            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> serviceResult =
+                    Map.of(courtScheduleId, List.of(judiciary));
+            when(courtScheduleJudiciaryService.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+                    eq(startDate), eq(endDate), eq(ouCodes)))
+                    .thenReturn(serviceResult);
+
+            // when
+            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+                    rotaLocationPeriodHelper.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+
+            // then
+            assertEquals(serviceResult, result);
+            verify(courtScheduleJudiciaryService).getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+                    eq(startDate), eq(endDate), eq(ouCodes));
+        }
+
+        @Test
+        @DisplayName("Should return empty map when no unallocated judiciaries found")
+        void shouldReturnEmptyMapWhenNoUnallocatedJudiciariesFound() {
+            // given
+            final LocalDate startDate = LocalDate.parse("2024-01-01");
+            final LocalDate endDate = LocalDate.parse("2024-12-31");
+            final List<String> ouCodes = List.of("OU001");
+            when(courtScheduleJudiciaryService.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+                    eq(startDate), eq(endDate), eq(ouCodes)))
+                    .thenReturn(new HashMap<>());
+
+            // when
+            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+                    rotaLocationPeriodHelper.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+
+            // then
+            assertTrue(result.isEmpty());
+        }
+    }
+
+    @Nested
     @DisplayName("Delete Unallocated Court Schedule Judiciaries Tests")
     class DeleteUnallocatedCourtScheduleJudiciariesTests {
 

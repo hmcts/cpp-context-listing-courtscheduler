@@ -163,6 +163,28 @@ public class StubUtil {
         return CLIENT.findAll(pattern).size();
     }
 
+    private static final String LISTING_COMMAND_HEARINGS_PATH = "/listing-command-api/command/api/rest/listing/hearings";
+    private static final String CHANGE_JUDICIARY_FOR_HEARINGS_MEDIA_TYPE =
+            "application/vnd.listing.command.change-judiciary-for-hearings+json";
+
+    /** Stubs the listing command API to accept change-judiciary-for-hearings commands with 202. */
+    public static StubMapping stubChangeJudiciaryForHearingsCommand() {
+        return CLIENT.register(WireMock.post(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
+                .willReturn(WireMock.aResponse().withStatus(202)));
+    }
+
+    /** Counts the change-judiciary-for-hearings commands WireMock has received (across the whole run). */
+    public static int countChangeJudiciaryForHearingsRequests() {
+        return countRequests(WireMock.postRequestedFor(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
+                .withHeader(HttpHeaders.CONTENT_TYPE, WireMock.equalTo(CHANGE_JUDICIARY_FOR_HEARINGS_MEDIA_TYPE)));
+    }
+
+    /** Counts the change-judiciary-for-hearings commands whose body contains the given text (e.g. a hearing ID). */
+    public static int countChangeJudiciaryForHearingsRequestsContaining(final String bodySubstring) {
+        return countRequests(WireMock.postRequestedFor(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
+                .withRequestBody(WireMock.containing(bodySubstring)));
+    }
+
     private static String extractHost(final String url) {
         final String stripped = url.replaceFirst("^[a-z]+://", "");
         final int colon = stripped.indexOf(':');
