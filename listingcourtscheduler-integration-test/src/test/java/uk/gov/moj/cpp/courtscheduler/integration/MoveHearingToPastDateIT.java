@@ -62,7 +62,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
 
         final String sessionId = seedSession(day, roomId, "NGAP", centreId, "OU-MAG1", "MAGISTRATES");
 
-        final Response response = callMove(centreId, "MAGISTRATES", day, null, 360, hearingId);
+        final Response response = callMove(centreId, roomId, "MAGISTRATES", day, null, 360, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
@@ -84,7 +84,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
 
         final String sessionId = seedSession(day, roomId, "CR", centreId, "OU-CRN1", "CROWN");
 
-        final Response response = callMove(centreId, "CROWN", day, null, 360, hearingId);
+        final Response response = callMove(centreId, roomId, "CROWN", day, null, 360, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
@@ -93,6 +93,29 @@ class MoveHearingToPastDateIT extends AbstractIT {
         assertThat("one allocated_listings row booked for the hearing",
                 bookedScheduleIds(hearingId), contains(sessionId));
         assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
+    }
+
+    // --- (b2) single-day CROWN, room-scoped: a session in another room on the same day is ignored ---
+
+    @Test
+    void shouldMoveCrownHearingToPastDate_scopedToRequestedRoomOnly() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String requestedRoomId = UUID.randomUUID().toString();
+        final String otherRoomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day = pastMonday();
+
+        // Another room in the same centre also has a session on this day — main-contract alignment
+        // means the search must not wander into it once a courtRoomId is supplied.
+        seedSession(day, otherRoomId, "CR", centreId, "OU-CRN1B", "CROWN");
+        final String requestedRoomSessionId = seedSession(day, requestedRoomId, "CR", centreId, "OU-CRN1B", "CROWN");
+
+        final Response response = callMove(centreId, requestedRoomId, "CROWN", day, null, 360, hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(extractSessionIds(body(response)), contains(requestedRoomSessionId));
+        assertThat("only the requested room's session is booked",
+                bookedScheduleIds(hearingId), contains(requestedRoomSessionId));
     }
 
     // --- (c) multi-day MAGS (consecutive weekdays) ---
@@ -108,7 +131,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String d2 = seedSession(day1.plusDays(1), roomId, "NGAP", centreId, "OU-MAG2", "MAGISTRATES");
 
         // durationInMinutes 720 => 2 days needed; consecutive Mon+Tue in the same room + business type.
-        final Response response = callMove(centreId, "MAGISTRATES", day1, null, 720, hearingId);
+        final Response response = callMove(centreId, roomId, "MAGISTRATES", day1, null, 720, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
@@ -131,7 +154,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String d1 = seedSession(day1, roomId, "CR", centreId, "OU-CRN2", "CROWN");
         final String d2 = seedSession(day1.plusDays(1), roomId, "CR", centreId, "OU-CRN2", "CROWN");
 
-        final Response response = callMove(centreId, "CROWN", day1, null, 720, hearingId);
+        final Response response = callMove(centreId, roomId, "CROWN", day1, null, 720, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
@@ -165,7 +188,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         // Target: a past session with full capacity.
         final String pastSession = seedSession(pastDay, roomId, "CR", centreId, "OU-CRN3", "CROWN", 360);
 
-        final Response response = callMove(centreId, "CROWN", pastDay, null, 360, hearingId);
+        final Response response = callMove(centreId, roomId, "CROWN", pastDay, null, 360, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         assertThat(extractSessionIds(body(response)), contains(pastSession));
@@ -206,7 +229,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String p2 = seedSession(pastDay2, roomId, "CR", centreId, "OU-CRN4", "CROWN", 360);
 
         // durationInMinutes 720 => 2 days needed.
-        final Response response = callMove(centreId, "CROWN", pastDay1, null, 720, hearingId);
+        final Response response = callMove(centreId, roomId, "CROWN", pastDay1, null, 720, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         assertThat(extractSessionIds(body(response)), contains(p1, p2));
@@ -228,21 +251,27 @@ class MoveHearingToPastDateIT extends AbstractIT {
 
     // --- helpers ---
 
-    /** POST move-hearing-to-past-date. hearingId travels in the path only; no courtScheduleId anchor. */
+    /**
+     * POST move-hearing-to-past-date. hearingId travels in the path only; no courtScheduleId anchor.
+     * courtRoomId/startTime/endTime mirror main's contract (courtRoomId now mandatory, scoping the
+     * search to that room; startTime/endTime are UTC instants whose DATES drive [startDate, endDate] —
+     * the same 10:00/17:00 window every seeded session uses).
+     */
     private Response callMove(final String courtCentreId,
+                              final String courtRoomId,
                               final String jurisdiction,
                               final LocalDate startDate,
                               final LocalDate endDate,
                               final int durationInMinutes,
                               final String hearingId) {
+        final LocalDate effectiveEndDate = endDate != null ? endDate : startDate;
         final jakarta.json.JsonObjectBuilder b = Json.createObjectBuilder()
                 .add("courtCentreId", courtCentreId)
+                .add("courtRoomId", courtRoomId)
                 .add("jurisdiction", jurisdiction)
-                .add("startDate", startDate.toString())
+                .add("startTime", startDate.atTime(10, 0).toInstant(ZoneOffset.UTC).toString())
+                .add("endTime", effectiveEndDate.atTime(17, 0).toInstant(ZoneOffset.UTC).toString())
                 .add("durationInMinutes", durationInMinutes);
-        if (endDate != null) {
-            b.add("endDate", endDate.toString());
-        }
         return postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID, b.build().toString());
     }
 

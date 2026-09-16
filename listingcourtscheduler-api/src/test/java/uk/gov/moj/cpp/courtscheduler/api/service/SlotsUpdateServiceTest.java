@@ -1775,6 +1775,47 @@ class SlotsUpdateServiceTest {
                     () -> service.moveHearingToPastDate(request));
         }
 
+        /**
+         * Regression test (main-contract alignment): courtRoomId/startTime/endTime becoming
+         * mandatory on the wire means EVERY request now carries an endDate, even an ordinary
+         * single-day move (endDate == startDate). Before this fix, request.hasEndDate() alone
+         * signalled "genuine date-range search" and was now always true, so a same-day miss
+         * silently returned 200 with an empty sessions[] instead of the expected 404/422 -
+         * which then broke the listing-side enrichment downstream (a "2 schema violations" error
+         * on listing.command.move-hearing-to-past-date-enriched, since a single fabricated
+         * all-null session was built from the empty response). A same-day request must still
+         * throw when nothing is found.
+         */
+        @Test
+        void should_throwNoSession_when_endDateEqualsStartDateAndNoSessionAvailable() {
+            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
+                    .setHearingId(UUID.randomUUID().toString())
+                    .setCourtCentreId(UUID.randomUUID().toString())
+                    .setCourtRoomId(UUID.randomUUID().toString())
+                    .setJurisdiction("MAGISTRATES")
+                    .setStartDate(LocalDate.of(2025, 1, 10))
+                    .setEndDate(LocalDate.of(2025, 1, 10)); // same day - mandatory-endDate shape, NOT a range
+
+            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.moveHearingToPastDate(request));
+        }
+
+        /** A GENUINE multi-day range (endDate strictly after startDate) that finds nothing stays exploratory: empty success, prior allocation untouched. */
+        @Test
+        void should_returnEmptySessions_when_genuineDateRangeFindsNothing() {
+            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
+                    .setHearingId(UUID.randomUUID().toString())
+                    .setCourtCentreId(UUID.randomUUID().toString())
+                    .setCourtRoomId(UUID.randomUUID().toString())
+                    .setJurisdiction("CROWN")
+                    .setStartDate(LocalDate.of(2025, 1, 10))
+                    .setEndDate(LocalDate.of(2025, 1, 13)); // genuine range - centre search finds nothing
+
+            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(request);
+            assertTrue(response.sessions().isEmpty());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+        }
+
         @Test
         void should_bookConsecutivePastWeekdays_when_crownMoveHearingToPastDate() {
             // AC7 — CROWN past span (no anchor): books consecutive past weekdays via the centre search,
@@ -1792,7 +1833,7 @@ class SlotsUpdateServiceTest {
                     .setDurationInMinutes(720);
 
             lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(
-                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2)))
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(null)))
                     .thenReturn(pastSessions);
             lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
                     .thenReturn(new Result("", true));
@@ -1805,6 +1846,35 @@ class SlotsUpdateServiceTest {
                     org.mockito.ArgumentCaptor.forClass(List.class);
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
             assertTrue(slotsCaptor.getValue().stream().allMatch(s -> "MOVE_TO_PAST_DATE".equals(s.getSource())));
+        }
+
+        @Test
+        void should_scopeSearchToRequestedRoom_when_courtRoomIdSupplied() {
+            // Main-contract alignment: courtRoomId (when supplied) scopes the centre search to that room.
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> pastSessions =
+                    buildConsecutiveSessions(LocalDate.of(2025, 3, 3), 2);
+
+            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
+                    .setHearingId(hearingId)
+                    .setCourtCentreId(courtCentreId)
+                    .setCourtRoomId(courtRoomId)
+                    .setJurisdiction("CROWN")
+                    .setStartDate(LocalDate.of(2025, 3, 3))
+                    .setDurationInMinutes(720);
+
+            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(courtRoomId)))
+                    .thenReturn(pastSessions);
+            lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result("", true));
+
+            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(request);
+            assertEquals(2, response.sessions().size());
+            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(courtRoomId));
         }
 
         @Test
@@ -1823,13 +1893,15 @@ class SlotsUpdateServiceTest {
                     .setStartDate(LocalDate.of(2025, 3, 3))
                     .setDurationInMinutes(720);
 
-            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2)))
+            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(null)))
                     .thenReturn(consecutivePast);
             lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
                     .thenReturn(new Result("", true));
 
             service.moveHearingToPastDate(request);
-            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2));
+            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(null));
         }
 
         @Test
@@ -1847,7 +1919,7 @@ class SlotsUpdateServiceTest {
             service.moveHearingToPastDate(request);
 
             verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
-                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(3));
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(3), eq(null));
         }
     }
 
