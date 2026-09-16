@@ -76,7 +76,7 @@ class CourtScheduleJudiciaryServiceTest {
     }
 
     @Test
-    void shouldGetUnAllocatedCourtScheduleJudiciariesForRotaPeriodGroupedByCourtScheduleId() {
+    void shouldGetCourtScheduleJudiciariesForRotaPeriodGroupedByCourtScheduleId() {
         final java.time.LocalDate startDate = java.time.LocalDate.parse("2024-01-01");
         final java.time.LocalDate endDate = java.time.LocalDate.parse("2024-12-31");
         final List<String> ouCodes = List.of("B40IM00");
@@ -86,12 +86,12 @@ class CourtScheduleJudiciaryServiceTest {
         final CourtScheduleJudiciary judiciaryA1 = buildEntity(courtScheduleIdA, "jud-1");
         final CourtScheduleJudiciary judiciaryA2 = buildEntity(courtScheduleIdA, "jud-2");
         final CourtScheduleJudiciary judiciaryB1 = buildEntity(courtScheduleIdB, "jud-3");
-        when(courtScheduleJudiciaryRepository.findUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+        when(courtScheduleJudiciaryRepository.findCourtScheduleJudiciariesEntriesForRotaPeriod(
                 eq(startDate), eq(endDate), eq(ouCodes)))
                 .thenReturn(List.of(judiciaryA1, judiciaryA2, judiciaryB1));
 
         final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
-                courtScheduleJudiciaryService.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+                courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
         assertEquals(2, result.size());
         assertEquals(2, result.get(courtScheduleIdA).size());
@@ -118,12 +118,12 @@ class CourtScheduleJudiciaryServiceTest {
         final java.time.LocalDate startDate = java.time.LocalDate.parse("2024-01-01");
         final java.time.LocalDate endDate = java.time.LocalDate.parse("2024-12-31");
         final List<String> ouCodes = List.of("B40IM00");
-        when(courtScheduleJudiciaryRepository.findUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+        when(courtScheduleJudiciaryRepository.findCourtScheduleJudiciariesEntriesForRotaPeriod(
                 eq(startDate), eq(endDate), eq(ouCodes)))
                 .thenReturn(List.of());
 
         final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
-                courtScheduleJudiciaryService.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+                courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
         assertTrue(result.isEmpty());
     }

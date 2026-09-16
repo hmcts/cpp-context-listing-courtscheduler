@@ -148,7 +148,7 @@ public class RotaLocationPeriodHelper {
             final LocalDate rotaPeriodEndDate,
             final List<String> ouCodes) {
         final Map<String, List<CourtScheduleJudiciary>> courtScheduleJudiciaryMap =
-                courtScheduleJudiciaryService.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+                courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(
                         rotaPeriodStartDate, rotaPeriodEndDate, ouCodes);
 
         logger.info("Captured {} court schedules with unallocated judiciaries for rota period {} to {}",
@@ -173,7 +173,7 @@ public class RotaLocationPeriodHelper {
                 rotaPeriodStartDate, rotaPeriodEndDate, ouCodes.size());
         
         final int deletedCount = courtScheduleJudiciaryService
-                .deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+                .deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                         rotaPeriodStartDate, rotaPeriodEndDate, ouCodes);
         
         logger.info("Deleted {} unallocated court schedule judiciaries for rota period {} to {}",
