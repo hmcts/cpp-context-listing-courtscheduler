@@ -625,13 +625,19 @@ public class SlotsUpdateService {
         }
 
         if (sessions.isEmpty()) {
-            // No session for a single-date request is a hard 404; the prior allocation is left intact.
-            if (!request.hasEndDate()) {
+            // A GENUINE date range (endDate strictly after startDate) that yields nothing is
+            // exploratory - leave the existing allocation intact. Everything else (no endDate at
+            // all, OR endDate present but equal to startDate - the shape every request now takes
+            // since courtRoomId/startTime/endTime became mandatory, main-contract alignment) is a
+            // single-date request: no session for it is a hard 404, not a silent empty success.
+            // (request.hasEndDate() alone stopped being a safe signal once endDate became mandatory
+            // on every request - it used to mean "caller asked for a range", now it's always true.)
+            final boolean isGenuineDateRange = request.hasEndDate() && request.getEndDate().isAfter(request.getStartDate());
+            if (!isGenuineDateRange) {
                 throw new NoSessionAvailableException(
                         "No past session available for hearingId " + request.getHearingId()
                                 + " starting " + request.getStartDate());
             }
-            // A date-range request that yields nothing is exploratory — leave the existing allocation intact.
             return new MoveHearingToPastDateResponse(
                     request.getHearingId(), SOURCE_MOVE_TO_PAST_DATE, Collections.emptyList());
         }
