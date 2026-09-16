@@ -23,6 +23,13 @@ public class StubUtil {
     private static final String WIREMOCK_BASE_URL =
             System.getProperty("wiremock.baseUrl", "http://localhost:8189");
 
+    static {
+        // WireMock.findAll / WireMock.verify (static methods) use a global "defaultInstance"
+        // that defaults to localhost:8080.  Align it with our configured server so that
+        // request-count queries in tests hit the right WireMock process.
+        WireMock.configureFor(extractHost(WIREMOCK_BASE_URL), extractPort(WIREMOCK_BASE_URL));
+    }
+
     private static final WireMock CLIENT = WireMock.create()
             .scheme(WIREMOCK_BASE_URL.startsWith("https") ? "https" : "http")
             .host(extractHost(WIREMOCK_BASE_URL))
@@ -160,7 +167,7 @@ public class StubUtil {
     }
 
     public static int countRequests(final RequestPatternBuilder pattern) {
-        return CLIENT.findAll(pattern).size();
+        return WireMock.findAll(pattern).size();
     }
 
     private static final String LISTING_COMMAND_HEARINGS_PATH = "/listing-command-api/command/api/rest/listing/hearings";
