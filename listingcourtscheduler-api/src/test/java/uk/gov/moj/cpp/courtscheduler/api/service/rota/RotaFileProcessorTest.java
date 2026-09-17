@@ -426,14 +426,14 @@ class RotaFileProcessorTest {
             final List<String> ouCodes = List.of("OU001", "OU002");
             when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList()))
                     .thenReturn(ouCodes);
-            when(rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes)))
+            when(rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes)))
                     .thenReturn(5);
 
             // when
             rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaLocationPeriodHelper).deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes));
+            verify(rotaLocationPeriodHelper).deleteCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes));
         }
 
         @Test
@@ -1175,7 +1175,7 @@ class RotaFileProcessorTest {
             setupSuccessfulProcessing();
             setupRecordsWithRotaPeriod();
             setupEmptyProcessingMaps();
-            when(rotaLocationPeriodHelper.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(any(), any(), anyList()))
+            when(rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(any(), any(), anyList()))
                     .thenReturn(preAssignmentMap)
                     .thenReturn(postAssignmentMap);
         }
@@ -1221,7 +1221,7 @@ class RotaFileProcessorTest {
                 .thenReturn(List.of());
         final RotaPeriodDateInfoProvider mockPeriodProvider = createMockRotaPeriodDateInfoProvider();
         when(rotaLocationPeriodHelper.getRotaPeriodDates(anyMap())).thenReturn(mockPeriodProvider);
-        lenient().when(rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(any(), any(), anyList()))
+        lenient().when(rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(any(), any(), anyList()))
                 .thenReturn(0);
     }
 

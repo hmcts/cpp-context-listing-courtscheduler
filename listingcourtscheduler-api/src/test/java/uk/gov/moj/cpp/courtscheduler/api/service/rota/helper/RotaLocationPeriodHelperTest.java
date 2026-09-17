@@ -400,7 +400,7 @@ class RotaLocationPeriodHelperTest {
 
             // when
             final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
-                    rotaLocationPeriodHelper.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+                    rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
             // then
             assertEquals(serviceResult, result);
@@ -421,7 +421,7 @@ class RotaLocationPeriodHelperTest {
 
             // when
             final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
-                    rotaLocationPeriodHelper.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+                    rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
             // then
             assertTrue(result.isEmpty());
@@ -444,7 +444,7 @@ class RotaLocationPeriodHelperTest {
                     .thenReturn(5);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     startDate, endDate, ouCodes);
 
             // then
@@ -465,7 +465,7 @@ class RotaLocationPeriodHelperTest {
                     .thenReturn(0);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     startDate, endDate, ouCodes);
 
             // then
@@ -486,7 +486,7 @@ class RotaLocationPeriodHelperTest {
                     .thenReturn(0);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     startDate, endDate, ouCodes);
 
             // then
@@ -507,7 +507,7 @@ class RotaLocationPeriodHelperTest {
                     .thenReturn(150);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     startDate, endDate, ouCodes);
 
             // then
@@ -527,7 +527,7 @@ class RotaLocationPeriodHelperTest {
                     .thenReturn(2);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     date, date, ouCodes);
 
             // then

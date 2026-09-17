@@ -132,7 +132,7 @@ public class RotaFileProcessor {
 
         // Capture the unallocated court schedule judiciaries (keyed by courtScheduleId) before they are deleted
         final Map<String, List<CourtScheduleJudiciary>> preAssignmentCourtScheduleJudiciaryMap =
-                rotaLocationPeriodHelper.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+                rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(
                         rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
                         rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
                         ouCodes);
@@ -146,7 +146,7 @@ public class RotaFileProcessor {
         logger.info("Created hash map with {} unallocated court schedule judiciary entries for blob: {}",
                 preAssignmentCourtScheduleJudiciaryHashMap.size(), blobName);
 
-        final int deletedCount = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+        final int deletedCount = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
                 rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
                 ouCodes);
@@ -162,7 +162,7 @@ public class RotaFileProcessor {
 
         // Capture the court schedule judiciaries (keyed by courtScheduleId) after the assignments
         final Map<String, List<CourtScheduleJudiciary>> postAssignmentCourtScheduleJudiciaryMap =
-                rotaLocationPeriodHelper.getUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+                rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(
                         rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
                         rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
                         ouCodes);

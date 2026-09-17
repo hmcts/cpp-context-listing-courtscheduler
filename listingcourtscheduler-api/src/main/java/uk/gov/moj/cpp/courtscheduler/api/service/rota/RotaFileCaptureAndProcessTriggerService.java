@@ -105,7 +105,6 @@ public class RotaFileCaptureAndProcessTriggerService {
         final int sentCommandCount =
                 changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(changeJudiciaryForHearingsPayloads);
         logger.info("Sent {} change-judiciary-for-hearings commands to the listing context", sentCommandCount);
-        java.util.concurrent.CompletableFuture.completedFuture("SUCCESS");
     }
 
     private void loadReferenceData() {
