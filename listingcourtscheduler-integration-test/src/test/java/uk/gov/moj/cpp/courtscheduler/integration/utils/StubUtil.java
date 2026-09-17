@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
+import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
@@ -190,6 +191,18 @@ public class StubUtil {
     public static int countChangeJudiciaryForHearingsRequestsContaining(final String bodySubstring) {
         return countRequests(WireMock.postRequestedFor(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
                 .withRequestBody(WireMock.containing(bodySubstring)));
+    }
+
+    /**
+     * Counts the change-judiciary-for-hearings commands that carry the given hearing ID in the
+     * {@code hearings} array AND match the shape listing's JSON schema requires:
+     * {@code judiciary[0].judicialRoleType} must be an object with a {@code judiciaryType} field
+     * (a bare-string judicialRoleType is rejected by the listing command API).
+     */
+    public static int countSchemaShapedChangeJudiciaryForHearingsRequestsFor(final String hearingId) {
+        return countRequests(WireMock.postRequestedFor(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
+                .withRequestBody(WireMock.matchingJsonPath(format("$.hearings[?(@ == '%s')]", hearingId)))
+                .withRequestBody(WireMock.matchingJsonPath("$.judiciary[0].judicialRoleType.judiciaryType")));
     }
 
     private static String extractHost(final String url) {

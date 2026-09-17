@@ -49,7 +49,14 @@ public class ChangeJudiciaryForHearingsHelper {
      * court schedule IDs and builds one {@code listing.command.change-judiciary-for-hearings}
      * payload per court schedule: the hearing IDs allocated to that schedule, and the judiciaries
      * currently assigned to it (judicialId, judicialRoleType, isBenchChairman, isDeputy).
-     * Court schedules without an allocated hearing or without an active judiciary produce no payload.
+     * A changed court schedule whose judiciaries were all removed still produces a payload, with
+     * an empty {@code judiciary} array, so listing clears the judiciary from its hearings.
+     * Court schedules without an allocated hearing produce no payload.
+     *
+     * <p>{@code johSource} is deliberately omitted from the payload: listing treats a
+     * change-judiciary-for-hearings command without a johSource as an automated (rota-driven)
+     * update and ignores it for any hearing whose judiciary was assigned with an explicit
+     * source (e.g. MANUAL by a listing officer), so manual assignments are preserved.</p>
      *
      * @param changedCourtScheduleIds the court schedule IDs whose judiciaries changed
      * @return the change-judiciary-for-hearings payloads, one per court schedule with data
@@ -109,7 +116,9 @@ public class ChangeJudiciaryForHearingsHelper {
 
     /**
      * Groups the (hearing, judiciary) rows by court schedule ID, de-duplicating the hearing IDs
-     * and judiciaries that the join repeats for every combination.
+     * and judiciaries that the join repeats for every combination. Rows with a null judiciary ID
+     * (a changed court schedule whose active judiciaries were all removed) still register the
+     * hearing, so the schedule produces a payload with an empty judiciary array.
      */
     private Map<String, ScheduleJudiciaryHearings> groupRowsByCourtScheduleId(final List<Object[]> judiciaryHearingRows) {
         final Map<String, ScheduleJudiciaryHearings> scheduleDataByCourtScheduleId = new LinkedHashMap<>();
@@ -120,17 +129,22 @@ public class ChangeJudiciaryForHearingsHelper {
                     .computeIfAbsent(courtScheduleId, key -> new ScheduleJudiciaryHearings(new LinkedHashSet<>(), new LinkedHashMap<>()));
 
             scheduleData.hearingIds().add((String) row[HEARING_ID]);
-            scheduleData.judiciariesByJudiciaryId().computeIfAbsent((String) row[JUDICIARY_ID],
-                    judiciaryId -> buildJudicialRole(judiciaryId, row));
+            final String judiciaryId = (String) row[JUDICIARY_ID];
+            if (judiciaryId != null) {
+                scheduleData.judiciariesByJudiciaryId().computeIfAbsent(judiciaryId, id -> buildJudicialRole(id, row));
+            }
         });
 
         return scheduleDataByCourtScheduleId;
     }
 
     private JsonObject buildJudicialRole(final String judiciaryId, final Object[] row) {
+        // judicialRoleType is typed by listing's judicialRole.json as a judicialRoleType.json
+        // object, not a bare string
         final JsonObjectBuilder judicialRoleBuilder = Json.createObjectBuilder()
                 .add("judicialId", judiciaryId)
-                .add("judicialRoleType", (String) row[JUDICIARY_TYPE]);
+                .add("judicialRoleType", Json.createObjectBuilder()
+                        .add("judiciaryType", (String) row[JUDICIARY_TYPE]));
 
         if (row[IS_BENCH_CHAIRMAN] != null) {
             judicialRoleBuilder.add("isBenchChairman", (Boolean) row[IS_BENCH_CHAIRMAN]);

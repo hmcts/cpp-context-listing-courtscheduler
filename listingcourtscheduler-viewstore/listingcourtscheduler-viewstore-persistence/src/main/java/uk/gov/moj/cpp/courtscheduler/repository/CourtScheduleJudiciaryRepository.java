@@ -74,12 +74,15 @@ public interface CourtScheduleJudiciaryRepository
      * Joins court_schedule, court_schedule_judiciary and allocated_listings for the supplied
      * court schedule IDs. Returns one row per (hearing, judiciary) combination:
      * court_schedule_id, hearing_id, judiciary_id, judiciary_type, is_bench_chairman, is_deputy.
+     * The judiciary join is a LEFT JOIN so a changed court schedule whose active judiciaries
+     * were all removed still returns its allocated hearings (with null judiciary columns) —
+     * those hearings need a change-judiciary-for-hearings command with an empty judiciary array.
      */
     @Query(value = "SELECT cs.id AS court_schedule_id, al.hearing_id, csj.judiciary_id, csj.judiciary_type, "
             + "csj.is_bench_chairman, csj.is_deputy "
             + "FROM court_schedule cs "
-            + "JOIN court_schedule_judiciary csj ON csj.court_schedule_id = cs.id AND csj.active = true "
             + "JOIN allocated_listings al ON al.court_schedule_id = cs.id "
+            + "LEFT JOIN court_schedule_judiciary csj ON csj.court_schedule_id = cs.id AND csj.active = true "
             + "WHERE cs.id IN (:courtScheduleIds) AND cs.active = true",
             nativeQuery = true)
     List<Object[]> findJudiciaryHearingInfoByCourtScheduleIds(@Param("courtScheduleIds") List<String> courtScheduleIds);

@@ -20,6 +20,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SE
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.ReflectionUtil.setField;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.countChangeJudiciaryForHearingsRequests;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.countChangeJudiciaryForHearingsRequestsContaining;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.countSchemaShapedChangeJudiciaryForHearingsRequestsFor;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubChangeJudiciaryForHearingsCommand;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
@@ -216,6 +217,12 @@ class NewRotaFileProcessorIT extends AbstractIT {
 
         assertTrue(countChangeJudiciaryForHearingsRequestsContaining(hearingId) >= 1,
                 format("Expected a change-judiciary-for-hearings command containing hearing ID %s", hearingId));
+
+        // The body must also match the shape listing's JSON schema requires - in particular
+        // judicialRoleType must be a {"judiciaryType": "..."} object, not a bare string
+        assertTrue(countSchemaShapedChangeJudiciaryForHearingsRequestsFor(hearingId) >= 1,
+                format("Expected a schema-shaped change-judiciary-for-hearings command "
+                        + "(judiciary[0].judicialRoleType.judiciaryType present) for hearing ID %s", hearingId));
     }
 
     private void insertAllocatedListingFor(final String courtScheduleId, final String hearingId) throws SQLException {

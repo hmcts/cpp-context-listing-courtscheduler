@@ -95,7 +95,8 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
                 .add("judiciary", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
                                 .add("judicialId", "jud-1")
-                                .add("judicialRoleType", "Magistrate")))
+                                .add("judicialRoleType", Json.createObjectBuilder()
+                                        .add("judiciaryType", "Magistrate"))))
                 .build();
 
         when(blobItem.getName()).thenReturn(blobName);

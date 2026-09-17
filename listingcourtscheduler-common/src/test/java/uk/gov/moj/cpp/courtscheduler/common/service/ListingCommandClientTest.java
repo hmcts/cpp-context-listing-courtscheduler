@@ -106,7 +106,8 @@ class ListingCommandClientTest {
                 .add("judiciary", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
                                 .add("judicialId", UUID.randomUUID().toString())
-                                .add("judicialRoleType", "Magistrate")))
+                                .add("judicialRoleType", Json.createObjectBuilder()
+                                        .add("judiciaryType", "Magistrate"))))
                 .build();
     }
 }
