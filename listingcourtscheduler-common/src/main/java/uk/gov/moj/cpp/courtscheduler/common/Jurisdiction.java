@@ -6,7 +6,7 @@ public enum Jurisdiction {
 
     private final String jurisdictionType;
 
-    Jurisdiction(String jurisdictionType) {
+    Jurisdiction(final String jurisdictionType) {
         this.jurisdictionType = jurisdictionType;
     }
 
@@ -14,11 +14,11 @@ public enum Jurisdiction {
         return this.jurisdictionType;
     }
 
-    public static Jurisdiction fromString(String jurisdictionType) {
+    public static Jurisdiction fromString(final String jurisdictionType) {
         return Jurisdiction.valueOf(jurisdictionType.toUpperCase());
     }
 
-    public boolean equalsIgnoreCase(String other) {
+    public boolean equalsIgnoreCase(final String other) {
         return this.jurisdictionType.equalsIgnoreCase(other);
     }
 }

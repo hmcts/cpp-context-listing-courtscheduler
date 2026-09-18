@@ -73,10 +73,14 @@ public class MiFilterCriteria {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        MiFilterCriteria that = (MiFilterCriteria) o;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final MiFilterCriteria that = (MiFilterCriteria) o;
         return Objects.equals(fromDate, that.fromDate) && Objects.equals(toDate, that.toDate);
     }
 

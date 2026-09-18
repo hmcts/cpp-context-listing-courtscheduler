@@ -45,7 +45,6 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.UnprocessableEntityException;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
@@ -100,6 +99,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.api.ValidateOpenApi;
  * rename-shaped delete+add noise from a per-concern split).</p>
  */
 @RestController
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public class CourtSchedulerApi implements CourtscheduleOpenApi,
                                           SessionOpenApi,
                                           HearingsOpenApi,
@@ -114,6 +114,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private static final String CREATE_MT = "application/vnd.courtscheduler.validate.create+json";
     private static final String UPDATE_MT = "application/vnd.courtscheduler.validate.update+json";
     private static final String DELETE_MT = "application/vnd.courtscheduler.validate.delete+json";
+    private static final String COURT_SCHEDULES = "courtSchedules";
+    private static final String END_DATE = "endDate";
+    private static final String DURATION_IN_MINUTES = "durationInMinutes";
+    private static final java.time.format.DateTimeFormatter UTC_HH_MM_FORMATTER =
+            java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneOffset.UTC);
+    private static final String CROWN_SAB_MT = "application/vnd.courtscheduler.crown.search.and.book";
+    private static final String MAGS_SAB_MT = "application/vnd.courtscheduler.mags.search.and.book";
+    private static final String MOVE_PAST_MT = "application/vnd.courtscheduler.move-hearing-to-past-date";
+    private static final String CHANGE_ROOM_MULTIDAY_MT = "application/vnd.courtscheduler.change-court-room-for-multiday-hearing";
 
     // --- shared infrastructure
     private final ObjectMapper objectMapper;
@@ -266,7 +275,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(param);
 
         final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("courtSchedules", groupByCourtRoom(courtSchedules));
+        body.put(COURT_SCHEDULES, groupByCourtRoom(courtSchedules));
         return ResponseEntity.ok(body);
     }
 
@@ -290,7 +299,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(courtSchedules);
 
         final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("courtSchedules", courtSchedules);
+        body.put(COURT_SCHEDULES, courtSchedules);
         return ResponseEntity.ok(body);
     }
 
@@ -328,9 +337,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 Comparator.nullsLast(Comparator.naturalOrder())));
         return result;
     }
-
-    private static final java.time.format.DateTimeFormatter UTC_HH_MM_FORMATTER =
-            java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneOffset.UTC);
 
     private Map<String, Object> toSessionMapWithUtcTimes(final CourtSchedule cs) {
         @SuppressWarnings("unchecked")
@@ -510,11 +516,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      *  HearingsOpenApi — SPRDT-1089 booking family on /hearings/*
      * ============================================================ */
 
-    private static final String CROWN_SAB_MT = "application/vnd.courtscheduler.crown.search.and.book";
-    private static final String MAGS_SAB_MT = "application/vnd.courtscheduler.mags.search.and.book";
-    private static final String MOVE_PAST_MT = "application/vnd.courtscheduler.move-hearing-to-past-date";
-    private static final String CHANGE_ROOM_MULTIDAY_MT = "application/vnd.courtscheduler.change-court-room-for-multiday-hearing";
-
     /** POST /hearings — list a hearing into already-chosen court sessions (was PUT /list/hearingslots). */
     @Override
     public ResponseEntity<Map<String, Object>> postListHearingsInSessions(final Map<String, Object> body) {
@@ -578,8 +579,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setHearingId(hearingId)
                 .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
                 .setHearingDate(getDateOrNull(payload, "hearingDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
-                .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
+                .setEndDate(getDateOrNull(payload, END_DATE))
+                .setDurationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
                 .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
                 .setEarliestHearingTime(getStringOrNull(payload, "earliestHearingTime"))
                 .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"))
@@ -603,8 +604,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setHearingId(hearingId)
                 .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
                 .setHearingDate(getDateOrNull(payload, "hearingDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
-                .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
+                .setEndDate(getDateOrNull(payload, END_DATE))
+                .setDurationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
                 .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
                 .setHearingStartTime(getStringOrNull(payload, "hearingStartTime"))
                 .setHearingSessionDateSearchCutOff(getStringOrNull(payload, "hearingSessionDateSearchCutOff"))
@@ -624,8 +625,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
                 .setJurisdiction(getStringOrNull(payload, "jurisdiction"))
                 .setStartDate(getDateOrNull(payload, "startDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
-                .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
+                .setEndDate(getDateOrNull(payload, END_DATE))
+                .setDurationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
                 .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"));
 
         final JsonObject validationError = hearingSlotsApiValidator.moveHearingToPastDateValidation(moveRequest);
@@ -650,7 +651,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             days.add(new RequestedDay(
                     java.time.LocalDate.parse(dayJson.getString("sessionDate")),
                     dayJson.getString("courtScheduleId"),
-                    dayJson.getInt("durationInMinutes")));
+                    dayJson.getInt(DURATION_IN_MINUTES)));
         }
 
         final ChangeCourtRoomForMultidayHearingRequest changeRequest = new ChangeCourtRoomForMultidayHearingRequest()
@@ -725,7 +726,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> rows =
                 miService.getCourtSchedules(miCriteria(fromDate, toDate));
         final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("courtSchedules", rows);
+        body.put(COURT_SCHEDULES, rows);
         return ResponseEntity.ok(body);
     }
 

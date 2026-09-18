@@ -13,12 +13,13 @@ import jakarta.json.JsonObject;
 public class UpdateCourtScheduleConverter implements Converter<JsonObject, UpdateCourtSchedule> {
     private static final String CROWN = "CROWN";
     private static final String ADULT = "ADULT";
+    private static final String PANEL = "panel";
 
     @Override
     public UpdateCourtSchedule convert(final JsonObject jsonObject) {
 
-        UpdateCourtSchedule.UpdateCourtScheduleBuilder courtScheduleBuilder = new UpdateCourtSchedule.UpdateCourtScheduleBuilder();
-        String jurisdiction = jsonObject.getString("jurisdiction");
+        final UpdateCourtSchedule.UpdateCourtScheduleBuilder courtScheduleBuilder = new UpdateCourtSchedule.UpdateCourtScheduleBuilder();
+        final String jurisdiction = jsonObject.getString("jurisdiction");
         
         courtScheduleBuilder
                 .withCourtScheduleId(jsonObject.getString("courtScheduleId"))
@@ -31,8 +32,8 @@ public class UpdateCourtScheduleConverter implements Converter<JsonObject, Updat
         // For CROWN: panel is optional, but if supplied must be ADULT
         // For MAGISTRATES: panel is mandatory (validation happens in validator)
         if (CROWN.equalsIgnoreCase(jurisdiction)) {
-            if (jsonObject.containsKey("panel") && !jsonObject.isNull("panel")) {
-                String panel = jsonObject.getString("panel");
+            if (jsonObject.containsKey(PANEL) && !jsonObject.isNull(PANEL)) {
+                final String panel = jsonObject.getString(PANEL);
                 if (panel != null && !panel.trim().isEmpty() && !ADULT.equalsIgnoreCase(panel)) {
                     throw new ConverterException("For CROWN jurisdiction, panel must be ADULT if supplied");
                 }
@@ -44,8 +45,8 @@ public class UpdateCourtScheduleConverter implements Converter<JsonObject, Updat
             // If panel key doesn't exist or is null, don't set it (optional for CROWN)
         } else {
             // For MAGISTRATES, set panel as before (validation happens in validator)
-            if (jsonObject.containsKey("panel") && !jsonObject.isNull("panel")) {
-                courtScheduleBuilder.withPanel(jsonObject.getString("panel"));
+            if (jsonObject.containsKey(PANEL) && !jsonObject.isNull(PANEL)) {
+                courtScheduleBuilder.withPanel(jsonObject.getString(PANEL));
             }
         }
 

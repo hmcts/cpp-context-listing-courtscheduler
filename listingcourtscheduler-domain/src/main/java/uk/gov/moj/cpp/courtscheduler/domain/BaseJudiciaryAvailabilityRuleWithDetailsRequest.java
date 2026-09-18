@@ -26,7 +26,7 @@ public abstract class BaseJudiciaryAvailabilityRuleWithDetailsRequest extends Ba
     /**
      * Sets the repeat days list. Creates a defensive copy to prevent external modification.
      */
-    public void setRepeatDays(List<AvailabilityDayOfWeek> repeatDays) {
+    public void setRepeatDays(final List<AvailabilityDayOfWeek> repeatDays) {
         this.repeatDays = repeatDays == null ? null : new ArrayList<>(repeatDays);
     }
 
@@ -34,7 +34,7 @@ public abstract class BaseJudiciaryAvailabilityRuleWithDetailsRequest extends Ba
         return sessionType;
     }
 
-    public void setSessionType(SessionType sessionType) {
+    public void setSessionType(final SessionType sessionType) {
         this.sessionType = sessionType;
     }
 
@@ -49,7 +49,7 @@ public abstract class BaseJudiciaryAvailabilityRuleWithDetailsRequest extends Ba
     /**
      * Sets the unavailabilities list. Creates a defensive copy to prevent external modification.
      */
-    public void setUnavailabilities(List<JudiciaryUnavailabilityRequest> unavailabilities) {
+    public void setUnavailabilities(final List<JudiciaryUnavailabilityRequest> unavailabilities) {
         this.unavailabilities = unavailabilities == null ? null : new ArrayList<>(unavailabilities);
     }
 }

@@ -21,12 +21,12 @@ public record ValidateSessionAvailabilityRequestParam(List<String> courtSchedule
             return new ValidateSessionAvailabilityRequestParamBuilder();
         }
 
-        public ValidateSessionAvailabilityRequestParamBuilder withCourtScheduleIds(List<String> courtScheduleIds) {
+        public ValidateSessionAvailabilityRequestParamBuilder withCourtScheduleIds(final List<String> courtScheduleIds) {
             this.courtScheduleIds = courtScheduleIds;
             return this;
         }
 
-        public ValidateSessionAvailabilityRequestParamBuilder withSlotsOrDuration(Integer slotsOrDuration) {
+        public ValidateSessionAvailabilityRequestParamBuilder withSlotsOrDuration(final Integer slotsOrDuration) {
             this.slotsOrDuration = slotsOrDuration;
             return this;
         }
@@ -38,8 +38,12 @@ public record ValidateSessionAvailabilityRequestParam(List<String> courtSchedule
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof final ValidateSessionAvailabilityRequestParam that)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof final ValidateSessionAvailabilityRequestParam that)) {
+            return false;
+        }
         return Objects.equals(slotsOrDuration(), that.slotsOrDuration())
                 && Objects.equals(courtScheduleIds(), that.courtScheduleIds());
     }

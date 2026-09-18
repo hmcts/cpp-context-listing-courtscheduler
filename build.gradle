@@ -91,9 +91,12 @@ subprojects {
 
     pmd {
         ruleSets = []
+        ruleSetFiles = rootProject.files('.github/pmd-ruleset.xml')
         ignoreFailures = true
     }
     tasks.withType(Pmd).configureEach {
+        // Exclude OpenAPI-generated sources from PMD analysis
+        source = source.filter { file -> !file.absolutePath.contains('/build/generated') }
         reports {
             xml.required.set(true)
             html.required.set(true)

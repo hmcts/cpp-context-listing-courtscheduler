@@ -68,8 +68,12 @@ public class CourtSchedulerMigrationStatus {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof final CourtSchedulerMigrationStatus that)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof final CourtSchedulerMigrationStatus that)) {
+            return false;
+        }
         return isMigrated() == that.isMigrated() && Objects.equals(getOuCode(), that.getOuCode()) && Objects.equals(getCourtCentreId(), that.getCourtCentreId()) && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
     }
 

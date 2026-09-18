@@ -10,7 +10,7 @@ public class FindJudiciaryAvailabilityResponse {
     public FindJudiciaryAvailabilityResponse() {
     }
 
-    public FindJudiciaryAvailabilityResponse(List<String> availableJudiciaries) {
+    public FindJudiciaryAvailabilityResponse(final List<String> availableJudiciaries) {
         this.availableJudiciaries = availableJudiciaries;
     }
 
@@ -18,12 +18,12 @@ public class FindJudiciaryAvailabilityResponse {
         return this.availableJudiciaries;
     }
 
-    public void setAvailableJudiciaries(List<String> availableJudiciaries) {
+    public void setAvailableJudiciaries(final List<String> availableJudiciaries) {
         this.availableJudiciaries = availableJudiciaries;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

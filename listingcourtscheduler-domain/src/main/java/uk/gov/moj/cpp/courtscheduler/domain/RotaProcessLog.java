@@ -67,8 +67,12 @@ public class RotaProcessLog {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         final RotaProcessLog that = (RotaProcessLog) o;
         return Objects.equals(executionId, that.executionId) && Objects.equals(timestamp, that.timestamp) && Objects.equals(errorCode, that.errorCode) && Objects.equals(errorText, that.errorText);
     }

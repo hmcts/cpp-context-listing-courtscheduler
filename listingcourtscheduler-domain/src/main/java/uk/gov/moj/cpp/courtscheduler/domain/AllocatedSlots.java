@@ -15,7 +15,7 @@ public class AllocatedSlots {
         return hearingSlots;
     }
 
-    public void setHearingSlots(List<AllocatedSlot> hearingSlots) {
+    public void setHearingSlots(final List<AllocatedSlot> hearingSlots) {
         this.hearingSlots = hearingSlots;
     }
 }

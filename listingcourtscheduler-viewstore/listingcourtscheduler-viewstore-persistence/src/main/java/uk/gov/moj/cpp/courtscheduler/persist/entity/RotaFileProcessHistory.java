@@ -46,7 +46,7 @@ public class RotaFileProcessHistory {
         return new Timestamp(processedOn.getTime());
     }
 
-    public void setProcessedOn(Timestamp processedOn) {
+    public void setProcessedOn(final Timestamp processedOn) {
         this.processedOn = new Timestamp(processedOn.getTime());
     }
 
@@ -107,7 +107,7 @@ public class RotaFileProcessHistory {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

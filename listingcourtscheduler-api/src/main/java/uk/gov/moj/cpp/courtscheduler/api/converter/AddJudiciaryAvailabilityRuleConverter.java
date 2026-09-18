@@ -11,8 +11,8 @@ public class AddJudiciaryAvailabilityRuleConverter extends BaseJudiciaryAvailabi
         implements Converter<JsonObject, AddJudiciaryAvailabilityRuleRequest> {
 
     @Override
-    public AddJudiciaryAvailabilityRuleRequest convert(JsonObject jsonObject) {
-        AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
+    public AddJudiciaryAvailabilityRuleRequest convert(final JsonObject jsonObject) {
+        final AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
         
         populateBaseFields(jsonObject, request);
         populateDetailFields(jsonObject, request);

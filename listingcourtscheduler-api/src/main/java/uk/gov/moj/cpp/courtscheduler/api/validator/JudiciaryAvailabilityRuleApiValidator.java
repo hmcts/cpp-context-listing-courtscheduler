@@ -114,7 +114,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
 
         // Enum provides type safety - no need to validate individual values
         // Just check for null values in the list
-        for (uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek repeatDay : repeatDays) {
+        for (final uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek repeatDay : repeatDays) {
             if (repeatDay == null) {
                 return buildErrorResponse(SELECT_DAY_OF_WEEK);
             }
@@ -127,7 +127,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return buildErrorResponse(MANDATORY_SEARCH_CRITERIA + value + CANNOT_BE_NULL);
     }
 
-    private JsonObject buildErrorResponse(String errorMessage) {
+    private JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();
@@ -204,7 +204,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
                                                                                     final JudiciaryAvailabilityService service) {
         LOGGER.info("Validating DeleteJudiciaryAvailabilityRule for validation endpoint: {}", request);
 
-        JsonObject validation = validateRequestNotNull(request);
+        final JsonObject validation = validateRequestNotNull(request);
         if (!validation.isEmpty()) {
             return validation;
         }

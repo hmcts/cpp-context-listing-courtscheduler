@@ -12,7 +12,7 @@ public class JudiciaryUnavailabilityRequest {
         return startDate;
     }
 
-    public void setStartDate(LocalDate startDate) {
+    public void setStartDate(final LocalDate startDate) {
         this.startDate = startDate;
     }
 
@@ -20,7 +20,7 @@ public class JudiciaryUnavailabilityRequest {
         return endDate;
     }
 
-    public void setEndDate(LocalDate endDate) {
+    public void setEndDate(final LocalDate endDate) {
         this.endDate = endDate;
     }
 
@@ -28,15 +28,19 @@ public class JudiciaryUnavailabilityRequest {
         return reason;
     }
 
-    public void setReason(UnavailabilityReason reason) {
+    public void setReason(final UnavailabilityReason reason) {
         this.reason = reason;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        JudiciaryUnavailabilityRequest that = (JudiciaryUnavailabilityRequest) o;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final JudiciaryUnavailabilityRequest that = (JudiciaryUnavailabilityRequest) o;
         return Objects.equals(startDate, that.startDate) &&
                 Objects.equals(endDate, that.endDate) &&
                 Objects.equals(reason, that.reason);

@@ -279,11 +279,11 @@ public class CourtSchedule {
         return businessDescription;
     }
 
-    public void setBusinessDescription(String businessDescription) {
+    public void setBusinessDescription(final String businessDescription) {
         this.businessDescription = businessDescription;
     }
 
-    public void setActive(boolean active) {
+    public void setActive(final boolean active) {
         this.active = active;
     }
 
@@ -291,7 +291,7 @@ public class CourtSchedule {
         return createdOn;
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Date createdOn) {
         this.createdOn = createdOn;
     }
 
@@ -299,7 +299,7 @@ public class CourtSchedule {
         return updatedOn;
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Date updatedOn) {
         this.updatedOn = updatedOn;
     }
 
@@ -371,11 +371,11 @@ public class CourtSchedule {
         return sessionStartTime;
     }
 
-    public void setSessionStartTime(Date sessionStartTime) {
+    public void setSessionStartTime(final Date sessionStartTime) {
         this.sessionStartTime = sessionStartTime;
     }
 
-    public void setSessionEndTime(Date sessionEndTime) {
+    public void setSessionEndTime(final Date sessionEndTime) {
         this.sessionEndTime = sessionEndTime;
     }
 
@@ -387,7 +387,7 @@ public class CourtSchedule {
         return isOverbookingAllowed;
     }
 
-    public void setIsOverbookingAllowed(boolean isOverbookingAllowed) {
+    public void setIsOverbookingAllowed(final boolean isOverbookingAllowed) {
         this.isOverbookingAllowed = isOverbookingAllowed;
     }
 
@@ -395,7 +395,7 @@ public class CourtSchedule {
         return nationalBreakTime;
     }
 
-    public void setNationalBreakTime(Date nationalBreakTime) {
+    public void setNationalBreakTime(final Date nationalBreakTime) {
         this.nationalBreakTime = nationalBreakTime;
     }
 
@@ -403,7 +403,7 @@ public class CourtSchedule {
         return isDraft;
     }
 
-    public void setIsDraft(boolean isDraft) {
+    public void setIsDraft(final boolean isDraft) {
         this.isDraft = isDraft;
     }
 
@@ -411,7 +411,7 @@ public class CourtSchedule {
         return minHearingTime;
     }
 
-    public void setMinHearingTime(String minHearingTime) {
+    public void setMinHearingTime(final String minHearingTime) {
         this.minHearingTime = minHearingTime;
     }
 
@@ -419,7 +419,7 @@ public class CourtSchedule {
         return maxHearingTime;
     }
 
-    public void setMaxHearingTime(String maxHearingTime) {
+    public void setMaxHearingTime(final String maxHearingTime) {
         this.maxHearingTime = maxHearingTime;
     }
 
@@ -427,7 +427,7 @@ public class CourtSchedule {
         return jurisdiction;
     }
 
-    public void setJurisdiction(String jurisdiction) {
+    public void setJurisdiction(final String jurisdiction) {
         this.jurisdiction = jurisdiction;
     }
 

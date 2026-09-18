@@ -26,7 +26,7 @@ public class FindJudiciaryAvailabilityRuleResponseConverter extends BaseJudiciar
     public JsonObject convert(final FindJudiciaryAvailabilityRuleResponse response) {
        final JsonArrayBuilder rulesArrayBuilder = Json.createArrayBuilder();
         if (response.getRules() != null) {
-            for (JudiciaryAvailabilityRuleResponse rule : response.getRules()) {
+            for (final JudiciaryAvailabilityRuleResponse rule : response.getRules()) {
                 rulesArrayBuilder.add(convertRule(rule));
             }
         }

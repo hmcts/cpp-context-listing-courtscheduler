@@ -530,11 +530,11 @@ public class JudiciaryAssignmentService {
             this.failure = failure;
         }
 
-        static AssignmentAttempt success() {
+        /* default */ static AssignmentAttempt success() {
             return new AssignmentAttempt(true, null);
         }
 
-        static AssignmentAttempt failure(final String judiciaryId,
+        /* default */ static AssignmentAttempt failure(final String judiciaryId,
                                          final String sessionId,
                                          final AssignmentFailureReason reason) {
             return new AssignmentAttempt(false, AssignmentFailure.builder()
@@ -544,11 +544,11 @@ public class JudiciaryAssignmentService {
                     .build());
         }
 
-        boolean isSuccess() {
+        /* default */ boolean isSuccess() {
             return success;
         }
 
-        AssignmentFailure getFailure() {
+        /* default */ AssignmentFailure getFailure() {
             return failure;
         }
     }

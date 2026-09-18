@@ -12,7 +12,7 @@ public class JudiciarySpecialismsResponse {
         return judiciarySpecialisms;
     }
 
-    public void setJudiciarySpecialisms(List<JudiciarySpecialism> judiciarySpecialisms) {
+    public void setJudiciarySpecialisms(final List<JudiciarySpecialism> judiciarySpecialisms) {
         this.judiciarySpecialisms = judiciarySpecialisms;
     }
 }

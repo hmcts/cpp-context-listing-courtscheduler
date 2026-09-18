@@ -14,8 +14,8 @@ public class UpdateJudiciaryAvailabilityRuleConverter extends BaseJudiciaryAvail
     private static final String ID = "id";
 
     @Override
-    public UpdateJudiciaryAvailabilityRuleRequest convert(JsonObject jsonObject) {
-        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
+    public UpdateJudiciaryAvailabilityRuleRequest convert(final JsonObject jsonObject) {
+        final UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
 
         if (hasField(jsonObject, RULE_ID)) {
             request.setRuleId(jsonObject.getString(RULE_ID));

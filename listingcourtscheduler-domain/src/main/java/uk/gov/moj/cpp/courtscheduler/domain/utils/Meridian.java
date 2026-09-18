@@ -15,7 +15,7 @@ public enum Meridian {
 
     private String value;
 
-    private Meridian(String value) {
+    private Meridian(final String value) {
         this.value = value;
     }
 

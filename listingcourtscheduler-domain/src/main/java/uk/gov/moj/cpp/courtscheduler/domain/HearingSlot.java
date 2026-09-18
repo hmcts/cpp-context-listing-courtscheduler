@@ -11,7 +11,7 @@ public class HearingSlot {
         return hearingId;
     }
 
-    public void setHearingId(String hearingId) {
+    public void setHearingId(final String hearingId) {
         this.hearingId = hearingId;
     }
 
@@ -19,7 +19,7 @@ public class HearingSlot {
         return courtScheduleIds;
     }
 
-    public void setCourtScheduleIds(List<RequestedCourtSchedule> courtScheduleIds) {
+    public void setCourtScheduleIds(final List<RequestedCourtSchedule> courtScheduleIds) {
         this.courtScheduleIds = courtScheduleIds;
     }
     @Override
