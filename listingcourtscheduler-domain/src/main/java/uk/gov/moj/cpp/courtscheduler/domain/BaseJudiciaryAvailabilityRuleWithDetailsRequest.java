@@ -40,7 +40,7 @@ public abstract class BaseJudiciaryAvailabilityRuleWithDetailsRequest extends Ba
      * Use setUnavailabilities to modify the list.
      */
     public List<JudiciaryUnavailabilityRequest> getUnavailabilities() {
-        return unavailabilities == null ? null : Collections.unmodifiableList(unavailabilities);
+        return unavailabilities == null ? Collections.emptyList() : Collections.unmodifiableList(unavailabilities);
     }
 
     /**
