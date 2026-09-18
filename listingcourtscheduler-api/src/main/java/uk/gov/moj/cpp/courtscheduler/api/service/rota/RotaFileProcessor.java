@@ -1,10 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
-import org.springframework.stereotype.Service;
-
 import static java.util.Optional.empty;
 
-// (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryAssignmentRequestHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryCourtScheduleData;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.JudiciaryScheduleAssignment;
@@ -17,23 +14,26 @@ import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 
 import java.io.ByteArrayInputStream;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Propagation;
 import jakarta.inject.Inject;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @org.springframework.transaction.annotation.Transactional
@@ -74,16 +74,24 @@ public class RotaFileProcessor {
     // PUBLIC API METHODS
     // ============================================================================
 
+    /**
+     * Downloads and processes a single rota file.
+     *
+     * @return the court schedule IDs whose judiciaries changed while processing the blob,
+     *         or an empty list when the file was skipped or processing failed
+     */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void downloadAndProcessForEachFile(final BlobContent blobContent, final String blobName, final String leaseId) {
+    public List<String> downloadAndProcessForEachFile(final BlobContent blobContent, final String blobName, final String leaseId) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
         final byte[] blobByteArray = blobContent.getBlobByteArray();
         try {
-            processBlob(blobName, blobByteArray);
+            final List<String> changedCourtScheduleIds = processBlob(blobName, blobByteArray);
             uploadAndCleanup(blobByteArray, blobName, leaseId);
+            return changedCourtScheduleIds;
         } catch (final RuntimeException ex) {
             logger.error("Error processing blob: {}", blobName, ex);
             azureBlobClientService.releaseLease(blobName, leaseId, true);
+            return List.of();
         }
     }
 
@@ -96,11 +104,11 @@ public class RotaFileProcessor {
      *
      * @param blobName       the name of the blob file
      * @param blobByteArray  the content of the blob file
-     * @param requester      the requester for making service calls
+     * @return the court schedule IDs whose judiciaries changed between the pre- and post-assignment captures
      */
-    private void processBlob(final String blobName, final byte[] blobByteArray) {
+    private List<String> processBlob(final String blobName, final byte[] blobByteArray) {
         if (!shouldProcessFile(blobName)) {
-            return;
+            return List.of();
         }
 
         logger.info("Starting processing for blob: {}", blobName);
@@ -121,7 +129,24 @@ public class RotaFileProcessor {
 
         // Get rota period dates and delete unallocated court schedule judiciaries
         final var rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
-        final int deletedCount = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+
+        // Capture the unallocated court schedule judiciaries (keyed by courtScheduleId) before they are deleted
+        final Map<String, List<CourtScheduleJudiciary>> preAssignmentCourtScheduleJudiciaryMap =
+                rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(
+                        rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
+                        rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
+                        ouCodes);
+        logger.info("Captured {} court schedules with unallocated judiciaries before deletion for blob: {}",
+                preAssignmentCourtScheduleJudiciaryMap.size(), blobName);
+
+        // Build a hash map of the captured judiciaries, keyed by courtScheduleId with the field-value hashes as values
+        final Map<String, List<Integer>> preAssignmentCourtScheduleJudiciaryHashMap =
+                createUnAllocatedCourtScheduleJudiciaryHashMap(preAssignmentCourtScheduleJudiciaryMap);
+
+        logger.info("Created hash map with {} unallocated court schedule judiciary entries for blob: {}",
+                preAssignmentCourtScheduleJudiciaryHashMap.size(), blobName);
+
+        final int deletedCount = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
                 rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
                 ouCodes);
@@ -135,11 +160,34 @@ public class RotaFileProcessor {
                 executionId,
                 blobName);
 
+        // Capture the court schedule judiciaries (keyed by courtScheduleId) after the assignments
+        final Map<String, List<CourtScheduleJudiciary>> postAssignmentCourtScheduleJudiciaryMap =
+                rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(
+                        rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
+                        rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
+                        ouCodes);
+        logger.info("Captured {} court schedules with judiciaries after assignments for blob: {}",
+                postAssignmentCourtScheduleJudiciaryMap.size(), blobName);
+
+        // Build a hash map of the post-assignment judiciaries, keyed by courtScheduleId with the field-value hashes as values
+        final Map<String, List<Integer>> postAssignmentCourtScheduleJudiciaryHashMap =
+                createUnAllocatedCourtScheduleJudiciaryHashMap(postAssignmentCourtScheduleJudiciaryMap);
+        logger.info("Created post-assignment hash map with {} court schedule judiciary entries for blob: {}",
+                postAssignmentCourtScheduleJudiciaryHashMap.size(), blobName);
+
+        // Compare the pre- and post-assignment hashes and collect the court schedule IDs that changed
+        final List<String> changedCourtScheduleIds = findChangedCourtScheduleIds(
+                preAssignmentCourtScheduleJudiciaryHashMap, postAssignmentCourtScheduleJudiciaryHashMap);
+        logger.info("Found {} court schedules with changed judiciaries for blob: {}",
+                changedCourtScheduleIds.size(), blobName);
+
         rotaFileUtility.updateFileProcessHistory(logger, rotaFileProcessHistory, blobName, rotaFileProcessHistoryService);
 
         final long processEnd = System.nanoTime();
         rotaFileUtility.logProcessingTime(logger, blobName, processStart, processEnd);
         logger.info("Rota file parsed successfully for blob: {} - parsed {} record types", blobName, records.size());
+
+        return changedCourtScheduleIds;
     }
 
     /**
@@ -163,12 +211,90 @@ public class RotaFileProcessor {
     }
 
     /**
+     * Creates a new hash map from the captured unallocated court schedule judiciaries.
+     * Each entry is keyed by courtScheduleId, and the value holds the hash values computed
+     * from each judiciary's field values (judiciaryId, rotaJudiciaryId, title, forenames,
+     * surname, emailAddress, courtScheduleId, courtListingProfileId, judiciaryType, position,
+     * isBenchChairman, isDeputy, active) — one hash per judiciary on that court schedule.
+     *
+     * @param unAllocatedCourtScheduleJudiciaryMap the captured judiciaries keyed by courtScheduleId
+     * @return map of courtScheduleId to the field-value hashes of its judiciaries
+     */
+    private Map<String, List<Integer>> createUnAllocatedCourtScheduleJudiciaryHashMap(
+            final Map<String, List<CourtScheduleJudiciary>> unAllocatedCourtScheduleJudiciaryMap) {
+        final Map<String, List<Integer>> courtScheduleJudiciaryHashMap = new HashMap<>();
+        unAllocatedCourtScheduleJudiciaryMap.forEach((courtScheduleId, courtScheduleJudiciaries) ->
+                courtScheduleJudiciaryHashMap.put(courtScheduleId, courtScheduleJudiciaries.stream()
+                        .map(this::hashCourtScheduleJudiciary)
+                        .toList()));
+        return courtScheduleJudiciaryHashMap;
+    }
+
+    /**
+     * Compares the pre- and post-assignment hash maps and collects the court schedule IDs
+     * whose judiciary hashes differ. A court schedule ID present in only one of the maps,
+     * or whose hash values differ (ignoring order), counts as changed.
+     *
+     * @param preAssignmentCourtScheduleJudiciaryHashMap  hashes captured before the delete/assignments
+     * @param postAssignmentCourtScheduleJudiciaryHashMap hashes captured after the assignments
+     * @return the court schedule IDs whose judiciaries changed
+     */
+    private List<String> findChangedCourtScheduleIds(
+            final Map<String, List<Integer>> preAssignmentCourtScheduleJudiciaryHashMap,
+            final Map<String, List<Integer>> postAssignmentCourtScheduleJudiciaryHashMap) {
+        final Set<String> allCourtScheduleIds = new HashSet<>();
+        allCourtScheduleIds.addAll(preAssignmentCourtScheduleJudiciaryHashMap.keySet());
+        allCourtScheduleIds.addAll(postAssignmentCourtScheduleJudiciaryHashMap.keySet());
+
+        return allCourtScheduleIds.stream()
+                .filter(courtScheduleId -> hashesDiffer(
+                        preAssignmentCourtScheduleJudiciaryHashMap.get(courtScheduleId),
+                        postAssignmentCourtScheduleJudiciaryHashMap.get(courtScheduleId)))
+                .toList();
+    }
+
+    /**
+     * Returns true when the two hash lists differ, comparing their values irrespective of order.
+     * A null list (court schedule ID missing from one of the maps) always counts as a difference.
+     */
+    private boolean hashesDiffer(final List<Integer> preAssignmentHashes, final List<Integer> postAssignmentHashes) {
+        if (preAssignmentHashes == null || postAssignmentHashes == null) {
+            return true;
+        }
+        if (preAssignmentHashes.size() != postAssignmentHashes.size()) {
+            return true;
+        }
+        final List<Integer> sortedPreAssignmentHashes = preAssignmentHashes.stream().sorted().toList();
+        final List<Integer> sortedPostAssignmentHashes = postAssignmentHashes.stream().sorted().toList();
+        return !sortedPreAssignmentHashes.equals(sortedPostAssignmentHashes);
+    }
+
+    /**
+     * Computes a hash value from the court schedule judiciary's field values.
+     */
+    private int hashCourtScheduleJudiciary(final CourtScheduleJudiciary courtScheduleJudiciary) {
+        return Objects.hash(
+                courtScheduleJudiciary.getJudiciaryId(),
+                courtScheduleJudiciary.getRotaJudiciaryId(),
+                courtScheduleJudiciary.getTitle(),
+                courtScheduleJudiciary.getForenames(),
+                courtScheduleJudiciary.getSurname(),
+                courtScheduleJudiciary.getEmailAddress(),
+                courtScheduleJudiciary.getCourtScheduleId(),
+                courtScheduleJudiciary.getCourtListingProfileId(),
+                courtScheduleJudiciary.getJudiciaryType(),
+                courtScheduleJudiciary.getPosition(),
+                courtScheduleJudiciary.getBenchChairman(),
+                courtScheduleJudiciary.getDeputy(),
+                courtScheduleJudiciary.isActive());
+    }
+
+    /**
      * Creates all processing maps required for judiciary and court schedule processing.
      * This includes the judiciary map, court schedule map, and the judiciary court schedule map
      * which contains full assignment data including position, isBenchChairman, and isDeputy.
      *
      * @param records      the parsed rota file records
-     * @param requester    the requester for making service calls
      * @param executionId  the execution ID for logging
      * @param blobName     the name of the blob file
      * @return ProcessingMaps containing the judiciary court schedule map with full assignment data
@@ -200,7 +326,6 @@ public class RotaFileProcessor {
      *
      * @param judiciaryAssignmentDataMap the map of assignments to process, containing
      *                                   lists of court schedule IDs and assignment metadata
-     * @param requester                  the requester for making service calls
      * @param executionId                the execution ID for logging
      * @param blobName                   the name of the blob file
      */
@@ -288,7 +413,6 @@ public class RotaFileProcessor {
      *
      * @param assignmentList list of JudiciaryScheduleAssignment containing judiciary IDs
      *                       and court schedule data with assignment metadata
-     * @param requester      the requester for making service calls
      * @param executionId    the execution ID for logging
      * @return the assignment response containing success/failure information
      */

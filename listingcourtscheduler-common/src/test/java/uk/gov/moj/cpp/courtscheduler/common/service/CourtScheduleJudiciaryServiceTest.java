@@ -76,6 +76,98 @@ class CourtScheduleJudiciaryServiceTest {
     }
 
     @Test
+    void shouldGetCourtScheduleJudiciariesForRotaPeriodGroupedByCourtScheduleId() {
+        final java.time.LocalDate startDate = java.time.LocalDate.parse("2024-01-01");
+        final java.time.LocalDate endDate = java.time.LocalDate.parse("2024-12-31");
+        final List<String> ouCodes = List.of("B40IM00");
+        final String courtScheduleIdA = randomUUID().toString();
+        final String courtScheduleIdB = randomUUID().toString();
+
+        final CourtScheduleJudiciary judiciaryA1 = buildEntity(courtScheduleIdA, "jud-1");
+        final CourtScheduleJudiciary judiciaryA2 = buildEntity(courtScheduleIdA, "jud-2");
+        final CourtScheduleJudiciary judiciaryB1 = buildEntity(courtScheduleIdB, "jud-3");
+        when(courtScheduleJudiciaryRepository.findCourtScheduleJudiciariesEntriesForRotaPeriod(
+                eq(startDate), eq(endDate), eq(ouCodes)))
+                .thenReturn(List.of(judiciaryA1, judiciaryA2, judiciaryB1));
+
+        final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+                courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+
+        assertEquals(2, result.size());
+        assertEquals(2, result.get(courtScheduleIdA).size());
+        assertEquals(1, result.get(courtScheduleIdB).size());
+
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary mappedJudiciary = result.get(courtScheduleIdB).get(0);
+        assertEquals(courtScheduleIdB, mappedJudiciary.getCourtScheduleId());
+        assertEquals("jud-3", mappedJudiciary.getJudiciaryId());
+        assertEquals(judiciaryB1.getRotaJudiciaryId(), mappedJudiciary.getRotaJudiciaryId());
+        assertEquals(judiciaryB1.getTitle(), mappedJudiciary.getTitle());
+        assertEquals(judiciaryB1.getForenames(), mappedJudiciary.getForenames());
+        assertEquals(judiciaryB1.getSurname(), mappedJudiciary.getSurname());
+        assertEquals(judiciaryB1.getEmail(), mappedJudiciary.getEmailAddress());
+        assertEquals(judiciaryB1.getJudiciaryType(), mappedJudiciary.getJudiciaryType());
+        assertEquals(judiciaryB1.getBenchChairman(), mappedJudiciary.getBenchChairman());
+        assertEquals(judiciaryB1.getDeputy(), mappedJudiciary.getDeputy());
+        assertEquals(judiciaryB1.getPosition(), mappedJudiciary.getPosition());
+        assertEquals(judiciaryB1.getCourtListingProfileId(), mappedJudiciary.getCourtListingProfileId());
+        assertTrue(mappedJudiciary.isActive());
+    }
+
+    @Test
+    void shouldReturnEmptyMapWhenNoUnAllocatedCourtScheduleJudiciariesFound() {
+        final java.time.LocalDate startDate = java.time.LocalDate.parse("2024-01-01");
+        final java.time.LocalDate endDate = java.time.LocalDate.parse("2024-12-31");
+        final List<String> ouCodes = List.of("B40IM00");
+        when(courtScheduleJudiciaryRepository.findCourtScheduleJudiciariesEntriesForRotaPeriod(
+                eq(startDate), eq(endDate), eq(ouCodes)))
+                .thenReturn(List.of());
+
+        final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+                courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldGetJudiciaryHearingInfoForCourtSchedules() {
+        final List<String> courtScheduleIds = List.of(randomUUID().toString());
+        final List<Object[]> rows = List.<Object[]>of(
+                new Object[]{courtScheduleIds.get(0), randomUUID().toString(), "jud-1", "Magistrate", true, false});
+        when(courtScheduleJudiciaryRepository.findJudiciaryHearingInfoByCourtScheduleIds(eq(courtScheduleIds)))
+                .thenReturn(rows);
+
+        final List<Object[]> result = courtScheduleJudiciaryService.getJudiciaryHearingInfoForCourtSchedules(courtScheduleIds);
+
+        assertEquals(rows, result);
+        verify(courtScheduleJudiciaryRepository, atLeastOnce()).findJudiciaryHearingInfoByCourtScheduleIds(eq(courtScheduleIds));
+    }
+
+    @Test
+    void shouldNotQueryJudiciaryHearingInfoWhenNoCourtScheduleIdsProvided() {
+        final List<Object[]> result = courtScheduleJudiciaryService.getJudiciaryHearingInfoForCourtSchedules(List.of());
+
+        assertTrue(result.isEmpty());
+        org.mockito.Mockito.verifyNoInteractions(courtScheduleJudiciaryRepository);
+    }
+
+    private CourtScheduleJudiciary buildEntity(final String courtScheduleId, final String judiciaryId) {
+        return CourtScheduleJudiciary.CourtScheduleJudiciaryBuilder.courtScheduleJudiciary()
+                .withId(new uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey(courtScheduleId, judiciaryId))
+                .withCourtListingProfileId("CLP-" + judiciaryId)
+                .withRotaJudiciaryId("ROTA-" + judiciaryId)
+                .withTitle("Mr")
+                .withForenames("John")
+                .withSurname("Doe")
+                .withEmail(judiciaryId + "@example.com")
+                .withJudiciaryType("Magistrate")
+                .withIsBenchChairman(true)
+                .withIsDeputy(false)
+                .withPosition("1")
+                .withActive(true)
+                .build();
+    }
+
+    @Test
     void shouldDeleteRedundantRotaData() {
         final int numberOfPreviousMonthsAndOlder = 6;
         final int numberOfDeleted = 5;

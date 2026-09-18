@@ -12,8 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -51,13 +51,34 @@ public class CourtScheduleJudiciaryService {
     }
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
-        return courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
+    public Map<String, List<CourtScheduleJudiciary>> getCourtScheduleJudiciariesForRotaPeriod(
+            final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
+        final Map<String, List<CourtScheduleJudiciary>> courtScheduleJudiciaryMap = new HashMap<>();
+
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary> courtScheduleJudiciaryEntities =
+                courtScheduleJudiciaryRepository.findCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
+
+        if (isNotEmpty(courtScheduleJudiciaryEntities)) {
+            courtScheduleJudiciaryEntities.forEach(courtScheduleJudiciaryEntity ->
+                    courtScheduleJudiciaryMap
+                            .computeIfAbsent(courtScheduleJudiciaryEntity.getId().getCourtScheduleId(), key -> new ArrayList<>())
+                            .add(CourtScheduleJudiciaryMapper.toDomain(courtScheduleJudiciaryEntity)));
+        }
+
+        return courtScheduleJudiciaryMap;
     }
 
-    public List<Object[]> getAllocatedScheduleJudiciaryInfo(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
-        final LocalDate hearingStartTimeEndBoundary = endDate.plusDays(1);
-        return courtScheduleJudiciaryRepository.getAllocatedScheduleJudiciaryInfo(startDate, hearingStartTimeEndBoundary, ouCodes);
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public int deleteCourtScheduleJudiciariesEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
+        return courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, ouCodes);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public List<Object[]> getJudiciaryHearingInfoForCourtSchedules(final List<String> courtScheduleIds) {
+        if (!isNotEmpty(courtScheduleIds)) {
+            return new ArrayList<>();
+        }
+        return courtScheduleJudiciaryRepository.findJudiciaryHearingInfoByCourtScheduleIds(courtScheduleIds);
     }
 
     public int deleteRedundantRotaData(final int numberOfPreviousMonthsAndOlder) {
