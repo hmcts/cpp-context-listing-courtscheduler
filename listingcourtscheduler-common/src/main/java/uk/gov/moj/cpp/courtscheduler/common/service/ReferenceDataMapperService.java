@@ -111,10 +111,18 @@ public class ReferenceDataMapperService {
     }
 
     public void clearReferenceDataInMemory() {
-        if (nonNull(courtRooms)) courtRooms = null;
-        if (nonNull(courtRoomSessionAllocations)) courtRoomSessionAllocations = null;
-        if (nonNull(judiciaries)) judiciaries = null;
-        if (nonNull(businessTypeMap)) businessTypeMap.clear();
+        if (nonNull(courtRooms)) {
+            courtRooms = null;
+        }
+        if (nonNull(courtRoomSessionAllocations)) {
+            courtRoomSessionAllocations = null;
+        }
+        if (nonNull(judiciaries)) {
+            judiciaries = null;
+        }
+        if (nonNull(businessTypeMap)) {
+            businessTypeMap.clear();
+        }
     }
 
     public void loadJudiciaries() {

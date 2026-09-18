@@ -271,8 +271,9 @@ public class RotaFileProcessorService {
             // the @Async proxy always returns a real CompletableFuture.
             CompletableFuture.allOf(weekFutures.stream().filter(Objects::nonNull).toArray(CompletableFuture[]::new)).join();
             logger.info("DD-15703:processSnapshotRotaFile: before rotaFileProcessHistoryRepository.update");
-            if(rotaFileProcessHistory != null)
+            if(rotaFileProcessHistory != null) {
                 rotaFileProcessHistoryService.update(rotaFileProcessHistory);
+            }
             logger.info("DD-15703:processSnapshotRotaFile: after rotaFileProcessHistoryRepository.update");
         } else {
             final List<DateRange> dateRanges = weeksCovering(rotaPeriodStartDate, rotaPeriodEndDate);
@@ -288,8 +289,9 @@ public class RotaFileProcessorService {
             }
             CompletableFuture.allOf(weekFutures.stream().filter(Objects::nonNull).toArray(CompletableFuture[]::new)).join();
             logger.info("DD-15703:processMasterRotaFile: before rotaFileProcessHistoryRepository.update");
-            if(rotaFileProcessHistory != null)
+            if(rotaFileProcessHistory != null) {
                 rotaFileProcessHistoryService.update(rotaFileProcessHistory);
+            }
             logger.info("DD-15703:processMasterRotaFile: after rotaFileProcessHistoryRepository.update");
         }
     }
@@ -302,7 +304,7 @@ public class RotaFileProcessorService {
         }
         final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
         final List<RotaFileProcessHistory> rotaFileProcessHistories = rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, Timestamp.from(fileDateTime.toInstant()));
-        boolean isNewerVersionOfSnapshotFileProcessed = isNotEmpty(rotaFileProcessHistories);
+        final boolean isNewerVersionOfSnapshotFileProcessed = isNotEmpty(rotaFileProcessHistories);
         if (isNewerVersionOfSnapshotFileProcessed) {
             logger.warn("There is a newer snapshot rota file has been processed already. Therefore, skipping.");
             return true;
@@ -346,7 +348,7 @@ public class RotaFileProcessorService {
         return ouCodes;
     }
 
-    public List<DateRange> weeksCovering(LocalDate start, LocalDate end) {
+    public List<DateRange> weeksCovering(LocalDate start, final LocalDate end) {
         final List<DateRange> result = new ArrayList<>();
 
         int weekIndex = 1;

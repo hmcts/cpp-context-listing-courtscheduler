@@ -16,7 +16,7 @@ public class FindJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabil
         super();
     }
 
-    public FindJudiciaryAvailabilityRuleRequest(LocalDate startDate, LocalDate endDate, String courtHouseId, String judiciaryId, Integer pageSize, Integer pageNumber) {
+    public FindJudiciaryAvailabilityRuleRequest(final LocalDate startDate, final LocalDate endDate, final String courtHouseId, final String judiciaryId, final Integer pageSize, final Integer pageNumber) {
         super();
         this.startDate = startDate;
         this.endDate = endDate;
@@ -30,7 +30,7 @@ public class FindJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabil
         return this.pageSize;
     }
 
-    public void setPageSize(Integer pageSize) {
+    public void setPageSize(final Integer pageSize) {
         this.pageSize = pageSize;
     }
 
@@ -38,7 +38,7 @@ public class FindJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabil
         return this.pageNumber;
     }
 
-    public void setPageNumber(Integer pageNumber) {
+    public void setPageNumber(final Integer pageNumber) {
         this.pageNumber = pageNumber;
     }
 
@@ -46,12 +46,12 @@ public class FindJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabil
         return this.withJudiciary;
     }
 
-    public void setWithJudiciary(Boolean withJudiciary) {
+    public void setWithJudiciary(final Boolean withJudiciary) {
         this.withJudiciary = withJudiciary;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

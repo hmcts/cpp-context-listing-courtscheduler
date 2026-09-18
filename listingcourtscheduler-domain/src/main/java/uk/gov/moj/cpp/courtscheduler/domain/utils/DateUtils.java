@@ -143,7 +143,7 @@ public class DateUtils {
             return null;
         }
         // Convert to response json format
-        SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_PATTERN);
+        final SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_PATTERN);
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
         return sdf.format(date);
     }
@@ -153,7 +153,7 @@ public class DateUtils {
             return null;
         }
         // Convert to response json format
-        SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_PATTERN);
+        final SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_PATTERN);
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
         return sdf.format(date);
     }
@@ -162,8 +162,8 @@ public class DateUtils {
         if (isoDate == null) {
             return null;
         }
-        OffsetDateTime dateTime = OffsetDateTime.parse(isoDate);
-        DateTimeFormatter formatterWithoutMillis = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX");
+        final OffsetDateTime dateTime = OffsetDateTime.parse(isoDate);
+        final DateTimeFormatter formatterWithoutMillis = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX");
 
         return dateTime.format(formatterWithoutMillis);
     }
@@ -197,7 +197,7 @@ public class DateUtils {
     }
 
 
-    public static java.util.Date getDate(LocalDate localDate) {
+    public static java.util.Date getDate(final LocalDate localDate) {
         try {
             return new SimpleDateFormat("yyyy-MM-dd").parse(localDate.toString());
         } catch (ParseException e) {
@@ -205,9 +205,9 @@ public class DateUtils {
         }
     }
 
-    public static java.util.Date getDate(String dateString) {
+    public static java.util.Date getDate(final String dateString) {
         try {
-            SimpleDateFormat isoFormat = new SimpleDateFormat(ISO_8601_PATTERN);
+            final SimpleDateFormat isoFormat = new SimpleDateFormat(ISO_8601_PATTERN);
             isoFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             return isoFormat.parse(dateString);
         } catch (ParseException e) {
@@ -302,12 +302,12 @@ public class DateUtils {
             throw new IllegalArgumentException("Date cannot be null");
         }
 
-        LocalTime localTime = LocalTime.parse(time, TIME_FORMATTER);
+        final LocalTime localTime = LocalTime.parse(time, TIME_FORMATTER);
 
         // Convert LocalDate and LocalTime to ZonedDateTime in London timezone, then convert to UTC
-        ZonedDateTime zonedDateTime = LocalDateTime.of(date, localTime).atZone(LONDON_ZONE).withZoneSameInstant(ZoneOffset.UTC);
+        final ZonedDateTime zonedDateTime = LocalDateTime.of(date, localTime).atZone(LONDON_ZONE).withZoneSameInstant(ZoneOffset.UTC);
 
-        Calendar calendar = new Calendar.Builder()
+        final Calendar calendar = new Calendar.Builder()
                 .setDate(zonedDateTime.getYear(), zonedDateTime.getMonthValue() - 1, zonedDateTime.getDayOfMonth())
                 .setTimeOfDay(zonedDateTime.getHour(), zonedDateTime.getMinute(), zonedDateTime.getSecond())
                 .build();
@@ -320,7 +320,7 @@ public class DateUtils {
         return LocalTime.parse(time, TIME_FORMATTER);
     }
 
-    public static String sessionTimeFormatter(java.util.Date date) {
+    public static String sessionTimeFormatter(final java.util.Date date) {
         return new SimpleDateFormat("HH:mm").format(date);
     }
 
@@ -367,17 +367,17 @@ public class DateUtils {
      * @return LocalDate in the future within next 365 days
      */
     public static LocalDate getRandomFutureDateWithinNextYear() {
-        LocalDate today = LocalDate.now();
-        LocalDate nextYear = today.plusYears(1);
+        final LocalDate today = LocalDate.now();
+        final LocalDate nextYear = today.plusYears(1);
 
-        long startEpochDay = today.toEpochDay();
-        long endEpochDay = nextYear.toEpochDay();
+        final long startEpochDay = today.toEpochDay();
+        final long endEpochDay = nextYear.toEpochDay();
 
-        SecureRandom secureRandom = new SecureRandom();
+        final SecureRandom secureRandom = new SecureRandom();
         LocalDate randomDate;
 
         do {
-            long randomDay = startEpochDay + secureRandom.nextLong(endEpochDay - startEpochDay + 1);
+            final long randomDay = startEpochDay + secureRandom.nextLong(endEpochDay - startEpochDay + 1);
             randomDate = LocalDate.ofEpochDay(randomDay);
         } while (randomDate.getDayOfWeek() == DayOfWeek.SATURDAY
                 || randomDate.getDayOfWeek() == DayOfWeek.SUNDAY);

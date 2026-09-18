@@ -27,7 +27,7 @@ public final class CourtSchedulerConverter {
     private CourtSchedulerConverter() {
     }
 
-    public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
+    public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
         final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
         final Boolean isAllDaySplit = courtScheduleEntity.getSupportAdSplit();
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder()
@@ -74,7 +74,7 @@ public final class CourtSchedulerConverter {
     }
 
     public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convertForOverbooking(
-            uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
         return new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
                 .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
                 .withIsOverbookingAllowed(Boolean.TRUE.equals(courtScheduleEntity.getIsOverbookingAllowed()))
@@ -82,7 +82,7 @@ public final class CourtSchedulerConverter {
                 .build();
     }
 
-    public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity,
+    public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity,
                                                                              final List<AllocatedListingEachBooked> allocatedListingEachBooked) {
         final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
         final List<AllocatedListingEachBooked> allocatedListings = allocatedListingEachBooked.stream()
@@ -162,7 +162,7 @@ public final class CourtSchedulerConverter {
         return courtScheduleBuilder.build();
     }
 
-    public static uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule convertToMi(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
+    public static uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule convertToMi(final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
         return new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule.CourtScheduleBuilder()
                 .withListingProfileId(courtScheduleEntity.getListingProfileId())
                 .withOuCode(courtScheduleEntity.getOuCode())
@@ -188,7 +188,7 @@ public final class CourtSchedulerConverter {
                 .build();
     }
 
-    private static Date getDate(LocalDate localDate) {
+    private static Date getDate(final LocalDate localDate) {
         try {
             return new SimpleDateFormat("yyyy-MM-dd").parse(localDate.toString());
         } catch (ParseException e) {

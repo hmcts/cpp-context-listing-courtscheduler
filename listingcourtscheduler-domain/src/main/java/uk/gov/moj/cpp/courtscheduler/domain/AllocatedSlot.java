@@ -141,7 +141,7 @@ public class AllocatedSlot {
         return isPolice;
     }
 
-    public void setPolice(boolean police) {
+    public void setPolice(final boolean police) {
         isPolice = police;
     }
 
@@ -166,7 +166,7 @@ public class AllocatedSlot {
         return source;
     }
 
-    public void setSource(String source) {
+    public void setSource(final String source) {
         this.source = source;
     }
 

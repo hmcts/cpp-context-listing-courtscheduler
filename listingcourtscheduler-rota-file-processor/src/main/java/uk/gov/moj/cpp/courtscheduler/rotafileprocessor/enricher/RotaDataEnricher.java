@@ -74,7 +74,7 @@ public class RotaDataEnricher {
                                                           final String executionId,
                                                           final Map<String, String> missingReferenceDataMappingMap) {
         logger.info("enrichCourtListing - rotaPeriodEndDate: {}", rotaPeriodEndDate);
-        long enrichCourtListingStartTime = System.currentTimeMillis();
+        final long enrichCourtListingStartTime = System.currentTimeMillis();
         final Map<String, Map<String, String>> courtListings = records.get(COURT_LISTING);
         final Map<String, CourtSchedule> courtSchedules = new HashMap<>();
         for (final Map<String, String> listingProfile : courtListings.values()) {
@@ -115,7 +115,7 @@ public class RotaDataEnricher {
         final String strSessionDate = listingProfile.get(SESSION_DATE);
         final LocalDate sessionDate = LocalDate.parse(strSessionDate, formatter);
 
-        CourtSchedule newCourtSchedule;
+        final CourtSchedule newCourtSchedule;
         if (isNull(courtSchedule) || !businessType.equals(courtSchedule.getBusinessType())) {
             newCourtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, missingReferenceDataMappingMap, activeCourtSchedulesByOuCodesWithinRotaPeriod, executionId);
             if (migrated.equals(migratedMap.get(newCourtSchedule.getOuCode()))) {
@@ -127,7 +127,7 @@ public class RotaDataEnricher {
         }
     }
 
-    private void addCourtSchedule(Map<String, CourtSchedule> courtSchedules, CourtSchedule newCourtSchedule) {
+    private void addCourtSchedule(final Map<String, CourtSchedule> courtSchedules, final CourtSchedule newCourtSchedule) {
         if (nonNull(newCourtSchedule.getCourtScheduleId())) {
             courtSchedules.put(newCourtSchedule.getListingProfileId(), newCourtSchedule);
         }

@@ -23,7 +23,7 @@ public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
         //For JPA
     }
 
-    public JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek dayOfWeek) {
+    public JudiciaryAvailabilityRuleRepeatDay(final AvailabilityDayOfWeek dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
     }
 
@@ -31,12 +31,12 @@ public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
         return this.dayOfWeek;
     }
 
-    public void setDayOfWeek(AvailabilityDayOfWeek dayOfWeek) {
+    public void setDayOfWeek(final AvailabilityDayOfWeek dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

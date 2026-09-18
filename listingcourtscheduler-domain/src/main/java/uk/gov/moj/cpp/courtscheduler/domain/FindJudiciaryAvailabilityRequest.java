@@ -12,7 +12,7 @@ public class FindJudiciaryAvailabilityRequest extends BaseJudiciaryAvailabilityR
         super();
     }
 
-    public FindJudiciaryAvailabilityRequest(LocalDate startDate, LocalDate endDate, String courtHouseId, String judiciaryId) {
+    public FindJudiciaryAvailabilityRequest(final LocalDate startDate, final LocalDate endDate, final String courtHouseId, final String judiciaryId) {
         super();
         this.startDate = startDate;
         this.endDate = endDate;
@@ -21,14 +21,14 @@ public class FindJudiciaryAvailabilityRequest extends BaseJudiciaryAvailabilityR
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }
         if (o == null || this.getClass() != o.getClass()) {
             return false;
         }
-        FindJudiciaryAvailabilityRequest that = (FindJudiciaryAvailabilityRequest) o;
+        final FindJudiciaryAvailabilityRequest that = (FindJudiciaryAvailabilityRequest) o;
         // Only compare fields that are actually used (not ruleId)
         return Objects.equals(startDate, that.startDate) &&
                 Objects.equals(endDate, that.endDate) &&

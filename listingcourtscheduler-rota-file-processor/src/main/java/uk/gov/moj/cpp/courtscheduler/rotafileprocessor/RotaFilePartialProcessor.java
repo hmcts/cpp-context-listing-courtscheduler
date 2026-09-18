@@ -132,7 +132,7 @@ public class RotaFilePartialProcessor {
 
         logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
         if (isNotEmpty(nonMigratedOuCodes)) {
-            int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
+            final int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
             logger.info("DD-15703:processSnapshotRotaFile: after deleteUnAllocatedCourtScheduleEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtSchedules: {}", numberOfDeletedUnAllocatedCourtSchedules);
         } else {
             logger.info("processSnapshotRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
@@ -349,7 +349,7 @@ public class RotaFilePartialProcessor {
         }
     }
 
-    private Integer getTotalListedAmountForCourtSchedule(final Map<String, Integer> allocatedListings, String courtScheduleId) {
+    private Integer getTotalListedAmountForCourtSchedule(final Map<String, Integer> allocatedListings, final String courtScheduleId) {
         int totalAmount = 0;
         if (!allocatedListings.isEmpty() && allocatedListings.containsKey(courtScheduleId)) {
             totalAmount = allocatedListings.get(courtScheduleId);

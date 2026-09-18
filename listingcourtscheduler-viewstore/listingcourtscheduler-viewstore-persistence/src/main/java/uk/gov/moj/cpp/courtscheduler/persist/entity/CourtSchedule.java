@@ -20,7 +20,7 @@ import jakarta.persistence.Transient;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384", "PMD.AvoidDuplicateLiterals"})
 @Entity
 @Table(name = "court_schedule")
 @SqlResultSetMappings({
@@ -377,39 +377,39 @@ public class CourtSchedule {
     }
 
     public CourtSchedule(
-            String id,
-            String courtListingProfileId,
-            String ouCode,
-            String courtRoomId,
-            Integer courtRoomNumber,
-            String courtHouseId,
-            String courtHouseName,
-            String courtRoomName,
-            String operationalUnit,
-            String businessType,
-            String panel,
-            String courtSession,
-            Boolean active,
-            Boolean slotBased,
-            LocalDate sessionDate,
-            Integer maxSlots,
-            Integer maxDuration,
-            Integer availableSlots,
-            Integer availableDuration,
-            Boolean supportAdSplit,
-            Integer maxAdMorningDuration,
-            Integer maxAdAfternoonDuration,
-            Boolean isOverbookingAllowed,
-            Date sessionStartTime,
-            Date sessionEndTime,
-            Date createdOn,
-            Date updatedOn,
-            Boolean hasHearingsBooked,
-            Integer totalBookedMorning,
-            Integer totalBookedAfternoon,
-            Integer totalBooked,
-            Boolean isDraft,
-            String jurisdiction
+            final String id,
+            final String courtListingProfileId,
+            final String ouCode,
+            final String courtRoomId,
+            final Integer courtRoomNumber,
+            final String courtHouseId,
+            final String courtHouseName,
+            final String courtRoomName,
+            final String operationalUnit,
+            final String businessType,
+            final String panel,
+            final String courtSession,
+            final Boolean active,
+            final Boolean slotBased,
+            final LocalDate sessionDate,
+            final Integer maxSlots,
+            final Integer maxDuration,
+            final Integer availableSlots,
+            final Integer availableDuration,
+            final Boolean supportAdSplit,
+            final Integer maxAdMorningDuration,
+            final Integer maxAdAfternoonDuration,
+            final Boolean isOverbookingAllowed,
+            final Date sessionStartTime,
+            final Date sessionEndTime,
+            final Date createdOn,
+            final Date updatedOn,
+            final Boolean hasHearingsBooked,
+            final Integer totalBookedMorning,
+            final Integer totalBookedAfternoon,
+            final Integer totalBooked,
+            final Boolean isDraft,
+            final String jurisdiction
     ) {
         this.courtScheduleId = id;
         this.listingProfileId = courtListingProfileId;
@@ -450,7 +450,7 @@ public class CourtSchedule {
         return courtScheduleId;
     }
 
-    public void setCourtScheduleId(String courtScheduleId) {
+    public void setCourtScheduleId(final String courtScheduleId) {
         this.courtScheduleId = courtScheduleId;
     }
 
@@ -458,7 +458,7 @@ public class CourtSchedule {
         return listingProfileId;
     }
 
-    public void setListingProfileId(String listingProfileId) {
+    public void setListingProfileId(final String listingProfileId) {
         this.listingProfileId = listingProfileId;
     }
 
@@ -466,7 +466,7 @@ public class CourtSchedule {
         return ouCode;
     }
 
-    public void setOuCode(String ouCode) {
+    public void setOuCode(final String ouCode) {
         this.ouCode = ouCode;
     }
 
@@ -474,7 +474,7 @@ public class CourtSchedule {
         return courtRoomId;
     }
 
-    public void setCourtRoomId(String courtRoomId) {
+    public void setCourtRoomId(final String courtRoomId) {
         this.courtRoomId = courtRoomId;
     }
 
@@ -482,7 +482,7 @@ public class CourtSchedule {
         return courtRoomNumber;
     }
 
-    public void setCourtRoomNumber(Integer courtRoomNumber) {
+    public void setCourtRoomNumber(final Integer courtRoomNumber) {
         this.courtRoomNumber = courtRoomNumber;
     }
 
@@ -490,7 +490,7 @@ public class CourtSchedule {
         return courtHouseId;
     }
 
-    public void setCourtHouseId(String courtHouseId) {
+    public void setCourtHouseId(final String courtHouseId) {
         this.courtHouseId = courtHouseId;
     }
 
@@ -498,7 +498,7 @@ public class CourtSchedule {
         return courtHouseName;
     }
 
-    public void setCourtHouseName(String courtHouseName) {
+    public void setCourtHouseName(final String courtHouseName) {
         this.courtHouseName = courtHouseName;
     }
 
@@ -506,7 +506,7 @@ public class CourtSchedule {
         return courtRoomName;
     }
 
-    public void setCourtRoomName(String courtRoomName) {
+    public void setCourtRoomName(final String courtRoomName) {
         this.courtRoomName = courtRoomName;
     }
 
@@ -514,7 +514,7 @@ public class CourtSchedule {
         return operationalUnit;
     }
 
-    public void setOperationalUnit(String operationalUnit) {
+    public void setOperationalUnit(final String operationalUnit) {
         this.operationalUnit = operationalUnit;
     }
 
@@ -522,7 +522,7 @@ public class CourtSchedule {
         return businessType;
     }
 
-    public void setBusinessType(String businessType) {
+    public void setBusinessType(final String businessType) {
         this.businessType = businessType;
     }
 
@@ -530,7 +530,7 @@ public class CourtSchedule {
         return panel;
     }
 
-    public void setPanel(String panel) {
+    public void setPanel(final String panel) {
         this.panel = panel;
     }
 
@@ -538,7 +538,7 @@ public class CourtSchedule {
         return courtSession;
     }
 
-    public void setCourtSession(String courtSession) {
+    public void setCourtSession(final String courtSession) {
         this.courtSession = courtSession;
     }
 
@@ -546,7 +546,7 @@ public class CourtSchedule {
         return slotBased;
     }
 
-    public void setSlotBased(boolean slotBased) {
+    public void setSlotBased(final boolean slotBased) {
         this.slotBased = slotBased;
     }
 
@@ -554,7 +554,7 @@ public class CourtSchedule {
         return sessionDate;
     }
 
-    public void setSessionDate(LocalDate sessionDate) {
+    public void setSessionDate(final LocalDate sessionDate) {
         this.sessionDate = sessionDate;
     }
 
@@ -562,7 +562,7 @@ public class CourtSchedule {
         return maxSlots;
     }
 
-    public void setMaxSlots(Integer maxSlots) {
+    public void setMaxSlots(final Integer maxSlots) {
         this.maxSlots = maxSlots;
     }
 
@@ -570,7 +570,7 @@ public class CourtSchedule {
         return maxDuration;
     }
 
-    public void setMaxDuration(Integer maxDuration) {
+    public void setMaxDuration(final Integer maxDuration) {
         this.maxDuration = maxDuration;
     }
 
@@ -578,7 +578,7 @@ public class CourtSchedule {
         return availableSlots;
     }
 
-    public void setAvailableSlots(Integer availableSlots) {
+    public void setAvailableSlots(final Integer availableSlots) {
         this.availableSlots = availableSlots;
     }
 
@@ -586,7 +586,7 @@ public class CourtSchedule {
         return availableDuration;
     }
 
-    public void setAvailableDuration(Integer availableDuration) {
+    public void setAvailableDuration(final Integer availableDuration) {
         this.availableDuration = availableDuration;
     }
 
@@ -594,7 +594,7 @@ public class CourtSchedule {
         return createdOn;
     }
 
-    public void setCreatedOn(java.util.Date createdOn) {
+    public void setCreatedOn(final java.util.Date createdOn) {
         this.createdOn = createdOn;
     }
 
@@ -602,7 +602,7 @@ public class CourtSchedule {
         return updatedOn;
     }
 
-    public void setUpdatedOn(java.util.Date updatedOn) {
+    public void setUpdatedOn(final java.util.Date updatedOn) {
         this.updatedOn = updatedOn;
     }
 
@@ -627,7 +627,7 @@ public class CourtSchedule {
         return supportAdSplit;
     }
 
-    public void setSupportAdSplit(Boolean supportAdSplit) {
+    public void setSupportAdSplit(final Boolean supportAdSplit) {
         this.supportAdSplit = supportAdSplit;
     }
 
@@ -635,7 +635,7 @@ public class CourtSchedule {
         return maxAdMorningDuration;
     }
 
-    public void setMaxAdMorningDuration(Integer maxAdMorningDuration) {
+    public void setMaxAdMorningDuration(final Integer maxAdMorningDuration) {
         this.maxAdMorningDuration = maxAdMorningDuration;
     }
 
@@ -643,7 +643,7 @@ public class CourtSchedule {
         return maxAdAfternoonDuration;
     }
 
-    public void setMaxAdAfternoonDuration(Integer maxAdAfternoonDuration) {
+    public void setMaxAdAfternoonDuration(final Integer maxAdAfternoonDuration) {
         this.maxAdAfternoonDuration = maxAdAfternoonDuration;
     }
 
@@ -651,7 +651,7 @@ public class CourtSchedule {
         return sessionStartTime;
     }
 
-    public void setSessionStartTime(Date sessionStartTime) {
+    public void setSessionStartTime(final Date sessionStartTime) {
         this.sessionStartTime = sessionStartTime;
     }
 
@@ -659,7 +659,7 @@ public class CourtSchedule {
         return sessionEndTime;
     }
 
-    public void setSessionEndTime(Date sessionEndTime) {
+    public void setSessionEndTime(final Date sessionEndTime) {
         this.sessionEndTime = sessionEndTime;
     }
 
@@ -667,7 +667,7 @@ public class CourtSchedule {
         return isOverbookingAllowed;
     }
 
-    public void setIsOverbookingAllowed(Boolean isOverbookingAllowed) {
+    public void setIsOverbookingAllowed(final Boolean isOverbookingAllowed) {
         this.isOverbookingAllowed = isOverbookingAllowed;
     }
 
@@ -675,7 +675,7 @@ public class CourtSchedule {
         return totalBookedMorning;
     }
 
-    public void setTotalBookedMorning(Integer totalBookedMorning) {
+    public void setTotalBookedMorning(final Integer totalBookedMorning) {
         this.totalBookedMorning = totalBookedMorning;
     }
 
@@ -683,7 +683,7 @@ public class CourtSchedule {
         return totalBookedAfternoon;
     }
 
-    public void setTotalBookedAfternoon(Integer totalBookedAfternoon) {
+    public void setTotalBookedAfternoon(final Integer totalBookedAfternoon) {
         this.totalBookedAfternoon = totalBookedAfternoon;
     }
 
@@ -691,7 +691,7 @@ public class CourtSchedule {
         return totalBooked;
     }
 
-    public void setTotalBooked(Integer totalBooked) {
+    public void setTotalBooked(final Integer totalBooked) {
         this.totalBooked = totalBooked;
     }
 
@@ -699,7 +699,7 @@ public class CourtSchedule {
         return nationalBreakTime;
     }
 
-    public void setNationalBreakTime(Date nationalBreakTime) {
+    public void setNationalBreakTime(final Date nationalBreakTime) {
         this.nationalBreakTime = nationalBreakTime;
     }
 
@@ -707,7 +707,7 @@ public class CourtSchedule {
         return isDraft;
     }
 
-    public void setIsDraft(Boolean isDraft) {
+    public void setIsDraft(final Boolean isDraft) {
         this.isDraft = isDraft;
     }
 
@@ -715,14 +715,18 @@ public class CourtSchedule {
         return jurisdiction;
     }
 
-    public void setJurisdiction(String jurisdiction) {
+    public void setJurisdiction(final String jurisdiction) {
         this.jurisdiction = jurisdiction;
     }
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         final CourtSchedule that = (CourtSchedule) o;
         return isActive() == that.isActive()
                 && isSlotBased() == that.isSlotBased()

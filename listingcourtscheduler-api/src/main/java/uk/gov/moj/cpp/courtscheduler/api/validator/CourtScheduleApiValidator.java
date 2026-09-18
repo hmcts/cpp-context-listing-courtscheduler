@@ -87,7 +87,7 @@ public class CourtScheduleApiValidator {
         return buildErrorResponse(MANDATORY_SEARCH_CRITERIA + value + CANNOT_BE_NULL);
     }
 
-    private JsonObject buildErrorResponse(String errorMessage) {
+    private JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();

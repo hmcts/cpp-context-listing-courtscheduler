@@ -59,7 +59,7 @@ public class JudiciaryUnassignmentService {
         final Set<String> allocatedListingSessionIds = new LinkedHashSet<>();
         final Set<String> missingCourtScheduleJudiciaryIds = new LinkedHashSet<>();
 
-        for (Map.Entry<String, List<String>> entry : judiciaryToSessionIds.entrySet()) {
+        for (final Map.Entry<String, List<String>> entry : judiciaryToSessionIds.entrySet()) {
             final String judiciaryId = entry.getKey();
             final List<String> sessionIds = entry.getValue();
 
@@ -82,7 +82,7 @@ public class JudiciaryUnassignmentService {
                 }
             }
 
-            for (String courtScheduleId : sessionIds) {
+            for (final String courtScheduleId : sessionIds) {
                 LOGGER.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
 
                 // Check if session (court schedule) exists (skip if skipValidations is true)

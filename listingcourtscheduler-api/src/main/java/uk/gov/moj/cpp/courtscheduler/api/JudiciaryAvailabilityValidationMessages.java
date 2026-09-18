@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 public class JudiciaryAvailabilityValidationMessages {
-    private JudiciaryAvailabilityValidationMessages() {}
 
     // Mandatory field validation messages
     public static final String SELECT_JUDICIARY = "Select a judiciary";
@@ -39,4 +38,6 @@ public class JudiciaryAvailabilityValidationMessages {
 
     // Delete validation messages
     public static final String CANNOT_DELETE_ITINERARY_IN_USE = "You cannot delete this itinerary because it is being used in a session. You must remove the session before you can delete it.";
+
+    private JudiciaryAvailabilityValidationMessages() {}
 }

@@ -1,89 +1,41 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+@Setter
 public class JudiciaryAvailabilityRuleResponse {
 
+    @Getter
     private String id;
+    @Getter
     private String judiciaryId;
+    @Getter
     private String courtHouseId;
+    @Getter
     private LocalDate startDate;
+    @Getter
     private LocalDate endDate;
     private List<AvailabilityDayOfWeek> repeatDays;
+    @Getter
     private SessionType sessionType;
+    @Getter
     private List<JudiciaryUnavailabilityResponse> unavailabilities;
 
     public JudiciaryAvailabilityRuleResponse() {
     }
 
-    public String getId() {
-        return this.id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getJudiciaryId() {
-        return this.judiciaryId;
-    }
-
-    public void setJudiciaryId(String judiciaryId) {
-        this.judiciaryId = judiciaryId;
-    }
-
-    public String getCourtHouseId() {
-        return this.courtHouseId;
-    }
-
-    public void setCourtHouseId(String courtHouseId) {
-        this.courtHouseId = courtHouseId;
-    }
-
-    public LocalDate getStartDate() {
-        return this.startDate;
-    }
-
-    public void setStartDate(LocalDate startDate) {
-        this.startDate = startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return this.endDate;
-    }
-
-    public void setEndDate(LocalDate endDate) {
-        this.endDate = endDate;
-    }
-
     public List<AvailabilityDayOfWeek> getRepeatDays() {
-        return this.repeatDays;
-    }
-
-    public void setRepeatDays(List<AvailabilityDayOfWeek> repeatDays) {
-        this.repeatDays = repeatDays;
-    }
-
-    public SessionType getSessionType() {
-        return this.sessionType;
-    }
-
-    public void setSessionType(SessionType sessionType) {
-        this.sessionType = sessionType;
-    }
-
-    public List<JudiciaryUnavailabilityResponse> getUnavailabilities() {
-        return unavailabilities;
-    }
-
-    public void setUnavailabilities(List<JudiciaryUnavailabilityResponse> unavailabilities) {
-        this.unavailabilities = unavailabilities;
+        return this.repeatDays == null ? Collections.emptyList() : this.repeatDays;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

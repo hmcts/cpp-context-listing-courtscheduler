@@ -41,7 +41,7 @@ public class ProvisionalBookingService {
         final String bookingId = randomUUID().toString();
         provisionalBookingSlots.getProvisionalSlots().forEach(provisionalSlot -> {
             try {
-                CourtSchedule courtSchedule = courtScheduleRepository.findBy(provisionalSlot.getCourtScheduleId());
+                final CourtSchedule courtSchedule = courtScheduleRepository.findBy(provisionalSlot.getCourtScheduleId());
                 provisionalBookingRepository.saveProvisionalBooking(provisionalSlot, bookingId, courtSchedule);
             } catch (PersistenceStoreException exception) {
                 throw new SlotsBookException(exception);
@@ -61,15 +61,15 @@ public class ProvisionalBookingService {
                 .map(String::trim)
                 .toList();
 
-        List<ProvisionalBooking> provisionalBookings = provisionalBookingRepository.findByBookingIdIn(bookingIdList);
-        List<CourtSchedule> courtScheduleList =
+        final List<ProvisionalBooking> provisionalBookings = provisionalBookingRepository.findByBookingIdIn(bookingIdList);
+        final List<CourtSchedule> courtScheduleList =
                 provisionalBookings.stream().map(provisionalBooking -> provisionalBooking.getProvisionalBookingKey().getCourtSchedule()).toList();
         final List<CourtSchedule> courtSchedulesWithListingProfile = courtScheduleList.stream()
                 .filter(courtSchedule -> courtSchedule.getListingProfileId() != null)
                 .toList();
         //judiciary details are not required for provisional bookings without listing profile(ghost rota)
         if (isNotEmpty(courtSchedulesWithListingProfile)) {
-            List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciariesForProvisionalBooking(courtSchedulesWithListingProfile);
+            final List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciariesForProvisionalBooking(courtSchedulesWithListingProfile);
             courtScheduleJudiciaries.forEach(courtScheduleJudiciary -> {
                 final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary domain =
                         modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class);
@@ -93,7 +93,7 @@ public class ProvisionalBookingService {
 
     private ProvisionalBookingInfo buildProvisionalInfo(final ProvisionalBooking provisionalBooking) {
         final ProvisionalBookingInfo.ProvisionalBookingInfoBuilder provisionalBookingInfoBuilder = new ProvisionalBookingInfo.ProvisionalBookingInfoBuilder();
-        CourtSchedule courtSchedule = provisionalBooking.getProvisionalBookingKey().getCourtSchedule();
+        final CourtSchedule courtSchedule = provisionalBooking.getProvisionalBookingKey().getCourtSchedule();
         provisionalBookingInfoBuilder.withCourtScheduleId(courtSchedule.getCourtScheduleId())
                 .withListingProfileId(courtSchedule.getListingProfileId())
                 .withOuCode(courtSchedule.getOuCode())

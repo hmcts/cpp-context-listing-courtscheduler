@@ -10,13 +10,13 @@ public class Result {
     String courtRoomName;
     final Map<String, String> hearingDayCourtSchedules = new HashMap<>();
 
-    public Result(String msg, boolean isSuccess, String courtRoomId) {
+    public Result(final String msg, final boolean isSuccess, final String courtRoomId) {
         this.msg = msg;
         this.success = isSuccess;
         this.courtRoomId = courtRoomId;
     }
 
-    public Result(String msg, boolean isSuccess) {
+    public Result(final String msg, final boolean isSuccess) {
         this.msg = msg;
         this.success = isSuccess;
     }
@@ -25,7 +25,7 @@ public class Result {
         return new Result("Success", true);
     }
 
-    public static Result FAILED(String msg) {
+    public static Result FAILED(final String msg) {
         return new Result(msg, false);
     }
 
@@ -55,7 +55,7 @@ public class Result {
         return hearingDayCourtSchedules;
     }
 
-    public void addHearingDaySchedule(String hearingDay, String courtScheduleId) {
+    public void addHearingDaySchedule(final String hearingDay, final String courtScheduleId) {
         hearingDayCourtSchedules.put(hearingDay, courtScheduleId);
     }
 }

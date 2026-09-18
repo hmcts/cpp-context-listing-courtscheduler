@@ -7,7 +7,7 @@ public class BlobContent {
 
     byte[] blobByteArray;
 
-    public BlobContent(byte[] blobByteArray) {
+    public BlobContent(final byte[] blobByteArray) {
         this.blobByteArray = blobByteArray;
     }
 
@@ -21,8 +21,12 @@ public class BlobContent {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         final BlobContent that = (BlobContent) o;
         return Objects.deepEquals(blobByteArray, that.blobByteArray);
     }

@@ -60,7 +60,7 @@ public class AllocatedListing {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(final String id) {
         this.id = id;
     }
 
@@ -69,7 +69,7 @@ public class AllocatedListing {
         return court_schedule_id;
     }
 
-    public void setCourtScheduleId(String courtScheduleId) {
+    public void setCourtScheduleId(final String courtScheduleId) {
         this.court_schedule_id = courtScheduleId;
     }
 
@@ -78,7 +78,7 @@ public class AllocatedListing {
         return booking_id;
     }
 
-    public void setBookingId(String bookingId) {
+    public void setBookingId(final String bookingId) {
         this.booking_id = bookingId;
     }
 
@@ -87,7 +87,7 @@ public class AllocatedListing {
         return hearing_id;
     }
 
-    public void setHearingId(String hearingId) {
+    public void setHearingId(final String hearingId) {
         this.hearing_id = hearingId;
     }
 
@@ -96,7 +96,7 @@ public class AllocatedListing {
         return oucode;
     }
 
-    public void setOucode(String oucode) {
+    public void setOucode(final String oucode) {
         this.oucode = oucode;
     }
 
@@ -105,7 +105,7 @@ public class AllocatedListing {
         return court_room_id;
     }
 
-    public void setCourtRoomId(Integer courtRoomId) {
+    public void setCourtRoomId(final Integer courtRoomId) {
         this.court_room_id = courtRoomId;
     }
 
@@ -114,7 +114,7 @@ public class AllocatedListing {
         return rota_business_type;
     }
 
-    public void setRotaBusinessType(String rotaBusinessType) {
+    public void setRotaBusinessType(final String rotaBusinessType) {
         this.rota_business_type = rotaBusinessType;
     }
 
@@ -123,7 +123,7 @@ public class AllocatedListing {
         return duration;
     }
 
-    public void setDuration(Integer duration) {
+    public void setDuration(final Integer duration) {
         this.duration = duration;
     }
 
@@ -132,7 +132,7 @@ public class AllocatedListing {
         return created_on == null ? null : DateUtils.toIsoString(created_on);
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Date createdOn) {
         this.created_on = createdOn;
     }
 
@@ -141,7 +141,7 @@ public class AllocatedListing {
         return updated_on == null ? null : DateUtils.toIsoString(updated_on);
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Date updatedOn) {
         this.updated_on = updatedOn;
     }
 
@@ -150,7 +150,7 @@ public class AllocatedListing {
         return hearing_start_time == null ? null : DateUtils.toIsoString(hearing_start_time);
     }
 
-    public void setHearingStartTime(Date hearingStartTime) {
+    public void setHearingStartTime(final Date hearingStartTime) {
         this.hearing_start_time = hearingStartTime;
     }
 
@@ -159,7 +159,7 @@ public class AllocatedListing {
         return is_overbooking_exempt;
     }
 
-    public void setIs_overbooking_exempt(Boolean is_overbooking_exempt) {
+    public void setIs_overbooking_exempt(final Boolean is_overbooking_exempt) {
         this.is_overbooking_exempt = is_overbooking_exempt;
     }
 }

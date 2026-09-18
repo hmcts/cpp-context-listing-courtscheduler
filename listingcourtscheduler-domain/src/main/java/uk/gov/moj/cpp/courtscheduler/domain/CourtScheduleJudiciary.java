@@ -164,7 +164,7 @@ public class CourtScheduleJudiciary {
         return createdOn;
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Date createdOn) {
         this.createdOn = createdOn;
     }
 
@@ -172,7 +172,7 @@ public class CourtScheduleJudiciary {
         return updatedOn;
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Date updatedOn) {
         this.updatedOn = updatedOn;
     }
     public static Builder judiciary() {
@@ -181,8 +181,8 @@ public class CourtScheduleJudiciary {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof CourtScheduleJudiciary)) return false;
+        if (this == o) { return true; }
+        if (!(o instanceof CourtScheduleJudiciary)) { return false; }
         final CourtScheduleJudiciary courtScheduleJudiciary = (CourtScheduleJudiciary) o;
         return Objects.equals(judiciaryId, courtScheduleJudiciary.judiciaryId) &&
                 Objects.equals(rotaJudiciaryId, courtScheduleJudiciary.rotaJudiciaryId) &&

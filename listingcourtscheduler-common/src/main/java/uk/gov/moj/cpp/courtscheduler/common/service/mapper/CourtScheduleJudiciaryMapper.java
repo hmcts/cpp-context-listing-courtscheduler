@@ -12,7 +12,7 @@ public class CourtScheduleJudiciaryMapper {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    public static CourtScheduleJudiciary toEntity(uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary domain) {
+    public static CourtScheduleJudiciary toEntity(final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary domain) {
         if (domain == null) {
             return null;
         }
@@ -36,7 +36,7 @@ public class CourtScheduleJudiciaryMapper {
         return entity;
     }
 
-    public static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary toDomain(CourtScheduleJudiciary entity) {
+    public static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary toDomain(final CourtScheduleJudiciary entity) {
         if (isNull(entity)) {
             return null;
         }
