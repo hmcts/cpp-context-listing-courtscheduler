@@ -16,17 +16,17 @@ public class MiFilterCriteria {
     private LocalDate fromLocalDate;
     private LocalDate toLocalDate;
 
-    private final BiPredicate<LocalDate, LocalDate> IN_30_DAY_RANGE = (from, to) -> {
+    private static final BiPredicate<LocalDate, LocalDate> IN_30_DAY_RANGE = (from, to) -> {
         final long daysBetween = ChronoUnit.DAYS.between(from, to);
         return daysBetween <= 30;
     };
 
-    private final BiPredicate<LocalDate, LocalDate> DATES_IN_PAST = (from, to) -> {
+    private static final BiPredicate<LocalDate, LocalDate> DATES_IN_PAST = (from, to) -> {
         final LocalDate today = LocalDate.now();
-        return !fromLocalDate.isAfter(today) || !toLocalDate.isAfter(today);
+        return !from.isAfter(today) || !to.isAfter(today);
     };
 
-    private final BiPredicate<LocalDate, LocalDate> FROM_NOT_AFTER_TO = (from, to) -> !this.fromLocalDate.isAfter(toLocalDate);
+    private static final BiPredicate<LocalDate, LocalDate> FROM_NOT_AFTER_TO = (from, to) -> !from.isAfter(to);
 
     public MiFilterCriteria(final String fromDate, final String toDate) {
         this.fromLocalDate = LocalDate.parse(fromDate);

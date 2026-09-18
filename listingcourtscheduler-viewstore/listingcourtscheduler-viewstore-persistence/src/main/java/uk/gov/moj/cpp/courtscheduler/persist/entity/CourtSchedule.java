@@ -1,5 +1,33 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.ACTIVE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.AVAILABLE_DURATION_MINS;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.AVAILABLE_SLOT;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.COURT_HOUSE_ID;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.COURT_HOUSE_NAME;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.COURT_LISTING_PROFILE_ID;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.COURT_ROOM_ID;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.COURT_ROOM_NAME;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.COURT_ROOM_NUMBER;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.COURT_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.CREATED_ON;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.IS_DRAFT;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.IS_OVERBOOKING_ALLOWED;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.IS_SLOT_BASED;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.JURISDICTION;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.MAX_AD_AFTERNOON_DURATION;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.MAX_AD_MORNING_DURATION;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.MAX_DURATION_MINS;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.MAX_SLOT;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.OPERATIONAL_UNIT;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.OU_CODE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.PANEL;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.ROTA_BUSINESS_TYPE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.SESSION_END_TIME;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.SESSION_START;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.SESSION_START_TIME;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.SUPPORT_AD_SPLIT;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.UPDATED_ON;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.Date;
@@ -20,7 +48,7 @@ import jakarta.persistence.Transient;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384", "PMD.AvoidDuplicateLiterals"})
+@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
 @Entity
 @Table(name = "court_schedule")
 @SqlResultSetMappings({
@@ -30,38 +58,38 @@ import org.hibernate.annotations.UpdateTimestamp;
                         targetClass = CourtSchedule.class,
                         columns = {
                                 @ColumnResult(name = "id", type = String.class),
-                                @ColumnResult(name = "court_listing_profile_id", type = String.class),
-                                @ColumnResult(name = "oucode", type = String.class),
-                                @ColumnResult(name = "court_room_id", type = String.class),
-                                @ColumnResult(name = "court_room_number", type = Integer.class),
-                                @ColumnResult(name = "court_house_id", type = String.class),
-                                @ColumnResult(name = "court_house_name", type = String.class),
-                                @ColumnResult(name = "court_room_name", type = String.class),
-                                @ColumnResult(name = "operational_unit", type = String.class),
-                                @ColumnResult(name = "rota_business_type", type = String.class),
-                                @ColumnResult(name = "panel", type = String.class),
-                                @ColumnResult(name = "court_session", type = String.class),
-                                @ColumnResult(name = "active", type = Boolean.class),
-                                @ColumnResult(name = "is_slot_based", type = Boolean.class),
-                                @ColumnResult(name = "session_start", type = LocalDate.class),
-                                @ColumnResult(name = "max_slot", type = Integer.class),
-                                @ColumnResult(name = "max_duration_mins", type = Integer.class),
-                                @ColumnResult(name = "available_slot", type = Integer.class),
-                                @ColumnResult(name = "available_duration_mins", type = Integer.class),
-                                @ColumnResult(name = "support_ad_split", type = Boolean.class),
-                                @ColumnResult(name = "max_ad_morning_duration", type = Integer.class),
-                                @ColumnResult(name = "max_ad_afternoon_duration", type = Integer.class),
-                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class),
-                                @ColumnResult(name = "session_start_time", type = Date.class),
-                                @ColumnResult(name = "session_end_time", type = Date.class),
-                                @ColumnResult(name = "created_on", type = Timestamp.class),
-                                @ColumnResult(name = "updated_on", type = Timestamp.class),
+                                @ColumnResult(name = COURT_LISTING_PROFILE_ID, type = String.class),
+                                @ColumnResult(name = OU_CODE, type = String.class),
+                                @ColumnResult(name = COURT_ROOM_ID, type = String.class),
+                                @ColumnResult(name = COURT_ROOM_NUMBER, type = Integer.class),
+                                @ColumnResult(name = COURT_HOUSE_ID, type = String.class),
+                                @ColumnResult(name = COURT_HOUSE_NAME, type = String.class),
+                                @ColumnResult(name = COURT_ROOM_NAME, type = String.class),
+                                @ColumnResult(name = OPERATIONAL_UNIT, type = String.class),
+                                @ColumnResult(name = ROTA_BUSINESS_TYPE, type = String.class),
+                                @ColumnResult(name = PANEL, type = String.class),
+                                @ColumnResult(name = COURT_SESSION, type = String.class),
+                                @ColumnResult(name = ACTIVE, type = Boolean.class),
+                                @ColumnResult(name = IS_SLOT_BASED, type = Boolean.class),
+                                @ColumnResult(name = SESSION_START, type = LocalDate.class),
+                                @ColumnResult(name = MAX_SLOT, type = Integer.class),
+                                @ColumnResult(name = MAX_DURATION_MINS, type = Integer.class),
+                                @ColumnResult(name = AVAILABLE_SLOT, type = Integer.class),
+                                @ColumnResult(name = AVAILABLE_DURATION_MINS, type = Integer.class),
+                                @ColumnResult(name = SUPPORT_AD_SPLIT, type = Boolean.class),
+                                @ColumnResult(name = MAX_AD_MORNING_DURATION, type = Integer.class),
+                                @ColumnResult(name = MAX_AD_AFTERNOON_DURATION, type = Integer.class),
+                                @ColumnResult(name = IS_OVERBOOKING_ALLOWED, type = Boolean.class),
+                                @ColumnResult(name = SESSION_START_TIME, type = Date.class),
+                                @ColumnResult(name = SESSION_END_TIME, type = Date.class),
+                                @ColumnResult(name = CREATED_ON, type = Timestamp.class),
+                                @ColumnResult(name = UPDATED_ON, type = Timestamp.class),
                                 @ColumnResult(name = "hasHearingsBooked", type = Boolean.class),
                                 @ColumnResult(name = "totalbookedformorning", type = Integer.class),
                                 @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
                                 @ColumnResult(name = "totalbooked", type = Integer.class),
-                                @ColumnResult(name = "is_draft", type = Boolean.class),
-                                @ColumnResult(name = "jurisdiction", type = String.class)
+                                @ColumnResult(name = IS_DRAFT, type = Boolean.class),
+                                @ColumnResult(name = JURISDICTION, type = String.class)
                         }
                 )
         ),
@@ -71,38 +99,38 @@ import org.hibernate.annotations.UpdateTimestamp;
                         targetClass = CourtSchedule.class,
                         columns = {
                                 @ColumnResult(name = "id", type = String.class),
-                                @ColumnResult(name = "court_listing_profile_id", type = String.class),
-                                @ColumnResult(name = "oucode", type = String.class),
-                                @ColumnResult(name = "court_room_id", type = String.class),
-                                @ColumnResult(name = "court_room_number", type = Integer.class),
-                                @ColumnResult(name = "court_house_id", type = String.class),
-                                @ColumnResult(name = "court_house_name", type = String.class),
-                                @ColumnResult(name = "court_room_name", type = String.class),
-                                @ColumnResult(name = "operational_unit", type = String.class),
-                                @ColumnResult(name = "rota_business_type", type = String.class),
-                                @ColumnResult(name = "panel", type = String.class),
-                                @ColumnResult(name = "court_session", type = String.class),
-                                @ColumnResult(name = "active", type = Boolean.class),
-                                @ColumnResult(name = "is_slot_based", type = Boolean.class),
-                                @ColumnResult(name = "session_start", type = LocalDate.class),
-                                @ColumnResult(name = "max_slot", type = Integer.class),
-                                @ColumnResult(name = "max_duration_mins", type = Integer.class),
-                                @ColumnResult(name = "available_slot", type = Integer.class),
-                                @ColumnResult(name = "available_duration_mins", type = Integer.class),
-                                @ColumnResult(name = "support_ad_split", type = Boolean.class),
-                                @ColumnResult(name = "max_ad_morning_duration", type = Integer.class),
-                                @ColumnResult(name = "max_ad_afternoon_duration", type = Integer.class),
-                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class),
-                                @ColumnResult(name = "session_start_time", type = Date.class),
-                                @ColumnResult(name = "session_end_time", type = Date.class),
-                                @ColumnResult(name = "created_on", type = Timestamp.class),
-                                @ColumnResult(name = "updated_on", type = Timestamp.class),
+                                @ColumnResult(name = COURT_LISTING_PROFILE_ID, type = String.class),
+                                @ColumnResult(name = OU_CODE, type = String.class),
+                                @ColumnResult(name = COURT_ROOM_ID, type = String.class),
+                                @ColumnResult(name = COURT_ROOM_NUMBER, type = Integer.class),
+                                @ColumnResult(name = COURT_HOUSE_ID, type = String.class),
+                                @ColumnResult(name = COURT_HOUSE_NAME, type = String.class),
+                                @ColumnResult(name = COURT_ROOM_NAME, type = String.class),
+                                @ColumnResult(name = OPERATIONAL_UNIT, type = String.class),
+                                @ColumnResult(name = ROTA_BUSINESS_TYPE, type = String.class),
+                                @ColumnResult(name = PANEL, type = String.class),
+                                @ColumnResult(name = COURT_SESSION, type = String.class),
+                                @ColumnResult(name = ACTIVE, type = Boolean.class),
+                                @ColumnResult(name = IS_SLOT_BASED, type = Boolean.class),
+                                @ColumnResult(name = SESSION_START, type = LocalDate.class),
+                                @ColumnResult(name = MAX_SLOT, type = Integer.class),
+                                @ColumnResult(name = MAX_DURATION_MINS, type = Integer.class),
+                                @ColumnResult(name = AVAILABLE_SLOT, type = Integer.class),
+                                @ColumnResult(name = AVAILABLE_DURATION_MINS, type = Integer.class),
+                                @ColumnResult(name = SUPPORT_AD_SPLIT, type = Boolean.class),
+                                @ColumnResult(name = MAX_AD_MORNING_DURATION, type = Integer.class),
+                                @ColumnResult(name = MAX_AD_AFTERNOON_DURATION, type = Integer.class),
+                                @ColumnResult(name = IS_OVERBOOKING_ALLOWED, type = Boolean.class),
+                                @ColumnResult(name = SESSION_START_TIME, type = Date.class),
+                                @ColumnResult(name = SESSION_END_TIME, type = Date.class),
+                                @ColumnResult(name = CREATED_ON, type = Timestamp.class),
+                                @ColumnResult(name = UPDATED_ON, type = Timestamp.class),
                                 @ColumnResult(name = "national_break_time", type = Date.class),
                                 @ColumnResult(name = "totalbookedformorning", type = Integer.class),
                                 @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
                                 @ColumnResult(name = "totalbooked", type = Integer.class),
-                                @ColumnResult(name = "is_draft", type = Boolean.class),
-                                @ColumnResult(name = "jurisdiction", type = String.class)
+                                @ColumnResult(name = IS_DRAFT, type = Boolean.class),
+                                @ColumnResult(name = JURISDICTION, type = String.class)
                         }
                 )
         ),
@@ -112,36 +140,36 @@ import org.hibernate.annotations.UpdateTimestamp;
                         targetClass = CourtSchedule.class,
                         columns = {
                                 @ColumnResult(name = "id", type = String.class), // Replace with actual column types
-                                @ColumnResult(name = "court_listing_profile_id", type = String.class),
-                                @ColumnResult(name = "oucode", type = String.class),
-                                @ColumnResult(name = "court_room_id", type = String.class),
-                                @ColumnResult(name = "court_room_number", type = Integer.class),
-                                @ColumnResult(name = "court_house_id", type = String.class),
-                                @ColumnResult(name = "court_house_name", type = String.class),
-                                @ColumnResult(name = "court_room_name", type = String.class),
-                                @ColumnResult(name = "operational_unit", type = String.class),
-                                @ColumnResult(name = "rota_business_type", type = String.class),
-                                @ColumnResult(name = "panel", type = String.class),
-                                @ColumnResult(name = "court_session", type = String.class),
-                                @ColumnResult(name = "active", type = Boolean.class),
-                                @ColumnResult(name = "is_slot_based", type = Boolean.class),
-                                @ColumnResult(name = "session_start", type = LocalDate.class),
-                                @ColumnResult(name = "max_slot", type = Integer.class),
-                                @ColumnResult(name = "max_duration_mins", type = Integer.class),
-                                @ColumnResult(name = "available_slot", type = Integer.class),
-                                @ColumnResult(name = "available_duration_mins", type = Integer.class),
+                                @ColumnResult(name = COURT_LISTING_PROFILE_ID, type = String.class),
+                                @ColumnResult(name = OU_CODE, type = String.class),
+                                @ColumnResult(name = COURT_ROOM_ID, type = String.class),
+                                @ColumnResult(name = COURT_ROOM_NUMBER, type = Integer.class),
+                                @ColumnResult(name = COURT_HOUSE_ID, type = String.class),
+                                @ColumnResult(name = COURT_HOUSE_NAME, type = String.class),
+                                @ColumnResult(name = COURT_ROOM_NAME, type = String.class),
+                                @ColumnResult(name = OPERATIONAL_UNIT, type = String.class),
+                                @ColumnResult(name = ROTA_BUSINESS_TYPE, type = String.class),
+                                @ColumnResult(name = PANEL, type = String.class),
+                                @ColumnResult(name = COURT_SESSION, type = String.class),
+                                @ColumnResult(name = ACTIVE, type = Boolean.class),
+                                @ColumnResult(name = IS_SLOT_BASED, type = Boolean.class),
+                                @ColumnResult(name = SESSION_START, type = LocalDate.class),
+                                @ColumnResult(name = MAX_SLOT, type = Integer.class),
+                                @ColumnResult(name = MAX_DURATION_MINS, type = Integer.class),
+                                @ColumnResult(name = AVAILABLE_SLOT, type = Integer.class),
+                                @ColumnResult(name = AVAILABLE_DURATION_MINS, type = Integer.class),
                                 @ColumnResult(name = "hasHearingsBooked", type = Boolean.class),
-                                @ColumnResult(name = "created_on", type = Timestamp.class),
-                                @ColumnResult(name = "updated_on", type = Timestamp.class),
-                                @ColumnResult(name = "support_ad_split", type = Boolean.class),
-                                @ColumnResult(name = "max_ad_morning_duration", type = Integer.class),
-                                @ColumnResult(name = "max_ad_afternoon_duration", type = Integer.class),
-                                @ColumnResult(name = "session_start_time", type = Date.class),
-                                @ColumnResult(name = "session_end_time", type = Date.class),
-                                @ColumnResult(name = "is_overbooking_allowed", type = Boolean.class),
+                                @ColumnResult(name = CREATED_ON, type = Timestamp.class),
+                                @ColumnResult(name = UPDATED_ON, type = Timestamp.class),
+                                @ColumnResult(name = SUPPORT_AD_SPLIT, type = Boolean.class),
+                                @ColumnResult(name = MAX_AD_MORNING_DURATION, type = Integer.class),
+                                @ColumnResult(name = MAX_AD_AFTERNOON_DURATION, type = Integer.class),
+                                @ColumnResult(name = SESSION_START_TIME, type = Date.class),
+                                @ColumnResult(name = SESSION_END_TIME, type = Date.class),
+                                @ColumnResult(name = IS_OVERBOOKING_ALLOWED, type = Boolean.class),
                                 @ColumnResult(name = "national_break_time" , type = Date.class),
-                                @ColumnResult(name = "is_draft", type = Boolean.class),
-                                @ColumnResult(name = "jurisdiction", type = String.class),
+                                @ColumnResult(name = IS_DRAFT, type = Boolean.class),
+                                @ColumnResult(name = JURISDICTION, type = String.class),
                         }
                 )
         )
@@ -153,77 +181,77 @@ public class CourtSchedule {
     @Column(name = "id", nullable = false)
     private String courtScheduleId;
 
-    @Column(name = "court_listing_profile_id", nullable = false)
+    @Column(name = COURT_LISTING_PROFILE_ID, nullable = false)
     private String listingProfileId;
-    @Column(name = "oucode", nullable = false)
+    @Column(name = OU_CODE, nullable = false)
     private String ouCode;
-    @Column(name = "court_room_id", nullable = false)
+    @Column(name = COURT_ROOM_ID, nullable = false)
     private String courtRoomId;
-    @Column(name = "court_room_number", nullable = false)
+    @Column(name = COURT_ROOM_NUMBER, nullable = false)
     private Integer courtRoomNumber;
-    @Column(name = "court_house_id", nullable = false)
+    @Column(name = COURT_HOUSE_ID, nullable = false)
     private String courtHouseId;// same as courtCentreId
-    @Column(name = "court_house_name", nullable = false)
+    @Column(name = COURT_HOUSE_NAME, nullable = false)
     private String courtHouseName;
-    @Column(name = "court_room_name", nullable = false)
+    @Column(name = COURT_ROOM_NAME, nullable = false)
     private String courtRoomName;
-    @Column(name = "operational_unit", nullable = false)
+    @Column(name = OPERATIONAL_UNIT, nullable = false)
     private String operationalUnit;
-    @Column(name = "rota_business_type", nullable = false)
+    @Column(name = ROTA_BUSINESS_TYPE, nullable = false)
     private String businessType;
-    @Column(name = "panel", nullable = false)
+    @Column(name = PANEL, nullable = false)
     private String panel;
-    @Column(name = "court_session", nullable = false)
+    @Column(name = COURT_SESSION, nullable = false)
     private String courtSession;
-    @Column(name = "active", nullable = false)
+    @Column(name = ACTIVE, nullable = false)
     private Boolean active;
-    @Column(name = "is_slot_based", nullable = false)
+    @Column(name = IS_SLOT_BASED, nullable = false)
     private Boolean slotBased;
-    @Column(name = "session_start", nullable = false)
+    @Column(name = SESSION_START, nullable = false)
     private LocalDate sessionDate;
-    @Column(name = "max_slot", nullable = false)
+    @Column(name = MAX_SLOT, nullable = false)
     private Integer maxSlots;
-    @Column(name = "max_duration_mins", nullable = false)
+    @Column(name = MAX_DURATION_MINS, nullable = false)
     private Integer maxDuration;
-    @Column(name = "available_slot", nullable = false)
+    @Column(name = AVAILABLE_SLOT, nullable = false)
     private Integer availableSlots;
-    @Column(name = "available_duration_mins", nullable = false)
+    @Column(name = AVAILABLE_DURATION_MINS, nullable = false)
     private Integer availableDuration;
     @Transient
     @Column(name = "hasHearingsBooked", nullable = false)
     private Boolean hasHearingsBooked;
 
-    @Column(name = "support_ad_split", nullable = false)
+    @Column(name = SUPPORT_AD_SPLIT, nullable = false)
     private Boolean supportAdSplit;
-    @Column(name = "max_ad_morning_duration", nullable = false)
+    @Column(name = MAX_AD_MORNING_DURATION, nullable = false)
     private Integer maxAdMorningDuration;
-    @Column(name = "max_ad_afternoon_duration", nullable = false)
+    @Column(name = MAX_AD_AFTERNOON_DURATION, nullable = false)
     private Integer maxAdAfternoonDuration;
 
-    @Column(name = "session_start_time", nullable = false)
+    @Column(name = SESSION_START_TIME, nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date sessionStartTime;
-    @Column(name = "session_end_time", nullable = false)
+    @Column(name = SESSION_END_TIME, nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date sessionEndTime;
 
-    @Column(name = "is_overbooking_allowed", nullable = false)
+    @Column(name = IS_OVERBOOKING_ALLOWED, nullable = false)
     private Boolean isOverbookingAllowed;
 
-    @Column(name = "is_draft", nullable = false)
+    @Column(name = IS_DRAFT, nullable = false)
     private Boolean isDraft;
 
-    @Column(name = "jurisdiction", nullable = false)
+    @Column(name = JURISDICTION, nullable = false)
     private String jurisdiction;
 
     @CreationTimestamp
     @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "created_on", nullable = false)
+    @Column(name = CREATED_ON, nullable = false)
     private Date createdOn;
 
     @UpdateTimestamp
     @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "updated_on", nullable = false)
+    @Column(name = UPDATED_ON, nullable = false)
     private Date updatedOn;
 
     @Transient

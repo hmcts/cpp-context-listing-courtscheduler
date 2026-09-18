@@ -989,7 +989,7 @@ public class SlotsUpdateService {
         }
     }
 
-    /* default */ static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions,
+   static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions,
                                               final String hearingId) {
         for (int i = 1; i < sessions.size(); i++) {
             final LocalDate previousDate = sessions.get(i - 1).getSessionDate();
@@ -1007,11 +1007,11 @@ public class SlotsUpdateService {
         return true;
     }
 
-    /* default */ static LocalDate getNextBusinessDay(final LocalDate date) {
+   static LocalDate getNextBusinessDay(final LocalDate date) {
         return SessionAvailability.getNextBusinessDay(date);
     }
 
-    /* default */ static List<CourtSchedule> dedupeByDatePreferringBookable(
+   static List<CourtSchedule> dedupeByDatePreferringBookable(
             final List<CourtSchedule> sessions,
             final int requiredPerDayMinutes) {
         final LinkedHashMap<LocalDate, CourtSchedule> byDate = new LinkedHashMap<>();
@@ -1044,7 +1044,7 @@ public class SlotsUpdateService {
         return !existing.isOverbookingAllowed() && incoming.isOverbookingAllowed() ? incoming : existing;
     }
 
-    /* default */ static int getEffectiveAvailableDuration(final CourtSchedule cs) {
+   static int getEffectiveAvailableDuration(final CourtSchedule cs) {
         return SessionAvailability.getEffectiveAvailableDuration(cs);
     }
 

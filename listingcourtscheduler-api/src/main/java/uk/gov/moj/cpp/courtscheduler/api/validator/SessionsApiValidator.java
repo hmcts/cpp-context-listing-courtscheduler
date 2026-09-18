@@ -571,7 +571,7 @@ public class SessionsApiValidator {
         return validateSession(params, true);
     }
 
-    /* default */ JsonObject validateSession(final SessionValidationParams params, final boolean sessionToBeAdded) {
+   JsonObject validateSession(final SessionValidationParams params, final boolean sessionToBeAdded) {
         if (ALL_DAY.equals(params.getSessionType()) && isNull(params.isAllDaySplit())) {
             return buildErrorResponse(ErrorMessages.ALL_DAY_SPLIT_MANDATORY_FOR_AD_SESSION);
         }

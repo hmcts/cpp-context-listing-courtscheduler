@@ -1197,7 +1197,7 @@ public class SessionsService {
     private record AvailabilityBreakdown(int total, int morning, int afternoon, boolean adSplit) {
     }
 
-    /* default */ static LocalDate advanceByWeekdays(final LocalDate start, final int weekdaysToAdvance) {
+   static LocalDate advanceByWeekdays(final LocalDate start, final int weekdaysToAdvance) {
         LocalDate date = start;
         for (int i = 0; i < weekdaysToAdvance; i++) {
             date = nextWeekday(date);
@@ -1205,7 +1205,7 @@ public class SessionsService {
         return date;
     }
 
-    /* default */ static LocalDate nextWeekday(final LocalDate date) {
+   static LocalDate nextWeekday(final LocalDate date) {
         LocalDate next = date.plusDays(1);
         while (next.getDayOfWeek() == DayOfWeek.SATURDAY || next.getDayOfWeek() == DayOfWeek.SUNDAY) {
             next = next.plusDays(1);

@@ -90,11 +90,12 @@ import org.springframework.transaction.annotation.Transactional;
  * abstract methods now live on {@link CourtScheduleRepository}; the EntityManager-driven
  * business logic stays here.
  */
-@SuppressWarnings({"squid:S1312", "squid:S2629", "squid:S6813", "PMD.AvoidDuplicateLiterals"})
+@SuppressWarnings({"squid:S1312", "squid:S2629", "squid:S6813"})
 @Component
 @Transactional(readOnly = true)
 public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCustom {
 
+    private static final String UNCHECKED_WARNING = "unchecked";
     public static final String BUSINESS_TYPE = "businessType";
     // Returns one row per court_schedule. Aggregates fold allocated_listings into the group so
     // availability (available_slot, available_duration_mins, totalbooked{,formorning,forafternoon})
@@ -963,7 +964,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             query.setParameter(COURT_ROOM_ID, courtRoomId);
         }
         query.setMaxResults(1);
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings(UNCHECKED_WARNING)
         final List<String> ids = query.getResultList();
         if (ids.isEmpty()) {
             return Optional.empty();
@@ -1019,7 +1020,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
         query.setMaxResults(1);
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings(UNCHECKED_WARNING)
         final List<String> ids = query.getResultList();
         if (ids.isEmpty()) {
             return Optional.empty();
@@ -1151,7 +1152,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         roomJpaQuery.setParameter(COURT_CENTRE_ID, courtCentreId);
         roomJpaQuery.setParameter("fromDate", java.sql.Date.valueOf(fromDate));
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings(UNCHECKED_WARNING)
         final List<Object[]> rooms = roomJpaQuery.getResultList();
         if (isEmpty(rooms)) {
             return Collections.emptyList();
@@ -1196,7 +1197,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         query.setParameter(START_DATE, java.sql.Date.valueOf(fromInclusive));
         query.setParameter(END_DATE, java.sql.Date.valueOf(toInclusive));
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings(UNCHECKED_WARNING)
         final List<String> ids = query.getResultList();
         if (isEmpty(ids)) {
             return Collections.emptyList();
@@ -1253,7 +1254,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             query.setParameter(IS_DRAFT, isDraft);
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings(UNCHECKED_WARNING)
         final List<String> ids = query.getResultList();
         if (isEmpty(ids)) {
             return Collections.emptyList();
@@ -1355,7 +1356,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         );
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings(UNCHECKED_WARNING)
     public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam requestParam) {
         final Map<String, Object> queryParamsForCount = buildQueryParams(requestParam, true);
         final Map<String, Object> queryParamsForResult = buildQueryParams(requestParam, false);
@@ -1424,7 +1425,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final jakarta.persistence.Query discoveryQuery = entityManager.createNativeQuery(discoverySql);
         buildQueryParams(requestParam, true).forEach(discoveryQuery::setParameter);
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings(UNCHECKED_WARNING)
         final List<Object[]> rows = discoveryQuery.getResultList();
 
         if (rows.isEmpty()) {

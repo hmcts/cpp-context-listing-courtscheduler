@@ -11,9 +11,9 @@ public class ProvisionalSessionDateProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProvisionalSessionDateProvider.class.getName());
 
-    private Map<ProvisionalDataLookUpKey, LocalDate> provisionalDataLookUp = new TreeMap();
-    private ProvisionalDataExtractDateInfoProvider provisionalDataExtractDateInfoProvider;
-    private ProvisionalDataDateInfoProvider provisionalDataDateInfoProvider;
+    private final Map<ProvisionalDataLookUpKey, LocalDate> provisionalDataLookUp = new TreeMap();
+    private final ProvisionalDataExtractDateInfoProvider provisionalDataExtractDateInfoProvider;
+    private final ProvisionalDataDateInfoProvider provisionalDataDateInfoProvider;
 
     public ProvisionalSessionDateProvider(final ProvisionalDataExtractDateInfoProvider provisionalDataExtractDateInfoProvider,
                                           final ProvisionalDataDateInfoProvider provisionalDataDateInfoProvider,

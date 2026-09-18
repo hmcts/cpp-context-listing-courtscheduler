@@ -14,16 +14,16 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(name = "rota_process_log")
 public class RotaProcessLog {
 
     @Id
-    @GeneratedValue(generator = "uuid2")
-    @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(name = "id", columnDefinition = "uuid")
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "id", nullable = false)
     private UUID id;
 
     @Column(name = "execution_id")
@@ -40,8 +40,11 @@ public class RotaProcessLog {
     @Column(name = "error_text", nullable = false)
     private String errorText;
 
-    public RotaProcessLog() {
-        //For JPA
+    protected RotaProcessLog() {
+    }
+
+    public UUID getId() {
+        return id;
     }
 
     public String getExecutionId() {
@@ -74,14 +77,6 @@ public class RotaProcessLog {
 
     public void setErrorText(final String errorText) {
         this.errorText = errorText;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(final UUID id) {
-        this.id = id;
     }
 
     @Override

@@ -4,6 +4,7 @@ import static java.util.Arrays.stream;
 import static uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam.SearchCourtSchedulesByIdRequestParamBuilder.searchCourtSchedulesByIdRequestParamBuilder;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -99,7 +100,6 @@ import uk.gov.moj.cpp.courtscheduler.openapi.api.ValidateOpenApi;
  * rename-shaped delete+add noise from a per-concern split).</p>
  */
 @RestController
-@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public class CourtSchedulerApi implements CourtscheduleOpenApi,
                                           SessionOpenApi,
                                           HearingsOpenApi,
@@ -339,8 +339,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     private Map<String, Object> toSessionMapWithUtcTimes(final CourtSchedule cs) {
-        @SuppressWarnings("unchecked")
-        final Map<String, Object> map = objectMapper.convertValue(cs, Map.class);
+        final Map<String, Object> map = objectMapper.convertValue(cs,
+            new TypeReference<>() { });
         if (cs.getSessionStartTime() != null) {
             map.put("sessionStartTime", UTC_HH_MM_FORMATTER.format(cs.getSessionStartTime().toInstant()));
         }
@@ -557,17 +557,17 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         } catch (CrownFallbackNoSessionException | NoSessionAvailableException e) {
             // Booking-family 422s keep the legacy FLAT body ({"errorCode":...,"message":...}) —
             // UnprocessableEntityException would render the judiciary-validate wrapper instead.
-            return ResponseEntity.unprocessableEntity()
+            return ResponseEntity.status(422)
                     .body(JsonValueConverter.toMap(buildNoSessionErrorBody(e.getMessage())));
         } catch (NoAllocationOnDateException e) {
-            return ResponseEntity.unprocessableEntity()
+            return ResponseEntity.status(422)
                     .body(JsonValueConverter.toMap(buildErrorBody("NO_ALLOCATION_ON_DATE", e.getMessage())));
         } catch (ExtendMultidayHearingException e) {
             // SPRDT-1273: a same-start resize inside crown.search.and.book is delegated to the
             // extend/shrink service; its rejections (NO_AVAILABILITY with the unavailable dates,
             // INVALID_DATE_RANGE) surface on this endpoint with the same flat 422 body the retired
             // PATCH extend endpoint used, so the listing caller can propagate them to the UI.
-            return ResponseEntity.unprocessableEntity()
+            return ResponseEntity.status(422)
                     .body(JsonValueConverter.toMap(buildExtendErrorBody(e)));
         }
         throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
@@ -704,9 +704,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return raw == null ? null : java.time.LocalDate.parse(raw);
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> toResponseMap(final Object response) {
-        return response == null ? new LinkedHashMap<>() : objectMapper.convertValue(response, Map.class);
+        return response == null ? new LinkedHashMap<>() : objectMapper.convertValue(response,
+            new TypeReference<>() { });
     }
 
     /* ============================================================

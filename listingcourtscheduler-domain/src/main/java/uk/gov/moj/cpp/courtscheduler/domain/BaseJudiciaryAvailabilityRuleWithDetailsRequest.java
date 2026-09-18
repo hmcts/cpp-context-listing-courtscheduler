@@ -1,8 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -15,8 +12,6 @@ import java.util.List;
 public abstract class BaseJudiciaryAvailabilityRuleWithDetailsRequest extends BaseJudiciaryAvailabilityRuleRequest {
 
     protected List<AvailabilityDayOfWeek> repeatDays;
-    @Setter
-    @Getter
     protected SessionType sessionType;
     protected List<JudiciaryUnavailabilityRequest> unavailabilities;
 
@@ -33,6 +28,14 @@ public abstract class BaseJudiciaryAvailabilityRuleWithDetailsRequest extends Ba
      */
     public void setRepeatDays(final List<AvailabilityDayOfWeek> repeatDays) {
         this.repeatDays = repeatDays == null ? null : new ArrayList<>(repeatDays);
+    }
+
+    public SessionType getSessionType() {
+        return sessionType;
+    }
+
+    public void setSessionType(SessionType sessionType) {
+        this.sessionType = sessionType;
     }
 
     /**

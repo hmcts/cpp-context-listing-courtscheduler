@@ -44,9 +44,9 @@ import org.slf4j.LoggerFactory;
 public class HearingSlotsApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
 
-    /* default */ static final String SHOULD_BE_ENTERED = " should be entered";
+   static final String SHOULD_BE_ENTERED = " should be entered";
 
-    /* default */ static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
+   static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
             "courtScheduleId is not permitted on mags.search.and.book — Magistrates bookings never anchor on a courtScheduleId";
 
     @Inject

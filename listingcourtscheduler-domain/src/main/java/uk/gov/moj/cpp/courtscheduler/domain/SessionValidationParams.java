@@ -1,7 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-import java.util.Date;
-
 public class SessionValidationParams {
     private String courtScheduleId;
     private Integer maxDurationForMorning;
@@ -33,7 +31,6 @@ public class SessionValidationParams {
         this.sessionEndTime = sessionEndTime;
     }
 
-    // Getters and setters
     public Integer getMaxDurationForMorning() {
         return maxDurationForMorning;
     }
