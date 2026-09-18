@@ -33,16 +33,16 @@ public class TimezoneUtils {
      * @param utcDate The UTC date to convert
      * @return The date in local time (BST/GMT)
      */
-    public static Date utcToLocal(Date utcDate) {
+    public static Date utcToLocal(final Date utcDate) {
         if (utcDate == null) {
             return null;
         }
 
         // Convert to ZonedDateTime in UTC
-        ZonedDateTime utcZoned = utcDate.toInstant().atZone(UTC_ZONE);
+        final ZonedDateTime utcZoned = utcDate.toInstant().atZone(UTC_ZONE);
         
         // Convert to London time
-        ZonedDateTime londonZoned = utcZoned.withZoneSameInstant(LONDON_ZONE);
+        final ZonedDateTime londonZoned = utcZoned.withZoneSameInstant(LONDON_ZONE);
         
         // Convert back to Date
         return Date.from(londonZoned.toInstant());
@@ -55,16 +55,16 @@ public class TimezoneUtils {
      * @param localDate The local date to convert
      * @return The date in UTC
      */
-    public static Date localToUtc(Date localDate) {
+    public static Date localToUtc(final Date localDate) {
         if (localDate == null) {
             return null;
         }
         
         // Convert to ZonedDateTime in London time
-        ZonedDateTime londonZoned = localDate.toInstant().atZone(LONDON_ZONE);
+        final ZonedDateTime londonZoned = localDate.toInstant().atZone(LONDON_ZONE);
         
         // Convert to UTC
-        ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
+        final ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
         
         // Convert back to Date
         return Date.from(utcZoned.toInstant());
@@ -78,21 +78,21 @@ public class TimezoneUtils {
      * @param time The local time
      * @return The combined date and time in UTC
      */
-    public static Date combineLocalDateAndTimeToUtc(LocalDate date, LocalTime time) {
+    public static Date combineLocalDateAndTimeToUtc(final LocalDate date, final LocalTime time) {
         if (date == null || time == null) {
             return null;
         }
         
         // Create a LocalDateTime in London time
-        LocalDateTime localDateTime = LocalDateTime.of(date, time);
+        final LocalDateTime localDateTime = LocalDateTime.of(date, time);
 
         // Convert to ZonedDateTime in London time
-        ZonedDateTime londonZoned = localDateTime.atZone(LONDON_ZONE).withZoneSameInstant(UTC_ZONE);
+        final ZonedDateTime londonZoned = localDateTime.atZone(LONDON_ZONE).withZoneSameInstant(UTC_ZONE);
 
         // Convert to UTC
-        ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
+        final ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
 
-        Calendar calendar = new Calendar.Builder()
+        final Calendar calendar = new Calendar.Builder()
                 .setDate(utcZoned.getYear(), utcZoned.getMonthValue() - 1, utcZoned.getDayOfMonth())
                 .setTimeOfDay(utcZoned.getHour(), utcZoned.getMinute(), utcZoned.getSecond())
                 .build();
@@ -108,16 +108,16 @@ public class TimezoneUtils {
      * @param utcDate The UTC date to convert
      * @return The date in local time as an ISO string
      */
-    public static String utcToLocalIsoString(Date utcDate) {
+    public static String utcToLocalIsoString(final Date utcDate) {
         if (utcDate == null) {
             return null;
         }
         
         // Convert to ZonedDateTime in UTC
-        ZonedDateTime utcZoned = utcDate.toInstant().atZone(UTC_ZONE);
+        final ZonedDateTime utcZoned = utcDate.toInstant().atZone(UTC_ZONE);
         
         // Convert to London time
-        ZonedDateTime londonZoned = utcZoned.withZoneSameInstant(LONDON_ZONE);
+        final ZonedDateTime londonZoned = utcZoned.withZoneSameInstant(LONDON_ZONE);
         
         // Format as ISO string
         return londonZoned.format(DateUtils.ISO_8601_FORMATTER);
@@ -130,16 +130,16 @@ public class TimezoneUtils {
      * @param localIsoString The local time as an ISO string
      * @return The date in UTC
      */
-    public static Date localIsoStringToUtc(String localIsoString) {
+    public static Date localIsoStringToUtc(final String localIsoString) {
         if (localIsoString == null) {
             return null;
         }
         
         // Parse the ISO string to a ZonedDateTime in London time
-        ZonedDateTime londonZoned = ZonedDateTime.parse(localIsoString, DateUtils.ISO_8601_FORMATTER.withZone(LONDON_ZONE));
+        final ZonedDateTime londonZoned = ZonedDateTime.parse(localIsoString, DateUtils.ISO_8601_FORMATTER.withZone(LONDON_ZONE));
         
         // Convert to UTC
-        ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
+        final ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
         
         // Convert to Date
         return Date.from(utcZoned.toInstant());
@@ -153,19 +153,19 @@ public class TimezoneUtils {
      * @param sessionDate The session date to check
      * @return The national break time as a Date object
      */
-    public static Date calculateNationalBreakTime(LocalDate sessionDate) {
+    public static Date calculateNationalBreakTime(final LocalDate sessionDate) {
         if (sessionDate == null) {
             return null;
         }
 
         // Create a LocalDateTime at noon on the session date
-        LocalDateTime noonTime = sessionDate.atTime(12, 0);
+        final LocalDateTime noonTime = sessionDate.atTime(12, 0);
 
         // Convert to ZonedDateTime in London time
-        ZonedDateTime londonZoned = noonTime.atZone(LONDON_ZONE);
+        final ZonedDateTime londonZoned = noonTime.atZone(LONDON_ZONE);
 
         // Convert to UTC
-        ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
+        final ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
 
         final ZonedDateTime breakZoned = getZonedDateTime(sessionDate, londonZoned, utcZoned);
 
@@ -180,25 +180,25 @@ public class TimezoneUtils {
      * @param minute the local minute
      * @return the UTC time as a formatted string "HH:mm"
      */
-    public static String getUtcTimeStringForDate(LocalDate date, int hour, int minute) {
-        LocalTime localTime = LocalTime.of(hour, minute);
+    public static String getUtcTimeStringForDate(final LocalDate date, final int hour, final int minute) {
+        final LocalTime localTime = LocalTime.of(hour, minute);
 
-        ZonedDateTime localZdt = ZonedDateTime.of(date, localTime, LONDON_ZONE);
-        ZonedDateTime utcZdt = localZdt.withZoneSameInstant(ZoneOffset.UTC);
+        final ZonedDateTime localZdt = ZonedDateTime.of(date, localTime, LONDON_ZONE);
+        final ZonedDateTime utcZdt = localZdt.withZoneSameInstant(ZoneOffset.UTC);
 
         return utcZdt.format(TIME_FORMATTER); // format as "HH:mm"
     }
 
     private static ZonedDateTime getZonedDateTime(final LocalDate sessionDate, final ZonedDateTime londonZoned, final ZonedDateTime utcZoned) {
-        LocalTime britishSummerNationalBreakTime = LocalTime.of(12, 0);
-        LocalTime britishWinterNationalBreakTime = LocalTime.of(13, 0);
+        final LocalTime britishSummerNationalBreakTime = LocalTime.of(12, 0);
+        final LocalTime britishWinterNationalBreakTime = LocalTime.of(13, 0);
 
-        boolean isBritishSummerWinterBreakTime = londonZoned.getHour() != utcZoned.getHour();
+        final boolean isBritishSummerWinterBreakTime = londonZoned.getHour() != utcZoned.getHour();
 
-        LocalTime nationalBreakTime = isBritishSummerWinterBreakTime ?
+        final LocalTime nationalBreakTime = isBritishSummerWinterBreakTime ?
                 britishSummerNationalBreakTime : britishWinterNationalBreakTime;
 
-        LocalDateTime breakDateTime = sessionDate.atTime(nationalBreakTime);
+        final LocalDateTime breakDateTime = sessionDate.atTime(nationalBreakTime);
         return breakDateTime.atZone(UTC_ZONE);
     }
 }

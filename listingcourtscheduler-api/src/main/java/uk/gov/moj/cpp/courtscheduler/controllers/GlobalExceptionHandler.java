@@ -32,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class GlobalExceptionHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final String ERROR = "error";
 
     @ExceptionHandler(ValidationFailedException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(final ValidationFailedException ex) {
@@ -182,7 +183,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleStatus(final ResponseStatusException ex) {
         final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("error", ex.getReason() == null ? ex.getMessage() : ex.getReason());
+        body.put(ERROR, ex.getReason() == null ? ex.getMessage() : ex.getReason());
         return ResponseEntity.status(ex.getStatusCode()).body(body);
     }
 
@@ -190,7 +191,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleAny(final Exception ex) {
         LOG.error("Unhandled exception", ex);
         final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("error", "Internal Server Error");
+        body.put(ERROR, "Internal Server Error");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
@@ -202,11 +203,11 @@ public class GlobalExceptionHandler {
     private static Map<String, Object> errorBody(final List<String> messages) {
         final Map<String, Object> body = new LinkedHashMap<>();
         if (messages.isEmpty()) {
-            body.put("error", "");
+            body.put(ERROR, "");
         } else if (messages.size() == 1) {
-            body.put("error", messages.get(0));
+            body.put(ERROR, messages.get(0));
         } else {
-            body.put("error", String.join("; ", messages));
+            body.put(ERROR, String.join("; ", messages));
         }
         return body;
     }

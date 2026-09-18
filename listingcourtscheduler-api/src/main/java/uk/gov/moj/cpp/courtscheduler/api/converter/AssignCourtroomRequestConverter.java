@@ -18,7 +18,7 @@ public class AssignCourtroomRequestConverter implements Converter<JsonObject, As
         List<String> courtScheduleIds = new ArrayList<>();
         
         if (jsonObject.containsKey(RequestParameterConstant.COURT_SCHEDULE_IDS.getLabel()) && jsonObject.get(RequestParameterConstant.COURT_SCHEDULE_IDS.getLabel()) != null) {
-            JsonArray idsArray = jsonObject.getJsonArray(RequestParameterConstant.COURT_SCHEDULE_IDS.getLabel());
+            final JsonArray idsArray = jsonObject.getJsonArray(RequestParameterConstant.COURT_SCHEDULE_IDS.getLabel());
             if (idsArray != null) {
                 courtScheduleIds = idsArray.stream()
                         .map(value -> value.toString().replace("\"", ""))
@@ -27,7 +27,7 @@ public class AssignCourtroomRequestConverter implements Converter<JsonObject, As
             }
         }
         
-        String courtRoomId = jsonObject.containsKey(RequestParameterConstant.COURT_ROOM.getLabel())
+        final String courtRoomId = jsonObject.containsKey(RequestParameterConstant.COURT_ROOM.getLabel())
                 ? jsonObject.getString(RequestParameterConstant.COURT_ROOM.getLabel(), null)
                 : null;
 

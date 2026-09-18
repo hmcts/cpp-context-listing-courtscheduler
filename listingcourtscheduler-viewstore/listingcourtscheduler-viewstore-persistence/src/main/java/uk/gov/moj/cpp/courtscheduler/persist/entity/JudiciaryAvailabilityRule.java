@@ -76,7 +76,7 @@ public class JudiciaryAvailabilityRule {
         return this.id;
     }
 
-    public void setId(String id) {
+    public void setId(final String id) {
         this.id = id;
     }
 
@@ -84,7 +84,7 @@ public class JudiciaryAvailabilityRule {
         return this.judiciaryId;
     }
 
-    public void setJudiciaryId(String judiciaryId) {
+    public void setJudiciaryId(final String judiciaryId) {
         this.judiciaryId = judiciaryId;
     }
 
@@ -92,7 +92,7 @@ public class JudiciaryAvailabilityRule {
         return this.courtHouseId;
     }
 
-    public void setCourtHouseId(String courtHouseId) {
+    public void setCourtHouseId(final String courtHouseId) {
         this.courtHouseId = courtHouseId;
     }
 
@@ -100,7 +100,7 @@ public class JudiciaryAvailabilityRule {
         return this.unavailabilities;
     }
 
-    public void setUnavailabilities(java.util.List<JudiciaryUnavailability> unavailabilities) {
+    public void setUnavailabilities(final java.util.List<JudiciaryUnavailability> unavailabilities) {
         this.unavailabilities = unavailabilities;
     }
 
@@ -108,7 +108,7 @@ public class JudiciaryAvailabilityRule {
         return this.fromDate;
     }
 
-    public void setFromDate(LocalDate fromDate) {
+    public void setFromDate(final LocalDate fromDate) {
         this.fromDate = fromDate;
     }
 
@@ -116,7 +116,7 @@ public class JudiciaryAvailabilityRule {
         return this.toDate;
     }
 
-    public void setToDate(LocalDate toDate) {
+    public void setToDate(final LocalDate toDate) {
         this.toDate = toDate;
     }
 
@@ -124,7 +124,7 @@ public class JudiciaryAvailabilityRule {
         return this.repeatDays;
     }
 
-    public void setRepeatDays(List<JudiciaryAvailabilityRuleRepeatDay> repeatDays) {
+    public void setRepeatDays(final List<JudiciaryAvailabilityRuleRepeatDay> repeatDays) {
         this.repeatDays = repeatDays;
     }
 
@@ -132,7 +132,7 @@ public class JudiciaryAvailabilityRule {
         return this.createdOn;
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Date createdOn) {
         this.createdOn = createdOn;
     }
 
@@ -140,7 +140,7 @@ public class JudiciaryAvailabilityRule {
         return this.updatedOn;
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Date updatedOn) {
         this.updatedOn = updatedOn;
     }
 
@@ -154,7 +154,9 @@ public class JudiciaryAvailabilityRule {
 
     @Override
     public boolean equals(final Object o) {
-        if (!(o instanceof final JudiciaryAvailabilityRule that)) return false;
+        if (!(o instanceof final JudiciaryAvailabilityRule that)) {
+            return false;
+        }
         return Objects.equals(getId(), that.getId()) && Objects.equals(getJudiciaryId(), that.getJudiciaryId()) && Objects.equals(getCourtHouseId(), that.getCourtHouseId()) && Objects.equals(getFromDate(), that.getFromDate()) && Objects.equals(getToDate(), that.getToDate()) && Objects.equals(getRepeatDays(), that.getRepeatDays()) && getSessionType() == that.getSessionType() && Objects.equals(getCreatedOn(), that.getCreatedOn()) && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
     }
 

@@ -28,7 +28,7 @@ public class AllocatedHearingsQueryBuilder {
     private String allocatedHearingsQuery;
     private HearingSlotRequestParam hearingIdsReq;
 
-    public AllocatedHearingsQueryBuilder(HearingSlotRequestParam hearingIdsReq) {
+    public AllocatedHearingsQueryBuilder(final HearingSlotRequestParam hearingIdsReq) {
         this.hearingIdsReq = hearingIdsReq;
         bindQueryParamsFromHearingReq(hearingIdsReq);
         generateAllocatedHearingsQuery();
@@ -80,7 +80,7 @@ public class AllocatedHearingsQueryBuilder {
         allocatedHearingsQuery = queryStrBuilder.toString();
     }
 
-    private void bindQueryParamsFromHearingReq(HearingSlotRequestParam hearingIdsReq) {
+    private void bindQueryParamsFromHearingReq(final HearingSlotRequestParam hearingIdsReq) {
         pagedQueryParamMap = new HashMap<>();
         pagedQueryParamMap.put(PANEL.getLabel(), stream(hearingIdsReq.panel().split(",")).map(String::trim).toList());
         pagedQueryParamMap.put(SESSION_START_DATE.getLabel(), LocalDate.parse(hearingIdsReq.sessionStartDate()));
@@ -98,13 +98,13 @@ public class AllocatedHearingsQueryBuilder {
         addOptionalParam(EXACT_HEARING_START_DATETIME.getLabel(), hearingIdsReq.exactHearingStartDateTime());
     }
 
-    private void addOptionalParam(String name, String val) {
+    private void addOptionalParam(final String name, final String val) {
         if (StringUtils.isNotBlank(val)) {
             pagedQueryParamMap.put(name, val);
         }
     }
 
-    private void addCondition(String name, String condition, StringBuilder queryBuilder) {
+    private void addCondition(final String name, final String condition, final StringBuilder queryBuilder) {
         if (pagedQueryParamMap.containsKey(name)) {
             queryBuilder.append(condition);
         }

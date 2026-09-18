@@ -61,7 +61,7 @@ public class JudiciaryUnavailability {
         return this.id;
     }
 
-    public void setId(String id) {
+    public void setId(final String id) {
         this.id = id;
     }
 
@@ -69,7 +69,7 @@ public class JudiciaryUnavailability {
         return this.rule;
     }
 
-    public void setRule(JudiciaryAvailabilityRule rule) {
+    public void setRule(final JudiciaryAvailabilityRule rule) {
         this.rule = rule;
     }
 
@@ -77,7 +77,7 @@ public class JudiciaryUnavailability {
         return this.fromDate;
     }
 
-    public void setFromDate(LocalDate fromDate) {
+    public void setFromDate(final LocalDate fromDate) {
         this.fromDate = fromDate;
     }
 
@@ -85,7 +85,7 @@ public class JudiciaryUnavailability {
         return this.toDate;
     }
 
-    public void setToDate(LocalDate toDate) {
+    public void setToDate(final LocalDate toDate) {
         this.toDate = toDate;
     }
 
@@ -93,7 +93,7 @@ public class JudiciaryUnavailability {
         return this.reason;
     }
 
-    public void setReason(UnavailabilityReason reason) {
+    public void setReason(final UnavailabilityReason reason) {
         this.reason = reason;
     }
 
@@ -101,7 +101,7 @@ public class JudiciaryUnavailability {
         return this.createdOn;
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Date createdOn) {
         this.createdOn = createdOn;
     }
 
@@ -109,13 +109,15 @@ public class JudiciaryUnavailability {
         return this.updatedOn;
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Date updatedOn) {
         this.updatedOn = updatedOn;
     }
 
     @Override
     public boolean equals(final Object o) {
-        if (!(o instanceof final JudiciaryUnavailability that)) return false;
+        if (!(o instanceof final JudiciaryUnavailability that)) {
+            return false;
+        }
         return Objects.equals(getId(), that.getId()) && Objects.equals(getRule(), that.getRule()) && Objects.equals(getFromDate(), that.getFromDate()) && Objects.equals(getToDate(), that.getToDate()) && Objects.equals(getReason(), that.getReason()) && Objects.equals(getCreatedOn(), that.getCreatedOn()) && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
     }
 

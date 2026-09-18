@@ -50,22 +50,22 @@ public class RepeatPattern {
             return new RepeatPatternBuilder();
         }
 
-        public RepeatPatternBuilder withFrequency(RepeatFrequency frequency) {
+        public RepeatPatternBuilder withFrequency(final RepeatFrequency frequency) {
             this.frequency = frequency;
             return this;
         }
 
-        public RepeatPatternBuilder withRepeatFor(Integer repeatFor) {
+        public RepeatPatternBuilder withRepeatFor(final Integer repeatFor) {
             this.repeatFor = repeatFor;
             return this;
         }
 
-        public RepeatPatternBuilder withStartDate(LocalDate startDate) {
+        public RepeatPatternBuilder withStartDate(final LocalDate startDate) {
             this.startDate = startDate;
             return this;
         }
 
-        public RepeatPatternBuilder withEndDate(LocalDate endDate) {
+        public RepeatPatternBuilder withEndDate(final LocalDate endDate) {
             this.endDate = endDate;
             return this;
         }

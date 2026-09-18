@@ -47,7 +47,7 @@ public class ProvisionalBooking {
         return provisionalBookingKey;
     }
 
-    public void setProvisionalBookingKey(ProvisionalBookingKey provisionalBookingKey) {
+    public void setProvisionalBookingKey(final ProvisionalBookingKey provisionalBookingKey) {
         this.provisionalBookingKey = provisionalBookingKey;
     }
 
@@ -55,7 +55,7 @@ public class ProvisionalBooking {
         return active;
     }
 
-    public void setActive(Boolean active) {
+    public void setActive(final Boolean active) {
         this.active = active;
     }
 
@@ -63,7 +63,7 @@ public class ProvisionalBooking {
         return updatedOn;
     }
 
-    public void setUpdatedOn(java.util.Date updatedOn) {
+    public void setUpdatedOn(final java.util.Date updatedOn) {
         this.updatedOn = updatedOn;
     }
 
@@ -71,7 +71,7 @@ public class ProvisionalBooking {
         return createdOn;
     }
 
-    public void setCreatedOn(java.util.Date createdOn) {
+    public void setCreatedOn(final java.util.Date createdOn) {
         this.createdOn = createdOn;
     }
 
@@ -79,7 +79,7 @@ public class ProvisionalBooking {
         return hearingStartTime;
     }
 
-    public void setHearingStartTime(Date hearingStartTime) {
+    public void setHearingStartTime(final Date hearingStartTime) {
         this.hearingStartTime = hearingStartTime;
     }
 

@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 @org.springframework.transaction.annotation.Transactional
 public class SlotsSearchService {
     private static final Logger LOGGER = LoggerFactory.getLogger(SlotsSearchService.class.getName());
-    static final int FULL_DAY_DURATION_MINS = HearingSlotRequestParam.FULL_DAY_DURATION_MINS;
+    /* default */ static final int FULL_DAY_DURATION_MINS = HearingSlotRequestParam.FULL_DAY_DURATION_MINS;
     private static final String UNPAGINATED_PAGE_SIZE = "10000";
     // SPRDT-1276: a CROWN search for more than a full day can only ever be satisfied by whole,
     // duration-based days, so the caller's session filters are not a preference to honour — they
@@ -39,13 +39,13 @@ public class SlotsSearchService {
     // multi-day hearing, and letting them through is what put AM sessions in the 720-minute
     // response. Both values are forced, whatever the caller sent (including nothing at all,
     // which previously meant "no court_session predicate" rather than "AD only").
-    static final String MULTIDAY_COURT_SESSION = "AD";
-    static final Boolean MULTIDAY_IS_SLOT_BASED = Boolean.FALSE;
+    /* default */ static final String MULTIDAY_COURT_SESSION = "AD";
+    /* default */ static final Boolean MULTIDAY_IS_SLOT_BASED = Boolean.FALSE;
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
 
-    public JsonObject search(HearingSlotRequestParam hearingSlotRequestParam) {
+    public JsonObject search(final HearingSlotRequestParam hearingSlotRequestParam) {
 
         final Pair<Integer, List<CourtSchedule>> courtSchedules;
 
@@ -73,14 +73,14 @@ public class SlotsSearchService {
                 .build();
     }
 
-    public Pair<Integer, List<CourtSchedule>> getCourtSchedules(HearingSlotRequestParam hearingSlotRequestParam) {
+    public Pair<Integer, List<CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam hearingSlotRequestParam) {
         final   long startCourtScheduleQuery = System.nanoTime();
         final Pair<Integer, List<CourtSchedule>> courtSchedules = courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam);
         final long endCourtScheduleQuery = System.nanoTime();
         LOGGER.info("PRF: Time taken for validation : {}", (endCourtScheduleQuery - startCourtScheduleQuery) / 1000000);
 
         final long startFiltering = System.nanoTime();
-        List<CourtSchedule> overbookingFilteredSchedules = overbookingFilter(courtSchedules.getValue(),
+        final List<CourtSchedule> overbookingFilteredSchedules = overbookingFilter(courtSchedules.getValue(),
                 hearingSlotRequestParam.showOverbookedSlots(), hearingSlotRequestParam.duration());
         final List<CourtSchedule> filteredCourtSchedules = deduplicateSchedules(overbookingFilteredSchedules);
 
@@ -89,13 +89,13 @@ public class SlotsSearchService {
         return Pair.of(courtSchedules.getKey(), filteredCourtSchedules);
     }
 
-    boolean isMultidayCrownSearch(HearingSlotRequestParam param) {
+    /* default */ boolean isMultidayCrownSearch(final HearingSlotRequestParam param) {
         // Single definition, shared with the viewstore query builder — the two must not be able
         // to disagree about which searches get the forced AD / duration-based session filters.
         return param.isCrownMultiDaySearch();
     }
 
-    Pair<Integer, List<CourtSchedule>> getMultidayCourtSchedules(HearingSlotRequestParam requestParam) {
+    /* default */ Pair<Integer, List<CourtSchedule>> getMultidayCourtSchedules(final HearingSlotRequestParam requestParam) {
         final int duration = parseInt(requestParam.duration());
         final int daysNeeded = duration / FULL_DAY_DURATION_MINS;
 
@@ -160,8 +160,8 @@ public class SlotsSearchService {
         return Pair.of(multidayResults.size(), paginatedResults);
     }
 
-    List<CourtSchedule> filterForMultidayAvailability(List<CourtSchedule> schedules, int daysNeeded,
-                                                      boolean showOverbookedSlots) {
+    /* default */ List<CourtSchedule> filterForMultidayAvailability(final List<CourtSchedule> schedules, final int daysNeeded,
+                                                      final boolean showOverbookedSlots) {
         // Group by courtRoomId + businessType + ouCode - consecutive days must share all three
         final Map<String, List<CourtSchedule>> byCourtRoom = schedules.stream()
                 .filter(cs -> cs.getSessionDate() != null && cs.getCourtRoomId() != null)
@@ -194,8 +194,8 @@ public class SlotsSearchService {
         return validStartDates;
     }
 
-    boolean isValidMultidayStart(LocalDate startDate, Map<LocalDate, CourtSchedule> dateMap, int daysNeeded,
-                                  boolean showOverbookedSlots) {
+    /* default */ boolean isValidMultidayStart(final LocalDate startDate, final Map<LocalDate, CourtSchedule> dateMap, final int daysNeeded,
+                                  final boolean showOverbookedSlots) {
         LocalDate currentDate = startDate;
         for (int day = 0; day < daysNeeded; day++) {
             if (day > 0) {
@@ -215,11 +215,11 @@ public class SlotsSearchService {
         return true;
     }
 
-    private String buildGroupingKey(CourtSchedule cs) {
+    private String buildGroupingKey(final CourtSchedule cs) {
         return cs.getCourtRoomId() + "|" + cs.getBusinessType() + "|" + cs.getOuCode();
     }
 
-    private static CourtSchedule preferNonOverbooking(CourtSchedule existing, CourtSchedule incoming) {
+    private static CourtSchedule preferNonOverbooking(final CourtSchedule existing, final CourtSchedule incoming) {
         return existing.isOverbookingAllowed() ? incoming : existing;
     }
 
@@ -245,11 +245,11 @@ public class SlotsSearchService {
         return result;
     }
 
-    private List<CourtSchedule> overbookingFilter(List<CourtSchedule> courtSchedules,
-                                                  boolean showoverbookedSlots, String duration) {
+    private List<CourtSchedule> overbookingFilter(final List<CourtSchedule> courtSchedules,
+                                                  final boolean showoverbookedSlots, final String duration) {
         final List<CourtSchedule> overbookingFilteredSchedules = new ArrayList<>();
-        Optional<Integer> durationOpt = parseDurationToOptional(duration);
-        int durationInt = durationOpt.orElse(2); //changed to 2 from 0 default
+        final Optional<Integer> durationOpt = parseDurationToOptional(duration);
+        final int durationInt = durationOpt.orElse(2); //changed to 2 from 0 default
         for (final CourtSchedule courtSchedule : courtSchedules) {
             if (courtSchedule.isOverbookingAllowed() || showoverbookedSlots || hasAvailableCapacity(courtSchedule, durationInt)) {
                 overbookingFilteredSchedules.add(courtSchedule);

@@ -251,7 +251,7 @@ public class CourtSchedule {
         this.available_duration_mins = availableDuration;
     }
 
-    public void setActive(Boolean active) {
+    public void setActive(final Boolean active) {
         this.active = active;
     }
 
@@ -260,7 +260,7 @@ public class CourtSchedule {
         return created_on == null ? null : DateUtils.toIsoString(created_on);
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Date createdOn) {
         this.created_on = createdOn;
     }
 
@@ -269,7 +269,7 @@ public class CourtSchedule {
         return updated_on == null ? null : DateUtils.toIsoString(updated_on);
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Date updatedOn) {
         this.updated_on = updatedOn;
     }
 

@@ -20,11 +20,11 @@ public class ValidateSessionAvailabilityRequestParamConverter implements Convert
 
     @Override
     public ValidateSessionAvailabilityRequestParam convert(final JsonObject jsonObject) {
-        List<String> courtSessionIds = new ArrayList<>();
+        final List<String> courtSessionIds = new ArrayList<>();
         final String courtScheduleIdListLabel = COURT_SCHEDULE_ID_LIST.getLabel();
         if (jsonObject.containsKey(courtScheduleIdListLabel) && jsonObject.getJsonArray(courtScheduleIdListLabel) != null) {
-            for (JsonValue jsonValue : jsonObject.getJsonArray(courtScheduleIdListLabel)) {
-                JsonObject jsonObj = (JsonObject) jsonValue;
+            for (final JsonValue jsonValue : jsonObject.getJsonArray(courtScheduleIdListLabel)) {
+                final JsonObject jsonObj = (JsonObject) jsonValue;
                 courtSessionIds.add(jsonObj.getString(COURT_SCHEDULE_ID.getLabel()));
             }
         }

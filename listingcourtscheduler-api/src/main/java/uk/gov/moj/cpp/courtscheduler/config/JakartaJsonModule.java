@@ -56,7 +56,7 @@ public class JakartaJsonModule extends SimpleModule {
                 case OBJECT -> {
                     gen.writeStartObject();
                     final JsonObject obj = (JsonObject) value;
-                    for (var entry : obj.entrySet()) {
+                    for (final var entry : obj.entrySet()) {
                         gen.writeFieldName(entry.getKey());
                         serialize(entry.getValue(), gen, serializers);
                     }

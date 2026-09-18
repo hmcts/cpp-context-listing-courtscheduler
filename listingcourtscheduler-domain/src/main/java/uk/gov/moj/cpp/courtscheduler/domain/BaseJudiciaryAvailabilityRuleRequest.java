@@ -19,7 +19,7 @@ public abstract class BaseJudiciaryAvailabilityRuleRequest {
         return ruleId;
     }
 
-    public void setRuleId(String ruleId) {
+    public void setRuleId(final String ruleId) {
         this.ruleId = ruleId;
     }
 
@@ -27,7 +27,7 @@ public abstract class BaseJudiciaryAvailabilityRuleRequest {
         return judiciaryId;
     }
 
-    public void setJudiciaryId(String judiciaryId) {
+    public void setJudiciaryId(final String judiciaryId) {
         this.judiciaryId = judiciaryId;
     }
 
@@ -35,7 +35,7 @@ public abstract class BaseJudiciaryAvailabilityRuleRequest {
         return courtHouseId;
     }
 
-    public void setCourtHouseId(String courtHouseId) {
+    public void setCourtHouseId(final String courtHouseId) {
         this.courtHouseId = courtHouseId;
     }
 
@@ -43,7 +43,7 @@ public abstract class BaseJudiciaryAvailabilityRuleRequest {
         return startDate;
     }
 
-    public void setStartDate(LocalDate startDate) {
+    public void setStartDate(final LocalDate startDate) {
         this.startDate = startDate;
     }
 
@@ -51,15 +51,19 @@ public abstract class BaseJudiciaryAvailabilityRuleRequest {
         return endDate;
     }
 
-    public void setEndDate(LocalDate endDate) {
+    public void setEndDate(final LocalDate endDate) {
         this.endDate = endDate;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        BaseJudiciaryAvailabilityRuleRequest that = (BaseJudiciaryAvailabilityRuleRequest) o;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final BaseJudiciaryAvailabilityRuleRequest that = (BaseJudiciaryAvailabilityRuleRequest) o;
         return Objects.equals(ruleId, that.ruleId) &&
                 Objects.equals(judiciaryId, that.judiciaryId) &&
                 Objects.equals(courtHouseId, that.courtHouseId) &&

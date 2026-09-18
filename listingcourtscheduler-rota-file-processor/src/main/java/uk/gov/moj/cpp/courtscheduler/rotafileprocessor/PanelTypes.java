@@ -7,7 +7,7 @@ public enum PanelTypes {
 
     private final String name;
 
-    PanelTypes(String name) {
+    PanelTypes(final String name) {
         this.name = name;
     }
 }

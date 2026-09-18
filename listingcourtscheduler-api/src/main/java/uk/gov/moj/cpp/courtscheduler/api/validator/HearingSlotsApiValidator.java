@@ -44,9 +44,9 @@ import org.slf4j.LoggerFactory;
 public class HearingSlotsApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
 
-    static final String SHOULD_BE_ENTERED = " should be entered";
+    /* default */ static final String SHOULD_BE_ENTERED = " should be entered";
 
-    static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
+    /* default */ static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
             "courtScheduleId is not permitted on mags.search.and.book — Magistrates bookings never anchor on a courtScheduleId";
 
     @Inject
@@ -122,18 +122,19 @@ public class HearingSlotsApiValidator {
 
         LOGGER.info("Validating list Hearing Slots input : {}", hearingSlots);
 
-        for (HearingSlot hearingSlot : hearingSlots) {
-            List<RequestedCourtSchedule> schedules = hearingSlot.getCourtScheduleIds();
+        for (final HearingSlot hearingSlot : hearingSlots) {
+            final List<RequestedCourtSchedule> schedules = hearingSlot.getCourtScheduleIds();
 
-            for (RequestedCourtSchedule requestedCourtSchedule : schedules) {
-                uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = courtScheduleRepository.findBy(requestedCourtSchedule.getCourtScheduleId());
+            for (final RequestedCourtSchedule requestedCourtSchedule : schedules) {
+                final CourtSchedule cs = courtScheduleRepository.findBy(requestedCourtSchedule.getCourtScheduleId());
 
                 if (isNull(cs)) {
                     return buildErrorResponse("Requested CourSchedule not found. Id: " + requestedCourtSchedule.getCourtScheduleId());
                 }
 
-                if (invalidDuration(requestedCourtSchedule, cs))
+                if (invalidDuration(requestedCourtSchedule, cs)) {
                     return buildErrorResponse("No duration supplied for requested CourtSchedule: " + requestedCourtSchedule.getCourtScheduleId());
+                }
             }
         }
 
@@ -141,7 +142,7 @@ public class HearingSlotsApiValidator {
     }
 
 
-    private boolean invalidDuration(RequestedCourtSchedule schedule, CourtSchedule cs) {
+    private boolean invalidDuration(final RequestedCourtSchedule schedule, final CourtSchedule cs) {
         return !cs.isSlotBased() && isNull(schedule.getDurationInMinutes());
     }
 
@@ -258,7 +259,7 @@ public class HearingSlotsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject buildErrorResponse(String errorMessage) {
+    private JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();

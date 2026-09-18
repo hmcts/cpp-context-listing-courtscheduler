@@ -243,7 +243,7 @@ public class CourtScheduleView {
         return businessDescription;
     }
 
-    public void setBusinessDescription(String businessDescription) {
+    public void setBusinessDescription(final String businessDescription) {
         this.businessDescription = businessDescription;
     }
 
@@ -251,7 +251,7 @@ public class CourtScheduleView {
         return courtRoomId;
     }
 
-    public void setCourtRoomId(String courtRoomId) {
+    public void setCourtRoomId(final String courtRoomId) {
         this.courtRoomId = courtRoomId;
     }
 
@@ -259,11 +259,11 @@ public class CourtScheduleView {
         return courtRoomName;
     }
 
-    public void setCourtRoomName(String courtRoomName) {
+    public void setCourtRoomName(final String courtRoomName) {
         this.courtRoomName = courtRoomName;
     }
 
-    public void setActive(boolean active) {
+    public void setActive(final boolean active) {
         this.active = active;
     }
 

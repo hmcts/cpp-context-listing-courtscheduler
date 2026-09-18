@@ -9,7 +9,7 @@ public class ListHearingSlotsResponse {
         return hearings;
     }
 
-    public void setHearings(List<Hearing> hearings) {
+    public void setHearings(final List<Hearing> hearings) {
         this.hearings = hearings;
     }
 

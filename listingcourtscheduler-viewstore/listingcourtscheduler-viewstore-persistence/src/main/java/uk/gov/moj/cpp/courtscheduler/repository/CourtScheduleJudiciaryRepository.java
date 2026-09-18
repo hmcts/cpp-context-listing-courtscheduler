@@ -34,6 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 public interface CourtScheduleJudiciaryRepository
         extends JpaRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey>, CourtScheduleJudiciaryRepositoryCustom {
 
+    String COURT_SCHEDULE_IDS = "courtScheduleIds";
+
     /** Spring Data generates the JPQL: {@code SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.email = :email}. Returns {@code null} when no match. */
     CourtScheduleJudiciary findByEmail(String email);
 
@@ -47,7 +49,7 @@ public interface CourtScheduleJudiciaryRepository
     List<CourtScheduleJudiciary> findByJudiciaryId(String judiciaryId);
 
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId IN (:courtScheduleIds)")
-    List<CourtScheduleJudiciary> findInCourtScheduleIds(@Param("courtScheduleIds") List<String> courtScheduleIds);
+    List<CourtScheduleJudiciary> findInCourtScheduleIds(@Param(COURT_SCHEDULE_IDS) List<String> courtScheduleIds);
 
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.judiciaryId IN (:judiciaryIds) AND csj.active = true")
     List<CourtScheduleJudiciary> findByJudiciaryIds(@Param("judiciaryIds") List<String> judiciaryIds);
@@ -57,7 +59,7 @@ public interface CourtScheduleJudiciaryRepository
     @Query("UPDATE CourtScheduleJudiciary csj "
             + "SET csj.active = false, csj.updatedOn = :updatedOn "
             + "WHERE csj.id.courtScheduleId IN :courtScheduleIds")
-    void deactivateSchedules(@Param("courtScheduleIds") List<String> courtScheduleIds,
+    void deactivateSchedules(@Param(COURT_SCHEDULE_IDS) List<String> courtScheduleIds,
                              @Param("updatedOn") Date updatedOn);
 
     @Modifying
@@ -84,7 +86,7 @@ public interface CourtScheduleJudiciaryRepository
     @Query(value = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) "
             + "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)",
             nativeQuery = true)
-    int deleteSchedules(@Param("courtScheduleIds") List<String> courtScheduleIds);
+    int deleteSchedules(@Param(COURT_SCHEDULE_IDS) List<String> courtScheduleIds);
 
     @Modifying
     @Transactional
@@ -97,7 +99,7 @@ public interface CourtScheduleJudiciaryRepository
     @Transactional
     @Query(value = "DELETE FROM court_schedule_judiciary WHERE court_schedule_id IN (:courtScheduleIds)",
             nativeQuery = true)
-    int deleteAllForCourtScheduleIds(@Param("courtScheduleIds") List<String> courtScheduleIds);
+    int deleteAllForCourtScheduleIds(@Param(COURT_SCHEDULE_IDS) List<String> courtScheduleIds);
 
     /**
      * Removes all judiciary rows for the given court schedules (replace-all user assignment).

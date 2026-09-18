@@ -24,7 +24,7 @@ public class DayOfWeekConverter {
 
         final String[] daysOfWeek = listOfDays.split(",");
         final Set<DayOfWeek> dayOfWeekList = new HashSet<>();
-        for (String day : daysOfWeek) {
+        for (final String day : daysOfWeek) {
             dayOfWeekList.add(DayOfWeek.valueOf(day.trim()));
         }
         return dayOfWeekList;
@@ -32,15 +32,15 @@ public class DayOfWeekConverter {
 
     public static Set<DayOfWeek> convert(final JsonArray listOfDays) {
         final Set<DayOfWeek> dayOfWeekList = new HashSet<>();
-        for (JsonValue day : listOfDays) {
+        for (final JsonValue day : listOfDays) {
             dayOfWeekList.add(DayOfWeek.valueOf(day.toString().replace("\"", "").toUpperCase()));
         }
         return dayOfWeekList;
     }
 
-    public static String convert(List<DayOfWeek> daysOfWeekList) {
+    public static String convert(final List<DayOfWeek> daysOfWeekList) {
         final StringBuilder stringBuilder = new StringBuilder();
-        for (DayOfWeek dayOfWeek : daysOfWeekList) {
+        for (final DayOfWeek dayOfWeek : daysOfWeekList) {
             stringBuilder.append(dayOfWeek.toString()).append(",");
         }
         return stringBuilder.toString();

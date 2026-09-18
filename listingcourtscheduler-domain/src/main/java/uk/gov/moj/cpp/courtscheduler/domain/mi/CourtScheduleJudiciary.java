@@ -198,7 +198,7 @@ public class CourtScheduleJudiciary {
         return created_on == null ? null : DateUtils.toIsoString(created_on);
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Date createdOn) {
         this.created_on = createdOn;
     }
 
@@ -207,7 +207,7 @@ public class CourtScheduleJudiciary {
         return updated_on == null ? null : DateUtils.toIsoString(updated_on);
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Date updatedOn) {
         this.updated_on = updatedOn;
     }
 

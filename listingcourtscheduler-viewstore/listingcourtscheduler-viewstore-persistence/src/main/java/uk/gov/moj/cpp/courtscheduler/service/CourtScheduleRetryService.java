@@ -34,21 +34,21 @@ public class CourtScheduleRetryService {
 
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public CourtSchedule retryAndSave(CourtSchedule courtSchedule,boolean isForRotaFile) {
-        List<CourtSchedule> persistedCourtSchedules = findPersistedSchedules(courtSchedule);
+    public CourtSchedule retryAndSave(final CourtSchedule courtSchedule,final boolean isForRotaFile) {
+        final List<CourtSchedule> persistedCourtSchedules = findPersistedSchedules(courtSchedule);
 
         logMultiplePersistedSchedules(persistedCourtSchedules, courtSchedule);
 
         if (isNotEmpty(persistedCourtSchedules)) {
             final CourtSchedule persistedCourtSchedule = getCourtScheduleToBeUpdated(courtSchedule, isForRotaFile, persistedCourtSchedules);
 
-            boolean hasMaxSlotsChanged = hasMaxSlotsChanged(persistedCourtSchedule, courtSchedule);
-            boolean hasMaxDurationChanged = hasMaxDurationChanged(persistedCourtSchedule, courtSchedule);
-            boolean hasNewMaxSlotsOrDuration = hasNewMaxSlotsOrDuration(courtSchedule);
-            boolean hasSupportAdSplitChanged = courtSchedule.getSupportAdSplit()
+            final boolean hasMaxSlotsChanged = hasMaxSlotsChanged(persistedCourtSchedule, courtSchedule);
+            final boolean hasMaxDurationChanged = hasMaxDurationChanged(persistedCourtSchedule, courtSchedule);
+            final boolean hasNewMaxSlotsOrDuration = hasNewMaxSlotsOrDuration(courtSchedule);
+            final boolean hasSupportAdSplitChanged = courtSchedule.getSupportAdSplit()
                     && (persistedCourtSchedule.getMaxAdMorningDuration().intValue() != courtSchedule.getMaxAdMorningDuration().intValue()
                     || persistedCourtSchedule.getMaxAdAfternoonDuration().intValue() != courtSchedule.getMaxAdAfternoonDuration().intValue());
-            boolean hasSameADSplit = Objects.equals(persistedCourtSchedule.getSupportAdSplit(), courtSchedule.getSupportAdSplit());
+            final boolean hasSameADSplit = Objects.equals(persistedCourtSchedule.getSupportAdSplit(), courtSchedule.getSupportAdSplit());
 
             if ((isForRotaFile || hasMaxSlotsChanged || hasMaxDurationChanged || hasNewMaxSlotsOrDuration || hasSupportAdSplitChanged) && hasSameADSplit) {
                 if (Boolean.TRUE.equals(persistedCourtSchedule.getSupportAdSplit())) {
@@ -97,12 +97,12 @@ public class CourtScheduleRetryService {
         }
     }
 
-    private boolean isUniqueConstraintViolation(Throwable ex) {
+    private boolean isUniqueConstraintViolation(final Throwable ex) {
         // Walk the cause chain to detect common uniqueness exceptions
         Throwable t = ex;
         while (t != null) {
-            String name = t.getClass().getName();
-            String msg = t.getMessage() != null ? t.getMessage().toLowerCase() : "";
+            final String name = t.getClass().getName();
+            final String msg = t.getMessage() != null ? t.getMessage().toLowerCase() : "";
             if (name.contains("ConstraintViolationException") || name.contains("SQLIntegrityConstraintViolationException")
                     || msg.contains("unique") || msg.contains("duplicate") || msg.contains("constraint")) {
                 return true;
@@ -112,26 +112,26 @@ public class CourtScheduleRetryService {
         return false;
     }
 
-    public List<CourtSchedule> findPersistedSchedules(CourtSchedule courtSchedule) {
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+    public List<CourtSchedule> findPersistedSchedules(final CourtSchedule courtSchedule) {
+        final CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        final CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
         courtScheduleCriteria.createMultipleSessionsCourtScheduleCriteria(courtSchedule, criteriaBuilder, criteriaQuery);
         return entityManager.createQuery(criteriaQuery).getResultList();
     }
 
-    private boolean hasMaxSlotsChanged(CourtSchedule persistedCourtSchedule, CourtSchedule courtSchedule) {
+    private boolean hasMaxSlotsChanged(final CourtSchedule persistedCourtSchedule, final CourtSchedule courtSchedule) {
         return persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue();
     }
 
-    private boolean hasMaxDurationChanged(CourtSchedule persistedCourtSchedule, CourtSchedule courtSchedule) {
+    private boolean hasMaxDurationChanged(final CourtSchedule persistedCourtSchedule, final CourtSchedule courtSchedule) {
         return persistedCourtSchedule.getMaxDuration() > 0
                 && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue();
     }
 
-    private boolean hasNewMaxSlotsOrDuration(CourtSchedule courtSchedule) {
+    private boolean hasNewMaxSlotsOrDuration(final CourtSchedule courtSchedule) {
         return courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0;
     }
-    private void logMultiplePersistedSchedules(List<CourtSchedule> persistedCourtSchedules, CourtSchedule courtSchedule) {
+    private void logMultiplePersistedSchedules(final List<CourtSchedule> persistedCourtSchedules, final CourtSchedule courtSchedule) {
         if (persistedCourtSchedules.size() > 1) {
             LOGGER.info("having more than one persisted court schedule: {}", courtSchedule);
         }

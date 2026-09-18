@@ -45,14 +45,14 @@ public enum MissingDataError {
 
     public static final String DELIMITER = "%n%n------------------%n";
 
+    private final String code;
+    private final String template;
+
     private static final class Prefix {
         private static final String MONITORING = "SCSLMissingData: ";
     }
 
-    private final String code;
-    private final String template;
-
-    MissingDataError(String code, String template) {
+    MissingDataError(final String code, final String template) {
         this.code = code;
         this.template = template;
     }
@@ -65,7 +65,7 @@ public enum MissingDataError {
         return template;
     }
 
-    public String format(Object... args) {
+    public String format(final Object... args) {
         return String.format(template, args);
     }
 

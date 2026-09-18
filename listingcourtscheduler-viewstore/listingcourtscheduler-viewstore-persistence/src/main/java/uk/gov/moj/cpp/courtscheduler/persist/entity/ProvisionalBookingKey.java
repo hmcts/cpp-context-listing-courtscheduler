@@ -27,7 +27,7 @@ public class ProvisionalBookingKey implements Serializable {
         //For JPA
     }
 
-    public ProvisionalBookingKey(CourtSchedule courtSchedule, String bookingId) {
+    public ProvisionalBookingKey(final CourtSchedule courtSchedule, final String bookingId) {
         this.courtSchedule = courtSchedule;
         this.bookingId = bookingId;
     }
@@ -36,7 +36,7 @@ public class ProvisionalBookingKey implements Serializable {
         return courtSchedule;
     }
 
-    public void setCourtSchedule(CourtSchedule courtSchedule) {
+    public void setCourtSchedule(final CourtSchedule courtSchedule) {
         this.courtSchedule = courtSchedule;
     }
 
@@ -44,12 +44,12 @@ public class ProvisionalBookingKey implements Serializable {
         return bookingId;
     }
 
-    public void setBookingId(String bookingId) {
+    public void setBookingId(final String bookingId) {
         this.bookingId = bookingId;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

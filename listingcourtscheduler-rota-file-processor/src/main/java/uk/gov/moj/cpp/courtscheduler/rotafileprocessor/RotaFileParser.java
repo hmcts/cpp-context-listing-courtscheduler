@@ -182,14 +182,14 @@ public class RotaFileParser {
         return attributeTags.contains(qName) || xpath.endsWith(TAG_COURT_LISTING);
     }
 
-    private void populateVenueName(final Map<String, String> venues, Map<String, String> courtListing) {
+    private void populateVenueName(final Map<String, String> venues, final Map<String, String> courtListing) {
         final String venueId = courtListing.get(TAG_CL_VENUE_ID);
         final String venueName = venues.get(venueId);
 
         courtListing.put(TAG_VENUE_NAME, venueName);
     }
 
-    private void populateLocation(final Map<String, String> locations, Map<String, String> courtListing) {
+    private void populateLocation(final Map<String, String> locations, final Map<String, String> courtListing) {
         final String locationId = courtListing.get(TAG_CL_LOCATION_ID);
 
         //final

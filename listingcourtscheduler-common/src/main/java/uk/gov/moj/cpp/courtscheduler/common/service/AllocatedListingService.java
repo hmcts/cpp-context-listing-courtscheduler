@@ -50,7 +50,7 @@ public class AllocatedListingService {
     }
 
 
-    public JsonObject getHearingIds(HearingSlotRequestParam hearingIdsRequest) {
+    public JsonObject getHearingIds(final HearingSlotRequestParam hearingIdsRequest) {
         final Pair<Integer, Set<IdResponse>> hearingIdsResult =
                 allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         final long resultsCount = hearingIdsResult.getKey();

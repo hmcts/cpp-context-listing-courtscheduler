@@ -13,7 +13,7 @@ public class RequestedCourtSchedule {
         return courtScheduleId;
     }
 
-    public void setCourtScheduleId(String courtScheduleId) {
+    public void setCourtScheduleId(final String courtScheduleId) {
         this.courtScheduleId = courtScheduleId;
     }
 
@@ -21,7 +21,7 @@ public class RequestedCourtSchedule {
         return hearingStartTime;
     }
 
-    public void setHearingStartTime(String hearingStartTime) {
+    public void setHearingStartTime(final String hearingStartTime) {
         this.hearingStartTime = hearingStartTime;
     }
 
@@ -29,7 +29,7 @@ public class RequestedCourtSchedule {
         return durationInMinutes;
     }
 
-    public void setDurationInMinutes(Integer durationInMinutes) {
+    public void setDurationInMinutes(final Integer durationInMinutes) {
         this.durationInMinutes = durationInMinutes;
     }
 
@@ -37,14 +37,18 @@ public class RequestedCourtSchedule {
         return source;
     }
 
-    public void setSource(String source) {
+    public void setSource(final String source) {
         this.source = source;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof RequestedCourtSchedule that)) return false;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof RequestedCourtSchedule that)) {
+            return false;
+        }
         return Objects.equals(courtScheduleId, that.courtScheduleId) &&
                 Objects.equals(hearingStartTime, that.hearingStartTime) &&
                 Objects.equals(durationInMinutes, that.durationInMinutes) &&

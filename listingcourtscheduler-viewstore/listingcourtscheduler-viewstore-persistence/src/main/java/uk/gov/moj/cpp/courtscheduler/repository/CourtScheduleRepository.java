@@ -35,6 +35,8 @@ public interface CourtScheduleRepository
     String OU_CODE = "ouCode";
     String COURT_CENTRE_ID = "courtCentreId";
     String SESSION_DATE = "sessionDate";
+    String START_DATE = "startDate";
+    String END_DATE = "endDate";
 
     // ---------------------------------------------------------------------
     //  Legacy {@code @Query}-annotated abstract methods.
@@ -42,20 +44,20 @@ public interface CourtScheduleRepository
 
     @Query("SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.active = true AND cs.sessionDate BETWEEN :startDate AND :endDate")
     List<CourtSchedule> getExtractedCourtSchedules(@Param("ouCodes") List<String> ouCodes,
-                                                   @Param("startDate") LocalDate startDate,
-                                                   @Param("endDate") LocalDate endDate);
+                                                   @Param(START_DATE) LocalDate startDate,
+                                                   @Param(END_DATE) LocalDate endDate);
 
     @Query("SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.sessionDate BETWEEN :startDate AND :endDate")
     List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@Param("ouCodes") List<String> ouCodes,
-                                                               @Param("startDate") LocalDate startDate,
-                                                               @Param("endDate") LocalDate endDate);
+                                                               @Param(START_DATE) LocalDate startDate,
+                                                               @Param(END_DATE) LocalDate endDate);
 
     @Query("SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND cs.courtRoomId = :courtRoomId AND cs.active = true AND cs.businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate AND cs.jurisdiction = :jurisdiction")
     List<CourtSchedule> getSimilarSessions(@Param("courtCentreId") String courtCentreId,
                                            @Param("courtRoomId") String courtRoomId,
                                            @Param(BUSINESS_TYPE) String businessType,
-                                           @Param("startDate") LocalDate startDate,
-                                           @Param("endDate") LocalDate endDate,
+                                           @Param(START_DATE) LocalDate startDate,
+                                           @Param(END_DATE) LocalDate endDate,
                                            @Param("jurisdiction") String jurisdiction);
 
     @Modifying
@@ -115,8 +117,8 @@ public interface CourtScheduleRepository
             "AND cs.active = true")
     List<CourtSchedule> findActiveByCourtRoomIdBetweenDates(
             @Param(COURT_ROOM_ID) String courtRoomId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
+            @Param(START_DATE) LocalDate startDate,
+            @Param(END_DATE) LocalDate endDate,
             @Param(BUSINESS_TYPE) String businessType,
             @Param("courtSession") String courtSession);
 

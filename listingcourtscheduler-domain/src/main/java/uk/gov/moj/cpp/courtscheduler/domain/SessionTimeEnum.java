@@ -7,7 +7,7 @@ public enum SessionTimeEnum {
 
     private final int defaultStartTime;
 
-    SessionTimeEnum(int defaultStartTime) {
+    SessionTimeEnum(final int defaultStartTime) {
         this.defaultStartTime = defaultStartTime;
     }
 

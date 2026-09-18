@@ -13,11 +13,11 @@ public class SessionValidationParams {
     private String sessionStartTime;
     private String sessionEndTime;
 
-    public SessionValidationParams(Integer maxDurationForMorning,
-                                   Integer maxDurationForAfternoon,
-                                   Boolean isAllDaySplit,
-                                   String sessionType,
-                                   String businessType,
+    public SessionValidationParams(final Integer maxDurationForMorning,
+                                   final Integer maxDurationForAfternoon,
+                                   final Boolean isAllDaySplit,
+                                   final String sessionType,
+                                   final String businessType,
                                    final Integer slotsOrDuration,
                                    final String courtScheduleId,
                                    final String sessionStartTime,
@@ -38,7 +38,7 @@ public class SessionValidationParams {
         return maxDurationForMorning;
     }
 
-    public void setMaxDurationForMorning(Integer maxDurationForMorning) {
+    public void setMaxDurationForMorning(final Integer maxDurationForMorning) {
         this.maxDurationForMorning = maxDurationForMorning;
     }
 
@@ -46,7 +46,7 @@ public class SessionValidationParams {
         return slotsOrDuration;
     }
 
-    public void setSlotsOrDuration(Integer slotsOrDuration) {
+    public void setSlotsOrDuration(final Integer slotsOrDuration) {
         this.slotsOrDuration = slotsOrDuration;
     }
 
@@ -54,7 +54,7 @@ public class SessionValidationParams {
         return maxDurationForAfternoon;
     }
 
-    public void setMaxDurationForAfternoon(Integer maxDurationForAfternoon) {
+    public void setMaxDurationForAfternoon(final Integer maxDurationForAfternoon) {
         this.maxDurationForAfternoon = maxDurationForAfternoon;
     }
 
@@ -62,7 +62,7 @@ public class SessionValidationParams {
         return isAllDaySplit;
     }
 
-    public void setAllDaySplit(Boolean allDaySplit) {
+    public void setAllDaySplit(final Boolean allDaySplit) {
         isAllDaySplit = allDaySplit;
     }
 
@@ -70,7 +70,7 @@ public class SessionValidationParams {
         return sessionType;
     }
 
-    public void setSessionType(String sessionType) {
+    public void setSessionType(final String sessionType) {
         this.sessionType = sessionType;
     }
 
@@ -78,7 +78,7 @@ public class SessionValidationParams {
         return businessType;
     }
 
-    public void setBusinessType(String businessType) {
+    public void setBusinessType(final String businessType) {
         this.businessType = businessType;
     }
 

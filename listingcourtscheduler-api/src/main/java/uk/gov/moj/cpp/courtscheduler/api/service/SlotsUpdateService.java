@@ -40,9 +40,13 @@ import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,6 +72,19 @@ public class SlotsUpdateService {
     public static final String HEARING_DATE = "hearingDate";
     public static final String COURT_SCHEDULE_ID = "courtScheduleId";
     public static final String SCHEDULES = "schedules";
+
+    private static final String SOURCE_MOVE_TO_PAST_DATE = "MOVE_TO_PAST_DATE";
+    private static final String SOURCE_NONPOLICE = "NONPOLICE";
+    private static final String SOURCE_MOVE = "MOVE";
+    private static final String SOURCE_CHANGE_COURT_ROOM_MULTIDAY = "CHANGE_COURT_ROOM_MULTIDAY";
+    private static final String SOURCE_MULTIDAY_COURTROOM_CHANGE = "MULTIDAY_COURTROOM_CHANGE";
+    // SPRDT-1159 single-day Crown fallback allocations: EXEMPT_SAB = overbooking-exempt
+    // search-and-book onto an existing session; AUTO_CREATE_SAB = booked onto a session created
+    // on the fly. Stamped on allocated_listings.source; the caller's CROWN_FB_* label stays on
+    // the response/logs only.
+    private static final String SOURCE_EXEMPT_SAB = "EXEMPT_SAB";
+    private static final String SOURCE_AUTO_CREATE_SAB = "AUTO_CREATE_SAB";
+    private static final String JURISDICTION_CROWN = "CROWN";
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -102,8 +119,8 @@ public class SlotsUpdateService {
             }
 
             slots.forEach(allocatedSlot -> {
-                Date date = provisionalBookingCourtScheduleInfo.get(allocatedSlot.getCourtScheduleId());
-                String isoString = DateUtils.toIsoString(new Timestamp(date.getTime()));
+                final Date date = provisionalBookingCourtScheduleInfo.get(allocatedSlot.getCourtScheduleId());
+                final String isoString = DateUtils.toIsoString(new Timestamp(date.getTime()));
                 allocatedSlot.setHearingStartTime(isoString);
             });
 
@@ -114,7 +131,7 @@ public class SlotsUpdateService {
 
         final JsonArrayBuilder hearingDaysJsonArrBuilder = createArrayBuilder();
         slotUpdateResult.getHearingDayCourtSchedules().forEach( (day, schedule) -> {
-            JsonObject hearingDaySchedule = createObjectBuilder().add(HEARING_DATE, day).add(COURT_SCHEDULE_ID, schedule).build();
+            final JsonObject hearingDaySchedule = createObjectBuilder().add(HEARING_DATE, day).add(COURT_SCHEDULE_ID, schedule).build();
             hearingDaysJsonArrBuilder.add(hearingDaySchedule);
         });
 
@@ -123,9 +140,9 @@ public class SlotsUpdateService {
 
     public ListHearingSlotsResponse listHearingSlots(final RequestedSlots hearingSlots) {
 
-        ListHearingSlotsResponse response = new ListHearingSlotsResponse();
+        final ListHearingSlotsResponse response = new ListHearingSlotsResponse();
 
-        List<Hearing> listHearingSlots = courtScheduleRepository.updateListHearingSlots(hearingSlots);
+        final List<Hearing> listHearingSlots = courtScheduleRepository.updateListHearingSlots(hearingSlots);
 
         response.setHearings(listHearingSlots);
 
@@ -324,19 +341,6 @@ public class SlotsUpdateService {
                 false);
     }
 
-    private static final String SOURCE_MOVE_TO_PAST_DATE = "MOVE_TO_PAST_DATE";
-    private static final String SOURCE_NONPOLICE = "NONPOLICE";
-    private static final String SOURCE_MOVE = "MOVE";
-    private static final String SOURCE_CHANGE_COURT_ROOM_MULTIDAY = "CHANGE_COURT_ROOM_MULTIDAY";
-    private static final String SOURCE_MULTIDAY_COURTROOM_CHANGE = "MULTIDAY_COURTROOM_CHANGE";
-    // SPRDT-1159 single-day Crown fallback allocations: EXEMPT_SAB = overbooking-exempt
-    // search-and-book onto an existing session; AUTO_CREATE_SAB = booked onto a session created
-    // on the fly. Stamped on allocated_listings.source; the caller's CROWN_FB_* label stays on
-    // the response/logs only.
-    private static final String SOURCE_EXEMPT_SAB = "EXEMPT_SAB";
-    private static final String SOURCE_AUTO_CREATE_SAB = "AUTO_CREATE_SAB";
-    private static final String JURISDICTION_CROWN = "CROWN";
-
     /**
      * CROWN search-and-book (SPRDT-1089, AC1/AC2/AC3/AC6).
      * Idempotency first; single-day strict (+ relaxed fallback when {@code source} present);
@@ -414,7 +418,7 @@ public class SlotsUpdateService {
                     courtScheduleRepository.getCourtSchedulesByIdList(existingIds));
             // getCourtSchedulesByIdList doesn't guarantee ordering; sort by date so the block's
             // earliest (first) day keys the same-start check below.
-            existingSessions.sort(java.util.Comparator.comparing(CourtSchedule::getSessionDate));
+            existingSessions.sort(Comparator.comparing(CourtSchedule::getSessionDate));
 
             final LocalDate blockStart = existingSessions.isEmpty()
                     ? null
@@ -691,7 +695,7 @@ public class SlotsUpdateService {
 
         final List<CourtSchedule> allocatedSchedules = new ArrayList<>();
         final List<LocalDate> datesToRelease = new ArrayList<>();
-        final Map<String, Map<Integer, List<CourtSchedule>>> toBookBySourceThenDuration = new java.util.LinkedHashMap<>();
+        final Map<String, Map<Integer, List<CourtSchedule>>> toBookBySourceThenDuration = new LinkedHashMap<>();
 
         for (final RequestedDay day : request.getDays()) {
             final AllocatedListing current = existingByDate.get(day.getSessionDate());
@@ -716,7 +720,7 @@ public class SlotsUpdateService {
                         ? SOURCE_MULTIDAY_COURTROOM_CHANGE : SOURCE_CHANGE_COURT_ROOM_MULTIDAY;
                 datesToRelease.add(day.getSessionDate());
                 toBookBySourceThenDuration
-                        .computeIfAbsent(daySource, k -> new java.util.LinkedHashMap<>())
+                        .computeIfAbsent(daySource, k -> new LinkedHashMap<>())
                         .computeIfAbsent(day.getDurationInMinutes(), k -> new ArrayList<>())
                         .add(target);
             }
@@ -744,7 +748,7 @@ public class SlotsUpdateService {
      */
     private static Map<LocalDate, AllocatedListing> mapAllocationsBySessionDate(
             final List<AllocatedListing> allocations, final Map<String, LocalDate> sessionDateById) {
-        final Map<LocalDate, AllocatedListing> byDate = new java.util.HashMap<>();
+        final Map<LocalDate, AllocatedListing> byDate = new HashMap<>();
         allocations.forEach(allocation -> {
             final LocalDate date = sessionDateById.get(allocation.getCourtScheduleId());
             if (date != null) {
@@ -781,7 +785,7 @@ public class SlotsUpdateService {
      */
     private static int daysNeeded(final int durationInMinutes, final LocalDate startDate, final LocalDate endDate) {
         if (endDate != null && startDate != null && endDate.isAfter(startDate)) {
-            return (int) (java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1);
+            return (int) (ChronoUnit.DAYS.between(startDate, endDate) + 1);
         }
         final int byDuration = (int) Math.ceil(durationInMinutes / (double) MINUTES_IN_DAY);
         return Math.max(byDuration, 1);
@@ -985,7 +989,7 @@ public class SlotsUpdateService {
         }
     }
 
-    static boolean areConsecutiveBusinessDays(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> sessions,
+    /* default */ static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions,
                                               final String hearingId) {
         for (int i = 1; i < sessions.size(); i++) {
             final LocalDate previousDate = sessions.get(i - 1).getSessionDate();
@@ -1003,30 +1007,29 @@ public class SlotsUpdateService {
         return true;
     }
 
-    static LocalDate getNextBusinessDay(final LocalDate date) {
-        return uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.getNextBusinessDay(date);
+    /* default */ static LocalDate getNextBusinessDay(final LocalDate date) {
+        return SessionAvailability.getNextBusinessDay(date);
     }
 
-    static List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> dedupeByDatePreferringBookable(
-            final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> sessions,
+    /* default */ static List<CourtSchedule> dedupeByDatePreferringBookable(
+            final List<CourtSchedule> sessions,
             final int requiredPerDayMinutes) {
-        final java.util.LinkedHashMap<LocalDate, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> byDate =
-                new java.util.LinkedHashMap<>();
-        for (final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule cs : sessions) {
+        final LinkedHashMap<LocalDate, CourtSchedule> byDate = new LinkedHashMap<>();
+        for (final CourtSchedule cs : sessions) {
             if (cs.getSessionDate() == null) {
                 continue;
             }
             byDate.merge(cs.getSessionDate(), cs, (existing, incoming) ->
                     preferBookable(existing, incoming, requiredPerDayMinutes));
         }
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> out = new ArrayList<>(byDate.values());
-        out.sort(java.util.Comparator.comparing(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::getSessionDate));
+        final List<CourtSchedule> out = new ArrayList<>(byDate.values());
+        out.sort(Comparator.comparing(CourtSchedule::getSessionDate));
         return out;
     }
 
-    private static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule preferBookable(
-            final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule existing,
-            final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule incoming,
+    private static CourtSchedule preferBookable(
+            final CourtSchedule existing,
+            final CourtSchedule incoming,
             final int requiredPerDayMinutes) {
         final boolean existingFits = getEffectiveAvailableDuration(existing) >= requiredPerDayMinutes;
         final boolean incomingFits = getEffectiveAvailableDuration(incoming) >= requiredPerDayMinutes;
@@ -1041,8 +1044,8 @@ public class SlotsUpdateService {
         return !existing.isOverbookingAllowed() && incoming.isOverbookingAllowed() ? incoming : existing;
     }
 
-    static int getEffectiveAvailableDuration(final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule cs) {
-        return uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.getEffectiveAvailableDuration(cs);
+    /* default */ static int getEffectiveAvailableDuration(final CourtSchedule cs) {
+        return SessionAvailability.getEffectiveAvailableDuration(cs);
     }
 
     private boolean isCourtScheduleIdsMatching(final List<String> slotsCourtScheduleIdList, final List<String> provisionalBookingCourtScheduleIdList) {
@@ -1051,7 +1054,7 @@ public class SlotsUpdateService {
         return slotsCourtScheduleIdList.equals(provisionalBookingCourtScheduleIdList);
     }
 
-    private boolean isBookingBasedSlot(List<AllocatedSlot> slots) {
+    private boolean isBookingBasedSlot(final List<AllocatedSlot> slots) {
         return slots.stream()
                 .anyMatch(slot -> Objects.nonNull(slot.getBookingId()));
     }
