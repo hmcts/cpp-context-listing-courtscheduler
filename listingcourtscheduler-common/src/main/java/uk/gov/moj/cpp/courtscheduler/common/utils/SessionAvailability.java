@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.common.utils;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -13,7 +13,7 @@ public final class SessionAvailability {
     }
 
     public static int getEffectiveAvailableDuration(final CourtSchedule cs) {
-        if (cs.isAllDaySplit()) {
+        if (Boolean.TRUE.equals(cs.getAllDaySplit())) {
             return (cs.getMaxDurationForMorning() + cs.getMaxDurationForAfternoon())
                     - (cs.getTotalBookedForMorning() + cs.getTotalBookedForAfternoon());
         }
@@ -21,7 +21,7 @@ public final class SessionAvailability {
     }
 
     public static boolean hasSufficientAvailability(final CourtSchedule session, final int requiredMinutes) {
-        if (session.isOverbookingAllowed()) {
+        if (Boolean.TRUE.equals(session.getOverbookingAllowed())) {
             return true;
         }
         return getEffectiveAvailableDuration(session) >= requiredMinutes;

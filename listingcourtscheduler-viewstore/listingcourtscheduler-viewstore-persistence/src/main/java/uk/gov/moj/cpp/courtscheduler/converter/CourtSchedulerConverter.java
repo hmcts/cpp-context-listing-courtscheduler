@@ -5,13 +5,15 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_D
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils.updateTotalBooked;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,62 +29,69 @@ public final class CourtSchedulerConverter {
     private CourtSchedulerConverter() {
     }
 
-    public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
+    private static int zeroIfNull(final Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    public static CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
         final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
         final Boolean isAllDaySplit = courtScheduleEntity.getSupportAdSplit();
-        final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new CourtSchedule.CourtScheduleBuilder()
-                .withListingProfileId(courtScheduleEntity.getListingProfileId())
-                .withOuCode(courtScheduleEntity.getOuCode())
-                .withCourtRoomNumber(courtScheduleEntity.getCourtRoomNumber())
-                .withOperationalUnit(courtScheduleEntity.getOperationalUnit())
-                .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
-                .withMaxDuration(courtScheduleEntity.getMaxDuration())
-                .withTotalBooked(courtScheduleEntity.getTotalBooked())
-                .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
-                .withAvailableSlots(courtScheduleEntity.getAvailableSlots())
-                .withMaxSlots(courtScheduleEntity.getMaxSlots())
-                .withBusinessType(courtScheduleEntity.getBusinessType())
-                .withCourtHouseId(courtScheduleEntity.getCourtHouseId())
-                .withCourtHouseName(courtScheduleEntity.getCourtHouseName())
-                .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
-                .withCourtRoomName(courtScheduleEntity.getCourtRoomName())
-                .withCourtSession(courtScheduleEntity.getCourtSession())
-                .withSessionDate(courtScheduleEntity.getSessionDate())
-                .withSlotBased(courtScheduleEntity.isSlotBased())
-                .withActive(courtScheduleEntity.isActive())
-                .withPanel(courtScheduleEntity.getPanel())
-                .withAllDaySplit(Boolean.TRUE.equals(isAllDaySplit))
-                .withCreatedOn(courtScheduleEntity.getCreatedOn())
-                .withUpdatedOn(courtScheduleEntity.getUpdatedOn())
-                .withSessionStartTime(courtScheduleEntity.getSessionStartTime())
-                .withSessionEndTime(courtScheduleEntity.getSessionEndTime())
-                .withIsOverbookingAllowed(courtScheduleEntity.getIsOverbookingAllowed())
-                .withIsDraft(courtScheduleEntity.getIsDraft())
-                .withMinHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionStartTime()))
-                .withMaxHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionEndTime()));
+        final CourtSchedule courtSchedule = new CourtSchedule()
+                .listingProfileId(courtScheduleEntity.getListingProfileId())
+                .ouCode(courtScheduleEntity.getOuCode())
+                .courtRoomNumber(courtScheduleEntity.getCourtRoomNumber())
+                .operationalUnit(courtScheduleEntity.getOperationalUnit())
+                .courtScheduleId(courtScheduleEntity.getCourtScheduleId())
+                .maxDuration(courtScheduleEntity.getMaxDuration())
+                .totalBooked(courtScheduleEntity.getTotalBooked())
+                .availableDuration(courtScheduleEntity.getAvailableDuration())
+                .availableSlots(courtScheduleEntity.getAvailableSlots())
+                .maxSlots(courtScheduleEntity.getMaxSlots())
+                .businessType(courtScheduleEntity.getBusinessType())
+                .courtHouseId(courtScheduleEntity.getCourtHouseId())
+                .courtHouseName(courtScheduleEntity.getCourtHouseName())
+                .courtRoomId(courtScheduleEntity.getCourtRoomId())
+                .courtRoomName(courtScheduleEntity.getCourtRoomName())
+                .courtSession(courtScheduleEntity.getCourtSession())
+                .sessionDate(courtScheduleEntity.getSessionDate())
+                .slotBased(courtScheduleEntity.isSlotBased())
+                .active(courtScheduleEntity.isActive())
+                .panel(courtScheduleEntity.getPanel())
+                .allDaySplit(Boolean.TRUE.equals(isAllDaySplit))
+                .createdOn(toOffsetDateTime(courtScheduleEntity.getCreatedOn()))
+                .updatedOn(toOffsetDateTime(courtScheduleEntity.getUpdatedOn()))
+                .sessionStartTime(toOffsetDateTime(courtScheduleEntity.getSessionStartTime()))
+                .sessionEndTime(toOffsetDateTime(courtScheduleEntity.getSessionEndTime()))
+                .overbookingAllowed(Boolean.TRUE.equals(courtScheduleEntity.getIsOverbookingAllowed()))
+                .draft(Boolean.TRUE.equals(courtScheduleEntity.getIsDraft()))
+                .minHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionStartTime()))
+                .maxHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionEndTime()));
         if (Boolean.TRUE.equals(isAllDaySplit)) {
-            courtScheduleBuilder
-                    .withMaxDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration())
-                    .withMaxDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration())
-                    .withTotalBookedForMorning(courtScheduleEntity.getTotalBookedMorning())
-                    .withTotalBookedForAfternoon(courtScheduleEntity.getTotalBookedAfternoon())
-                    .withAvailableDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration() - courtScheduleEntity.getTotalBookedMorning())
-                    .withAvailableDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration() - courtScheduleEntity.getTotalBookedAfternoon());
+            final int maxAdMorningDuration = zeroIfNull(courtScheduleEntity.getMaxAdMorningDuration());
+            final int maxAdAfternoonDuration = zeroIfNull(courtScheduleEntity.getMaxAdAfternoonDuration());
+            final int totalBookedMorning = zeroIfNull(courtScheduleEntity.getTotalBookedMorning());
+            final int totalBookedAfternoon = zeroIfNull(courtScheduleEntity.getTotalBookedAfternoon());
+            courtSchedule
+                    .maxDurationForMorning(maxAdMorningDuration)
+                    .maxDurationForAfternoon(maxAdAfternoonDuration)
+                    .totalBookedForMorning(totalBookedMorning)
+                    .totalBookedForAfternoon(totalBookedAfternoon)
+                    .availableDurationForMorning(maxAdMorningDuration - totalBookedMorning)
+                    .availableDurationForAfternoon(maxAdAfternoonDuration - totalBookedAfternoon);
         }
 
-        return courtScheduleBuilder.build();
+        return courtSchedule;
     }
 
-    public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convertForOverbooking(
+    public static CourtSchedule convertForOverbooking(
             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {
-        return new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
-                .withIsOverbookingAllowed(Boolean.TRUE.equals(courtScheduleEntity.getIsOverbookingAllowed()))
-                .withActive(courtScheduleEntity.isActive())
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(courtScheduleEntity.getCourtScheduleId())
+                .overbookingAllowed(Boolean.TRUE.equals(courtScheduleEntity.getIsOverbookingAllowed()))
+                .active(courtScheduleEntity.isActive());
     }
 
-    public static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity,
+    public static CourtSchedule convert(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity,
                                                                              final List<AllocatedListingEachBooked> allocatedListingEachBooked) {
         final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
         final List<AllocatedListingEachBooked> allocatedListings = allocatedListingEachBooked.stream()
@@ -91,75 +100,77 @@ public final class CourtSchedulerConverter {
 
         final Integer totalBooked = allocatedListings.stream().mapToInt(AllocatedListingEachBooked::getDuration).sum();
         final Boolean isAllDaySplit = courtScheduleEntity.getSupportAdSplit();
-        final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder()
-                .withListingProfileId(courtScheduleEntity.getListingProfileId())
-                .withOuCode(courtScheduleEntity.getOuCode())
-                .withCourtRoomNumber(courtScheduleEntity.getCourtRoomNumber())
-                .withOperationalUnit(courtScheduleEntity.getOperationalUnit())
-                .withCourtScheduleId(courtScheduleEntity.getCourtScheduleId())
-                .withAvailableDuration(courtScheduleEntity.getAvailableDuration())
-                .withMaxDuration(courtScheduleEntity.getMaxDuration())
-                .withAvailableSlots(courtScheduleEntity.getAvailableSlots())
-                .withMaxSlots(courtScheduleEntity.getMaxSlots())
-                .withBusinessType(courtScheduleEntity.getBusinessType())
-                .withCourtHouseId(courtScheduleEntity.getCourtHouseId())
-                .withCourtHouseName(courtScheduleEntity.getCourtHouseName())
-                .withCourtRoomId(courtScheduleEntity.getCourtRoomId())
-                .withCourtRoomName(courtScheduleEntity.getCourtRoomName())
-                .withCourtSession(courtScheduleEntity.getCourtSession())
-                .withSessionDate(courtScheduleEntity.getSessionDate())
-                .withSlotBased(courtScheduleEntity.isSlotBased())
-                .withActive(courtScheduleEntity.isActive())
-                .withPanel(courtScheduleEntity.getPanel())
-                .withTotalBooked(totalBooked)
-                .withAllDaySplit(Boolean.TRUE.equals(isAllDaySplit))
-                .withMaxDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration())
-                .withMaxDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration())
-                .withCreatedOn(courtScheduleEntity.getCreatedOn())
-                .withUpdatedOn(courtScheduleEntity.getUpdatedOn())
-                .withSessionStartTime(courtScheduleEntity.getSessionStartTime())
-                .withSessionEndTime(courtScheduleEntity.getSessionEndTime())
-                .withIsOverbookingAllowed(courtScheduleEntity.getIsOverbookingAllowed())
-                .withIsDraft(courtScheduleEntity.getIsDraft())
-                .withMinHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionStartTime()))
-                .withMaxHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionEndTime()))
-                .withJurisdiction(courtScheduleEntity.getJurisdiction());
+        final CourtSchedule courtSchedule = new CourtSchedule()
+                .listingProfileId(courtScheduleEntity.getListingProfileId())
+                .ouCode(courtScheduleEntity.getOuCode())
+                .courtRoomNumber(courtScheduleEntity.getCourtRoomNumber())
+                .operationalUnit(courtScheduleEntity.getOperationalUnit())
+                .courtScheduleId(courtScheduleEntity.getCourtScheduleId())
+                .availableDuration(courtScheduleEntity.getAvailableDuration())
+                .maxDuration(courtScheduleEntity.getMaxDuration())
+                .availableSlots(courtScheduleEntity.getAvailableSlots())
+                .maxSlots(courtScheduleEntity.getMaxSlots())
+                .businessType(courtScheduleEntity.getBusinessType())
+                .courtHouseId(courtScheduleEntity.getCourtHouseId())
+                .courtHouseName(courtScheduleEntity.getCourtHouseName())
+                .courtRoomId(courtScheduleEntity.getCourtRoomId())
+                .courtRoomName(courtScheduleEntity.getCourtRoomName())
+                .courtSession(courtScheduleEntity.getCourtSession())
+                .sessionDate(courtScheduleEntity.getSessionDate())
+                .slotBased(courtScheduleEntity.isSlotBased())
+                .active(courtScheduleEntity.isActive())
+                .panel(courtScheduleEntity.getPanel())
+                .totalBooked(totalBooked)
+                .allDaySplit(Boolean.TRUE.equals(isAllDaySplit))
+                .maxDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration())
+                .maxDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration())
+                .createdOn(toOffsetDateTime(courtScheduleEntity.getCreatedOn()))
+                .updatedOn(toOffsetDateTime(courtScheduleEntity.getUpdatedOn()))
+                .sessionStartTime(toOffsetDateTime(courtScheduleEntity.getSessionStartTime()))
+                .sessionEndTime(toOffsetDateTime(courtScheduleEntity.getSessionEndTime()))
+                .overbookingAllowed(Boolean.TRUE.equals(courtScheduleEntity.getIsOverbookingAllowed()))
+                .draft(Boolean.TRUE.equals(courtScheduleEntity.getIsDraft()))
+                .minHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionStartTime()))
+                .maxHearingTime(simpleDateFormat.format(courtScheduleEntity.getSessionEndTime()))
+                .jurisdiction(courtScheduleEntity.getJurisdiction());
 
-        final Date minHearingTime = allocatedListings.stream()
+        final OffsetDateTime minHearingTime = allocatedListings.stream()
                 .map(AllocatedListingEachBooked::getHearingStartTime)
-                .min(Date::compareTo)
+                .min(OffsetDateTime::compareTo)
                 .orElse(null);
-        final Date maxHearingTime = allocatedListings.stream()
+        final OffsetDateTime maxHearingTime = allocatedListings.stream()
                 .max(comparing(AllocatedListingEachBooked::getHearingStartTime))
                 .map(AllocatedListingEachBooked::getHearingStartTime)
                 .orElse(null);
         if (minHearingTime != null) {
-            courtScheduleBuilder.withMinHearingTime(simpleDateFormat.format(minHearingTime));
+            courtSchedule.minHearingTime(simpleDateFormat.format(Date.from(minHearingTime.toInstant())));
         }
         if (maxHearingTime != null) {
-            courtScheduleBuilder.withMaxHearingTime(simpleDateFormat.format(maxHearingTime));
+            courtSchedule.maxHearingTime(simpleDateFormat.format(Date.from(maxHearingTime.toInstant())));
         }
 
         if (Boolean.TRUE.equals(courtScheduleEntity.getSupportAdSplit()) && ALL_DAY.equals(courtScheduleEntity.getCourtSession())) {
             final AtomicInteger totalBookedForMorning = new AtomicInteger(0);
             final AtomicInteger totalBookedForAfternoon = new AtomicInteger(0);
+            final OffsetDateTime sessionStartTime = toOffsetDateTime(courtScheduleEntity.getSessionStartTime());
+            final OffsetDateTime afternoonStartTime = toOffsetDateTime(combineDateAndTime(courtScheduleEntity.getSessionDate(), DEFAULT_AFTERNOON_START_TIME));
             allocatedListings
                     .forEach(eachBooked -> {
-                        if ((eachBooked.getHearingStartTime().after(courtScheduleEntity.getSessionStartTime()) || eachBooked.getHearingStartTime().equals(courtScheduleEntity.getSessionStartTime()))
-                                && eachBooked.getHearingStartTime().before(combineDateAndTime(courtScheduleEntity.getSessionDate(), DEFAULT_AFTERNOON_START_TIME))
+                        if ((eachBooked.getHearingStartTime().isAfter(sessionStartTime) || eachBooked.getHearingStartTime().isEqual(sessionStartTime))
+                                && eachBooked.getHearingStartTime().isBefore(afternoonStartTime)
                         ) {
                             updateTotalBooked(eachBooked.getDuration(), totalBookedForMorning, totalBookedForAfternoon, DEFAULT_DURATION);
                         } else {
                             totalBookedForAfternoon.set(totalBookedForAfternoon.get() + eachBooked.getDuration());
                         }
                     });
-            courtScheduleBuilder
-                    .withTotalBookedForMorning(totalBookedForMorning.get())
-                    .withTotalBookedForAfternoon(totalBookedForAfternoon.get())
-                    .withAvailableDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration() - totalBookedForMorning.get())
-                    .withAvailableDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration() - totalBookedForAfternoon.get());
+            courtSchedule
+                    .totalBookedForMorning(totalBookedForMorning.get())
+                    .totalBookedForAfternoon(totalBookedForAfternoon.get())
+                    .availableDurationForMorning(courtScheduleEntity.getMaxAdMorningDuration() - totalBookedForMorning.get())
+                    .availableDurationForAfternoon(courtScheduleEntity.getMaxAdAfternoonDuration() - totalBookedForAfternoon.get());
         }
-        return courtScheduleBuilder.build();
+        return courtSchedule;
     }
 
     public static uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule convertToMi(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity) {

@@ -6,7 +6,7 @@ import static org.hamcrest.Matchers.nullValue;
 
 import static org.hamcrest.Matchers.sameInstance;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackResponse;
 
 import java.util.ArrayList;
@@ -109,7 +109,7 @@ class CourtScheduleRoomSanitiserTest {
     private static CourtSchedule scheduleWithRoom(final boolean draft) {
         final CourtSchedule courtSchedule = new CourtSchedule();
         courtSchedule.setCourtScheduleId("schedule-1");
-        courtSchedule.setIsDraft(draft);
+        courtSchedule.setDraft(draft);
         courtSchedule.setCourtRoomId("room-1");
         courtSchedule.setCourtRoomName("Courtroom 01");
         courtSchedule.setCourtRoomNumber(101);

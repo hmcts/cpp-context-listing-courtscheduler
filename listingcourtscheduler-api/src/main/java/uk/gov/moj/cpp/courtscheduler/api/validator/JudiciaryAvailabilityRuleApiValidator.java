@@ -16,13 +16,12 @@ import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationM
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.SELECT_REPEAT_DAYS;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.START_DATE_MUST_BE_BEFORE_OR_EQUAL_TO_END_DATE;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleWithDetailsRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAddJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateJudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import jakarta.json.JsonObject;
@@ -36,17 +35,40 @@ public class JudiciaryAvailabilityRuleApiValidator {
     private static final String REQUEST_FIELD = "Request";
     private static final String RULE_ID_FIELD = "ruleId";
 
-    public JsonObject validateAddJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
+    public JsonObject validateAddJudiciaryAvailabilityRule(final CourtschedulerAddJudiciaryAvailabilityRule request) {
         LOGGER.info("Validating AddJudiciaryAvailabilityRule input : {}", request);
-        return validateRequestWithDetails(request, false, true);
+        if (request == null) {
+            return getMessage(REQUEST_FIELD);
+        }
+        if (isBlank(request.getJudiciaryId())) {
+            return buildErrorResponse(SELECT_JUDICIARY);
+        }
+        JsonObject validation = validateBaseFields(request.getCourtHouseId(), request.getStartDate(), request.getEndDate());
+        if (!validation.isEmpty()) {
+            return validation;
+        }
+        return validateRepeatDays(request.getRepeatDays());
     }
 
-    public JsonObject validateUpdateJudiciaryAvailabilityRule(final UpdateJudiciaryAvailabilityRuleRequest request) {
+    public JsonObject validateUpdateJudiciaryAvailabilityRule(final CourtschedulerUpdateJudiciaryAvailabilityRule request) {
         LOGGER.info("Validating UpdateJudiciaryAvailabilityRule input : {}", request);
-        return validateRequestWithDetails(request, true, true);
+        if (request == null) {
+            return getMessage(REQUEST_FIELD);
+        }
+        if (isBlank(request.getRuleId())) {
+            return getMessage(RULE_ID_FIELD);
+        }
+        if (isBlank(request.getJudiciaryId())) {
+            return buildErrorResponse(SELECT_JUDICIARY);
+        }
+        JsonObject validation = validateBaseFields(request.getCourtHouseId(), request.getStartDate(), request.getEndDate());
+        if (!validation.isEmpty()) {
+            return validation;
+        }
+        return validateRepeatDays(request.getRepeatDays());
     }
 
-    public JsonObject validateDeleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
+    public JsonObject validateDeleteJudiciaryAvailabilityRule(final CourtschedulerDeleteJudiciaryAvailabilityRule request) {
         LOGGER.info("Validating DeleteJudiciaryAvailabilityRule input : {}", request);
         if (request == null) {
             return getMessage(REQUEST_FIELD);
@@ -59,62 +81,34 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateRequestWithDetails(final BaseJudiciaryAvailabilityRuleRequest request, final boolean validateRuleId, final boolean validateJudiciaryId) {
-        if (request == null) {
-            return getMessage(REQUEST_FIELD);
-        }
-
-        if (validateRuleId && isBlank(request.getRuleId())) {
-            return getMessage(RULE_ID_FIELD);
-        }
-
-        if (validateJudiciaryId && isBlank(request.getJudiciaryId())) {
-            return buildErrorResponse(SELECT_JUDICIARY);
-        }
-
-        JsonObject validation = validateBaseFields(request);
-        if (!validation.isEmpty()) {
-            return validation;
-        }
-
-        if (request instanceof BaseJudiciaryAvailabilityRuleWithDetailsRequest baseJudiciaryAvailabilityRuleWithDetailsRequest) {
-            validation = validateRepeatDays(baseJudiciaryAvailabilityRuleWithDetailsRequest.getRepeatDays());
-            if (!validation.isEmpty()) {
-                return validation;
-            }
-        }
-
-        return EMPTY_JSON_OBJECT;
-    }
-
-    private JsonObject validateBaseFields(final BaseJudiciaryAvailabilityRuleRequest request) {
-        if (isBlank(request.getCourtHouseId())) {
+    private JsonObject validateBaseFields(final String courtHouseId, final LocalDate startDate, final LocalDate endDate) {
+        if (isBlank(courtHouseId)) {
             return buildErrorResponse("Select a courthouse");
         }
 
-        if (request.getStartDate() == null) {
+        if (startDate == null) {
             return buildErrorResponse("Enter a start date");
         }
 
-        if (request.getEndDate() == null) {
+        if (endDate == null) {
             return buildErrorResponse("Enter an end date");
         }
 
-        if (request.getStartDate().isAfter(request.getEndDate())) {
+        if (startDate.isAfter(endDate)) {
             return buildErrorResponse("The start date must be the same as or before the end date");
         }
 
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateRepeatDays(final List<uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek> repeatDays) {
+    private JsonObject validateRepeatDays(final List<String> repeatDays) {
         if (repeatDays == null || repeatDays.isEmpty()) {
             return buildErrorResponse(SELECT_REPEAT_DAYS);
         }
 
         // Enum provides type safety - no need to validate individual values
         // Just check for null values in the list
-        for (uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek repeatDay : repeatDays) {
+        for (String repeatDay : repeatDays) {
             if (repeatDay == null) {
                 return buildErrorResponse(SELECT_DAY_OF_WEEK);
             }
@@ -140,7 +134,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    public JsonObject validateAddJudiciaryAvailabilityRuleForValidationEndpoint(final AddJudiciaryAvailabilityRuleRequest request, 
+    public JsonObject validateAddJudiciaryAvailabilityRuleForValidationEndpoint(final CourtschedulerAddJudiciaryAvailabilityRule request,
                                                                                 final JudiciaryAvailabilityService service) {
         LOGGER.info("Validating AddJudiciaryAvailabilityRule for validation endpoint: {}", request);
 
@@ -149,7 +143,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
             return validation;
         }
 
-        validation = validateBaseFields(request);
+        validation = validateBaseFields(request.getCourtHouseId(), request.getStartDate(), request.getEndDate());
         if (!validation.isEmpty()) {
             return validation;
         }
@@ -168,7 +162,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    public JsonObject validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(final UpdateJudiciaryAvailabilityRuleRequest request,
+    public JsonObject validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(final CourtschedulerUpdateJudiciaryAvailabilityRule request,
                                                                                     final JudiciaryAvailabilityService service) {
         LOGGER.info("Validating UpdateJudiciaryAvailabilityRule for validation endpoint: {}", request);
 
@@ -181,7 +175,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
             return getMessage(RULE_ID_FIELD);
         }
 
-        validation = validateBaseFields(request);
+        validation = validateBaseFields(request.getCourtHouseId(), request.getStartDate(), request.getEndDate());
         if (!validation.isEmpty()) {
             return validation;
         }
@@ -200,7 +194,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    public JsonObject validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(final DeleteJudiciaryAvailabilityRuleRequest request,
+    public JsonObject validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(final CourtschedulerDeleteJudiciaryAvailabilityRule request,
                                                                                     final JudiciaryAvailabilityService service) {
         LOGGER.info("Validating DeleteJudiciaryAvailabilityRule for validation endpoint: {}", request);
 

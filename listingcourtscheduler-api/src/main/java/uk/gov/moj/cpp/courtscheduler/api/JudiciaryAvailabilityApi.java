@@ -1,11 +1,9 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
-import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
-import java.io.StringReader;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,27 +14,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AddJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.DeleteJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.FindJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.GetJudiciaryAvailabilityRuleConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateJudiciaryAvailabilityRuleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SearchAvailableJudiciariesService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciaryAvailabilityRuleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.UnprocessableEntityException;
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.JudiciaryAvailabilityOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAddJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateJudiciaryAvailabilityRule;
+
+import jakarta.json.JsonObject;
 
 /**
  * Implements {@link JudiciaryAvailabilityOpenApi} — replaces the legacy
@@ -57,65 +47,22 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
     private final JudiciaryAvailabilityService judiciaryAvailabilityService;
     private final SearchAvailableJudiciariesService searchAvailableJudiciariesService;
     private final JudiciaryAvailabilityRuleApiValidator validator;
-    private final AddJudiciaryAvailabilityRuleConverter addConverter;
-    private final UpdateJudiciaryAvailabilityRuleConverter updateConverter;
-    private final DeleteJudiciaryAvailabilityRuleConverter deleteConverter;
-    private final FindJudiciaryAvailabilityConverter findConverter;
-    private final FindJudiciaryAvailabilityRuleConverter findRulesConverter;
-    private final GetJudiciaryAvailabilityRuleConverter getRuleConverter;
     private final ObjectMapper objectMapper;
 
     public JudiciaryAvailabilityApi(final JudiciaryAvailabilityService judiciaryAvailabilityService,
                                     final SearchAvailableJudiciariesService searchAvailableJudiciariesService,
                                     final JudiciaryAvailabilityRuleApiValidator validator,
-                                    final AddJudiciaryAvailabilityRuleConverter addConverter,
-                                    final UpdateJudiciaryAvailabilityRuleConverter updateConverter,
-                                    final DeleteJudiciaryAvailabilityRuleConverter deleteConverter,
-                                    final FindJudiciaryAvailabilityConverter findConverter,
-                                    final FindJudiciaryAvailabilityRuleConverter findRulesConverter,
-                                    final GetJudiciaryAvailabilityRuleConverter getRuleConverter,
                                     final ObjectMapper objectMapper) {
         this.judiciaryAvailabilityService = judiciaryAvailabilityService;
         this.searchAvailableJudiciariesService = searchAvailableJudiciariesService;
         this.validator = validator;
-        this.addConverter = addConverter;
-        this.updateConverter = updateConverter;
-        this.deleteConverter = deleteConverter;
-        this.findConverter = findConverter;
-        this.findRulesConverter = findRulesConverter;
-        this.getRuleConverter = getRuleConverter;
         this.objectMapper = objectMapper;
-    }
-
-    private JsonObject toJsonObject(final Map<String, Object> body) {
-        try {
-            final String json = body == null ? "{}" : objectMapper.writeValueAsString(body);
-            try (var reader = Json.createReader(new StringReader(json))) {
-                return reader.readObject();
-            }
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("Invalid request body", e);
-        }
-    }
-
-    /** Map the few common query params for the GET endpoints into a JsonObject. */
-    private JsonObject queryToJsonObject(final String startDate, final String endDate, final String courtCentreId,
-                                         final Integer pageSize, final Integer pageNumber, final Boolean withJudiciary) {
-        final JsonObjectBuilder b = Json.createObjectBuilder();
-        if (startDate != null)     b.add("startDate", startDate);
-        if (endDate != null)       b.add("endDate", endDate);
-        if (courtCentreId != null) b.add("courtCentreId", courtCentreId);
-        if (pageSize != null)      b.add("pageSize", pageSize);
-        if (pageNumber != null)    b.add("pageNumber", pageNumber);
-        if (withJudiciary != null) b.add("withJudiciary", withJudiciary);
-        return b.build();
     }
 
     // ----- POST /judiciaries/availability-rules/add -----
     @Override
-    public ResponseEntity<Void> addJudiciaryAvailabilityRule(final Map<String, Object> body) {
-        LOG.info("courtscheduler.judiciary.add.availability.rule: {}", body);
-        final AddJudiciaryAvailabilityRuleRequest request = addConverter.convert(toJsonObject(body));
+    public ResponseEntity<Void> addJudiciaryAvailabilityRule(final CourtschedulerAddJudiciaryAvailabilityRule request) {
+        LOG.info("courtscheduler.judiciary.add.availability.rule: {}", request);
         final JsonObject errors = validator.validateAddJudiciaryAvailabilityRule(request);
         if (!errors.isEmpty()) {
             throw new UnprocessableEntityException(errors);
@@ -126,9 +73,8 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
 
     // ----- POST /judiciaries/availability-rules/update -----
     @Override
-    public ResponseEntity<Void> updateJudiciaryAvailabilityRule(final Map<String, Object> body) {
-        LOG.info("courtscheduler.judiciary.update.availability.rule: {}", body);
-        final UpdateJudiciaryAvailabilityRuleRequest request = updateConverter.convert(toJsonObject(body));
+    public ResponseEntity<Void> updateJudiciaryAvailabilityRule(final CourtschedulerUpdateJudiciaryAvailabilityRule request) {
+        LOG.info("courtscheduler.judiciary.update.availability.rule: {}", request);
         final JsonObject errors = validator.validateUpdateJudiciaryAvailabilityRule(request);
         if (!errors.isEmpty()) {
             throw new UnprocessableEntityException(errors);
@@ -139,9 +85,8 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
 
     // ----- POST /judiciaries/availability-rules/delete -----
     @Override
-    public ResponseEntity<Void> deleteJudiciaryAvailabilityRule(final Map<String, Object> body) {
-        LOG.info("courtscheduler.judiciary.delete.availability.rule: {}", body);
-        final DeleteJudiciaryAvailabilityRuleRequest request = deleteConverter.convert(toJsonObject(body));
+    public ResponseEntity<Void> deleteJudiciaryAvailabilityRule(final CourtschedulerDeleteJudiciaryAvailabilityRule request) {
+        LOG.info("courtscheduler.judiciary.delete.availability.rule: {}", request);
         final JsonObject errors = validator.validateDeleteJudiciaryAvailabilityRule(request);
         if (!errors.isEmpty()) {
             throw new UnprocessableEntityException(errors);
@@ -152,27 +97,24 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
 
     // ----- POST /judiciaries/availability-rules/validate-add -----
     @Override
-    public ResponseEntity<Map<String, Object>> validateAddJudiciaryAvailabilityRule(final Map<String, Object> body) {
-        LOG.info("courtscheduler.judiciary.add.availability.rule.validate: {}", body);
-        final AddJudiciaryAvailabilityRuleRequest request = addConverter.convert(toJsonObject(body));
+    public ResponseEntity<Map<String, Object>> validateAddJudiciaryAvailabilityRule(final CourtschedulerAddJudiciaryAvailabilityRule request) {
+        LOG.info("courtscheduler.judiciary.add.availability.rule.validate: {}", request);
         final JsonObject errors = validator.validateAddJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
         return validationResponse(errors);
     }
 
     // ----- POST /judiciaries/availability-rules/validate-update -----
     @Override
-    public ResponseEntity<Map<String, Object>> validateUpdateJudiciaryAvailabilityRule(final Map<String, Object> body) {
-        LOG.info("courtscheduler.judiciary.update.availability.rule.validate: {}", body);
-        final UpdateJudiciaryAvailabilityRuleRequest request = updateConverter.convert(toJsonObject(body));
+    public ResponseEntity<Map<String, Object>> validateUpdateJudiciaryAvailabilityRule(final CourtschedulerUpdateJudiciaryAvailabilityRule request) {
+        LOG.info("courtscheduler.judiciary.update.availability.rule.validate: {}", request);
         final JsonObject errors = validator.validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
         return validationResponse(errors);
     }
 
     // ----- POST /judiciaries/availability-rules/validate-delete -----
     @Override
-    public ResponseEntity<Map<String, Object>> validateDeleteJudiciaryAvailabilityRule(final Map<String, Object> body) {
-        LOG.info("courtscheduler.judiciary.delete.availability.rule.validate: {}", body);
-        final DeleteJudiciaryAvailabilityRuleRequest request = deleteConverter.convert(toJsonObject(body));
+    public ResponseEntity<Map<String, Object>> validateDeleteJudiciaryAvailabilityRule(final CourtschedulerDeleteJudiciaryAvailabilityRule request) {
+        LOG.info("courtscheduler.judiciary.delete.availability.rule.validate: {}", request);
         final JsonObject errors = validator.validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(request, judiciaryAvailabilityService);
         return validationResponse(errors);
     }
@@ -212,31 +154,27 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
 
     // ----- GET /judiciaries/availability-rules -----
     @Override
-    public ResponseEntity<Map<String, Object>> findJudiciaryAvailabilityRules(final String startDate,
-                                                                              final String endDate,
-                                                                              final String courtCentreId,
-                                                                              final Integer pageSize,
-                                                                              final Integer pageNumber,
-                                                                              final Boolean withJudiciary) {
+    public ResponseEntity<CourtschedulerFindJudiciaryAvailabilityRule> findJudiciaryAvailabilityRules(final String startDate,
+                                                                                                       final String endDate,
+                                                                                                       final String courtCentreId,
+                                                                                                       final Integer pageSize,
+                                                                                                       final Integer pageNumber,
+                                                                                                       final Boolean withJudiciary) {
         LOG.info("courtscheduler.judiciary.find.availability.rule startDate={}, endDate={}, courtCentreId={}",
                 startDate, endDate, courtCentreId);
-        final FindJudiciaryAvailabilityRuleRequest request = findRulesConverter.convert(
-                queryToJsonObject(startDate, endDate, courtCentreId, pageSize, pageNumber, withJudiciary));
-        final FindJudiciaryAvailabilityRuleResponse response = judiciaryAvailabilityService.findJudiciaryAvailabilityRules(request);
-        return ResponseEntity.ok(toFlatMap(response));
+        final CourtschedulerFindJudiciaryAvailabilityRule response = judiciaryAvailabilityService.findJudiciaryAvailabilityRules(
+                LocalDate.parse(startDate), LocalDate.parse(endDate), courtCentreId, null,
+                pageSize, pageNumber, withJudiciary);
+        return ResponseEntity.ok(response);
     }
 
     // ----- GET /judiciaries/availability-rules/{ruleId} -----
     @Override
-    public ResponseEntity<Map<String, Object>> getJudiciaryAvailabilityRule(final String ruleId,
-                                                                            final Boolean withJudiciary) {
+    public ResponseEntity<CourtschedulerGetJudiciaryAvailabilityRule> getJudiciaryAvailabilityRule(final String ruleId,
+                                                                                                    final Boolean withJudiciary) {
         LOG.info("courtscheduler.judiciary.get.availability.rule ruleId={}, withJudiciary={}", ruleId, withJudiciary);
-        final JsonObjectBuilder b = Json.createObjectBuilder();
-        b.add("ruleId", ruleId);
-        if (withJudiciary != null) b.add("withJudiciary", withJudiciary);
-        final GetJudiciaryAvailabilityRuleRequest request = getRuleConverter.convert(b.build());
-        final GetJudiciaryAvailabilityRuleResponse response = judiciaryAvailabilityService.getJudiciaryAvailabilityRule(request);
-        return ResponseEntity.ok(toFlatMap(response));
+        final CourtschedulerGetJudiciaryAvailabilityRule response = judiciaryAvailabilityService.getJudiciaryAvailabilityRule(ruleId, withJudiciary);
+        return ResponseEntity.ok(response);
     }
 
     // ----- GET /judiciaries — dual action selected by Accept header -----
@@ -260,9 +198,8 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
                     courtHouseId, courtScheduleIds, ignoreAvailability);
         }
         LOG.info("courtscheduler.judiciary.find.availability startDate={}, endDate={}", startDate, endDate);
-        final FindJudiciaryAvailabilityRequest request = findConverter.convert(
-                queryToJsonObject(startDate, endDate, courtCentreId, pageSize, pageNumber, withJudiciary));
-        final FindJudiciaryAvailabilityResponse response = judiciaryAvailabilityService.findJudiciaryAvailability(request);
+        final var response = judiciaryAvailabilityService.findJudiciaryAvailability(
+                LocalDate.parse(startDate), LocalDate.parse(endDate), courtCentreId, null);
         return ResponseEntity.ok(toFlatMap(response));
     }
 

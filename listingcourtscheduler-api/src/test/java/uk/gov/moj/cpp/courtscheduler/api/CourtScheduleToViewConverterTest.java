@@ -3,12 +3,12 @@ package uk.gov.moj.cpp.courtscheduler.api;
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToViewConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSessionsView;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleView;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -113,16 +113,15 @@ class CourtScheduleToViewConverterTest {
     void shouldConvertJudiciaries() {
         final CourtSchedule schedule = random(CourtSchedule.class);
         final String judiciaryId = "9f39f876-3ff6-32b5-926e-c588e36a87b8";
-        schedule.setJudiciaries(List.of(judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withTitle("His Honour")
-                .withForenames("Mark J")
-                .withSurname("Ainsworth")
-                .withEmailAddress("mark.ainsworth@ejudiciary.net")
-                .withJudiciaryType("Recorder")
-                .withIsBenchChairman(true)
-                .withIsDeputy(false)
-                .build()));
+        schedule.setJudiciaries(List.of(new CourtScheduleJudiciary()
+                .judiciaryId(judiciaryId)
+                .title("His Honour")
+                .forenames("Mark J")
+                .surname("Ainsworth")
+                .emailAddress("mark.ainsworth@ejudiciary.net")
+                .judiciaryType("Recorder")
+                .benchChairman(true)
+                .deputy(false)));
 
         final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule));
 

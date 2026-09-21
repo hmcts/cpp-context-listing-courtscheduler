@@ -8,8 +8,8 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 
 // (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -45,9 +45,9 @@ public class AssignJudiciariesApiValidator {
         this.courtScheduleRepository = courtScheduleRepository;
     }
 
-    public JsonObject validate(final AssignJudiciariesRequest request) {
+    public JsonObject validate(final CourtschedulerAssignJudiciary request) {
         // Skip validation if skipValidations flag is set to true
-        if (request != null && request.isSkipValidations()) {
+        if (request != null && Boolean.TRUE.equals(request.getSkipValidations())) {
             return EMPTY_JSON_OBJECT;
         }
 

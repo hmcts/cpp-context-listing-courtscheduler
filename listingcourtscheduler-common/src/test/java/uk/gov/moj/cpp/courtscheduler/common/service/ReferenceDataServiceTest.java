@@ -24,11 +24,11 @@ import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.mockCou
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverter;
 
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
 import java.time.LocalDate;
@@ -112,7 +112,7 @@ class ReferenceDataServiceTest {
         final JsonObject envelope = courtRoomJson;
 
         when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
-        final Optional<CourtRoom> courtRoom = referenceDataService.getRotaCourtRoomByVenue(new Venue(77, 0, "Court 9"), new HashMap<>());
+        final Optional<CourtRoom> courtRoom = referenceDataService.getRotaCourtRoomByVenue(new Venue().locationId(77).venueId(0).venueName("Court 9"), new HashMap<>());
         assertThat(courtRoom, Matchers.notNullValue());
     }
 

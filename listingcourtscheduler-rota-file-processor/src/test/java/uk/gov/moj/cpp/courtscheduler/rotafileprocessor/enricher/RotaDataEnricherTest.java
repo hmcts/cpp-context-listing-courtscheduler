@@ -18,8 +18,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTIN
 import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
@@ -65,7 +65,7 @@ class RotaDataEnricherTest {
     private static final String PM_SESSION = "PM";
     private static final String ALL_DAY_SESSION = "AD";
 
-    private CourtRoomSessionAllocation sessionAllocation = new CourtRoomSessionAllocation("241546", 2332, "B01LY00", 8, 60, "TRF", AM_SESSION);
+    private CourtRoomSessionAllocation sessionAllocation = new CourtRoomSessionAllocation().id("241546").courtRoomId(2332).oucode("B01LY00").maxSlot(8).maxDurationMins(60).rotaBusinessTypeCode("TRF").courtSession(AM_SESSION);
 
     @BeforeEach
     public void setup() {
@@ -83,12 +83,9 @@ class RotaDataEnricherTest {
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
         final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
-        final List<CourtSchedule> courtScheduleList = List.of(CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                .withCourtSchedule(courtSchedule)
-                .withCourtScheduleId(courtScheduleId)
-                .withOuCode(courtSchedule.getOuCode())
-                .withCreatedOn(Calendar.getInstance().getTime())
-                .build());
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setCreatedOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(Calendar.getInstance().getTime()));
+        final List<CourtSchedule> courtScheduleList = List.of(courtSchedule);
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(courtSchedule);
@@ -129,12 +126,9 @@ class RotaDataEnricherTest {
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule courtSchedule = getCourtSchedule();
         final Map<String, Boolean> migratedMap = Map.of(courtSchedule.getOuCode(), FALSE);
-        final List<CourtSchedule> courtScheduleList = List.of(CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                .withCourtSchedule(courtSchedule)
-                .withCourtScheduleId(courtScheduleId)
-                .withOuCode(courtSchedule.getOuCode())
-                .withCreatedOn(Calendar.getInstance().getTime())
-                .build());
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setCreatedOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(Calendar.getInstance().getTime()));
+        final List<CourtSchedule> courtScheduleList = List.of(courtSchedule);
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(courtSchedule);
@@ -182,35 +176,34 @@ class RotaDataEnricherTest {
         records.put(COURT_LISTING, listings);
 
         // First row: enricher returns the AM-built schedule (its listingProfileId acts as the key in the map)
-        final CourtSchedule built = CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withListingProfileId("L1")
-                .withOuCode(ouCode)
-                .withCourtRoomId(courtRoomId)
-                .withCourtRoomNumber(courtRoomNumber)
-                .withBusinessType(businessType)
-                .withCourtSession("AM")
-                .withSessionDate(sessionDate)
-                .withMaxSlots(0)
-                .withAvailableSlots(0)
-                .withMaxDuration(0)
-                .withAvailableDuration(0)
-                .build();
+        final CourtSchedule built = new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .listingProfileId("L1")
+                .ouCode(ouCode)
+                .courtRoomId(courtRoomId)
+                .courtRoomNumber(courtRoomNumber)
+                .businessType(businessType)
+                .courtSession("AM")
+                .sessionDate(sessionDate)
+                .maxSlots(0)
+                .availableSlots(0)
+                .maxDuration(0)
+                .availableDuration(0);
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(built);
 
         // Second row triggers refdata lookup; refdata supplies custom AD start/end times
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
-        final CourtRoomSessionAllocation allocation = CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation()
-                .withId("alloc-1")
-                .withCourtRoomId(courtRoomNumber)
-                .withOucode(ouCode)
-                .withMaxSlot(4)
-                .withMaxDurationMins(45)
-                .withRotaBusinessTypeCode(businessType)
-                .withCourtSession("WEDPM")
-                .withSessionStartTime("09:15")
-                .withSessionEndTime("16:30")
-                .build();
+        final CourtRoomSessionAllocation allocation = new CourtRoomSessionAllocation()
+                .id("alloc-1")
+                .courtRoomId(courtRoomNumber)
+                .oucode(ouCode)
+                .maxSlot(4)
+                .maxDurationMins(45)
+                .rotaBusinessTypeCode(businessType)
+                .courtSession("WEDPM")
+                .sessionStartTime("09:15")
+                .sessionEndTime("16:30")
+                ;
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(allocation));
 
@@ -222,8 +215,8 @@ class RotaDataEnricherTest {
         final CourtSchedule updated = result.get("L1");
         assertThat(updated.getCourtSession(), is(ALL_DAY_SESSION));
         // refdata times override hardcoded ALL_DAY defaults (10:00 / 17:00)
-        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:15")));
-        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "16:30")));
+        assertThat(updated.getSessionStartTime(), is(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(sessionDate, "09:15"))));
+        assertThat(updated.getSessionEndTime(), is(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(sessionDate, "16:30"))));
         // slot/duration totals get incremented by allocation values
         assertThat(updated.getMaxSlots(), is(4));
         assertThat(updated.getAvailableSlots(), is(4));
@@ -246,16 +239,15 @@ class RotaDataEnricherTest {
         listings.put("L2", listingRow("L2", linkedSessionId, sessionDate, "PM", businessType));
         records.put(COURT_LISTING, listings);
 
-        final CourtSchedule built = CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withListingProfileId("L1")
-                .withOuCode(ouCode)
-                .withCourtRoomId(courtRoomId)
-                .withCourtRoomNumber(courtRoomNumber)
-                .withBusinessType(businessType)
-                .withCourtSession("AM")
-                .withSessionDate(sessionDate)
-                .build();
+        final CourtSchedule built = new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .listingProfileId("L1")
+                .ouCode(ouCode)
+                .courtRoomId(courtRoomId)
+                .courtRoomNumber(courtRoomNumber)
+                .businessType(businessType)
+                .courtSession("AM")
+                .sessionDate(sessionDate);
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(built);
 
         when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
@@ -269,8 +261,8 @@ class RotaDataEnricherTest {
 
         final CourtSchedule updated = result.get("L1");
         assertThat(updated.getCourtSession(), is(ALL_DAY_SESSION));
-        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00")));
-        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00")));
+        assertThat(updated.getSessionStartTime(), is(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(sessionDate, "10:00"))));
+        assertThat(updated.getSessionEndTime(), is(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(sessionDate, "17:00"))));
     }
 
     private Map<String, String> listingRow(final String id, final String linkedSessionId, final LocalDate sessionDate, final String session, final String businessType) {

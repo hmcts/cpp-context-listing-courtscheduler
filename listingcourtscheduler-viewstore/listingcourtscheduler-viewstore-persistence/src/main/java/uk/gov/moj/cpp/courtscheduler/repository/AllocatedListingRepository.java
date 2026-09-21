@@ -2,11 +2,11 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.EXACT_HEARING_START_DATETIME;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 
@@ -65,13 +65,22 @@ public interface AllocatedListingRepository
     Integer findTotalAllocatedDurationByCourtScheduleId(@Param("courtScheduleId") String courtScheduleId);
 
     @Query("""
-            SELECT new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked(
-                       al.courtScheduleId, al.duration, al.hearingStartTime)
+            SELECT al.courtScheduleId, al.duration, al.hearingStartTime
               FROM AllocatedListing al
              WHERE al.courtScheduleId IN :courtScheduleIds
             """)
-    List<AllocatedListingEachBooked> getAllocatedListingsEachBookedByCourtScheduleId(
+    List<Object[]> findAllocatedListingsEachBookedRowsByCourtScheduleId(
             @Param("courtScheduleIds") List<String> courtScheduleIds);
+
+    default List<AllocatedListingEachBooked> getAllocatedListingsEachBookedByCourtScheduleId(
+            final List<String> courtScheduleIds) {
+        return findAllocatedListingsEachBookedRowsByCourtScheduleId(courtScheduleIds).stream()
+                .map(row -> new AllocatedListingEachBooked()
+                        .courtScheduleId((String) row[0])
+                        .duration((Integer) row[1])
+                        .hearingStartTime(DateUtils.toOffsetDateTime((Date) row[2])))
+                .toList();
+    }
 
     @Modifying
     @Transactional
@@ -205,7 +214,9 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
                 .getResultList();
 
         return results.stream()
-                .map(row -> new AllocatedListingTotalBooked((String) row[0], ((Number) row[1]).longValue()))
+                .map(row -> new AllocatedListingTotalBooked()
+                        .courtScheduleId((String) row[0])
+                        .totalBooked(((Number) row[1]).intValue()))
                 .toList();
     }
 
@@ -219,8 +230,8 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
                         "SELECT al FROM AllocatedListing al "
                                 + "WHERE al.updatedOn > :fromDate AND al.updatedOn < :toDate",
                         AllocatedListing.class)
-                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()))
-                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()))
+                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromDate()))
+                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToDate()))
                 .getResultList();
 
         return allocatedListings.stream().map(entity -> {
