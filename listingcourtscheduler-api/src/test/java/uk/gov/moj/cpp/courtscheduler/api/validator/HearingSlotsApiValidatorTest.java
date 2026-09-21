@@ -600,6 +600,7 @@ class HearingSlotsApiValidatorTest {
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .setHearingId(UUID.randomUUID().toString())
                     .setCourtCentreId(UUID.randomUUID().toString())
+                    .setCourtRoomId(UUID.randomUUID().toString())
                     .setJurisdiction("CROWN")
                     .setStartDate(LocalDate.now().plusDays(1));
 
@@ -612,6 +613,7 @@ class HearingSlotsApiValidatorTest {
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .setHearingId(UUID.randomUUID().toString())
                     .setCourtCentreId(UUID.randomUUID().toString())
+                    .setCourtRoomId(UUID.randomUUID().toString())
                     .setJurisdiction("CROWN")
                     .setStartDate(LocalDate.now());
 
@@ -624,6 +626,7 @@ class HearingSlotsApiValidatorTest {
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .setHearingId(UUID.randomUUID().toString())
                     .setCourtCentreId(UUID.randomUUID().toString())
+                    .setCourtRoomId(UUID.randomUUID().toString())
                     .setJurisdiction("CROWN")
                     .setStartDate(LocalDate.of(2025, 3, 3))
                     .setCourtScheduleId(UUID.randomUUID().toString());
@@ -637,6 +640,7 @@ class HearingSlotsApiValidatorTest {
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .setHearingId(UUID.randomUUID().toString())
                     .setCourtCentreId(UUID.randomUUID().toString())
+                    .setCourtRoomId(UUID.randomUUID().toString())
                     .setJurisdiction("MAGISTRATES")
                     .setStartDate(LocalDate.of(2025, 3, 3))
                     .setDurationInMinutes(720);
@@ -650,12 +654,27 @@ class HearingSlotsApiValidatorTest {
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .setHearingId(UUID.randomUUID().toString())
                     .setCourtCentreId(UUID.randomUUID().toString())
+                    .setCourtRoomId(UUID.randomUUID().toString())
                     .setStartDate(LocalDate.of(2025, 3, 3))
                     .setDurationInMinutes(360);
 
             final JsonObject result = validator.moveHearingToPastDateValidation(request);
             assertFalse(result.isEmpty());
             assertTrue(result.getString("errorMessage").toLowerCase().contains("jurisdiction"));
+        }
+
+        @Test
+        void should_returnError_when_courtRoomIdMissing() {
+            // Main-contract alignment: courtRoomId is now mandatory (the caller names the room to search within).
+            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
+                    .setHearingId(UUID.randomUUID().toString())
+                    .setCourtCentreId(UUID.randomUUID().toString())
+                    .setJurisdiction("CROWN")
+                    .setStartDate(LocalDate.of(2025, 3, 3));
+
+            final JsonObject result = validator.moveHearingToPastDateValidation(request);
+            assertFalse(result.isEmpty());
+            assertTrue(result.getString("errorMessage").toLowerCase().contains("courtroomid"));
         }
     }
 

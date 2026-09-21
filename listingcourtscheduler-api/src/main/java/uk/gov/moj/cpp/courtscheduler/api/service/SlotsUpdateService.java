@@ -587,18 +587,36 @@ public class SlotsUpdateService {
     }
 
     /**
-     * Move a hearing to a (typically past) date (SPRDT-1089, AC7). Releases the prior allocation, then
-     * books CONSECUTIVE weekday sessions in one room + business type at the centre — CROWN via an optional
-     * {@code courtScheduleId} anchor or a centre search, MAGISTRATES always via the centre search.
-     * source=MOVE_TO_PAST_DATE. The past-only rule is owned by the caller (listing); courtscheduler books
-     * whatever consecutive sessions it finds and does not reject future dates.
+     * Move a hearing to a (typically past) date (SPRDT-1089, AC7; courtRoomId added to mirror
+     * main's contract — see the review artifact this reconciles). Releases the prior allocation,
+     * then books CONSECUTIVE weekday sessions in one room + business type at the centre — CROWN via
+     * an optional {@code courtScheduleId} anchor or a {@code courtRoomId}-scoped centre search,
+     * MAGISTRATES always via the (equally {@code courtRoomId}-scoped) centre search. When the anchor
+     * is used, its own room already applies and {@code courtRoomId} is not separately enforced.
+     * source=MOVE_TO_PAST_DATE. The past-only rule is owned by the caller (listing); courtscheduler
+     * books whatever consecutive sessions it finds and does not reject future dates.
      */
     public MoveHearingToPastDateResponse moveHearingToPastDate(final MoveHearingToPastDateRequest request) {
-        LOGGER.info("[MOVE-PAST] hearingId: {}, centre: {}, jurisdiction: {}, startDate: {}, endDate: {}, durationMins: {}",
-                request.getHearingId(), request.getCourtCentreId(), request.getJurisdiction(),
+        LOGGER.info("[MOVE-PAST] hearingId: {}, centre: {}, courtRoomId: {}, jurisdiction: {}, startDate: {}, endDate: {}, durationMins: {}",
+                request.getHearingId(), request.getCourtCentreId(), request.getCourtRoomId(), request.getJurisdiction(),
                 request.getStartDate(), request.getEndDate(), request.getDurationInMinutes());
 
-        final int daysNeeded = daysNeeded(request.getDurationInMinutes(), request.getStartDate(), request.getEndDate());
+        // A GENUINE date range (endDate strictly after startDate) sizes the block from the calendar
+        // span; with no endDate at all, duration keeps driving it (legacy shape - some callers still
+        // omit endDate and rely on durationInMinutes alone). But endDate PRESENT and EQUAL to
+        // startDate - the shape every request now takes since courtRoomId/startTime/endTime became
+        // mandatory, main-contract alignment - is an explicit single-date move: exactly one day is
+        // needed regardless of durationInMinutes. That field is the hearing's own overall estimate
+        // (e.g. a multi-day trial's total), unrelated to how many days THIS move targets, and
+        // letting it drive daysNeeded here silently turned an ordinary same-day move into an
+        // unsatisfiable multi-consecutive-day search. Mirrors SPRDT-1220's clamp for the
+        // update-hearing-for-listing path. isGenuineDateRange is reused below so the empty-sessions
+        // branch's exploratory-vs-error decision stays in sync with this sizing.
+        final boolean isGenuineDateRange = request.hasEndDate() && request.getEndDate().isAfter(request.getStartDate());
+        final boolean isExplicitSameDayMove = request.hasEndDate() && request.getEndDate().isEqual(request.getStartDate());
+        final int daysNeeded = isExplicitSameDayMove
+                ? 1
+                : daysNeeded(request.getDurationInMinutes(), request.getStartDate(), request.getEndDate());
         final int perDay = perDayDuration(request.getDurationInMinutes(), daysNeeded);
 
         // Select (search + validate) the past sessions BEFORE touching the prior allocation, so a search
@@ -610,25 +628,30 @@ public class SlotsUpdateService {
             final List<CourtSchedule> candidates = request.hasCourtScheduleId()
                     ? courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded)
                     : courtScheduleRepository.findConsecutiveSessionsForCentre(
-                            request.getCourtCentreId(), request.getStartDate(), daysNeeded);
+                            request.getCourtCentreId(), request.getStartDate(), daysNeeded, request.getCourtRoomId());
             sessions = selectConsecutiveSessions(candidates, daysNeeded, request.getHearingId(), perDay);
         } else {
             // MAGISTRATES: consecutive past weekdays in the centre (same room + business type),
             // mirroring the CROWN no-anchor path — no sparse allocation.
             sessions = selectConsecutiveSessions(
                     courtScheduleRepository.findConsecutiveSessionsForCentre(
-                            request.getCourtCentreId(), request.getStartDate(), daysNeeded),
+                            request.getCourtCentreId(), request.getStartDate(), daysNeeded, request.getCourtRoomId()),
                     daysNeeded, request.getHearingId(), perDay);
         }
 
         if (sessions.isEmpty()) {
-            // No session for a single-date request is a hard 404; the prior allocation is left intact.
-            if (!request.hasEndDate()) {
+            // A GENUINE date range (endDate strictly after startDate) that yields nothing is
+            // exploratory - leave the existing allocation intact. Everything else (no endDate at
+            // all, OR endDate present but equal to startDate - the shape every request now takes
+            // since courtRoomId/startTime/endTime became mandatory, main-contract alignment) is a
+            // single-date request: no session for it is a hard 404, not a silent empty success.
+            // (isGenuineDateRange computed above, once, and reused here so this stays in sync with
+            // the daysNeeded sizing.)
+            if (!isGenuineDateRange) {
                 throw new NoSessionAvailableException(
                         "No past session available for hearingId " + request.getHearingId()
                                 + " starting " + request.getStartDate());
             }
-            // A date-range request that yields nothing is exploratory — leave the existing allocation intact.
             return new MoveHearingToPastDateResponse(
                     request.getHearingId(), SOURCE_MOVE_TO_PAST_DATE, Collections.emptyList());
         }

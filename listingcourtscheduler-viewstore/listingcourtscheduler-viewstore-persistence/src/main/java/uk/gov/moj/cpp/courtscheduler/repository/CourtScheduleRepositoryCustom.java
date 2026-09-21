@@ -82,6 +82,17 @@ public interface CourtScheduleRepositoryCustom {
                                                                                               int daysNeeded);
 
     /**
+     * Same as {@link #findConsecutiveSessionsForCentre(String, LocalDate, int)}, additionally
+     * scoped to a single room when {@code courtRoomId} is supplied (main-contract alignment for
+     * {@code move-hearing-to-past-date} — the caller now supplies the room to search within);
+     * {@code null} behaves exactly like the 3-arg overload (unconstrained).
+     */
+    List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findConsecutiveSessionsForCentre(String courtCentreId,
+                                                                                              LocalDate fromDate,
+                                                                                              int daysNeeded,
+                                                                                              String courtRoomId);
+
+    /**
      * AD weekday sessions for a room in a date range. businessType and isDraft are optional
      * filters (null = unconstrained). The extend path (SPRDT-1273) passes the block's own draft
      * state so an allocated hearing's tail days only ever book FINAL sessions — a draft tail
