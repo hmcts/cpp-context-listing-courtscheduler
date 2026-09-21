@@ -22,7 +22,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.HearingslotsOpenApi;
 
@@ -81,11 +81,22 @@ public class HearingSlotsApi implements HearingslotsOpenApi {
 
     /** PUT /hearingslots — allocate hearing slots. */
     @Override
-    public ResponseEntity<Map<String, Object>> putUpdateHearingSlots(final Map<String, Object> body) {
+    public ResponseEntity<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateHearingSlotsResponse> putUpdateHearingSlots(
+            final uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlots body) {
         LOG.info("courtscheduler.update.hearing.slots: {}", body);
-        final List<AllocatedSlot> slots = allocatedSlotConverter.convert(toJson(body)).getHearingSlots();
+        final List<AllocatedSlot> slots = allocatedSlotConverter.convert(writeValueAsJson(body)).getHearingSlots();
         final JsonObject schedules = slotsUpdateService.update(slots);
-        return ResponseEntity.ok(uk.gov.moj.cpp.courtscheduler.config.JsonValueConverter.toMap(schedules));
+        return ResponseEntity.ok(objectMapper.convertValue(
+                uk.gov.moj.cpp.courtscheduler.config.JsonValueConverter.toMap(schedules),
+                uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateHearingSlotsResponse.class));
+    }
+
+    private String writeValueAsJson(final Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Invalid request body", e);
+        }
     }
 
     /** GET /hearingslots — search hearing slots / hearing ids (depending on Accept). */

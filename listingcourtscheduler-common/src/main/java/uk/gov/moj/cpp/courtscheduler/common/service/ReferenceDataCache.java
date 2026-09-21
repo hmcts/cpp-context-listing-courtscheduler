@@ -14,12 +14,12 @@ import org.springframework.beans.factory.annotation.Value;
 import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnit;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.OrganisationUnit;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
 import java.util.List;
 import java.util.Map;

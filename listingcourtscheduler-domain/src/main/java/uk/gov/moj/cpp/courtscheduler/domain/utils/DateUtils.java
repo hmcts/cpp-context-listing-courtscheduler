@@ -89,6 +89,13 @@ public class DateUtils {
         }
     }
 
+    public static OffsetDateTime toOffsetDateTime(final java.util.Date date) {
+        if (date == null) {
+            return null;
+        }
+        return date.toInstant().atOffset(ZoneOffset.UTC);
+    }
+
     public static String toIsoString(final LocalDateTime localDateTime) {
         if (localDateTime == null) {
             return null;
@@ -383,5 +390,16 @@ public class DateUtils {
                 || randomDate.getDayOfWeek() == DayOfWeek.SUNDAY);
 
         return randomDate;
+    }
+
+    public static String normaliseRepeatPatternEndDate(final String endDate) {
+        if (endDate == null || endDate.equals("END_DATE") || endDate.trim().isEmpty()) {
+            return null;
+        }
+        return endDate;
+    }
+
+    public static LocalDate parseRepeatPatternDate(final String date) {
+        return LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
     }
 }

@@ -14,7 +14,7 @@ import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
 import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
@@ -131,7 +131,7 @@ public class ProvisionalBookingIT extends AbstractIT {
         courtScheduleJudiciary.setCourtListingProfileId(courtScheduleJudiciary.getCourtListingProfileId());
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
 
-        final ProvisionalSlot provisionalSlot = new ProvisionalSlot(courtSchedule.getCourtScheduleId(), "2020-01-01T11:00:00.000Z");
+        final ProvisionalSlot provisionalSlot = new ProvisionalSlot().courtScheduleId(courtSchedule.getCourtScheduleId()).hearingStartTime("2020-01-01T11:00:00.000Z");
         databaseSeeder.bookSlots(List.of(provisionalSlot), bookingId);
 
         String provisionalBooking = getPayload("courtscheduler.get.provisional.booking.json");

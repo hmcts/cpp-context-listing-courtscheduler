@@ -5,8 +5,8 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;

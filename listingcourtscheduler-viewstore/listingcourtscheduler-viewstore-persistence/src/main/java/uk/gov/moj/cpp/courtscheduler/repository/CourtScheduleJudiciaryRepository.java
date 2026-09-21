@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
@@ -193,8 +193,8 @@ class CourtScheduleJudiciaryRepositoryImpl implements CourtScheduleJudiciaryRepo
                         "SELECT csj FROM CourtScheduleJudiciary csj "
                                 + "WHERE csj.updatedOn > :fromDate AND csj.updatedOn < :toDate",
                         CourtScheduleJudiciary.class)
-                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()))
-                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()))
+                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromDate()))
+                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToDate()))
                 .getResultList();
 
         return rows.stream().map(entity -> new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary.Builder()

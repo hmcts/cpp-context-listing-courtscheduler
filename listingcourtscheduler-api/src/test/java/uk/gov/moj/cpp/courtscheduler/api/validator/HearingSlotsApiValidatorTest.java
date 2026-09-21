@@ -12,13 +12,13 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
 
 import org.springframework.web.server.ResponseStatusException;
-import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownSearchAndBookRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MagsSearchAndBookRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MoveHearingToPastDateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -429,10 +429,10 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_crownMinimalRequest_singleDay() {
             // AC1 — hearingId + courtCentreId + hearingDate + durationInMinutes present, single-day (<=360)
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setDurationInMinutes(360);
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .durationInMinutes(360);
 
             assertEquals(EMPTY_JSON_OBJECT, validator.crownSearchAndBookValidation(request));
         }
@@ -441,11 +441,11 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_crownRequestCourtScheduleIdPresentForMultiDay() {
             // AC2 — courtScheduleId (anchor) is optional; when present for multi-day this is valid
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setCourtScheduleId(UUID.randomUUID().toString())
-                    .setDurationInMinutes(720);
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .courtScheduleId(UUID.randomUUID().toString())
+                    .durationInMinutes(720);
 
             assertEquals(EMPTY_JSON_OBJECT, validator.crownSearchAndBookValidation(request));
         }
@@ -454,10 +454,10 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_crownMultiDayNoAnchor() {
             // AC3 — no courtScheduleId is valid (court-centre search path)
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setDurationInMinutes(1080);
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .durationInMinutes(1080);
 
             assertEquals(EMPTY_JSON_OBJECT, validator.crownSearchAndBookValidation(request));
         }
@@ -466,9 +466,9 @@ class HearingSlotsApiValidatorTest {
         void should_returnError_when_crownHearingIdMissing() {
             // AC1 — hearingId is required
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setDurationInMinutes(180);
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .durationInMinutes(180);
 
             final JsonObject result = validator.crownSearchAndBookValidation(request);
             assertFalse(result.isEmpty());
@@ -479,9 +479,9 @@ class HearingSlotsApiValidatorTest {
         void should_returnError_when_crownHearingDateMissing() {
             // AC1 — hearingDate is required
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setDurationInMinutes(180);
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .durationInMinutes(180);
 
             final JsonObject result = validator.crownSearchAndBookValidation(request);
             assertFalse(result.isEmpty());
@@ -492,9 +492,9 @@ class HearingSlotsApiValidatorTest {
         void should_returnError_when_crownCourtCentreIdMissing() {
             // courtCentreId is required — a null would otherwise bind into the centre SQL search
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setDurationInMinutes(720);
+                    .hearingId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .durationInMinutes(720);
 
             final JsonObject result = validator.crownSearchAndBookValidation(request);
             assertFalse(result.isEmpty());
@@ -505,10 +505,10 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_crownMultiDayViaDateRange_noDuration() {
             // AC6 — date-range form: endDate present and > hearingDate, no durationInMinutes => valid multi-day
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setEndDate(LocalDate.of(2026, 9, 3));
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .endDate(LocalDate.of(2026, 9, 3));
 
             assertEquals(EMPTY_JSON_OBJECT, validator.crownSearchAndBookValidation(request));
         }
@@ -523,11 +523,11 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_magsSingleDayIsPolice() {
             // AC4 — minimal valid MAGS request: isPolice present (true), single-day
             final MagsSearchAndBookRequest request = new MagsSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setDurationInMinutes(180)
-                    .setIsPolice(true);
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .durationInMinutes(180)
+                    .isPolice(true);
 
             assertEquals(EMPTY_JSON_OBJECT, validator.magsSearchAndBookValidation(request));
         }
@@ -536,12 +536,12 @@ class HearingSlotsApiValidatorTest {
         void should_returnError_when_magsCourtScheduleIdPresent() {
             // AC4 — MAGS action MUST NOT accept courtScheduleId (no anchor concept for MAGS)
             final MagsSearchAndBookRequest request = new MagsSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setDurationInMinutes(180)
-                    .setIsPolice(false)
-                    .setCourtScheduleId(UUID.randomUUID().toString()); // NOT allowed
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .durationInMinutes(180)
+                    .isPolice(false)
+                    .courtScheduleId(UUID.randomUUID().toString()); // NOT allowed
 
             final JsonObject result = validator.magsSearchAndBookValidation(request);
             assertFalse(result.isEmpty());
@@ -552,10 +552,10 @@ class HearingSlotsApiValidatorTest {
         void should_returnError_when_magsCourtCentreIdMissing() {
             // courtCentreId is required — a null would otherwise bind into the sparse SQL search
             final MagsSearchAndBookRequest request = new MagsSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setDurationInMinutes(720)
-                    .setIsPolice(false);
+                    .hearingId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .durationInMinutes(720)
+                    .isPolice(false);
 
             final JsonObject result = validator.magsSearchAndBookValidation(request);
             assertFalse(result.isEmpty());
@@ -566,11 +566,11 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_magsMultiDayDurationOver360() {
             // AC5 — multi-day MAGS via duration > 360
             final MagsSearchAndBookRequest request = new MagsSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setDurationInMinutes(720)
-                    .setIsPolice(false);
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .durationInMinutes(720)
+                    .isPolice(false);
 
             assertEquals(EMPTY_JSON_OBJECT, validator.magsSearchAndBookValidation(request));
         }
@@ -579,11 +579,11 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_magsMultiDayViaDateRange() {
             // AC5 — multi-day MAGS via date-range form
             final MagsSearchAndBookRequest request = new MagsSearchAndBookRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setHearingDate(LocalDate.of(2026, 9, 1))
-                    .setEndDate(LocalDate.of(2026, 9, 5))
-                    .setIsPolice(true);
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 1))
+                    .endDate(LocalDate.of(2026, 9, 5))
+                    .isPolice(true);
 
             assertEquals(EMPTY_JSON_OBJECT, validator.magsSearchAndBookValidation(request));
         }
@@ -598,10 +598,10 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_startDateIsInFuture() {
             // Past-only is owned by the caller (listing), not this validator — a future startDate must NOT be rejected.
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setJurisdiction("CROWN")
-                    .setStartDate(LocalDate.now().plusDays(1));
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .jurisdiction("CROWN")
+                    .startDate(LocalDate.now().plusDays(1));
 
             assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(request));
         }
@@ -610,10 +610,10 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_startDateIsToday() {
             // AC7 — today is allowed (not future)
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setJurisdiction("CROWN")
-                    .setStartDate(LocalDate.now());
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .jurisdiction("CROWN")
+                    .startDate(LocalDate.now());
 
             assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(request));
         }
@@ -622,11 +622,11 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_crownOptionalCourtScheduleIdPresent() {
             // AC7 — courtScheduleId is optional anchor for CROWN; its presence must not fail validation
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setJurisdiction("CROWN")
-                    .setStartDate(LocalDate.of(2025, 3, 3))
-                    .setCourtScheduleId(UUID.randomUUID().toString());
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .jurisdiction("CROWN")
+                    .startDate(LocalDate.of(2025, 3, 3))
+                    .courtScheduleId(UUID.randomUUID().toString());
 
             assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(request));
         }
@@ -635,11 +635,11 @@ class HearingSlotsApiValidatorTest {
         void should_passValidation_when_magsJurisdictionNoAnchor() {
             // AC7 — MAGS: courtScheduleId absent, jurisdiction=MAGISTRATES => valid
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setJurisdiction("MAGISTRATES")
-                    .setStartDate(LocalDate.of(2025, 3, 3))
-                    .setDurationInMinutes(720);
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .jurisdiction("MAGISTRATES")
+                    .startDate(LocalDate.of(2025, 3, 3))
+                    .durationInMinutes(720);
 
             assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(request));
         }
@@ -648,10 +648,10 @@ class HearingSlotsApiValidatorTest {
         void should_returnError_when_jurisdictionMissing() {
             // AC7 — jurisdiction is required in move-hearing-to-past-date schema
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
-                    .setHearingId(UUID.randomUUID().toString())
-                    .setCourtCentreId(UUID.randomUUID().toString())
-                    .setStartDate(LocalDate.of(2025, 3, 3))
-                    .setDurationInMinutes(360);
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .startDate(LocalDate.of(2025, 3, 3))
+                    .durationInMinutes(360);
 
             final JsonObject result = validator.moveHearingToPastDateValidation(request);
             assertFalse(result.isEmpty());

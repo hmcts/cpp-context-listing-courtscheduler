@@ -17,9 +17,9 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.RO
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -58,24 +58,23 @@ class RotaReferenceDataServiceTest {
         email = "judge@example.com";
         exceptionMessages = new HashMap<>();
 
-        judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(randomUUID().toString())
-                .withEmailAddress(email)
-                .withForenames("John")
-                .withSurname("Doe")
-                .withTitlePrefix("Mr")
-                .withJudiciaryType("Judge")
-                .build();
+        judiciary = new Judiciary()
+                .id(randomUUID().toString())
+                .emailAddress(email)
+                .forenames("John")
+                .surname("Doe")
+                .titlePrefix("Mr")
+                .judiciaryType("Judge");
 
-        venue = new Venue(100, 200, "Test Venue");
+        venue = new Venue().locationId(100).venueId(200).venueName("Test Venue");
 
-        courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-1")
-                .withOucode("OU001")
-                .withRotaLocationId(100)
-                .withRotaVenueId(200)
-                .withRotaVenueName("Test Venue")
-                .build();
+        courtRoom = new CourtRoom()
+                .courtroomId("courtroom-1")
+                .oucode("OU001")
+                .rotaLocationId(100)
+                .rotaVenueId(200)
+                .rotaVenueName("Test Venue")
+                ;
     }
 
     // ============================================================================

@@ -16,7 +16,7 @@ import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;

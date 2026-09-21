@@ -28,8 +28,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTIN
 
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.time.LocalDate;
@@ -79,20 +79,19 @@ class RotaCourtScheduleHelperTest {
         records = new HashMap<>();
         sessionDate = LocalDate.parse("2024-01-15");
 
-        courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-1")
-                .withOucode("OU001")
-                .withOucodeL3Name("Test Courthouse")
-                .withCourtRoomName("Court Room 1")
-                .build();
+        courtRoom = new CourtRoom()
+                .courtroomId("courtroom-1")
+                .oucode("OU001")
+                .oucodeL3Name("Test Courthouse")
+                .courtroomName("Court Room 1")
+                ;
 
-        courtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        courtSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession("AM");
     }
 
     // ============================================================================
@@ -306,21 +305,19 @@ class RotaCourtScheduleHelperTest {
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule matchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        final CourtSchedule matchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession("AM");
 
-        final CourtSchedule nonMatchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL2")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        final CourtSchedule nonMatchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL2")
+                .sessionDate(sessionDate)
+                .courtSession("AM");
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
@@ -354,13 +351,12 @@ class RotaCourtScheduleHelperTest {
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule adSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(ALL_DAY)
-                .build();
+        final CourtSchedule adSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession(ALL_DAY);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
@@ -394,13 +390,12 @@ class RotaCourtScheduleHelperTest {
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule adSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(ALL_DAY)
-                .build();
+        final CourtSchedule adSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession(ALL_DAY);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
@@ -434,13 +429,12 @@ class RotaCourtScheduleHelperTest {
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule amSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(AM_SESSION)
-                .build();
+        final CourtSchedule amSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession(AM_SESSION);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
@@ -472,13 +466,12 @@ class RotaCourtScheduleHelperTest {
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule adSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(ALL_DAY)
-                .build();
+        final CourtSchedule adSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession(ALL_DAY);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
@@ -512,13 +505,12 @@ class RotaCourtScheduleHelperTest {
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule amSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(AM_SESSION)
-                .build();
+        final CourtSchedule amSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession(AM_SESSION);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
@@ -652,12 +644,12 @@ class RotaCourtScheduleHelperTest {
         final String listingProfileId2 = "listing-2";
         final String sessionDateStr = "2024-01-15";
 
-        final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-2")
-                .withOucode("OU002")
-                .withOucodeL3Name("Another Courthouse")
-                .withCourtRoomName("Court Room 2")
-                .build();
+        final CourtRoom courtRoom2 = new CourtRoom()
+                .courtroomId("courtroom-2")
+                .oucode("OU002")
+                .oucodeL3Name("Another Courthouse")
+                .courtroomName("Court Room 2")
+                ;
 
         final Map<String, String> listingProfile1 = new HashMap<>();
         listingProfile1.put(PANEL, "PANEL1");
@@ -830,12 +822,12 @@ class RotaCourtScheduleHelperTest {
         listingProfile.put("venueId", "200");
         listingProfile.put("venueName", "Test Venue");
 
-        final CourtRoom courtRoomWithMissingFields = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-1")
-                .withOucode(null)  // Missing OU code
-                .withOucodeL3Name(null)  // Missing court house name
-                .withCourtRoomName(null)  // Missing court room name
-                .build();
+        final CourtRoom courtRoomWithMissingFields = new CourtRoom()
+                .courtroomId("courtroom-1")
+                .oucode(null)  // Missing OU code
+                .oucodeL3Name(null)  // Missing court house name
+                .courtroomName(null)  // Missing court room name
+                ;
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -1014,10 +1006,10 @@ class RotaCourtScheduleHelperTest {
         listingProfile.put("venueId", "200");
         listingProfile.put("venueName", "Test Venue");
 
-        final CourtRoom courtRoomWithoutOuCode = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-1")
-                .withOucode(null)  // Missing OU code
-                .build();
+        final CourtRoom courtRoomWithoutOuCode = new CourtRoom()
+                .courtroomId("courtroom-1")
+                .oucode(null)  // Missing OU code
+                ;
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -1048,10 +1040,10 @@ class RotaCourtScheduleHelperTest {
         listingProfile.put("venueId", "200");
         listingProfile.put("venueName", "Test Venue");
 
-        final CourtRoom courtRoomWithoutId = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(null)  // Missing court room ID
-                .withOucode("OU001")
-                .build();
+        final CourtRoom courtRoomWithoutId = new CourtRoom()
+                .courtroomId(null)  // Missing court room ID
+                .oucode("OU001")
+                ;
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -1117,21 +1109,19 @@ class RotaCourtScheduleHelperTest {
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule schedule1 = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        final CourtSchedule schedule1 = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession("AM");
 
-        final CourtSchedule schedule2 = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        final CourtSchedule schedule2 = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession("AM");
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
@@ -1186,22 +1176,18 @@ class RotaCourtScheduleHelperTest {
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule matchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")  // Matches
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
-
-        final CourtSchedule nonMatchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-2")  // Different court room
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
-
+        final CourtSchedule matchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")  // Matches
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession("AM");
+        final CourtSchedule nonMatchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-2")  // Different court room
+                .panel("PANEL1")
+                .sessionDate(sessionDate)
+                .courtSession("AM");
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
@@ -1236,22 +1222,18 @@ class RotaCourtScheduleHelperTest {
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule matchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)  // Matches
-                .withCourtSession("AM")
-                .build();
-
-        final CourtSchedule nonMatchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(differentDate)  // Different date
-                .withCourtSession("AM")
-                .build();
-
+        final CourtSchedule matchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(sessionDate)  // Matches
+                .courtSession("AM");
+        final CourtSchedule nonMatchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(differentDate)  // Different date
+                .courtSession("AM");
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);

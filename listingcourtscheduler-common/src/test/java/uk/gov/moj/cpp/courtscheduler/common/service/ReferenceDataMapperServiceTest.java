@@ -9,10 +9,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
 import java.util.HashMap;
@@ -114,7 +114,7 @@ class ReferenceDataMapperServiceTest {
 
         when(referenceDataCache.getCourtRooms()).thenReturn(getCourtRoomsFromRefData());
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals("26de1ba8-fad7-3747-81e2-0dc6dce6ed7a", courtRoomOptional.get().getId());
@@ -127,7 +127,7 @@ class ReferenceDataMapperServiceTest {
 
         when(referenceDataCache.getCourtRooms()).thenReturn(getCourtRoomsFromRefData());
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(LOCATION_ID, VENUE_ID, NOT_MATCHING_VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(NOT_MATCHING_VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals("26de1ba8-fad7-3747-81e2-0dc6dce6ed7a", courtRoomOptional.get().getId());
@@ -143,7 +143,7 @@ class ReferenceDataMapperServiceTest {
 
         when(referenceDataCache.getCourtRooms()).thenReturn(getCourtRoomsFromRefData());
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(LOCATION_ID, NOT_MATCHING_VENUE_ID, VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue().locationId(LOCATION_ID).venueId(NOT_MATCHING_VENUE_ID).venueName(VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals("26de1ba8-fad7-3747-81e2-0dc6dce6ed7a", courtRoomOptional.get().getId());
@@ -159,7 +159,7 @@ class ReferenceDataMapperServiceTest {
 
         when(referenceDataCache.getCourtRooms()).thenReturn(getCourtRoomsFromRefData());
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(MULTIPLE_MATCH_LOCATION_ID, NOT_MATCHING_VENUE_ID, MULTIPLE_MATCH_VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue().locationId(MULTIPLE_MATCH_LOCATION_ID).venueId(NOT_MATCHING_VENUE_ID).venueName(MULTIPLE_MATCH_VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertTrue(List.of("aaaa26c8-0630-3fec-8336-d260a5a9c756", "c8c3ef69-e640-3ac5-bd7a-7765396cc38d").contains(courtRoomOptional.get().getId()));
@@ -172,7 +172,7 @@ class ReferenceDataMapperServiceTest {
 
         when(referenceDataCache.getCourtRooms()).thenReturn(emptyList());
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue(MULTIPLE_MATCH_LOCATION_ID, NOT_MATCHING_VENUE_ID, MULTIPLE_MATCH_VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataMapperService.findByVenue(new Venue().locationId(MULTIPLE_MATCH_LOCATION_ID).venueId(NOT_MATCHING_VENUE_ID).venueName(MULTIPLE_MATCH_VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isEmpty());
         verify(referenceDataCache, atLeastOnce()).getCourtRooms();

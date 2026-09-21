@@ -1,16 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownFallbackRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
-import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Hearing;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -38,14 +38,14 @@ public interface CourtScheduleRepositoryCustom {
                   UpdateCourtSchedule updateCourtSchedule,
                   Optional<CourtRoom> courtRoom);
 
-    List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findBy(CourtScheduleRequestParam courtScheduleRequestParam);
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findBy(CourtScheduleRequestParam courtScheduleRequestParam);
 
     CourtSchedule retrieveCourtScheduleWithListingById(String courtScheduleId);
 
-    List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesByIdList(List<String> courtScheduleIds);
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getCourtSchedulesByIdList(List<String> courtScheduleIds);
 
     /** Attaches active judiciary assignments to the supplied domain schedules (SPRDT-1089). */
-    void enrichWithJudiciary(List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules);
+    void enrichWithJudiciary(List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> courtSchedules);
 
     /** First allocated_listings row for the hearing, if any (Crown fallback / idempotent retry check). */
     Optional<AllocatedListing> findAllocatedListingByHearingId(String hearingId);
@@ -73,11 +73,11 @@ public interface CourtScheduleRepositoryCustom {
                                                                  String earliestHearingTime);
 
     /** Consecutive AD weekday sessions sharing the anchor's room/businessType/draft state (SPRDT-1089). */
-    List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findConsecutiveSessions(String anchorCourtScheduleId,
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessions(String anchorCourtScheduleId,
                                                                                      int daysNeeded);
 
     /** CROWN no-anchor consecutive search across a court centre's rooms (SPRDT-1089, AC3). */
-    List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findConsecutiveSessionsForCentre(String courtCentreId,
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessionsForCentre(String courtCentreId,
                                                                                               LocalDate fromDate,
                                                                                               int daysNeeded);
 
@@ -87,7 +87,7 @@ public interface CourtScheduleRepositoryCustom {
      * state so an allocated hearing's tail days only ever book FINAL sessions — a draft tail
      * session would strip every day's courtroom downstream (ADR-005).
      */
-    List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findAdSessionsInRange(String ouCode,
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findAdSessionsInRange(String ouCode,
                                                                                    String courtRoomId,
                                                                                    String businessType,
                                                                                    LocalDate fromInclusive,
@@ -95,10 +95,10 @@ public interface CourtScheduleRepositoryCustom {
                                                                                    Boolean isDraft);
 
     /** Discovery + re-hydrate path for multi-day Crown searches (SPRDT-903 perf fix #4). */
-    List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getMultidayHearingSlotCandidates(HearingSlotRequestParam requestParam,
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getMultidayHearingSlotCandidates(HearingSlotRequestParam requestParam,
                                                                                               int daysNeeded);
 
-    List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesBy(CourtScheduleRequestParam courtScheduleRequestParam);
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getCourtSchedulesBy(CourtScheduleRequestParam courtScheduleRequestParam);
 
     List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria);
 
@@ -114,11 +114,11 @@ public interface CourtScheduleRepositoryCustom {
 
     boolean searchBookHearingSlots(List<AllocatedSlot> slots);
 
-    Optional<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findCourtScheduleById(String courtScheduleId);
+    Optional<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findCourtScheduleById(String courtScheduleId);
 
     List<Hearing> updateListHearingSlots(RequestedSlots slots);
 
-    Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> getCourtSchedules(HearingSlotRequestParam requestParam);
+    Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule>> getCourtSchedules(HearingSlotRequestParam requestParam);
 
     List<CourtScheduleJudiciary> getCourtScheduleJudiciaries(List<CourtSchedule> courtScheduleList);
 
@@ -126,7 +126,7 @@ public interface CourtScheduleRepositoryCustom {
 
     List<CourtScheduleJudiciary> getCourtScheduleJudiciariesForProvisionalBooking(List<CourtSchedule> courtScheduleList);
 
-    List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> deleteCourtSchedule(List<String> courtScheduleIdList);
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> deleteCourtSchedule(List<String> courtScheduleIdList);
 
     int deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(LocalDate startDate, LocalDate endDate, List<String> ouCodes);
 

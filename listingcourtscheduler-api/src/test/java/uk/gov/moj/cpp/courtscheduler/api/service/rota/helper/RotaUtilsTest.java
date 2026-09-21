@@ -19,7 +19,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.DISTRICT_JUD
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.MAGISTRATES;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.util.ArrayList;
@@ -290,7 +290,7 @@ class RotaUtilsTest {
     @Test
     void shouldBuildVenueDetails_WhenVenueHasAllFields() {
         // given
-        Venue venue = new Venue(100, 200, "Test Venue");
+        Venue venue = new Venue().locationId(100).venueId(200).venueName("Test Venue");
 
         // when
         String result = RotaUtils.buildVenueDetails(venue);
@@ -303,7 +303,7 @@ class RotaUtilsTest {
     @Test
     void shouldBuildVenueDetails_WhenVenueHasNullLocationId() {
         // given
-        Venue venue = new Venue(null, 200, "Test Venue");
+        Venue venue = new Venue().locationId(null).venueId(200).venueName("Test Venue");
 
         // when
         String result = RotaUtils.buildVenueDetails(venue);
@@ -318,7 +318,7 @@ class RotaUtilsTest {
     @Test
     void shouldBuildVenueDetails_WhenVenueHasNullVenueId() {
         // given
-        Venue venue = new Venue(100, null, "Test Venue");
+        Venue venue = new Venue().locationId(100).venueId(null).venueName("Test Venue");
 
         // when
         String result = RotaUtils.buildVenueDetails(venue);
@@ -333,7 +333,7 @@ class RotaUtilsTest {
     @Test
     void shouldBuildVenueDetails_WhenVenueHasBlankVenueName() {
         // given
-        Venue venue = new Venue(100, 200, "   ");
+        Venue venue = new Venue().locationId(100).venueId(200).venueName("   ");
 
         // when
         String result = RotaUtils.buildVenueDetails(venue);

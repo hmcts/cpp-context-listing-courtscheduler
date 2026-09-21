@@ -38,10 +38,10 @@ import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
@@ -122,22 +122,20 @@ class RotaFileProcessorTest {
         rotaFileProcessHistory.setExecutionId(executionId);
         records = new HashMap<>();
 
-        judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(randomUUID().toString())
-                .withEmailAddress("judge@example.com")
-                .withForenames("John")
-                .withSurname("Doe")
-                .withTitlePrefix("Mr")
-                .withJudiciaryType("Judge")
-                .build();
+        judiciary = new Judiciary()
+                .id(randomUUID().toString())
+                .emailAddress("judge@example.com")
+                .forenames("John")
+                .surname("Doe")
+                .titlePrefix("Mr")
+                .judiciaryType("Judge");
 
-        courtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(LocalDate.parse("2024-01-15"))
-                .withCourtSession("AM")
-                .build();
+        courtSchedule = new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(LocalDate.parse("2024-01-15"))
+                .courtSession("AM");
     }
 
     // ============================================================================
@@ -304,11 +302,11 @@ class RotaFileProcessorTest {
             
             // Mock assignment service - setupRecordsWithData creates a non-empty assignment map
             final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
-            final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciary.getId(), sessionId1);
+            final CourtschedulerAssignJudiciary assignRequest = createAssignRequest(judiciary.getId(), sessionId1);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(CourtschedulerAssignJudiciary.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -317,7 +315,7 @@ class RotaFileProcessorTest {
             // then
             // Verify processing completed successfully
             verify(rotaFileParser).parse(blobName, blobContent);
-            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true));
+            verify(judiciaryAssignmentService).assignJudiciaries(any(CourtschedulerAssignJudiciary.class), eq(executionId), eq(true));
             verify(rotaFileUtility).logProcessingTime(any(), eq(blobName), anyLong(), anyLong());
             // Verify that updateFileProcessHistory utility method is called (which internally calls the service)
             verify(rotaFileUtility).updateFileProcessHistory(any(), any(RotaFileProcessHistory.class), eq(blobName), eq(rotaFileProcessHistoryService));
@@ -344,11 +342,11 @@ class RotaFileProcessorTest {
             setupLocationAndPeriodHelpers();
             // Mock assignment service - the setupRecordsWithData creates a non-empty assignment map
             final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
-            final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciary.getId(), sessionId1);
+            final CourtschedulerAssignJudiciary assignRequest = createAssignRequest(judiciary.getId(), sessionId1);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(expectedExecutionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(CourtschedulerAssignJudiciary.class), eq(expectedExecutionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -660,12 +658,12 @@ class RotaFileProcessorTest {
             assignmentDataMap.put(judiciary.getId(), new JudiciaryCourtScheduleData(
                     List.of(sessionId1), null, "CHAIR", true, false));
 
-            final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciary.getId(), sessionId1);
+            final CourtschedulerAssignJudiciary assignRequest = createAssignRequest(judiciary.getId(), sessionId1);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(CourtschedulerAssignJudiciary.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -675,7 +673,7 @@ class RotaFileProcessorTest {
             verify(rotaJudiciaryHelper).createJudiciaryMap(anyMap(), eq(executionId));
             verify(rotaCourtScheduleHelper).createCourtScheduleMap(anyMap(), eq(executionId));
             verify(rotaJudiciaryHelper).createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), eq(executionId));
-            verify(judiciaryAssignmentService).assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true));
+            verify(judiciaryAssignmentService).assignJudiciaries(any(CourtschedulerAssignJudiciary.class), eq(executionId), eq(true));
         }
 
         @Test
@@ -694,22 +692,22 @@ class RotaFileProcessorTest {
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
-            final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciary.getId(), sessionId1, sessionId2);
+            final CourtschedulerAssignJudiciary assignRequest = createAssignRequest(judiciary.getId(), sessionId1, sessionId2);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(2, 2);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(CourtschedulerAssignJudiciary.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
             rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            final ArgumentCaptor<AssignJudiciariesRequest> requestCaptor = ArgumentCaptor.forClass(AssignJudiciariesRequest.class);
+            final ArgumentCaptor<CourtschedulerAssignJudiciary> requestCaptor = ArgumentCaptor.forClass(CourtschedulerAssignJudiciary.class);
             verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(executionId), eq(true));
 
-            final AssignJudiciariesRequest capturedRequest = requestCaptor.getValue();
+            final CourtschedulerAssignJudiciary capturedRequest = requestCaptor.getValue();
             assertThat(capturedRequest.getJudiciaries().size(), is(1));
             assertThat(capturedRequest.getJudiciaries().get(0).getJudiciaryId(), is(judiciary.getId()));
             assertThat(capturedRequest.getJudiciaries().get(0).getSessionIds().size(), is(2));
@@ -730,7 +728,7 @@ class RotaFileProcessorTest {
             rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(judiciaryAssignmentService, never()).assignJudiciaries(any(AssignJudiciariesRequest.class), anyString());
+            verify(judiciaryAssignmentService, never()).assignJudiciaries(any(CourtschedulerAssignJudiciary.class), anyString());
         }
 
         @Test
@@ -753,22 +751,22 @@ class RotaFileProcessorTest {
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
-            final AssignJudiciariesRequest assignRequest = createMultiJudiciaryAssignRequest(judiciaryId1, sessionId1, judiciaryId2, sessionId2);
+            final CourtschedulerAssignJudiciary assignRequest = createMultiJudiciaryAssignRequest(judiciaryId1, sessionId1, judiciaryId2, sessionId2);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(2, 2);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(CourtschedulerAssignJudiciary.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
             rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            final ArgumentCaptor<AssignJudiciariesRequest> requestCaptor = ArgumentCaptor.forClass(AssignJudiciariesRequest.class);
+            final ArgumentCaptor<CourtschedulerAssignJudiciary> requestCaptor = ArgumentCaptor.forClass(CourtschedulerAssignJudiciary.class);
             verify(judiciaryAssignmentService).assignJudiciaries(requestCaptor.capture(), eq(executionId), eq(true));
 
-            final AssignJudiciariesRequest capturedRequest = requestCaptor.getValue();
+            final CourtschedulerAssignJudiciary capturedRequest = requestCaptor.getValue();
             assertThat(capturedRequest.getJudiciaries().size(), is(2));
         }
 
@@ -794,15 +792,14 @@ class RotaFileProcessorTest {
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
-            final AssignJudiciariesRequest assignRequest = AssignJudiciariesRequest.builder()
-                    .withJudiciaries(List.of())
-                    .withSkipValidations(true)
-                    .build();
+            final CourtschedulerAssignJudiciary assignRequest = new CourtschedulerAssignJudiciary()
+                    .judiciaries(List.of())
+                    .skipValidations(true);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(3, 3);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(CourtschedulerAssignJudiciary.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -837,12 +834,12 @@ class RotaFileProcessorTest {
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
-            final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciaryId1, sessionId1);
+            final CourtschedulerAssignJudiciary assignRequest = createAssignRequest(judiciaryId1, sessionId1);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
 
             final AssignJudiciariesResponse assignResponse = createAssignResponse(1, 1);
-            when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), eq(executionId), eq(true)))
+            when(judiciaryAssignmentService.assignJudiciaries(any(CourtschedulerAssignJudiciary.class), eq(executionId), eq(true)))
                     .thenReturn(assignResponse);
 
             // when
@@ -1009,49 +1006,43 @@ class RotaFileProcessorTest {
         return schedules;
     }
 
-    private AssignJudiciariesRequest createAssignRequest(final String judiciaryId, final UUID... sessionIds) {
-        return AssignJudiciariesRequest.builder()
-                .withJudiciaries(List.of(
-                        uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
-                                .withJudiciaryId(judiciaryId)
-                                .withSessionIds(java.util.Arrays.stream(sessionIds).map(UUID::toString).toList())
-                                .withPosition("CHAIR")
-                                .withIsBenchChairman(true)
-                                .withIsDeputy(false)
-                                .build()
-                ))
-                .build();
+    private CourtschedulerAssignJudiciary createAssignRequest(final String judiciaryId, final UUID... sessionIds) {
+        return new CourtschedulerAssignJudiciary()
+                .judiciaries(List.of(
+                        new uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment()
+                                .judiciaryId(judiciaryId)
+                                .sessionIds(java.util.Arrays.stream(sessionIds).map(UUID::toString).toList())
+                                .position("CHAIR")
+                                .isBenchChairman(true)
+                                .isDeputy(false)
+                ));
     }
 
-    private AssignJudiciariesRequest createMultiJudiciaryAssignRequest(
+    private CourtschedulerAssignJudiciary createMultiJudiciaryAssignRequest(
             final String judiciaryId1, final UUID sessionId1,
             final String judiciaryId2, final UUID sessionId2) {
-        return AssignJudiciariesRequest.builder()
-                .withJudiciaries(List.of(
-                        uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
-                                .withJudiciaryId(judiciaryId1)
-                                .withSessionIds(List.of(sessionId1.toString()))
-                                .withPosition("CHAIR")
-                                .withIsBenchChairman(true)
-                                .withIsDeputy(false)
-                                .build(),
-                        uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
-                                .withJudiciaryId(judiciaryId2)
-                                .withSessionIds(List.of(sessionId2.toString()))
-                                .withPosition("CHAIR")
-                                .withIsBenchChairman(true)
-                                .withIsDeputy(false)
-                                .build()
-                ))
-                .build();
+        return new CourtschedulerAssignJudiciary()
+                .judiciaries(List.of(
+                        new uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment()
+                                .judiciaryId(judiciaryId1)
+                                .sessionIds(List.of(sessionId1.toString()))
+                                .position("CHAIR")
+                                .isBenchChairman(true)
+                                .isDeputy(false),
+                        new uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment()
+                                .judiciaryId(judiciaryId2)
+                                .sessionIds(List.of(sessionId2.toString()))
+                                .position("CHAIR")
+                                .isBenchChairman(true)
+                                .isDeputy(false)
+                ));
     }
 
     private AssignJudiciariesResponse createAssignResponse(final int requested, final int successful) {
-        return AssignJudiciariesResponse.builder()
-                .withRequestedAssignments(requested)
-                .withSuccessfulAssignments(successful)
-                .withFailures(List.of())
-                .build();
+        return new AssignJudiciariesResponse()
+                .requestedAssignments(requested)
+                .successfulAssignments(successful)
+                .failures(List.of());
     }
 
     // ============================================================================

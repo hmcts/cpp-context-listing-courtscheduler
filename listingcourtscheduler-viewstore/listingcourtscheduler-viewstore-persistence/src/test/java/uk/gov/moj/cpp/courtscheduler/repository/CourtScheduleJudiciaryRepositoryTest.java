@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 
@@ -84,7 +84,7 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
         CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
         LocalDate fromDate = LocalDate.now().minusDays(1);
         LocalDate toDate = LocalDate.now().plusDays(1);
-        MiFilterCriteria miFilterCriteria = new MiFilterCriteria(fromDate, toDate);
+        MiFilterCriteria miFilterCriteria = new MiFilterCriteria().fromDate(fromDate).toDate(toDate);
 
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
