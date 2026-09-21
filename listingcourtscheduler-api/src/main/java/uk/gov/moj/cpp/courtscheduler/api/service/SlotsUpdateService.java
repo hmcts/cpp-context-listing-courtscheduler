@@ -601,7 +601,22 @@ public class SlotsUpdateService {
                 request.getHearingId(), request.getCourtCentreId(), request.getCourtRoomId(), request.getJurisdiction(),
                 request.getStartDate(), request.getEndDate(), request.getDurationInMinutes());
 
-        final int daysNeeded = daysNeeded(request.getDurationInMinutes(), request.getStartDate(), request.getEndDate());
+        // A GENUINE date range (endDate strictly after startDate) sizes the block from the calendar
+        // span; with no endDate at all, duration keeps driving it (legacy shape - some callers still
+        // omit endDate and rely on durationInMinutes alone). But endDate PRESENT and EQUAL to
+        // startDate - the shape every request now takes since courtRoomId/startTime/endTime became
+        // mandatory, main-contract alignment - is an explicit single-date move: exactly one day is
+        // needed regardless of durationInMinutes. That field is the hearing's own overall estimate
+        // (e.g. a multi-day trial's total), unrelated to how many days THIS move targets, and
+        // letting it drive daysNeeded here silently turned an ordinary same-day move into an
+        // unsatisfiable multi-consecutive-day search. Mirrors SPRDT-1220's clamp for the
+        // update-hearing-for-listing path. isGenuineDateRange is reused below so the empty-sessions
+        // branch's exploratory-vs-error decision stays in sync with this sizing.
+        final boolean isGenuineDateRange = request.hasEndDate() && request.getEndDate().isAfter(request.getStartDate());
+        final boolean isExplicitSameDayMove = request.hasEndDate() && request.getEndDate().isEqual(request.getStartDate());
+        final int daysNeeded = isExplicitSameDayMove
+                ? 1
+                : daysNeeded(request.getDurationInMinutes(), request.getStartDate(), request.getEndDate());
         final int perDay = perDayDuration(request.getDurationInMinutes(), daysNeeded);
 
         // Select (search + validate) the past sessions BEFORE touching the prior allocation, so a search
@@ -630,9 +645,8 @@ public class SlotsUpdateService {
             // all, OR endDate present but equal to startDate - the shape every request now takes
             // since courtRoomId/startTime/endTime became mandatory, main-contract alignment) is a
             // single-date request: no session for it is a hard 404, not a silent empty success.
-            // (request.hasEndDate() alone stopped being a safe signal once endDate became mandatory
-            // on every request - it used to mean "caller asked for a range", now it's always true.)
-            final boolean isGenuineDateRange = request.hasEndDate() && request.getEndDate().isAfter(request.getStartDate());
+            // (isGenuineDateRange computed above, once, and reused here so this stays in sync with
+            // the daysNeeded sizing.)
             if (!isGenuineDateRange) {
                 throw new NoSessionAvailableException(
                         "No past session available for hearingId " + request.getHearingId()

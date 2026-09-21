@@ -9,8 +9,11 @@ import java.time.LocalDate;
  *
  * <p>Both jurisdictions, single OR multi-day. Multi-day books CONSECUTIVE weekday sessions
  * (one room + business type) for both jurisdictions; CROWN may supply an optional
- * {@code courtScheduleId} anchor. Multi-day when {@code endDate > startDate} OR
- * {@code durationInMinutes > MAX_SINGLE_DAY_MINUTES}. {@code startDate}/{@code endDate} are the
+ * {@code courtScheduleId} anchor. Multi-day ONLY when {@code endDate > startDate} (a genuine date
+ * range) — {@code durationInMinutes} never drives day-count here, since callers send the hearing's
+ * own overall estimate (e.g. a multi-day trial's total), unrelated to how many days a given move
+ * targets; letting it drive sizing turned an ordinary same-day move with a large estimate into an
+ * unsatisfiable multi-consecutive-day search (SPRDT-1361). {@code startDate}/{@code endDate} are the
  * calendar dates derived from the wire contract's {@code startTime}/{@code endTime} UTC instants
  * (see {@code CourtSchedulerApi.moveHearingToPastDate}) — this request stays date-granular
  * internally since court-schedule sessions here are booked per day, not per time-slot.

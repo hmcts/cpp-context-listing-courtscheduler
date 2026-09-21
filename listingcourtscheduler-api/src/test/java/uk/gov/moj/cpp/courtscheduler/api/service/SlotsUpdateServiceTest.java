@@ -1921,6 +1921,45 @@ class SlotsUpdateServiceTest {
             verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
                     eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(3), eq(null));
         }
+
+        /**
+         * Regression test: an explicit single-day move (endDate present and EQUAL to startDate -
+         * the mandatory-endDate wire shape) must always search for exactly ONE day, even when the
+         * hearing's own durationInMinutes is large (e.g. a multi-day trial's overall estimate).
+         * Before this fix, ceil(durationInMinutes/360) silently turned an ordinary same-day move
+         * into an unsatisfiable multi-consecutive-day search (observed live: a 1800-minute CROWN
+         * hearing's move demanded 5 consecutive weekday sessions and failed NO_SESSION_FOUND
+         * against a single seeded day).
+         */
+        @Test
+        void should_needExactlyOneDay_when_endDateEqualsStartDateRegardlessOfDuration() {
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> singleSession =
+                    buildConsecutiveSessions(LocalDate.of(2025, 3, 3), 1);
+
+            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
+                    .setHearingId(hearingId)
+                    .setCourtCentreId(courtCentreId)
+                    .setCourtRoomId(courtRoomId)
+                    .setJurisdiction("CROWN")
+                    .setStartDate(LocalDate.of(2025, 3, 3))
+                    .setEndDate(LocalDate.of(2025, 3, 3)) // same day - NOT a range
+                    .setDurationInMinutes(1800); // a large overall hearing estimate, unrelated to this move
+
+            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(1), eq(courtRoomId)))
+                    .thenReturn(singleSession);
+            lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result("", true));
+
+            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(request);
+
+            assertEquals(1, response.sessions().size());
+            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
+                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(1), eq(courtRoomId));
+        }
     }
 
     @Nested

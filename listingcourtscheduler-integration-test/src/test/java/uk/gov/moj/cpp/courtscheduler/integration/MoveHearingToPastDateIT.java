@@ -130,8 +130,10 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String d1 = seedSession(day1, roomId, "NGAP", centreId, "OU-MAG2", "MAGISTRATES");
         final String d2 = seedSession(day1.plusDays(1), roomId, "NGAP", centreId, "OU-MAG2", "MAGISTRATES");
 
-        // durationInMinutes 720 => 2 days needed; consecutive Mon+Tue in the same room + business type.
-        final Response response = callMove(centreId, roomId, "MAGISTRATES", day1, null, 720, hearingId);
+        // A genuine date range (endDate after startDate) => 2 days needed; consecutive Mon+Tue in the
+        // same room + business type. durationInMinutes alone no longer drives multi-day sizing here —
+        // it's the hearing's own overall estimate (SPRDT-1361), unrelated to this move's day count.
+        final Response response = callMove(centreId, roomId, "MAGISTRATES", day1, day1.plusDays(1), 720, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
@@ -154,7 +156,8 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String d1 = seedSession(day1, roomId, "CR", centreId, "OU-CRN2", "CROWN");
         final String d2 = seedSession(day1.plusDays(1), roomId, "CR", centreId, "OU-CRN2", "CROWN");
 
-        final Response response = callMove(centreId, roomId, "CROWN", day1, null, 720, hearingId);
+        // A genuine date range (endDate after startDate) drives the 2-day search; see the MAGS case above.
+        final Response response = callMove(centreId, roomId, "CROWN", day1, day1.plusDays(1), 720, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
@@ -228,8 +231,8 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String p1 = seedSession(pastDay1, roomId, "CR", centreId, "OU-CRN4", "CROWN", 360);
         final String p2 = seedSession(pastDay2, roomId, "CR", centreId, "OU-CRN4", "CROWN", 360);
 
-        // durationInMinutes 720 => 2 days needed.
-        final Response response = callMove(centreId, roomId, "CROWN", pastDay1, null, 720, hearingId);
+        // A genuine date range (endDate after startDate) => 2 days needed; see case (c)/(d) above.
+        final Response response = callMove(centreId, roomId, "CROWN", pastDay1, pastDay2, 720, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         assertThat(extractSessionIds(body(response)), contains(p1, p2));
