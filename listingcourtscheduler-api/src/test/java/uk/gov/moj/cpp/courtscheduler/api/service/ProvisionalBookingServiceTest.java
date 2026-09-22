@@ -126,9 +126,9 @@ class ProvisionalBookingServiceTest {
         final CourtSchedule session = aCourtSchedule("cs-1");
         final AllocatedListing reservation = new AllocatedListing();
         reservation.setCourtScheduleId("cs-1");
-        reservation.setHearingId("bk-1");
+        reservation.setBookingId("bk-1");
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
-        when(allocatedListingRepository.findByHearingId("bk-1")).thenReturn(List.of(reservation));
+        when(allocatedListingRepository.findByBookingId("bk-1")).thenReturn(List.of(reservation));
         when(courtScheduleRepository.findBy("cs-1")).thenReturn(session);
 
         final JsonObject response = provisionalBookingService.fetchProvisionalSlots("bk-1");
@@ -141,7 +141,7 @@ class ProvisionalBookingServiceTest {
 
     @Test
     void shouldFallBackToLegacyProvisionalBookingWhenNoReservationExists() {
-        when(allocatedListingRepository.findByHearingId("legacy-bk")).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId("legacy-bk")).thenReturn(List.of());
         when(provisionalBookingRepository.findByBookingIdIn(List.of("legacy-bk")))
                 .thenReturn(List.of(aLegacyProvisionalBooking("legacy-bk", "cs-9")));
 
@@ -155,9 +155,9 @@ class ProvisionalBookingServiceTest {
     void shouldReportABookingWithAReservationAsReserved() {
         final AllocatedListing reservation = new AllocatedListing();
         reservation.setCourtScheduleId("cs-1");
-        reservation.setHearingId("bk-live");
+        reservation.setBookingId("bk-live");
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
-        when(allocatedListingRepository.findByHearingId("bk-live")).thenReturn(List.of(reservation));
+        when(allocatedListingRepository.findByBookingId("bk-live")).thenReturn(List.of(reservation));
 
         final JsonObject booking = provisionalBookingService.getBookingStatus("bk-live")
                 .getJsonArray("bookings").getJsonObject(0);
@@ -168,7 +168,6 @@ class ProvisionalBookingServiceTest {
 
     @Test
     void shouldReportAPurgedBookingAsNone() {
-        when(allocatedListingRepository.findByHearingId("bk-gone")).thenReturn(List.of());
         when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
         when(provisionalBookingRepository.findByBookingIdIn(List.of("bk-gone"))).thenReturn(List.of());
 
@@ -181,7 +180,6 @@ class ProvisionalBookingServiceTest {
 
     @Test
     void shouldReportALegacyProvisionalBookingAsLegacy() {
-        when(allocatedListingRepository.findByHearingId("legacy-bk")).thenReturn(List.of());
         when(allocatedListingRepository.findByBookingId("legacy-bk")).thenReturn(List.of());
         when(provisionalBookingRepository.findByBookingIdIn(List.of("legacy-bk")))
                 .thenReturn(List.of(aLegacyProvisionalBooking("legacy-bk", "cs-9")));
@@ -195,7 +193,6 @@ class ProvisionalBookingServiceTest {
 
     @Test
     void shouldReportAnAlreadySharedBookingAsSharedAndSafeToShare() {
-        when(allocatedListingRepository.findByHearingId("bk-shared")).thenReturn(List.of());
         when(allocatedListingRepository.findByBookingId("bk-shared"))
                 .thenReturn(List.of(aConfirmedRowFor("bk-shared", "real-hearing-1")));
 
@@ -210,21 +207,21 @@ class ProvisionalBookingServiceTest {
     void shouldPreferTheReservationWhenABookingSomehowHasBoth() {
         final AllocatedListing reservation = new AllocatedListing();
         reservation.setCourtScheduleId("cs-1");
-        reservation.setHearingId("bk-both");
+        reservation.setBookingId("bk-both");
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
-        when(allocatedListingRepository.findByHearingId("bk-both")).thenReturn(List.of(reservation));
-        // Lenient by design: this stub builds the "both rows exist" world the test name describes.
-        // A correct statusOf short-circuits on the reservation and never consumes it, which is the
-        // behaviour the never() verification below pins.
-        lenient().when(allocatedListingRepository.findByBookingId("bk-both"))
-                .thenReturn(List.of(aConfirmedRowFor("bk-both", "real-hearing-2")));
+        // Both rows share one booking_id now - the confirmed listing from the first share, and a
+        // fresh hold from a re-pick during the amendment - so a single lookup returns both and
+        // expiresAt is the only thing that separates them.
+        when(allocatedListingRepository.findByBookingId("bk-both"))
+                .thenReturn(List.of(aConfirmedRowFor("bk-both", "real-hearing-2"), reservation));
 
         final JsonObject booking = provisionalBookingService.getBookingStatus("bk-both")
                 .getJsonArray("bookings").getJsonObject(0);
 
+        // RESERVED wins even though the confirmed row is listed first: while the clerk holds
+        // capacity, reporting SHARED would wave a second share through against a live hold.
         assertThat(booking.getString("status"), is("RESERVED"));
         assertThat(booking.getBoolean("safeToShare"), is(true));
-        verify(allocatedListingRepository, never()).findByBookingId("bk-both");
     }
 
     private CourtSchedule aCourtSchedule(final String courtScheduleId) {

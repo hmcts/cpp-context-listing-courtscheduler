@@ -95,7 +95,7 @@ public class ProvisionalBookingService {
         final List<String> unresolved = new ArrayList<>();
 
         for (final String bookingId : bookingIdList) {
-            final List<AllocatedListing> reservations = allocatedListingRepository.findByHearingId(bookingId).stream()
+            final List<AllocatedListing> reservations = allocatedListingRepository.findByBookingId(bookingId).stream()
                     .filter(ProvisionalBookingService::isReservation)
                     .toList();
             if (reservations.isEmpty()) {
@@ -165,14 +165,18 @@ public class ProvisionalBookingService {
      * batching in {@link #fetchProvisionalSlots}.
      */
     private String statusOf(final String bookingId) {
-        final boolean hasReservation = allocatedListingRepository.findByHearingId(bookingId).stream()
-                .anyMatch(ProvisionalBookingService::isReservation);
-        if (hasReservation) {
+        // Both shapes now live in booking_id - a reservation and the confirmed listing it grows
+        // into - so expiresAt, not the column, tells them apart. RESERVED is checked first and
+        // short-circuits: a re-pick during an amendment leaves a confirmed listing AND a fresh
+        // hold under one bookingId, and while the clerk is holding capacity the honest answer is
+        // RESERVED. Reporting SHARED there would wave a second share through against a live hold.
+        final List<AllocatedListing> rows = allocatedListingRepository.findByBookingId(bookingId);
+
+        if (rows.stream().anyMatch(ProvisionalBookingService::isReservation)) {
             return STATUS_RESERVED;
         }
-        // The confirmed row BUG-3 stamps at share time. Its mere existence is the answer: a
-        // reservation never carries booking_id, so nothing expiring can appear here.
-        if (!allocatedListingRepository.findByBookingId(bookingId).isEmpty()) {
+        // The confirmed row BUG-3 stamps at share time: same booking_id, no expiresAt.
+        if (!rows.isEmpty()) {
             return STATUS_SHARED;
         }
         // Drafts saved before reserve-a-slot shipped. findByBookingIdIn does not filter on the
@@ -259,7 +263,7 @@ public class ProvisionalBookingService {
                 .withAvailableDuration(courtSchedule.getAvailableDuration())
                 .withMaxSlots(courtSchedule.getMaxSlots())
                 .withMaxDuration(courtSchedule.getMaxDuration())
-                .withBookingId(reservation.getHearingId())
+                .withBookingId(reservation.getBookingId())
                 .withHearingStartTime(reservation.getHearingStartTime())
                 .build();
     }

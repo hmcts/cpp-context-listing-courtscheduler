@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <!--
+      An unconfirmed reservation used to store its bookingId in hearing_id and leave booking_id
+      null. That let the booking pipeline's hearing-wide release cover a re-pick for free, but it
+      put a non-hearing value in a column named hearing_id, left booking_id null on the very rows
+      that ARE a booking, and made "WHERE booking_id = ?" silently miss every live hold.
+
+      No data migration ships with this: the feature is not live, so no production row was ever
+      written in the old shape. Any row a test environment created before this change keeps its
+      bookingId in hearing_id and is simply never matched again - harmless, and swept within a day
+      by the nightly purge, which selects on expires_at alone and so finds them regardless.
+
+      Reservations now use booking_id and leave hearing_id null until a share confirms them. A
+      confirmed listing keeps both: the real hearing_id, and the booking_id it grew from. So
+      expires_at - not which column is populated - is what tells the two apart:
+
+        unconfirmed : booking_id = <bookingId>, hearing_id IS NULL,     expires_at IS NOT NULL
+        confirmed   : booking_id = <bookingId>, hearing_id = <hearing>, expires_at IS NULL
+    -->
+    <!--
+      court_schedule_hearing_id_idx (changeset 031) is UNIQUE on (court_schedule_id, hearing_id)
+      and was what stopped one booking taking the same session twice. Postgres treats NULLs as
+      distinct in a unique index, so once reservations leave hearing_id null it stops constraining
+      them entirely. This partial index restores that guarantee on the column they now use, and is
+      scoped to unconfirmed rows so it cannot interfere with confirmed listings.
+    -->
+    <changeSet id="053-unique-reservation-per-session" author="arcadius.ahouansou"
+               logicalFilePath="053-move-reservation-booking-id-out-of-hearing-id.xml">
+        <sql>
+            CREATE UNIQUE INDEX IF NOT EXISTS allocated_listings_reservation_idx ON
+            allocated_listings(court_schedule_id, booking_id) WHERE expires_at IS NOT NULL;
+        </sql>
+
+        <rollback>
+            <sql>DROP INDEX IF EXISTS allocated_listings_reservation_idx;</sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Live holds are looked up by booking_id on every status check and every release, so the
+      unconfirmed rows need their own index rather than riding the confirmed listings' one.
+    -->
+    <changeSet id="053-index-booking-id" author="arcadius.ahouansou"
+               logicalFilePath="053-move-reservation-booking-id-out-of-hearing-id.xml">
+        <sql>
+            CREATE INDEX IF NOT EXISTS allocated_listings_booking_id_idx ON
+            allocated_listings(booking_id);
+        </sql>
+
+        <rollback>
+            <sql>DROP INDEX IF EXISTS allocated_listings_booking_id_idx;</sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

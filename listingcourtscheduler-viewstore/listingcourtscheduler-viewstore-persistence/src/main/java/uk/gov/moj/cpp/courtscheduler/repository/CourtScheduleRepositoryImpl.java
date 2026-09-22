@@ -60,6 +60,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -1093,7 +1094,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             // pipeline's hearing-wide release (which uses the real hearing id) does not cover it.
             // A no-op when there is nothing to release — legacy drafts have only a
             // provisional_booking row, which deleteProvisionalBooking still soft-deletes.
-            releaseOldAllocatedListings(bookingId);
+            //
+            // Only the unconfirmed rows go: the confirmed listing being written by this very call
+            // carries the same booking_id, so releasing by booking_id alone would delete it.
+            releaseReservationsForBooking(bookingId);
             deleteProvisionalBooking(bookingId);
         }
     }
@@ -2322,7 +2326,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     protected void saveAllocatedListing(final List<AllocatedSlot> allocatedSlots) {
         allocatedSlots.forEach(allocatedSlot -> {
             // Check if record already exists
-            List<AllocatedListing> existingListings = allocatedListingRepository.findByCourtScheduleIdAndHearingId(allocatedSlot.getCourtScheduleId(), allocatedSlot.getHearingId());
+            // A reservation has no hearing_id, and findByCourtScheduleIdAndHearingId(id, null)
+            // matches nothing in SQL, so it would never detect its own duplicate. Dedupe such a
+            // row on the column it actually uses.
+            final List<AllocatedListing> existingListings = allocatedSlot.getHearingId() == null
+                    ? allocatedListingRepository.findByBookingId(allocatedSlot.getBookingId()).stream()
+                        .filter(row -> row.getExpiresAt() != null)
+                        .filter(row -> Objects.equals(row.getCourtScheduleId(), allocatedSlot.getCourtScheduleId()))
+                        .toList()
+                    : allocatedListingRepository.findByCourtScheduleIdAndHearingId(allocatedSlot.getCourtScheduleId(), allocatedSlot.getHearingId());
             if (existingListings.isEmpty()) {
                 final CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedSlot.getCourtScheduleId());
                 AllocatedListing allocatedListing = new AllocatedListing();
@@ -2367,6 +2379,31 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return slots.stream()
                 .map(AllocatedSlot::getHearingId)
                 .findFirst();
+    }
+
+    /**
+     * Releases every UNCONFIRMED reservation held under {@code bookingId}, restoring each
+     * session's capacity — the booking-keyed counterpart of
+     * {@link #releaseOldAllocatedListings(String)}, which is keyed on hearing_id and therefore
+     * only ever sees confirmed listings.
+     *
+     * <p>The {@code expiresAt != null} filter is the safety property of this method, not an
+     * optimisation. A confirmed listing carries the same booking_id as the reservation it grew
+     * from, so without the filter this would delete a real court listing when asked to release a
+     * hold. Only a share may change a confirmed booking; this method must never touch one.
+     */
+    @Transactional
+    public void releaseReservationsForBooking(final String bookingId) {
+
+        final List<AllocatedListing> reservations = allocatedListingRepository.findByBookingId(bookingId).stream()
+                .filter(row -> row.getExpiresAt() != null)
+                .toList();
+
+        if (isNotEmpty(reservations)) {
+            reservations.forEach(allocatedListingRepository::remove);
+            releaseCourtScheduleAllocatedSlotsForBookingId(reservations);
+            releaseAllocatedSlotsOrDurationFromCourtSchedule(reservations);
+        }
     }
 
     @Transactional

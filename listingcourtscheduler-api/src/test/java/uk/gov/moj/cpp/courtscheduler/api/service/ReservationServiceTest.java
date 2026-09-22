@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -11,6 +12,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -37,6 +39,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -67,7 +70,7 @@ class ReservationServiceTest {
     void shouldRejectAReservationWhenTheSessionIsFull() {
         // validator reports the session cannot take it
         givenSessionExists();
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
         when(sessionsService.validateSessionAvailabilityListMode(List.of(SESSION_ID), 60))
                 .thenReturn(Optional.of("One or more schedules are no longer available, please reschedule your hearing"));
 
@@ -75,21 +78,21 @@ class ReservationServiceTest {
                 () -> reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 60))));
 
         assertThat(thrown.getMessage(), containsString("no longer available"));
-        verify(courtScheduleRepository, never()).saveBookedSlots(anyList(), anyBoolean(), anyBoolean());
+        verify(courtScheduleRepository, never()).saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean());
     }
 
     @Test
     void shouldReserveWhenTheSessionHasCapacity() {
         // validator reports no problem
         givenSessionExists();
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
         when(sessionsService.validateSessionAvailabilityListMode(List.of(SESSION_ID), 60))
                 .thenReturn(Optional.empty());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 60)));
 
-        verify(courtScheduleRepository).saveBookedSlots(anyList(), anyBoolean(), anyBoolean());
+        verify(courtScheduleRepository).saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean());
     }
 
     @Test
@@ -98,57 +101,94 @@ class ReservationServiceTest {
         // reports no problem even at capacity — assert we do not add a second rule that
         // overrides that exemption
         givenSessionExists();
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
         when(sessionsService.validateSessionAvailabilityListMode(List.of(SESSION_ID), 60))
                 .thenReturn(Optional.empty());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 60)));
 
-        verify(courtScheduleRepository).saveBookedSlots(anyList(), anyBoolean(), anyBoolean());
+        verify(courtScheduleRepository).saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean());
     }
 
     @Test
     void shouldNotCountTheCallersOwnHoldAgainstItOnARePick() {
         // session at capacity, but every booked row belongs to THIS bookingId: the caller's own
-        // existing hold on SESSION_ID is returned by findByHearingId, and the shared validator is
+        // existing hold on SESSION_ID is returned by findByBookingId, and the shared validator is
         // stubbed as if the session were still full — a naive implementation that always calls the
         // validator would reject this legal re-pick.
         givenSessionExists();
         final AllocatedListing ownExistingHold = new AllocatedListing();
         ownExistingHold.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         ownExistingHold.setCourtScheduleId(SESSION_ID);
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of(ownExistingHold));
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of(ownExistingHold));
         // lenient: a correct implementation must not even call the validator for a session the
         // booking already holds, so this stub is deliberately allowed to go unused.
         lenient().when(sessionsService.validateSessionAvailabilityListMode(List.of(SESSION_ID), 60))
                 .thenReturn(Optional.of("One or more schedules are no longer available, please reschedule your hearing"));
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 60)));
 
-        verify(courtScheduleRepository).saveBookedSlots(anyList(), anyBoolean(), anyBoolean());
+        verify(courtScheduleRepository).saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean());
     }
 
     @Test
     void shouldReserveWithTodaysExpiryAndUnconfirmedSource() {
         givenSessionExists();
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         final var slot = reservationService.reserve(SESSION_ID, BOOKING_ID, "2026-10-14T10:00:00.000Z", 60);
 
         assertThat(slot, is(notNullValue()));
         assertThat(slot.getExpiresAt(), is(LocalDate.now(ZoneOffset.UTC)));
-        assertThat(slot.getHearingId(), is(BOOKING_ID));
+        assertThat(slot.getBookingId(), is(BOOKING_ID));
+        assertThat("a reservation holds no hearing yet", slot.getHearingId(), is(nullValue()));
         assertThat(slot.getSource(), is("RESERVED_UNCONFIRMED"));
+    }
+
+    // The re-pick wipe used to be inherited: a reservation's hearing_id WAS the bookingId, so
+    // saveBookedSlots' own hearing-wide release covered it. Reservations now live in booking_id,
+    // so that release no longer sees them and reserveAll must ask for it explicitly. Without this
+    // call a clerk changing their mind would hold BOTH sessions and the abandoned one would sit on
+    // capacity until the 01:00 purge.
+    @Test
+    void shouldReleaseTheBookingsOwnUnconfirmedHoldsBeforeTakingTheNewOnes() {
+        givenSessionExists();
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean()))
+                .thenReturn(Result.SUCCESS());
+
+        reservationService.reserve(SESSION_ID, BOOKING_ID, "2026-10-14T10:00:00.000Z", 60);
+
+        final InOrder inOrder = inOrder(courtScheduleRepository);
+        inOrder.verify(courtScheduleRepository).releaseReservationsForBooking(BOOKING_ID);
+        inOrder.verify(courtScheduleRepository)
+                .saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean());
+    }
+
+    // The pipeline must not ALSO try its hearing-wide release: these rows carry no hearing_id, so
+    // asking for it would at best do nothing and at worst release by a null key.
+    @Test
+    void shouldNotAskThePipelineForItsHearingWideRelease() {
+        givenSessionExists();
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean()))
+                .thenReturn(Result.SUCCESS());
+
+        reservationService.reserve(SESSION_ID, BOOKING_ID, "2026-10-14T10:00:00.000Z", 60);
+
+        verify(courtScheduleRepository)
+                .saveBookedSlots(anyList(), eq(false), eq(false), eq(false));
+        verify(courtScheduleRepository, never()).releaseOldAllocatedListings(anyString());
     }
 
     @Test
     void shouldRejectWhenBookingAlreadyHasAConfirmedAllocation() {
         final AllocatedListing confirmed = new AllocatedListing();
         confirmed.setExpiresAt(null);
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of(confirmed));
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of(confirmed));
 
         assertThrows(ConfirmedBookingExistsException.class,
                 () -> reservationService.reserve(SESSION_ID, BOOKING_ID, "2026-10-14T10:00:00.000Z", 60));
@@ -159,8 +199,8 @@ class ReservationServiceTest {
         givenSessionExists();
         final AllocatedListing existingReservation = new AllocatedListing();
         existingReservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of(existingReservation));
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of(existingReservation));
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         final var slot = reservationService.reserve(SESSION_ID, BOOKING_ID, "2026-10-14T10:00:00.000Z", 60);
 
@@ -171,8 +211,8 @@ class ReservationServiceTest {
     @Test
     void shouldThrowNoCapacityWhenPersistFails() {
         givenSessionExists();
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean()))
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean()))
                 .thenReturn(Result.FAILED("no capacity"));
 
         assertThrows(NoCapacityException.class,
@@ -191,8 +231,8 @@ class ReservationServiceTest {
         // booking's own earlier slots — a 3-slot pick ended up holding 1. Assert the whole booking
         // goes over in a single call.
         givenSessionsExist("cs-1", "cs-2", "cs-3");
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         final List<AllocatedSlot> reserved = reservationService.reserveAll(BOOKING_ID,
                 List.of(slotRequest("cs-1", 60), slotRequest("cs-2", 60), slotRequest("cs-3", 60)));
@@ -200,13 +240,14 @@ class ReservationServiceTest {
         assertThat(reserved.size(), is(3));
 
         final ArgumentCaptor<List<AllocatedSlot>> captor = ArgumentCaptor.forClass(List.class);
-        verify(courtScheduleRepository, times(1)).saveBookedSlots(captor.capture(), eq(false), eq(false));
+        verify(courtScheduleRepository, times(1)).saveBookedSlots(captor.capture(), eq(false), eq(false), eq(false));
         final List<AllocatedSlot> persisted = captor.getValue();
         assertThat("the whole booking must go over in one call", persisted.size(), is(3));
         assertThat(persisted.stream().map(AllocatedSlot::getCourtScheduleId).toList(),
                 is(List.of("cs-1", "cs-2", "cs-3")));
         persisted.forEach(slot -> {
-            assertThat(slot.getHearingId(), is(BOOKING_ID));
+            assertThat(slot.getBookingId(), is(BOOKING_ID));
+        assertThat("a reservation holds no hearing yet", slot.getHearingId(), is(nullValue()));
             assertThat(slot.getExpiresAt(), is(LocalDate.now(ZoneOffset.UTC)));
             assertThat(slot.getSource(), is("RESERVED_UNCONFIRMED"));
         });
@@ -215,13 +256,13 @@ class ReservationServiceTest {
     @Test
     void shouldRunTheConfirmedAllocationGuardOnceForTheWholeBooking() {
         givenSessionsExist("cs-1", "cs-2", "cs-3");
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         reservationService.reserveAll(BOOKING_ID,
                 List.of(slotRequest("cs-1", 60), slotRequest("cs-2", 60), slotRequest("cs-3", 60)));
 
-        verify(allocatedListingRepository, times(1)).findByHearingId(BOOKING_ID);
+        verify(allocatedListingRepository, times(1)).findByBookingId(BOOKING_ID);
     }
 
     @Test
@@ -231,13 +272,13 @@ class ReservationServiceTest {
         // must come from its own session, not from the first one resolved.
         givenSlotBasedSession("cs-slot");
         givenDurationBasedSession("cs-duration");
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         reservationService.reserveAll(BOOKING_ID, List.of(slotRequest("cs-slot", 60), slotRequest("cs-duration", 45)));
 
         final ArgumentCaptor<List<AllocatedSlot>> captor = ArgumentCaptor.forClass(List.class);
-        verify(courtScheduleRepository).saveBookedSlots(captor.capture(), eq(false), eq(false));
+        verify(courtScheduleRepository).saveBookedSlots(captor.capture(), eq(false), eq(false), eq(false));
         assertThat(captor.getValue().get(0).isSlotBased(), is(true));
         assertThat(captor.getValue().get(1).isSlotBased(), is(false));
     }
@@ -252,24 +293,24 @@ class ReservationServiceTest {
         // decremented available_duration by nothing at all: the hold existed but the session
         // stayed bookable, so another clerk could take it.
         givenDurationBasedSession(SESSION_ID);
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
 
         final ValidationException thrown = assertThrows(ValidationException.class,
                 () -> reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, null))));
 
         assertThat(thrown.getErrors().getString("errorMessage").contains("duration is required"), is(true));
-        verify(courtScheduleRepository, never()).saveBookedSlots(anyList(), anyBoolean(), anyBoolean());
+        verify(courtScheduleRepository, never()).saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean());
     }
 
     @Test
     void shouldRejectADurationBasedSessionWithAZeroDuration() {
         givenDurationBasedSession(SESSION_ID);
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
 
         assertThrows(ValidationException.class,
                 () -> reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 0))));
 
-        verify(courtScheduleRepository, never()).saveBookedSlots(anyList(), anyBoolean(), anyBoolean());
+        verify(courtScheduleRepository, never()).saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean());
     }
 
     @Test
@@ -277,8 +318,8 @@ class ReservationServiceTest {
         // A slot-based session decrements available_slots by one; duration is irrelevant there,
         // so omitting it must stay legal.
         givenSessionExists();
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         final List<AllocatedSlot> reserved =
                 reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, null)));
@@ -299,15 +340,16 @@ class ReservationServiceTest {
         givenCrownSession(SESSION_ID, monday, 360, 0);
         final List<CourtSchedule> run = crownConsecutiveRun(monday, 5, 360, 0);
         when(courtScheduleRepository.findConsecutiveSessions(SESSION_ID, 5)).thenReturn(run);
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         final List<AllocatedSlot> reserved =
                 reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 1800)));
 
         assertThat(reserved.size(), is(5));
         reserved.forEach(slot -> {
-            assertThat(slot.getHearingId(), is(BOOKING_ID));
+            assertThat(slot.getBookingId(), is(BOOKING_ID));
+        assertThat("a reservation holds no hearing yet", slot.getHearingId(), is(nullValue()));
             assertThat(slot.getExpiresAt(), is(LocalDate.now(ZoneOffset.UTC)));
             assertThat(slot.getSource(), is("RESERVED_UNCONFIRMED"));
             assertThat(slot.getDuration(), is(360));
@@ -325,13 +367,13 @@ class ReservationServiceTest {
         givenCrownSession(SESSION_ID, monday, 360, 0);
         final List<CourtSchedule> run = crownConsecutiveRun(monday, 5, 360, 0);
         when(courtScheduleRepository.findConsecutiveSessions(SESSION_ID, 5)).thenReturn(run);
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 1800)));
 
         final ArgumentCaptor<List<AllocatedSlot>> captor = ArgumentCaptor.forClass(List.class);
-        verify(courtScheduleRepository, times(1)).saveBookedSlots(captor.capture(), eq(false), eq(false));
+        verify(courtScheduleRepository, times(1)).saveBookedSlots(captor.capture(), eq(false), eq(false), eq(false));
         assertThat("the whole 5-day run must go over in one call", captor.getValue().size(), is(5));
     }
 
@@ -344,14 +386,14 @@ class ReservationServiceTest {
         final List<CourtSchedule> run = crownConsecutiveRun(monday, 5, 360, 0);
         run.get(2).setTotalBooked(360); // Wednesday: fully booked, overbooking not allowed
         when(courtScheduleRepository.findConsecutiveSessions(SESSION_ID, 5)).thenReturn(run);
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         final List<AllocatedSlot> reserved =
                 reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 1800)));
 
         assertThat(reserved.size(), is(5));
-        verify(courtScheduleRepository, times(1)).saveBookedSlots(anyList(), eq(false), eq(false));
+        verify(courtScheduleRepository, times(1)).saveBookedSlots(anyList(), eq(false), eq(false), eq(false));
     }
 
     @Test
@@ -362,22 +404,22 @@ class ReservationServiceTest {
         givenCrownSession(SESSION_ID, monday, 360, 0);
         final List<CourtSchedule> shortRun = crownConsecutiveRun(monday, 3, 360, 0);
         when(courtScheduleRepository.findConsecutiveSessions(SESSION_ID, 5)).thenReturn(shortRun);
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
 
         assertThrows(NoCapacityException.class,
                 () -> reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 1800))));
 
-        verify(courtScheduleRepository, never()).saveBookedSlots(anyList(), anyBoolean(), anyBoolean());
+        verify(courtScheduleRepository, never()).saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean());
     }
 
     @Test
     void shouldReserveExactlyOneSessionForASingleDayCrownRequestUnchanged() {
         // durationInMinutes == 360 (one court day): NOT multi-day, completely unaffected.
         givenCrownSession(SESSION_ID, LocalDate.of(2026, 10, 12), 360, 0);
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
         when(sessionsService.validateSessionAvailabilityListMode(List.of(SESSION_ID), 360))
                 .thenReturn(Optional.empty());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         final List<AllocatedSlot> reserved =
                 reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 360)));
@@ -393,8 +435,8 @@ class ReservationServiceTest {
         final CourtSchedule slotBasedCrown = crownSession(SESSION_ID, LocalDate.of(2026, 10, 12), 360, 0);
         slotBasedCrown.setSlotBased(true);
         when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(SESSION_ID))).thenReturn(List.of(slotBasedCrown));
-        when(allocatedListingRepository.findByHearingId(BOOKING_ID)).thenReturn(List.of());
-        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(Result.SUCCESS());
 
         final List<AllocatedSlot> reserved =
                 reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 1800)));

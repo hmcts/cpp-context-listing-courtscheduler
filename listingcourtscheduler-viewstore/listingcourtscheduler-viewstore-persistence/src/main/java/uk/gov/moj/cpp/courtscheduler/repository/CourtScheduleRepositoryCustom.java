@@ -147,6 +147,12 @@ public interface CourtScheduleRepositoryCustom {
 
     void releaseOldAllocatedListings(String hearingId);
 
+    /**
+     * Releases every unconfirmed reservation held under {@code bookingId}, restoring capacity.
+     * Never touches a confirmed listing, even though one carries the same booking_id.
+     */
+    void releaseReservationsForBooking(String bookingId);
+
     /** Date-scoped sibling of {@link #releaseOldAllocatedListings(String)}. */
     void releaseAllocatedListingsForDates(String hearingId, java.util.List<java.time.LocalDate> dates);
 

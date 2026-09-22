@@ -137,7 +137,19 @@ public class ReservationService {
             }
         }
 
-        final Result result = courtScheduleRepository.saveBookedSlots(slots, false, false);
+        // The re-pick wipe. This used to come for free: a reservation's hearing_id WAS the
+        // bookingId, so saveBookedSlots' own hearing-wide release covered it. Reservations now
+        // live in booking_id and leave hearing_id null, so that release no longer sees them and
+        // this call takes its place - explicitly, before anything of the new pick is written, so
+        // a re-pick still gives back the session it abandons in the same transaction.
+        //
+        // It releases only unconfirmed rows (see releaseReservationsForBooking), so a bookingId
+        // whose earlier pick was already shared keeps its confirmed listing untouched.
+        courtScheduleRepository.releaseReservationsForBooking(bookingId);
+
+        // releaseExistingHearingAllocations = false: there is no hearing_id on these rows to
+        // release by, and the booking-scoped release above has already run.
+        final Result result = courtScheduleRepository.saveBookedSlots(slots, false, false, false);
         if (!result.isSuccess()) {
             throw new NoCapacityException(
                     "Could not reserve sessions for booking " + bookingId + ": " + result.getMsg());
@@ -213,7 +225,9 @@ public class ReservationService {
                                                             final int perDayMinutes) {
         final AllocatedSlot slot = new AllocatedSlot();
         slot.setCourtScheduleId(session.getCourtScheduleId());
-        slot.setHearingId(bookingId);
+        // booking_id, not hearing_id: this row holds no hearing yet. hearing_id stays null until
+        // the share confirms the booking and stamps the real next-hearing id onto it.
+        slot.setBookingId(bookingId);
         slot.setOuCode(session.getOuCode());
         slot.setSessionDate(session.getSessionDate().toString());
         slot.setDuration(perDayMinutes);
@@ -237,7 +251,7 @@ public class ReservationService {
      * querying a second time — see {@link #toReservedSlot} for why that set matters for capacity.
      */
     private Set<String> guardAgainstConfirmedAllocation(final String bookingId) {
-        final List<AllocatedListing> existingAllocations = allocatedListingRepository.findByHearingId(bookingId);
+        final List<AllocatedListing> existingAllocations = allocatedListingRepository.findByBookingId(bookingId);
         final boolean hasConfirmedAllocation = existingAllocations.stream()
                 .anyMatch(allocation -> allocation.getExpiresAt() == null);
         if (hasConfirmedAllocation) {
@@ -295,7 +309,9 @@ public class ReservationService {
 
         final AllocatedSlot slot = new AllocatedSlot();
         slot.setCourtScheduleId(sessionId);
-        slot.setHearingId(bookingId);
+        // booking_id, not hearing_id: this row holds no hearing yet. hearing_id stays null until
+        // the share confirms the booking and stamps the real next-hearing id onto it.
+        slot.setBookingId(bookingId);
         slot.setOuCode(session.getOuCode());
         slot.setSessionDate(session.getSessionDate().toString());
         slot.setDuration(duration == null ? 0 : duration);
