@@ -47,7 +47,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         final LocalDate startDate = LocalDate.of(2026, 1, 1);
         final LocalDate endDate = LocalDate.of(2026, 1, 31);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek> repeatDays = Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek> repeatDays = Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.MONDAY, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.TUESDAY);
 
         final List<JudiciaryUnavailabilityResponse> unavailabilities = Arrays.asList(
                 new JudiciaryUnavailabilityResponse(
@@ -152,7 +152,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
     @Test
     void shouldConvertRepeatDaysAsStringArray() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Friday));
+        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.MONDAY, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.TUESDAY, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.FRIDAY));
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
         response.setRules(Arrays.asList(rule));

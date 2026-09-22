@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
@@ -13,8 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
@@ -44,18 +42,13 @@ public class JudiciaryUnavailability {
     private UnavailabilityReason reason;
 
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
-    private Date createdOn;
+    private Instant createdOn;
 
     @UpdateTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private Date updatedOn;
+    private Instant updatedOn;
 
-    public JudiciaryUnavailability() {
-        //For JPA
-    }
 
     public String getId() {
         return this.id;
@@ -97,19 +90,19 @@ public class JudiciaryUnavailability {
         this.reason = reason;
     }
 
-    public Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return this.createdOn;
     }
 
-    public void setCreatedOn(final Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return this.updatedOn;
     }
 
-    public void setUpdatedOn(final Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 

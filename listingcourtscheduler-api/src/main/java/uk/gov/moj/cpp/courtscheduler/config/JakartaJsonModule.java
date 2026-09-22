@@ -22,7 +22,12 @@ import java.util.Map;
  * controller returning a {@link jakarta.json.JsonObject} (directly or nested in a Map) gets
  * the canonical legacy wire shape.</p>
  */
-public class JakartaJsonModule extends SimpleModule {
+// Never subclassed (repo-wide check confirms no subtypes) - final removes any risk of a future
+// subclass overriding the inherited, non-final SimpleModule#addSerializer and having it run here
+// during construction before the subclass's own fields are initialised (ConstructorCallsOverridableMethod).
+public final class JakartaJsonModule extends SimpleModule {
+
+    private static final long serialVersionUID = 1L;
 
     public JakartaJsonModule() {
         addSerializer(JsonValue.class, new JsonValueSerializer());

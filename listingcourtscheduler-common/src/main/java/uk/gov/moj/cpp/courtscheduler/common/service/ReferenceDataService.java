@@ -59,6 +59,8 @@ import org.slf4j.LoggerFactory;
 public class ReferenceDataService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataService.class);
 
+    private static final int SINGLE_COURT_ROOM_COUNT = 1;
+
     private static final String REFERENCEDATA_BASE_PATH = "/referencedata-query-api/query/api/rest/referencedata";
     private static final String PUBLIC_HOLIDAYS_PATH = REFERENCEDATA_BASE_PATH + "/public-holidays";
     private static final String ROTA_BUSINESS_TYPES_PATH = REFERENCEDATA_BASE_PATH + "/rota-business-types";
@@ -145,7 +147,12 @@ public class ReferenceDataService {
                             return null;
                         }
                         return toCourtRoom(jsonObject);
-                    } catch (Exception e) {
+                    } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") // Deliberate broad safety net:
+                            // one malformed courtroom record must not abort mapping the rest of the batch, and
+                            // toCourtRoom()/JSON field access can throw a variety of unchecked exceptions
+                            // (NumberFormatException, ClassCastException, JsonException, NPE) depending on which
+                            // field is missing or malformed. The bad record is logged and skipped instead.
+                            final Exception e) {
                         LOGGER.error(format("Error while converting court room with ID: %d", jsonObject.getInt(CPP_COURT_ROOM_ID)), e);
                         LOGGER.error(format("Skipping the failed records, %d records left", resultsCount - 1));
                         final String cppCourtRoomId =
@@ -294,7 +301,7 @@ public class ReferenceDataService {
         if (courtRoomOptional.isPresent()) {
             return courtRoomOptional;
         } else {
-            if (courtRoomList.size() > 1) {
+            if (courtRoomList.size() > SINGLE_COURT_ROOM_COUNT) {
                 exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             } else {
                 exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);

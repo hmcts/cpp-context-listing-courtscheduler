@@ -10,6 +10,8 @@ import org.springframework.web.server.ResponseStatusException;
  * {@link uk.gov.moj.cpp.courtscheduler.controllers.GlobalExceptionHandler} to render.
  */
 public class UnprocessableEntityException extends ResponseStatusException {
+    private static final long serialVersionUID = 1L;
+
     private final JsonObject errors;
 
     public UnprocessableEntityException(final JsonObject errors) {

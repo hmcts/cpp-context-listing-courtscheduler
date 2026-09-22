@@ -4,21 +4,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Result {
+    /* package */
     final String msg;
-    final boolean success;
+    /* package */
+    final boolean successful;
+    /* package */
     String courtRoomId;
+    /* package */
     String courtRoomName;
+    /* package */
     final Map<String, String> hearingDayCourtSchedules = new HashMap<>();
 
     public Result(final String msg, final boolean isSuccess, final String courtRoomId) {
         this.msg = msg;
-        this.success = isSuccess;
+        this.successful = isSuccess;
         this.courtRoomId = courtRoomId;
     }
 
     public Result(final String msg, final boolean isSuccess) {
         this.msg = msg;
-        this.success = isSuccess;
+        this.successful = isSuccess;
     }
 
     public static Result success() {
@@ -30,7 +35,7 @@ public class Result {
     }
 
     public boolean isSuccess() {
-        return success;
+        return successful;
     }
 
     public String getMsg() {return msg;}

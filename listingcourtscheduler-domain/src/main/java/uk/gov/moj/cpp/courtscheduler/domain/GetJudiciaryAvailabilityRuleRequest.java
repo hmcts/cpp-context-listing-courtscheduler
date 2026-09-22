@@ -26,7 +26,7 @@ public class GetJudiciaryAvailabilityRuleRequest {
         this.ruleId = ruleId;
     }
 
-    public Boolean getWithJudiciary() {
+    public Boolean isWithJudiciary() {
         return withJudiciary;
     }
 

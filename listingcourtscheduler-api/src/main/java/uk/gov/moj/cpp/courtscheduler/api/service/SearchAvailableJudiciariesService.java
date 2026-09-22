@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -33,6 +34,7 @@ public class SearchAvailableJudiciariesService {
 
     private static final int DEFAULT_LIMIT = 50;
     private static final int MIN_SEARCH_LENGTH = 2;
+    private static final int SINGLE_COURT_HOUSE_COUNT = 1;
     private static final String LIMIT = "limit";
 
     @Inject
@@ -139,7 +141,7 @@ public class SearchAvailableJudiciariesService {
                     ? ((JsonNumber) v).intValue()
                     : Integer.parseInt(payload.getString(LIMIT));
             return parsed > 0 ? parsed : DEFAULT_LIMIT;
-        } catch (final RuntimeException e) {
+        } catch (final NumberFormatException | ClassCastException e) {
             return DEFAULT_LIMIT;
         }
     }
@@ -170,7 +172,7 @@ public class SearchAvailableJudiciariesService {
         }
         final Map<String, CourtSchedule> byId = schedules.stream().collect(toMap(CourtSchedule::getCourtScheduleId, s -> s));
         final Set<String> houseIds = schedules.stream().map(CourtSchedule::getCourtHouseId).collect(toSet());
-        if (houseIds.size() != 1) {
+        if (houseIds.size() != SINGLE_COURT_HOUSE_COUNT) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "All court schedules must belong to the same court house.");
         }
         final String courtHouseId = houseIds.iterator().next();
@@ -196,7 +198,7 @@ public class SearchAvailableJudiciariesService {
 
     private static SessionType parseCourtSession(final String courtSession) {
         try {
-            return SessionType.valueOf(courtSession.trim().toUpperCase());
+            return SessionType.valueOf(courtSession.trim().toUpperCase(Locale.ROOT));
         } catch (final IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid court session type: " + courtSession);
         }

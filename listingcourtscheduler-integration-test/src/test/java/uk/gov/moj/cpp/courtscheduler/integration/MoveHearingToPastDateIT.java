@@ -16,7 +16,7 @@ import java.io.StringReader;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -285,7 +285,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         allocatedListing.setCourtRoomId(1);
         allocatedListing.setRotaBusinessType("CR");
         allocatedListing.setDuration(durationMinutes);
-        allocatedListing.setHearingStartTime(Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC)));
+        allocatedListing.setHearingStartTime(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
         databaseSeeder.insertAllocatedListing(allocatedListing);
     }
 
@@ -344,8 +344,8 @@ class MoveHearingToPastDateIT extends AbstractIT {
                                final String jurisdiction,
                                final int availableDurationMinutes) throws java.sql.SQLException {
         final String id = UUID.randomUUID().toString();
-        final Date sessionStart = Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
-        final Date sessionEnd = Date.from(sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC));
+        final Instant sessionStart = sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionEnd = sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC);
 
         final CourtSchedule cs = new CourtSchedule();
         cs.setCourtScheduleId(id);

@@ -10,7 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
 @Embeddable
-@SuppressWarnings({"squid:S1948"})
+@SuppressWarnings({"squid:S1948", "PMD.NonSerializableClass"}) // courtSchedule is a managed JPA association, not a plain field to serialize
 public class ProvisionalBookingKey implements Serializable {
 
     private static final long serialVersionUID = 1L;

@@ -1,14 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -23,13 +21,9 @@ public class CourtSchedulerMigrationStatus {
     @Column(name = "migrated", nullable = false)
     private boolean migrated;
     @UpdateTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private java.util.Date updatedOn;
+    private Instant updatedOn;
 
-    public CourtSchedulerMigrationStatus() {
-        //For JPA
-    }
 
     public String getOuCode() {
         return ouCode;
@@ -58,11 +52,11 @@ public class CourtSchedulerMigrationStatus {
         return this;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return updatedOn;
     }
 
-    public void setUpdatedOn(final Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 

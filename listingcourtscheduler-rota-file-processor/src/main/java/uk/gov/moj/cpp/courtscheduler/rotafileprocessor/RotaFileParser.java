@@ -41,7 +41,6 @@ import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +68,7 @@ public class RotaFileParser {
     private static final String TAG_LOCATION_NAME = "location.name";
     private static final String TAG_ROTA_PERIOD = "rotaPeriod";
 
-    private static final Set<String> attributeTags = new TreeSet<>(asList(TAG_MAGISTRATE, TAG_DISTRICT_JUDGE, TAG_VENUE, TAG_SCHEDULE));
+    private static final Set<String> ATTRIBUTE_TAGS = new TreeSet<>(asList(TAG_MAGISTRATE, TAG_DISTRICT_JUDGE, TAG_VENUE, TAG_SCHEDULE));
     private Map<String, String> requiredElements = new ConcurrentHashMap<>();
 
     @Inject
@@ -87,10 +86,10 @@ public class RotaFileParser {
         final Map<String, Map<String, String>> courtListingProfiles = new TreeMap<>();
         final Map<String, Map<String, String>> schedules = new HashMap<>();
         final Map<String, Map<String, String>> locationsMap = new HashMap<>();
-        final EnumMap<RotaPayload, Map<String, Map<String, String>>> result = new EnumMap<>(RotaPayload.class);
+        final Map<RotaPayload, Map<String, Map<String, String>>> result = new EnumMap<>(RotaPayload.class);
 
         Map<String, String> record = new HashMap<>();
-        String xpath = StringUtils.EMPTY;
+        final StringBuilder xpath = new StringBuilder();
         boolean root = true;
 
         try {
@@ -108,15 +107,21 @@ public class RotaFileParser {
                         final String qName = startElement.getName().getLocalPart();
 
                         if (root) {
-                            xpath = qName;
+                            xpath.append(qName);
                             root = false;
                         } else {
-                            xpath += TAG_SEPARATOR + qName;
+                            xpath.append(TAG_SEPARATOR).append(qName);
                         }
 
-                        if (isAttributesRequired(qName, xpath)) {
-                            record = new HashMap<>(getAttributes(startElement));
-                        } else if (qName.equals(TAG_JUSTICE) || xpath.endsWith(TAG_SCH_LISTING)) {
+                        if (isAttributesRequired(qName, xpath.toString())) {
+                            // A fresh map is required per matching element: each one is stored by
+                            // reference into the output collections below (courtListingProfiles,
+                            // magistrates, etc.), so reusing/hoisting a single instance would let
+                            // later elements overwrite the data of every earlier one.
+                            @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+                            final Map<String, String> newRecord = new HashMap<>(getAttributes(startElement));
+                            record = newRecord;
+                        } else if (TAG_JUSTICE.equals(qName) || xpath.toString().endsWith(TAG_SCH_LISTING)) {
                             record.put(qName, getIdRefValue(startElement));
                         }
 
@@ -124,7 +129,7 @@ public class RotaFileParser {
                     }
 
                     case CHARACTERS: {
-                        populateElementValue(event, record, xpath);
+                        populateElementValue(event, record, xpath.toString());
 
                         break;
                     }
@@ -132,32 +137,40 @@ public class RotaFileParser {
                     case END_ELEMENT: {
                         final String qName = event.asEndElement().getName().getLocalPart();
 
-                        if (xpath.endsWith(TAG_COURT_LISTING)) {
-                            populateLocation(locations, record);
+                        if (xpath.toString().endsWith(TAG_COURT_LISTING)) {
+                            populateLocation(record);
                             populateVenueName(venues, record);
                             courtListingProfiles.put(record.get(TAG_ID), record);
                         } else {
 
-                            if (qName.equals(TAG_MAGISTRATE)) {
+                            if (TAG_MAGISTRATE.equals(qName)) {
                                 magistrates.put(record.get(TAG_ID), record);
-                            } else if (qName.equals(TAG_DISTRICT_JUDGE)) {
+                            } else if (TAG_DISTRICT_JUDGE.equals(qName)) {
                                 districtJudges.put(record.get(TAG_ID), record);
-                            } else if (qName.equals(TAG_VENUE)) {
+                            } else if (TAG_VENUE.equals(qName)) {
                                 venues.put(record.get(TAG_VENUE_ID), record.get(TAG_VENUE_NAME));
-                            } else if (qName.equals(TAG_SCHEDULE)) {
+                            } else if (TAG_SCHEDULE.equals(qName)) {
                                 schedules.put(record.get(TAG_ID), record);
-                            } else if (qName.equals(TAG_ROTA_PERIOD)) {
+                            } else if (TAG_ROTA_PERIOD.equals(qName)) {
                                 result.put(ROTA_PERIOD, singletonMap(randomUUID().toString(), record));
-                            } else if (qName.equals(TAG_LOCATION)) {
+                            } else if (TAG_LOCATION.equals(qName)) {
                                 locations.put(record.get(TAG_LOCATION_ID), record.get(TAG_LOCATION_NAME));
                                 locationsMap.put(TAG_CL_LOCATION_ID, locations);
                             }
                         }
 
-                        xpath = removeEnd(xpath, TAG_SEPARATOR + qName);
+                        final String trimmedXpath = removeEnd(xpath.toString(), TAG_SEPARATOR + qName);
+                        xpath.setLength(0);
+                        xpath.append(trimmedXpath);
 
                         break;
                     }
+
+                    default:
+                        // Other StAX event types (START_DOCUMENT, END_DOCUMENT, COMMENT, SPACE,
+                        // PROCESSING_INSTRUCTION, etc.) carry no data this parser needs and are
+                        // intentionally ignored.
+                        break;
                 }
             }
 
@@ -179,7 +192,7 @@ public class RotaFileParser {
     }
 
     private boolean isAttributesRequired(final String qName, final String xpath) {
-        return attributeTags.contains(qName) || xpath.endsWith(TAG_COURT_LISTING);
+        return ATTRIBUTE_TAGS.contains(qName) || xpath.endsWith(TAG_COURT_LISTING);
     }
 
     private void populateVenueName(final Map<String, String> venues, final Map<String, String> courtListing) {
@@ -189,10 +202,9 @@ public class RotaFileParser {
         courtListing.put(TAG_VENUE_NAME, venueName);
     }
 
-    private void populateLocation(final Map<String, String> locations, final Map<String, String> courtListing) {
+    private void populateLocation(final Map<String, String> courtListing) {
         final String locationId = courtListing.get(TAG_CL_LOCATION_ID);
 
-        //final
         courtListing.put(TAG_CL_LOCATION_ID, locationId);
     }
 

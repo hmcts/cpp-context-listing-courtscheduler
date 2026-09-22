@@ -9,8 +9,8 @@ public class JudiciaryAssignment {
     private String judiciaryId;
     private String rotaJudiciaryId;
     private List<String> sessionIds = new ArrayList<>();
-    private Boolean isDeputy;
-    private Boolean isBenchChairman;
+    private Boolean deputy;
+    private Boolean benchChairman;
     private String position;
 
     public JudiciaryAssignment() {
@@ -38,20 +38,20 @@ public class JudiciaryAssignment {
         this.sessionIds = sessionIds;
     }
 
-    public Boolean getIsDeputy() {
-        return isDeputy;
+    public Boolean isDeputy() {
+        return deputy;
     }
 
     public void setIsDeputy(final Boolean isDeputy) {
-        this.isDeputy = isDeputy;
+        this.deputy = isDeputy;
     }
 
-    public Boolean getIsBenchChairman() {
-        return isBenchChairman;
+    public Boolean isBenchChairman() {
+        return benchChairman;
     }
 
     public void setIsBenchChairman(final Boolean isBenchChairman) {
-        this.isBenchChairman = isBenchChairman;
+        this.benchChairman = isBenchChairman;
     }
 
     public String getPosition() {

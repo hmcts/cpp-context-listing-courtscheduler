@@ -22,6 +22,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessa
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_AD_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_AM_OR_PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SLOT_WILL_NOT_BE_SAVED_HAVING_YOUTH_PANEL;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.FULL_DAY_DURATION_MINS;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.ADULT;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.YOUTH;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
@@ -70,15 +71,14 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,6 +94,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
+import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.apache.commons.lang3.StringUtils;
@@ -106,6 +107,7 @@ public class SessionsService {
 
     private static final Logger logger = LoggerFactory.getLogger(SessionsService.class);
     private static final int SESSION_AVAILABILITY_DEFAULT_DURATION = 180;
+    private static final int FIRST_OCCURRENCE_INDEX = 1;
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -130,11 +132,11 @@ public class SessionsService {
         final LocalDate startDate = repeatPattern.getStartDate();
         final LocalDate endDate = repeatPattern.getEndDate();
 
-        if (repeatPattern.getFrequency().equals(RepeatFrequency.ONCE)) {
+        if (repeatPattern.getFrequency() == RepeatFrequency.ONCE) {
             processOnceFrequency(sessionList, startDate, courtScheduleList);
-        } else if (repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_WEEK)) {
+        } else if (repeatPattern.getFrequency() == RepeatFrequency.EVERY_WEEK) {
             processWeeklyFrequency(sessionList, startDate, endDate, repeatPattern.getRepeatFor(), courtScheduleList);
-        } else if (repeatPattern.getFrequency().equals(RepeatFrequency.EVERY_MONTH)) {
+        } else if (repeatPattern.getFrequency() == RepeatFrequency.EVERY_MONTH) {
             processMonthlyFrequency(sessionList, startDate, endDate, repeatPattern.getRepeatFor(), courtScheduleList);
         }
 
@@ -193,30 +195,30 @@ public class SessionsService {
         }
 
         final List<AllocatedListingEachBooked> allocatedListingEachBooked = allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId));
-        final Optional<Date> earliestHearingStartTime = allocatedListingEachBooked.stream()
+        final Optional<Instant> earliestHearingStartTime = allocatedListingEachBooked.stream()
                 .map(AllocatedListingEachBooked::getHearingStartTime)
                 .min(Comparator.naturalOrder());
 
-        final Optional<Date> latestHearingStartTime = allocatedListingEachBooked.stream()
+        final Optional<Instant> latestHearingStartTime = allocatedListingEachBooked.stream()
                 .map(AllocatedListingEachBooked::getHearingStartTime)
                 .max(Comparator.naturalOrder());
 
         // When the update payload omits sessionStartTime/sessionEndTime, fall back to the persisted
         // values so the min/max-hearing-time validation still fires against existing allocated listings.
-        final Date sessionStartTimeWithDate = StringUtils.isNotEmpty(updateCourtSchedule.getSessionStartTime())
-                ? combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionStartTime())
+        final Instant sessionStartTimeWithDate = StringUtils.isNotEmpty(updateCourtSchedule.getSessionStartTime())
+                ? combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionStartTime()).toInstant()
                 : persistedCourtSchedule.getSessionStartTime();
-        final Date sessionEndTimeWithDate = StringUtils.isNotEmpty(updateCourtSchedule.getSessionEndTime())
-                ? combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionEndTime())
+        final Instant sessionEndTimeWithDate = StringUtils.isNotEmpty(updateCourtSchedule.getSessionEndTime())
+                ? combineDateAndTime(persistedCourtSchedule.getSessionDate(), updateCourtSchedule.getSessionEndTime()).toInstant()
                 : persistedCourtSchedule.getSessionEndTime();
 
         if (sessionStartTimeWithDate != null && earliestHearingStartTime.isPresent()
-                && sessionStartTimeWithDate.after(earliestHearingStartTime.get())) {
+                && sessionStartTimeWithDate.isAfter(earliestHearingStartTime.get())) {
             return new Result(SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME, false);
         }
 
         if (sessionEndTimeWithDate != null && latestHearingStartTime.isPresent()
-                && sessionEndTimeWithDate.before(latestHearingStartTime.get())) {
+                && sessionEndTimeWithDate.isBefore(latestHearingStartTime.get())) {
             return new Result(SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME, false);
         }
 
@@ -226,7 +228,7 @@ public class SessionsService {
             return new Result(ErrorMessages.SESSION_EDIT_ANOTHER_USER, false);
         }
 
-        if (nonNull(persistedCourtSchedule.getSupportAdSplit()) && TRUE.equals(persistedCourtSchedule.getSupportAdSplit() != updateCourtSchedule.isAllDaySplit())) {
+        if (nonNull(persistedCourtSchedule.isSupportAdSplit()) && TRUE.equals(persistedCourtSchedule.isSupportAdSplit() != updateCourtSchedule.isAllDaySplit())) {
             return new Result(ErrorMessages.ALL_DAY_SPLIT_CHANGE_NOT_ALLOWED, false);
         }
 
@@ -260,9 +262,9 @@ public class SessionsService {
             final String jurisdiction = persistedJurisdiction;
 
             if (CROWN.equalsIgnoreCase(jurisdiction)) {
-                courtRoom = Optional.of(getCpCourtRoomForCourtCentre(courtRoomId, persistedCourtSchedule.getCourtHouseId()));
+                courtRoom = of(getCpCourtRoomForCourtCentre(courtRoomId, persistedCourtSchedule.getCourtHouseId()));
             } else {
-                courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+                courtRoom = of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
             }
         } else {
             courtRoom = empty();
@@ -272,7 +274,9 @@ public class SessionsService {
 
         try {
             result = courtScheduleRepository.update(persistedCourtSchedule, updateCourtSchedule, courtRoom);
-        } catch (Exception exception) {
+        } catch (final DataAccessException exception) {
+            // Spring Data translates persistence failures (incl. the unique-index violation raised when the
+            // update's transaction commits) into DataAccessException; report them as a duplicate-sessions result.
             logger.error("update court schedule failing courScheduleId : {}", persistedCourtSchedule.getCourtScheduleId(), exception);
             result = new Result(ErrorMessages.DUPLICATE_SESSIONS, false);
         }
@@ -292,7 +296,7 @@ public class SessionsService {
             updateCourtSchedule.setMaxSlots(0);
             updateCourtSchedule.setAvailableSlots(0);
 
-            if (nonNull(persistedCourtSchedule.getSupportAdSplit()) && TRUE.equals(persistedCourtSchedule.getSupportAdSplit())) {
+            if (nonNull(persistedCourtSchedule.isSupportAdSplit()) && TRUE.equals(persistedCourtSchedule.isSupportAdSplit())) {
                 updateCourtSchedule.setMaxDurationForMorning(updateCourtSchedule.getMaxDurationForMorning());
                 updateCourtSchedule.setMaxDurationForAfternoon(updateCourtSchedule.getMaxDurationForAfternoon());
             }
@@ -301,7 +305,7 @@ public class SessionsService {
 
     private boolean checkEditValuesModified(final UpdateCourtSchedule updateCourtSchedule,
                                             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
-        if (!TRUE.equals(persistedCourtSchedule.getHasHearingsBooked())) {
+        if (!TRUE.equals(persistedCourtSchedule.hasHearingsBooked())) {
             return false;
         }
         return !StringUtils.equals(updateCourtSchedule.getCourtRoomId(), persistedCourtSchedule.getCourtRoomId()) ||
@@ -403,7 +407,7 @@ public class SessionsService {
                 .toList();
 
         provisionalCourtScheduleEntities.forEach(provisionalCourtScheduleEntity -> {
-            provisionalCourtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
+            provisionalCourtScheduleEntity.setUpdatedOn(Instant.now());
             provisionalCourtScheduleEntity.setSlotBased(businessTypeMap.get(provisionalCourtScheduleEntity.getBusinessType()).isSlot());
             courtScheduleRepository.save(provisionalCourtScheduleEntity);
         });
@@ -473,9 +477,9 @@ public class SessionsService {
                         slot.getOuCode(), slot.getCourtRoomNumber(), slot.getBusinessType(), slot.getCourtSession(), slot.getPanel(), slot.getSessionDate());
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtScheduleEntity = CourtScheduleMapper.toEntity(slot);
                 if (isNull(courtScheduleEntity.getCreatedOn())) {
-                    courtScheduleEntity.setCreatedOn(Calendar.getInstance().getTime());
+                    courtScheduleEntity.setCreatedOn(Instant.now());
                 }
-                courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
+                courtScheduleEntity.setUpdatedOn(Instant.now());
                 courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).isSlot());
                 courtScheduleIdsOfSavedSlots.add(courtScheduleEntity.getCourtScheduleId());
                 courtScheduleService.saveSlot(courtScheduleEntity);
@@ -559,7 +563,7 @@ public class SessionsService {
             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule slotToUpdateEntity = CourtScheduleMapper.toEntity(slotToUpdate);
             final BusinessType businessType = businessTypeMap.get(slotToUpdate.getBusinessType());
             if (nonNull(businessType)) {
-                slotToUpdateEntity.setUpdatedOn(Calendar.getInstance().getTime());
+                slotToUpdateEntity.setUpdatedOn(Instant.now());
                 slotToUpdateEntity.setActive(true);
                 slotToUpdate.setSlotBased(businessTypeMap.get(slotToUpdate.getBusinessType()).isSlot());
 
@@ -594,7 +598,7 @@ public class SessionsService {
                                     .map(CourtScheduleJudiciary::getPosition)
                                     .findFirst()
                                     .ifPresent(updatedPosition ->
-                                            courtScheduleJudiciaryRepository.updateCourtScheduleJudiciaryPosition(updatedPosition, Calendar.getInstance().getTime(), courtScheduleJudiciary.getCourtScheduleId(), courtScheduleJudiciary.getJudiciaryId())
+                                            courtScheduleJudiciaryRepository.updateCourtScheduleJudiciaryPosition(updatedPosition, Instant.now(), courtScheduleJudiciary.getCourtScheduleId(), courtScheduleJudiciary.getJudiciaryId())
                                     );
                         }
                     }
@@ -623,7 +627,7 @@ public class SessionsService {
 
             if (nonNull(courtSchedule) && (forMigrated || courtScheduleIdsOfSavedSlots.contains(courtSchedule.getCourtScheduleId()))) {
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciaryEntity = CourtScheduleJudiciaryMapper.toEntity(scheduleJudiciary);
-                courtScheduleJudiciaryEntity.setUpdatedOn(Calendar.getInstance().getTime());
+                courtScheduleJudiciaryEntity.setUpdatedOn(Instant.now());
                 if (!forMigrated) {
                     courtScheduleJudiciaryEntity.getId().setCourtScheduleId(courtSchedule.getCourtScheduleId());
                 }
@@ -712,11 +716,11 @@ public class SessionsService {
         final LocalDate firstDayOfMonth = monthStart.withDayOfMonth(1);
         final LocalDate firstOccurrence = firstDayOfMonth.with(TemporalAdjusters.nextOrSame(dayOfWeek));
 
-        if (index == 1) {
+        if (index == FIRST_OCCURRENCE_INDEX) {
             return firstOccurrence;
         }
 
-        LocalDate nthOccurrence = firstOccurrence.plusWeeks( (long) index - 1);
+        final LocalDate nthOccurrence = firstOccurrence.plusWeeks((long) index - FIRST_OCCURRENCE_INDEX);
 
         // Check if the nth occurrence is still within the same month
         if (nthOccurrence.getMonth() == firstDayOfMonth.getMonth()) {
@@ -752,9 +756,9 @@ public class SessionsService {
                 .withMaxDurationForMorning(session.getMaxDurationForMorning())
                 .withMaxDurationForAfternoon(session.getMaxDurationForAfternoon())
                 .withIsOverbookingAllowed(TRUE.equals(session.isOverbookingAllowed()))
-                .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate))
+                .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate).toInstant())
                 .withIsDraft(!isNull(session.isDraft()) && session.isDraft())
-                .withJurisdiction(!isNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction());
+                .withJurisdiction(isNull(session.getJurisdiction()) ? MAGISTRATES.getJurisdiction() : session.getJurisdiction());
         enrichSession(courtScheduleBuilder, session.getSlotsOrDuration());
 
         applyResolvedSessionTimes(courtScheduleBuilder, session, sessionDateCandidate, sessionStartTime, sessionEndTime);
@@ -786,8 +790,8 @@ public class SessionsService {
         final String resolvedStart = resolveSessionTime(customStartTime, refDataStartTime, defaults.sessionStartTime());
         final String resolvedEnd = resolveSessionTime(customEndTime, null, defaults.sessionEndTime());
 
-        builder.withSessionStartTime(combineDateAndTime(sessionDate, resolvedStart))
-                .withSessionEndTime(combineDateAndTime(sessionDate, resolvedEnd));
+        builder.withSessionStartTime(combineDateAndTime(sessionDate, resolvedStart).toInstant())
+                .withSessionEndTime(combineDateAndTime(sessionDate, resolvedEnd).toInstant());
     }
 
     /**
@@ -814,17 +818,17 @@ public class SessionsService {
         return normalisedStartTime;
     }
 
-    private void saveCourtSchedules(List<CourtSchedule> courtScheduleList) {
-        List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleList.stream()
+    private void saveCourtSchedules(final List<CourtSchedule> courtScheduleList) {
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleList.stream()
                 .map(CourtScheduleMapper::toEntity)
                 .toList();
         courtScheduleRepository.saveCourtSchedules(courtScheduleEntities);
     }
 
-    private void enrichSession(CourtSchedule.CourtScheduleBuilder builder, int maxSlotsOrDuration) {
+    private void enrichSession(final CourtSchedule.CourtScheduleBuilder builder, final int maxSlotsOrDuration) {
         final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType()).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
-        CourtRoom courtRoom;
-        if ("CROWN".equalsIgnoreCase(builder.getJurisdiction())) {
+        final CourtRoom courtRoom;
+        if (CROWN.equalsIgnoreCase(builder.getJurisdiction())) {
             courtRoom = getCpCourtRoomForCourtCentre(builder.getCourtRoomId(), builder.getCourtHouseId());
         } else {
             courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
@@ -895,7 +899,7 @@ public class SessionsService {
         for (final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare : sessionsToCompare) {
             logger.debug("validateSessionIntegrity sessionToCompare : {}", sessionToCompare);
             //if either of the new session or DB session is AD, we can't add AM,PM or, AD session for the same date
-            boolean isDuplicate = false;
+            final boolean isDuplicate;
             if (frequency == RepeatFrequency.EVERY_MONTH && session.getIndex() != null) {
                 isDuplicate = validatedMonthlyFrequency(session, sessionToCompare, startDate, endDate, repeatFor);
             } else {
@@ -1016,7 +1020,7 @@ public class SessionsService {
         if (error.isPresent()) {
             return error;
         }
-        if (courtSchedules.get(0).isSlotBased()) {
+        if (courtSchedules.getFirst().isSlotBased()) {
             return validateListModeSlotBased(courtSchedules, courtScheduleIds);
         }
         return validateListModeDurationBased(courtSchedules, requestedDuration);
@@ -1052,7 +1056,7 @@ public class SessionsService {
     }
 
     private Optional<String> validateListModeAllSameType(final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules) {
-        final boolean firstIsSlotBased = courtSchedules.get(0).isSlotBased();
+        final boolean firstIsSlotBased = courtSchedules.getFirst().isSlotBased();
         final boolean allSameType = courtSchedules.stream()
                 .allMatch(schedule -> schedule.isSlotBased() == firstIsSlotBased);
         if (!allSameType) {
@@ -1063,7 +1067,7 @@ public class SessionsService {
 
     private Optional<String> validateListModeAllSameCentre(
             final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules) {
-        final String firstCourtHouseId = courtSchedules.get(0).getCourtHouseId();
+        final String firstCourtHouseId = courtSchedules.getFirst().getCourtHouseId();
         final boolean allSameCentre = courtSchedules.stream()
                 .allMatch(schedule -> Objects.equals(firstCourtHouseId, schedule.getCourtHouseId()));
         if (!allSameCentre) {
@@ -1074,7 +1078,7 @@ public class SessionsService {
 
     private Optional<String> validateListModeAllSameJurisdiction(
             final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules) {
-        final String firstJurisdiction = courtSchedules.get(0).getJurisdiction();
+        final String firstJurisdiction = courtSchedules.getFirst().getJurisdiction();
         final boolean allSameJurisdiction = courtSchedules.stream()
                 .allMatch(schedule -> Objects.equals(firstJurisdiction, schedule.getJurisdiction()));
         if (!allSameJurisdiction) {
@@ -1088,7 +1092,7 @@ public class SessionsService {
             final List<String> courtScheduleIds) {
         final Map<String, Integer> allocatedMap = allocatedListingService.getAllocatedListingsByCourtScheduleId(courtScheduleIds);
         for (final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule schedule : courtSchedules) {
-            if (TRUE.equals(schedule.getIsOverbookingAllowed())) {
+            if (TRUE.equals(schedule.isOverbookingAllowed())) {
                 continue;
             }
             final int totalBooked = allocatedMap.getOrDefault(schedule.getCourtScheduleId(), 0);
@@ -1106,14 +1110,14 @@ public class SessionsService {
         if (requestedDuration == null || requestedDuration < 1) {
             return of("Duration is mandatory and should be greater than 0");
         }
-        if (requestedDuration > 360) {
-            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule anchor = courtSchedules.get(0);
+        if (requestedDuration > FULL_DAY_DURATION_MINS) {
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule anchor = courtSchedules.getFirst();
             if (CROWN.equalsIgnoreCase(anchor.getJurisdiction())) {
                 return validateListModeMultiDay(anchor, requestedDuration);
             }
         }
         for (final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule schedule : courtSchedules) {
-            if (TRUE.equals(schedule.getIsOverbookingAllowed())) {
+            if (TRUE.equals(schedule.isOverbookingAllowed())) {
                 continue;
             }
             final AvailabilityBreakdown availability = evaluateAvailability(schedule);
@@ -1127,7 +1131,7 @@ public class SessionsService {
     private Optional<String> validateListModeMultiDay(
             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule anchor,
             final int requestedDuration) {
-        final int daysNeeded = requestedDuration / 360;
+        final int daysNeeded = requestedDuration / FULL_DAY_DURATION_MINS;
         final LocalDate startDate = anchor.getSessionDate();
         if (startDate == null) {
             return of("Court schedule has no session date");
@@ -1147,20 +1151,20 @@ public class SessionsService {
                 .collect(Collectors.toMap(
                         uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule::getSessionDate,
                         cs -> cs,
-                        (a, b) -> TRUE.equals(a.getIsOverbookingAllowed()) ? b : a));
+                        (a, b) -> TRUE.equals(a.isOverbookingAllowed()) ? b : a));
         for (LocalDate d = startDate; !d.isAfter(endDate); d = nextWeekday(d)) {
             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule daySchedule = scheduleByDate.get(d);
             if (daySchedule == null) {
                 return of(format("No active court schedule found for %s in court room %s (businessType %s, courtSession %s).",
                         d, courtRoomId, businessType, courtSession));
             }
-            if (TRUE.equals(daySchedule.getIsOverbookingAllowed())) {
+            if (TRUE.equals(daySchedule.isOverbookingAllowed())) {
                 continue;
             }
             final AvailabilityBreakdown availability = evaluateAvailability(daySchedule);
-            if (availability.total() < 360) {
+            if (availability.total() < FULL_DAY_DURATION_MINS) {
                 return of(format("On %s: %s", d,
-                        formatInsufficientAvailability(daySchedule.getCourtScheduleId(), availability, 360)));
+                        formatInsufficientAvailability(daySchedule.getCourtScheduleId(), availability, FULL_DAY_DURATION_MINS)));
             }
         }
         return empty();
@@ -1168,7 +1172,7 @@ public class SessionsService {
 
     private AvailabilityBreakdown evaluateAvailability(
             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs) {
-        if (TRUE.equals(cs.getSupportAdSplit())) {
+        if (TRUE.equals(cs.isSupportAdSplit())) {
             final AtomicInteger totalBookedForMorning = new AtomicInteger(0);
             final AtomicInteger totalBookedForAfternoon = new AtomicInteger(0);
             final List<AllocatedListingEachBooked> bookings =
@@ -1197,7 +1201,7 @@ public class SessionsService {
     private record AvailabilityBreakdown(int total, int morning, int afternoon, boolean adSplit) {
     }
 
-   static LocalDate advanceByWeekdays(final LocalDate start, final int weekdaysToAdvance) {
+   /* package */ static LocalDate advanceByWeekdays(final LocalDate start, final int weekdaysToAdvance) {
         LocalDate date = start;
         for (int i = 0; i < weekdaysToAdvance; i++) {
             date = nextWeekday(date);
@@ -1205,7 +1209,7 @@ public class SessionsService {
         return date;
     }
 
-   static LocalDate nextWeekday(final LocalDate date) {
+   /* package */ static LocalDate nextWeekday(final LocalDate date) {
         LocalDate next = date.plusDays(1);
         while (next.getDayOfWeek() == DayOfWeek.SATURDAY || next.getDayOfWeek() == DayOfWeek.SUNDAY) {
             next = next.plusDays(1);
@@ -1228,9 +1232,11 @@ public class SessionsService {
 
     private boolean isMorningSessionForSessionAvailability(final AllocatedListingEachBooked eachBooked,
             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
-        return (eachBooked.getHearingStartTime().after(persistedCourtSchedule.getSessionStartTime())
-                || eachBooked.getHearingStartTime().equals(persistedCourtSchedule.getSessionStartTime()))
-                && eachBooked.getHearingStartTime().before(combineDateAndTime(persistedCourtSchedule.getSessionDate(), DEFAULT_AFTERNOON_START_TIME));
+        final Instant sessionStartInstant = persistedCourtSchedule.getSessionStartTime();
+        final Instant afternoonCutoffInstant = combineDateAndTime(persistedCourtSchedule.getSessionDate(), DEFAULT_AFTERNOON_START_TIME).toInstant();
+        return (eachBooked.getHearingStartTime().isAfter(sessionStartInstant)
+                || eachBooked.getHearingStartTime().equals(sessionStartInstant))
+                && eachBooked.getHearingStartTime().isBefore(afternoonCutoffInstant);
     }
 
     public uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse assignCourtroom(
@@ -1267,7 +1273,7 @@ public class SessionsService {
         final Set<String> courtRoomCourtCentreIds = courtRoomMemberships.stream()
                 .map(CourtRoom::getOucodeUUID)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+                .collect(toSet());
 
         // Track sessions with their error reasons
         final List<Pair<CourtSchedule, String>> sessionsWithErrors = new ArrayList<>();
@@ -1278,6 +1284,9 @@ public class SessionsService {
 
             if (isNull(session)) {
                 // Create a minimal session object for "Session not found" case
+                // Suppressed: this placeholder must carry this iteration's own sessionId,
+                // so it cannot be hoisted out of the loop.
+                @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
                 final CourtSchedule notFoundSession = new CourtSchedule();
                 notFoundSession.setCourtScheduleId(sessionId);
                 sessionsWithErrors.add(Pair.of(notFoundSession, "Session not found"));
@@ -1326,25 +1335,21 @@ public class SessionsService {
             // - Assigned with hearings: NO (not eligible) - Business Rule 5
             // - Assigned without hearings: NO (not eligible) - Business Rule 5
             final boolean isDraft = session.isDraft();
-            final boolean isAssigned = !isDraft;
 
-            if (isAssigned) {
-                // Scenario 5: Assigned session - NOT eligible (regardless of hearings)
-                sessionsWithErrors.add(Pair.of(session, "Cannot assign courtroom to an assigned session"));
-            } else if (isDraft) {
+            if (isDraft) {
                 // Check if draft session has hearings booked
                 final List<AllocatedListingEachBooked> allocatedListings = allocatedListingRepository
                         .getAllocatedListingsEachBookedByCourtScheduleId(List.of(session.getCourtScheduleId()));
-                if (!allocatedListings.isEmpty()) {
-                    // Draft session with hearings booked - NOT eligible
-                    sessionsWithErrors.add(Pair.of(session, "Cannot assign courtroom to a CROWN draft session with hearings booked"));
-                } else {
+                if (allocatedListings.isEmpty()) {
                     // Draft without hearings - eligible
                     eligibleSessions.add(session);
+                } else {
+                    // Draft session with hearings booked - NOT eligible
+                    sessionsWithErrors.add(Pair.of(session, "Cannot assign courtroom to a CROWN draft session with hearings booked"));
                 }
             } else {
-                // Draft without hearings - eligible
-                eligibleSessions.add(session);
+                // Scenario 5: Assigned session - NOT eligible (regardless of hearings)
+                sessionsWithErrors.add(Pair.of(session, "Cannot assign courtroom to an assigned session"));
             }
         }
 
@@ -1355,11 +1360,15 @@ public class SessionsService {
                 final CourtRoom courtRoomForSession = courtRoomMemberships.stream()
                         .filter(c -> session.getCourtHouseId().equals(c.getOucodeUUID()))
                         .findFirst()
-                        .orElse(courtRoomMemberships.get(0));
+                        .orElse(courtRoomMemberships.getFirst());
                 assignCourtroomToSession(session.getCourtScheduleId(), request.getCourtRoomId(), courtRoomForSession);
 
                 // Success - no error to add
-            } catch (Exception e) {
+            } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") // Deliberate broad safety net: this
+                    // loop must keep assigning courtrooms to the remaining eligible sessions even if one
+                    // assignment fails, and assignCourtroomToSession() can surface a variety of unchecked
+                    // exceptions (repository/persistence errors). The failure is recorded per-session instead.
+                    final Exception e) {
                 logger.error("Failed to assign courtroom to session {}: {}",
                         session.getCourtScheduleId(), e.getMessage());
                 sessionsWithErrors.add(Pair.of(session,
@@ -1381,7 +1390,11 @@ public class SessionsService {
                         if (nonNull(s.getBusinessType())) {
                             try {
                                 s.setBusinessDescription(enrichBusinessDescription(s.getBusinessType()));
-                            } catch (RuntimeException e) {
+                            } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") // Deliberate broad
+                                    // safety net: enrichment must not stop this error-group view from being built
+                                    // for the remaining sessions, and the reference-data lookup path can throw a
+                                    // variety of unchecked exceptions beyond a simple "not found".
+                                    final RuntimeException e) {
                                 // If business type not found in reference data, set description to null
                                 // This allows the error group to be created even if reference data is incomplete
                                 logger.warn("Business type not found for session {}: {}", s.getCourtScheduleId(), s.getBusinessType());
@@ -1431,7 +1444,7 @@ public class SessionsService {
         persistedCourtSchedule.setOperationalUnit(courtRoom.getOucodeL2Code());
         
         // Update timestamp
-        persistedCourtSchedule.setUpdatedOn(Calendar.getInstance().getTime());
+        persistedCourtSchedule.setUpdatedOn(Instant.now());
         
         // Save the changes directly via repository
         courtScheduleRepository.save(persistedCourtSchedule);

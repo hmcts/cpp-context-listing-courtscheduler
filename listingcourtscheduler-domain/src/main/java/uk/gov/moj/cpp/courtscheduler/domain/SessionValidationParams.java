@@ -4,7 +4,7 @@ public class SessionValidationParams {
     private String courtScheduleId;
     private Integer maxDurationForMorning;
     private Integer maxDurationForAfternoon;
-    private Boolean isAllDaySplit;
+    private Boolean allDaySplit;
     private String sessionType;
     private String businessType;
     private Integer slotsOrDuration;
@@ -22,7 +22,7 @@ public class SessionValidationParams {
                                    final String sessionEndTime) {
         this.maxDurationForMorning = maxDurationForMorning;
         this.maxDurationForAfternoon = maxDurationForAfternoon;
-        this.isAllDaySplit = isAllDaySplit;
+        this.allDaySplit = isAllDaySplit;
         this.sessionType = sessionType;
         this.businessType = businessType;
         this.slotsOrDuration = slotsOrDuration;
@@ -56,11 +56,11 @@ public class SessionValidationParams {
     }
 
     public Boolean isAllDaySplit() {
-        return isAllDaySplit;
+        return allDaySplit;
     }
 
     public void setAllDaySplit(final Boolean allDaySplit) {
-        isAllDaySplit = allDaySplit;
+        this.allDaySplit = allDaySplit;
     }
 
     public String getSessionType() {

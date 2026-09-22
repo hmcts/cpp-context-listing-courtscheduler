@@ -113,7 +113,7 @@ class CourtScheduleEnricherTest {
                 .withCourtSession(AM.name())
                 .withSessionDate(LocalDate.of(2019, 10, 1))
                 .withBusinessType("DVB")
-                .withCreatedOn(Calendar.getInstance().getTime()).build()), randomUUID().toString());
+                .withCreatedOn(java.time.Instant.now()).build()), randomUUID().toString());
         assertThat(courtSchedule.getCourtScheduleId(), is(courtScheduleId));
         assertThat(courtSchedule.getListingProfileId(), is("CS2129874"));
         assertThat(courtSchedule.getSessionDate(), is(LocalDate.of(2019, 10, 01)));
@@ -205,8 +205,8 @@ class CourtScheduleEnricherTest {
 
         final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, new HashMap<>(), emptyList(), randomUUID().toString());
 
-        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:30")));
-        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "12:45")));
+        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:30").toInstant()));
+        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "12:45").toInstant()));
     }
 
     @Test
@@ -225,8 +225,8 @@ class CourtScheduleEnricherTest {
 
         final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, new HashMap<>(), emptyList(), randomUUID().toString());
 
-        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00")));
-        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "13:00")));
+        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00").toInstant()));
+        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "13:00").toInstant()));
     }
 
     @Test
@@ -244,8 +244,8 @@ class CourtScheduleEnricherTest {
 
         final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, new HashMap<>(), emptyList(), randomUUID().toString());
 
-        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "14:00")));
-        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00")));
+        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "14:00").toInstant()));
+        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00").toInstant()));
     }
 
     private Map<String, String> listingProfile(final String session) {

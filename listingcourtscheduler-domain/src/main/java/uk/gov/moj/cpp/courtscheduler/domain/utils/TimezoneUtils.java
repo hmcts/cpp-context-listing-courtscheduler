@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -7,7 +8,6 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Calendar;
 import java.util.Date;
 
 /**
@@ -33,19 +33,19 @@ public class TimezoneUtils {
      * @param utcDate The UTC date to convert
      * @return The date in local time (BST/GMT)
      */
-    public static Date utcToLocal(final Date utcDate) {
+    public static Instant utcToLocal(final Instant utcDate) {
         if (utcDate == null) {
             return null;
         }
 
         // Convert to ZonedDateTime in UTC
-        final ZonedDateTime utcZoned = utcDate.toInstant().atZone(UTC_ZONE);
-        
+        final ZonedDateTime utcZoned = utcDate.atZone(UTC_ZONE);
+
         // Convert to London time
         final ZonedDateTime londonZoned = utcZoned.withZoneSameInstant(LONDON_ZONE);
-        
-        // Convert back to Date
-        return Date.from(londonZoned.toInstant());
+
+        // Convert back to an instant
+        return londonZoned.toInstant();
     }
     
     /**
@@ -55,19 +55,19 @@ public class TimezoneUtils {
      * @param localDate The local date to convert
      * @return The date in UTC
      */
-    public static Date localToUtc(final Date localDate) {
+    public static Instant localToUtc(final Instant localDate) {
         if (localDate == null) {
             return null;
         }
-        
+
         // Convert to ZonedDateTime in London time
-        final ZonedDateTime londonZoned = localDate.toInstant().atZone(LONDON_ZONE);
-        
+        final ZonedDateTime londonZoned = localDate.atZone(LONDON_ZONE);
+
         // Convert to UTC
         final ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
-        
-        // Convert back to Date
-        return Date.from(utcZoned.toInstant());
+
+        // Convert back to an instant
+        return utcZoned.toInstant();
     }
     
     /**
@@ -92,13 +92,10 @@ public class TimezoneUtils {
         // Convert to UTC
         final ZonedDateTime utcZoned = londonZoned.withZoneSameInstant(UTC_ZONE);
 
-        final Calendar calendar = new Calendar.Builder()
-                .setDate(utcZoned.getYear(), utcZoned.getMonthValue() - 1, utcZoned.getDayOfMonth())
-                .setTimeOfDay(utcZoned.getHour(), utcZoned.getMinute(), utcZoned.getSecond())
-                .build();
-
-        // Convert to Date
-        return calendar.getTime();
+        // Re-interpret the UTC wall-clock fields in the JVM default timezone: this replicates the
+        // previous Calendar.Builder-based construction exactly, since Calendar.Builder#setDate/
+        // #setTimeOfDay build the Calendar in the default timezone rather than UTC.
+        return Date.from(utcZoned.toLocalDateTime().atZone(ZoneId.systemDefault()).toInstant());
     }
     
     /**
@@ -108,13 +105,13 @@ public class TimezoneUtils {
      * @param utcDate The UTC date to convert
      * @return The date in local time as an ISO string
      */
-    public static String utcToLocalIsoString(final Date utcDate) {
+    public static String utcToLocalIsoString(final Instant utcDate) {
         if (utcDate == null) {
             return null;
         }
-        
+
         // Convert to ZonedDateTime in UTC
-        final ZonedDateTime utcZoned = utcDate.toInstant().atZone(UTC_ZONE);
+        final ZonedDateTime utcZoned = utcDate.atZone(UTC_ZONE);
         
         // Convert to London time
         final ZonedDateTime londonZoned = utcZoned.withZoneSameInstant(LONDON_ZONE);

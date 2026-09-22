@@ -23,7 +23,7 @@ public class MagsSearchAndBookRequest {
     private String hearingStartTime;
     private String hearingSessionDateSearchCutOff;
     private int durationInMinutes;
-    private boolean isPolice;
+    private boolean police;
     private String courtScheduleId;
 
     public String getHearingId() {
@@ -99,11 +99,11 @@ public class MagsSearchAndBookRequest {
     }
 
     public boolean isPolice() {
-        return isPolice;
+        return police;
     }
 
     public MagsSearchAndBookRequest setIsPolice(final boolean isPolice) {
-        this.isPolice = isPolice;
+        this.police = isPolice;
         return this;
     }
 

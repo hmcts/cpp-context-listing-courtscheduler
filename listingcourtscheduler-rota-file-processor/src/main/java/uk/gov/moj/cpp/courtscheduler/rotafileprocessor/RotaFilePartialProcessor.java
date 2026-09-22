@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor;
 
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toMap;
@@ -33,7 +32,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -70,7 +68,7 @@ public class RotaFilePartialProcessor {
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Async
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Transactional(propagation = REQUIRES_NEW)
     public CompletableFuture<Void> processFullRotaFile(final Map<String, CourtSchedule> slots,
                                     final Map<String, CourtSchedule> slotsForMigrated,
                                     final Collection<CourtScheduleJudiciary> schedules,
@@ -110,7 +108,7 @@ public class RotaFilePartialProcessor {
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
     @Async
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Transactional(propagation = REQUIRES_NEW)
     public CompletableFuture<Void> processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                         final Map<String, CourtSchedule> slotsForMigrated,
                                         final Collection<CourtScheduleJudiciary> schedules,
@@ -166,7 +164,7 @@ public class RotaFilePartialProcessor {
         final List<CourtSchedule> existingSlotList = sessionsService.getExtractedCourtSchedules(ouCodes, startDate, endDate);
 
         final List<String> incomingSlotProfileIds = slots.values().stream().map(CourtSchedule::getListingProfileId).toList();
-        final Map<String, CourtSchedule> existingSlotMap = existingSlotList.stream().collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, courtSchedule -> courtSchedule));
+        final Map<String, CourtSchedule> existingSlotMap = existingSlotList.stream().collect(toMap(CourtSchedule::getCourtScheduleId, courtSchedule -> courtSchedule));
 
         final List<String> existingSlotScheduleIds = existingSlotList.stream().map(CourtSchedule::getCourtScheduleId).toList();
         final List<String> existingNonMigratedSlotScheduleIds = existingSlotList.stream()

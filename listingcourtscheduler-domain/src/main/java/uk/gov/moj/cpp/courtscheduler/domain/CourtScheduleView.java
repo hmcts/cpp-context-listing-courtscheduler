@@ -6,7 +6,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 public class CourtScheduleView {
 
     private String courtScheduleId;
@@ -45,7 +45,7 @@ public class CourtScheduleView {
     private String sessionEndTime;
     @JsonProperty("isOverbookingAllowed")
     private boolean overbookingAllowed;
-    private Boolean isDraft;
+    private Boolean draft;
     private String jurisdiction;
 
     protected CourtScheduleView(final CourtScheduleViewBuilder builder) {
@@ -84,7 +84,7 @@ public class CourtScheduleView {
         this.sessionStartTime = builder.sessionStartTime;
         this.sessionEndTime = builder.sessionEndTime;
         this.overbookingAllowed = builder.isOverbookingAllowed;
-        this.isDraft = builder.isDraft;
+        this.draft = builder.isDraft;
         this.jurisdiction = builder.jurisdictionType;
     }
 
@@ -343,12 +343,13 @@ public class CourtScheduleView {
         this.overbookingAllowed = isOverbookingAllowed;
     }
 
-    public Boolean getIsDraft() {
-        return isDraft;
+    @JsonProperty("isDraft")
+    public Boolean isDraft() {
+        return draft;
     }
 
     public void setIsDraft(final Boolean isDraft) {
-        this.isDraft = isDraft;
+        this.draft = isDraft;
     }
 
     public String getJurisdiction() {

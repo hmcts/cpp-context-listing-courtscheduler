@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
@@ -15,11 +16,16 @@ import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Base converter class for judiciary availability rule requests.
  * Contains common conversion logic for Add and Update converters.
  */
-public abstract class BaseJudiciaryAvailabilityRuleConverter {
+public class BaseJudiciaryAvailabilityRuleConverter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BaseJudiciaryAvailabilityRuleConverter.class);
 
     protected static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
     protected static final String JUDICIARY_ID = "judiciaryId";
@@ -69,13 +75,16 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
         for (final JsonValue jsonValue : repeatDaysArray) {
             if (jsonValue.getValueType() == JsonValue.ValueType.STRING) {
                 final String dayOfWeek = jsonValue.toString().replace("\"", "");
-                final String titleCase = dayOfWeek.length() > 0
-                    ? dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase()
-                    : dayOfWeek;
+                final String titleCase = dayOfWeek.isEmpty()
+                    ? dayOfWeek
+                    : dayOfWeek.substring(0, 1).toUpperCase(Locale.ROOT) + dayOfWeek.substring(1).toLowerCase(Locale.ROOT);
                 try {
-                    repeatDays.add(AvailabilityDayOfWeek.valueOf(titleCase));
+                    repeatDays.add(AvailabilityDayOfWeek.fromWireValue(titleCase));
                 } catch (IllegalArgumentException e) {
-                    // Invalid day name - skip it (validation will catch it)
+                    // Invalid day name - skip it, but log so a malformed request doesn't
+                    // silently drop data without any trace (downstream validation only
+                    // sees the resulting, already-filtered, repeatDays list).
+                    LOG.warn("Ignoring unrecognised repeatDays value '{}': {}", dayOfWeek, e.getMessage());
                 }
             }
         }
@@ -86,6 +95,9 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
     /**
      * Converts JSON array of unavailabilities to list of JudiciaryUnavailabilityRequest.
      */
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    // A distinct JudiciaryUnavailabilityRequest is required per array element, since each
+    // is collected into the returned list - it cannot be created once and reused.
     protected List<JudiciaryUnavailabilityRequest> convertUnavailabilities(final JsonArray unavailabilitiesArray) {
         final List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
 

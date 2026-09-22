@@ -2,7 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 
 import java.time.LocalDate;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 public class RepeatPattern {
 
     private RepeatFrequency frequency;

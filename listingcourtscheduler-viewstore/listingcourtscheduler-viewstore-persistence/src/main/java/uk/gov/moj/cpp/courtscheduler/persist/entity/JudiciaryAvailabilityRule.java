@@ -1,8 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,8 +16,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -39,7 +37,7 @@ public class JudiciaryAvailabilityRule {
     private String courtHouseId;
 
     @OneToMany(mappedBy = "rule", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<JudiciaryUnavailability> unavailabilities = new java.util.ArrayList<>();
+    private List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
 
     @Column(name = "from_date", nullable = false)
     private LocalDate fromDate;
@@ -59,18 +57,13 @@ public class JudiciaryAvailabilityRule {
     private SessionType sessionType;
 
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
-    private Date createdOn;
+    private Instant createdOn;
 
     @UpdateTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private Date updatedOn;
+    private Instant updatedOn;
 
-    public JudiciaryAvailabilityRule() {
-        //For JPA
-    }
 
     public String getId() {
         return this.id;
@@ -96,11 +89,11 @@ public class JudiciaryAvailabilityRule {
         this.courtHouseId = courtHouseId;
     }
 
-    public java.util.List<JudiciaryUnavailability> getUnavailabilities() {
+    public List<JudiciaryUnavailability> getUnavailabilities() {
         return this.unavailabilities;
     }
 
-    public void setUnavailabilities(final java.util.List<JudiciaryUnavailability> unavailabilities) {
+    public void setUnavailabilities(final List<JudiciaryUnavailability> unavailabilities) {
         this.unavailabilities = unavailabilities;
     }
 
@@ -128,19 +121,19 @@ public class JudiciaryAvailabilityRule {
         this.repeatDays = repeatDays;
     }
 
-    public Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return this.createdOn;
     }
 
-    public void setCreatedOn(final Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return this.updatedOn;
     }
 
-    public void setUpdatedOn(final Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 

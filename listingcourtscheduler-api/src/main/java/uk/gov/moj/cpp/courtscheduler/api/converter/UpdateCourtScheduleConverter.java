@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.MAX_DURATION_FOR_AFTERNOON;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.MAX_DURATION_FOR_MORNING;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.ADULT;
 
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
 
@@ -12,7 +13,6 @@ import jakarta.json.JsonObject;
 @Service
 public class UpdateCourtScheduleConverter implements Converter<JsonObject, UpdateCourtSchedule> {
     private static final String CROWN = "CROWN";
-    private static final String ADULT = "ADULT";
     private static final String PANEL = "panel";
 
     @Override
@@ -34,11 +34,11 @@ public class UpdateCourtScheduleConverter implements Converter<JsonObject, Updat
         if (CROWN.equalsIgnoreCase(jurisdiction)) {
             if (jsonObject.containsKey(PANEL) && !jsonObject.isNull(PANEL)) {
                 final String panel = jsonObject.getString(PANEL);
-                if (panel != null && !panel.trim().isEmpty() && !ADULT.equalsIgnoreCase(panel)) {
+                if (panel != null && !panel.isBlank() && !ADULT.name().equalsIgnoreCase(panel)) {
                     throw new ConverterException("For CROWN jurisdiction, panel must be ADULT if supplied");
                 }
                 // Only set panel if it's ADULT (optional for CROWN, so null/empty is fine)
-                if (panel != null && !panel.trim().isEmpty() && ADULT.equalsIgnoreCase(panel)) {
+                if (panel != null && !panel.isBlank() && ADULT.name().equalsIgnoreCase(panel)) {
                     courtScheduleBuilder.withPanel(panel);
                 }
             }

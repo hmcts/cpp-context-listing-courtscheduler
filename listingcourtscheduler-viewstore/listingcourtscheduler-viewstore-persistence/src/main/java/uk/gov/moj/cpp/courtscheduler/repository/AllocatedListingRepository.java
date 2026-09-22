@@ -13,7 +13,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -55,7 +54,7 @@ public interface AllocatedListingRepository
     List<AllocatedListing> findByCourtScheduleIdAndHearingId(String courtScheduleId, String hearingId);
 
     /** Spring Data generates the JPQL: {@code WHERE al.updatedOn > :fromDate AND al.updatedOn < :toDate}. */
-    List<AllocatedListing> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
+    List<AllocatedListing> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Instant fromDate, Instant toDate);
 
     @Query("""
             SELECT COALESCE(SUM(al.duration), 0)
@@ -219,8 +218,8 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
                         "SELECT al FROM AllocatedListing al "
                                 + "WHERE al.updatedOn > :fromDate AND al.updatedOn < :toDate",
                         AllocatedListing.class)
-                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()))
-                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()))
+                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()).toInstant())
+                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()).toInstant())
                 .getResultList();
 
         return allocatedListings.stream().map(entity -> {
@@ -264,7 +263,7 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
         return Pair.of(totalCount, pageResultSet);
     }
 
-    private static IdResponse toIdResponse(final Object[] row) {
+    private static IdResponse toIdResponse(final Object... row) {
         return new IdResponse((String) row[0], (String) row[1], getLocalDate(row[2]), getLong(row[3]), getLong(row[4]));
     }
 
@@ -272,6 +271,7 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
         return item == null ? null : ((Number) item).longValue();
     }
 
+    @SuppressWarnings("PMD.ReplaceJavaUtilDate") // defensive fallback for a legacy JDBC driver shape; see comment below
     private static LocalDate getLocalDate(final Object item) {
         if (item == null) {
             return null;
@@ -282,8 +282,10 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
         if (item instanceof java.sql.Date sqlDate) {
             return sqlDate.toLocalDate();
         }
-        if (item instanceof java.util.Date utilDate) {
-            return new java.sql.Date(utilDate.getTime()).toLocalDate();
+        // Older JDBC drivers have been observed returning a bare java.util.Date for DATE columns;
+        // convert it the same way we would a java.sql.Date rather than fail the whole projection.
+        if (item instanceof java.util.Date) {
+            return new java.sql.Date(((java.util.Date) item).getTime()).toLocalDate();
         }
         throw new IllegalArgumentException("Unsupported date shape from native query: " + item.getClass());
     }

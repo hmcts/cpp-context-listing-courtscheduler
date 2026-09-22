@@ -119,15 +119,15 @@ public class CourtScheduleEnricher {
         if (AM_SESSION.equals(courtSessionStr)) {
             final String startTime = resolveSessionTime(null, refDataStartTime, DEFAULT_MORNING_START_TIME);
             final String endTime = resolveSessionTime(null, refDataEndTime, DEFAULT_MORNING_END_TIME);
-            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, startTime))
-                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, endTime));
+            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, startTime).toInstant())
+                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, endTime).toInstant());
         } else if (PM_SESSION.equals(courtSessionStr)) {
             final String startTime = resolveSessionTime(null, refDataStartTime, DEFAULT_AFTERNOON_START_TIME);
             final String endTime = resolveSessionTime(null, refDataEndTime, DEFAULT_AFTERNOON_END_TIME);
-            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, startTime))
-                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, endTime));
+            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, startTime).toInstant())
+                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, endTime).toInstant());
         }
-        builder.withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        builder.withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
 
     }
 

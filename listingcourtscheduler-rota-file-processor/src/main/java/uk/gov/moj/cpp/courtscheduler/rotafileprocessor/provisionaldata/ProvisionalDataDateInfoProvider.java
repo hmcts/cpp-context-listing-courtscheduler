@@ -19,12 +19,12 @@ public class ProvisionalDataDateInfoProvider {
         provisionalDataStartDay = provisionalDataStartDate.getDayOfWeek();
         provisionalDataEndDate = rotaPeriodEndDate.plusMonths(noOfMonthsToPopulate);
         provisionalDataEndDay = provisionalDataEndDate.getDayOfWeek();
-        provisionalDataDaysCountToPopulate = (int) (DAYS.between(provisionalDataStartDate, provisionalDataEndDate))+1;
-        cyclesToPopulate = cyclesToPopulate(rotaFileCycleLength);
+        provisionalDataDaysCountToPopulate = (int) DAYS.between(provisionalDataStartDate, provisionalDataEndDate) + 1;
+        cyclesToPopulate = calculateCyclesToPopulate(rotaFileCycleLength);
         provisionalDaysInCycleRemaining =  provisionalDataDaysCountToPopulate % rotaFileCycleLength;
     }
 
-    private int cyclesToPopulate(final int rotaFileCycleLength) {
+    private int calculateCyclesToPopulate(final int rotaFileCycleLength) {
         final int cyclesDiv = provisionalDataDaysCountToPopulate / rotaFileCycleLength;
         final int cyclesMod = provisionalDataDaysCountToPopulate % rotaFileCycleLength;
 

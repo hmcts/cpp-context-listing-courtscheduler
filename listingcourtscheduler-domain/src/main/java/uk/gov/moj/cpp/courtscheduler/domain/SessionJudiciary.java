@@ -9,11 +9,8 @@ public class SessionJudiciary {
 
     private String judicialId;
     private String judiciaryType;
-    private Boolean isBenchChairman;
-    private Boolean isDeputy;
-
-    public SessionJudiciary() {
-    }
+    private Boolean benchChairman;
+    private Boolean deputy;
 
     public String getJudicialId() {
         return judicialId;
@@ -31,20 +28,20 @@ public class SessionJudiciary {
         this.judiciaryType = judiciaryType;
     }
 
-    public Boolean getIsBenchChairman() {
-        return isBenchChairman;
+    public Boolean isBenchChairman() {
+        return benchChairman;
     }
 
     public void setIsBenchChairman(final Boolean benchChairman) {
-        isBenchChairman = benchChairman;
+        this.benchChairman = benchChairman;
     }
 
-    public Boolean getIsDeputy() {
-        return isDeputy;
+    public Boolean isDeputy() {
+        return deputy;
     }
 
     public void setIsDeputy(final Boolean deputy) {
-        isDeputy = deputy;
+        this.deputy = deputy;
     }
 
     public static Builder builder() {
@@ -98,12 +95,12 @@ public class SessionJudiciary {
         final SessionJudiciary that = (SessionJudiciary) o;
         return Objects.equals(judicialId, that.judicialId)
                 && Objects.equals(judiciaryType, that.judiciaryType)
-                && Objects.equals(isBenchChairman, that.isBenchChairman)
-                && Objects.equals(isDeputy, that.isDeputy);
+                && Objects.equals(benchChairman, that.benchChairman)
+                && Objects.equals(deputy, that.deputy);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(judicialId, judiciaryType, isBenchChairman, isDeputy);
+        return Objects.hash(judicialId, judiciaryType, benchChairman, deputy);
     }
 }

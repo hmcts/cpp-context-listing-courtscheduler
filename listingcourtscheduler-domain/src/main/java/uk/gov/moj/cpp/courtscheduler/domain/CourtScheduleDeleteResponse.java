@@ -1,13 +1,13 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 public class CourtScheduleDeleteResponse {
 
     private String courtScheduleId;
@@ -33,8 +33,8 @@ public class CourtScheduleDeleteResponse {
     private Integer totalBooked;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private List<SlotStartTime> slotStartTimes = new ArrayList<>();
-    private Date createdOn;
-    private Date updatedOn;
+    private Instant createdOn;
+    private Instant updatedOn;
     private String sessionStartTime;
     private String sessionEndTime;
     @JsonProperty("isOverbookingAllowed")
@@ -155,11 +155,11 @@ public class CourtScheduleDeleteResponse {
     }
 
 
-    public Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return createdOn;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return updatedOn;
     }
 
@@ -263,11 +263,11 @@ public class CourtScheduleDeleteResponse {
         this.active = active;
     }
 
-    public void setCreatedOn(final Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public void setUpdatedOn(final Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 
@@ -311,6 +311,14 @@ public class CourtScheduleDeleteResponse {
         this.minHearingTime = minHearingTime;
     }
 
+    public String getMaxHearingTime() {
+        return maxHearingTime;
+    }
+
+    public void setMaxHearingTime(final String maxHearingTime) {
+        this.maxHearingTime = maxHearingTime;
+    }
+
     public static final class CourtScheduleDeleteResponseBuilder {
 
         private String courtScheduleId;
@@ -338,8 +346,8 @@ public class CourtScheduleDeleteResponse {
         private boolean active;
         private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         private List<SlotStartTime> slotStartTimes = new ArrayList<>();
-        private Date createdOn;
-        private Date updatedOn;
+        private Instant createdOn;
+        private Instant updatedOn;
         private String sessionStartTime;
         private String sessionEndTime;
         @JsonProperty("isOverbookingAllowed")
@@ -472,12 +480,12 @@ public class CourtScheduleDeleteResponse {
             return this;
         }
 
-        public CourtScheduleDeleteResponseBuilder withCreatedOn(final Date createdOn) {
+        public CourtScheduleDeleteResponseBuilder withCreatedOn(final Instant createdOn) {
             this.createdOn = createdOn;
             return this;
         }
 
-        public CourtScheduleDeleteResponseBuilder withUpdatedOn(final Date updatedOn) {
+        public CourtScheduleDeleteResponseBuilder withUpdatedOn(final Instant updatedOn) {
             this.updatedOn = updatedOn;
             return this;
         }

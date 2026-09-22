@@ -90,9 +90,11 @@ subprojects {
     }
 
     pmd {
+        // Pinned so local, IDE and CI runs apply the same rules (Gradle's default PMD version varies).
+        toolVersion = '7.24.0'
         ruleSets = []
         ruleSetFiles = rootProject.files('.github/pmd-ruleset.xml')
-        ignoreFailures = true
+        ignoreFailures = false
     }
     tasks.withType(Pmd).configureEach {
         // Exclude OpenAPI-generated sources from PMD analysis
@@ -101,9 +103,6 @@ subprojects {
             xml.required.set(true)
             html.required.set(true)
         }
-    }
-    tasks.matching { it.name == 'pmdMain' }.configureEach {
-        onlyIf { gradle.startParameter.taskNames.contains(name) }
     }
     tasks.matching { it.name == 'pmdTest' || it.name == 'pmdTestFixtures' }.configureEach { enabled = false }
 

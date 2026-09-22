@@ -20,7 +20,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -29,8 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-
-
 
 class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     public static final LocalDate DEFAULT_SESSION_DATE = LocalDate.parse("2024-12-09");
@@ -215,7 +212,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
 
         final String hearingId5 = randomUUID().toString();
         expHearingIds.add(hearingId5);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("5", "BOOKING-5", "COURT-SCHEDULE-3", hearingId5));
+        allocatedListingRepository.saveAndFlush(createAllocateListing(hearingId5));
 
         // Listing 6 originally pointed at "COURT-SCHEDULE-4" — a non-existent schedule
         // that the query was expected to filter out. With the FK added in changeset 033,
@@ -312,11 +309,11 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(2, hearingIdsResult.getKey().longValue());
         List<IdResponse> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
-        assertThat(actHearingIds.get(0).hearingId(), is(hearingId1));
-        assertThat(actHearingIds.get(0).hearingDayCount(), is(1L));
-        assertThat(actHearingIds.get(0).hearingDayPosition(), is(1L));
-        assertThat(actHearingIds.get(0).hearingDate(), is(sessionDate));
-        assertThat(actHearingIds.get(0).courtScheduleId(), is("COURT-SCHEDULE-1"));
+        assertThat(actHearingIds.getFirst().hearingId(), is(hearingId1));
+        assertThat(actHearingIds.getFirst().hearingDayCount(), is(1L));
+        assertThat(actHearingIds.getFirst().hearingDayPosition(), is(1L));
+        assertThat(actHearingIds.getFirst().hearingDate(), is(sessionDate));
+        assertThat(actHearingIds.getFirst().courtScheduleId(), is("COURT-SCHEDULE-1"));
 
         assertThat(actHearingIds.get(1).hearingId(), is(hearingId2));
         assertThat(actHearingIds.get(1).hearingDayCount(), is(1L));
@@ -325,13 +322,10 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         assertThat(actHearingIds.get(1).courtScheduleId(), is("COURT-SCHEDULE-2"));
     }
 
-    private AllocatedListing createAllocateListing(String id,
-                                                   String bookingId,
-                                                   String courtScheduleId,
-                                                   String hearingId) {
-        return createAllocateListing(id,
-                bookingId,
-                courtScheduleId,
+    private AllocatedListing createAllocateListing(String hearingId) {
+        return createAllocateListing("5",
+                "BOOKING-5",
+                "COURT-SCHEDULE-3",
                 hearingId,
                 DEFAULT_SESSION_DATE.atTime(14, 0));
     }
@@ -346,7 +340,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setCourtRoomId(1);
-        allocatedListing.setHearingStartTime(Date.from(hearingStartTime.atZone(UTC_ZONE).toInstant()));
+        allocatedListing.setHearingStartTime(hearingStartTime.atZone(UTC_ZONE).toInstant());
         allocatedListing.setDuration(120);
         allocatedListing.setOucode("BA124");
         allocatedListing.setRotaBusinessType("BUSS");

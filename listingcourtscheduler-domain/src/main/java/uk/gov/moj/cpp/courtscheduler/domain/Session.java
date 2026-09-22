@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 import java.time.DayOfWeek;
 import java.util.Set;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 public class Session {
 
     private String courtCentreId;
@@ -18,8 +18,8 @@ public class Session {
     private Integer maxDurationForAfternoon;
     private String sessionStartTime;
     private String sessionEndTime;
-    private Boolean isOverbookingAllowed;
-    private Boolean isDraft;
+    private Boolean overbookingAllowed;
+    private Boolean draft;
     private String jurisdiction;
     private Integer index;
 
@@ -72,11 +72,11 @@ public class Session {
     }
 
     public Boolean isOverbookingAllowed() {
-        return isOverbookingAllowed;
+        return overbookingAllowed;
     }
 
     public Boolean isDraft() {
-        return isDraft;
+        return draft;
     }
 
     public String getJurisdiction() {
@@ -206,8 +206,8 @@ public class Session {
             session.maxDurationForAfternoon = this.maxDurationForAfternoon;
             session.sessionStartTime = this.sessionStartTime;
             session.sessionEndTime = this.sessionEndTime;
-            session.isOverbookingAllowed = this.isOverbookingAllowed;
-            session.isDraft = this.isDraft;
+            session.overbookingAllowed = this.isOverbookingAllowed;
+            session.draft = this.isDraft;
             session.jurisdiction = this.jurisdiction;
             session.index = this.index;
             return session;

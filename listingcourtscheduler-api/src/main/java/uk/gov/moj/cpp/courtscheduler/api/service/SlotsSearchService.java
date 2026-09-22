@@ -76,7 +76,7 @@ public class SlotsSearchService {
         final   long startCourtScheduleQuery = System.nanoTime();
         final Pair<Integer, List<CourtSchedule>> courtSchedules = courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam);
         final long endCourtScheduleQuery = System.nanoTime();
-        LOGGER.info("PRF: Time taken for validation : {}", (endCourtScheduleQuery - startCourtScheduleQuery) / 1000000);
+        LOGGER.info("PRF: Time taken for validation : {}", (endCourtScheduleQuery - startCourtScheduleQuery) / 1_000_000);
 
         final long startFiltering = System.nanoTime();
         final List<CourtSchedule> overbookingFilteredSchedules = overbookingFilter(courtSchedules.getValue(),
@@ -84,16 +84,16 @@ public class SlotsSearchService {
         final List<CourtSchedule> filteredCourtSchedules = deduplicateSchedules(overbookingFilteredSchedules);
 
         final long endFiltering = System.nanoTime();
-        LOGGER.info("PRF: Time taken for filtering : {}", (endFiltering - startFiltering) / 1000000);
+        LOGGER.info("PRF: Time taken for filtering : {}", (endFiltering - startFiltering) / 1_000_000);
         return Pair.of(courtSchedules.getKey(), filteredCourtSchedules);
     }
-    boolean isMultidayCrownSearch(final HearingSlotRequestParam param) {
+    /* package */ boolean isMultidayCrownSearch(final HearingSlotRequestParam param) {
         // Single definition, shared with the viewstore query builder — the two must not be able
         // to disagree about which searches get the forced AD / duration-based session filters.
         return param.isCrownMultiDaySearch();
     }
 
-    Pair<Integer, List<CourtSchedule>> getMultidayCourtSchedules(final HearingSlotRequestParam requestParam) {
+    /* package */ Pair<Integer, List<CourtSchedule>> getMultidayCourtSchedules(final HearingSlotRequestParam requestParam) {
         final int duration = parseInt(requestParam.duration());
         final int daysNeeded = duration / FULL_DAY_DURATION_MINS;
 
@@ -148,12 +148,15 @@ public class SlotsSearchService {
 
         return Pair.of(multidayResults.size(), paginatedResults);
     }
-    List<CourtSchedule> filterForMultidayAvailability(final List<CourtSchedule> schedules, final int daysNeeded,
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    // Each courtroom group needs its own independent dateMap accumulator - it cannot be
+    // hoisted or reused across groups without mixing dates from different rooms.
+    /* package */ List<CourtSchedule> filterForMultidayAvailability(final List<CourtSchedule> schedules, final int daysNeeded,
                                                       final boolean showOverbookedSlots) {
         // Group by courtRoomId + businessType + ouCode - consecutive days must share all three
         final Map<String, List<CourtSchedule>> byCourtRoom = schedules.stream()
                 .filter(cs -> cs.getSessionDate() != null && cs.getCourtRoomId() != null)
-                .collect(Collectors.groupingBy(cs -> buildGroupingKey(cs)));
+                .collect(Collectors.groupingBy(this::buildGroupingKey));
 
         final List<CourtSchedule> validStartDates = new ArrayList<>();
 
@@ -166,7 +169,14 @@ public class SlotsSearchService {
             }
 
             for (final CourtSchedule cs : roomSchedules) {
-                if (dateMap.get(cs.getSessionDate()) != cs) {
+                // Intentional reference-identity check: dateMap.merge() above deliberately keeps
+                // one specific CourtSchedule instance per date (the non-overbooking winner). This
+                // skips every other (losing) instance for that date - a value-based equals() would
+                // be wrong here, since CourtSchedule has no equals() override and the intent is to
+                // find the one object that survived the merge, not any value-equal one.
+                @SuppressWarnings("PMD.CompareObjectsWithEquals")
+                final boolean isMergeWinner = dateMap.get(cs.getSessionDate()) == cs;
+                if (!isMergeWinner) {
                     continue;
                 }
                 if (isValidMultidayStart(cs.getSessionDate(), dateMap, daysNeeded, showOverbookedSlots)) {
@@ -238,7 +248,7 @@ public class SlotsSearchService {
         return overbookingFilteredSchedules;
     }
 
-    private boolean hasAvailableCapacity(CourtSchedule courtSchedule, int durationInt) {
+    private boolean hasAvailableCapacity(final CourtSchedule courtSchedule, final int durationInt) {
         if (courtSchedule.isSlotBased()) {
             return courtSchedule.getTotalBooked() < courtSchedule.getMaxSlots();
         }
@@ -246,10 +256,10 @@ public class SlotsSearchService {
     }
 
     private static int parseDuration(final String duration) {
-        return duration == null || duration.isEmpty() ? 2 : Integer.parseInt(duration);
+        return duration == null || duration.isEmpty() ? 2 : parseInt(duration);
     }
 
     private long toPageCount(final long totalCount, final Integer pageSize) {
-        return (long) Math.ceil((double) totalCount / (double) pageSize);
+        return (long) Math.ceil((double) totalCount / pageSize);
     }
 }

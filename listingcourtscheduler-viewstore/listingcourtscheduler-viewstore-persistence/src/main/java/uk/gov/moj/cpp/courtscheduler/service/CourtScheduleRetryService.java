@@ -14,8 +14,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
@@ -25,10 +26,12 @@ import static uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository.g
 @Transactional
 public class CourtScheduleRetryService {
 
+    private static final int SINGLE_SCHEDULE_COUNT = 1;
+
     @Inject
-    EntityManager entityManager;
+    /* package */ EntityManager entityManager;
     @Inject
-    CourtScheduleCriteria courtScheduleCriteria;
+    /* package */ CourtScheduleCriteria courtScheduleCriteria;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRetryService.class.getName());
 
@@ -45,13 +48,13 @@ public class CourtScheduleRetryService {
             final boolean hasMaxSlotsChanged = hasMaxSlotsChanged(persistedCourtSchedule, courtSchedule);
             final boolean hasMaxDurationChanged = hasMaxDurationChanged(persistedCourtSchedule, courtSchedule);
             final boolean hasNewMaxSlotsOrDuration = hasNewMaxSlotsOrDuration(courtSchedule);
-            final boolean hasSupportAdSplitChanged = courtSchedule.getSupportAdSplit()
-                    && (persistedCourtSchedule.getMaxAdMorningDuration().intValue() != courtSchedule.getMaxAdMorningDuration().intValue()
-                    || persistedCourtSchedule.getMaxAdAfternoonDuration().intValue() != courtSchedule.getMaxAdAfternoonDuration().intValue());
-            final boolean hasSameADSplit = Objects.equals(persistedCourtSchedule.getSupportAdSplit(), courtSchedule.getSupportAdSplit());
+            final boolean hasSupportAdSplitChanged = courtSchedule.isSupportAdSplit()
+                    && (!Objects.equals(persistedCourtSchedule.getMaxAdMorningDuration(), courtSchedule.getMaxAdMorningDuration())
+                    || !Objects.equals(persistedCourtSchedule.getMaxAdAfternoonDuration(), courtSchedule.getMaxAdAfternoonDuration()));
+            final boolean hasSameADSplit = Objects.equals(persistedCourtSchedule.isSupportAdSplit(), courtSchedule.isSupportAdSplit());
 
             if ((isForRotaFile || hasMaxSlotsChanged || hasMaxDurationChanged || hasNewMaxSlotsOrDuration || hasSupportAdSplitChanged) && hasSameADSplit) {
-                if (Boolean.TRUE.equals(persistedCourtSchedule.getSupportAdSplit())) {
+                if (Boolean.TRUE.equals(persistedCourtSchedule.isSupportAdSplit())) {
                     persistedCourtSchedule.setMaxAdMorningDuration(courtSchedule.getMaxAdMorningDuration());
                     persistedCourtSchedule.setMaxAdAfternoonDuration(courtSchedule.getMaxAdAfternoonDuration());
                 } else {
@@ -62,7 +65,7 @@ public class CourtScheduleRetryService {
                 persistedCourtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots());
                 persistedCourtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration());
                 persistedCourtSchedule.setCreatedOn(persistedCourtSchedule.getCreatedOn());
-                persistedCourtSchedule.setUpdatedOn(new Date());
+                persistedCourtSchedule.setUpdatedOn(Instant.now());
                 if (isForRotaFile) {
                     persistedCourtSchedule.setActive(true);
                 }
@@ -84,7 +87,10 @@ public class CourtScheduleRetryService {
                 try {
                     retryAndSave(courtSchedule, false);
                     return;
-                } catch (RuntimeException retryEx) {
+                } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") final RuntimeException retryEx) {
+                    // Intentional safety net: retryAndSave can surface a variety of runtime failures
+                    // (constraint violations, Hibernate/Spring exceptions); all must be wrapped
+                    // consistently rather than letting some propagate raw from this retry path.
                     final String errorMessage = String.format("Failed to upsert court schedule %s after retry: %s",
                             courtSchedule.getCourtScheduleId(), retryEx.getMessage());
                     throw new PersistenceStoreException(errorMessage, retryEx);
@@ -102,7 +108,7 @@ public class CourtScheduleRetryService {
         Throwable t = ex;
         while (t != null) {
             final String name = t.getClass().getName();
-            final String msg = t.getMessage() != null ? t.getMessage().toLowerCase() : "";
+            final String msg = t.getMessage() != null ? t.getMessage().toLowerCase(Locale.ROOT) : "";
             if (name.contains("ConstraintViolationException") || name.contains("SQLIntegrityConstraintViolationException")
                     || msg.contains("unique") || msg.contains("duplicate") || msg.contains("constraint")) {
                 return true;
@@ -120,19 +126,19 @@ public class CourtScheduleRetryService {
     }
 
     private boolean hasMaxSlotsChanged(final CourtSchedule persistedCourtSchedule, final CourtSchedule courtSchedule) {
-        return persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue();
+        return !Objects.equals(persistedCourtSchedule.getMaxSlots(), courtSchedule.getMaxSlots());
     }
 
     private boolean hasMaxDurationChanged(final CourtSchedule persistedCourtSchedule, final CourtSchedule courtSchedule) {
         return persistedCourtSchedule.getMaxDuration() > 0
-                && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue();
+                && !Objects.equals(persistedCourtSchedule.getMaxDuration(), courtSchedule.getMaxDuration());
     }
 
     private boolean hasNewMaxSlotsOrDuration(final CourtSchedule courtSchedule) {
         return courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0;
     }
     private void logMultiplePersistedSchedules(final List<CourtSchedule> persistedCourtSchedules, final CourtSchedule courtSchedule) {
-        if (persistedCourtSchedules.size() > 1) {
+        if (persistedCourtSchedules.size() > SINGLE_SCHEDULE_COUNT) {
             LOGGER.info("having more than one persisted court schedule: {}", courtSchedule);
         }
     }

@@ -68,6 +68,6 @@ public class HearingSlotRequestParamConverter implements Converter<JsonObject, H
         if (value.getValueType() == jakarta.json.JsonValue.ValueType.FALSE) {
             return false;
         }
-        return valueOf(jsonObject.getString(key));
+        return Boolean.parseBoolean(jsonObject.getString(key));
     }
 }

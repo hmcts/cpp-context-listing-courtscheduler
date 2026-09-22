@@ -33,6 +33,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.json.JsonObject;
@@ -44,9 +45,9 @@ import org.slf4j.LoggerFactory;
 public class HearingSlotsApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
 
-   static final String SHOULD_BE_ENTERED = " should be entered";
+   /* package */ static final String SHOULD_BE_ENTERED = " should be entered";
 
-   static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
+   /* package */ static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
             "courtScheduleId is not permitted on mags.search.and.book — Magistrates bookings never anchor on a courtScheduleId";
 
     @Inject
@@ -148,35 +149,45 @@ public class HearingSlotsApiValidator {
 
     private void validateHearingStartTime(final String hearingStartTime) {
         if (isNotBlank(hearingStartTime)) {
-            try {
-                ZonedDateTime.parse(hearingStartTime);
-            } catch (final DateTimeParseException e) {
-                throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, format("Invalid hearingStartTime: %s and exception %s ", hearingStartTime, e.getMessage()));
-            }
+            parseHearingStartTime(hearingStartTime);
+        }
+    }
+
+    private ZonedDateTime parseHearingStartTime(final String hearingStartTime) {
+        try {
+            return ZonedDateTime.parse(hearingStartTime);
+        } catch (final DateTimeParseException e) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, format("Invalid hearingStartTime: %s and exception %s ", hearingStartTime, e.getMessage()));
         }
     }
 
     private boolean isInvalidDateFormat(final String date) {
+        return parseDate(date).isEmpty();
+    }
+
+    private Optional<java.time.LocalDate> parseDate(final String date) {
         try {
-            java.time.LocalDate.parse(date);
+            return Optional.of(java.time.LocalDate.parse(date));
         } catch (final DateTimeParseException ignored) {
             LOGGER.debug("Invalid date string for hearing-slots validation (expected for bad input): {}", date);
-            return true;
+            return Optional.empty();
         }
-        return false;
     }
 
     private boolean isValidInstant(final String date) {
         if(date == null){
             return true;
         }
+        return parseInstant(date).isPresent();
+    }
+
+    private Optional<Instant> parseInstant(final String date) {
         try {
-            Instant.parse(date);
+            return Optional.of(Instant.parse(date));
         } catch (final DateTimeParseException ignored) {
             LOGGER.debug("Invalid instant string for hearing-slots validation (expected for bad input): {}", date);
-            return false;
+            return Optional.empty();
         }
-        return true;
     }
 
     private JsonObject getMessage(final String value) {

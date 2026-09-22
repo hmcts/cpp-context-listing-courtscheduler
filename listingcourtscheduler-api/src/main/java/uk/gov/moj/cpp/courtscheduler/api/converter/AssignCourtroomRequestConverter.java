@@ -7,7 +7,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 

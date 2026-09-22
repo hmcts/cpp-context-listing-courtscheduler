@@ -1,15 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import java.sql.Timestamp;
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -27,27 +24,22 @@ public class RotaFileProcessHistory {
     @Column(name = "file_name_prefix", nullable = false)
     private String fileNamePrefix;
     @Column(name = "file_date", nullable = false)
-    private Timestamp fileDate;
+    private Instant fileDate;
     @CreationTimestamp
     @Column(name = "process_start_date")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date processStartDate;
+    private Instant processStartDate;
     @Column(name = "process_end_date")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date processEndDate;
+    private Instant processEndDate;
     @Column(name = "processed_on", nullable = false)
-    private Timestamp processedOn;
+    private Instant processedOn;
 
-    public RotaFileProcessHistory() {
-        //For JPA
+
+    public Instant getProcessedOn() {
+        return processedOn;
     }
 
-    public Timestamp getProcessedOn() {
-        return new Timestamp(processedOn.getTime());
-    }
-
-    public void setProcessedOn(final Timestamp processedOn) {
-        this.processedOn = new Timestamp(processedOn.getTime());
+    public void setProcessedOn(final Instant processedOn) {
+        this.processedOn = processedOn;
     }
 
     public String getExecutionId() {
@@ -82,27 +74,27 @@ public class RotaFileProcessHistory {
         this.fileNamePrefix = fileNamePrefix;
     }
 
-    public Timestamp getFileDate() {
+    public Instant getFileDate() {
         return fileDate;
     }
 
-    public void setFileDate(final Timestamp fileDate) {
+    public void setFileDate(final Instant fileDate) {
         this.fileDate = fileDate;
     }
 
-    public Date getProcessStartDate() {
+    public Instant getProcessStartDate() {
         return processStartDate;
     }
 
-    public void setProcessStartDate(final Date processStartDate) {
+    public void setProcessStartDate(final Instant processStartDate) {
         this.processStartDate = processStartDate;
     }
 
-    public Date getProcessEndDate() {
+    public Instant getProcessEndDate() {
         return processEndDate;
     }
 
-    public void setProcessEndDate(final Date processEndDate) {
+    public void setProcessEndDate(final Instant processEndDate) {
         this.processEndDate = processEndDate;
     }
 

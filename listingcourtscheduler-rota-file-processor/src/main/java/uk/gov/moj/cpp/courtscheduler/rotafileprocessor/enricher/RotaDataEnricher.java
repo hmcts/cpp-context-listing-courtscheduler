@@ -65,7 +65,11 @@ public class RotaDataEnricher {
 
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    @SuppressWarnings("squid:S2221")
+    // Deliberate broad safety net: this loop enriches one CourtListingProfile record per
+    // iteration; a single malformed/unexpected record must not abort enrichment of the rest of
+    // the rota file, so the failure is logged and persisted to the rota process log and the loop
+    // continues.
+    @SuppressWarnings({"squid:S2221", "PMD.AvoidCatchingGenericException"})
     public Map<String, CourtSchedule> enrichCourtListings(final Map<RotaPayload, Map<String, Map<String, String>>> records,
                                                           final LocalDate rotaPeriodEndDate,
                                                           final Map<String, Boolean> migratedMap,
@@ -151,14 +155,14 @@ public class RotaDataEnricher {
         final String resolvedEndTime = resolveSessionTime(null, refDataEndTime, DEFAULT_ALL_DAY_END_TIME);
 
         courtScheduleBuilder.withCourtSession(ALL_DAY)
-                .withSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedStartTime))
-                .withSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedEndTime));
+                .withSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedStartTime).toInstant())
+                .withSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedEndTime).toInstant());
 
         final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinDateRange.stream()
                 .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(courtSchedule.getCourtRoomId())
                         && activeCourtSchedule.getSessionDate().equals(courtSchedule.getSessionDate())
                         && activeCourtSchedule.getBusinessType().equals(courtSchedule.getBusinessType())
-                        && activeCourtSchedule.getCourtSession().equals(ALL_DAY))
+                        && ALL_DAY.equals(activeCourtSchedule.getCourtSession()))
                 .findAny();
         if(courtScheduleOptional.isPresent() && isNotEmpty(courtScheduleOptional.get().getCourtScheduleId())) {
             courtScheduleBuilder.withCourtScheduleId(courtScheduleOptional.get().getCourtScheduleId());

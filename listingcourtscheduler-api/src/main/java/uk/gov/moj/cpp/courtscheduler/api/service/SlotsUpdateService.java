@@ -37,14 +37,13 @@ import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -68,6 +67,7 @@ public class SlotsUpdateService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SlotsUpdateService.class);
     private static final int MINUTES_IN_DAY = 360;
+    private static final int MIN_DURATION_MINUTES = 1;
 
     public static final String HEARING_DATE = "hearingDate";
     public static final String COURT_SCHEDULE_ID = "courtScheduleId";
@@ -100,7 +100,7 @@ public class SlotsUpdateService {
         if (isBookingBasedSlot(slots)) {
             final AllocatedSlot singleBookingSlot = slots.get(0);
             final List<String> bookingSlots = List.of(singleBookingSlot.getBookingId());
-            final Map<String, Date> provisionalBookingCourtScheduleInfo = provisionalBookingRepository.getCourtScheduleInfo(bookingSlots);
+            final Map<String, Instant> provisionalBookingCourtScheduleInfo = provisionalBookingRepository.getCourtScheduleInfo(bookingSlots);
 
             final List<String> provisionalBookingCourtScheduleIdList = new ArrayList<>(provisionalBookingCourtScheduleInfo.keySet());
 
@@ -119,8 +119,8 @@ public class SlotsUpdateService {
             }
 
             slots.forEach(allocatedSlot -> {
-                final Date date = provisionalBookingCourtScheduleInfo.get(allocatedSlot.getCourtScheduleId());
-                final String isoString = DateUtils.toIsoString(new Timestamp(date.getTime()));
+                final Instant date = provisionalBookingCourtScheduleInfo.get(allocatedSlot.getCourtScheduleId());
+                final String isoString = DateUtils.toIsoString(date);
                 allocatedSlot.setHearingStartTime(isoString);
             });
 
@@ -235,7 +235,7 @@ public class SlotsUpdateService {
                     "Crown fallback search-and-book is single-day only; durationInMinutes="
                             + request.getDurationInMinutes() + " exceeds " + CrownFallbackRequest.MAX_SINGLE_DAY_MINUTES);
         }
-        if (request.getDurationInMinutes() < 1) {
+        if (request.getDurationInMinutes() < MIN_DURATION_MINUTES) {
             throw new CrownFallbackInvalidRequestException(
                     "durationInMinutes must be >= 1; got " + request.getDurationInMinutes());
         }
@@ -267,7 +267,7 @@ public class SlotsUpdateService {
 
     private static String resolveAllocatedListingStartTime(final CrownFallbackRequest request, final CourtSchedule session) {
         final String sessionStartIso = session.getSessionStartTime() != null
-                ? DateUtils.toIsoString(new Timestamp(session.getSessionStartTime().getTime())) : null;
+                ? DateUtils.toIsoString(session.getSessionStartTime()) : null;
         if (!request.hasEarliestHearingTime()) {
             return sessionStartIso;
         }
@@ -278,10 +278,10 @@ public class SlotsUpdateService {
             // toOffsetDateTime keeps the TRUE instant (lenient zoned parse); toExactTimestamp would
             // re-stamp the UTC wall-clock as local time and shift the epoch on non-UTC JVMs.
             final Instant requested = DateUtils.toOffsetDateTime(request.getEarliestHearingTime()).toInstant();
-            final boolean withinSession = !requested.isBefore(session.getSessionStartTime().toInstant())
-                    && !requested.isAfter(session.getSessionEndTime().toInstant());
+            final boolean withinSession = !requested.isBefore(session.getSessionStartTime())
+                    && !requested.isAfter(session.getSessionEndTime());
             return withinSession ? request.getEarliestHearingTime() : sessionStartIso;
-        } catch (final RuntimeException e) {
+        } catch (final DateTimeParseException e) {
             LOGGER.warn("[CROWN-FB] Unparseable earliestHearingTime '{}' — allocated_listings takes the session start time",
                     request.getEarliestHearingTime());
             return sessionStartIso;
@@ -302,9 +302,9 @@ public class SlotsUpdateService {
                 Boolean.TRUE.equals(session.isDraft()) ? null : session.getCourtRoomId(),
                 session.getSessionDate().toString(),
                 session.getSessionStartTime() != null
-                        ? DateUtils.toIsoString(new Timestamp(session.getSessionStartTime().getTime())) : null,
+                        ? DateUtils.toIsoString(session.getSessionStartTime()) : null,
                 session.getSessionEndTime() != null
-                        ? DateUtils.toIsoString(new Timestamp(session.getSessionEndTime().getTime())) : null,
+                        ? DateUtils.toIsoString(session.getSessionEndTime()) : null,
                 request.getDurationInMinutes(),
                 session.isDraft(),
                 session.getBusinessType(),
@@ -314,7 +314,7 @@ public class SlotsUpdateService {
 
     private CrownFallbackResponse toResponseFromExisting(final AllocatedListing existing) {
         final String startIso = existing.getHearingStartTime() != null
-                ? DateUtils.toIsoString(new Timestamp(existing.getHearingStartTime().getTime())) : null;
+                ? DateUtils.toIsoString(existing.getHearingStartTime()) : null;
         final String sessionDate = startIso != null && startIso.length() >= 10 ? startIso.substring(0, 10) : null;
         // SPRDT-1274: allocated_listings carries the legacy Integer room NUMBER, not the room UUID
         // the caller needs — resolve the UUID from the allocated session itself. NB
@@ -669,6 +669,9 @@ public class SlotsUpdateService {
      * {@link #persistSessions}, since that shared helper applies one duration to every session it
      * is given and per-day durations may differ.</p>
      */
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    // The computeIfAbsent suppliers below only run when a source/duration key is first seen -
+    // each distinct bucket genuinely needs its own new collection, and cannot be hoisted.
     public ChangeCourtRoomForMultidayHearingResponse changeCourtRoomForMultidayHearing(
             final ChangeCourtRoomForMultidayHearingRequest request) {
         final String hearingId = request.getHearingId();
@@ -974,7 +977,7 @@ public class SlotsUpdateService {
                     slot.setCourtRoomUUId(session.getCourtRoomId());
                     slot.setSource(source);
                     if (session.getSessionStartTime() != null) {
-                        slot.setHearingStartTime(DateUtils.toIsoString(new Timestamp(session.getSessionStartTime().getTime())));
+                        slot.setHearingStartTime(DateUtils.toIsoString(session.getSessionStartTime()));
                     }
                     return slot;
                 })
@@ -989,7 +992,7 @@ public class SlotsUpdateService {
         }
     }
 
-   static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions,
+   /* package */ static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions,
                                               final String hearingId) {
         for (int i = 1; i < sessions.size(); i++) {
             final LocalDate previousDate = sessions.get(i - 1).getSessionDate();
@@ -1007,14 +1010,14 @@ public class SlotsUpdateService {
         return true;
     }
 
-   static LocalDate getNextBusinessDay(final LocalDate date) {
+   /* package */ static LocalDate getNextBusinessDay(final LocalDate date) {
         return SessionAvailability.getNextBusinessDay(date);
     }
 
-   static List<CourtSchedule> dedupeByDatePreferringBookable(
+   /* package */ static List<CourtSchedule> dedupeByDatePreferringBookable(
             final List<CourtSchedule> sessions,
             final int requiredPerDayMinutes) {
-        final LinkedHashMap<LocalDate, CourtSchedule> byDate = new LinkedHashMap<>();
+        final Map<LocalDate, CourtSchedule> byDate = new LinkedHashMap<>();
         for (final CourtSchedule cs : sessions) {
             if (cs.getSessionDate() == null) {
                 continue;
@@ -1044,7 +1047,7 @@ public class SlotsUpdateService {
         return !existing.isOverbookingAllowed() && incoming.isOverbookingAllowed() ? incoming : existing;
     }
 
-   static int getEffectiveAvailableDuration(final CourtSchedule cs) {
+   /* package */ static int getEffectiveAvailableDuration(final CourtSchedule cs) {
         return SessionAvailability.getEffectiveAvailableDuration(cs);
     }
 

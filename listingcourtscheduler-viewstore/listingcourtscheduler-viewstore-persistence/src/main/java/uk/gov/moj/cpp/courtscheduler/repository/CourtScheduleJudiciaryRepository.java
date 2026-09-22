@@ -1,14 +1,19 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.COURT_SCHEDULE_IDS;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.END_DATE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.START_DATE;
+
 import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import jakarta.persistence.EntityManager;
@@ -34,13 +39,11 @@ import org.springframework.transaction.annotation.Transactional;
 public interface CourtScheduleJudiciaryRepository
         extends JpaRepository<CourtScheduleJudiciary, CourtScheduleJudiciaryKey>, CourtScheduleJudiciaryRepositoryCustom {
 
-    String COURT_SCHEDULE_IDS = "courtScheduleIds";
-
     /** Spring Data generates the JPQL: {@code SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.email = :email}. Returns {@code null} when no match. */
     CourtScheduleJudiciary findByEmail(String email);
 
     /** Date-range method-name query — used by the MI projection in the {@code Custom} fragment. */
-    List<CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
+    List<CourtScheduleJudiciary> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Instant fromDate, Instant toDate);
 
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId = ?1")
     List<CourtScheduleJudiciary> findByCourtScheduleId(String courtScheduleId);
@@ -60,7 +63,7 @@ public interface CourtScheduleJudiciaryRepository
             + "SET csj.active = false, csj.updatedOn = :updatedOn "
             + "WHERE csj.id.courtScheduleId IN :courtScheduleIds")
     void deactivateSchedules(@Param(COURT_SCHEDULE_IDS) List<String> courtScheduleIds,
-                             @Param("updatedOn") Date updatedOn);
+                             @Param("updatedOn") Instant updatedOn);
 
     @Modifying
     @Transactional
@@ -68,7 +71,7 @@ public interface CourtScheduleJudiciaryRepository
             + "SET csj.position = :position, csj.active = true, csj.updatedOn = :updatedOn "
             + "WHERE csj.id.courtScheduleId = :courtScheduleId AND csj.id.judiciaryId = :judiciaryId")
     void updateCourtScheduleJudiciaryPosition(@Param("position") String position,
-                                              @Param("updatedOn") Date updatedOn,
+                                              @Param("updatedOn") Instant updatedOn,
                                               @Param("courtScheduleId") String courtScheduleId,
                                               @Param("judiciaryId") String judiciaryId);
 
@@ -163,9 +166,6 @@ interface CourtScheduleJudiciaryRepositoryCustom {
  */
 class CourtScheduleJudiciaryRepositoryImpl implements CourtScheduleJudiciaryRepositoryCustom {
 
-    public static final String START_DATE = "startDate";
-    public static final String END_DATE = "endDate";
-
     private static final String SELECT_ALLOCATED_COURT_SCHEDULE_JUDICIARY_QUERY =
             "SELECT csj.court_schedule_id AS courtScheduleId, " +
                     "csj.judiciary_id AS judiciaryId " +
@@ -195,8 +195,8 @@ class CourtScheduleJudiciaryRepositoryImpl implements CourtScheduleJudiciaryRepo
                         "SELECT csj FROM CourtScheduleJudiciary csj "
                                 + "WHERE csj.updatedOn > :fromDate AND csj.updatedOn < :toDate",
                         CourtScheduleJudiciary.class)
-                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()))
-                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()))
+                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()).toInstant())
+                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()).toInstant())
                 .getResultList();
 
         return rows.stream().map(entity -> new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary.Builder()
@@ -208,12 +208,12 @@ class CourtScheduleJudiciaryRepositoryImpl implements CourtScheduleJudiciaryRepo
                 .withSurname(entity.getSurname())
                 .withEmailAddress(entity.getEmail())
                 .withJudiciaryType(entity.getJudiciaryType())
-                .withIsBenchChairman(entity.getBenchChairman())
-                .withIsDeputy(entity.getDeputy())
+                .withIsBenchChairman(entity.isBenchChairman())
+                .withIsDeputy(entity.isDeputy())
                 .withPosition(entity.getPosition())
                 .withCourtListingProfileId(entity.getCourtListingProfileId())
                 .withRotaJudiciaryId(entity.getRotaJudiciaryId())
-                .withActive(entity.getActive())
+                .withActive(entity.isActive())
                 .withCreatedOn(entity.getCreatedOn())
                 .withUpdatedOn(entity.getUpdatedOn())
                 .build()).toList();
@@ -258,10 +258,10 @@ class CourtScheduleJudiciaryRepositoryImpl implements CourtScheduleJudiciaryRepo
             final LocalDate endDate,
             final String ruleSessionType) {
         final List<String> sessionTypes = new ArrayList<>();
-        if (!"AD".equals(ruleSessionType)) {
-            sessionTypes.addAll(Arrays.asList(ruleSessionType, "AD"));
+        if (ALL_DAY.equals(ruleSessionType)) {
+            sessionTypes.add(ALL_DAY);
         } else {
-            sessionTypes.add("AD");
+            sessionTypes.addAll(Arrays.asList(ruleSessionType, ALL_DAY));
         }
 
         final String query = "SELECT DISTINCT cs.id, cs.session_start, cs.court_session " +

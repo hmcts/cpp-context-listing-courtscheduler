@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.common.converter;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
 import java.io.StringReader;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +17,7 @@ public class StringToJsonObjectConverter {
         if (json == null || json.isBlank()) {
             return Json.createObjectBuilder().build();
         }
-        try (var reader = Json.createReader(new StringReader(json))) {
+        try (JsonReader reader = Json.createReader(new StringReader(json))) {
             return reader.readObject();
         }
     }

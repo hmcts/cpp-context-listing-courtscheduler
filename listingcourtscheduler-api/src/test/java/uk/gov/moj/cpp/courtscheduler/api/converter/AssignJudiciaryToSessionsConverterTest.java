@@ -49,7 +49,7 @@ class AssignJudiciaryToSessionsConverterTest {
         final SessionJudiciary j = r.getJudiciary().get(0);
         assertEquals("3fa85f64-5717-4562-b3fc-2c963f66afa6", j.getJudicialId());
         assertEquals("DISTRICT_JUDGE", j.getJudiciaryType());
-        assertTrue(j.getIsBenchChairman());
+        assertTrue(j.isBenchChairman());
     }
 
     @Test
@@ -215,12 +215,12 @@ class AssignJudiciaryToSessionsConverterTest {
         final AssignJudiciaryToSessionsRequest r = converter.convert(payload);
         assertNull(r.getJudiciary().get(0).getJudicialId());
         assertEquals("MAGISTRATE", r.getJudiciary().get(0).getJudiciaryType());
-        assertNull(r.getJudiciary().get(0).getIsDeputy());
-        assertNull(r.getJudiciary().get(0).getIsBenchChairman());
+        assertNull(r.getJudiciary().get(0).isDeputy());
+        assertNull(r.getJudiciary().get(0).isBenchChairman());
 
         assertNull(r.getJudiciary().get(1).getJudicialId());
-        assertNull(r.getJudiciary().get(1).getIsDeputy());
-        assertNull(r.getJudiciary().get(1).getIsBenchChairman());
+        assertNull(r.getJudiciary().get(1).isDeputy());
+        assertNull(r.getJudiciary().get(1).isBenchChairman());
     }
 
     @Test
@@ -236,7 +236,7 @@ class AssignJudiciaryToSessionsConverterTest {
                         .build())
                 .build();
         final SessionJudiciary j = converter.convert(payload).getJudiciary().get(0);
-        assertTrue(j.getIsDeputy());
-        assertFalse(j.getIsBenchChairman());
+        assertTrue(j.isDeputy());
+        assertFalse(j.isBenchChairman());
     }
 }

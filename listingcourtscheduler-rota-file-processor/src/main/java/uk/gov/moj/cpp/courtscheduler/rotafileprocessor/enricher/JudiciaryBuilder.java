@@ -15,7 +15,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.TITLE
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 
-import java.util.Calendar;
+import java.time.Instant;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
@@ -40,8 +40,8 @@ public class JudiciaryBuilder {
                 .withPosition(schedule.get(POSITION))
                 .withIsBenchChairman(isBenchChairman)
                 .withIsDeputy(!isBenchChairman)
-                .withCreatedOn(Calendar.getInstance().getTime())
-                .withUpdatedOn(Calendar.getInstance().getTime())
+                .withCreatedOn(Instant.now())
+                .withUpdatedOn(Instant.now())
                 .withActive(true)
                 .build();
     }

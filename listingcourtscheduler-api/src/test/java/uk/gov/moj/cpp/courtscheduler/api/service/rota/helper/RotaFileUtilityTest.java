@@ -19,7 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryServic
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -99,7 +99,7 @@ class RotaFileUtilityTest {
         String fileName = "test_snapshot_20240115T120000Z.xml";
         OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
         String fileNamePrefix = "test_snapshot_";
-        Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
+        Instant timestamp = fileDateTime.toInstant();
 
         RotaFileProcessHistory newerFile = new RotaFileProcessHistory();
         newerFile.setExecutionId("newer-execution-id");
@@ -122,7 +122,7 @@ class RotaFileUtilityTest {
         String fileName = "test_snapshot_20240115T120000Z.xml";
         OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
         String fileNamePrefix = "test_snapshot_";
-        Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
+        Instant timestamp = fileDateTime.toInstant();
 
         RotaFileProcessHistory newerFile1 = new RotaFileProcessHistory();
         newerFile1.setExecutionId("newer-execution-id-1");
@@ -145,7 +145,7 @@ class RotaFileUtilityTest {
         String fileName = "test_snapshot_20240115T120000Z.xml";
         OffsetDateTime fileDateTime = OffsetDateTime.parse("2024-01-15T12:00:00Z");
         String fileNamePrefix = "test_snapshot_";
-        Timestamp timestamp = Timestamp.from(fileDateTime.toInstant());
+        Instant timestamp = fileDateTime.toInstant();
 
         when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(
                 eq(fileNamePrefix), eq(timestamp)))

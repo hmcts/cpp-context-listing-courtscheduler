@@ -40,6 +40,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -144,12 +145,13 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
 
     private RepeatPattern convertRepeatPattern(final JsonObject jsonObject) {
         final String startDateStr = jsonObject.getString(START_DATE.getLabel());
-        String endDateStr = jsonObject.getString(END_DATE.getLabel(), null);
-        
+        final String rawEndDateStr = jsonObject.getString(END_DATE.getLabel(), null);
+
         // Treat placeholder values as null
-        if (endDateStr != null && (endDateStr.equals("END_DATE") || endDateStr.trim().isEmpty())) {
-            endDateStr = null;
-        }
+        final String endDateStr = (rawEndDateStr != null
+                && !"END_DATE".equals(rawEndDateStr) && !rawEndDateStr.isBlank())
+                ? rawEndDateStr
+                : null;
 
         final LocalDate startDate = parseDateOrThrow(startDateStr, true);
         final LocalDate endDate = endDateStr != null ? parseDateOrThrow(endDateStr, false) : null;
@@ -161,7 +163,7 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
         }
 
         return RepeatPattern.RepeatPatternBuilder.repeatPattern()
-                .withFrequency(RepeatFrequency.valueOf(jsonObject.getString(RequestParameterConstant.REPEAT_FREQUENCY.getLabel()).trim().toUpperCase()))
+                .withFrequency(RepeatFrequency.valueOf(jsonObject.getString(RequestParameterConstant.REPEAT_FREQUENCY.getLabel()).trim().toUpperCase(Locale.ROOT)))
                 .withRepeatFor(jsonObject.getInt(RequestParameterConstant.REPEAT_FOR.getLabel()))
                 .withStartDate(startDate)
                 .withEndDate(endDate)

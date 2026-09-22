@@ -5,9 +5,6 @@ import java.util.List;
 public class JudiciarySpecialismsResponse {
     private List<JudiciarySpecialism> judiciarySpecialisms;
 
-    public JudiciarySpecialismsResponse() {
-    }
-
     public List<JudiciarySpecialism> getJudiciarySpecialisms() {
         return judiciarySpecialisms;
     }

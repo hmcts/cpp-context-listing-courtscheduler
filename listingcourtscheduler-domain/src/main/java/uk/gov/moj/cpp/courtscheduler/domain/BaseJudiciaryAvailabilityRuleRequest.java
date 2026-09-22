@@ -7,7 +7,7 @@ import java.util.Objects;
  * Base class for judiciary availability rule requests containing common fields.
  * All specific request types extend this class to inherit common functionality.
  */
-public abstract class BaseJudiciaryAvailabilityRuleRequest {
+public class BaseJudiciaryAvailabilityRuleRequest {
     
     protected String ruleId;
     protected String judiciaryId;

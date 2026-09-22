@@ -88,8 +88,8 @@ class JudiciaryScheduleEnricherTest {
             assertThat(csj.getSurname(), is("SvenTS"));
             assertNotNull(csj.getRotaJudiciaryId());
             assertNotNull(csj.getTitle());
-            assertNotNull(csj.getBenchChairman());
-            assertNotNull(csj.getDeputy());
+            assertNotNull(csj.isBenchChairman());
+            assertNotNull(csj.isDeputy());
             assertNotNull(csj.getCourtListingProfileId());
             assertNotNull(csj.getPosition());
         }

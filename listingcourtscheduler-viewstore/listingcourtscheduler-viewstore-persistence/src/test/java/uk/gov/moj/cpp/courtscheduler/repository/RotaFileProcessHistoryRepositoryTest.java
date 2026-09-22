@@ -6,8 +6,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,7 +35,7 @@ class RotaFileProcessHistoryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
 
         final RotaFileProcessHistory rotaFileProcessHistory = random(RotaFileProcessHistory.class);
         rotaFileProcessHistory.setExecutionId(UUID.randomUUID().toString());
-        rotaFileProcessHistory.setProcessedOn(new Timestamp(System.currentTimeMillis())); // Set required field
+        rotaFileProcessHistory.setProcessedOn(Instant.now()); // Set required field
 
         rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
 
@@ -48,12 +49,12 @@ class RotaFileProcessHistoryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
     public void shouldDeleteByFileNamePrefixAndFileDate() {
         final RotaFileProcessHistory rotaFileProcessHistory = random(RotaFileProcessHistory.class);
         rotaFileProcessHistory.setExecutionId(UUID.randomUUID().toString());
-        rotaFileProcessHistory.setProcessedOn(new Timestamp(System.currentTimeMillis())); // Set required field
-        rotaFileProcessHistory.setFileDate(Timestamp.valueOf(LocalDate.of(2024, 10, 1).atStartOfDay()));
+        rotaFileProcessHistory.setProcessedOn(Instant.now()); // Set required field
+        rotaFileProcessHistory.setFileDate(LocalDate.of(2024, 10, 1).atStartOfDay(ZoneId.systemDefault()).toInstant());
         rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
 
         final String fileNamePrefix = rotaFileProcessHistory.getFileNamePrefix();
-        final Timestamp fileDate = Timestamp.valueOf(LocalDate.of(2024, 10, 5).atStartOfDay());
+        final Instant fileDate = LocalDate.of(2024, 10, 5).atStartOfDay(ZoneId.systemDefault()).toInstant();
 
         rotaFileProcessHistoryRepository.deleteByFileNamePrefixAndFileDate(fileNamePrefix, fileDate);
 
@@ -65,12 +66,12 @@ class RotaFileProcessHistoryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
     public void shouldFindByFileNamePrefixAndFileDateGreaterThan() {
         final RotaFileProcessHistory rotaFileProcessHistory = random(RotaFileProcessHistory.class);
         rotaFileProcessHistory.setExecutionId(UUID.randomUUID().toString());
-        rotaFileProcessHistory.setProcessedOn(new Timestamp(System.currentTimeMillis())); // Set required field
-        rotaFileProcessHistory.setFileDate(Timestamp.valueOf(LocalDate.of(2024, 10, 1).atStartOfDay()));
+        rotaFileProcessHistory.setProcessedOn(Instant.now()); // Set required field
+        rotaFileProcessHistory.setFileDate(LocalDate.of(2024, 10, 1).atStartOfDay(ZoneId.systemDefault()).toInstant());
         rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
 
         final String fileNamePrefix = rotaFileProcessHistory.getFileNamePrefix();
-        final Timestamp fileDate = Timestamp.valueOf(LocalDate.of(2024, 9, 30).atStartOfDay());
+        final Instant fileDate = LocalDate.of(2024, 9, 30).atStartOfDay(ZoneId.systemDefault()).toInstant();
 
         final List<RotaFileProcessHistory> rotaFileProcessHistories = rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, fileDate);
 

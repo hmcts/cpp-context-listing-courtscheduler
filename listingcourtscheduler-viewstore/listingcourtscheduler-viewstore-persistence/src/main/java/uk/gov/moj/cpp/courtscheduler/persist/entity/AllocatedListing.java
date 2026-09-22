@@ -1,14 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -42,25 +40,18 @@ public class AllocatedListing {
     private Integer duration;
 
     @Column(name = "hearing_start_time", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    private java.util.Date hearingStartTime;
+    private Instant hearingStartTime;
 
     @UpdateTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private java.util.Date updatedOn;
+    private Instant updatedOn;
 
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
-    private java.util.Date createdOn;
+    private Instant createdOn;
 
     @Column(name = "source", nullable = false)
     private String source;
-
-    public AllocatedListing() {
-        //For JPA
-    }
 
     public String getId() {
         return id;
@@ -126,27 +117,27 @@ public class AllocatedListing {
         this.duration = duration;
     }
 
-    public Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(final Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return updatedOn;
     }
 
-    public void setUpdatedOn(final Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 
-    public Date getHearingStartTime() {
+    public Instant getHearingStartTime() {
         return hearingStartTime;
     }
 
-    public void setHearingStartTime(final Date hearingStartTime) {
+    public void setHearingStartTime(final Instant hearingStartTime) {
         this.hearingStartTime = hearingStartTime;
     }
 

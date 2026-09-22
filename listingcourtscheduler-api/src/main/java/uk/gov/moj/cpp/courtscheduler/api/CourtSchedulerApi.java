@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonReader;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -219,7 +220,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     /** Map<String,Object> (Jackson) to jakarta.json.JsonObject expected by legacy converters. */
     private JsonObject toJsonObject(final Map<String, Object> body) {
-        try (var reader = Json.createReader(new StringReader(toJson(body)))) {
+        try (JsonReader reader = Json.createReader(new StringReader(toJson(body)))) {
             return reader.readObject();
         }
     }
@@ -317,8 +318,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             byCourtRoom.computeIfAbsent(cs.getCourtRoomId(), k -> new ArrayList<>()).add(cs);
         }
         final List<Map<String, Object>> result = new ArrayList<>();
-        for (final var entry : byCourtRoom.entrySet()) {
-            final List<CourtSchedule> sessions = new ArrayList<>(entry.getValue());
+        for (final Map.Entry<String, List<CourtSchedule>> entry : byCourtRoom.entrySet()) {
+            final List<CourtSchedule> sessions = entry.getValue();
             // Legacy ordering: sessions within a room sorted by sessionDate.
             sessions.sort(Comparator.comparing(CourtSchedule::getSessionDate,
                     Comparator.nullsLast(Comparator.naturalOrder())));
@@ -328,7 +329,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             }
             final Map<String, Object> group = new LinkedHashMap<>();
             group.put("courtRoomId", entry.getKey());
-            group.put("courtRoomName", sessions.isEmpty() ? null : sessions.get(0).getCourtRoomName());
+            group.put("courtRoomName", sessions.isEmpty() ? null : sessions.getFirst().getCourtRoomName());
             group.put("sessions", sessionMaps);
             result.add(group);
         }
@@ -342,10 +343,10 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final Map<String, Object> map = objectMapper.convertValue(cs,
             new TypeReference<>() { });
         if (cs.getSessionStartTime() != null) {
-            map.put("sessionStartTime", UTC_HH_MM_FORMATTER.format(cs.getSessionStartTime().toInstant()));
+            map.put("sessionStartTime", UTC_HH_MM_FORMATTER.format(cs.getSessionStartTime()));
         }
         if (cs.getSessionEndTime() != null) {
-            map.put("sessionEndTime", UTC_HH_MM_FORMATTER.format(cs.getSessionEndTime().toInstant()));
+            map.put("sessionEndTime", UTC_HH_MM_FORMATTER.format(cs.getSessionEndTime()));
         }
         // The legacy get-court-schedule response was assembled from CourtScheduleView, whose wire
         // names for these flags are is-prefixed — unlike the raw CourtSchedule serialization used
@@ -433,7 +434,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "PMD.AvoidInstantiatingObjectsInLoops"})
+    // A fresh sessionIds list is required per judiciary entry (each is stored under a
+    // distinct map key), so it cannot be hoisted out of the loop.
     private ResponseEntity<Void> unassignJudiciary(final Map<String, Object> body) {
         final JsonObject validate = judiciariesApiValidator.validateUnassignJudiciaryRequest(toJsonObject(body));
         if (!validate.isEmpty()) {
@@ -561,7 +564,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                     .body(JsonValueConverter.toMap(buildNoSessionErrorBody(e.getMessage())));
         } catch (NoAllocationOnDateException e) {
             return ResponseEntity.status(422)
-                    .body(JsonValueConverter.toMap(buildErrorBody("NO_ALLOCATION_ON_DATE", e.getMessage())));
+                    .body(JsonValueConverter.toMap(buildErrorBody(e.getMessage())));
         } catch (ExtendMultidayHearingException e) {
             // SPRDT-1273: a same-start resize inside crown.search.and.book is delegated to the
             // extend/shrink service; its rejections (NO_AVAILABILITY with the unavailable dates,
@@ -609,7 +612,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
                 .setHearingStartTime(getStringOrNull(payload, "hearingStartTime"))
                 .setHearingSessionDateSearchCutOff(getStringOrNull(payload, "hearingSessionDateSearchCutOff"))
-                .setIsPolice(getBooleanOrFalse(payload, "isPolice"));
+                .setIsPolice(getBooleanOrFalse(payload));
 
         final JsonObject validationError = hearingSlotsApiValidator.magsSearchAndBookValidation(sabRequest);
         if (!validationError.isEmpty()) {
@@ -663,9 +666,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.ok(toResponseMap(response));
     }
 
-    private static JsonObject buildErrorBody(final String errorCode, final String message) {
+    private static JsonObject buildErrorBody(final String message) {
         return Json.createObjectBuilder()
-                .add("errorCode", errorCode)
+                .add("errorCode", "NO_ALLOCATION_ON_DATE")
                 .add("message", message == null ? "" : message)
                 .build();
     }
@@ -695,8 +698,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return json.containsKey(key) && !json.isNull(key) ? json.getString(key) : null;
     }
 
-    private static boolean getBooleanOrFalse(final JsonObject json, final String key) {
-        return json.containsKey(key) && !json.isNull(key) && json.getBoolean(key);
+    private static boolean getBooleanOrFalse(final JsonObject json) {
+        return json.containsKey("isPolice") && !json.isNull("isPolice") && json.getBoolean("isPolice");
     }
 
     private static java.time.LocalDate getDateOrNull(final JsonObject json, final String key) {

@@ -46,7 +46,7 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
         addRequest.setCourtHouseId(randomUUID().toString());
         addRequest.setStartDate(LocalDate.now().plusDays(1));
         addRequest.setEndDate(LocalDate.now().plusDays(31));
-        addRequest.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday));
+        addRequest.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.MONDAY));
 
         updateRequest = new UpdateJudiciaryAvailabilityRuleRequest();
         updateRequest.setRuleId(randomUUID().toString());
@@ -54,7 +54,7 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
         updateRequest.setCourtHouseId(randomUUID().toString());
         updateRequest.setStartDate(LocalDate.now().plusDays(1));
         updateRequest.setEndDate(LocalDate.now().plusDays(31));
-        updateRequest.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday));
+        updateRequest.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.MONDAY));
 
         deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
         deleteRequest.setRuleId(randomUUID().toString());

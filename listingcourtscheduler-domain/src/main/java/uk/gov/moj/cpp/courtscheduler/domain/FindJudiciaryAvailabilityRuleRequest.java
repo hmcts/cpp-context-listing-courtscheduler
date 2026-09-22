@@ -42,7 +42,7 @@ public class FindJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabil
         this.pageNumber = pageNumber;
     }
 
-    public Boolean getWithJudiciary() {
+    public Boolean isWithJudiciary() {
         return this.withJudiciary;
     }
 

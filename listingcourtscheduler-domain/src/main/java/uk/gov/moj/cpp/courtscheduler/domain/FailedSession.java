@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize"})
 public class FailedSession {
 
     private String courtScheduleId;

@@ -34,10 +34,8 @@ import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.RotaDataEnricher
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
 import java.io.ByteArrayInputStream;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,7 +43,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -103,10 +100,18 @@ public class RotaFileProcessorService {
     private static final String DUMMY_NAME_PART = "dummysupport";
     private static final String XML_NAME_PART = ".xml";
     private static final int TIMESTAMP_STRING_LENGTH = 16;
+    // Number of days after a week's start date that still falls within that same 7-day
+    // (Monday-to-Sunday-style) week window.
+    private static final int WEEK_SPAN_DAYS = 6;
 
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
 
+    // Deliberate broad safety net: the try block below covers blob download, XML parsing and the
+    // full enrichment/persistence pipeline for a single rota file. One malformed/failing file must
+    // not crash the poller thread - we release the lease so another attempt can pick it up, and move
+    // on rather than propagate.
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void downloadAndProcessForEachFile(final BlobContent blobContent, final String blobName, final String leaseId) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
@@ -127,9 +132,8 @@ public class RotaFileProcessorService {
             azureBlobClientService.releaseLease(blobName, leaseId, false);
             azureBlobClientService.deleteFile(blobName, empty());
             logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
-        } catch (Exception storageException) {
+        } catch (final Exception storageException) {
             azureBlobClientService.releaseLease(blobName, leaseId, true);
-
         }
     }
 
@@ -150,7 +154,7 @@ public class RotaFileProcessorService {
         final Long parsingStartTime = System.nanoTime();
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(fileName, content);
         final Long parsingEndTime = System.nanoTime();
-        logger.info("Time taken to parse the file: {} ms", (parsingEndTime - parsingStartTime) / 1000000);
+        logger.info("Time taken to parse the file: {} ms", (parsingEndTime - parsingStartTime) / 1_000_000);
         logger.info("File parsed successfully and parsed now enriching it.. for file: {}", fileName);
         if (fileName.contains(DUMMY_NAME_PART)) {
             logger.warn("Received dummy support file, hence skipping file processing, for file: {}", fileName);
@@ -257,7 +261,12 @@ public class RotaFileProcessorService {
             final List<CompletableFuture<Void>> weekFutures = new ArrayList<>();
             for(int i = 0; i < dateRanges.size(); i++) {
                 final DateRange dateRange = dateRanges.get(i);
-                final boolean isLastDateRange = (i == dateRanges.size() - 1);
+                final boolean isLastDateRange = i == dateRanges.size() - 1;
+                // A fresh map is required per iteration: each is handed off to an @Async
+                // processSnapshotRotaFile call that may still be running concurrently for a
+                // previous week, so reusing/hoisting one instance would let iterations clobber
+                // each other's start/end dates.
+                @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
                 final Map<String, LocalDate> startAndEndDate = new HashMap<>();
                 startAndEndDate.put(START_DATE.getLabel(), dateRange.getStart());
                 startAndEndDate.put(END_DATE.getLabel(), dateRange.getEnd());
@@ -280,7 +289,7 @@ public class RotaFileProcessorService {
             final List<CompletableFuture<Void>> weekFutures = new ArrayList<>();
             for(int i = 0; i < dateRanges.size(); i++) {
                 final DateRange dateRange = dateRanges.get(i);
-                final boolean isLastDateRange = (i == dateRanges.size() - 1);
+                final boolean isLastDateRange = i == dateRanges.size() - 1;
                 final Map<String, CourtSchedule> filteredSlots = filterSlots(slotsForNonMigrated, dateRange);
                 logger.info("Filtered Slots for Full Rota file : {}", filteredSlots.keySet());
                 weekFutures.add(rotaFilePartialProcessor.processFullRotaFile(filteredSlots, slotsForMigrated, schedulesForNonMigrated, schedulesForMigrated, dateRange.getStart(), dateRange.getEnd(), ouCodes, nonMigratedOuCodes, businessTypesMap, migratedMap, executionId, rotaFileProcessHistory, isLastDateRange));
@@ -303,7 +312,7 @@ public class RotaFileProcessorService {
             return true;
         }
         final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
-        final List<RotaFileProcessHistory> rotaFileProcessHistories = rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, Timestamp.from(fileDateTime.toInstant()));
+        final List<RotaFileProcessHistory> rotaFileProcessHistories = rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, fileDateTime.toInstant());
         final boolean isNewerVersionOfSnapshotFileProcessed = isNotEmpty(rotaFileProcessHistories);
         if (isNewerVersionOfSnapshotFileProcessed) {
             logger.warn("There is a newer snapshot rota file has been processed already. Therefore, skipping.");
@@ -348,24 +357,25 @@ public class RotaFileProcessorService {
         return ouCodes;
     }
 
-    public List<DateRange> weeksCovering(LocalDate start, final LocalDate end) {
+    public List<DateRange> weeksCovering(final LocalDate start, final LocalDate end) {
         final List<DateRange> result = new ArrayList<>();
 
         int weekIndex = 1;
-        LocalDate previousWeekEnd = start;
-        while (!start.isAfter(end) && (weekIndex == 1 || (weekIndex > 1 && start.isAfter(previousWeekEnd)))) {
-            if(ChronoUnit.DAYS.between(start, end) > 6) {
-                final LocalDate weekStart = start;
-                start = start.plusDays(6);
-                final LocalDate weekEnd = start;
-                start = start.plusDays(1);
+        LocalDate currentStart = start;
+        LocalDate previousWeekEnd = currentStart;
+        while (!currentStart.isAfter(end) && (weekIndex == 1 || (weekIndex > 1 && currentStart.isAfter(previousWeekEnd)))) {
+            if(ChronoUnit.DAYS.between(currentStart, end) > WEEK_SPAN_DAYS) {
+                final LocalDate weekStart = currentStart;
+                currentStart = currentStart.plusDays(WEEK_SPAN_DAYS);
+                final LocalDate weekEnd = currentStart;
+                currentStart = currentStart.plusDays(1);
                 result.add(new DateRange(weekStart, weekEnd));
                 previousWeekEnd = weekEnd;
                 logger.info("Week range of Week #{} - StartDate: {}, EndDate: {}", weekIndex, weekStart, weekEnd);
             } else {
-                result.add(new DateRange(start, end));
-                logger.info("Week range of Week #{} - StartDate: {}, EndDate: {}", weekIndex, start, end);
-                start = start.plusDays(7);
+                result.add(new DateRange(currentStart, end));
+                logger.info("Week range of Week #{} - StartDate: {}, EndDate: {}", weekIndex, currentStart, end);
+                currentStart = currentStart.plusDays(7);
                 previousWeekEnd = end;
             }
             weekIndex++;
@@ -375,10 +385,10 @@ public class RotaFileProcessorService {
 
     public Map<String, CourtSchedule> filterSlots(final Map<String, CourtSchedule> slots, final DateRange dateRange) {
         return slots.entrySet().stream()
-                .filter(slot -> (slot.getValue().getSessionDate().isEqual(dateRange.getStart()) ||
+                .filter(slot -> slot.getValue().getSessionDate().isEqual(dateRange.getStart()) ||
                         slot.getValue().getSessionDate().isEqual(dateRange.getEnd()) ||
                         (slot.getValue().getSessionDate().isAfter(dateRange.getStart()) &&
-                        slot.getValue().getSessionDate().isBefore(dateRange.getEnd()))))
+                        slot.getValue().getSessionDate().isBefore(dateRange.getEnd())))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }

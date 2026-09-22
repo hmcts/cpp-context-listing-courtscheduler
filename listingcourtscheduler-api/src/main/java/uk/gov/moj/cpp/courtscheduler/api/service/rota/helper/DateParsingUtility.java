@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 import org.springframework.stereotype.Service;
 
@@ -40,7 +41,7 @@ public class DateParsingUtility {
             }
             logger.debug("Successfully parsed session date: {} to {}", sessionDateStr, parsedDate);
             return parsedDate;
-        } catch (final Exception ex) {
+        } catch (final DateTimeParseException ex) {
             logger.warn("Failed to parse session date: {}", sessionDateStr, ex);
             return null;
         }

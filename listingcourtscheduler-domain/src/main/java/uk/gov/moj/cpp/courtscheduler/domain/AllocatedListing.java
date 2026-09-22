@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 public class AllocatedListing {
@@ -21,15 +21,11 @@ public class AllocatedListing {
 
     private Integer duration;
 
-    private Date hearingStartTime;
+    private Instant hearingStartTime;
 
-    private Date updatedOn;
+    private Instant updatedOn;
 
-    private Date createdOn;
-
-    public AllocatedListing() {
-        //For JPA
-    }
+    private Instant createdOn;
 
     public String getId() {
         return id;
@@ -95,27 +91,27 @@ public class AllocatedListing {
         this.duration = duration;
     }
 
-    public Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(final Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return updatedOn;
     }
 
-    public void setUpdatedOn(final Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 
-    public Date getHearingStartTime() {
+    public Instant getHearingStartTime() {
         return hearingStartTime;
     }
 
-    public void setHearingStartTime(final Date hearingStartTime) {
+    public void setHearingStartTime(final Instant hearingStartTime) {
         this.hearingStartTime = hearingStartTime;
     }
 

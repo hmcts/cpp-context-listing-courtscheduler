@@ -4,6 +4,7 @@ import java.util.List;
 
 public class ProvisionalBookingSlots {
 
+    /* package */
     List<ProvisionalSlot> provisionalSlots;
 
     public List<ProvisionalSlot> getProvisionalSlots() {

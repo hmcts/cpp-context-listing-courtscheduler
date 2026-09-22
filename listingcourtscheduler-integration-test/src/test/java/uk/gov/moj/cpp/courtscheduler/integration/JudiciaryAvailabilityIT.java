@@ -103,7 +103,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                     Collections.emptyList(),
                     targetMonday,
                     rangeEnd,
-                    List.of(AvailabilityDayOfWeek.Monday)
+                    List.of(AvailabilityDayOfWeek.MONDAY)
             );
             databaseSeeder.updateJudiciaryAvailabilityRuleSessionType(availableRuleId, SessionType.AM.name());
 
@@ -114,7 +114,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                     Collections.emptyList(),
                     targetMonday,
                     rangeEnd,
-                    List.of(AvailabilityDayOfWeek.Monday)
+                    List.of(AvailabilityDayOfWeek.MONDAY)
             );
             databaseSeeder.updateJudiciaryAvailabilityRuleSessionType(unavailableRuleId, SessionType.PM.name());
 
@@ -254,11 +254,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.Monday.name())
-                        .add(AvailabilityDayOfWeek.Tuesday.name())
-                        .add(AvailabilityDayOfWeek.Wednesday.name())
-                        .add(AvailabilityDayOfWeek.Thursday.name())
-                        .add(AvailabilityDayOfWeek.Friday.name()))
+                        .add(AvailabilityDayOfWeek.MONDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.TUESDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.WEDNESDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.THURSDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.FRIDAY.getWireValue()))
                 .build()
                 .toString();
 
@@ -317,8 +317,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.Tuesday.name())
-                        .add(AvailabilityDayOfWeek.Thursday.name()))
+                        .add(AvailabilityDayOfWeek.TUESDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.THURSDAY.getWireValue()))
                 .build()
                 .toString();
 
@@ -380,11 +380,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.Monday.name())
-                        .add(AvailabilityDayOfWeek.Tuesday.name())
-                        .add(AvailabilityDayOfWeek.Wednesday.name())
-                        .add(AvailabilityDayOfWeek.Thursday.name())
-                        .add(AvailabilityDayOfWeek.Friday.name()))
+                        .add(AvailabilityDayOfWeek.MONDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.TUESDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.WEDNESDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.THURSDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.FRIDAY.getWireValue()))
                 .add("unavailabilities", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
                                 .add("startDate", unavailabilityStartDate.format(DATE_FORMATTER))
@@ -492,11 +492,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("startDate", startDate.format(DATE_FORMATTER))
                 .add("endDate", endDate.format(DATE_FORMATTER))
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.Monday.name())
-                        .add(AvailabilityDayOfWeek.Tuesday.name())
-                        .add(AvailabilityDayOfWeek.Wednesday.name())
-                        .add(AvailabilityDayOfWeek.Thursday.name())
-                        .add(AvailabilityDayOfWeek.Friday.name()))
+                        .add(AvailabilityDayOfWeek.MONDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.TUESDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.WEDNESDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.THURSDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.FRIDAY.getWireValue()))
                 .add("unavailabilities", unavailabilitiesBuilder)
                 .build()
                 .toString();
@@ -600,7 +600,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday, AvailabilityDayOfWeek.Wednesday, AvailabilityDayOfWeek.Thursday, AvailabilityDayOfWeek.Friday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY, AvailabilityDayOfWeek.WEDNESDAY, AvailabilityDayOfWeek.THURSDAY, AvailabilityDayOfWeek.FRIDAY)
         );
 
         // Verify the rule exists by finding availability - ensure query dates are within the rule's date range
@@ -700,7 +700,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
         );
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -710,7 +710,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Wednesday, AvailabilityDayOfWeek.Thursday)
+                Arrays.asList(AvailabilityDayOfWeek.WEDNESDAY, AvailabilityDayOfWeek.THURSDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -759,7 +759,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -800,7 +800,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -852,7 +852,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -895,7 +895,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -942,7 +942,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -993,7 +993,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -1003,7 +1003,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Tuesday)
+                Arrays.asList(AvailabilityDayOfWeek.TUESDAY)
         );
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -1013,7 +1013,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Wednesday)
+                Arrays.asList(AvailabilityDayOfWeek.WEDNESDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -1060,7 +1060,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Stub the specialisms response
@@ -1105,7 +1105,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Stub the specialisms response
@@ -1175,7 +1175,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 originalStartDate,
                 originalEndDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
         );
 
         // Verify the original rule exists by finding availability.
@@ -1221,8 +1221,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 .add("endDate", updatedEndDate.format(DATE_FORMATTER))
                 .add("sessionType", SessionType.AM.name())
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(AvailabilityDayOfWeek.Wednesday.name())
-                        .add(AvailabilityDayOfWeek.Thursday.name())
+                        .add(AvailabilityDayOfWeek.WEDNESDAY.getWireValue())
+                        .add(AvailabilityDayOfWeek.THURSDAY.getWireValue())
                         .build())
                 .add("unavailabilities", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
@@ -1345,7 +1345,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
         );
 
         // Get the rule
@@ -1390,7 +1390,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Wednesday)
+                Arrays.asList(AvailabilityDayOfWeek.WEDNESDAY)
         );
 
         // Get the rule with judiciary
@@ -1434,7 +1434,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Friday)
+                Arrays.asList(AvailabilityDayOfWeek.FRIDAY)
         );
 
         // Get the rule without specifying withJudiciary (should default to true)
@@ -1465,7 +1465,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate endDate = LocalDate.now().plusDays(31);
 
         final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
-        repeatDaysBuilder.add(AvailabilityDayOfWeek.Monday.name());
+        repeatDaysBuilder.add(AvailabilityDayOfWeek.MONDAY.getWireValue());
 
         final String requestPayload = Json.createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
@@ -1494,7 +1494,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate endDate = LocalDate.now().plusDays(31);
 
         final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
-        repeatDaysBuilder.add(AvailabilityDayOfWeek.Monday.name());
+        repeatDaysBuilder.add(AvailabilityDayOfWeek.MONDAY.getWireValue());
 
         final String requestPayload = Json.createObjectBuilder()
                 .add("judiciaryId", judiciaryId)
@@ -1529,12 +1529,12 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Now validate an update
         final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
-        repeatDaysBuilder.add(AvailabilityDayOfWeek.Monday.name());
+        repeatDaysBuilder.add(AvailabilityDayOfWeek.MONDAY.getWireValue());
 
         final String requestPayload = Json.createObjectBuilder()
                 .add("ruleId", ruleId)
@@ -1573,12 +1573,12 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 originalStartDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Now validate an update with changed start date in past
         final JsonArrayBuilder repeatDaysBuilder = Json.createArrayBuilder();
-        repeatDaysBuilder.add(AvailabilityDayOfWeek.Monday.name());
+        repeatDaysBuilder.add(AvailabilityDayOfWeek.MONDAY.getWireValue());
 
         final String requestPayload = Json.createObjectBuilder()
                 .add("ruleId", ruleId)
@@ -1614,7 +1614,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Now validate delete - should succeed as no sessions are assigned
@@ -1649,7 +1649,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
         // Update session_type to AM
         databaseSeeder.updateJudiciaryAvailabilityRuleSessionType(ruleId, SessionType.AM.name());

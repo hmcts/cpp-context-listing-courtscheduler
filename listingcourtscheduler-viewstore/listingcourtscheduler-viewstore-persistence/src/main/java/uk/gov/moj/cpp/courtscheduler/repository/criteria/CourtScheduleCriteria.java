@@ -2,6 +2,9 @@ package uk.gov.moj.cpp.courtscheduler.repository.criteria;
 
 import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.ADULT;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.YOUTH;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -20,7 +23,8 @@ import jakarta.persistence.criteria.Root;
 @Service
 public class CourtScheduleCriteria {
 
-    public void getCourtScheduleCriteria(final CourtScheduleRequestParam courtScheduleRequestParam,
+
+    public void applyCourtScheduleCriteria(final CourtScheduleRequestParam courtScheduleRequestParam,
                                          final CriteriaBuilder criteriaBuilder,
                                          final CriteriaQuery<CourtSchedule> criteriaQuery) {
         final Root<CourtSchedule> root = criteriaQuery.from(CourtSchedule.class);
@@ -97,18 +101,18 @@ public class CourtScheduleCriteria {
         if (isNotBlank(courtSchedule.getPanel())) {
             final Predicate panelPredicate;
             final Predicate inputPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), courtSchedule.getPanel());
-            if("YOUTH".equalsIgnoreCase(courtSchedule.getPanel())) {
-                final Predicate youthPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), "YOUTH");
+            if (YOUTH.name().equalsIgnoreCase(courtSchedule.getPanel())) {
+                final Predicate youthPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), YOUTH.name());
                 panelPredicate = criteriaBuilder.or(inputPanelPredicate, youthPanelPredicate);
             } else {
-                final Predicate adultPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), "ADULT");
+                final Predicate adultPanelPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.PANEL), ADULT.name());
                 panelPredicate = criteriaBuilder.or(inputPanelPredicate, adultPanelPredicate);
             }
             predicateList.add(panelPredicate);
         }
         if (isNotBlank(courtSchedule.getCourtSession())) {
             final Predicate courtSessionPredicate;
-            if("AD".equalsIgnoreCase(courtSchedule.getCourtSession())) {
+            if (ALL_DAY.equalsIgnoreCase(courtSchedule.getCourtSession())) {
                 final Predicate amCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "AM");
                 final Predicate pmCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "PM");
                 final Predicate allDayCourtSessionPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.COURT_SESSION), "AD");
@@ -125,9 +129,9 @@ public class CourtScheduleCriteria {
             final Predicate sessionDatePredicate = criteriaBuilder.equal(root.get(CourtSchedule_.SESSION_DATE), courtSchedule.getSessionDate());
             predicateList.add(sessionDatePredicate);
         }
-        if (nonNull(courtSchedule.getIsDraft())) {
-            final Predicate isDraftPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.IS_DRAFT), courtSchedule.getIsDraft());
-            predicateList.add(isDraftPredicate);
+        if (nonNull(courtSchedule.isDraft())) {
+            final Predicate draftPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.DRAFT), courtSchedule.isDraft());
+            predicateList.add(draftPredicate);
         }
         criteriaQuery.where(criteriaBuilder.and(predicateList.toArray(new Predicate[]{})));
     }

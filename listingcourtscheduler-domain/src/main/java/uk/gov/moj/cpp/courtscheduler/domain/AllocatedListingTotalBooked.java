@@ -11,7 +11,9 @@ public class AllocatedListingTotalBooked {
 
     public AllocatedListingTotalBooked(final String courtScheduleId, final Long totalBooked) {
         this.courtScheduleId = courtScheduleId;
-        this.totalBooked = nonNull(totalBooked) ? totalBooked.intValue() : null;
+        if (nonNull(totalBooked)) {
+            this.totalBooked = totalBooked.intValue();
+        }
     }
 
     public Integer getTotalBooked() {

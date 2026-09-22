@@ -1,7 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
-import org.springframework.stereotype.Service;
-
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
@@ -110,15 +108,15 @@ public final class RotaUtils {
      * Parses a composite key into its parts.
      *
      * @param compositeKey the composite key to parse
-     * @return an array with two elements [part1, part2], or null if invalid
+     * @return an array with two elements [part1, part2], or an empty array if invalid
      */
     public static String[] parseCompositeKey(final String compositeKey) {
         if (compositeKey == null || compositeKey.isEmpty()) {
-            return null;
+            return new String[0];
         }
         final String[] parts = compositeKey.split("\\" + KEY_SEPARATOR, 2);
         if (parts.length != 2 || !isNotEmpty(parts[0])) {
-            return null;
+            return new String[0];
         }
         return parts;
     }
@@ -131,7 +129,7 @@ public final class RotaUtils {
      */
     public static String extractFirstPart(final String compositeKey) {
         final String[] parts = parseCompositeKey(compositeKey);
-        return parts != null ? parts[0] : null;
+        return parts.length > 0 ? parts[0] : null;
     }
 
     // ============================================================================

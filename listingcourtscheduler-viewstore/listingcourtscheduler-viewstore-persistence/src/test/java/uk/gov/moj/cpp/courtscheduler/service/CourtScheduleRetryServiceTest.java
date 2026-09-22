@@ -10,8 +10,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import java.time.Instant;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -106,7 +106,7 @@ class CourtScheduleRetryServiceTest {
         cs.setMaxAdMorningDuration(20);
         cs.setMaxAdAfternoonDuration(20);
         cs.setSupportAdSplit(false);
-        cs.setCreatedOn(new Date());
+        cs.setCreatedOn(Instant.now());
         return cs;
     }
 }

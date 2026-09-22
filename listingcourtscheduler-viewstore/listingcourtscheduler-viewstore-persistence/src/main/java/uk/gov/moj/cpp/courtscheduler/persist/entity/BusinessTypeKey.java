@@ -35,7 +35,7 @@ public class BusinessTypeKey implements Serializable {
         this.id = id;
     }
 
-    public Boolean getActive() {
+    public Boolean isActive() {
         return active;
     }
 

@@ -20,10 +20,10 @@ public class CourtScheduleJudiciaryMapper {
         final CourtScheduleJudiciary entity = new CourtScheduleJudiciary();
         entity.setId(new CourtScheduleJudiciaryKey(domain.getCourtScheduleId(), domain.getJudiciaryId()));
         entity.setJudiciaryType(domain.getJudiciaryType());
-        entity.setDeputy(domain.getDeputy());
+        entity.setDeputy(domain.isDeputy());
         entity.setEmail(domain.getEmailAddress());
         entity.setCourtListingProfileId(domain.getCourtListingProfileId());
-        entity.setBenchChairman(domain.getBenchChairman());
+        entity.setBenchChairman(domain.isBenchChairman());
         entity.setSurname(domain.getSurname());
         entity.setForenames(domain.getForenames());
         entity.setPosition(domain.getPosition());
@@ -49,14 +49,14 @@ public class CourtScheduleJudiciaryMapper {
                 .withForenames(entity.getForenames())
                 .withPosition(entity.getPosition())
                 .withCourtListingProfileId(entity.getCourtListingProfileId())
-                .withIsBenchChairman(entity.getBenchChairman())
+                .withIsBenchChairman(entity.isBenchChairman())
                 .withRotaJudiciaryId(entity.getRotaJudiciaryId())
                 .withTitle(entity.getTitle())
-                .withIsDeputy(entity.getDeputy())
+                .withIsDeputy(entity.isDeputy())
                 .withEmailAddress(entity.getEmail())
                 .withCreatedOn(entity.getCreatedOn())
                 .withUpdatedOn(entity.getUpdatedOn())
-                .withActive(entity.getActive())
+                .withActive(entity.isActive())
                 .build();
     }
 }

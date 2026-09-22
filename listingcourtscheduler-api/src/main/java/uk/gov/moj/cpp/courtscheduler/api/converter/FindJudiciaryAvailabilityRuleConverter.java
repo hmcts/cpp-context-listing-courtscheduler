@@ -26,8 +26,8 @@ public class FindJudiciaryAvailabilityRuleConverter implements Converter<JsonObj
     public FindJudiciaryAvailabilityRuleRequest convert(final JsonObject jsonObject) {
         final FindJudiciaryAvailabilityRuleRequest request = new FindJudiciaryAvailabilityRuleRequest();
 
-        request.setStartDate(LocalDate.parse(jsonObject.getString("startDate"), FindJudiciaryAvailabilityRuleConverter.DATE_FORMATTER));
-        request.setEndDate(LocalDate.parse(jsonObject.getString("endDate"), FindJudiciaryAvailabilityRuleConverter.DATE_FORMATTER));
+        request.setStartDate(LocalDate.parse(jsonObject.getString("startDate"), DATE_FORMATTER));
+        request.setEndDate(LocalDate.parse(jsonObject.getString("endDate"), DATE_FORMATTER));
 
         if (jsonObject.containsKey(COURT_CENTRE_ID) && !jsonObject.isNull(COURT_CENTRE_ID)) {
             request.setCourtHouseId(jsonObject.getString(COURT_CENTRE_ID));

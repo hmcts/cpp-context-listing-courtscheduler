@@ -87,7 +87,7 @@ class RotaDataEnricherTest {
                 .withCourtSchedule(courtSchedule)
                 .withCourtScheduleId(courtScheduleId)
                 .withOuCode(courtSchedule.getOuCode())
-                .withCreatedOn(Calendar.getInstance().getTime())
+                .withCreatedOn(java.time.Instant.now())
                 .build());
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
@@ -133,7 +133,7 @@ class RotaDataEnricherTest {
                 .withCourtSchedule(courtSchedule)
                 .withCourtScheduleId(courtScheduleId)
                 .withOuCode(courtSchedule.getOuCode())
-                .withCreatedOn(Calendar.getInstance().getTime())
+                .withCreatedOn(java.time.Instant.now())
                 .build());
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
@@ -222,8 +222,8 @@ class RotaDataEnricherTest {
         final CourtSchedule updated = result.get("L1");
         assertThat(updated.getCourtSession(), is(ALL_DAY_SESSION));
         // refdata times override hardcoded ALL_DAY defaults (10:00 / 17:00)
-        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:15")));
-        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "16:30")));
+        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:15").toInstant()));
+        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "16:30").toInstant()));
         // slot/duration totals get incremented by allocation values
         assertThat(updated.getMaxSlots(), is(4));
         assertThat(updated.getAvailableSlots(), is(4));
@@ -269,8 +269,8 @@ class RotaDataEnricherTest {
 
         final CourtSchedule updated = result.get("L1");
         assertThat(updated.getCourtSession(), is(ALL_DAY_SESSION));
-        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00")));
-        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00")));
+        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00").toInstant()));
+        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00").toInstant()));
     }
 
     private Map<String, String> listingRow(final String id, final String linkedSessionId, final LocalDate sessionDate, final String session, final String businessType) {

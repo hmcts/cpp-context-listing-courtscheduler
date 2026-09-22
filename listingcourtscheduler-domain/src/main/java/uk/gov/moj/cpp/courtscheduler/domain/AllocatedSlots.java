@@ -6,11 +6,6 @@ public class AllocatedSlots {
 
     private List<AllocatedSlot> hearingSlots;
 
-    @SuppressWarnings("squid:S1186")
-    public AllocatedSlots() {
-    }
-
-
     public List<AllocatedSlot> getHearingSlots() {
         return hearingSlots;
     }

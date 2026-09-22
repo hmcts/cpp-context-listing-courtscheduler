@@ -13,9 +13,9 @@ public enum Meridian {
     FOUR_PM("16"),
     FIVE_PM("17");
 
-    private String value;
+    private final String value;
 
-    private Meridian(final String value) {
+    Meridian(final String value) {
         this.value = value;
     }
 

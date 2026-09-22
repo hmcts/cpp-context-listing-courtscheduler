@@ -6,6 +6,8 @@ package uk.gov.moj.cpp.courtscheduler.exception;
  */
 public class NoSessionAvailableException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public NoSessionAvailableException(final String message) {
         super(message);
     }

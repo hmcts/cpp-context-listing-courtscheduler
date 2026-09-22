@@ -16,7 +16,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
  * Base converter class for judiciary availability rule responses.
  * Contains common response conversion logic for converting domain objects to JSON.
  */
-public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
+public class BaseJudiciaryAvailabilityRuleResponseConverter {
 
     protected static final String START_DATE = "startDate";
     protected static final String END_DATE = "endDate";
@@ -29,7 +29,7 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
         final JsonArrayBuilder repeatDaysArrayBuilder = Json.createArrayBuilder();
         if (repeatDays != null) {
             for (final AvailabilityDayOfWeek repeatDay : repeatDays) {
-                repeatDaysArrayBuilder.add(repeatDay.name());
+                repeatDaysArrayBuilder.add(repeatDay.getWireValue());
             }
         }
         return repeatDaysArrayBuilder.build();

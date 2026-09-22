@@ -17,7 +17,6 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -239,17 +238,23 @@ public class DatabaseReader {
         courtSchedule.setMaxAdMorningDuration(resultSet.getInt("max_ad_morning_duration"));
         courtSchedule.setMaxAdAfternoonDuration(resultSet.getInt("max_ad_afternoon_duration"));
         courtSchedule.setActive(resultSet.getBoolean("active"));
-        courtSchedule.setCreatedOn(resultSet.getDate("created_on"));
-        courtSchedule.setUpdatedOn(resultSet.getDate("updated_on"));
+        final Timestamp createdOnTimestamp = resultSet.getTimestamp("created_on");
+        if (nonNull(createdOnTimestamp)) {
+            courtSchedule.setCreatedOn(createdOnTimestamp.toInstant());
+        }
+        final Timestamp updatedOnTimestamp = resultSet.getTimestamp("updated_on");
+        if (nonNull(updatedOnTimestamp)) {
+            courtSchedule.setUpdatedOn(updatedOnTimestamp.toInstant());
+        }
 
         final Timestamp sessionStartTime = resultSet.getTimestamp("session_start_time");
         if (nonNull(sessionStartTime)) {
-            courtSchedule.setSessionStartTime(new Date(sessionStartTime.getTime()));
+            courtSchedule.setSessionStartTime(sessionStartTime.toInstant());
         }
 
         final Timestamp sessionEndTime = resultSet.getTimestamp("session_end_time");
         if (nonNull(sessionEndTime)) {
-            courtSchedule.setSessionEndTime(new Date(sessionEndTime.getTime()));
+            courtSchedule.setSessionEndTime(sessionEndTime.toInstant());
         }
 
         courtSchedule.setIsOverbookingAllowed(resultSet.getBoolean("is_overbooking_allowed"));
@@ -277,8 +282,8 @@ public class DatabaseReader {
         courtScheduleJudiciary.setDeputy(resultSet.getBoolean("is_deputy"));
         courtScheduleJudiciary.setPosition(resultSet.getString("position"));
         courtScheduleJudiciary.setActive(resultSet.getBoolean("active"));
-        courtScheduleJudiciary.setCreatedOn(resultSet.getDate("created_on"));
-        courtScheduleJudiciary.setUpdatedOn(resultSet.getDate("updated_on"));
+        courtScheduleJudiciary.setCreatedOn(resultSet.getTimestamp("created_on").toInstant());
+        courtScheduleJudiciary.setUpdatedOn(resultSet.getTimestamp("updated_on").toInstant());
 
         return courtScheduleJudiciary;
     }
@@ -293,10 +298,10 @@ public class DatabaseReader {
         allocatedListing.setRotaBusinessType(resultSet.getString("rota_business_type"));
         allocatedListing.setDuration(resultSet.getInt("duration"));
         // getTimestamp, not getDate — java.sql.Date drops the time-of-day and throws on toInstant()
-        allocatedListing.setHearingStartTime(resultSet.getTimestamp("hearing_start_time"));
+        allocatedListing.setHearingStartTime(resultSet.getTimestamp("hearing_start_time").toInstant());
         allocatedListing.setSource(resultSet.getString("source"));
-        allocatedListing.setCreatedOn(resultSet.getDate("created_on"));
-        allocatedListing.setUpdatedOn(resultSet.getDate("updated_on"));
+        allocatedListing.setCreatedOn(resultSet.getTimestamp("created_on").toInstant());
+        allocatedListing.setUpdatedOn(resultSet.getTimestamp("updated_on").toInstant());
 
         return allocatedListing;
     }

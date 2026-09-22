@@ -1,8 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import static jakarta.persistence.TemporalType.TIMESTAMP;
-
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -11,7 +9,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
@@ -30,9 +27,8 @@ public class RotaProcessLog {
     private String executionId;
 
     @CreationTimestamp
-    @Temporal(TIMESTAMP)
     @Column(name = "timestamp", nullable = false)
-    private Date timestamp;
+    private Instant timestamp;
 
     @Column(name = "error_code", nullable = false)
     private String errorCode;
@@ -55,11 +51,11 @@ public class RotaProcessLog {
         this.executionId = executionId;
     }
 
-    public Date getTimestamp() {
+    public Instant getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(final Date timestamp) {
+    public void setTimestamp(final Instant timestamp) {
         this.timestamp = timestamp;
     }
 
@@ -108,7 +104,7 @@ public class RotaProcessLog {
 
     public static final class RotaProcessLogBuilder {
         private String executionId;
-        private Date timestamp;
+        private Instant timestamp;
         private String errorCode;
         private String errorText;
 
@@ -124,7 +120,7 @@ public class RotaProcessLog {
             return this;
         }
 
-        public RotaProcessLogBuilder withTimestamp(final Date timestamp) {
+        public RotaProcessLogBuilder withTimestamp(final Instant timestamp) {
             this.timestamp = timestamp;
             return this;
         }

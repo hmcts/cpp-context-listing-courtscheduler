@@ -60,7 +60,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 randomUUID().toString(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
         );
 
         List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
@@ -104,7 +104,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 randomUUID().toString(),
                 startDate,
                 endDate,
-                List.of(AvailabilityDayOfWeek.Monday)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
         createAndSaveRule(
                 randomUUID().toString(),
@@ -112,7 +112,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 randomUUID().toString(),
                 startDate,
                 endDate,
-                List.of(AvailabilityDayOfWeek.Tuesday)
+                List.of(AvailabilityDayOfWeek.TUESDAY)
         );
 
         List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
@@ -136,7 +136,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 courtHouseId,
                 startDate,
                 endDate,
-                List.of(AvailabilityDayOfWeek.Monday)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         createAndSaveRule(
@@ -145,7 +145,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 randomUUID().toString(),
                 startDate,
                 endDate,
-                List.of(AvailabilityDayOfWeek.Tuesday)
+                List.of(AvailabilityDayOfWeek.TUESDAY)
         );
 
         List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
@@ -170,7 +170,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 courtHouseA,
                 startDate,
                 endDate,
-                List.of(AvailabilityDayOfWeek.Monday)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
         createAndSaveRule(
                 randomUUID().toString(),
@@ -178,7 +178,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 courtHouseB,
                 startDate,
                 endDate,
-                List.of(AvailabilityDayOfWeek.Tuesday)
+                List.of(AvailabilityDayOfWeek.TUESDAY)
         );
 
         final List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
@@ -201,7 +201,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 courtHouseId,
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
@@ -223,7 +223,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 randomUUID().toString(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
@@ -247,7 +247,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 courtHouseA,
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
         createAndSaveRule(
                 randomUUID().toString(),
@@ -255,7 +255,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 courtHouseB,
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Tuesday)
+                Arrays.asList(AvailabilityDayOfWeek.TUESDAY)
         );
 
         final List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
@@ -279,7 +279,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 courtHouseId,
                 startDate,
                 endDate,
-                Collections.singletonList(AvailabilityDayOfWeek.Monday)
+                Collections.singletonList(AvailabilityDayOfWeek.MONDAY)
         );
         createAndSaveRule(
                 randomUUID().toString(),
@@ -287,7 +287,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 courtHouseId,
                 startDate,
                 endDate,
-                Collections.singletonList(AvailabilityDayOfWeek.Tuesday)
+                Collections.singletonList(AvailabilityDayOfWeek.TUESDAY)
         );
 
         final Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result =
@@ -312,7 +312,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 randomUUID().toString(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
         createAndSaveRule(
@@ -321,7 +321,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 randomUUID().toString(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Tuesday)
+                Arrays.asList(AvailabilityDayOfWeek.TUESDAY)
         );
 
         Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
@@ -356,7 +356,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 randomUUID().toString(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday, AvailabilityDayOfWeek.Wednesday)
+                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY, AvailabilityDayOfWeek.WEDNESDAY)
         );
 
         Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 

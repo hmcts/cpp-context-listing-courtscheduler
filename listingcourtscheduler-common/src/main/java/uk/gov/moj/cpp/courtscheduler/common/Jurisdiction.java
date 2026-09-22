@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.common;
 
+import java.util.Locale;
+
 public enum Jurisdiction {
     MAGISTRATES("MAGISTRATES"),
     CROWN("CROWN");
@@ -15,7 +17,7 @@ public enum Jurisdiction {
     }
 
     public static Jurisdiction fromString(final String jurisdictionType) {
-        return Jurisdiction.valueOf(jurisdictionType.toUpperCase());
+        return Jurisdiction.valueOf(jurisdictionType.toUpperCase(Locale.ROOT));
     }
 
     public boolean equalsIgnoreCase(final String other) {

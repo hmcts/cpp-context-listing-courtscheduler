@@ -15,18 +15,14 @@ public class AllocatedSlot {
     private String ouCode;
     private String hearingId;
     private String courtScheduleId;
-    private boolean isSlotBased;
+    private boolean slotBased;
     private String bookingId;
     private String prosecutor;
     private String courtRoom;
     private String hearingSessionDateSearchCutOff;
-    private boolean isPolice;
+    private boolean police;
     private List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
     private String source;
-
-    @SuppressWarnings("squid:S1186")
-    public AllocatedSlot() {
-    }
 
     public String getCourtScheduleId() {
         return courtScheduleId;
@@ -93,11 +89,11 @@ public class AllocatedSlot {
     }
 
     public boolean isSlotBased() {
-        return isSlotBased;
+        return slotBased;
     }
 
     public void setSlotBased(final boolean slotBased) {
-        isSlotBased = slotBased;
+        this.slotBased = slotBased;
     }
 
     public String getHearingStartTime() {
@@ -138,11 +134,11 @@ public class AllocatedSlot {
         this.hearingSessionDateSearchCutOff = hearingSessionDateSearchCutOff; }
 
     public boolean isPolice() {
-        return isPolice;
+        return police;
     }
 
     public void setPolice(final boolean police) {
-        isPolice = police;
+        this.police = police;
     }
 
     public List<CourtScheduleJudiciary> getJudiciaries() {
@@ -181,7 +177,7 @@ public class AllocatedSlot {
         }
         final AllocatedSlot that = (AllocatedSlot) o;
         return duration == that.duration &&
-                isSlotBased == that.isSlotBased &&
+                slotBased == that.slotBased &&
                 Objects.equals(sessionDate, that.sessionDate) &&
                 Objects.equals(hearingStartTime, that.hearingStartTime) &&
                 Objects.equals(session, that.session) &&
@@ -195,7 +191,7 @@ public class AllocatedSlot {
                 Objects.equals(courtRoom, that.courtRoom) &&
                 Objects.equals(courtRoomUUId, that.courtRoomUUId) &&
                 Objects.equals(hearingSessionDateSearchCutOff, that.hearingSessionDateSearchCutOff) &&
-                Objects.equals(isPolice, that.isPolice) &&
+                Objects.equals(police, that.police) &&
                 Objects.equals(judiciaries, that.judiciaries) &&
                 Objects.equals(source, that.source);
     }
@@ -203,8 +199,8 @@ public class AllocatedSlot {
     @Override
     public int hashCode() {
         return Objects.hash(duration, sessionDate, hearingStartTime, session,
-                courtRoomId, ouCode,courtCentreId, hearingId, courtScheduleId, isSlotBased, bookingId, prosecutor, courtRoom,
-                courtRoomUUId, hearingSessionDateSearchCutOff, isPolice, judiciaries, source);
+                courtRoomId, ouCode,courtCentreId, hearingId, courtScheduleId, slotBased, bookingId, prosecutor, courtRoom,
+                courtRoomUUId, hearingSessionDateSearchCutOff, police, judiciaries, source);
     }
 
     @Override
@@ -219,13 +215,13 @@ public class AllocatedSlot {
                 ", courtCentreId='" + courtCentreId + '\'' +
                 ", hearingId='" + hearingId + '\'' +
                 ", courtScheduleId='" + courtScheduleId + '\'' +
-                ", isSlotBased=" + isSlotBased +
+                ", slotBased=" + slotBased +
                 ", bookingId='" + bookingId + '\'' +
                 ", prosecutor='" + prosecutor + '\'' +
                 ", courtRoom='" + courtRoom + '\'' +
                 ", courtRoomUUId='" + courtRoomUUId + '\'' +
                 ", hearingSessionDateSearchCutOff='" + hearingSessionDateSearchCutOff + '\'' +
-                ", isPolice='" + isPolice + '\'' +
+                ", police='" + police + '\'' +
                 ", judiciaries=" + judiciaries +
                 ", source='" + source + '\'' +
                 '}';

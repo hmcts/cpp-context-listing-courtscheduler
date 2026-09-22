@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR;
+
 /**
  * Reproduces the legacy framework's error response shape so the UI's error
  * handlers continue to work.
@@ -32,7 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class GlobalExceptionHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-    private static final String ERROR = "error";
+    private static final int SINGLE_MESSAGE_COUNT = 1;
 
     @ExceptionHandler(ValidationFailedException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(final ValidationFailedException ex) {
@@ -204,7 +206,7 @@ public class GlobalExceptionHandler {
         final Map<String, Object> body = new LinkedHashMap<>();
         if (messages.isEmpty()) {
             body.put(ERROR, "");
-        } else if (messages.size() == 1) {
+        } else if (messages.size() == SINGLE_MESSAGE_COUNT) {
             body.put(ERROR, messages.get(0));
         } else {
             body.put(ERROR, String.join("; ", messages));

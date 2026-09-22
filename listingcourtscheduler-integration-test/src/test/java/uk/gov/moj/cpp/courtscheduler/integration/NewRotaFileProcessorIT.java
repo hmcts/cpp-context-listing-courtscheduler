@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static java.lang.String.format;
-import static java.util.Date.from;
 import static java.util.Objects.isNull;
 import static java.util.Optional.of;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -294,11 +293,11 @@ class NewRotaFileProcessorIT extends AbstractIT {
         courtSchedule.setMaxAdMorningDuration(entry.getInt(JSON_FIELD_MAX_AD_MORNING_DURATION));
         courtSchedule.setMaxAdAfternoonDuration(entry.getInt(JSON_FIELD_MAX_AD_AFTERNOON_DURATION));
         courtSchedule.setIsOverbookingAllowed(entry.getBoolean(JSON_FIELD_IS_OVERBOOKING_ALLOWED));
-        courtSchedule.setSessionStartTime(from(Instant.parse(entry.getString(JSON_FIELD_SESSION_START_TIME))));
-        courtSchedule.setSessionEndTime(from(Instant.parse(entry.getString(JSON_FIELD_SESSION_END_TIME))));
+        courtSchedule.setSessionStartTime(Instant.parse(entry.getString(JSON_FIELD_SESSION_START_TIME)));
+        courtSchedule.setSessionEndTime(Instant.parse(entry.getString(JSON_FIELD_SESSION_END_TIME)));
 
         if (entry.containsKey(JSON_FIELD_NATIONAL_BREAK_TIME) && !entry.isNull(JSON_FIELD_NATIONAL_BREAK_TIME)) {
-            courtSchedule.setNationalBreakTime(from(Instant.parse(entry.getString(JSON_FIELD_NATIONAL_BREAK_TIME))));
+            courtSchedule.setNationalBreakTime(Instant.parse(entry.getString(JSON_FIELD_NATIONAL_BREAK_TIME)));
         }
 
         courtSchedule.setIsDraft(false);
@@ -336,14 +335,14 @@ class NewRotaFileProcessorIT extends AbstractIT {
             assertNotNull(courtSchedule.getSessionEndTime());
 
             if (AM_SESSION.equals(courtSchedule.getCourtSession())) {
-                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_START_TIME));
-                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_END_TIME));
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_START_TIME).toInstant());
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_END_TIME).toInstant());
             } else if (PM_SESSION.equals(courtSchedule.getCourtSession())) {
-                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_START_TIME));
-                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_END_TIME));
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_START_TIME).toInstant());
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_END_TIME).toInstant());
             } else if (ALL_DAY.equals(courtSchedule.getCourtSession())) {
-                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_START_TIME));
-                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_END_TIME));
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_START_TIME).toInstant());
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_END_TIME).toInstant());
             }
         });
     }

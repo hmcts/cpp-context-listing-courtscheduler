@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class SessionsParam {
+    /* package */
     List<String> sessions;
 
     public List<String> getSessions() {

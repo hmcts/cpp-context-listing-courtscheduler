@@ -1,10 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.BUSINESS_TYPE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.COURT_ROOM_ID;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.END_DATE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.SESSION_DATE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.START_DATE;
+
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -29,14 +35,6 @@ public interface CourtScheduleRepository
         extends JpaRepository<CourtSchedule, String>, CourtScheduleRepositoryCustom {
 
     Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRepository.class);
-
-    String BUSINESS_TYPE = "businessType";
-    String COURT_ROOM_ID = "courtRoomId";
-    String OU_CODE = "ouCode";
-    String COURT_CENTRE_ID = "courtCentreId";
-    String SESSION_DATE = "sessionDate";
-    String START_DATE = "startDate";
-    String END_DATE = "endDate";
 
     // ---------------------------------------------------------------------
     //  Legacy {@code @Query}-annotated abstract methods.
@@ -64,9 +62,9 @@ public interface CourtScheduleRepository
     @Transactional
     @Query("UPDATE CourtSchedule cs SET cs.active = false, cs.updatedOn = :updatedOn WHERE cs.courtScheduleId IN :courtScheduleIds AND cs.listingProfileId is not null")
     void deactivateSlots(@Param("courtScheduleIds") List<String> courtScheduleIds,
-                         @Param("updatedOn") Date updatedOn);
+                         @Param("updatedOn") Instant updatedOn);
 
-    @Query("SELECT new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo(entity.courtScheduleId, entity.ouCode, entity.createdOn) "
+    @Query("SELECT new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo(entity.courtScheduleId, entity.ouCode) "
             + "FROM CourtSchedule entity WHERE entity.courtRoomId = :courtRoomId "
             + "AND entity.sessionDate = :sessionDate AND entity.businessType = :businessType "
             + "AND entity.courtSession = :courtSession")
@@ -123,7 +121,7 @@ public interface CourtScheduleRepository
             @Param("courtSession") String courtSession);
 
     /** Method-name query — mirrors the legacy DeltaSpike abstract method. Used by the MI projection in the {@code Custom} fragment. */
-    List<CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
+    List<CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Instant fromDate, Instant toDate);
 
     // ---------------------------------------------------------------------
     //  Backwards-compatible aliases for DeltaSpike's auto-generated CRUD methods.

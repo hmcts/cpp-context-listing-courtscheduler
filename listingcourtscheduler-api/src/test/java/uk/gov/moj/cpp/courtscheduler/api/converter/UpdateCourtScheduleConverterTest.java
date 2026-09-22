@@ -63,7 +63,7 @@ class UpdateCourtScheduleConverterTest {
         final UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(jsonObject);
 
         assertEquals("CROWN", updateCourtSchedule.getJurisdiction());
-        assertEquals(Boolean.TRUE, updateCourtSchedule.getIsDraft());
+        assertEquals(Boolean.TRUE, updateCourtSchedule.isDraft());
     }
 
     @Test
@@ -82,7 +82,7 @@ class UpdateCourtScheduleConverterTest {
         final UpdateCourtSchedule updateCourtSchedule = updateCourtScheduleConverter.convert(jsonObject);
 
         assertEquals("MAGISTRATES", updateCourtSchedule.getJurisdiction());
-        assertNull(updateCourtSchedule.getIsDraft());
+        assertNull(updateCourtSchedule.isDraft());
     }
 
     @Test

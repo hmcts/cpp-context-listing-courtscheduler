@@ -313,7 +313,7 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
         }
         try {
             return objectMapper.convertValue(response, Map.class);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             LOG.warn("Failed to flatten response of type {}: {}", response.getClass(), e.getMessage());
             final Map<String, Object> body = new LinkedHashMap<>();
             body.put("payload", response);

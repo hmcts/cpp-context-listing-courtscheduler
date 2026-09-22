@@ -319,7 +319,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
 
         assertEquals(2, result.size());
         assertTrue(result.stream().allMatch(j -> scheduleId1.equals(j.getId().getCourtScheduleId())));
-        assertTrue(result.stream().allMatch(CourtScheduleJudiciary::getActive));
+        assertTrue(result.stream().allMatch(CourtScheduleJudiciary::isActive));
     }
 
     // -----------------------------------------------------------------------
@@ -355,8 +355,8 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 courtScheduleRepository.getCourtScheduleJudiciariesForProvisionalBooking(List.of(cs));
 
         assertEquals(1, result.size());
-        assertEquals(s1, result.get(0).getId().getCourtScheduleId());
-        assertEquals(p1, result.get(0).getCourtListingProfileId());
+        assertEquals(s1, result.getFirst().getId().getCourtScheduleId());
+        assertEquals(p1, result.getFirst().getCourtListingProfileId());
     }
 
     // -----------------------------------------------------------------------
@@ -388,7 +388,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
 
         final List<AllocatedListing> remaining = allocatedListingRepository.findByHearingId(hearingId);
         assertEquals(1, remaining.size());
-        assertEquals("CS-REL-DAY1", remaining.get(0).getCourtScheduleId());
+        assertEquals("CS-REL-DAY1", remaining.getFirst().getCourtScheduleId());
 
         assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-REL-DAY1").getAvailableSlots());
         assertEquals(Integer.valueOf(10), courtScheduleRepository.findBy("CS-REL-DAY2").getAvailableSlots());
@@ -526,7 +526,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setCourtRoomId(1);
-        allocatedListing.setHearingStartTime(Date.from(sessionDate.atTime(10, 0).atZone(ZoneId.of("UTC")).toInstant()));
+        allocatedListing.setHearingStartTime(sessionDate.atTime(10, 0).atZone(ZoneId.of("UTC")).toInstant());
         allocatedListing.setDuration(120);
         allocatedListing.setOucode("BA124");
         allocatedListing.setRotaBusinessType("BUSS");
@@ -579,9 +579,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(request);
 
         assertTrue(created.isPresent());
-        final LocalTime startTime = created.get().session().getSessionStartTime().toInstant()
+        final LocalTime startTime = created.get().session().getSessionStartTime()
                 .atZone(ZoneOffset.UTC).toLocalTime();
-        final Instant sessionEnd = created.get().session().getSessionEndTime().toInstant();
+        final Instant sessionEnd = created.get().session().getSessionEndTime();
         assertEquals(LocalTime.of(12, 30), startTime);
         // 17:00 is a Europe/London wall-clock time, like every other session time in the viewstore
         // (DateUtils.combineDateAndTime, TimezoneUtils.calculateNationalBreakTime). 2026-08-28 is in
@@ -633,15 +633,15 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
 
         // Timestamp fields
         LocalDateTime now = LocalDateTime.now();
-        schedule.setCreatedOn(Timestamp.valueOf(now));
-        schedule.setUpdatedOn(Timestamp.valueOf(now));
+        schedule.setCreatedOn(Timestamp.valueOf(now).toInstant());
+        schedule.setUpdatedOn(Timestamp.valueOf(now).toInstant());
 
         // Session time fields (with time zone)
         LocalDateTime startDateTime = LocalDateTime.of(sessionDate, LocalTime.of(9, 0));
         LocalDateTime endDateTime = LocalDateTime.of(sessionDate, LocalTime.of(13, 0));
-        schedule.setSessionStartTime(Date.from(startDateTime.atZone(ZoneId.systemDefault()).toInstant()));
-        schedule.setSessionEndTime(Date.from(endDateTime.atZone(ZoneId.systemDefault()).toInstant()));
-        schedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        schedule.setSessionStartTime(startDateTime.atZone(ZoneId.systemDefault()).toInstant());
+        schedule.setSessionEndTime(endDateTime.atZone(ZoneId.systemDefault()).toInstant());
+        schedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
         schedule.setListingProfileId(random(String.class));
 
         return schedule;

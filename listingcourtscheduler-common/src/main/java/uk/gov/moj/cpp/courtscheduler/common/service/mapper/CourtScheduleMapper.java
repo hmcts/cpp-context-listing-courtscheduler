@@ -76,7 +76,7 @@ public class CourtScheduleMapper {
                 .withActive(entity.isActive())
                 .withCreatedOn(entity.getCreatedOn())
                 .withNationalBreakTime(entity.getNationalBreakTime())
-                .withIsDraft(entity.getIsDraft())
+                .withIsDraft(entity.isDraft())
                 .withJurisdiction(entity.getJurisdiction())
                 .build();
     }

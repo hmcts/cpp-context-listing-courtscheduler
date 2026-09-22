@@ -22,9 +22,8 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -117,14 +116,14 @@ public class JudiciaryAssignmentService {
 
         courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds);
 
-        final Date now = Calendar.getInstance().getTime();
+        final Instant now = Instant.now();
         int persisted = 0;
         for (final String sessionId : courtScheduleIds) {
             final CourtSchedule schedule = scheduleById.get(sessionId);
             for (final SessionJudiciary sessionJudiciary : sessionJudiciaries) {
                 final String judicialId = sessionJudiciary.getJudicialId().trim();
                 final Judiciary ref = referenceDataMapperService.findById(judicialId)
-                        .orElseThrow(() -> new IllegalArgumentException("Judiciary not found: " + judicialId));
+                        .orElseThrow(() -> judiciaryNotFoundException(judicialId));
                 final CourtScheduleJudiciary domain =
                         buildCourtScheduleJudiciaryForSessionsUi(ref, schedule, sessionId, now, sessionJudiciary);
                 persistEntityWithEntityManager(CourtScheduleJudiciaryMapper.toEntity(domain));
@@ -136,6 +135,10 @@ public class JudiciaryAssignmentService {
         }
         LOGGER.info("assignJudiciaryToSessions: courtSchedules={}, sessionJudiciaries={}, persisted={}, executionId={}",
                 courtScheduleIds.size(), sessionJudiciaries.size(), persisted, executionId);
+    }
+
+    private IllegalArgumentException judiciaryNotFoundException(final String judicialId) {
+        return new IllegalArgumentException("Judiciary not found: " + judicialId);
     }
 
     private void validateSessionJudiciaries(final List<SessionJudiciary> sessionJudiciaries) {
@@ -201,11 +204,11 @@ public class JudiciaryAssignmentService {
     private CourtScheduleJudiciary buildCourtScheduleJudiciaryForSessionsUi(final Judiciary judiciary,
                                                                             final CourtSchedule schedule,
                                                                             final String sessionId,
-                                                                            final Date timestamp,
+                                                                            final Instant timestamp,
                                                                             final SessionJudiciary sessionJudiciary) {
-        final String judiciaryType = !isBlank(sessionJudiciary.getJudiciaryType())
-                ? sessionJudiciary.getJudiciaryType().trim()
-                : nonNullOrDefault(judiciary.getJudiciaryType());
+        final String judiciaryType = isBlank(sessionJudiciary.getJudiciaryType())
+                ? nonNullOrDefault(judiciary.getJudiciaryType())
+                : sessionJudiciary.getJudiciaryType().trim();
         return CourtScheduleJudiciary.judiciary()
                 .withCourtScheduleId(sessionId)
                 .withCourtListingProfileId(schedule.getListingProfileId())
@@ -217,8 +220,8 @@ public class JudiciaryAssignmentService {
                 .withEmailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
                 .withJudiciaryType(judiciaryType)
                 .withPosition(null)
-                .withIsBenchChairman(Boolean.TRUE.equals(sessionJudiciary.getIsBenchChairman()))
-                .withIsDeputy(Boolean.TRUE.equals(sessionJudiciary.getIsDeputy()))
+                .withIsBenchChairman(Boolean.TRUE.equals(sessionJudiciary.isBenchChairman()))
+                .withIsDeputy(Boolean.TRUE.equals(sessionJudiciary.isDeputy()))
                 .withCreatedOn(timestamp)
                 .withUpdatedOn(timestamp)
                 .withActive(true)
@@ -280,7 +283,7 @@ public class JudiciaryAssignmentService {
         final Set<String> missingJudiciaryIds = new LinkedHashSet<>();
         final Set<String> missingSessionIds = new LinkedHashSet<>();
         final List<AssignmentFailure> failures = new ArrayList<>();
-        final Date now = Calendar.getInstance().getTime();
+        final Instant now = Instant.now();
 
         int requestedAssignments = 0;
         int successfulAssignments = 0;
@@ -354,22 +357,28 @@ public class JudiciaryAssignmentService {
     private AssignmentAttempt attemptAssignment(final Judiciary judiciary,
                                                 final CourtSchedule schedule,
                                                 final String sessionId,
-                                                final Date timestamp,
+                                                final Instant timestamp,
                                                 final JudiciaryAssignment assignment,
                                                 final boolean useRepository) {
         final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, timestamp, assignment);
         try {
-            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity = 
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity =
                     CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciary);
-            
+
             if (useRepository) {
                 persistEntityWithRepository(entity);
             } else {
                 persistEntityWithEntityManager(entity);
             }
-            
+
             return AssignmentAttempt.success();
-        } catch (Exception ex) {
+        } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") // Deliberate broad safety net: the two
+                // persistence paths (Spring Data `save` vs `EntityManager.merge`) can surface different unchecked
+                // exception hierarchies (DataAccessException vs PersistenceException/ConstraintViolationException)
+                // depending on `useRepository`, and handleAssignmentException() below inspects the whole cause
+                // chain by class-name/message to detect duplicate-key violations regardless of which one occurred.
+                // Narrowing to a single exception type would risk missing legitimate duplicate-assignment cases.
+                final Exception ex) {
             return handleAssignmentException(ex, judiciary.getId(), sessionId);
         }
     }
@@ -423,7 +432,7 @@ public class JudiciaryAssignmentService {
     private CourtScheduleJudiciary buildCourtScheduleJudiciary(final Judiciary judiciary,
                                                                final CourtSchedule schedule,
                                                                final String sessionId,
-                                                               final Date timestamp,
+                                                               final Instant timestamp,
                                                                final JudiciaryAssignment assignment) {
         final String rotaJudiciaryId = firstNonEmpty(assignment.getRotaJudiciaryId(), 
                 firstNonEmpty(judiciary.getCpUserId(), judiciary.getId()));
@@ -439,8 +448,8 @@ public class JudiciaryAssignmentService {
                 .withEmailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
                 .withJudiciaryType(nonNullOrDefault(judiciary.getJudiciaryType()))
                 .withPosition(assignment.getPosition())
-                .withIsBenchChairman(assignment.getIsBenchChairman() != null ? assignment.getIsBenchChairman() : false)
-                .withIsDeputy(assignment.getIsDeputy() != null ? assignment.getIsDeputy() : false)
+                .withIsBenchChairman(assignment.isBenchChairman() != null ? assignment.isBenchChairman() : false)
+                .withIsDeputy(assignment.isDeputy() != null ? assignment.isDeputy() : false)
                 .withCreatedOn(timestamp)
                 .withUpdatedOn(timestamp)
                 .withActive(true)
@@ -465,7 +474,7 @@ public class JudiciaryAssignmentService {
         Throwable current = throwable;
         while (current != null) {
             final String className = current.getClass().getName();
-            final String message = current.getMessage() != null ? current.getMessage().toLowerCase() : "";
+            final String message = current.getMessage() != null ? current.getMessage().toLowerCase(Locale.ROOT) : "";
             if (className.contains("ConstraintViolationException")
                     || className.contains("SQLIntegrityConstraintViolationException")
                     || message.contains("duplicate")
@@ -522,19 +531,19 @@ public class JudiciaryAssignmentService {
      * Internal class to hold assignment attempt results.
      */
     private static class AssignmentAttempt {
-        private final boolean success;
-        private final AssignmentFailure failure;
+        private final boolean successful;
+        private final AssignmentFailure failureDetail;
 
-        private AssignmentAttempt(final boolean success, final AssignmentFailure failure) {
-            this.success = success;
-            this.failure = failure;
+        private AssignmentAttempt(final boolean successful, final AssignmentFailure failureDetail) {
+            this.successful = successful;
+            this.failureDetail = failureDetail;
         }
 
-       static AssignmentAttempt success() {
+       /* package */ static AssignmentAttempt success() {
             return new AssignmentAttempt(true, null);
         }
 
-       static AssignmentAttempt failure(final String judiciaryId,
+       /* package */ static AssignmentAttempt failure(final String judiciaryId,
                                          final String sessionId,
                                          final AssignmentFailureReason reason) {
             return new AssignmentAttempt(false, AssignmentFailure.builder()
@@ -544,12 +553,12 @@ public class JudiciaryAssignmentService {
                     .build());
         }
 
-       boolean isSuccess() {
-            return success;
+       /* package */ boolean isSuccess() {
+            return successful;
         }
 
-       AssignmentFailure getFailure() {
-            return failure;
+       /* package */ AssignmentFailure getFailure() {
+            return failureDetail;
         }
     }
 }

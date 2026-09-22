@@ -50,8 +50,8 @@ class JudiciaryBuilderTest {
         assertEquals("CS2130184", courtScheduleJudiciary.getCourtListingProfileId());
         assertEquals(courtScheduleId, courtScheduleJudiciary.getCourtScheduleId());
         assertEquals("RIGHT_WINGER", courtScheduleJudiciary.getPosition());
-        assertEquals(false, courtScheduleJudiciary.getBenchChairman());
-        assertEquals(true, courtScheduleJudiciary.getDeputy());
+        assertEquals(false, courtScheduleJudiciary.isBenchChairman());
+        assertEquals(true, courtScheduleJudiciary.isDeputy());
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {

@@ -19,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
 import java.time.format.DateTimeParseException;
+import java.util.Optional;
 
 import jakarta.json.JsonObject;
 
@@ -74,13 +75,16 @@ public class CourtScheduleApiValidator {
     }
 
     private boolean isInvalidDateFormat(final String date) {
+        return parseDate(date).isEmpty();
+    }
+
+    private Optional<java.time.LocalDate> parseDate(final String date) {
         try {
-            java.time.LocalDate.parse(date);
+            return Optional.of(java.time.LocalDate.parse(date));
         } catch (final DateTimeParseException e) {
             getGlobal().log(WARNING, format("Invalid Date supplied: %s and exception", date), e);
-            return true;
+            return Optional.empty();
         }
-        return false;
     }
 
     private JsonObject getMessage(final String value) {

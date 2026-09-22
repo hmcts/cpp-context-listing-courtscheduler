@@ -282,7 +282,7 @@ class HearingIdIT extends AbstractIT {
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setCourtRoomId(1);
-        allocatedListing.setHearingStartTime(Date.from(hearingStartTime.atZone(UTC_ZONE).toInstant()));
+        allocatedListing.setHearingStartTime(hearingStartTime.atZone(UTC_ZONE).toInstant());
         allocatedListing.setDuration(120);
         allocatedListing.setOucode("BA124");
         allocatedListing.setRotaBusinessType("BUSS");

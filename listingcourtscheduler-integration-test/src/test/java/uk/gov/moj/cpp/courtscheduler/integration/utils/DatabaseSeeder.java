@@ -197,14 +197,14 @@ public class DatabaseSeeder {
             preparedStatement.setInt(16, courtSchedule.getMaxDuration());
             preparedStatement.setInt(17, courtSchedule.getAvailableSlots());
             preparedStatement.setInt(18, courtSchedule.getAvailableDuration());
-            preparedStatement.setBoolean(19, courtSchedule.getSupportAdSplit());
+            preparedStatement.setBoolean(19, courtSchedule.isSupportAdSplit());
             preparedStatement.setInt(20, courtSchedule.getMaxAdMorningDuration());
             preparedStatement.setInt(21, courtSchedule.getMaxAdAfternoonDuration());
-            preparedStatement.setTimestamp(22, new Timestamp(courtSchedule.getSessionStartTime().getTime()));
-            preparedStatement.setTimestamp(23, new Timestamp(courtSchedule.getSessionEndTime().getTime()));
-            preparedStatement.setTimestamp(24, new Timestamp(courtSchedule.getNationalBreakTime().getTime()));
-            preparedStatement.setBoolean(25, courtSchedule.getIsOverbookingAllowed());
-            preparedStatement.setBoolean(26, courtSchedule.getIsDraft());
+            preparedStatement.setTimestamp(22, Timestamp.from(courtSchedule.getSessionStartTime()));
+            preparedStatement.setTimestamp(23, Timestamp.from(courtSchedule.getSessionEndTime()));
+            preparedStatement.setTimestamp(24, Timestamp.from(courtSchedule.getNationalBreakTime()));
+            preparedStatement.setBoolean(25, courtSchedule.isOverbookingAllowed());
+            preparedStatement.setBoolean(26, courtSchedule.isDraft());
             preparedStatement.setString(27, normalizeJurisdiction(courtSchedule.getJurisdiction()));
 
             preparedStatement.executeUpdate();
@@ -240,14 +240,14 @@ public class DatabaseSeeder {
                 preparedStatement.setInt(16, courtSchedule.getMaxDuration());
                 preparedStatement.setInt(17, courtSchedule.getAvailableSlots());
                 preparedStatement.setInt(18, courtSchedule.getAvailableDuration());
-                preparedStatement.setBoolean(19, courtSchedule.getSupportAdSplit());
+                preparedStatement.setBoolean(19, courtSchedule.isSupportAdSplit());
                 preparedStatement.setInt(20, courtSchedule.getMaxAdMorningDuration());
                 preparedStatement.setInt(21, courtSchedule.getMaxAdAfternoonDuration());
-                preparedStatement.setTimestamp(22, new Timestamp(courtSchedule.getSessionStartTime().getTime()));
-                preparedStatement.setTimestamp(23, new Timestamp(courtSchedule.getSessionEndTime().getTime()));
-                preparedStatement.setTimestamp(24, new Timestamp(courtSchedule.getNationalBreakTime().getTime()));
-                preparedStatement.setBoolean(25, courtSchedule.getIsOverbookingAllowed());
-                preparedStatement.setBoolean(26, courtSchedule.getIsDraft());
+                preparedStatement.setTimestamp(22, Timestamp.from(courtSchedule.getSessionStartTime()));
+                preparedStatement.setTimestamp(23, Timestamp.from(courtSchedule.getSessionEndTime()));
+                preparedStatement.setTimestamp(24, Timestamp.from(courtSchedule.getNationalBreakTime()));
+                preparedStatement.setBoolean(25, courtSchedule.isOverbookingAllowed());
+                preparedStatement.setBoolean(26, courtSchedule.isDraft());
                 preparedStatement.setString(27, normalizeJurisdiction(courtSchedule.getJurisdiction()));
                 preparedStatement.addBatch();
             }
@@ -285,7 +285,7 @@ public class DatabaseSeeder {
             if (isNull(allocatedListing.getHearingStartTime())) {
                 preparedStatement.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
             } else {
-                preparedStatement.setTimestamp(9, new Timestamp(allocatedListing.getHearingStartTime().getTime()));
+                preparedStatement.setTimestamp(9, Timestamp.from(allocatedListing.getHearingStartTime()));
             }
 
             preparedStatement.setTimestamp(10, new Timestamp(System.currentTimeMillis()));
@@ -330,7 +330,7 @@ public class DatabaseSeeder {
                 if (isNull(allocatedListing.getHearingStartTime())) {
                     preparedStatement.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
                 } else {
-                    preparedStatement.setTimestamp(9, new Timestamp(allocatedListing.getHearingStartTime().getTime()));
+                    preparedStatement.setTimestamp(9, Timestamp.from(allocatedListing.getHearingStartTime()));
                 }
 
                 preparedStatement.setTimestamp(10, new Timestamp(System.currentTimeMillis()));
@@ -361,7 +361,7 @@ public class DatabaseSeeder {
 
             preparedStatement.setObject(1, provisionalBooking.getProvisionalBookingKey().getCourtSchedule().getCourtScheduleId());
             preparedStatement.setString(2, provisionalBooking.getProvisionalBookingKey().getBookingId());
-            preparedStatement.setBoolean(3, provisionalBooking.getActive());
+            preparedStatement.setBoolean(3, provisionalBooking.isActive());
             preparedStatement.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
             preparedStatement.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
             preparedStatement.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
@@ -382,8 +382,8 @@ public class DatabaseSeeder {
             stmt.setString(++idx, mapping.getSurname());
             stmt.setString(++idx, mapping.getEmail());
             stmt.setString(++idx, mapping.getJudiciaryType());
-            stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
-            stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
+            stmt.setObject(++idx, mapping.isBenchChairman(), Types.BIT);
+            stmt.setObject(++idx, mapping.isDeputy(), Types.BIT);
             stmt.setString(++idx, mapping.getPosition());
 
             stmt.setString(++idx, mapping.getCourtListingProfileId());
@@ -394,8 +394,8 @@ public class DatabaseSeeder {
             stmt.setString(++idx, mapping.getSurname());
             stmt.setString(++idx, mapping.getEmail());
             stmt.setString(++idx, mapping.getJudiciaryType());
-            stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
-            stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
+            stmt.setObject(++idx, mapping.isBenchChairman(), Types.BIT);
+            stmt.setObject(++idx, mapping.isDeputy(), Types.BIT);
             stmt.setString(++idx, mapping.getPosition());
 
             stmt.setString(++idx, mapping.getId().getCourtScheduleId());
@@ -487,7 +487,7 @@ public class DatabaseSeeder {
                 // Insert repeat days
                 for (AvailabilityDayOfWeek dayOfWeek : repeatDays) {
                     repeatDaysStmt.setString(1, ruleId);
-                    repeatDaysStmt.setString(2, dayOfWeek.name());
+                    repeatDaysStmt.setString(2, dayOfWeek.getWireValue());
                     repeatDaysStmt.addBatch();
                 }
                 repeatDaysStmt.executeBatch();

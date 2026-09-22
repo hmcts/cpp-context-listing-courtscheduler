@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -30,13 +30,13 @@ public class CourtScheduleJudiciary {
 
     private String position;
 
-    private Boolean isBenchChairman;
+    private Boolean benchChairman;
 
-    private Boolean isDeputy;
+    private Boolean deputy;
 
     private boolean active;
-    private Date createdOn;
-    private Date updatedOn;
+    private Instant createdOn;
+    private Instant updatedOn;
 
 
     @SuppressWarnings("squid:S1186")
@@ -47,8 +47,8 @@ public class CourtScheduleJudiciary {
     public CourtScheduleJudiciary(final Builder builder) {
         this.rotaJudiciaryId = builder.rotaJudiciaryId;
         this.forenames = builder.forenames;
-        this.isBenchChairman = builder.isBenchChairman;
-        this.isDeputy = builder.isDeputy;
+        this.benchChairman = builder.isBenchChairman;
+        this.deputy = builder.isDeputy;
         this.judiciaryId = builder.judiciaryId;
         this.judiciaryType = builder.judiciaryType;
         this.surname = builder.surname;
@@ -100,13 +100,13 @@ public class CourtScheduleJudiciary {
     }
 
     @JsonProperty("isBenchChairman")
-    public Boolean getBenchChairman() {
-        return isBenchChairman;
+    public Boolean isBenchChairman() {
+        return benchChairman;
     }
 
     @JsonProperty("isDeputy")
-    public Boolean getDeputy() {
-        return isDeputy;
+    public Boolean isDeputy() {
+        return deputy;
     }
     public boolean isActive() {
         return active;
@@ -153,26 +153,26 @@ public class CourtScheduleJudiciary {
     }
 
     public void setBenchChairman(final Boolean benchChairman) {
-        isBenchChairman = benchChairman;
+        this.benchChairman = benchChairman;
     }
 
     public void setDeputy(final Boolean deputy) {
-        isDeputy = deputy;
+        this.deputy = deputy;
     }
 
-    public Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(final Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return updatedOn;
     }
 
-    public void setUpdatedOn(final Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
     public static Builder judiciary() {
@@ -193,13 +193,13 @@ public class CourtScheduleJudiciary {
                 Objects.equals(courtListingProfileId, courtScheduleJudiciary.courtListingProfileId) &&
                 Objects.equals(judiciaryType, courtScheduleJudiciary.judiciaryType) &&
                 Objects.equals(position, courtScheduleJudiciary.position) &&
-                Objects.equals(isBenchChairman, courtScheduleJudiciary.isBenchChairman) &&
-                Objects.equals(isDeputy, courtScheduleJudiciary.isDeputy);
+                Objects.equals(benchChairman, courtScheduleJudiciary.benchChairman) &&
+                Objects.equals(deputy, courtScheduleJudiciary.deputy);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(judiciaryId, rotaJudiciaryId, title, forenames, surname, emailAddress, courtListingProfileId, judiciaryType, position, isBenchChairman, isDeputy);
+        return Objects.hash(judiciaryId, rotaJudiciaryId, title, forenames, surname, emailAddress, courtListingProfileId, judiciaryType, position, benchChairman, deputy);
     }
 
     @Override
@@ -214,8 +214,8 @@ public class CourtScheduleJudiciary {
                 ", courtListingProfileId='" + courtListingProfileId + '\'' +
                 ", judiciaryType='" + judiciaryType + '\'' +
                 ", position='" + position + '\'' +
-                ", isBenchChairman=" + isBenchChairman +
-                ", isDeputy=" + isDeputy +
+                ", isBenchChairman=" + benchChairman +
+                ", isDeputy=" + deputy +
                 '}';
     }
 
@@ -247,8 +247,8 @@ public class CourtScheduleJudiciary {
 
         private Boolean active = false;
 
-        private Date createdOn;
-        private Date updatedOn;
+        private Instant createdOn;
+        private Instant updatedOn;
 
         public Builder withActive(final boolean active) {
             this.active = active;
@@ -316,12 +316,12 @@ public class CourtScheduleJudiciary {
         }
 
 
-        public Builder withCreatedOn(final Date createdOn) {
+        public Builder withCreatedOn(final Instant createdOn) {
             this.createdOn = createdOn;
             return this;
         }
 
-        public Builder withUpdatedOn(final Date updatedOn) {
+        public Builder withUpdatedOn(final Instant updatedOn) {
             this.updatedOn = updatedOn;
             return this;
         }
