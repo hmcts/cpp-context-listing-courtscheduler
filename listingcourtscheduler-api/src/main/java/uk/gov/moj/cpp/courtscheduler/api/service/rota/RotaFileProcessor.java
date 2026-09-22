@@ -17,7 +17,9 @@ import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 
@@ -114,13 +116,13 @@ public class RotaFileProcessor {
         logger.info("Processing blob: {} with execution ID: {} - parsed {} record types", blobName, executionId, records.size());
 
         // Extract locations and resolve OU codes
-        final var locations = rotaLocationPeriodHelper.getLocationFromRecords(records);
+        final List<String> locations = rotaLocationPeriodHelper.getLocationFromRecords(records);
         logger.info("Extracted {} location IDs from blob: {}", locations.size(), blobName);
-        final var ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations);
+        final List<String> ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations);
         logger.info("Resolved {} OU codes for blob: {}", ouCodes.size(), blobName);
 
         // Get rota period dates and delete unallocated court schedule judiciaries
-        final var rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
+        final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
         final int deletedCount = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
                 rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
@@ -295,7 +297,7 @@ public class RotaFileProcessor {
     private AssignJudiciariesResponse processJudiciaryAssignments(
             final List<JudiciaryScheduleAssignment> assignmentList,
             final String executionId) {
-        final var assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
         // Use repository for Rota processing (useRepository = true)
         return judiciaryAssignmentService.assignJudiciaries(assignRequest, executionId, true);
     }

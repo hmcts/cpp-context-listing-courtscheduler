@@ -1133,7 +1133,7 @@ class SessionsServiceTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
         Result result = sessionsService.update(updateCourtSchedule);
         assertThat(result.isSuccess(), is(true));
     }
@@ -1166,7 +1166,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("RETIRED_BT"))).thenReturn(Optional.empty());
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("LNG"))).thenReturn(returnBusinessTypeObject("LNG", false, "CROWN"));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         final Result result = sessionsService.update(updateCourtSchedule);
 
@@ -1225,7 +1225,7 @@ class SessionsServiceTest {
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         when(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("new-room"), eq(persistedCourtSchedule.getCourtHouseId())))
                 .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId("new-room").build()));
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         Result result = sessionsService.update(updateCourtSchedule);
 
@@ -1295,7 +1295,7 @@ class SessionsServiceTest {
                         .withOucodeUUID(courtHouseId)
                         .withOucode("C45GU00")
                         .build()));
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         Result result = sessionsService.update(updateCourtSchedule);
 
@@ -1327,7 +1327,7 @@ class SessionsServiceTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
         Result result = sessionsService.update(updateCourtSchedule);
         assertThat(result.isSuccess(), is(true));
     }
@@ -1508,7 +1508,7 @@ class SessionsServiceTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
         Result result = sessionsService.update(updateCourtSchedule);
         assertThat(result.isSuccess(), is(true));
     }
@@ -3041,7 +3041,7 @@ class SessionsServiceTest {
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("new-courtroom-id"))).thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().build()));
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         Result result = sessionsService.update(updateCourtSchedule);
 
@@ -3074,7 +3074,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         Result result = sessionsService.update(updateCourtSchedule);
 
@@ -3259,7 +3259,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(List.of(booked));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         Result result = sessionsService.update(updateCourtSchedule);
 
@@ -3291,7 +3291,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         Result result = sessionsService.update(updateCourtSchedule);
 
@@ -3323,7 +3323,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         Result result = sessionsService.update(updateCourtSchedule);
 
@@ -3358,7 +3358,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("TRL"))).thenReturn(returnBusinessTypeObject("TRL", false, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(0);
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         Result result = sessionsService.update(updateCourtSchedule);
 
@@ -3390,7 +3390,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId))).thenReturn(emptyList());
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(courtScheduleId)).thenReturn(5); // Some slots booked
-        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.SUCCESS());
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
 
         Result result = sessionsService.update(updateCourtSchedule);
 

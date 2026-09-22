@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import java.io.StringReader;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -90,7 +93,7 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
     private JsonObject toJsonObject(final Map<String, Object> body) {
         try {
             final String json = body == null ? "{}" : objectMapper.writeValueAsString(body);
-            try (var reader = Json.createReader(new StringReader(json))) {
+            try (JsonReader reader = Json.createReader(new StringReader(json))) {
                 return reader.readObject();
             }
         } catch (JsonProcessingException e) {
@@ -201,10 +204,10 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
     }
 
     private static String extractFirstString(final JsonObject errors) {
-        for (final var entry : errors.entrySet()) {
-            final var v = entry.getValue();
-            if (v.getValueType() == jakarta.json.JsonValue.ValueType.STRING) {
-                return ((jakarta.json.JsonString) v).getString();
+        for (final Map.Entry<String, JsonValue> entry : errors.entrySet()) {
+            final JsonValue value = entry.getValue();
+            if (value.getValueType() == JsonValue.ValueType.STRING) {
+                return ((JsonString) value).getString();
             }
         }
         return errors.toString();

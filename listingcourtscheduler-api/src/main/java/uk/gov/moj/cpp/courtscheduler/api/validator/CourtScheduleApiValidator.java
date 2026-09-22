@@ -53,8 +53,8 @@ public class CourtScheduleApiValidator {
 
         // Validate startDate <= endDate
         try {
-            final var start = java.time.LocalDate.parse(courtScheduleRequestParam.sessionStartDate());
-            final var end = java.time.LocalDate.parse(courtScheduleRequestParam.sessionEndDate());
+            final java.time.LocalDate start = java.time.LocalDate.parse(courtScheduleRequestParam.sessionStartDate());
+            final java.time.LocalDate end = java.time.LocalDate.parse(courtScheduleRequestParam.sessionEndDate());
             if (end.isBefore(start)) {
                 return buildErrorResponse(START_DATE_AFTER_END_DATE);
             }

@@ -21,11 +21,11 @@ public class Result {
         this.success = isSuccess;
     }
 
-    public static Result SUCCESS() {
+    public static Result success() {
         return new Result("Success", true);
     }
 
-    public static Result FAILED(final String msg) {
+    public static Result failed(final String msg) {
         return new Result(msg, false);
     }
 

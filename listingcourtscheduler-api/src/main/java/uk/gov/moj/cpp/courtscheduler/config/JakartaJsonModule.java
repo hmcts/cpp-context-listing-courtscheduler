@@ -10,6 +10,7 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * Serializes {@link JsonValue} (and subtypes) directly as JSON instead of letting Jackson
@@ -56,7 +57,7 @@ public class JakartaJsonModule extends SimpleModule {
                 case OBJECT -> {
                     gen.writeStartObject();
                     final JsonObject obj = (JsonObject) value;
-                    for (final var entry : obj.entrySet()) {
+                    for (final Map.Entry<String, JsonValue> entry : obj.entrySet()) {
                         gen.writeFieldName(entry.getKey());
                         serialize(entry.getValue(), gen, serializers);
                     }

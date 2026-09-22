@@ -694,7 +694,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
             when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
-                    .thenReturn(Result.FAILED("db failure"));
+                    .thenReturn(Result.failed("db failure"));
 
             Assertions.assertThrows(CrownFallbackNoSessionException.class,
                     () -> service.crownFallbackSearchAndBook(request));

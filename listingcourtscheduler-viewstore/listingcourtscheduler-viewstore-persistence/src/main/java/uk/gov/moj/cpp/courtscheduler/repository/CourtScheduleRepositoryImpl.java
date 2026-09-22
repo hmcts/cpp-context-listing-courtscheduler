@@ -586,7 +586,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
 
         saveInternal(persistedCourtSchedule);
-        return Result.SUCCESS();
+        return Result.success();
     }
 
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
@@ -1057,11 +1057,11 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
         if (isNotEmpty(updateAllocatedSlots)) {
             persistHearingSlots(slots, isProvisionalSlot, updateAllocatedSlots);
-            final Result success = Result.SUCCESS();
+            final Result success = Result.success();
             updateAllocatedSlots.forEach(slot -> success.addHearingDaySchedule(slot.getSessionDate(), slot.getCourtScheduleId()));
             return success;
         } else {
-            return Result.FAILED(format("courtScheduleId matching for non-provisional slot(s) has been failed,please check the logs. hearingId : %s", slots.get(0).getHearingId()));
+            return Result.failed(format("courtScheduleId matching for non-provisional slot(s) has been failed,please check the logs. hearingId : %s", slots.get(0).getHearingId()));
         }
     }
 
@@ -1077,10 +1077,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             slots.clear();
             slots.addAll(updateAllocatedSlots.stream().toList());
         } else {
-            return Result.FAILED("Not able to allocate hearing slots");
+            return Result.failed("Not able to allocate hearing slots");
         }
 
-        final Result success = Result.SUCCESS();
+        final Result success = Result.success();
         updateAllocatedSlots.forEach(slot -> success.addHearingDaySchedule(slot.getSessionDate(), slot.getCourtScheduleId()));
         return success;
     }

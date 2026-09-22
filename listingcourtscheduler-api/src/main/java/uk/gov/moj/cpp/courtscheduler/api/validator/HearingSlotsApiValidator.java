@@ -74,8 +74,8 @@ public class HearingSlotsApiValidator {
         }
 
         // Validate startDate <= endDate
-        final var start = java.time.LocalDate.parse(hearingSlotRequestParam.sessionStartDate());
-        final var end = java.time.LocalDate.parse(hearingSlotRequestParam.sessionEndDate());
+        final java.time.LocalDate start = java.time.LocalDate.parse(hearingSlotRequestParam.sessionStartDate());
+        final java.time.LocalDate end = java.time.LocalDate.parse(hearingSlotRequestParam.sessionEndDate());
         if (end.isBefore(start)) {
             return buildErrorResponse(START_DATE_AFTER_END_DATE);
         }

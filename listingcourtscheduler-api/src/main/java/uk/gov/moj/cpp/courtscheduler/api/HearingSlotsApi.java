@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
+import jakarta.json.JsonReader;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import java.io.StringReader;
@@ -74,7 +75,7 @@ public class HearingSlotsApi implements HearingslotsOpenApi {
     }
 
     private JsonObject toJsonObject(final Map<String, Object> body) {
-        try (var reader = Json.createReader(new StringReader(toJson(body)))) {
+        try (JsonReader reader = Json.createReader(new StringReader(toJson(body)))) {
             return reader.readObject();
         }
     }
