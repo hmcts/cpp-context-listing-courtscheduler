@@ -197,12 +197,14 @@ public class StubUtil {
      * Counts the change-judiciary-for-hearings commands that carry the given hearing ID in the
      * {@code hearings} array AND match the shape listing's JSON schema requires:
      * {@code judiciary[0].judicialRoleType} must be an object with a {@code judiciaryType} field
-     * (a bare-string judicialRoleType is rejected by the listing command API).
+     * (a bare-string judicialRoleType is rejected by the listing command API), and
+     * {@code judiciaryAssignmentSource} must be {@code "AUTO"}.
      */
     public static int countSchemaShapedChangeJudiciaryForHearingsRequestsFor(final String hearingId) {
         return countRequests(WireMock.postRequestedFor(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
                 .withRequestBody(WireMock.matchingJsonPath(format("$.hearings[?(@ == '%s')]", hearingId)))
-                .withRequestBody(WireMock.matchingJsonPath("$.judiciary[0].judicialRoleType.judiciaryType")));
+                .withRequestBody(WireMock.matchingJsonPath("$.judiciary[0].judicialRoleType.judiciaryType"))
+                .withRequestBody(WireMock.matchingJsonPath("$[?(@.judiciaryAssignmentSource == 'AUTO')]")));
     }
 
     private static String extractHost(final String url) {

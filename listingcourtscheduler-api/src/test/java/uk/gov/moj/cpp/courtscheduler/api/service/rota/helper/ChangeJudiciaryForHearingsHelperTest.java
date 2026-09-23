@@ -104,9 +104,8 @@ class ChangeJudiciaryForHearingsHelperTest {
             assertFalse(judicialRole3.containsKey("isBenchChairman"));
             assertFalse(judicialRole3.containsKey("isDeputy"));
 
-            // johSource must be omitted so listing treats the command as an automated update
-            // and preserves manually assigned judiciaries (AC-2/AC-3)
-            payloads.forEach(payload -> assertFalse(payload.containsKey("johSource")));
+            // judiciaryAssignmentSource must be "AUTO" so listing treats the command as rota-driven
+            payloads.forEach(payload -> assertEquals("AUTO", payload.getString("judiciaryAssignmentSource")));
         }
 
         @Test
@@ -135,6 +134,7 @@ class ChangeJudiciaryForHearingsHelperTest {
             final JsonObject payload = payloads.get(0);
             assertEquals(List.of(hearingId1, hearingId2), toStringList(payload.getJsonArray("hearings")));
             assertTrue(payload.getJsonArray("judiciary").isEmpty());
+            assertEquals("AUTO", payload.getString("judiciaryAssignmentSource"));
         }
 
         @Test
