@@ -23,6 +23,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.api.JudiciaryAvailabilityOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAddJudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteJudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRuleQuery;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetJudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateJudiciaryAvailabilityRule;
 
@@ -163,8 +164,13 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
         LOG.info("courtscheduler.judiciary.find.availability.rule startDate={}, endDate={}, courtCentreId={}",
                 startDate, endDate, courtCentreId);
         final CourtschedulerFindJudiciaryAvailabilityRule response = judiciaryAvailabilityService.findJudiciaryAvailabilityRules(
-                LocalDate.parse(startDate), LocalDate.parse(endDate), courtCentreId, null,
-                pageSize, pageNumber, withJudiciary);
+                new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                        .startDate(LocalDate.parse(startDate))
+                        .endDate(LocalDate.parse(endDate))
+                        .courtHouseId(courtCentreId)
+                        .pageSize(pageSize)
+                        .pageNumber(pageNumber)
+                        .withJudiciary(withJudiciary));
         return ResponseEntity.ok(response);
     }
 

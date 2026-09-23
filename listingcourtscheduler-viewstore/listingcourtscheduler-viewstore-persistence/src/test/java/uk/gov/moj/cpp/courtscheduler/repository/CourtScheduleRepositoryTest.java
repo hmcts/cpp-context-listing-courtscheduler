@@ -2,11 +2,13 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
@@ -422,6 +424,26 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY1").getAvailableSlots());
         assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY2").getAvailableSlots());
         assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY3").getAvailableSlots());
+    }
+
+    @Test
+    public void findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSessionReturnsGeneratedMatcherInfo() {
+        // Verifies the class-based (DTO) projection binds the raw JPQL column-select into the
+        // generated CourtScheduleMatcherInfo, including converting the entity's java.util.Date
+        // createdOn into the POJO's OffsetDateTime field.
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 1);
+        final String ouCode = "B99MC10";
+        final CourtSchedule schedule = createCourtSchedule(ouCode, "ADULT", sessionDate, "CR10", "TRF", "AM");
+
+        courtScheduleRepository.saveAndFlush(schedule);
+
+        final CourtScheduleMatcherInfo matcherInfo = courtScheduleRepository
+                .findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession("CR10", sessionDate, "TRF", "AM");
+
+        assertNotNull(matcherInfo);
+        assertEquals(schedule.getCourtScheduleId(), matcherInfo.getCourtScheduleId());
+        assertEquals(ouCode, matcherInfo.getOuCode());
+        assertNotNull(matcherInfo.getCreatedOn());
     }
 
     @Test
