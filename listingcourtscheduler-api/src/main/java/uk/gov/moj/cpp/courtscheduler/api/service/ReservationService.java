@@ -247,7 +247,7 @@ public class ReservationService {
      * moves the hold.
      *
      * <p>Returns the court schedule ids this bookingId already holds an (unconfirmed) reservation
-     * against, reusing the same {@code findByHearingId} fetch the guard itself needed rather than
+     * against, reusing the same {@code findByBookingId} fetch the guard itself needed rather than
      * querying a second time — see {@link #toReservedSlot} for why that set matters for capacity.
      */
     private Set<String> guardAgainstConfirmedAllocation(final String bookingId) {

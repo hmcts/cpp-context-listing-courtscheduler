@@ -154,10 +154,10 @@ public class ProvisionalBookingIT extends AbstractIT {
      * confirm lookup produced. Everything here needs <b>two</b> sessions — the single-slot fixture
      * cannot see either bug.
      *
-     * <p><b>C1.</b> Every slot of a booking shares the minted bookingId as its {@code hearing_id},
-     * and {@code saveBookedSlots} opens with a hearing-wide release keyed on that id. Reserving one
-     * slot at a time therefore made slot 2 release slot 1: a two-day pick ended holding one day on
-     * the last session. Asserting two held rows and two decremented sessions pins that.
+     * <p><b>C1.</b> Every slot of a booking shares the minted bookingId, and reserving opens with
+     * a release keyed on that id. Reserving one slot at a time therefore made slot 2 release
+     * slot 1: a two-day pick ended holding one day on the last session. Asserting two held rows
+     * and two decremented sessions pins that.
      *
      * <p><b>C2.</b> Confirming through the real {@code PUT /hearingslots} path with the bookingId
      * used to look the booking up in legacy {@code provisional_booking}, which reserve-a-slot no
@@ -193,7 +193,7 @@ public class ProvisionalBookingIT extends AbstractIT {
 
         // BOTH sessions are held — one reservation row each, both carrying the expiry that is the
         // reservation discriminator, both keyed on the same bookingId.
-        final List<AllocatedListing> reservations = allocatedListingsForHearingId(bookingId);
+        final List<AllocatedListing> reservations = reservationsForBookingId(bookingId);
         assertThat("both picked sessions must be held — one row means slot 2 released slot 1",
                 reservations, hasSize(2));
         reservations.forEach(row -> assertThat("a reservation must carry expires_at",
@@ -225,7 +225,7 @@ public class ProvisionalBookingIT extends AbstractIT {
 
         // ... and no reservation survives under the bookingId.
         assertThat("the bookingId-keyed hold must be released on confirm",
-                allocatedListingsForHearingId(bookingId), hasSize(0));
+                reservationsForBookingId(bookingId), hasSize(0));
 
         // Net effect per session is exactly one decrement: 5 -> 4 (hold) -> 3 (book) -> 4 (release).
         assertThat("session decremented twice — the reservation was never released",
@@ -260,7 +260,7 @@ public class ProvisionalBookingIT extends AbstractIT {
                 + listResponse.readEntity(String.class), listResponse.getStatus(), is(OK.getStatusCode()));
 
         assertThat("the bookingId-keyed hold must be released on the list path",
-                allocatedListingsForHearingId(bookingId), hasSize(0));
+                reservationsForBookingId(bookingId), hasSize(0));
 
         final List<AllocatedListing> booked = allocatedListingsForHearingId(hearingId);
         assertThat(booked, hasSize(1));
@@ -274,8 +274,8 @@ public class ProvisionalBookingIT extends AbstractIT {
 
     /**
      * NEW-15. A clerk who re-picks must not hold both sessions. The re-pick comes back under the
-     * same bookingId, and because a reservation's hearing_id IS its bookingId, saveBookedSlots'
-     * hearing-wide release wipes the previous pick before taking the new one.
+     * same bookingId, and reserveAll opens by releasing every unconfirmed row already held under
+     * it, so the previous pick is given back before the new one is taken.
      */
     @Test
     void shouldReleaseTheFirstSessionWhenRePickingUnderTheSameBookingId() throws Exception {
@@ -292,7 +292,7 @@ public class ProvisionalBookingIT extends AbstractIT {
         assertThat("the abandoned session must get its slot back", availableSlots(sessionAId), is(5));
         assertThat("the newly picked session must be held", availableSlots(sessionBId), is(4));
 
-        final List<AllocatedListing> held = allocatedListingsForHearingId(bookingId);
+        final List<AllocatedListing> held = reservationsForBookingId(bookingId);
         assertThat("only the new pick may survive", held, hasSize(1));
         assertThat(held.get(0).getCourtScheduleId(), is(sessionBId));
     }
@@ -323,9 +323,23 @@ public class ProvisionalBookingIT extends AbstractIT {
         assertThat(bookingStatusOf(UUID.randomUUID().toString()), is("NONE"));
     }
 
+    /** Confirmed rows, which are the only ones carrying a real {@code hearing_id}. */
     private List<AllocatedListing> allocatedListingsForHearingId(final String hearingId) {
         return databaseReader.allocatedListings().stream()
                 .filter(row -> hearingId.equals(row.getHearingId()))
+                .toList();
+    }
+
+    /**
+     * The UNCONFIRMED rows held under a bookingId. The expires_at filter is what makes this
+     * meaningful: a confirmed listing carries the same booking_id as the reservation it grew from,
+     * so filtering on booking_id alone would count the confirmed row as a surviving hold and let
+     * "the hold was released" assertions pass while it had not been.
+     */
+    private List<AllocatedListing> reservationsForBookingId(final String bookingId) {
+        return databaseReader.allocatedListings().stream()
+                .filter(row -> bookingId.equals(row.getBookingId()))
+                .filter(row -> row.getExpiresAt() != null)
                 .toList();
     }
 

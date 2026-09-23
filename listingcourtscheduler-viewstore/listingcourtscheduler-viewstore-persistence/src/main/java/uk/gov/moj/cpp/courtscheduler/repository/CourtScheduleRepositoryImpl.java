@@ -1285,7 +1285,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
         // BUG-3 Task 1: release the hold taken at slot-pick time before the loop below charges
         // each session for the real booking. The hold is keyed on the bookingId, so the
-        // hearing-wide release inside the loop (keyed on the real hearing id) does not cover it.
+        // hearing-wide release inside the loop (keyed on the real hearing id) does not cover it:
+        // a hold lives in booking_id with hearing_id null, so only a booking-keyed release sees it.
         // Without this the session is decremented twice — once by the hold, once by the booking —
         // until the 01:00 purge. Released once per distinct booking, before the loop, so a
         // multi-session booking is released as a unit rather than re-attempted per session.
@@ -1295,7 +1296,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .map(HearingSlot::getBookingId)
                 .filter(StringUtils::isNotBlank)
                 .distinct()
-                .forEach(this::releaseOldAllocatedListings);
+                .forEach(this::releaseReservationsForBooking);
 
          hearings.forEach(hearing -> {
              uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = entityManager.find(CourtSchedule.class, hearing.getCourtScheduleId());
@@ -2375,9 +2376,20 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
     }
 
+    /**
+     * The hearing these slots belong to, if they belong to one at all.
+     *
+     * <p>The {@code nonNull} filter is required, not defensive: a reservation carries its id in
+     * booking_id and leaves hearing_id null, and {@link java.util.stream.Stream#findFirst()}
+     * throws {@link NullPointerException} when the element it selects is null. Without it, every
+     * reservation NPEs here before the caller can even decide whether it wants a hearing-wide
+     * release — and GlobalExceptionHandler turns that into a 400 reading "Request body is missing
+     * a required field: null", which points at the caller's payload rather than at this line.
+     */
     private Optional<String> getHearingId(final List<AllocatedSlot> slots) {
         return slots.stream()
                 .map(AllocatedSlot::getHearingId)
+                .filter(Objects::nonNull)
                 .findFirst();
     }
 

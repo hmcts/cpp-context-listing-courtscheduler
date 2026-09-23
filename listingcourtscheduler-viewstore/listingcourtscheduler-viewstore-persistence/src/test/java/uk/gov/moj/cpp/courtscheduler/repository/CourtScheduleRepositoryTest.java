@@ -773,6 +773,11 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         slot.setHearingStartTime(SIMPLE_DATE_FORMAT.format(
                 Date.from(sessionDate.atTime(10, 0).atZone(ZoneId.of("UTC")).toInstant())));
         slot.setSource("DEFAULT");
+        // random(AllocatedSlot.class) fills EVERY field, expiresAt included, which would make this
+        // confirm-path slot reservation-shaped: expires_at is the reservation discriminator, and a
+        // confirmed booking has none. Leaving the random value in place also collides with the
+        // partial unique index on (court_schedule_id, booking_id) WHERE expires_at IS NOT NULL.
+        slot.setExpiresAt(null);
         return slot;
     }
 

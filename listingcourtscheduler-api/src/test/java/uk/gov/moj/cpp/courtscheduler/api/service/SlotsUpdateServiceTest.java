@@ -156,12 +156,12 @@ class SlotsUpdateServiceTest {
         final String courtScheduleId = allocatedSlots.get(0).getCourtScheduleId();
 
         final AllocatedListing reservation = new AllocatedListing();
-        reservation.setHearingId(bookingId);
+        reservation.setBookingId(bookingId);
         reservation.setCourtScheduleId(courtScheduleId);
         reservation.setHearingStartTime(new Date(1_600_000_000_000L));
         reservation.setExpiresAt(LocalDate.now());
 
-        when(allocatedListingRepository.findByHearingId(bookingId)).thenReturn(List.of(reservation));
+        when(allocatedListingRepository.findByBookingId(bookingId)).thenReturn(List.of(reservation));
         when(courtScheduleRepository.saveBookedSlots(any(), anyBoolean(), anyBoolean())).thenReturn(new Result("", true));
 
         service.update(allocatedSlots);
@@ -181,7 +181,7 @@ class SlotsUpdateServiceTest {
         final String bookingId = allocatedSlots.get(0).getBookingId();
         final String courtScheduleId = allocatedSlots.get(0).getCourtScheduleId();
 
-        when(allocatedListingRepository.findByHearingId(bookingId)).thenReturn(Collections.emptyList());
+        when(allocatedListingRepository.findByBookingId(bookingId)).thenReturn(Collections.emptyList());
         when(provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId)))
                 .thenReturn(Map.of(courtScheduleId, new Date(1_600_000_000_000L)));
         when(courtScheduleRepository.saveBookedSlots(any(), anyBoolean(), anyBoolean())).thenReturn(new Result("", true));
@@ -199,11 +199,12 @@ class SlotsUpdateServiceTest {
         final String bookingId = allocatedSlots.get(0).getBookingId();
 
         final AllocatedListing confirmed = new AllocatedListing();
-        confirmed.setHearingId(bookingId);
+        confirmed.setBookingId(bookingId);
+        confirmed.setHearingId("a-real-hearing-id");
         confirmed.setCourtScheduleId(allocatedSlots.get(0).getCourtScheduleId());
         confirmed.setExpiresAt(null);
 
-        when(allocatedListingRepository.findByHearingId(bookingId)).thenReturn(List.of(confirmed));
+        when(allocatedListingRepository.findByBookingId(bookingId)).thenReturn(List.of(confirmed));
         when(provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId))).thenReturn(Collections.emptyMap());
 
         Assertions.assertThrows(uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException.class,
@@ -215,7 +216,7 @@ class SlotsUpdateServiceTest {
         final List<AllocatedSlot> allocatedSlots = bookingBasedSlots();
         final String bookingId = allocatedSlots.get(0).getBookingId();
 
-        when(allocatedListingRepository.findByHearingId(bookingId)).thenReturn(Collections.emptyList());
+        when(allocatedListingRepository.findByBookingId(bookingId)).thenReturn(Collections.emptyList());
         when(provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId))).thenReturn(Collections.emptyMap());
 
         Assertions.assertThrows(uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException.class,

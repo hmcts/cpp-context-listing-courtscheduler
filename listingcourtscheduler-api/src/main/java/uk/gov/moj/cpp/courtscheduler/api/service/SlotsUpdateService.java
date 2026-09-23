@@ -140,7 +140,7 @@ public class SlotsUpdateService {
      */
     private Map<String, Date> resolveBookingSessions(final String bookingId) {
         final Map<String, Date> fromReservations = new java.util.LinkedHashMap<>();
-        allocatedListingRepository.findByHearingId(bookingId).stream()
+        allocatedListingRepository.findByBookingId(bookingId).stream()
                 .filter(row -> row.getExpiresAt() != null)
                 .forEach(row -> fromReservations.put(row.getCourtScheduleId(), row.getHearingStartTime()));
 

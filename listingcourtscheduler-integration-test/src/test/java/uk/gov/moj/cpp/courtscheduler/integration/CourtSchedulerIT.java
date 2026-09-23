@@ -5254,8 +5254,8 @@ class CourtSchedulerIT extends AbstractIT {
                 "reservations were not taken through the real booking pipeline — availableSlots "
                         + "did not drop by 2, so this test cannot prove anything about the purge");
 
-        final AllocatedListing expiredYesterday = allocatedListingForHearingId(expiringBookingId);
-        final AllocatedListing notYetExpired = allocatedListingForHearingId(survivingBookingId);
+        final AllocatedListing expiredYesterday = allocatedListingForBookingId(expiringBookingId);
+        final AllocatedListing notYetExpired = allocatedListingForBookingId(survivingBookingId);
 
         databaseSeeder.updateAllocatedListingExpiresAt(expiredYesterday.getId(), LocalDate.now().minusDays(1));
 
@@ -5325,13 +5325,13 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     /**
-     * A reservation's {@code hearing_id} IS its bookingId (see {@code ReservationService}), so this
-     * is how the row created by {@link #reserveViaProvisionalBooking} is found again in order to
-     * age it for the purge.
+     * A reservation is identified by its {@code booking_id}; {@code hearing_id} stays null until a
+     * share confirms it. This is how the row created by {@link #reserveViaProvisionalBooking} is
+     * found again in order to age it for the purge.
      */
-    private AllocatedListing allocatedListingForHearingId(final String bookingId) throws SQLException {
+    private AllocatedListing allocatedListingForBookingId(final String bookingId) throws SQLException {
         return databaseReader.allocatedListings().stream()
-                .filter(row -> bookingId.equals(row.getHearingId()))
+                .filter(row -> bookingId.equals(row.getBookingId()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError(
                         "no allocated_listings row found for bookingId " + bookingId
