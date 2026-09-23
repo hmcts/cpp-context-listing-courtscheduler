@@ -440,7 +440,7 @@ class ReferenceDataCacheTest {
     @Test
     void shouldReturnCpCourtRoomFromCacheWhenCacheEnabledHoweverNotInTheCache() {
         setCommonCacheEnabled();
-        when(cacheService.get(CP_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
+        when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(new CourtRoom().id(COURT_ROOM_ID)));
 
         referenceDataCache.getCpCourtRoomByCourtRoomId(COURT_ROOM_ID);
@@ -463,8 +463,8 @@ class ReferenceDataCacheTest {
         final String centreA = "161141dc-a01f-3b0a-85d1-7a90a8099b6a";
         final String centreB = "049b5d11-e3dd-356f-b742-bd5e71eb7af6";
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreA).build(),
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreB).build()));
+                new CourtRoom().id(COURT_ROOM_ID).oucodeUUID(centreA),
+                new CourtRoom().id(COURT_ROOM_ID).oucodeUUID(centreB)));
 
         final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
         assertEquals(2, memberships.size());
@@ -481,8 +481,8 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
         when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomName("no id").build(),
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+                new CourtRoom().courtroomName("no id"),
+                new CourtRoom().id(COURT_ROOM_ID)));
 
         final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
 
@@ -494,8 +494,8 @@ class ReferenceDataCacheTest {
     void shouldIgnoreCpCourtRoomsWithoutIdWhenCacheDisabled() {
         setCommonCacheDisabled();
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomName("no id").build(),
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+                new CourtRoom().courtroomName("no id"),
+                new CourtRoom().id(COURT_ROOM_ID)));
 
         final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
 
@@ -510,8 +510,8 @@ class ReferenceDataCacheTest {
         final String centreB = "049b5d11-e3dd-356f-b742-bd5e71eb7af6";
         when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreA).build(),
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreB).build()));
+                new CourtRoom().id(COURT_ROOM_ID).oucodeUUID(centreA),
+                new CourtRoom().id(COURT_ROOM_ID).oucodeUUID(centreB)));
 
         final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
 

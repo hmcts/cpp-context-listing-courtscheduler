@@ -333,10 +333,10 @@ public class SessionsService {
         if (persistedBusinessType.isEmpty()) {
             logger.warn("{}{} - session persisted under a retired business type; allowing the change to {}",
                     BUSINESS_TYPE_NOT_FOUND, persistedBusinessTypeCode, updatedBusinessType.getTypeCode());
-            return isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
+            return isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, Boolean.TRUE.equals(updatedBusinessType.getSlot()));
         }
-        return persistedBusinessType.get().isSlot() == updatedBusinessType.isSlot()
-                && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
+        return Boolean.TRUE.equals(persistedBusinessType.get().getSlot()) == Boolean.TRUE.equals(updatedBusinessType.getSlot())
+                && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, Boolean.TRUE.equals(updatedBusinessType.getSlot()));
     }
 
     private static boolean isUpdateRequestParamsAreValidForUpdate(final UpdateCourtSchedule updateCourtSchedule, final boolean isSlotBased) {
@@ -833,8 +833,8 @@ public class SessionsService {
     private void enrichSession(CourtSchedule courtSchedule, int maxSlotsOrDuration) {
         final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(courtSchedule.getBusinessType()).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + courtSchedule.getBusinessType()));
         CourtRoom courtRoom;
-        if ("CROWN".equalsIgnoreCase(builder.getJurisdiction())) {
-            courtRoom = getCpCourtRoomForCourtCentre(builder.getCourtRoomId(), builder.getCourtHouseId());
+        if ("CROWN".equalsIgnoreCase(courtSchedule.getJurisdiction())) {
+            courtRoom = getCpCourtRoomForCourtCentre(courtSchedule.getCourtRoomId(), courtSchedule.getCourtHouseId());
         } else {
             courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(courtSchedule.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtSchedule.getCourtRoomId()));
         }
