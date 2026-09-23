@@ -151,8 +151,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(
             final uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException ex) {
+        final String message = extractValidationMessage(ex);
+        LOG.warn("Validation rejected request: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(errorBody(List.of(extractValidationMessage(ex))));
+                .body(errorBody(List.of(message)));
     }
 
     private static String extractValidationMessage(

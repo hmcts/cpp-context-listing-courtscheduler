@@ -5,11 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownFallbackRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -90,7 +90,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, null, null, null, null,
                 false, null, null, null);
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertTrue(result.isEmpty());
@@ -119,7 +119,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, null, null, null, null,
                 false, null, null, null);
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertTrue(result.isEmpty());
@@ -146,7 +146,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, null, null, null, null,
                 false, null, null, null);
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertTrue(result.isEmpty());
@@ -179,7 +179,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, null, "AD", false, null,
                 false, "720", null, "CROWN");
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertEquals(2, result.size());
@@ -216,11 +216,11 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, "TRF", "AD", false, null,
                 false, "720", null, "CROWN");
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertEquals(2, result.size());
-        assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isSlotBased));
+        assertTrue(result.stream().noneMatch(cs -> Boolean.TRUE.equals(cs.getSlotBased())));
         assertTrue(result.stream().allMatch(cs -> "CR01".equals(cs.getCourtRoomId())));
     }
 
@@ -447,7 +447,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         final Result result = courtScheduleRepository.saveBookedSlots(
                 new ArrayList<>(List.of(day2Slot)), false, false, false);
 
-        assertTrue(result.isSuccess());
+        assertTrue(result.getSuccess());
 
         // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
         // clearing, else clear() silently discards them (ccsph2 rig committed per call).
@@ -481,7 +481,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         final Result result = courtScheduleRepository.saveBookedSlots(
                 new ArrayList<>(List.of(day2Slot)), false, false);
 
-        assertTrue(result.isSuccess());
+        assertTrue(result.getSuccess());
 
         // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
         // clearing, else clear() silently discards them (ccsph2 rig committed per call).
@@ -568,13 +568,13 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         courtScheduleRepository.save(template);
 
         final CrownFallbackRequest request = new CrownFallbackRequest()
-                .setHearingId(randomUUID().toString())
-                .setCourtCentreId(courtCentreId)
-                .setCourtRoomId(courtRoomId)
-                .setHearingDate(sessionDate)
-                .setEarliestHearingTime(sessionDate + "T12:30:00Z")
-                .setDurationInMinutes(10)
-                .setSource("CROWN_FB_LIST");
+                .hearingId(randomUUID().toString())
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .hearingDate(sessionDate)
+                .earliestHearingTime(sessionDate + "T12:30:00Z")
+                .durationInMinutes(10)
+                .source("CROWN_FB_LIST");
 
         final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(request);
 

@@ -10,20 +10,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.DateSessionType;
-import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.GetJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.GetJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryAvailabilityRuleRepository;
@@ -305,7 +305,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setStartDate(LocalDate.of(2026, 1, 1));
         request.setEndDate(LocalDate.of(2026, 1, 31));
         
-        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday));
+        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday.name(), AvailabilityDayOfWeek.Tuesday.name()));
         
         return request;
     }
@@ -464,14 +464,14 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        Judiciary judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(judiciaryId)
-                .withSurname("Test")
-                .withForenames("Judge")
-                .withJudiciaryType("Judge")
-                .withSeqId(1)
-                .withRequestedName("MR RECORDER J TEST")
-                .build();
+        Judiciary judiciary = new Judiciary()
+                .id(judiciaryId)
+                .surname("Test")
+                .forenames("Judge")
+                .judiciaryType("Judge")
+                .seqId(1)
+                .requestedName("MR RECORDER J TEST")
+                ;
 
         when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Collections.singletonList(judiciary));
@@ -600,21 +600,21 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        Judiciary judiciary1 = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(judiciaryId)
-                .withSurname("Test1")
-                .withForenames("Judge")
-                .withJudiciaryType("Judge")
-                .withSeqId(1)
-                .build();
+        Judiciary judiciary1 = new Judiciary()
+                .id(judiciaryId)
+                .surname("Test1")
+                .forenames("Judge")
+                .judiciaryType("Judge")
+                .seqId(1)
+                ;
 
-        Judiciary judiciary2 = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(judiciaryId2)
-                .withSurname("Test2")
-                .withForenames("Judge")
-                .withJudiciaryType("Judge")
-                .withSeqId(2)
-                .build();
+        Judiciary judiciary2 = new Judiciary()
+                .id(judiciaryId2)
+                .surname("Test2")
+                .forenames("Judge")
+                .judiciaryType("Judge")
+                .seqId(2)
+                ;
 
         when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Arrays.asList(judiciary1, judiciary2));
@@ -688,9 +688,9 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setSessionType(SessionType.AM);
+        request.setSessionType(SessionType.AM.name());
         
-        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Wednesday, AvailabilityDayOfWeek.Thursday));
+        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Wednesday.name(), AvailabilityDayOfWeek.Thursday.name()));
 
         // Create existing rule
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,
@@ -728,19 +728,19 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Friday));
+        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Friday.name()));
 
         List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
         JudiciaryUnavailabilityRequest unavailability1 = new JudiciaryUnavailabilityRequest();
         unavailability1.setStartDate(LocalDate.of(2026, 2, 10));
         unavailability1.setEndDate(LocalDate.of(2026, 2, 12));
-        unavailability1.setReason(UnavailabilityReason.ANNUAL_LEAVE);
+        unavailability1.setReason(UnavailabilityReason.ANNUAL_LEAVE.name());
         unavailabilities.add(unavailability1);
         
         JudiciaryUnavailabilityRequest unavailability2 = new JudiciaryUnavailabilityRequest();
         unavailability2.setStartDate(LocalDate.of(2026, 2, 20));
         unavailability2.setEndDate(LocalDate.of(2026, 2, 22));
-        unavailability2.setReason(UnavailabilityReason.TRAINING);
+        unavailability2.setReason(UnavailabilityReason.TRAINING.name());
         unavailabilities.add(unavailability2);
         request.setUnavailabilities(unavailabilities);
 
@@ -774,7 +774,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday));
+        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday.name()));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.updateJudiciaryAvailabilityRule(request));
@@ -792,7 +792,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday));
+        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday.name()));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.updateJudiciaryAvailabilityRule(request));
@@ -811,7 +811,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday));
+        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday.name()));
 
         when(repository.findById(ruleId)).thenReturn(java.util.Optional.empty());
 
@@ -833,7 +833,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
         request.setSessionType(null);
-        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday));
+        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday.name()));
 
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
@@ -862,7 +862,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday));
+        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday.name()));
         request.setUnavailabilities(new ArrayList<>());
 
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,
@@ -893,7 +893,7 @@ class JudiciaryAvailabilityServiceTest {
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 2, 1));
         request.setEndDate(LocalDate.of(2026, 2, 28));
-        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday));
+        request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday.name()));
         request.setUnavailabilities(null);
 
         JudiciaryAvailabilityRule existingRule = createRule(judiciaryId,

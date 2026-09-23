@@ -15,7 +15,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.ROTA_PERIOD;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
@@ -158,16 +158,16 @@ class RotaLocationPeriodHelperTest {
             final List<String> locationIds = List.of("100", "200");
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(200)
-                    .withOucode("OU002")
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode("OU001")
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(200)
+                    .oucode("OU002")
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -214,16 +214,16 @@ class RotaLocationPeriodHelperTest {
             final List<String> locationIds = List.of("100", "100", "200");
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(200)
-                    .withOucode("OU002")
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode("OU001")
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(200)
+                    .oucode("OU002")
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -245,11 +245,11 @@ class RotaLocationPeriodHelperTest {
             // given
             final List<String> locationIds = List.of("100", "999");
             final UUID roomId1 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode("OU001")
+                    .courtroomId(roomId1.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
 
@@ -270,16 +270,16 @@ class RotaLocationPeriodHelperTest {
             final List<String> locationIds = List.of("100");
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode("OU001")
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode("OU001")
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -301,16 +301,16 @@ class RotaLocationPeriodHelperTest {
             final List<String> locationIds = List.of("100");
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(null)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU002")
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(null)
+                    .oucode("OU001")
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode("OU002")
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);

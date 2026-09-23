@@ -5,8 +5,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 
 import java.util.List;
 import java.util.UUID;
@@ -252,7 +252,7 @@ class JudiciaryAssignmentRequestHelperTest {
 
         // then
         assertThat(result, is(notNullValue()));
-        assertThat(result.isSkipValidations(), is(true));
+        assertThat(result.getSkipValidations(), is(true));
     }
 
     @Test

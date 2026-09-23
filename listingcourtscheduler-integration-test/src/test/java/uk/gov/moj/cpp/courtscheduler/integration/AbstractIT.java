@@ -68,6 +68,12 @@ public abstract class AbstractIT {
             .randomize(int.class, (Randomizer<Integer>) () -> random.nextInt(500))
             .randomize(Integer.class, (Randomizer<Integer>) () -> random.nextInt(500))
             .randomize(long.class, (Randomizer<Long>) () -> (long) random.nextInt(500))
+            // hasHearingsBooked gates SessionsService's "being edited by another user" concurrent-edit
+            // guard. Tests that care about that guard set it explicitly after RANDOM.nextObject(...);
+            // leaving it to chance made every other update test ~50% flaky, since a random true plus
+            // the update payload's fixed panel/session-type (which then reads as a "concurrent" change
+            // against the randomly-generated persisted value) tripped the guard unintentionally.
+            .randomize(field -> "hasHearingsBooked".equals(field.getName()), (Randomizer<Boolean>) () -> false)
             .build();
 
     protected final DatabaseSeeder databaseSeeder = new DatabaseSeeder();

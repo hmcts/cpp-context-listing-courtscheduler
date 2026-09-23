@@ -7,8 +7,8 @@ import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -503,7 +503,7 @@ public class DatabaseSeeder {
                         unavailabilityStmt.setDate(3, Date.valueOf(request.getStartDate()));
                         unavailabilityStmt.setDate(4, Date.valueOf(request.getEndDate()));
                         if (request.getReason() != null) {
-                            unavailabilityStmt.setString(5, request.getReason().name());
+                            unavailabilityStmt.setString(5, request.getReason());
                         } else {
                             unavailabilityStmt.setNull(5, Types.VARCHAR);
                         }
@@ -572,7 +572,7 @@ public class DatabaseSeeder {
                             unavailabilityStmt.setDate(3, Date.valueOf(request.getStartDate()));
                             unavailabilityStmt.setDate(4, Date.valueOf(request.getEndDate()));
                             if (request.getReason() != null) {
-                                unavailabilityStmt.setString(5, request.getReason().name());
+                                unavailabilityStmt.setString(5, request.getReason());
                             } else {
                                 unavailabilityStmt.setNull(5, Types.VARCHAR);
                             }

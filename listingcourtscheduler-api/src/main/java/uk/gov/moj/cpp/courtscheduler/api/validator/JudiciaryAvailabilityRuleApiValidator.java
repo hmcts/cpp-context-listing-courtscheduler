@@ -16,11 +16,9 @@ import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationM
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.SELECT_REPEAT_DAYS;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.START_DATE_MUST_BE_BEFORE_OR_EQUAL_TO_END_DATE;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleWithDetailsRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 
 import java.util.List;
@@ -59,62 +57,86 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateRequestWithDetails(final BaseJudiciaryAvailabilityRuleRequest request, final boolean validateRuleId, final boolean validateJudiciaryId) {
+    // Note: AddJudiciaryAvailabilityRuleRequest and UpdateJudiciaryAvailabilityRuleRequest no longer
+    // share a common generated supertype (the openapi-generator flattens allOf into duplicated
+    // fields, verified by generating and reading the output) even though they have an identical
+    // field shape, so the request-with-details validation below is overloaded per concrete type
+    // instead of relying on a shared base type / instanceof check.
+    private JsonObject validateRequestWithDetails(final AddJudiciaryAvailabilityRuleRequest request, final boolean validateRuleId, final boolean validateJudiciaryId) {
         if (request == null) {
             return getMessage(REQUEST_FIELD);
         }
+        return validateRequestWithDetails(request.getRuleId(), request.getJudiciaryId(), request.getCourtHouseId(),
+                request.getStartDate(), request.getEndDate(), request.getRepeatDays(), validateRuleId, validateJudiciaryId);
+    }
 
-        if (validateRuleId && isBlank(request.getRuleId())) {
+    private JsonObject validateRequestWithDetails(final UpdateJudiciaryAvailabilityRuleRequest request, final boolean validateRuleId, final boolean validateJudiciaryId) {
+        if (request == null) {
+            return getMessage(REQUEST_FIELD);
+        }
+        return validateRequestWithDetails(request.getRuleId(), request.getJudiciaryId(), request.getCourtHouseId(),
+                request.getStartDate(), request.getEndDate(), request.getRepeatDays(), validateRuleId, validateJudiciaryId);
+    }
+
+    private JsonObject validateRequestWithDetails(final String ruleId, final String judiciaryId, final String courtHouseId,
+                                                   final java.time.LocalDate startDate, final java.time.LocalDate endDate,
+                                                   final List<String> repeatDays,
+                                                   final boolean validateRuleId, final boolean validateJudiciaryId) {
+        if (validateRuleId && isBlank(ruleId)) {
             return getMessage(RULE_ID_FIELD);
         }
 
-        if (validateJudiciaryId && isBlank(request.getJudiciaryId())) {
+        if (validateJudiciaryId && isBlank(judiciaryId)) {
             return buildErrorResponse(SELECT_JUDICIARY);
         }
 
-        JsonObject validation = validateBaseFields(request);
+        JsonObject validation = validateBaseFields(courtHouseId, startDate, endDate);
         if (!validation.isEmpty()) {
             return validation;
         }
 
-        if (request instanceof BaseJudiciaryAvailabilityRuleWithDetailsRequest baseJudiciaryAvailabilityRuleWithDetailsRequest) {
-            validation = validateRepeatDays(baseJudiciaryAvailabilityRuleWithDetailsRequest.getRepeatDays());
-            if (!validation.isEmpty()) {
-                return validation;
-            }
+        validation = validateRepeatDays(repeatDays);
+        if (!validation.isEmpty()) {
+            return validation;
         }
 
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateBaseFields(final BaseJudiciaryAvailabilityRuleRequest request) {
-        if (isBlank(request.getCourtHouseId())) {
+    private JsonObject validateBaseFields(final AddJudiciaryAvailabilityRuleRequest request) {
+        return validateBaseFields(request.getCourtHouseId(), request.getStartDate(), request.getEndDate());
+    }
+
+    private JsonObject validateBaseFields(final UpdateJudiciaryAvailabilityRuleRequest request) {
+        return validateBaseFields(request.getCourtHouseId(), request.getStartDate(), request.getEndDate());
+    }
+
+    private JsonObject validateBaseFields(final String courtHouseId, final java.time.LocalDate startDate, final java.time.LocalDate endDate) {
+        if (isBlank(courtHouseId)) {
             return buildErrorResponse("Select a courthouse");
         }
 
-        if (request.getStartDate() == null) {
+        if (startDate == null) {
             return buildErrorResponse("Enter a start date");
         }
 
-        if (request.getEndDate() == null) {
+        if (endDate == null) {
             return buildErrorResponse("Enter an end date");
         }
 
-        if (request.getStartDate().isAfter(request.getEndDate())) {
+        if (startDate.isAfter(endDate)) {
             return buildErrorResponse("The start date must be the same as or before the end date");
         }
 
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateRepeatDays(final List<uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek> repeatDays) {
+    private JsonObject validateRepeatDays(final List<String> repeatDays) {
         if (repeatDays == null || repeatDays.isEmpty()) {
             return buildErrorResponse(SELECT_REPEAT_DAYS);
         }
 
-        // Enum provides type safety - no need to validate individual values
-        // Just check for null values in the list
-        for (uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek repeatDay : repeatDays) {
+        for (String repeatDay : repeatDays) {
             if (repeatDay == null) {
                 return buildErrorResponse(SELECT_DAY_OF_WEEK);
             }

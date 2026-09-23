@@ -20,9 +20,9 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.DateRange;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil;
@@ -128,6 +128,7 @@ public class RotaFileProcessorService {
             azureBlobClientService.deleteFile(blobName, empty());
             logger.info("rota file deletion from input container completed for blob with name: {}", blobName);
         } catch (Exception storageException) {
+            logger.error("downloadAndProcessForEachFile failed for blob with name: {}", blobName, storageException);
             azureBlobClientService.releaseLease(blobName, leaseId, true);
 
         }

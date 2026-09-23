@@ -7,7 +7,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.util.ReflectionTestUtils.setField;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.util.PropertiesLoader;
@@ -50,8 +50,8 @@ class JudiciaryBuilderTest {
         assertEquals("CS2130184", courtScheduleJudiciary.getCourtListingProfileId());
         assertEquals(courtScheduleId, courtScheduleJudiciary.getCourtScheduleId());
         assertEquals("RIGHT_WINGER", courtScheduleJudiciary.getPosition());
-        assertEquals(false, courtScheduleJudiciary.getBenchChairman());
-        assertEquals(true, courtScheduleJudiciary.getDeputy());
+        assertEquals(false, courtScheduleJudiciary.getIsBenchChairman());
+        assertEquals(true, courtScheduleJudiciary.getIsDeputy());
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {

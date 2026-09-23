@@ -1,11 +1,43 @@
 plugins {
     id 'java-test-fixtures'
+    id 'org.openapi.generator'
 }
+
+/* ---------------- OpenAPI model-only generation ----------------
+ * Models live here (not in listingcourtscheduler-api) so that listingcourtscheduler-common
+ * and listingcourtscheduler-domain itself can reference them — module dependency direction
+ * is domain -> common -> api (one-directional), so common cannot see api's generated classes.
+ * listingcourtscheduler-api's own openApiGenerate is restricted to apis-only against the same
+ * spec, avoiding duplicate model class generation across modules.
+ */
+openApiGenerate {
+    generatorName = 'spring'
+    inputSpec = "${projectDir}/../listingcourtscheduler-api/src/main/resources/openapi/courtscheduler-api.openapi.yml".toString()
+    outputDir = "$buildDir/generated/openapi".toString()
+    modelPackage = 'uk.gov.moj.cpp.courtscheduler.openapi.model'
+    configOptions = [
+            useSpringBoot3      : 'true',
+            useJakartaEe        : 'true',
+            dateLibrary         : 'java8',
+            openApiNullable     : 'false'
+    ]
+    globalProperties = [
+            models: ""
+    ]
+}
+
+sourceSets.main.java.srcDir "$buildDir/generated/openapi/src/main/java"
+tasks.named('compileJava') { dependsOn tasks.named('openApiGenerate') }
 
 dependencies {
     api 'com.fasterxml.jackson.core:jackson-annotations'
     implementation 'org.apache.commons:commons-lang3'
     implementation 'org.slf4j:slf4j-api'
+    implementation 'io.swagger.core.v3:swagger-annotations:2.2.52'
+    api 'org.springframework:spring-web'
+    api 'org.springframework:spring-context'
+    api 'jakarta.validation:jakarta.validation-api:3.1.1'
+    api 'jakarta.annotation:jakarta.annotation-api:3.0.0'
 
     // jakarta.json + parsson reference impl for the shared FileUtil#payloadToObject
     testFixturesApi 'jakarta.json:jakarta.json-api:2.1.3'

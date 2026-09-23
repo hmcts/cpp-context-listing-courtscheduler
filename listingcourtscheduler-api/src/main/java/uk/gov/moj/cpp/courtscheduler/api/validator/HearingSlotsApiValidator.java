@@ -19,13 +19,13 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BA
 import org.springframework.web.server.ResponseStatusException;
 // (removed) use java.time.LocalDate directly
 import uk.gov.moj.cpp.courtscheduler.common.Jurisdiction;
-import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownSearchAndBookRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MagsSearchAndBookRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -218,7 +218,7 @@ public class HearingSlotsApiValidator {
     public JsonObject magsSearchAndBookValidation(final MagsSearchAndBookRequest request) {
         LOGGER.info("Validating magsSearchAndBook: hearingId={}, courtCentreId={}, hearingDate={}, durationInMinutes={}, isPolice={}",
                 request.getHearingId(), request.getCourtCentreId(), request.getHearingDate(),
-                request.getDurationInMinutes(), request.isPolice());
+                request.getDurationInMinutes(), request.getIsPolice());
 
         if (isBlank(request.getHearingId())) {
             return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
@@ -229,7 +229,7 @@ public class HearingSlotsApiValidator {
         if (isBlank(request.getCourtCentreId())) {
             return getMessage(RequestParameterConstant.COURT_CENTRE.getLabel() + SHOULD_BE_ENTERED);
         }
-        if (request.hasCourtScheduleId()) {
+        if (request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank()) {
             return buildErrorResponse(MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED);
         }
         return EMPTY_JSON_OBJECT;

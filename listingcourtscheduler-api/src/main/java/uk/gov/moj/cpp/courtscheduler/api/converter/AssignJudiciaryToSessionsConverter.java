@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciaryToSessionsRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciaryToSessionsRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionJudiciary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,13 +26,12 @@ public class AssignJudiciaryToSessionsConverter {
     private static final String IS_BENCH_CHAIRMAN = "isBenchChairman";
 
     public AssignJudiciaryToSessionsRequest convert(final JsonObject payload) {
-        final AssignJudiciaryToSessionsRequest.Builder builder = AssignJudiciaryToSessionsRequest.builder();
         if (payload == null) {
-            return builder.build();
+            return new AssignJudiciaryToSessionsRequest();
         }
-        builder.withCourtScheduleIds(extractCourtScheduleIds(payload));
-        builder.withJudiciary(extractJudiciary(payload));
-        return builder.build();
+        return new AssignJudiciaryToSessionsRequest()
+                .courtScheduleIds(extractCourtScheduleIds(payload))
+                .judiciary(extractJudiciary(payload));
     }
 
     private List<String> extractCourtScheduleIds(final JsonObject payload) {
@@ -83,12 +82,11 @@ public class AssignJudiciaryToSessionsConverter {
         final Boolean isBenchChairman = o.containsKey(IS_BENCH_CHAIRMAN) && !o.isNull(IS_BENCH_CHAIRMAN)
                 ? o.getBoolean(IS_BENCH_CHAIRMAN)
                 : null;
-        return SessionJudiciary.builder()
-                .withJudicialId(judicialId)
-                .withJudiciaryType(judiciaryType)
-                .withIsDeputy(isDeputy)
-                .withIsBenchChairman(isBenchChairman)
-                .build();
+        return new SessionJudiciary()
+                .judicialId(judicialId)
+                .judiciaryType(judiciaryType)
+                .isDeputy(isDeputy)
+                .isBenchChairman(isBenchChairman);
     }
 
     private String extractJudiciaryType(final JsonObject judiciaryObject) {

@@ -19,23 +19,23 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
 import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownFallbackRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
-import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Hearing;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotProcessingContext;
-import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SlotStartTime;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -258,10 +258,20 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     private static final ModelMapper JUDICIARY_ENTITY_TO_DOMAIN_MODEL_MAPPER = new ModelMapper();
 
-    private static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary mapJudiciaryEntityToDomain(final CourtScheduleJudiciary entity) {
-        final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary domain =
-                JUDICIARY_ENTITY_TO_DOMAIN_MODEL_MAPPER.map(entity, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class);
+    private static uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary mapJudiciaryEntityToDomain(final CourtScheduleJudiciary entity) {
+        final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary domain =
+                JUDICIARY_ENTITY_TO_DOMAIN_MODEL_MAPPER.map(entity, uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary.class);
+        // ModelMapper's STANDARD strategy can't bridge the entity's isX()/getX() JavaBean names to
+        // the generated model's getIsX()/isX(...) fluent shape, nor Date -> OffsetDateTime — set
+        // these explicitly rather than rely on (potentially silent) reflection matching.
         domain.setEmailAddress(entity.getEmail());
+        domain.setIsBenchChairman(entity.getBenchChairman());
+        domain.setIsDeputy(entity.getDeputy());
+        domain.setActive(entity.getActive());
+        domain.setCreatedOn(entity.getCreatedOn() == null ? null
+                : entity.getCreatedOn().toInstant().atOffset(java.time.ZoneOffset.UTC));
+        domain.setUpdatedOn(entity.getUpdatedOn() == null ? null
+                : entity.getUpdatedOn().toInstant().atOffset(java.time.ZoneOffset.UTC));
         return domain;
     }
 
@@ -547,6 +557,39 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     @Override
+    public uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
+            final String courtRoomId,
+            final LocalDate sessionDate,
+            final String businessType,
+            final String courtSession) {
+        @SuppressWarnings("unchecked")
+        final List<Object[]> results = entityManager.createQuery("""
+                SELECT entity.courtScheduleId, entity.ouCode, entity.createdOn
+                  FROM CourtSchedule entity
+                 WHERE entity.courtRoomId = :courtRoomId
+                   AND entity.sessionDate = :sessionDate
+                   AND entity.businessType = :businessType
+                   AND entity.courtSession = :courtSession
+                """)
+                .setParameter("courtRoomId", courtRoomId)
+                .setParameter("sessionDate", sessionDate)
+                .setParameter("businessType", businessType)
+                .setParameter("courtSession", courtSession)
+                .setMaxResults(1)
+                .getResultList();
+
+        if (results.isEmpty()) {
+            return null;
+        }
+        final Object[] row = results.get(0);
+        final java.util.Date createdOn = (java.util.Date) row[2];
+        return new uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo()
+                .courtScheduleId((String) row[0])
+                .ouCode((String) row[1])
+                .createdOn(createdOn == null ? null : createdOn.toInstant().atOffset(java.time.ZoneOffset.UTC));
+    }
+
+    @Override
     @Transactional
     public Result update(CourtSchedule persistedCourtSchedule,
                          UpdateCourtSchedule updateCourtSchedule,
@@ -569,7 +612,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
         persistedCourtSchedule.setNationalBreakTime(persistedCourtSchedule.getNationalBreakTime());
         persistedCourtSchedule.setUpdatedOn(new Date());
-        persistedCourtSchedule.setIsOverbookingAllowed(updateCourtSchedule.isOverbookingAllowed());
+        persistedCourtSchedule.setIsOverbookingAllowed(updateCourtSchedule.getIsOverbookingAllowed());
         persistedCourtSchedule.setJurisdiction(updateCourtSchedule.getJurisdiction());
 
         if (nonNull(updateCourtSchedule.getIsDraft())) {
@@ -585,10 +628,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
 
         saveInternal(persistedCourtSchedule);
-        return Result.SUCCESS();
+        return new Result().msg("Success").success(true);
     }
 
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findBy(CourtScheduleRequestParam courtScheduleRequestParam) {
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findBy(CourtScheduleRequestParam courtScheduleRequestParam) {
 
         final int pageSize = Integer.parseInt(courtScheduleRequestParam.pageSize());
         final int pageNumber = Integer.parseInt(courtScheduleRequestParam.pageNumber());
@@ -611,7 +654,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
 
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesByIdList(List<String> courtScheduleIds) {
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getCourtSchedulesByIdList(List<String> courtScheduleIds) {
         if (isEmpty(courtScheduleIds)) {
             return new ArrayList<>();
         }
@@ -625,22 +668,22 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         params.put(COURT_SCHEDULE_IDS, dedupedIds);
         params.forEach(query::setParameter);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedulesResult = getCourtSchedulesResult(query);
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> courtSchedulesResult = getCourtSchedulesResult(query);
 
         enrichWithJudiciary(courtSchedulesResult);
         return courtSchedulesResult;
     }
 
     @Override
-    public void enrichWithJudiciary(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules) {
+    public void enrichWithJudiciary(final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> courtSchedules) {
         if (isEmpty(courtSchedules)) {
             return;
         }
         final List<String> courtScheduleIds = courtSchedules.stream()
-                .map(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::getCourtScheduleId)
+                .map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId)
                 .toList();
         final List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciariesByCourtScheduleIds(courtScheduleIds);
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> domainJudiciaries =
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> domainJudiciaries =
                 judiciaryList.stream()
                         .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
                         .toList();
@@ -648,7 +691,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 addJudiciaries(domainJudiciaries, schedule));
     }
 
-    private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesResult(final jakarta.persistence.Query query) {
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getCourtSchedulesResult(final jakarta.persistence.Query query) {
         final List<CourtSchedule> resultList = query.getResultList();
 
         final List<String> courtScheduleIdsHavingHearingsBooked = resultList.stream()
@@ -661,7 +704,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return resultList.stream().map(courtSchedule -> CourtSchedulerConverter.convert(courtSchedule, allocatedListingEachBookedList)).toList();
     }
 
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getCourtSchedulesBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
         StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true ");
         Map<String, Object> params = new HashMap<>();
         addFiltersForGetCourtSchedulesBy(courtScheduleRequestParam, queryString, params);
@@ -715,8 +758,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final List<CourtSchedule> courtScheduleList = entityManager.createQuery(
                         "SELECT cs FROM CourtSchedule cs WHERE cs.updatedOn > :fromDate AND cs.updatedOn < :toDate",
                         CourtSchedule.class)
-                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()))
-                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()))
+                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromDate()))
+                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToDate()))
                 .getResultList();
         return courtScheduleList.stream().map(CourtSchedulerConverter::convertToMi).toList();
     }
@@ -854,13 +897,13 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final String courtCentreId = request.getCourtCentreId();
         final LocalDate hearingDate = request.getHearingDate();
         final String courtRoomId = request.getCourtRoomId();
-        final boolean hasCourtRoomId = request.hasCourtRoomId();
+        final boolean hasCourtRoomId = courtRoomId != null && !courtRoomId.isBlank();
 
         Optional<CourtSchedule> template = findLatestActiveSessionTemplate(courtCentreId, hasCourtRoomId ? courtRoomId : null);
         if (template.isEmpty() && hasCourtRoomId) {
             template = findLatestActiveSessionTemplate(courtCentreId, null);
         }
-        if (template.isEmpty() && !request.hasOuCode()) {
+        if (template.isEmpty() && (request.getOuCode() == null || request.getOuCode().isBlank())) {
             return Optional.empty();
         }
         final CourtSchedule t = template.orElse(null);
@@ -971,19 +1014,20 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return ofNullable(entityManager.find(CourtSchedule.class, ids.get(0)));
     }
 
-    private static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule toCrownFallbackDomain(final CourtSchedule entity) {
-        return uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(entity.getCourtScheduleId())
-                .withOuCode(entity.getOuCode())
-                .withCourtRoomId(entity.getCourtRoomId())
-                .withCourtHouseId(entity.getCourtHouseId())
-                .withBusinessType(entity.getBusinessType())
-                .withCourtSession(entity.getCourtSession())
-                .withSessionDate(entity.getSessionDate())
-                .withIsDraft(entity.getIsDraft())
-                .withSessionStartTime(entity.getSessionStartTime())
-                .withSessionEndTime(entity.getSessionEndTime())
-                .build();
+    private static uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule toCrownFallbackDomain(final CourtSchedule entity) {
+        return new uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule()
+                .courtScheduleId(entity.getCourtScheduleId())
+                .ouCode(entity.getOuCode())
+                .courtRoomId(entity.getCourtRoomId())
+                .courtHouseId(entity.getCourtHouseId())
+                .businessType(entity.getBusinessType())
+                .courtSession(entity.getCourtSession())
+                .sessionDate(entity.getSessionDate())
+                .draft(entity.getIsDraft())
+                .sessionStartTime(entity.getSessionStartTime() == null ? null
+                        : entity.getSessionStartTime().toInstant().atOffset(java.time.ZoneOffset.UTC))
+                .sessionEndTime(entity.getSessionEndTime() == null ? null
+                        : entity.getSessionEndTime().toInstant().atOffset(java.time.ZoneOffset.UTC));
     }
 
     private Optional<CourtSchedule> findCrownFallbackCandidate(
@@ -1056,11 +1100,11 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
         if (isNotEmpty(updateAllocatedSlots)) {
             persistHearingSlots(slots, isProvisionalSlot, updateAllocatedSlots);
-            final Result success = Result.SUCCESS();
-            updateAllocatedSlots.forEach(slot -> success.addHearingDaySchedule(slot.getSessionDate(), slot.getCourtScheduleId()));
+            final Result success = new Result().msg("Success").success(true);
+            updateAllocatedSlots.forEach(slot -> success.putHearingDayCourtSchedulesItem(slot.getSessionDate(), slot.getCourtScheduleId()));
             return success;
         } else {
-            return Result.FAILED(format("courtScheduleId matching for non-provisional slot(s) has been failed,please check the logs. hearingId : %s", slots.get(0).getHearingId()));
+            return new Result().msg(format("courtScheduleId matching for non-provisional slot(s) has been failed,please check the logs. hearingId : %s", slots.get(0).getHearingId())).success(false);
         }
     }
 
@@ -1076,11 +1120,11 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             slots.clear();
             slots.addAll(updateAllocatedSlots.stream().toList());
         } else {
-            return Result.FAILED("Not able to allocate hearing slots");
+            return new Result().msg("Not able to allocate hearing slots").success(false);
         }
 
-        final Result success = Result.SUCCESS();
-        updateAllocatedSlots.forEach(slot -> success.addHearingDaySchedule(slot.getSessionDate(), slot.getCourtScheduleId()));
+        final Result success = new Result().msg("Success").success(true);
+        updateAllocatedSlots.forEach(slot -> success.putHearingDayCourtSchedulesItem(slot.getSessionDate(), slot.getCourtScheduleId()));
         return success;
     }
 
@@ -1093,7 +1137,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     @Override
-    public Optional<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findCourtScheduleById(final String courtScheduleId) {
+    public Optional<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findCourtScheduleById(final String courtScheduleId) {
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule entity = entityManager.find(CourtSchedule.class, courtScheduleId);
         return ofNullable(entity)
                 .filter(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule::isActive)
@@ -1101,7 +1145,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     @Override
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findConsecutiveSessions(
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessions(
             final String anchorCourtScheduleId, final int daysNeeded) {
         final CourtSchedule anchor = entityManager.find(CourtSchedule.class, anchorCourtScheduleId);
         if (anchor == null || !anchor.isActive()) {
@@ -1132,7 +1176,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * ({@code areConsecutiveBusinessDays}); here we provide a generous window and let the caller trim.</p>
      */
     @Override
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findConsecutiveSessionsForCentre(
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessionsForCentre(
             final String courtCentreId, final LocalDate fromDate, final int daysNeeded) {
         // Candidate (room, business type) pairs in the centre that have a session on the start date,
         // ordered so the earliest/most-populated room is tried first.
@@ -1164,7 +1208,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         for (final Object[] room : rooms) {
             final String courtRoomId = (String) room[0];
             final String businessType = (String) room[1];
-            final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> run = queryAdWeekdaySessionsInCentre(
+            final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> run = queryAdWeekdaySessionsInCentre(
                     courtCentreId, courtRoomId, businessType, fromDate, toInclusive);
             if (run.size() >= daysNeeded) {
                 return run;
@@ -1173,7 +1217,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return Collections.emptyList();
     }
 
-    private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> queryAdWeekdaySessionsInCentre(
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> queryAdWeekdaySessionsInCentre(
             final String courtCentreId, final String courtRoomId, final String businessType,
             final LocalDate fromInclusive, final LocalDate toInclusive) {
         final String queryStr = """
@@ -1201,21 +1245,21 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (isEmpty(ids)) {
             return Collections.emptyList();
         }
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> sessions =
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> sessions =
                 new ArrayList<>(getCourtSchedulesByIdList(ids));
         sessions.sort(java.util.Comparator.comparing(
-                uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::getSessionDate));
+                uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSessionDate));
         return sessions;
     }
 
     @Override
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findAdSessionsInRange(
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findAdSessionsInRange(
             final String ouCode, final String courtRoomId, final String businessType,
             final LocalDate fromInclusive, final LocalDate toInclusive, final Boolean isDraft) {
         return queryAdWeekdaySessions(ouCode, courtRoomId, businessType, fromInclusive, toInclusive, isDraft);
     }
 
-    private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> queryAdWeekdaySessions(
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> queryAdWeekdaySessions(
             final String ouCode, final String courtRoomId, final String businessType,
             final LocalDate fromInclusive, final LocalDate toInclusive, final Boolean isDraft) {
         final StringBuilder queryStr = new StringBuilder("""
@@ -1258,10 +1302,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (isEmpty(ids)) {
             return Collections.emptyList();
         }
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> sessions =
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> sessions =
                 new ArrayList<>(getCourtSchedulesByIdList(ids));
         sessions.sort(java.util.Comparator.comparing(
-                uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::getSessionDate));
+                uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSessionDate));
         return sessions;
     }
 
@@ -1292,7 +1336,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 }
 
                 final boolean isOverbookingAllowed = findCourtScheduleById(hearing.getCourtScheduleId()).stream().findFirst()
-                        .map(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isOverbookingAllowed)
+                        .map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getOverbookingAllowed)
                         .orElse(false);
 
                 String hearingSource = resolveAllocatedListingSource(hearing.getSource(), isCourtScheduleReleased, isOverbookingAllowed);
@@ -1316,7 +1360,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
          });
 
         List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(courtSchedules);
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> domainJudiciaries =
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> domainJudiciaries =
                 judiciaryList.stream()
                         .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
                         .toList();
@@ -1354,7 +1398,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     @SuppressWarnings("unchecked")
-    public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam requestParam) {
+    public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam requestParam) {
         Map<String, Object> queryParamsForCount = buildQueryParams(requestParam, true);
         Map<String, Object> queryParamsForResult = buildQueryParams(requestParam, false);
 
@@ -1381,7 +1425,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             return Pair.of(0, Collections.emptyList());
         }
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules =
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> domainSchedules =
                 processScheduleEntities(paginatedSchedules);
 
         return Pair.of(totalCount, domainSchedules);
@@ -1414,7 +1458,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * @return the rehydrated candidate schedules; empty if no room qualifies
      */
     @Override
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getMultidayHearingSlotCandidates(
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getMultidayHearingSlotCandidates(
             final HearingSlotRequestParam requestParam, final int daysNeeded) {
 
         // 1. Cheap discovery query
@@ -1478,7 +1522,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * re-hydrate to it, which is what silently dropped {@code slotStartTimes} from duration-based
      * multi-day Crown searches while single-day searches kept it.
      */
-    private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> rehydrateMultidayCandidatesWithSlotStartTimes(final List<String> courtScheduleIds) {
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> rehydrateMultidayCandidatesWithSlotStartTimes(final List<String> courtScheduleIds) {
         if (isEmpty(courtScheduleIds)) {
             return Collections.emptyList();
         }
@@ -1696,7 +1740,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return jpaQuery.getResultList();
     }
 
-    private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> processScheduleEntities(List<CourtSchedule> scheduleEntities) {
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> processScheduleEntities(List<CourtSchedule> scheduleEntities) {
         final long mappingStartTime = System.nanoTime();
 
         Set<String> courtScheduleIds = new TreeSet<>();
@@ -1706,7 +1750,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
         Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds, courtScheduleMap);
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules = scheduleEntities.stream()
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> domainSchedules = scheduleEntities.stream()
                 .map(CourtSchedulerConverter::convert)
                 .toList();
 
@@ -1722,9 +1766,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     private void processJudiciaryDetails(List<CourtSchedule> schedulesWithProfiles,
-                                         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules) {
+                                         List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> domainSchedules) {
         List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(schedulesWithProfiles);
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> domainJudiciaries =
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> domainJudiciaries =
                 judiciaryList.stream()
                         .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
                         .toList();
@@ -1777,16 +1821,16 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     @Transactional
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> deleteCourtSchedule(List<String> courtScheduleIdList) {
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> errorDeleteCourtSchedules = new ArrayList<>();
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> deleteCourtSchedule(List<String> courtScheduleIdList) {
+        List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> errorDeleteCourtSchedules = new ArrayList<>();
         ModelMapper modelMapper = new ModelMapper();
         courtScheduleIdList.forEach(courtScheduleId -> {
             CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, courtScheduleId);
             if (courtSchedule != null) {
                 List<AllocatedListing> allocatedListings = allocatedListingRepository.findByCourtScheduleId(courtScheduleId);
                 if (isNotEmpty(allocatedListings)) {
-                    uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule domainCourtSchedule =
-                            modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class);
+                    uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule domainCourtSchedule =
+                            modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule.class);
                     errorDeleteCourtSchedules.add(domainCourtSchedule);
                 } else {
                     if (!courtSchedule.getSessionDate().isBefore(now())) {
@@ -1869,7 +1913,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             final LocalDateTime sessionFromHearingStartTime = StringUtils.isNotBlank(allocatedSlot.getHearingStartTime()) ? (ZonedDateTime.parse(allocatedSlot.getHearingStartTime())).toLocalDateTime() : null;
             final LocalDate hearingSessionSearchCutOff = StringUtils.isNotBlank(allocatedSlot.getHearingSessionDateSearchCutOff()) ? LocalDate.parse(allocatedSlot.getHearingSessionDateSearchCutOff()) : null;
             final CourtSchedule courtScheduleFound = searchListHearingSlotFilterCriteria(allocatedSlot.getCourtCentreId(), LocalDate.parse(
-                    allocatedSlot.getSessionDate()), hearingSessionSearchCutOff ,sessionFromHearingStartTime, allocatedSlot.getCourtRoomUUId(), allocatedSlot.isPolice());
+                    allocatedSlot.getSessionDate()), hearingSessionSearchCutOff ,sessionFromHearingStartTime, allocatedSlot.getCourtRoomUUId(), allocatedSlot.getIsPolice());
 
             if (courtScheduleFound != null) {
                 List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(List.of(courtScheduleFound));
@@ -1879,12 +1923,12 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 allocatedSlot.setCourtRoom(courtScheduleFound.getCourtRoomName());
                 allocatedSlot.setOuCode(courtScheduleFound.getOuCode());
                 allocatedSlot.setHearingStartTime(toIsoStringExtended(getAdjustedHearingStartTime(allocatedSlot.getHearingStartTime(),courtScheduleFound)));
-                allocatedSlot.setSlotBased(courtScheduleFound.isSlotBased());
+                allocatedSlot.setIsSlotBased(courtScheduleFound.isSlotBased());
                 allocatedSlot.setJudiciaries(
                         judiciaryList.stream()
                                 .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
                                 .toList());
-                allocatedSlot.setSource(allocatedSlot.isPolice() ? "POLICE" : "NONPOLICE");
+                allocatedSlot.setSource(allocatedSlot.getIsPolice() ? "POLICE" : "NONPOLICE");
                 matchedSlots.add(allocatedSlot);
             } else {
                 LOGGER.error(format("Could not update slot as court schedule id not found for combination %s, %s, %s, %s",
@@ -1930,7 +1974,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (courtSchedule.isPresent()) {
             allocatedSlot.setCourtScheduleId(courtSchedule.get());
             final boolean isSlotBased = pair.getValue();
-            allocatedSlot.setSlotBased(isSlotBased);
+            allocatedSlot.setIsSlotBased(isSlotBased);
         }
     }
 
@@ -2312,7 +2356,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 allocatedListing.setOucode(allocatedSlot.getOuCode());
                 allocatedListing.setCourtRoomId(Integer.parseInt(allocatedSlot.getCourtRoomId()));
                 allocatedListing.setRotaBusinessType(courtSchedule.getBusinessType());
-                allocatedListing.setDuration(allocatedSlot.isSlotBased() ? SLOT_DEFAULT : allocatedSlot.getDuration());
+                allocatedListing.setDuration(allocatedSlot.getIsSlotBased() ? SLOT_DEFAULT : allocatedSlot.getDuration());
                 allocatedListing.setHearingStartTime(toExactTimestamp(allocatedSlot.getHearingStartTime()));
                 allocatedListing.setSource(allocatedSlot.getSource());
                 LOGGER.info("bookSlotsWithoutCourtScheduleId saveAllocatedListing {}", allocatedListing);
@@ -2512,7 +2556,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             SlotStartTime morningSlot = new SlotStartTime();
             morningSlot.setSessionStartTime(toIsoString(sessionStartDateTime));
             morningSlot.setSessionEndTime(toIsoString(nationalBreakTime));
-            morningSlot.setCount(sumAllocatedDuration(courtScheduleAllocatedPair, sessionStartDateTime, nationalBreakTime));
+            morningSlot.setCount((long) sumAllocatedDuration(courtScheduleAllocatedPair, sessionStartDateTime, nationalBreakTime));
             slotStartTimes.add(morningSlot);
         }
 
@@ -2521,7 +2565,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             SlotStartTime afternoonSlot = new SlotStartTime();
             afternoonSlot.setSessionStartTime(toIsoString(nationalBreakEnd));
             afternoonSlot.setSessionEndTime(toIsoString(sessionEndDateTime));
-            afternoonSlot.setCount(sumAllocatedDuration(courtScheduleAllocatedPair, nationalBreakEnd, sessionEndDateTime));
+            afternoonSlot.setCount((long) sumAllocatedDuration(courtScheduleAllocatedPair, nationalBreakEnd, sessionEndDateTime));
             slotStartTimes.add(afternoonSlot);
         }
 
@@ -2605,7 +2649,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 SlotStartTime slot = new SlotStartTime();
                 slot.setSessionStartTime(toIsoString(slotStartTime));
                 slot.setSessionEndTime(toIsoString(slotEndTime));
-                slot.setCount(count.get());
+                slot.setCount((long) count.get());
                 setHearingTimestamp(ctx.slotBased(), currentHour, filteredList, slotEndHour, slot);
 
                 slotStartTimes.add(slot);
@@ -2631,7 +2675,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         SlotStartTime slot = new SlotStartTime();
         slot.setSessionStartTime(toIsoString(slotStartTime));
         slot.setSessionEndTime(toIsoString(slotEndTime));
-        slot.setCount(count.get());
+        slot.setCount((long) count.get());
         setHearingTimestamp(ctx.slotBased(), ctx.sessionStartHour(), filteredList, 0, slot);
 
         slotStartTimes.add(slot);
@@ -2700,15 +2744,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
     }
 
-    private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
-                                final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
+    private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> courtScheduleJudiciaries,
+                                final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule courtSchedule) {
         of(courtScheduleJudiciaries.stream()
                         .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
                         .toList())
                 .ifPresent(courtSchedule.getJudiciaries()::addAll);
     }
 
-    private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
+    private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> courtScheduleJudiciaries,
                                 final Hearing hearing) {
         of(courtScheduleJudiciaries.stream()
                         .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtScheduleId().equals(hearing.getCourtScheduleId()))
@@ -2716,7 +2760,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .ifPresent(hearing.getJudiciaries()::addAll);
     }
 
-    private void addSlotStartTimes(final Map<String, List<SlotStartTime>> slotStartTimes, final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
+    private void addSlotStartTimes(final Map<String, List<SlotStartTime>> slotStartTimes, final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule courtSchedule) {
         final List<SlotStartTime> yes = slotStartTimes.get(courtSchedule.getCourtScheduleId());
         if (isNotEmpty(yes)) {
             courtSchedule.getSlotStartTimes().addAll(yes);

@@ -2,11 +2,13 @@ package uk.gov.moj.cpp.courtscheduler.common.converter;
 
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleDeleteResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleDeleteResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SlotStartTime;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class CourtScheduleToDeleteResponseConverter implements Converter<List<CourtSchedule>, List<CourtScheduleDeleteResponse>> {
@@ -14,29 +16,28 @@ public class CourtScheduleToDeleteResponseConverter implements Converter<List<Co
     public List<CourtScheduleDeleteResponse> convert(List<CourtSchedule> courtSchedules) {
         List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = new ArrayList<>();
         courtSchedules.forEach(courtSchedule -> {
-            CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
-                    .withCourtScheduleId(courtSchedule.getCourtScheduleId())
-                    .withActive(courtSchedule.isActive())
-                    .withSlotBased(courtSchedule.isSlotBased())
-                    .withAvailableDuration(courtSchedule.getAvailableDuration())
-                    .withAvailableSlots(courtSchedule.getAvailableSlots())
-                    .withBusinessType(courtSchedule.getBusinessType())
-                    .withBusinessDescription(courtSchedule.getBusinessDescription())
-                    .withCourtHouseId(courtSchedule.getCourtHouseId())
-                    .withCourtHouseName(courtSchedule.getCourtHouseName())
-                    .withCourtRoomNumber(courtSchedule.getCourtRoomNumber())
-                    .withCourtRoomId(courtSchedule.getCourtRoomId())
-                    .withCourtRoomName(courtSchedule.getCourtRoomName())
-                    .withCourtSession(courtSchedule.getCourtSession())
-                    .withListingProfileId(courtSchedule.getListingProfileId())
-                    .withMaxDuration(courtSchedule.getMaxDuration())
-                    .withMaxSlots(courtSchedule.getMaxSlots())
-                    .withOperationalUnit(courtSchedule.getOperationalUnit())
-                    .withOuCode(courtSchedule.getOuCode())
-                    .withPanel(courtSchedule.getPanel())
-                    .withSessionDate(courtSchedule.getSessionDate())
-                    .withTotalBooked(courtSchedule.getTotalBooked())
-                    .build();
+            CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse()
+                    .courtScheduleId(courtSchedule.getCourtScheduleId())
+                    .active(courtSchedule.getActive())
+                    .slotBased(courtSchedule.getSlotBased())
+                    .availableDuration(courtSchedule.getAvailableDuration())
+                    .availableSlots(courtSchedule.getAvailableSlots())
+                    .businessType(courtSchedule.getBusinessType())
+                    .businessDescription(courtSchedule.getBusinessDescription())
+                    .courtHouseId(courtSchedule.getCourtHouseId())
+                    .courtHouseName(courtSchedule.getCourtHouseName())
+                    .courtRoomNumber(courtSchedule.getCourtRoomNumber())
+                    .courtRoomId(courtSchedule.getCourtRoomId())
+                    .courtRoomName(courtSchedule.getCourtRoomName())
+                    .courtSession(courtSchedule.getCourtSession())
+                    .listingProfileId(courtSchedule.getListingProfileId())
+                    .maxDuration(courtSchedule.getMaxDuration())
+                    .maxSlots(courtSchedule.getMaxSlots())
+                    .operationalUnit(courtSchedule.getOperationalUnit())
+                    .ouCode(courtSchedule.getOuCode())
+                    .panel(courtSchedule.getPanel())
+                    .sessionDate(courtSchedule.getSessionDate())
+                    .totalBooked(courtSchedule.getTotalBooked());
             courtScheduleDeleteResponses.add(courtScheduleView);
         });
         return courtScheduleDeleteResponses;
@@ -51,35 +52,43 @@ public class CourtScheduleToDeleteResponseConverter implements Converter<List<Co
             final int totalBooked = allocatedListingEachBookedForThisSchedule.stream()
                     .mapToInt(AllocatedListingEachBooked::getDuration)
                     .sum();
-            CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
-                    .withCourtScheduleId(courtSchedule.getCourtScheduleId())
-                    .withActive(courtSchedule.isActive())
-                    .withSlotBased(courtSchedule.isSlotBased())
-                    .withAvailableDuration(courtSchedule.getAvailableDuration())
-                    .withAvailableSlots(courtSchedule.getAvailableSlots())
-                    .withBusinessType(courtSchedule.getBusinessType())
-                    .withBusinessDescription(courtSchedule.getBusinessDescription())
-                    .withCourtHouseId(courtSchedule.getCourtHouseId())
-                    .withCourtHouseName(courtSchedule.getCourtHouseName())
-                    .withCourtRoomNumber(courtSchedule.getCourtRoomNumber())
-                    .withCourtRoomId(courtSchedule.getCourtRoomId())
-                    .withCourtRoomName(courtSchedule.getCourtRoomName())
-                    .withCourtSession(courtSchedule.getCourtSession())
-                    .withListingProfileId(courtSchedule.getListingProfileId())
-                    .withMaxDuration(courtSchedule.getMaxDuration())
-                    .withMaxSlots(courtSchedule.getMaxSlots())
-                    .withOperationalUnit(courtSchedule.getOperationalUnit())
-                    .withOuCode(courtSchedule.getOuCode())
-                    .withPanel(courtSchedule.getPanel())
-                    .withSessionDate(courtSchedule.getSessionDate())
-                    .withTotalBooked(totalBooked)
-                    .withSlotStartTimes(courtSchedule.getSlotStartTimes())
-                    .withMinHearingTime(courtSchedule.getMinHearingTime())
-                    .withMaxHearingTime(courtSchedule.getMaxHearingTime())
-                    .withSessionStartTime(sessionTimeFormatter(courtSchedule.getSessionStartTime()))
-                    .withSessionEndTime(sessionTimeFormatter(courtSchedule.getSessionEndTime()))
-                    .withIsOverbookingAllowed(courtSchedule.isOverbookingAllowed())
-                    .build();
+            final List<SlotStartTime> slotStartTimes = courtSchedule.getSlotStartTimes().stream()
+                    .map(slotStartTime -> new SlotStartTime()
+                            .sessionStartTime(slotStartTime.getSessionStartTime())
+                            .sessionEndTime(slotStartTime.getSessionEndTime())
+                            .hearingStartTime(slotStartTime.getHearingStartTime())
+                            .count(slotStartTime.getCount()))
+                    .toList();
+            CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse()
+                    .courtScheduleId(courtSchedule.getCourtScheduleId())
+                    .active(courtSchedule.getActive())
+                    .slotBased(courtSchedule.getSlotBased())
+                    .availableDuration(courtSchedule.getAvailableDuration())
+                    .availableSlots(courtSchedule.getAvailableSlots())
+                    .businessType(courtSchedule.getBusinessType())
+                    .businessDescription(courtSchedule.getBusinessDescription())
+                    .courtHouseId(courtSchedule.getCourtHouseId())
+                    .courtHouseName(courtSchedule.getCourtHouseName())
+                    .courtRoomNumber(courtSchedule.getCourtRoomNumber())
+                    .courtRoomId(courtSchedule.getCourtRoomId())
+                    .courtRoomName(courtSchedule.getCourtRoomName())
+                    .courtSession(courtSchedule.getCourtSession())
+                    .listingProfileId(courtSchedule.getListingProfileId())
+                    .maxDuration(courtSchedule.getMaxDuration())
+                    .maxSlots(courtSchedule.getMaxSlots())
+                    .operationalUnit(courtSchedule.getOperationalUnit())
+                    .ouCode(courtSchedule.getOuCode())
+                    .panel(courtSchedule.getPanel())
+                    .sessionDate(courtSchedule.getSessionDate())
+                    .totalBooked(totalBooked)
+                    .slotStartTimes(slotStartTimes)
+                    .minHearingTime(courtSchedule.getMinHearingTime())
+                    .maxHearingTime(courtSchedule.getMaxHearingTime())
+                    .sessionStartTime(courtSchedule.getSessionStartTime() == null ? null
+                            : sessionTimeFormatter(Date.from(courtSchedule.getSessionStartTime().toInstant())))
+                    .sessionEndTime(courtSchedule.getSessionEndTime() == null ? null
+                            : sessionTimeFormatter(Date.from(courtSchedule.getSessionEndTime().toInstant())))
+                    .isOverbookingAllowed(courtSchedule.getOverbookingAllowed());
             courtScheduleDeleteResponses.add(courtScheduleView);
         });
         return courtScheduleDeleteResponses;

@@ -7,12 +7,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialism;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
@@ -47,14 +45,13 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         final LocalDate startDate = LocalDate.of(2026, 1, 1);
         final LocalDate endDate = LocalDate.of(2026, 1, 31);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek> repeatDays = Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday);
+        final List<String> repeatDays = Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday.name(), uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday.name());
 
         final List<JudiciaryUnavailabilityResponse> unavailabilities = Arrays.asList(
-                new JudiciaryUnavailabilityResponse(
-                        LocalDate.of(2026, 1, 10),
-                        LocalDate.of(2026, 1, 12),
-                        UnavailabilityReason.ANNUAL_LEAVE
-                )
+                new JudiciaryUnavailabilityResponse()
+                        .startDate(LocalDate.of(2026, 1, 10))
+                        .endDate(LocalDate.of(2026, 1, 12))
+                        .reason(UnavailabilityReason.ANNUAL_LEAVE.name())
         );
 
         final JudiciaryAvailabilityRuleResponse rule = new JudiciaryAvailabilityRuleResponse();
@@ -63,7 +60,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         rule.setCourtHouseId(courtHouseId);
         rule.setStartDate(startDate);
         rule.setEndDate(endDate);
-        rule.setSessionType(SessionType.AM);
+        rule.setSessionType(SessionType.AM.name());
         rule.setRepeatDays(repeatDays);
         rule.setUnavailabilities(unavailabilities);
 
@@ -71,10 +68,6 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         judiciary.setId(judiciaryId);
         judiciary.setSurname("Smith");
         judiciary.setRequestedName("MR RECORDER J SMITH");
-
-        final JudiciarySpecialism specialism = new JudiciarySpecialism();
-        specialism.setJudiciaryId(judiciaryId);
-        specialism.setSpecialisms(Arrays.asList(JudiciarySpecialismType.MURDER, JudiciarySpecialismType.ATTEMPTED_MURDER));
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
         response.setRules(Arrays.asList(rule));
@@ -152,7 +145,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
     @Test
     void shouldConvertRepeatDaysAsStringArray() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Friday));
+        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday.name(), uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday.name(), uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Friday.name()));
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
         response.setRules(Arrays.asList(rule));
@@ -175,11 +168,10 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
     void shouldConvertUnavailabilityWithReason() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
         rule.setUnavailabilities(Arrays.asList(
-                new JudiciaryUnavailabilityResponse(
-                        LocalDate.of(2026, 2, 1),
-                        LocalDate.of(2026, 2, 5),
-                        UnavailabilityReason.TRAINING
-                )
+                new JudiciaryUnavailabilityResponse()
+                        .startDate(LocalDate.of(2026, 2, 1))
+                        .endDate(LocalDate.of(2026, 2, 5))
+                        .reason(UnavailabilityReason.TRAINING.name())
         ));
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
@@ -204,11 +196,10 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
     void shouldConvertUnavailabilityWithoutReason() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
         rule.setUnavailabilities(Arrays.asList(
-                new JudiciaryUnavailabilityResponse(
-                        LocalDate.of(2026, 2, 1),
-                        LocalDate.of(2026, 2, 5),
-                        null
-                )
+                new JudiciaryUnavailabilityResponse()
+                        .startDate(LocalDate.of(2026, 2, 1))
+                        .endDate(LocalDate.of(2026, 2, 5))
+                        .reason(null)
         ));
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
@@ -252,7 +243,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
     @Test
     void shouldConvertRuleWithAllOptionalFields() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setSessionType(SessionType.PM);
+        rule.setSessionType(SessionType.PM.name());
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
         response.setRules(Arrays.asList(rule));
@@ -371,10 +362,10 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
     void shouldConvertAllUnavailabilityReasons() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
         rule.setUnavailabilities(Arrays.asList(
-                new JudiciaryUnavailabilityResponse(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 2), UnavailabilityReason.TRAINING),
-                new JudiciaryUnavailabilityResponse(LocalDate.of(2026, 1, 3), LocalDate.of(2026, 1, 4), UnavailabilityReason.ANNUAL_LEAVE),
-                new JudiciaryUnavailabilityResponse(LocalDate.of(2026, 1, 5), LocalDate.of(2026, 1, 6), UnavailabilityReason.OFFICIAL_BUSINESS),
-                new JudiciaryUnavailabilityResponse(LocalDate.of(2026, 1, 7), LocalDate.of(2026, 1, 8), UnavailabilityReason.SICK_LEAVE)
+                new JudiciaryUnavailabilityResponse().startDate(LocalDate.of(2026, 1, 1)).endDate(LocalDate.of(2026, 1, 2)).reason(UnavailabilityReason.TRAINING.name()),
+                new JudiciaryUnavailabilityResponse().startDate(LocalDate.of(2026, 1, 3)).endDate(LocalDate.of(2026, 1, 4)).reason(UnavailabilityReason.ANNUAL_LEAVE.name()),
+                new JudiciaryUnavailabilityResponse().startDate(LocalDate.of(2026, 1, 5)).endDate(LocalDate.of(2026, 1, 6)).reason(UnavailabilityReason.OFFICIAL_BUSINESS.name()),
+                new JudiciaryUnavailabilityResponse().startDate(LocalDate.of(2026, 1, 7)).endDate(LocalDate.of(2026, 1, 8)).reason(UnavailabilityReason.SICK_LEAVE.name())
         ));
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();

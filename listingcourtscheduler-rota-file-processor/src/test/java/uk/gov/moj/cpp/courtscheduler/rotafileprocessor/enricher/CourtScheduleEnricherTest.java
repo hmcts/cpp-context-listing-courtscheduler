@@ -15,10 +15,10 @@ import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.SessionTimeEnum.AM;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
 import java.time.LocalDate;
@@ -49,7 +49,7 @@ class CourtScheduleEnricherTest {
     void shouldBuildNewCourtSchedule() {
         final CourtRoom courtRoom = createCourtRoom();
 
-        final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation("241546", 1234, "BAUOS05", 8, 60, "TBL", "PM");
+        final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation().id("241546").courtRoomId(1234).oucode("BAUOS05").maxSlot(8).maxDurationMins(60).rotaBusinessTypeCode("TBL").courtSession("PM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
         when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap())).thenReturn(of(courtRoom));
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
@@ -90,7 +90,7 @@ class CourtScheduleEnricherTest {
         final String courtScheduleId = randomUUID().toString();
         final CourtRoom courtRoom = createCourtRoom();
 
-        final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation("241546", 1234, courtRoom.getOucode(), 8, 60, "TBL", "PM");
+        final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation().id("241546").courtRoomId(1234).oucode(courtRoom.getOucode()).maxSlot(8).maxDurationMins(60).rotaBusinessTypeCode("TBL").courtSession("PM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
         when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap())).thenReturn(of(courtRoom));
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
@@ -107,13 +107,13 @@ class CourtScheduleEnricherTest {
         listingProfile.put("locationId", "175");
         listingProfile.put("welshSpeaking", "false");
 
-        final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), new HashMap<>(), List.of(CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId).withOuCode(courtRoom.getOucode())
-                .withCourtRoomId(courtRoom.getCourtroomId())
-                .withCourtSession(AM.name())
-                .withSessionDate(LocalDate.of(2019, 10, 1))
-                .withBusinessType("DVB")
-                .withCreatedOn(Calendar.getInstance().getTime()).build()), randomUUID().toString());
+        final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, LocalDate.of(2019, 10, 1), new HashMap<>(), List.of(new CourtSchedule()
+                .courtScheduleId(courtScheduleId).ouCode(courtRoom.getOucode())
+                .courtRoomId(courtRoom.getCourtroomId())
+                .courtSession(AM.name())
+                .sessionDate(LocalDate.of(2019, 10, 1))
+                .businessType("DVB")
+                .createdOn(Calendar.getInstance().getTime().toInstant().atOffset(java.time.ZoneOffset.UTC))), randomUUID().toString());
         assertThat(courtSchedule.getCourtScheduleId(), is(courtScheduleId));
         assertThat(courtSchedule.getListingProfileId(), is("CS2129874"));
         assertThat(courtSchedule.getSessionDate(), is(LocalDate.of(2019, 10, 01)));
@@ -184,17 +184,17 @@ class CourtScheduleEnricherTest {
         final CourtRoom courtRoom = createCourtRoom();
 
         // Refdata-supplied times override the hardcoded morning defaults (10:00 / 13:00)
-        final CourtRoomSessionAllocation allocation = CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation()
-                .withId("241546")
-                .withCourtRoomId(1234)
-                .withOucode("BAUOS05")
-                .withMaxSlot(8)
-                .withMaxDurationMins(60)
-                .withRotaBusinessTypeCode("TBL")
-                .withCourtSession("WEDAM")
-                .withSessionStartTime("09:30")
-                .withSessionEndTime("12:45")
-                .build();
+        final CourtRoomSessionAllocation allocation = new CourtRoomSessionAllocation()
+                .id("241546")
+                .courtRoomId(1234)
+                .oucode("BAUOS05")
+                .maxSlot(8)
+                .maxDurationMins(60)
+                .rotaBusinessTypeCode("TBL")
+                .courtSession("WEDAM")
+                .sessionStartTime("09:30")
+                .sessionEndTime("12:45")
+                ;
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
         when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap())).thenReturn(of(courtRoom));
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
@@ -205,8 +205,8 @@ class CourtScheduleEnricherTest {
 
         final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, new HashMap<>(), emptyList(), randomUUID().toString());
 
-        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:30")));
-        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "12:45")));
+        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:30").toInstant().atOffset(java.time.ZoneOffset.UTC)));
+        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "12:45").toInstant().atOffset(java.time.ZoneOffset.UTC)));
     }
 
     @Test
@@ -214,7 +214,7 @@ class CourtScheduleEnricherTest {
         final CourtRoom courtRoom = createCourtRoom();
 
         // Allocation present but no start/end times configured -> defaults must apply (10:00 / 13:00 for AM)
-        final CourtRoomSessionAllocation allocation = new CourtRoomSessionAllocation("241546", 1234, "BAUOS05", 8, 60, "TBL", "WEDAM");
+        final CourtRoomSessionAllocation allocation = new CourtRoomSessionAllocation().id("241546").courtRoomId(1234).oucode("BAUOS05").maxSlot(8).maxDurationMins(60).rotaBusinessTypeCode("TBL").courtSession("WEDAM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
         when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap())).thenReturn(of(courtRoom));
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
@@ -225,8 +225,8 @@ class CourtScheduleEnricherTest {
 
         final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, new HashMap<>(), emptyList(), randomUUID().toString());
 
-        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00")));
-        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "13:00")));
+        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00").toInstant().atOffset(java.time.ZoneOffset.UTC)));
+        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "13:00").toInstant().atOffset(java.time.ZoneOffset.UTC)));
     }
 
     @Test
@@ -244,8 +244,8 @@ class CourtScheduleEnricherTest {
 
         final CourtSchedule courtSchedule = courtScheduleEnricher.build(listingProfile, sessionDate, new HashMap<>(), emptyList(), randomUUID().toString());
 
-        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "14:00")));
-        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00")));
+        assertThat(courtSchedule.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "14:00").toInstant().atOffset(java.time.ZoneOffset.UTC)));
+        assertThat(courtSchedule.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00").toInstant().atOffset(java.time.ZoneOffset.UTC)));
     }
 
     private Map<String, String> listingProfile(final String session) {
@@ -270,17 +270,16 @@ class CourtScheduleEnricherTest {
 
         final String ouCode = "BAUOS05";
 
-        return CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withRotaLocationId(rotaLocationId)
-                .withRotaVenueName(rotaVenueName)
-                .withRotaVenueId(rotaVenueId)
-                .withCourtRoomId(randomUUID().toString())
-                .withCppCourtRoomId(courtRoomNumber)
-                .withOucode(ouCode)
-                .withOucodeL3Name("Liverpool Street Court")
-                .withOucodeL2Code("London")
-                .withCourtRoomName("Court room 1")
-                .withOucodeUUID(randomUUID().toString())
-                .build();
+        return new CourtRoom()
+                .rotaLocationId(rotaLocationId)
+                .rotaVenueName(rotaVenueName)
+                .rotaVenueId(rotaVenueId)
+                .courtroomId(randomUUID().toString())
+                .cppCourtRoomId(courtRoomNumber)
+                .oucode(ouCode)
+                .oucodeL3Name("Liverpool Street Court")
+                .oucodeL2Code("London")
+                .courtroomName("Court room 1")
+                .oucodeUUID(randomUUID().toString());
     }
 }

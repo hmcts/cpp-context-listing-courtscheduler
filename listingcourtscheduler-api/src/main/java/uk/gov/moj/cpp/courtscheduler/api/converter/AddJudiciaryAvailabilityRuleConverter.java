@@ -4,19 +4,19 @@ import org.springframework.stereotype.Service;
 
 import jakarta.json.JsonObject;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
 
 @Service
-public class AddJudiciaryAvailabilityRuleConverter extends BaseJudiciaryAvailabilityRuleConverter 
+public class AddJudiciaryAvailabilityRuleConverter extends BaseJudiciaryAvailabilityRuleConverter
         implements Converter<JsonObject, AddJudiciaryAvailabilityRuleRequest> {
 
     @Override
     public AddJudiciaryAvailabilityRuleRequest convert(JsonObject jsonObject) {
         AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
-        
+
         populateBaseFields(jsonObject, request);
         populateDetailFields(jsonObject, request);
-        
+
         return request;
     }
 }

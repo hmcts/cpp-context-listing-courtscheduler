@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.time.LocalDate;
@@ -63,36 +62,6 @@ public interface CourtScheduleRepository
     @Query("UPDATE CourtSchedule cs SET cs.active = false, cs.updatedOn = :updatedOn WHERE cs.courtScheduleId IN :courtScheduleIds AND cs.listingProfileId is not null")
     void deactivateSlots(@Param("courtScheduleIds") List<String> courtScheduleIds,
                          @Param("updatedOn") Date updatedOn);
-
-    @Query("SELECT new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo(entity.courtScheduleId, entity.ouCode, entity.createdOn) "
-            + "FROM CourtSchedule entity WHERE entity.courtRoomId = :courtRoomId "
-            + "AND entity.sessionDate = :sessionDate AND entity.businessType = :businessType "
-            + "AND entity.courtSession = :courtSession")
-    List<CourtScheduleMatcherInfo> findMatcherInfoByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
-            @Param(COURT_ROOM_ID) String courtRoomId,
-            @Param(SESSION_DATE) LocalDate sessionDate,
-            @Param(BUSINESS_TYPE) String businessType,
-            @Param("courtSession") String courtSession,
-            org.springframework.data.domain.Pageable pageable);
-
-    /**
-     * Wrapper preserving the legacy single-result signature ({@code max=1, OPTIONAL}). Spring
-     * Data's {@code @Query} cannot mix a constructor projection with {@code Optional}/single
-     * return; the underlying multi-row query is
-     * {@link #findMatcherInfoByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession}.
-     * The {@code Pageable.ofSize(1)} pushes {@code LIMIT 1} to the DB so we don't ship
-     * the full match set just to take the first row.
-     */
-    default CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
-            final String courtRoomId,
-            final LocalDate sessionDate,
-            final String businessType,
-            final String courtSession) {
-        final List<CourtScheduleMatcherInfo> rows = findMatcherInfoByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
-                courtRoomId, sessionDate, businessType, courtSession,
-                org.springframework.data.domain.PageRequest.of(0, 1));
-        return rows.isEmpty() ? null : rows.get(0);
-    }
 
     @Query("SELECT entity FROM CourtSchedule entity WHERE entity.courtRoomId = :courtRoomId "
             + "AND entity.sessionDate = :sessionDate AND entity.businessType = :businessType "

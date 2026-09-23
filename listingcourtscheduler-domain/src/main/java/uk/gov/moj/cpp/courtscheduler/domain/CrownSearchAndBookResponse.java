@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;

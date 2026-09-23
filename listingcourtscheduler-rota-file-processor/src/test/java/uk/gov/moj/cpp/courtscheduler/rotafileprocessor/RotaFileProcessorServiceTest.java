@@ -34,10 +34,10 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.DateRange;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
@@ -782,26 +782,25 @@ class RotaFileProcessorServiceTest {
         final Integer avDuration = availableDuration != null ? availableDuration : 182;
         final Integer mSlots = maxSlots != null ? maxSlots : 125;
 
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(scheduleId)
-                .withListingProfileId(profileId)
-                .withSessionDate(parse(sessionDate))
-                .withOuCode("CABC90")
-                .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
-                .withCourtRoomNumber(1234)
-                .withCourtHouseName("Liverpool Mags Court")
-                .withCourtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
-                .withCourtRoomName("Court name1")
-                .withOperationalUnit("ANC")
-                .withBusinessType(businessType)
-                .withPanel("PANEL")
-                .withCourtSession("AM")
-                .withMaxDuration(mDuration)
-                .withAvailableSlots(avSlots)
-                .withAvailableDuration(avDuration)
-                .withMaxSlots(mSlots)
-                .withSlotBased(slotBased)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(scheduleId)
+                .listingProfileId(profileId)
+                .sessionDate(parse(sessionDate))
+                .ouCode("CABC90")
+                .courtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
+                .courtRoomNumber(1234)
+                .courtHouseName("Liverpool Mags Court")
+                .courtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
+                .courtRoomName("Court name1")
+                .operationalUnit("ANC")
+                .businessType(businessType)
+                .panel("PANEL")
+                .courtSession("AM")
+                .maxDuration(mDuration)
+                .availableSlots(avSlots)
+                .availableDuration(avDuration)
+                .maxSlots(mSlots)
+                .slotBased(slotBased);
     }
 
     private Map<String, BusinessType> getRotaBusinessTypes() throws JsonProcessingException {

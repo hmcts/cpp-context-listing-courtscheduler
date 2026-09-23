@@ -3,8 +3,8 @@ package uk.gov.moj.cpp.courtscheduler.api.converter;
 import org.springframework.stereotype.Service;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.GetJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAvailabilityRuleResponse;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -14,7 +14,7 @@ import jakarta.json.JsonObjectBuilder;
 public class GetJudiciaryAvailabilityRuleResponseConverter extends BaseJudiciaryAvailabilityRuleResponseConverter
         implements Converter<GetJudiciaryAvailabilityRuleResponse, JsonObject> {
 
-    private final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.domain.Judiciary> judiciaryConverter;
+    private final ListToJsonArrayConverter<uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary> judiciaryConverter;
 
     public GetJudiciaryAvailabilityRuleResponseConverter() {
         this.judiciaryConverter = new ListToJsonArrayConverter<>();

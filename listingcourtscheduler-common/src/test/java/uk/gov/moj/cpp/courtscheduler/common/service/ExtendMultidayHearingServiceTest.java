@@ -11,7 +11,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
@@ -235,30 +235,28 @@ class ExtendMultidayHearingServiceTest {
         final List<CourtSchedule> out = new ArrayList<>();
         for (final AllocatedListing al : allocations) {
             final LocalDate date = al.getHearingStartTime().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
-            out.add(new CourtSchedule.CourtScheduleBuilder()
-                    .withCourtScheduleId(al.getCourtScheduleId())
-                    .withSessionDate(date)
-                    .withOuCode(OU_CODE)
-                    .withCourtRoomId(String.valueOf(COURT_ROOM_ID))
-                    .withBusinessType(BUSINESS_TYPE)
-                    .withCourtSession("AD")
-                    .build());
+            out.add(new CourtSchedule()
+                    .courtScheduleId(al.getCourtScheduleId())
+                    .sessionDate(date)
+                    .ouCode(OU_CODE)
+                    .courtRoomId(String.valueOf(COURT_ROOM_ID))
+                    .businessType(BUSINESS_TYPE)
+                    .courtSession("AD")
+                    );
         }
         return out;
     }
 
     private static CourtSchedule adSession(final LocalDate date, final int availableMins) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId("cs-cand-" + date)
-                .withSessionDate(date)
-                .withOuCode(OU_CODE)
-                .withCourtRoomId(String.valueOf(COURT_ROOM_ID))
-                .withBusinessType(BUSINESS_TYPE)
-                .withCourtSession("AD")
-                .withMaxDuration(availableMins)
-                .withTotalBooked(0)
-                .withSessionStartTime(java.util.Date.from(
-                        date.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant()))
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId("cs-cand-" + date)
+                .sessionDate(date)
+                .ouCode(OU_CODE)
+                .courtRoomId(String.valueOf(COURT_ROOM_ID))
+                .businessType(BUSINESS_TYPE)
+                .courtSession("AD")
+                .maxDuration(availableMins)
+                .totalBooked(0)
+                .sessionStartTime(date.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime());
     }
 }

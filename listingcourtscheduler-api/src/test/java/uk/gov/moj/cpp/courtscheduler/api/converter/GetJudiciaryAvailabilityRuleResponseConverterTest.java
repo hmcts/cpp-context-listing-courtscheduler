@@ -7,10 +7,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.GetJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailabilityResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
@@ -48,21 +48,20 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
         rule.setCourtHouseId(courtHouseId);
         rule.setStartDate(startDate);
         rule.setEndDate(endDate);
-        rule.setSessionType(SessionType.AM);
-        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday));
+        rule.setSessionType(SessionType.AM.name());
+        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday.name(), uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday.name()));
         rule.setUnavailabilities(Arrays.asList(
-                new JudiciaryUnavailabilityResponse(
-                        LocalDate.of(2026, 1, 10),
-                        LocalDate.of(2026, 1, 12),
-                        UnavailabilityReason.ANNUAL_LEAVE
-                )
+                new JudiciaryUnavailabilityResponse()
+                        .startDate(LocalDate.of(2026, 1, 10))
+                        .endDate(LocalDate.of(2026, 1, 12))
+                        .reason(UnavailabilityReason.ANNUAL_LEAVE.name())
         ));
 
         final Judiciary judiciary = new Judiciary();
         judiciary.setId(judiciaryId);
         judiciary.setSurname("Smith");
 
-        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, judiciary);
+        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse().rule(rule).judiciary(judiciary);
         final JsonObject result = converter.convert(response);
 
         assertNotNull(result);
@@ -101,7 +100,7 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
     @Test
     void shouldConvertResponseWithNullJudiciary() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, null);
+        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse().rule(rule).judiciary(null);
 
         final JsonObject result = converter.convert(response);
 
@@ -115,7 +114,7 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
         rule.setSessionType(null);
 
-        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, null);
+        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse().rule(rule).judiciary(null);
         final JsonObject result = converter.convert(response);
         final JsonObject ruleObject = result.getJsonObject("rule");
 
@@ -127,9 +126,9 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
     @Test
     void shouldConvertRuleWithAllOptionalFields() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setSessionType(SessionType.PM);
+        rule.setSessionType(SessionType.PM.name());
 
-        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, null);
+        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse().rule(rule).judiciary(null);
         final JsonObject result = converter.convert(response);
         final JsonObject ruleObject = result.getJsonObject("rule");
 
@@ -141,7 +140,7 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
         rule.setRepeatDays(Arrays.asList());
 
-        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, null);
+        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse().rule(rule).judiciary(null);
         final JsonObject result = converter.convert(response);
         final JsonObject ruleObject = result.getJsonObject("rule");
         final jakarta.json.JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
@@ -155,7 +154,7 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
         rule.setRepeatDays(null);
 
-        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, null);
+        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse().rule(rule).judiciary(null);
         final JsonObject result = converter.convert(response);
         final JsonObject ruleObject = result.getJsonObject("rule");
         final jakarta.json.JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
@@ -169,7 +168,7 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
         rule.setUnavailabilities(Arrays.asList());
 
-        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, null);
+        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse().rule(rule).judiciary(null);
         final JsonObject result = converter.convert(response);
         final JsonObject ruleObject = result.getJsonObject("rule");
         final jakarta.json.JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");
@@ -183,7 +182,7 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
         rule.setUnavailabilities(null);
 
-        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse(rule, null);
+        final GetJudiciaryAvailabilityRuleResponse response = new GetJudiciaryAvailabilityRuleResponse().rule(rule).judiciary(null);
         final JsonObject result = converter.convert(response);
         final JsonObject ruleObject = result.getJsonObject("rule");
         final jakarta.json.JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");

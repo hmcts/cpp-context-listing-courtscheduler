@@ -752,15 +752,859 @@ components:
         traceId: { type: string }
         timestamp: { type: string, format: date-time }
 
+    AssignJudiciariesRequest:
+      type: object
+      required: [judiciaries]
+      properties:
+        judiciaries:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/JudiciaryAssignment' }
+        skipValidations:
+          type: boolean
+          description: If true, skip all validations for this request. Defaults to false.
+
+    JudiciaryAssignment:
+      type: object
+      required: [judiciaryId, sessionIds]
+      properties:
+        judiciaryId: { type: string, minLength: 1 }
+        sessionIds:
+          type: array
+          minItems: 1
+          items: { type: string }
+        isDeputy: { type: boolean, nullable: true }
+        isBenchChairman: { type: boolean, nullable: true }
+        position: { type: string, nullable: true }
+        rotaJudiciaryId: { type: string, nullable: true }
+
+    AssignCourtroomRequest:
+      type: object
+      properties:
+        courtScheduleIds:
+          type: array
+          default: []
+          items: { type: string }
+        courtRoomId: { type: string, nullable: true }
+
+    SessionJudiciary:
+      type: object
+      properties:
+        judicialId: { type: string, nullable: true }
+        judiciaryType: { type: string, nullable: true }
+        isBenchChairman: { type: boolean, nullable: true }
+        isDeputy: { type: boolean, nullable: true }
+
+    # Standalone (not referenced by /sessions/bulk-assign-judiciaries' requestBody) so the model
+    # class still generates for use as AssignJudiciaryToSessionsConverter's output type. The
+    # endpoint stays PassthroughObject because the converter hand-extracts judiciaryType from a
+    # nested judicialRoleType.judiciaryType wire path that automatic Jackson binding can't follow.
+    AssignJudiciaryToSessionsRequest:
+      type: object
+      properties:
+        courtScheduleIds:
+          type: array
+          default: []
+          items: { type: string }
+        judiciary:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/SessionJudiciary' }
+
+    MiFilterCriteria:
+      type: object
+      properties:
+        fromDate: { type: string, format: date, nullable: true }
+        toDate: { type: string, format: date, nullable: true }
+
+    ProvisionalSlot:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        hearingStartTime: { type: string, nullable: true }
+
+    ProvisionalBookingSlots:
+      type: object
+      properties:
+        provisionalSlots:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/ProvisionalSlot' }
+
+    CourtScheduleJudiciary:
+      type: object
+      properties:
+        judiciaryId: { type: string, nullable: true }
+        rotaJudiciaryId: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        forenames: { type: string, nullable: true }
+        surname: { type: string, nullable: true }
+        emailAddress: { type: string, nullable: true }
+        courtScheduleId: { type: string, nullable: true }
+        courtListingProfileId: { type: string, nullable: true }
+        judiciaryType: { type: string, nullable: true }
+        position: { type: string, nullable: true }
+        isBenchChairman: { type: boolean, nullable: true }
+        isDeputy: { type: boolean, nullable: true }
+        active: { type: boolean, default: false }
+        createdOn: { type: string, format: date-time, nullable: true }
+        updatedOn: { type: string, format: date-time, nullable: true }
+
+    # --- Judiciary-availability-rule family (standalone schemas). NOTE: allOf composition was
+    # tried first for the Add/Update/Delete/Find*/FindRule request hierarchy to preserve a real
+    # Java extends relationship (several validator/service methods depend on the hand-written
+    # BaseJudiciaryAvailabilityRule(WithDetails)Request base types polymorphically) — verified by
+    # generating and reading the output that this generator/config flattens allOf into duplicated
+    # fields with NO extends clause, so the schemas below are flattened to match what's actually
+    # generated; the Java-side polymorphism was reworked instead (see JudiciaryAvailabilityService,
+    # JudiciaryAvailabilityRuleApiValidator, BaseJudiciaryAvailabilityRuleConverter).
+    # FindJudiciaryAvailabilityRuleResponse/GetJudiciaryAvailabilityRuleResponse are NOT converted
+    # here — they reference domain.Judiciary, a separate large class outside this task's scope. ---
+    AddJudiciaryAvailabilityRuleRequest:
+      type: object
+      properties:
+        ruleId: { type: string, nullable: true }
+        judiciaryId: { type: string, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        repeatDays:
+          type: array
+          nullable: true
+          items: { type: string }
+        sessionType: { type: string, nullable: true }
+        unavailabilities:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/JudiciaryUnavailabilityRequest' }
+
+    UpdateJudiciaryAvailabilityRuleRequest:
+      type: object
+      properties:
+        ruleId: { type: string, nullable: true }
+        judiciaryId: { type: string, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        repeatDays:
+          type: array
+          nullable: true
+          items: { type: string }
+        sessionType: { type: string, nullable: true }
+        unavailabilities:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/JudiciaryUnavailabilityRequest' }
+
+    DeleteJudiciaryAvailabilityRuleRequest:
+      type: object
+      properties:
+        ruleId: { type: string, nullable: true }
+        judiciaryId: { type: string, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+
+    FindJudiciaryAvailabilityRequest:
+      type: object
+      properties:
+        ruleId: { type: string, nullable: true }
+        judiciaryId: { type: string, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+
+    FindJudiciaryAvailabilityRuleRequest:
+      type: object
+      properties:
+        ruleId: { type: string, nullable: true }
+        judiciaryId: { type: string, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        pageSize: { type: integer, nullable: true }
+        pageNumber: { type: integer, nullable: true }
+        withJudiciary: { type: boolean, nullable: true }
+
+    GetJudiciaryAvailabilityRuleRequest:
+      type: object
+      properties:
+        ruleId: { type: string, nullable: true }
+        withJudiciary: { type: boolean, nullable: true }
+
+    FindJudiciaryAvailabilityResponse:
+      type: object
+      properties:
+        availableJudiciaries:
+          type: array
+          nullable: true
+          items: { type: string }
+
+    JudiciaryUnavailabilityRequest:
+      type: object
+      properties:
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        reason: { type: string, nullable: true }
+
+    JudiciaryUnavailabilityResponse:
+      type: object
+      properties:
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        reason: { type: string, nullable: true }
+
+    JudiciaryAvailabilityRuleResponse:
+      type: object
+      properties:
+        id: { type: string, nullable: true }
+        judiciaryId: { type: string, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        repeatDays:
+          type: array
+          nullable: true
+          items: { type: string }
+        sessionType: { type: string, nullable: true }
+        unavailabilities:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/JudiciaryUnavailabilityResponse' }
+
+    # --- Hearing-slot / booking family (standalone; the endpoints below stay PassthroughObject —
+    # see the per-schema notes for why). Model classes still generate for internal use by
+    # AllocatedSlotConverter / ListHearingSlotConverter / SlotsUpdateService / CourtSchedulerApi's
+    # hand-rolled Content-Type-selected construction.
+
+    RequestedCourtSchedule:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        hearingStartTime: { type: string, nullable: true }
+        durationInMinutes: { type: integer, nullable: true }
+        source: { type: string, nullable: true }
+
+    HearingSlot:
+      type: object
+      properties:
+        hearingId: { type: string, nullable: true }
+        courtScheduleIds:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/RequestedCourtSchedule' }
+
+    RequestedSlots:
+      type: object
+      properties:
+        hearingSlots:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/HearingSlot' }
+
+    Hearing:
+      type: object
+      properties:
+        hearingId: { type: string, nullable: true }
+        courtScheduleId: { type: string, nullable: true }
+        hearingStartTime: { type: string, nullable: true }
+        duration: { type: integer, nullable: true }
+        judiciaries:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/CourtScheduleJudiciary' }
+        source: { type: string, nullable: true }
+
+    ListHearingSlotsResponse:
+      type: object
+      properties:
+        hearings:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/Hearing' }
+
+    AllocatedSlot:
+      type: object
+      properties:
+        duration: { type: integer, default: 0 }
+        sessionDate: { type: string, nullable: true }
+        hearingStartTime: { type: string, nullable: true }
+        session: { type: string, nullable: true }
+        courtRoomId: { type: string, nullable: true }
+        courtRoomUUId: { type: string, nullable: true }
+        courtCentreId: { type: string, nullable: true }
+        ouCode: { type: string, nullable: true }
+        hearingId: { type: string, nullable: true }
+        courtScheduleId: { type: string, nullable: true }
+        isSlotBased: { type: boolean, default: false }
+        bookingId: { type: string, nullable: true }
+        prosecutor: { type: string, nullable: true }
+        courtRoom: { type: string, nullable: true }
+        hearingSessionDateSearchCutOff: { type: string, nullable: true }
+        isPolice: { type: boolean, default: false }
+        judiciaries:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/CourtScheduleJudiciary' }
+        source: { type: string, nullable: true }
+
+    AllocatedSlots:
+      type: object
+      properties:
+        hearingSlots:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/AllocatedSlot' }
+
+    RequestedDay:
+      type: object
+      properties:
+        sessionDate: { type: string, format: date, nullable: true }
+        courtScheduleId: { type: string, nullable: true }
+        durationInMinutes: { type: integer, default: 0 }
+
+    # postSearchAndBookHearing (/hearings/{hearingId}) is polymorphic by Content-Type — four
+    # request media types share one operationId/Java method, so all four Courtscheduler* aliases
+    # below MUST stay PassthroughObject (Map<String,Object>) or the generated interface collapses
+    # to a single Java parameter type and breaks the other three Content-Types. These four request
+    # schemas are standalone — CourtSchedulerApi's per-Content-Type private handlers hand-construct
+    # them field-by-field from the JsonObject payload.
+    CrownSearchAndBookRequest:
+      type: object
+      properties:
+        hearingId: { type: string, nullable: true }
+        courtCentreId: { type: string, nullable: true }
+        courtRoomId: { type: string, nullable: true }
+        hearingDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        earliestHearingTime: { type: string, nullable: true }
+        durationInMinutes: { type: integer, default: 0 }
+        courtScheduleId: { type: string, nullable: true }
+        source: { type: string, nullable: true }
+        ouCode: { type: string, nullable: true }
+        courtCentreName: { type: string, nullable: true }
+        courtRoomName: { type: string, nullable: true }
+
+    # Single-day CROWN fallback search-and-book (SlotsUpdateService#crownFallbackSearchAndBook) —
+    # internal only, not part of postSearchAndBookHearing's polymorphic set.
+    CrownFallbackRequest:
+      type: object
+      properties:
+        hearingId: { type: string, nullable: true }
+        courtCentreId: { type: string, nullable: true }
+        courtRoomId: { type: string, nullable: true }
+        hearingDate: { type: string, format: date, nullable: true }
+        earliestHearingTime: { type: string, nullable: true }
+        durationInMinutes: { type: integer, default: 0 }
+        source: { type: string, nullable: true }
+        ouCode: { type: string, nullable: true }
+        courtCentreName: { type: string, nullable: true }
+        courtRoomName: { type: string, nullable: true }
+
+    MagsSearchAndBookRequest:
+      type: object
+      properties:
+        hearingId: { type: string, nullable: true }
+        courtCentreId: { type: string, nullable: true }
+        courtRoomId: { type: string, nullable: true }
+        hearingDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        hearingStartTime: { type: string, nullable: true }
+        hearingSessionDateSearchCutOff: { type: string, nullable: true }
+        durationInMinutes: { type: integer, default: 0 }
+        isPolice: { type: boolean, default: false }
+        courtScheduleId: { type: string, nullable: true }
+
+    MoveHearingToPastDateRequest:
+      type: object
+      properties:
+        hearingId: { type: string, nullable: true }
+        courtCentreId: { type: string, nullable: true }
+        jurisdiction: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        durationInMinutes: { type: integer, default: 0 }
+        courtScheduleId: { type: string, nullable: true }
+
+    ChangeCourtRoomForMultidayHearingRequest:
+      type: object
+      properties:
+        hearingId: { type: string, nullable: true }
+        days:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/RequestedDay' }
+
+    # --- CourtScheduleView family (domain-model migration, get-court-schedule "sessions" view). ---
+    # SlotStartTime here is a STANDALONE schema generated purely so CourtScheduleView can embed a
+    # generated (not hand-written) list item type. domain.SlotStartTime itself stays hand-written
+    # (it is out of scope / blocked elsewhere), so this is a distinct openapi.model.SlotStartTime
+    # class used only inside CourtScheduleView/CourtScheduleDeleteResponse; call sites map between
+    # the two by hand where domain.CourtSchedule still hands back domain.SlotStartTime instances.
+    SlotStartTime:
+      type: object
+      properties:
+        sessionStartTime: { type: string, nullable: true }
+        sessionEndTime: { type: string, nullable: true }
+        hearingStartTime: { type: string, nullable: true }
+        count: { type: integer, format: int64, default: 0 }
+
+    CourtScheduleView:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        listingProfileId: { type: string, nullable: true }
+        ouCode: { type: string, nullable: true }
+        courtRoomNumber: { type: integer, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        courtHouseName: { type: string, nullable: true }
+        operationalUnit: { type: string, nullable: true }
+        businessType: { type: string, nullable: true }
+        businessDescription: { type: string, nullable: true }
+        courtRoomId: { type: string, nullable: true }
+        courtRoomName: { type: string, nullable: true }
+        panel: { type: string, nullable: true }
+        courtSession: { type: string, nullable: true }
+        slotBased: { type: boolean, default: false }
+        active: { type: boolean, default: false }
+        sessionDate: { type: string, format: date, nullable: true }
+        maxSlots: { type: integer, nullable: true }
+        maxDuration: { type: integer, nullable: true }
+        availableSlots: { type: integer, nullable: true }
+        availableDuration: { type: integer, nullable: true }
+        totalBooked: { type: integer, nullable: true }
+        allDaySplit: { type: boolean, default: false }
+        maxDurationForMorning: { type: integer, nullable: true }
+        maxDurationForAfternoon: { type: integer, nullable: true }
+        minHearingTime: { type: string, nullable: true }
+        maxHearingTime: { type: string, nullable: true }
+        totalBookedForMorning: { type: integer, nullable: true }
+        totalBookedForAfternoon: { type: integer, nullable: true }
+        availableDurationForMorning: { type: integer, nullable: true }
+        availableDurationForAfternoon: { type: integer, nullable: true }
+        judiciaries:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/CourtScheduleJudiciary' }
+        slotStartTimes:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/SlotStartTime' }
+        sessionStartTime: { type: string, nullable: true }
+        sessionEndTime: { type: string, nullable: true }
+        isOverbookingAllowed: { type: boolean, default: false }
+        isDraft: { type: boolean, nullable: true }
+        jurisdiction: { type: string, nullable: true }
+
+    CourtSessionsView:
+      type: object
+      properties:
+        courtRoomId: { type: string, nullable: true }
+        courtRoomName: { type: string, nullable: true }
+        sessions:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/CourtScheduleView' }
+
+    AssignCourtroomErrorGroup:
+      type: object
+      properties:
+        sessions:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/CourtScheduleView' }
+        error: { type: string, nullable: true }
+
+    AssignCourtroomResponse:
+      type: object
+      properties:
+        errorGroups:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/AssignCourtroomErrorGroup' }
+
+    CourtScheduleDeleteResponse:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        listingProfileId: { type: string, nullable: true }
+        ouCode: { type: string, nullable: true }
+        courtRoomNumber: { type: integer, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        courtHouseName: { type: string, nullable: true }
+        operationalUnit: { type: string, nullable: true }
+        businessType: { type: string, nullable: true }
+        businessDescription: { type: string, nullable: true }
+        courtRoomId: { type: string, nullable: true }
+        courtRoomName: { type: string, nullable: true }
+        panel: { type: string, nullable: true }
+        courtSession: { type: string, nullable: true }
+        slotBased: { type: boolean, default: false }
+        active: { type: boolean, default: false }
+        sessionDate: { type: string, format: date, nullable: true }
+        maxSlots: { type: integer, nullable: true }
+        maxDuration: { type: integer, nullable: true }
+        availableSlots: { type: integer, nullable: true }
+        availableDuration: { type: integer, nullable: true }
+        totalBooked: { type: integer, nullable: true }
+        judiciaries:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/CourtScheduleJudiciary' }
+        slotStartTimes:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/SlotStartTime' }
+        createdOn: { type: string, format: date-time, nullable: true }
+        updatedOn: { type: string, format: date-time, nullable: true }
+        sessionStartTime: { type: string, nullable: true }
+        sessionEndTime: { type: string, nullable: true }
+        isOverbookingAllowed: { type: boolean, default: false }
+        minHearingTime: { type: string, nullable: true }
+        maxHearingTime: { type: string, nullable: true }
+
+    AllocatedListingTotalBooked:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        totalBooked: { type: integer, nullable: true }
+
+    AssignmentFailureReason:
+      type: string
+      enum: [JUDICIARY_NOT_FOUND, SESSION_NOT_FOUND, DUPLICATE_ASSIGNMENT, PERSISTENCE_ERROR]
+
+    AssignmentFailure:
+      type: object
+      properties:
+        judiciaryId: { type: string, nullable: true }
+        sessionId: { type: string, nullable: true }
+        reason: { $ref: '#/components/schemas/AssignmentFailureReason' }
+
+    AssignJudiciariesResponse:
+      type: object
+      properties:
+        requestedAssignments: { type: integer, default: 0 }
+        successfulAssignments: { type: integer, default: 0 }
+        failures:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/AssignmentFailure' }
+
+    BusinessType:
+      type: object
+      properties:
+        id: { type: string, nullable: true }
+        seqNum: { type: integer, nullable: true }
+        typeCode: { type: string, nullable: true }
+        typeDescription: { type: string, nullable: true }
+        slot: { type: boolean, default: false }
+        duration: { type: boolean, default: false }
+        jurisdiction: { type: string, nullable: true }
+
+    OrganisationUnit:
+      type: object
+      properties:
+        id: { type: string, nullable: true }
+        defaultStartTime: { type: string, nullable: true }
+
+    RepeatFrequency:
+      type: string
+      enum: [ONCE, EVERY_WEEK, EVERY_MONTH]
+
+    RepeatPattern:
+      type: object
+      properties:
+        frequency: { $ref: '#/components/schemas/RepeatFrequency' }
+        repeatFor: { type: integer, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+
+    Venue:
+      type: object
+      properties:
+        locationId: { type: integer, nullable: true }
+        venueId: { type: integer, nullable: true }
+        venueName: { type: string, nullable: true }
+
+    CourtRoomSessionAllocation:
+      type: object
+      properties:
+        id: { type: string, nullable: true }
+        courtRoomId: { type: integer, nullable: true }
+        oucode: { type: string, nullable: true }
+        maxSlot: { type: integer, nullable: true }
+        maxDurationMins: { type: integer, nullable: true }
+        rotaBusinessTypeCode: { type: string, nullable: true }
+        courtSession: { type: string, nullable: true }
+        validFrom: { type: string, nullable: true }
+        validTo: { type: string, nullable: true }
+        sessionStartTime: { type: string, nullable: true }
+        sessionEndTime: { type: string, nullable: true }
+
+    # WeekDay mirrors java.time.DayOfWeek's names but is a distinct generated enum type
+    # (named WeekDay, not DayOfWeek, to avoid colliding with java.time.DayOfWeek imports at
+    # call sites) - conversion to/from java.time.DayOfWeek is manual via .name()/.valueOf().
+    WeekDay:
+      type: string
+      enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+
+    Session:
+      type: object
+      properties:
+        courtCentreId: { type: string, nullable: true }
+        courtRoomId: { type: string, nullable: true }
+        sessionType: { type: string, nullable: true }
+        businessType: { type: string, nullable: true }
+        slotsOrDuration: { type: integer, nullable: true }
+        panel: { type: string, nullable: true }
+        repeatDays:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/WeekDay' }
+        allDaySplit: { type: boolean, nullable: true }
+        maxDurationForMorning: { type: integer, nullable: true }
+        maxDurationForAfternoon: { type: integer, nullable: true }
+        sessionStartTime: { type: string, nullable: true }
+        sessionEndTime: { type: string, nullable: true }
+        isOverbookingAllowed: { type: boolean, nullable: true }
+        isDraft: { type: boolean, nullable: true }
+        jurisdiction: { type: string, nullable: true }
+        index: { type: integer, nullable: true }
+
+    SessionValidationParams:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        maxDurationForMorning: { type: integer, nullable: true }
+        maxDurationForAfternoon: { type: integer, nullable: true }
+        isAllDaySplit: { type: boolean, nullable: true }
+        sessionType: { type: string, nullable: true }
+        businessType: { type: string, nullable: true }
+        slotsOrDuration: { type: integer, nullable: true }
+        sessionStartTime: { type: string, nullable: true }
+        sessionEndTime: { type: string, nullable: true }
+
+    SearchCourtSchedulesByIdRequestParam:
+      type: object
+      properties:
+        courtScheduleIds:
+          type: array
+          default: []
+          items: { type: string }
+
+    SessionsParam:
+      type: object
+      properties:
+        sessions:
+          type: array
+          default: []
+          items: { type: string }
+
+    Result:
+      type: object
+      properties:
+        msg: { type: string, nullable: true }
+        success: { type: boolean }
+        courtRoomId: { type: string, nullable: true }
+        courtRoomName: { type: string, nullable: true }
+        hearingDayCourtSchedules:
+          type: object
+          nullable: true
+          additionalProperties: { type: string }
+
+    CourtRoom:
+      type: object
+      properties:
+        id: { type: string, nullable: true }
+        rotaLocationId: { type: integer, nullable: true }
+        rotaVenueName: { type: string, nullable: true }
+        cppCourtRoomId: { type: integer, nullable: true }
+        rotaVenueId: { type: integer, nullable: true }
+        oucode: { type: string, nullable: true }
+        oucodeL3Name: { type: string, nullable: true }
+        oucodeL2Name: { type: string, nullable: true }
+        oucodeL2Code: { type: string, nullable: true }
+        oucodeUUID: { type: string, nullable: true }
+        courtroomName: { type: string, nullable: true }
+        courtroomId: { type: string, nullable: true }
+
+    AllocatedListingEachBooked:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        duration: { type: integer, nullable: true }
+        hearingStartTime: { type: string, format: date-time, nullable: true }
+
+    CourtScheduleMatcherInfo:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        ouCode: { type: string, nullable: true }
+        createdOn: { type: string, format: date-time, nullable: true }
+
+    CreateSessionRequestParam:
+      type: object
+      properties:
+        sessionList:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/Session' }
+        repeatPattern: { $ref: '#/components/schemas/RepeatPattern' }
+        sessionToBeAdded:
+          allOf: [{ $ref: '#/components/schemas/Session' }]
+          nullable: true
+
+    FindJudiciaryAvailabilityRuleResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/JudiciaryAvailabilityRuleResponse' }
+        totalCount: { type: integer, nullable: true }
+        pageNumber: { type: integer, nullable: true }
+        pageSize: { type: integer, nullable: true }
+        judiciaries:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/Judiciary' }
+
+    GetJudiciaryAvailabilityRuleResponse:
+      type: object
+      properties:
+        rule:
+          allOf: [{ $ref: '#/components/schemas/JudiciaryAvailabilityRuleResponse' }]
+          nullable: true
+        judiciary:
+          allOf: [{ $ref: '#/components/schemas/Judiciary' }]
+          nullable: true
+
+    ProvisionalBookingInfo:
+      allOf:
+        - $ref: '#/components/schemas/CourtSchedule'
+        - type: object
+          properties:
+            bookingId: { type: string, nullable: true }
+            hearingStartTime: { type: string, format: date-time, nullable: true }
+
+    JudiciarySpecialismType:
+      type: string
+      enum:
+        - MURDER
+        - ATTEMPTED_MURDER
+        - SEXUAL_OFFENCE
+        - TERRORISM
+
+    Judiciary:
+      type: object
+      properties:
+        id: { type: string, nullable: true }
+        seqId: { type: integer, nullable: true }
+        titlePrefix: { type: string, nullable: true }
+        titlePrefixWelsh: { type: string, nullable: true }
+        titleJudicialPrefix: { type: string, nullable: true }
+        titleJudicialPrefixWelsh: { type: string, nullable: true }
+        titleSuffix: { type: string, nullable: true }
+        titleSuffixWelsh: { type: string, nullable: true }
+        surname: { type: string, nullable: true }
+        forenames: { type: string, nullable: true }
+        judiciaryType: { type: string, nullable: true }
+        personId: { type: string, nullable: true }
+        validFrom: { type: string, nullable: true }
+        validTo: { type: string, nullable: true }
+        emailAddress: { type: string, nullable: true }
+        cpUserId: { type: string, nullable: true }
+        specialisms:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/JudiciarySpecialismType' }
+        requestedName: { type: string, nullable: true }
+
+    UpdateCourtSchedule:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        courtRoomId: { type: string, nullable: true }
+        sessionType: { type: string, nullable: true }
+        businessType: { type: string, nullable: true }
+        panel: { type: string, nullable: true }
+        availableSlots: { type: integer, nullable: true }
+        availableDuration: { type: integer, nullable: true }
+        maxSlots: { type: integer, nullable: true }
+        maxDuration: { type: integer, nullable: true }
+        maxDurationForMorning: { type: integer, nullable: true }
+        maxDurationForAfternoon: { type: integer, nullable: true }
+        allDaySplit: { type: boolean }
+        sessionStartTime: { type: string, nullable: true }
+        sessionEndTime: { type: string, nullable: true }
+        isOverbookingAllowed: { type: boolean }
+        jurisdiction: { type: string, nullable: true }
+        isDraft: { type: boolean, nullable: true }
+
+    CourtSchedule:
+      type: object
+      properties:
+        courtScheduleId: { type: string, nullable: true }
+        listingProfileId: { type: string, nullable: true }
+        ouCode: { type: string, nullable: true }
+        courtRoomId: { type: string, nullable: true }
+        courtRoomNumber: { type: integer, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        courtHouseName: { type: string, nullable: true }
+        courtRoomName: { type: string, nullable: true }
+        operationalUnit: { type: string, nullable: true }
+        businessType: { type: string, nullable: true }
+        businessDescription: { type: string, nullable: true }
+        panel: { type: string, nullable: true }
+        courtSession: { type: string, nullable: true }
+        slotBased: { type: boolean, default: false }
+        active: { type: boolean, default: false }
+        sessionDate: { type: string, format: date, nullable: true }
+        maxSlots: { type: integer, nullable: true }
+        availableSlots: { type: integer, nullable: true }
+        maxDuration: { type: integer, nullable: true }
+        availableDuration: { type: integer, nullable: true }
+        judiciaries:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/CourtScheduleJudiciary' }
+        slotStartTimes:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/SlotStartTime' }
+        createdOn: { type: string, format: date-time, nullable: true }
+        updatedOn: { type: string, format: date-time, nullable: true }
+        allDaySplit: { type: boolean, default: false }
+        maxDurationForMorning: { type: integer, nullable: true }
+        maxDurationForAfternoon: { type: integer, nullable: true }
+        totalBooked: { type: integer, nullable: true }
+        availableDurationForMorning: { type: integer, nullable: true }
+        availableDurationForAfternoon: { type: integer, nullable: true }
+        totalBookedForMorning: { type: integer, nullable: true }
+        totalBookedForAfternoon: { type: integer, nullable: true }
+        overbookingAllowed: { type: boolean, default: false }
+        draft: { type: boolean, default: false }
+        jurisdiction: { type: string, nullable: true }
+        sessionStartTime: { type: string, format: date-time, nullable: true }
+        sessionEndTime: { type: string, format: date-time, nullable: true }
+        nationalBreakTime: { type: string, format: date-time, nullable: true }
+        minHearingTime: { type: string, nullable: true }
+        maxHearingTime: { type: string, nullable: true }
+
     CourtschedulerCreate:                       { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerUpdate:                       { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerDelete:                       { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerDeleteResponse:               { $ref: '#/components/schemas/PassthroughObject' }
-    CourtschedulerAssignCourtroom:              { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerAssignCourtroom:              { $ref: '#/components/schemas/AssignCourtroomRequest' }
     CourtschedulerAssignCourtroomResponse:      { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerGetCourtSchedule:             { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerSearchCourtSchedulesByIdResponse: { $ref: '#/components/schemas/PassthroughObject' }
-    CourtschedulerAssignJudiciary:              { $ref: '#/components/schemas/PassthroughObject' }
+    # postCourtschedulerSessionJudiciary is polymorphic by Content-Type (assign vs unassign
+    # share one operationId/method) — both requestBody media types must stay PassthroughObject
+    # so the generated interface keeps a single Map<String,Object> parameter; AssignJudiciariesRequest
+    # is still defined below as a standalone schema so its model class generates for use inside
+    # the controller via objectMapper.convertValue(...).
+    CourtschedulerAssignJudiciary:               { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerUnassignJudiciary:            { $ref: '#/components/schemas/PassthroughObject' }
 
     CourtschedulerUpdateHearingSlots:            { $ref: '#/components/schemas/PassthroughObject' }

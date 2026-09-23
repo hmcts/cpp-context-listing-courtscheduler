@@ -2,7 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionsParam;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;

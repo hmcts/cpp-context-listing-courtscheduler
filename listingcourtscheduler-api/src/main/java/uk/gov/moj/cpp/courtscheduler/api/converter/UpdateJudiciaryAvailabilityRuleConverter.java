@@ -4,10 +4,10 @@ import org.springframework.stereotype.Service;
 
 import jakarta.json.JsonObject;
 
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
 
 @Service
-public class UpdateJudiciaryAvailabilityRuleConverter extends BaseJudiciaryAvailabilityRuleConverter 
+public class UpdateJudiciaryAvailabilityRuleConverter extends BaseJudiciaryAvailabilityRuleConverter
         implements Converter<JsonObject, UpdateJudiciaryAvailabilityRuleRequest> {
 
     private static final String RULE_ID = "ruleId";

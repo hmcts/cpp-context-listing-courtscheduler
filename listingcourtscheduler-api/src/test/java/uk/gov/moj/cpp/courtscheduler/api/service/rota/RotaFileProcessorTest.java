@@ -38,10 +38,10 @@ import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
@@ -122,22 +122,22 @@ class RotaFileProcessorTest {
         rotaFileProcessHistory.setExecutionId(executionId);
         records = new HashMap<>();
 
-        judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(randomUUID().toString())
-                .withEmailAddress("judge@example.com")
-                .withForenames("John")
-                .withSurname("Doe")
-                .withTitlePrefix("Mr")
-                .withJudiciaryType("Judge")
-                .build();
+        judiciary = new Judiciary()
+                .id(randomUUID().toString())
+                .emailAddress("judge@example.com")
+                .forenames("John")
+                .surname("Doe")
+                .titlePrefix("Mr")
+                .judiciaryType("Judge")
+                ;
 
-        courtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(LocalDate.parse("2024-01-15"))
-                .withCourtSession("AM")
-                .build();
+        courtSchedule = new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId("courtroom-1")
+                .panel("PANEL1")
+                .sessionDate(LocalDate.parse("2024-01-15"))
+                .courtSession("AM")
+                ;
     }
 
     // ============================================================================
@@ -794,10 +794,9 @@ class RotaFileProcessorTest {
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
-            final AssignJudiciariesRequest assignRequest = AssignJudiciariesRequest.builder()
-                    .withJudiciaries(List.of())
-                    .withSkipValidations(true)
-                    .build();
+            final AssignJudiciariesRequest assignRequest = new AssignJudiciariesRequest()
+                    .judiciaries(List.of())
+                    .skipValidations(true);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
                     .thenReturn(assignRequest);
 
@@ -1010,48 +1009,42 @@ class RotaFileProcessorTest {
     }
 
     private AssignJudiciariesRequest createAssignRequest(final String judiciaryId, final UUID... sessionIds) {
-        return AssignJudiciariesRequest.builder()
-                .withJudiciaries(List.of(
-                        uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
-                                .withJudiciaryId(judiciaryId)
-                                .withSessionIds(java.util.Arrays.stream(sessionIds).map(UUID::toString).toList())
-                                .withPosition("CHAIR")
-                                .withIsBenchChairman(true)
-                                .withIsDeputy(false)
-                                .build()
-                ))
-                .build();
+        return new AssignJudiciariesRequest()
+                .judiciaries(List.of(
+                        new uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment()
+                                .judiciaryId(judiciaryId)
+                                .sessionIds(java.util.Arrays.stream(sessionIds).map(UUID::toString).toList())
+                                .position("CHAIR")
+                                .isBenchChairman(true)
+                                .isDeputy(false)
+                ));
     }
 
     private AssignJudiciariesRequest createMultiJudiciaryAssignRequest(
             final String judiciaryId1, final UUID sessionId1,
             final String judiciaryId2, final UUID sessionId2) {
-        return AssignJudiciariesRequest.builder()
-                .withJudiciaries(List.of(
-                        uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
-                                .withJudiciaryId(judiciaryId1)
-                                .withSessionIds(List.of(sessionId1.toString()))
-                                .withPosition("CHAIR")
-                                .withIsBenchChairman(true)
-                                .withIsDeputy(false)
-                                .build(),
-                        uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
-                                .withJudiciaryId(judiciaryId2)
-                                .withSessionIds(List.of(sessionId2.toString()))
-                                .withPosition("CHAIR")
-                                .withIsBenchChairman(true)
-                                .withIsDeputy(false)
-                                .build()
-                ))
-                .build();
+        return new AssignJudiciariesRequest()
+                .judiciaries(List.of(
+                        new uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment()
+                                .judiciaryId(judiciaryId1)
+                                .sessionIds(List.of(sessionId1.toString()))
+                                .position("CHAIR")
+                                .isBenchChairman(true)
+                                .isDeputy(false),
+                        new uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment()
+                                .judiciaryId(judiciaryId2)
+                                .sessionIds(List.of(sessionId2.toString()))
+                                .position("CHAIR")
+                                .isBenchChairman(true)
+                                .isDeputy(false)
+                ));
     }
 
     private AssignJudiciariesResponse createAssignResponse(final int requested, final int successful) {
-        return AssignJudiciariesResponse.builder()
-                .withRequestedAssignments(requested)
-                .withSuccessfulAssignments(successful)
-                .withFailures(List.of())
-                .build();
+        return new AssignJudiciariesResponse()
+                .requestedAssignments(requested)
+                .successfulAssignments(successful)
+                .failures(List.of());
     }
 
     // ============================================================================

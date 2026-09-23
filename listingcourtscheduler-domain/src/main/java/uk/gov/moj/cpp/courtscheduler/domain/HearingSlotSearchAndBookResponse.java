@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+
 import java.util.List;
 import java.util.Objects;
 

@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,10 +29,9 @@ public class JudiciaryAssignmentRequestHelper {
             final List<JudiciaryScheduleAssignment> assignmentList) {
         if (assignmentList == null || assignmentList.isEmpty()) {
             logger.debug("Building AssignJudiciariesRequest from empty list");
-            return AssignJudiciariesRequest.builder()
-                    .withJudiciaries(List.of())
-                    .withSkipValidations(true)
-                    .build();
+            return new AssignJudiciariesRequest()
+                    .judiciaries(List.of())
+                    .skipValidations(true);
         }
 
         logger.info("Building AssignJudiciariesRequest from list with {} entries", assignmentList.size());
@@ -48,10 +47,9 @@ public class JudiciaryAssignmentRequestHelper {
         logger.info("Built AssignJudiciariesRequest with {} judiciary assignments and {} total session IDs", 
                 assignments.size(), totalSessionIds);
 
-        return AssignJudiciariesRequest.builder()
-                .withJudiciaries(assignments)
-                .withSkipValidations(true)
-                .build();
+        return new AssignJudiciariesRequest()
+                .judiciaries(assignments)
+                .skipValidations(true);
     }
 
     /**
@@ -65,14 +63,13 @@ public class JudiciaryAssignmentRequestHelper {
         final List<String> sessionIds = data.courtScheduleIds().stream()
                 .map(UUID::toString)
                 .toList();
-        return JudiciaryAssignment.builder()
-                .withJudiciaryId(judiciaryId)
-                .withRotaJudiciaryId(data.rotaJudiciaryId())
-                .withSessionIds(sessionIds)
-                .withPosition(data.position())
-                .withIsBenchChairman(data.isBenchChairman())
-                .withIsDeputy(data.isDeputy())
-                .build();
+        return new JudiciaryAssignment()
+                .judiciaryId(judiciaryId)
+                .rotaJudiciaryId(data.rotaJudiciaryId())
+                .sessionIds(sessionIds)
+                .position(data.position())
+                .isBenchChairman(data.isBenchChairman())
+                .isDeputy(data.isDeputy());
     }
 }
 

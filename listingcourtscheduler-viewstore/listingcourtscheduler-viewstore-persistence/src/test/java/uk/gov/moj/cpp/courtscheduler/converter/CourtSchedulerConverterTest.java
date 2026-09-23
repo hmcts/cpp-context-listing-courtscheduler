@@ -3,10 +3,11 @@ package uk.gov.moj.cpp.courtscheduler.converter;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.text.SimpleDateFormat;
+import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.List;
 
@@ -20,7 +21,7 @@ class CourtSchedulerConverterTest {
         CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
         courtScheduleEnt.setSupportAdSplit(null);
 
-        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule converted = CourtSchedulerConverter.convert(courtScheduleEnt);
+        final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule converted = CourtSchedulerConverter.convert(courtScheduleEnt);
 
         assertEquals(converted.getListingProfileId(), courtScheduleEnt.getListingProfileId());
         assertEquals(converted.getOuCode(), courtScheduleEnt.getOuCode());
@@ -35,11 +36,11 @@ class CourtSchedulerConverterTest {
         assertEquals(converted.getCourtHouseId(), courtScheduleEnt.getCourtHouseId());
         assertEquals(converted.getCourtHouseName(), courtScheduleEnt.getCourtHouseName());
         assertEquals(converted.getPanel(), courtScheduleEnt.getPanel());
-        assertEquals(converted.getCreatedOn(), courtScheduleEnt.getCreatedOn());
-        assertEquals(converted.getUpdatedOn(), courtScheduleEnt.getUpdatedOn());
-        assertEquals(converted.getSessionStartTime(), courtScheduleEnt.getSessionStartTime());
-        assertEquals(converted.getSessionEndTime(), courtScheduleEnt.getSessionEndTime());
-        assertFalse(converted.isAllDaySplit());
+        assertEquals(converted.getCreatedOn(), courtScheduleEnt.getCreatedOn().toInstant().atOffset(ZoneOffset.UTC));
+        assertEquals(converted.getUpdatedOn(), courtScheduleEnt.getUpdatedOn().toInstant().atOffset(ZoneOffset.UTC));
+        assertEquals(converted.getSessionStartTime(), courtScheduleEnt.getSessionStartTime().toInstant().atOffset(ZoneOffset.UTC));
+        assertEquals(converted.getSessionEndTime(), courtScheduleEnt.getSessionEndTime().toInstant().atOffset(ZoneOffset.UTC));
+        assertFalse(Boolean.TRUE.equals(converted.getAllDaySplit()));
 
     }
 
@@ -48,10 +49,11 @@ class CourtSchedulerConverterTest {
         CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
         courtScheduleEnt.setSupportAdSplit(null);
 
-        final List<AllocatedListingEachBooked> allocatedListingEachBookedList = List.of(new AllocatedListingEachBooked(
-                courtScheduleEnt.getCourtScheduleId(), courtScheduleEnt.getAvailableDuration(), Calendar.getInstance().getTime()
-        ));
-        final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule converted = CourtSchedulerConverter.convert(courtScheduleEnt, allocatedListingEachBookedList);
+        final List<AllocatedListingEachBooked> allocatedListingEachBookedList = List.of(new AllocatedListingEachBooked()
+                .courtScheduleId(courtScheduleEnt.getCourtScheduleId())
+                .duration(courtScheduleEnt.getAvailableDuration())
+                .hearingStartTime(Calendar.getInstance().getTime().toInstant().atOffset(java.time.ZoneOffset.UTC)));
+        final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule converted = CourtSchedulerConverter.convert(courtScheduleEnt, allocatedListingEachBookedList);
 
         assertEquals(converted.getListingProfileId(), courtScheduleEnt.getListingProfileId());
         assertEquals(converted.getOuCode(), courtScheduleEnt.getOuCode());
@@ -66,9 +68,9 @@ class CourtSchedulerConverterTest {
         assertEquals(converted.getCourtHouseId(), courtScheduleEnt.getCourtHouseId());
         assertEquals(converted.getCourtHouseName(), courtScheduleEnt.getCourtHouseName());
         assertEquals(converted.getPanel(), courtScheduleEnt.getPanel());
-        assertEquals(converted.getCreatedOn(), courtScheduleEnt.getCreatedOn());
-        assertEquals(converted.getUpdatedOn(), courtScheduleEnt.getUpdatedOn());
-        assertFalse(converted.isAllDaySplit());
+        assertEquals(converted.getCreatedOn(), courtScheduleEnt.getCreatedOn().toInstant().atOffset(ZoneOffset.UTC));
+        assertEquals(converted.getUpdatedOn(), courtScheduleEnt.getUpdatedOn().toInstant().atOffset(ZoneOffset.UTC));
+        assertFalse(Boolean.TRUE.equals(converted.getAllDaySplit()));
     }
 
     @Test

@@ -8,7 +8,7 @@ import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingExcep
 import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.NO_EXISTING_ALLOCATION;
 import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.START_DATE_CHANGE_NOT_ALLOWED;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
@@ -138,7 +138,7 @@ public class ExtendMultidayHearingService {
         // The tail matches the block's own draft state: extending an ALLOCATED block must only book
         // FINAL sessions — a draft tail session has no confirmed room and, downstream, ADR-005 would
         // strip the courtroom from EVERY hearing day of the hearing.
-        final Boolean blockIsDraft = lastSession.isDraft();
+        final Boolean blockIsDraft = lastSession.getDraft();
         final List<CourtSchedule> candidates = courtScheduleRepository.findAdSessionsInRange(
                 ouCode, courtRoomId, businessType, tailDays.get(0), newEnd, blockIsDraft);
 
@@ -184,7 +184,7 @@ public class ExtendMultidayHearingService {
                 continue;
             }
             chosen.merge(cs.getSessionDate(), cs, (existing, incoming) ->
-                    existing.isOverbookingAllowed() ? incoming : existing);
+                    Boolean.TRUE.equals(existing.getOverbookingAllowed()) ? incoming : existing);
         }
         return chosen;
     }
@@ -224,7 +224,7 @@ public class ExtendMultidayHearingService {
                     session.getSessionDate().atTime(userStartTime).atZone(java.time.ZoneOffset.UTC).toInstant()));
         } else {
             row.setHearingStartTime(session.getSessionStartTime() != null
-                    ? session.getSessionStartTime()
+                    ? java.util.Date.from(session.getSessionStartTime().toInstant())
                     : java.util.Date.from(session.getSessionDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         }
         row.setSource(EXTEND_SOURCE);

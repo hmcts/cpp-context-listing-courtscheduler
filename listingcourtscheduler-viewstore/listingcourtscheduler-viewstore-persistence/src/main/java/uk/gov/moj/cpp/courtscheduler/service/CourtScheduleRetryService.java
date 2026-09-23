@@ -45,9 +45,9 @@ public class CourtScheduleRetryService {
             boolean hasMaxSlotsChanged = hasMaxSlotsChanged(persistedCourtSchedule, courtSchedule);
             boolean hasMaxDurationChanged = hasMaxDurationChanged(persistedCourtSchedule, courtSchedule);
             boolean hasNewMaxSlotsOrDuration = hasNewMaxSlotsOrDuration(courtSchedule);
-            boolean hasSupportAdSplitChanged = courtSchedule.getSupportAdSplit()
-                    && (persistedCourtSchedule.getMaxAdMorningDuration().intValue() != courtSchedule.getMaxAdMorningDuration().intValue()
-                    || persistedCourtSchedule.getMaxAdAfternoonDuration().intValue() != courtSchedule.getMaxAdAfternoonDuration().intValue());
+            boolean hasSupportAdSplitChanged = Boolean.TRUE.equals(courtSchedule.getSupportAdSplit())
+                    && (intOrZero(persistedCourtSchedule.getMaxAdMorningDuration()) != intOrZero(courtSchedule.getMaxAdMorningDuration())
+                    || intOrZero(persistedCourtSchedule.getMaxAdAfternoonDuration()) != intOrZero(courtSchedule.getMaxAdAfternoonDuration()));
             boolean hasSameADSplit = Objects.equals(persistedCourtSchedule.getSupportAdSplit(), courtSchedule.getSupportAdSplit());
 
             if ((isForRotaFile || hasMaxSlotsChanged || hasMaxDurationChanged || hasNewMaxSlotsOrDuration || hasSupportAdSplitChanged) && hasSameADSplit) {
@@ -120,16 +120,23 @@ public class CourtScheduleRetryService {
     }
 
     private boolean hasMaxSlotsChanged(CourtSchedule persistedCourtSchedule, CourtSchedule courtSchedule) {
-        return persistedCourtSchedule.getMaxSlots().intValue() != courtSchedule.getMaxSlots().intValue();
+        return intOrZero(persistedCourtSchedule.getMaxSlots()) != intOrZero(courtSchedule.getMaxSlots());
     }
 
     private boolean hasMaxDurationChanged(CourtSchedule persistedCourtSchedule, CourtSchedule courtSchedule) {
-        return persistedCourtSchedule.getMaxDuration() > 0
-                && persistedCourtSchedule.getMaxDuration().intValue() != courtSchedule.getMaxDuration().intValue();
+        return intOrZero(persistedCourtSchedule.getMaxDuration()) > 0
+                && intOrZero(persistedCourtSchedule.getMaxDuration()) != intOrZero(courtSchedule.getMaxDuration());
     }
 
     private boolean hasNewMaxSlotsOrDuration(CourtSchedule courtSchedule) {
-        return courtSchedule.getMaxSlots() > 0 || courtSchedule.getMaxDuration() > 0;
+        return intOrZero(courtSchedule.getMaxSlots()) > 0 || intOrZero(courtSchedule.getMaxDuration()) > 0;
+    }
+
+    // A schedule is either slot-based or duration-based, never both — the "other" field is
+    // legitimately null. Treating null as 0 here mirrors the pre-migration primitive-int
+    // default that these comparisons relied on.
+    private int intOrZero(final Integer value) {
+        return value == null ? 0 : value;
     }
     private void logMultiplePersistedSchedules(List<CourtSchedule> persistedCourtSchedules, CourtSchedule courtSchedule) {
         if (persistedCourtSchedules.size() > 1) {

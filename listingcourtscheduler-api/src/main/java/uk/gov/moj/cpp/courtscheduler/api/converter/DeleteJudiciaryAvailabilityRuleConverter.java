@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 
 import jakarta.json.JsonObject;
 
-import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
 
 @Service
 public class DeleteJudiciaryAvailabilityRuleConverter implements Converter<JsonObject, DeleteJudiciaryAvailabilityRuleRequest> {

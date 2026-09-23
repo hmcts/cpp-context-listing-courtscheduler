@@ -6,7 +6,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 
 import jakarta.json.Json;
@@ -44,8 +44,8 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         assertThat(result.getStartDate().toString(), is("2026-01-01"));
         assertThat(result.getEndDate().toString(), is("2026-01-31"));
         assertThat(result.getRepeatDays().size(), is(2));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday));
-        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Tuesday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday.name()));
+        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Tuesday.name()));
     }
 
     @Test
@@ -68,8 +68,8 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         assertNotNull(result);
         assertThat(result.getJudiciaryId(), is(judiciaryId));
         assertThat(result.getRepeatDays().size(), is(2));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Tuesday));
-        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Wednesday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Tuesday.name()));
+        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Wednesday.name()));
     }
 
     @Test
@@ -89,7 +89,7 @@ class AddJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(1));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday.name()));
     }
 }
 

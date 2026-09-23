@@ -7,7 +7,7 @@ import java.time.format.DateTimeFormatter;
 
 import jakarta.json.JsonObject;
 
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityRuleRequest;
 
 @Service
 public class FindJudiciaryAvailabilityRuleConverter implements Converter<JsonObject, FindJudiciaryAvailabilityRuleRequest> {

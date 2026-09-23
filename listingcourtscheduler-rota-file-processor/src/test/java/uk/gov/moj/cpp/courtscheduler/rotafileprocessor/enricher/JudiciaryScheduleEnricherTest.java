@@ -16,9 +16,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.util.PropertiesLoader;
@@ -88,8 +88,8 @@ class JudiciaryScheduleEnricherTest {
             assertThat(csj.getSurname(), is("SvenTS"));
             assertNotNull(csj.getRotaJudiciaryId());
             assertNotNull(csj.getTitle());
-            assertNotNull(csj.getBenchChairman());
-            assertNotNull(csj.getDeputy());
+            assertNotNull(csj.getIsBenchChairman());
+            assertNotNull(csj.getIsDeputy());
             assertNotNull(csj.getCourtListingProfileId());
             assertNotNull(csj.getPosition());
         }
@@ -144,29 +144,28 @@ class JudiciaryScheduleEnricherTest {
     }
 
     private Judiciary getJudiciary() {
-        return new Judiciary("9ff490e1-c5b8-47b8-ae78-b71d88fdb798", "Mrs", "TienaTS", "SvenTS", "LuciusTSFloraTS@moj.gov.uk", "Magistrates");
+        return new Judiciary().id("9ff490e1-c5b8-47b8-ae78-b71d88fdb798").titlePrefix("Mrs").forenames("TienaTS").surname("SvenTS").emailAddress("LuciusTSFloraTS@moj.gov.uk").judiciaryType("Magistrates");
     }
 
     private CourtSchedule courtSchedule() {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withListingProfileId("LH2294283")
-                .withSessionDate(LocalDate.of(2024, 11, 24))
-                .withOuCode("CABC90")
-                .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
-                .withCourtRoomNumber(1234)
-                .withCourtHouseName("Liverpool Mags Court")
-                .withCourtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
-                .withCourtRoomName("Court name1")
-                .withOperationalUnit("ANC")
-                .withBusinessType("BYS")
-                .withPanel("PANEL")
-                .withCourtSession("AM")
-                .withMaxDuration(182)
-                .withAvailableSlots(125)
-                .withAvailableDuration(182)
-                .withMaxSlots(125)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .listingProfileId("LH2294283")
+                .sessionDate(LocalDate.of(2024, 11, 24))
+                .ouCode("CABC90")
+                .courtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
+                .courtRoomNumber(1234)
+                .courtHouseName("Liverpool Mags Court")
+                .courtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
+                .courtRoomName("Court name1")
+                .operationalUnit("ANC")
+                .businessType("BYS")
+                .panel("PANEL")
+                .courtSession("AM")
+                .maxDuration(182)
+                .availableSlots(125)
+                .availableDuration(182)
+                .maxSlots(125);
     }
 
     @Test
@@ -177,31 +176,29 @@ class JudiciaryScheduleEnricherTest {
         setField(rotaFileParser, "propertiesLoader", new PropertiesLoader());
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
-        final CourtSchedule courtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withListingProfileId("LP-123")
-                .withSessionDate(LocalDate.of(2024, 12, 24))
-                .withOuCode("CABC90")
-                .withCourtRoomId("room-1")
-                .withCourtRoomName("Courtroom 1")
-                .withCourtHouseName("Liverpool Mags Court")
-                .withBusinessType("DVB")
-                .withCourtSession("AM")
-                .withPanel("ADULT")
-                .build();
+        final CourtSchedule courtSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .listingProfileId("LP-123")
+                .sessionDate(LocalDate.of(2024, 12, 24))
+                .ouCode("CABC90")
+                .courtRoomId("room-1")
+                .courtRoomName("Courtroom 1")
+                .courtHouseName("Liverpool Mags Court")
+                .businessType("DVB")
+                .courtSession("AM")
+                .panel("ADULT");
 
         when(courtScheduleMap.get(anyString())).thenReturn(courtSchedule);
         when(referenceDataMapperService.findByEmail(anyString())).thenReturn(Optional.of(getJudiciary()));
 
         final List<CourtSchedule> activeSchedules = List.of(
-                new CourtSchedule.CourtScheduleBuilder()
-                        .withCourtScheduleId(UUID.randomUUID().toString())
-                        .withOuCode("CABC90")
-                        .withCourtRoomId("room-2")
-                        .withSessionDate(LocalDate.of(2024, 12, 24))
-                        .withBusinessType("OTHER")
-                        .withCourtSession("PM")
-                        .build()
+                new CourtSchedule()
+                        .courtScheduleId(UUID.randomUUID().toString())
+                        .ouCode("CABC90")
+                        .courtRoomId("room-2")
+                        .sessionDate(LocalDate.of(2024, 12, 24))
+                        .businessType("OTHER")
+                        .courtSession("PM")
         );
 
         final String executionId = randomUUID().toString();

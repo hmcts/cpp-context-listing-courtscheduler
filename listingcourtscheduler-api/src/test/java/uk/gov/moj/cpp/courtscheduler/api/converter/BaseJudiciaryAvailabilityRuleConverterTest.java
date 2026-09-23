@@ -7,9 +7,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
@@ -85,14 +84,14 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getSessionType(), is(SessionType.AM));
+        assertThat(result.getSessionType(), is(SessionType.AM.name()));
         assertThat(result.getRepeatDays().size(), is(2));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday));
-        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Tuesday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday.name()));
+        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Tuesday.name()));
         assertThat(result.getUnavailabilities().size(), is(1));
         assertThat(result.getUnavailabilities().get(0).getStartDate().toString(), is("2026-01-10"));
         assertThat(result.getUnavailabilities().get(0).getEndDate().toString(), is("2026-01-12"));
-        assertThat(result.getUnavailabilities().get(0).getReason(), is(UnavailabilityReason.ANNUAL_LEAVE));
+        assertThat(result.getUnavailabilities().get(0).getReason(), is(UnavailabilityReason.ANNUAL_LEAVE.name()));
     }
 
     @Test
@@ -140,11 +139,11 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(5));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday));
-        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Tuesday));
-        assertThat(result.getRepeatDays().get(2), is(AvailabilityDayOfWeek.Wednesday));
-        assertThat(result.getRepeatDays().get(3), is(AvailabilityDayOfWeek.Thursday));
-        assertThat(result.getRepeatDays().get(4), is(AvailabilityDayOfWeek.Friday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday.name()));
+        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Tuesday.name()));
+        assertThat(result.getRepeatDays().get(2), is(AvailabilityDayOfWeek.Wednesday.name()));
+        assertThat(result.getRepeatDays().get(3), is(AvailabilityDayOfWeek.Thursday.name()));
+        assertThat(result.getRepeatDays().get(4), is(AvailabilityDayOfWeek.Friday.name()));
     }
 
     @Test
@@ -167,8 +166,8 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(2));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday));
-        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Tuesday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday.name()));
+        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Tuesday.name()));
     }
 
     @Test
@@ -192,7 +191,7 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(1));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday.name()));
     }
 
     @Test
@@ -239,8 +238,8 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getUnavailabilities().size(), is(2));
-        assertThat(result.getUnavailabilities().get(0).getReason(), is(UnavailabilityReason.TRAINING));
-        assertThat(result.getUnavailabilities().get(1).getReason(), is(UnavailabilityReason.SICK_LEAVE));
+        assertThat(result.getUnavailabilities().get(0).getReason(), is(UnavailabilityReason.TRAINING.name()));
+        assertThat(result.getUnavailabilities().get(1).getReason(), is(UnavailabilityReason.SICK_LEAVE.name()));
     }
 
     @Test
@@ -343,10 +342,10 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getUnavailabilities().size(), is(4));
-        assertThat(result.getUnavailabilities().get(0).getReason(), is(UnavailabilityReason.TRAINING));
-        assertThat(result.getUnavailabilities().get(1).getReason(), is(UnavailabilityReason.ANNUAL_LEAVE));
-        assertThat(result.getUnavailabilities().get(2).getReason(), is(UnavailabilityReason.OFFICIAL_BUSINESS));
-        assertThat(result.getUnavailabilities().get(3).getReason(), is(UnavailabilityReason.SICK_LEAVE));
+        assertThat(result.getUnavailabilities().get(0).getReason(), is(UnavailabilityReason.TRAINING.name()));
+        assertThat(result.getUnavailabilities().get(1).getReason(), is(UnavailabilityReason.ANNUAL_LEAVE.name()));
+        assertThat(result.getUnavailabilities().get(2).getReason(), is(UnavailabilityReason.OFFICIAL_BUSINESS.name()));
+        assertThat(result.getUnavailabilities().get(3).getReason(), is(UnavailabilityReason.SICK_LEAVE.name()));
     }
 
     @Test
@@ -366,7 +365,7 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
             AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
             assertNotNull(result);
-            assertThat(result.getSessionType(), is(sessionType));
+            assertThat(result.getSessionType(), is(sessionType.name()));
         }
     }
 

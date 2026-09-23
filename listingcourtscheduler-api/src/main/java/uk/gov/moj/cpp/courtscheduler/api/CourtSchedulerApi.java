@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.Arrays.stream;
-import static uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam.SearchCourtSchedulesByIdRequestParamBuilder.searchCourtSchedulesByIdRequestParamBuilder;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,8 +23,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciariesRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciaryToSessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
@@ -51,33 +48,33 @@ import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.config.JsonValueConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciaryToSessionsRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.ChangeCourtRoomForMultidayHearingRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciaryToSessionsRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ChangeCourtRoomForMultidayHearingRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ChangeCourtRoomForMultidayHearingResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ListHearingSlotsResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MagsSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
-import uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SearchCourtSchedulesByIdRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedDay;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
 import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
@@ -126,7 +123,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private final CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
     private final UpdateCourtScheduleConverter updateCourtScheduleConverter;
     private final SessionsConverter sessionsConverter;
-    private final AssignCourtroomRequestConverter assignCourtroomRequestConverter;
     private final ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
 
     // --- session judiciary assignment / unassignment
@@ -134,7 +130,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private final JudiciaryUnassignmentService judiciaryUnassignmentService;
     private final AssignJudiciariesApiValidator assignJudiciariesApiValidator;
     private final JudiciariesApiValidator judiciariesApiValidator;
-    private final AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
     private final AssignJudiciaryToSessionsConverter assignJudiciaryToSessionsConverter;
 
     // --- hearings booking family (SPRDT-1089 reshape)
@@ -160,13 +155,11 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final CreateSessionsRequestParamConverter createSessionsRequestParamConverter,
                              final UpdateCourtScheduleConverter updateCourtScheduleConverter,
                              final SessionsConverter sessionsConverter,
-                             final AssignCourtroomRequestConverter assignCourtroomRequestConverter,
                              final ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter,
                              final JudiciaryAssignmentService judiciaryAssignmentService,
                              final JudiciaryUnassignmentService judiciaryUnassignmentService,
                              final AssignJudiciariesApiValidator assignJudiciariesApiValidator,
                              final JudiciariesApiValidator judiciariesApiValidator,
-                             final AssignJudiciariesRequestConverter assignJudiciariesRequestConverter,
                              final AssignJudiciaryToSessionsConverter assignJudiciaryToSessionsConverter,
                              final SlotsUpdateService slotsUpdateService,
                              final SlotsRemoveService slotsRemoveService,
@@ -185,13 +178,11 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.createSessionsRequestParamConverter = createSessionsRequestParamConverter;
         this.updateCourtScheduleConverter = updateCourtScheduleConverter;
         this.sessionsConverter = sessionsConverter;
-        this.assignCourtroomRequestConverter = assignCourtroomRequestConverter;
         this.validateSessionAvailabilityRequestParamConverter = validateSessionAvailabilityRequestParamConverter;
         this.judiciaryAssignmentService = judiciaryAssignmentService;
         this.judiciaryUnassignmentService = judiciaryUnassignmentService;
         this.assignJudiciariesApiValidator = assignJudiciariesApiValidator;
         this.judiciariesApiValidator = judiciariesApiValidator;
-        this.assignJudiciariesRequestConverter = assignJudiciariesRequestConverter;
         this.assignJudiciaryToSessionsConverter = assignJudiciaryToSessionsConverter;
         this.slotsUpdateService = slotsUpdateService;
         this.slotsRemoveService = slotsRemoveService;
@@ -282,9 +273,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                         .toList();
 
         final SearchCourtSchedulesByIdRequestParam param =
-                searchCourtSchedulesByIdRequestParamBuilder()
-                        .withCourtScheduleIds(ids)
-                        .build();
+                new SearchCourtSchedulesByIdRequestParam().courtScheduleIds(ids);
 
         final List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedulesById(param);
         CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(courtSchedules);
@@ -348,22 +337,21 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         // endpoints keep their contract.
         map.remove("draft");
         map.remove("overbookingAllowed");
-        map.put("isOverbookingAllowed", cs.isOverbookingAllowed());
-        map.put("isDraft", cs.isDraft());
+        map.put("isOverbookingAllowed", cs.getOverbookingAllowed());
+        map.put("isDraft", cs.getDraft());
         return map;
     }
 
     @Override
-    public ResponseEntity<Map<String, Object>> postCourtschedulerAssignCourtroom(final Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> postCourtschedulerAssignCourtroom(final AssignCourtroomRequest body) {
         LOG.info("courtscheduler.assign.courtroom requested: {}", body);
-        final AssignCourtroomRequest req = assignCourtroomRequestConverter.convert(toJsonObject(body));
 
-        final JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(req);
+        final JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(body);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
 
-        final AssignCourtroomResponse response = sessionsService.assignCourtroom(req);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(body);
 
         final Map<String, Object> result = new LinkedHashMap<>();
         result.put("errorGroups", response.getErrorGroups());
@@ -391,7 +379,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         }
 
         final Result result = sessionsService.update(update);
-        if (!result.isSuccess()) {
+        if (!result.getSuccess()) {
             throw new ValidationException(
                     Json.createObjectBuilder().add("errorMessage", result.getMsg()).build());
         }
@@ -418,7 +406,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     private ResponseEntity<Void> assignJudiciary(final Map<String, Object> body) {
-        final AssignJudiciariesRequest dto = assignJudiciariesRequestConverter.convert(toJsonObject(body));
+        final AssignJudiciariesRequest dto = objectMapper.convertValue(body, AssignJudiciariesRequest.class);
         final JsonObject validate = assignJudiciariesApiValidator.validate(dto);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
@@ -575,20 +563,20 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     private ResponseEntity<Map<String, Object>> crownSearchAndBook(final String hearingId, final JsonObject payload) {
         final CrownSearchAndBookRequest sabRequest = new CrownSearchAndBookRequest()
-                .setHearingId(hearingId)
-                .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
-                .setHearingDate(getDateOrNull(payload, "hearingDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
-                .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
-                .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
-                .setEarliestHearingTime(getStringOrNull(payload, "earliestHearingTime"))
-                .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"))
-                .setSource(getStringOrNull(payload, "source"))
+                .hearingId(hearingId)
+                .courtCentreId(getStringOrNull(payload, "courtCentreId"))
+                .hearingDate(getDateOrNull(payload, "hearingDate"))
+                .endDate(getDateOrNull(payload, "endDate"))
+                .durationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
+                .courtRoomId(getStringOrNull(payload, "courtRoomId"))
+                .earliestHearingTime(getStringOrNull(payload, "earliestHearingTime"))
+                .courtScheduleId(getStringOrNull(payload, "courtScheduleId"))
+                .source(getStringOrNull(payload, "source"))
                 // SPRDT-1283: optional centre metadata for auto-creating a session at a
                 // never-seeded centre (single-day fallback only).
-                .setOuCode(getStringOrNull(payload, "ouCode"))
-                .setCourtCentreName(getStringOrNull(payload, "courtCentreName"))
-                .setCourtRoomName(getStringOrNull(payload, "courtRoomName"));
+                .ouCode(getStringOrNull(payload, "ouCode"))
+                .courtCentreName(getStringOrNull(payload, "courtCentreName"))
+                .courtRoomName(getStringOrNull(payload, "courtRoomName"));
 
         final JsonObject validationError = hearingSlotsApiValidator.crownSearchAndBookValidation(sabRequest);
         if (!validationError.isEmpty()) {
@@ -600,15 +588,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     private ResponseEntity<Map<String, Object>> magsSearchAndBook(final String hearingId, final JsonObject payload) {
         final MagsSearchAndBookRequest sabRequest = new MagsSearchAndBookRequest()
-                .setHearingId(hearingId)
-                .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
-                .setHearingDate(getDateOrNull(payload, "hearingDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
-                .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
-                .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
-                .setHearingStartTime(getStringOrNull(payload, "hearingStartTime"))
-                .setHearingSessionDateSearchCutOff(getStringOrNull(payload, "hearingSessionDateSearchCutOff"))
-                .setIsPolice(getBooleanOrFalse(payload, "isPolice"));
+                .hearingId(hearingId)
+                .courtCentreId(getStringOrNull(payload, "courtCentreId"))
+                .hearingDate(getDateOrNull(payload, "hearingDate"))
+                .endDate(getDateOrNull(payload, "endDate"))
+                .durationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
+                .courtRoomId(getStringOrNull(payload, "courtRoomId"))
+                .hearingStartTime(getStringOrNull(payload, "hearingStartTime"))
+                .hearingSessionDateSearchCutOff(getStringOrNull(payload, "hearingSessionDateSearchCutOff"))
+                .isPolice(getBooleanOrFalse(payload, "isPolice"));
 
         final JsonObject validationError = hearingSlotsApiValidator.magsSearchAndBookValidation(sabRequest);
         if (!validationError.isEmpty()) {
@@ -620,13 +608,13 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     private ResponseEntity<Map<String, Object>> moveHearingToPastDate(final String hearingId, final JsonObject payload) {
         final MoveHearingToPastDateRequest moveRequest = new MoveHearingToPastDateRequest()
-                .setHearingId(hearingId)
-                .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
-                .setJurisdiction(getStringOrNull(payload, "jurisdiction"))
-                .setStartDate(getDateOrNull(payload, "startDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
-                .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
-                .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"));
+                .hearingId(hearingId)
+                .courtCentreId(getStringOrNull(payload, "courtCentreId"))
+                .jurisdiction(getStringOrNull(payload, "jurisdiction"))
+                .startDate(getDateOrNull(payload, "startDate"))
+                .endDate(getDateOrNull(payload, "endDate"))
+                .durationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
+                .courtScheduleId(getStringOrNull(payload, "courtScheduleId"));
 
         final JsonObject validationError = hearingSlotsApiValidator.moveHearingToPastDateValidation(moveRequest);
         if (!validationError.isEmpty()) {
@@ -647,15 +635,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final jakarta.json.JsonArray daysArray = payload.getJsonArray("days");
         for (int i = 0; i < daysArray.size(); i++) {
             final JsonObject dayJson = daysArray.getJsonObject(i);
-            days.add(new RequestedDay(
-                    java.time.LocalDate.parse(dayJson.getString("sessionDate")),
-                    dayJson.getString("courtScheduleId"),
-                    dayJson.getInt("durationInMinutes")));
+            days.add(new RequestedDay()
+                    .sessionDate(java.time.LocalDate.parse(dayJson.getString("sessionDate")))
+                    .courtScheduleId(dayJson.getString("courtScheduleId"))
+                    .durationInMinutes(dayJson.getInt("durationInMinutes")));
         }
 
         final ChangeCourtRoomForMultidayHearingRequest changeRequest = new ChangeCourtRoomForMultidayHearingRequest()
-                .setHearingId(hearingId)
-                .setDays(days);
+                .hearingId(hearingId)
+                .days(days);
 
         final ChangeCourtRoomForMultidayHearingResponse response =
                 slotsUpdateService.changeCourtRoomForMultidayHearing(changeRequest);

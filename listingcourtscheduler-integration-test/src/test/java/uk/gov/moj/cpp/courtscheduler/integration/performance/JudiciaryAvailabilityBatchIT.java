@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.integration.performance;
 import org.junit.jupiter.api.Test;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.integration.AbstractIT;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder.RuleData;
 

@@ -8,9 +8,8 @@ import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailabilityResponse;
 
 /**
  * Base converter class for judiciary availability rule responses.
@@ -23,13 +22,13 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
     protected static final String REASON = "reason";
 
     /**
-     * Converts list of repeat days (AvailabilityDayOfWeek enum) to JSON array of strings.
+     * Converts list of repeat days to JSON array of strings.
      */
-    protected JsonArray convertRepeatDaysToJson(List<AvailabilityDayOfWeek> repeatDays) {
+    protected JsonArray convertRepeatDaysToJson(List<String> repeatDays) {
         JsonArrayBuilder repeatDaysArrayBuilder = Json.createArrayBuilder();
         if (repeatDays != null) {
-            for (AvailabilityDayOfWeek repeatDay : repeatDays) {
-                repeatDaysArrayBuilder.add(repeatDay.name());
+            for (String repeatDay : repeatDays) {
+                repeatDaysArrayBuilder.add(repeatDay);
             }
         }
         return repeatDaysArrayBuilder.build();
@@ -45,11 +44,11 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
                 JsonObjectBuilder unavailabilityBuilder = Json.createObjectBuilder()
                         .add(START_DATE, unavailability.getStartDate().toString())
                         .add(END_DATE, unavailability.getEndDate().toString());
-                
+
                 if (unavailability.getReason() != null) {
-                    unavailabilityBuilder.add(REASON, unavailability.getReason().name());
+                    unavailabilityBuilder.add(REASON, unavailability.getReason());
                 }
-                
+
                 unavailabilitiesArrayBuilder.add(unavailabilityBuilder.build());
             }
         }
@@ -57,11 +56,11 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
     }
 
     /**
-     * Adds optional enum field to JSON object builder if value is not null.
+     * Adds an optional string field to JSON object builder if value is not null.
      */
-    protected void addOptionalEnumField(JsonObjectBuilder builder, String fieldName, Enum<?> value) {
+    protected void addOptionalStringField(JsonObjectBuilder builder, String fieldName, String value) {
         if (value != null) {
-            builder.add(fieldName, value.name());
+            builder.add(fieldName, value);
         }
     }
 
@@ -79,7 +78,7 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
                 .add("repeatDays", convertRepeatDaysToJson(rule.getRepeatDays()))
                 .add("unavailabilities", convertUnavailabilitiesToJson(rule.getUnavailabilities()));
 
-        addOptionalEnumField(ruleBuilder, "sessionType", rule.getSessionType());
+        addOptionalStringField(ruleBuilder, "sessionType", rule.getSessionType());
 
         return ruleBuilder.build();
     }

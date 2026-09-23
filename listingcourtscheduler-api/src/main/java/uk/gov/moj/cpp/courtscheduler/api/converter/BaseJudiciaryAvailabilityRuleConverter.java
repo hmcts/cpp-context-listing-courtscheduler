@@ -10,10 +10,11 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleWithDetailsRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
 
 /**
  * Base converter class for judiciary availability rule requests.
@@ -31,9 +32,19 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
     protected static final String UNAVAILABILITIES = "unavailabilities";
 
     /**
-     * Populates common base fields from JSON object to request object.
+     * Populates common base fields (judiciaryId, courtHouseId, startDate, endDate) from JSON object.
      */
-    protected void populateBaseFields(JsonObject jsonObject, BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
+    protected void populateBaseFields(JsonObject jsonObject, AddJudiciaryAvailabilityRuleRequest request) {
+        setStringField(jsonObject, JUDICIARY_ID, request::setJudiciaryId);
+        setStringField(jsonObject, COURT_HOUSE_ID, request::setCourtHouseId);
+        setDateField(jsonObject, START_DATE, request::setStartDate);
+        setDateField(jsonObject, END_DATE, request::setEndDate);
+    }
+
+    /**
+     * Populates common base fields (judiciaryId, courtHouseId, startDate, endDate) from JSON object.
+     */
+    protected void populateBaseFields(JsonObject jsonObject, UpdateJudiciaryAvailabilityRuleRequest request) {
         setStringField(jsonObject, JUDICIARY_ID, request::setJudiciaryId);
         setStringField(jsonObject, COURT_HOUSE_ID, request::setCourtHouseId);
         setDateField(jsonObject, START_DATE, request::setStartDate);
@@ -43,9 +54,9 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
     /**
      * Populates detail fields (sessionType, repeatDays, unavailabilities) from JSON object.
      */
-    protected void populateDetailFields(JsonObject jsonObject, BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
+    protected void populateDetailFields(JsonObject jsonObject, AddJudiciaryAvailabilityRuleRequest request) {
         if (hasField(jsonObject, SESSION_TYPE)) {
-            request.setSessionType(SessionType.valueOf(jsonObject.getString(SESSION_TYPE)));
+            request.setSessionType(SessionType.valueOf(jsonObject.getString(SESSION_TYPE)).name());
         }
 
         if (hasField(jsonObject, REPEAT_DAYS)) {
@@ -60,20 +71,39 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
     }
 
     /**
-     * Converts JSON array of repeat days to list of AvailabilityDayOfWeek enum values.
+     * Populates detail fields (sessionType, repeatDays, unavailabilities) from JSON object.
+     */
+    protected void populateDetailFields(JsonObject jsonObject, UpdateJudiciaryAvailabilityRuleRequest request) {
+        if (hasField(jsonObject, SESSION_TYPE)) {
+            request.setSessionType(SessionType.valueOf(jsonObject.getString(SESSION_TYPE)).name());
+        }
+
+        if (hasField(jsonObject, REPEAT_DAYS)) {
+            JsonArray repeatDaysArray = jsonObject.getJsonArray(REPEAT_DAYS);
+            request.setRepeatDays(convertRepeatDays(repeatDaysArray));
+        }
+
+        if (hasField(jsonObject, UNAVAILABILITIES)) {
+            JsonArray unavailabilitiesArray = jsonObject.getJsonArray(UNAVAILABILITIES);
+            request.setUnavailabilities(convertUnavailabilities(unavailabilitiesArray));
+        }
+    }
+
+    /**
+     * Converts JSON array of repeat days to a list of normalised day-name strings.
      * Each item must be a string enum value: "Monday", "Tuesday", "Wednesday", "Thursday", "Friday".
      */
-    protected List<AvailabilityDayOfWeek> convertRepeatDays(JsonArray repeatDaysArray) {
-        List<AvailabilityDayOfWeek> repeatDays = new ArrayList<>();
+    protected List<String> convertRepeatDays(JsonArray repeatDaysArray) {
+        List<String> repeatDays = new ArrayList<>();
 
         for (JsonValue jsonValue : repeatDaysArray) {
             if (jsonValue.getValueType() == JsonValue.ValueType.STRING) {
                 String dayOfWeek = jsonValue.toString().replace("\"", "");
                 String titleCase = dayOfWeek.length() > 0
-                    ? dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase()
-                    : dayOfWeek;
+                        ? dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase()
+                        : dayOfWeek;
                 try {
-                    repeatDays.add(AvailabilityDayOfWeek.valueOf(titleCase));
+                    repeatDays.add(AvailabilityDayOfWeek.valueOf(titleCase).name());
                 } catch (IllegalArgumentException e) {
                     // Invalid day name - skip it (validation will catch it)
                 }
@@ -99,7 +129,7 @@ public abstract class BaseJudiciaryAvailabilityRuleConverter {
 
                 if (hasField(unavailabilityObject, "reason")) {
                     String reasonString = unavailabilityObject.getString("reason");
-                    unavailability.setReason(UnavailabilityReason.valueOf(reasonString));
+                    unavailability.setReason(UnavailabilityReason.valueOf(reasonString).name());
                 }
 
                 unavailabilities.add(unavailability);
