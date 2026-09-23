@@ -1460,6 +1460,20 @@ components:
     CourtschedulerValidateSessionAvailability:    { $ref: '#/components/schemas/PassthroughObject' } # domain class is now a Java record - out of scope
     CourtschedulerValidateResponse:               { $ref: '#/components/schemas/PassthroughObject' }
 
+    # Not a request/response body - the findJudiciaryAvailabilityRules GET endpoint takes these
+    # as individual query params. This schema exists purely so the service layer has a generated
+    # POJO to bundle them into, instead of a hand-crafted parameter object.
+    CourtschedulerFindJudiciaryAvailabilityRuleQuery:
+      type: object
+      properties:
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        judiciaryId: { type: string, nullable: true }
+        pageSize: { type: integer, nullable: true, default: 20 }
+        pageNumber: { type: integer, nullable: true, default: 1 }
+        withJudiciary: { type: boolean, nullable: true, default: true }
+
     # Matches domain.FindJudiciaryAvailabilityRuleResponse exactly: rules + pagination +
     # a SEPARATE top-level judiciaries list (not nested per-rule).
     CourtschedulerFindJudiciaryAvailabilityRule:
@@ -1513,6 +1527,21 @@ components:
         startDate: { type: string, format: date, nullable: true }
         endDate: { type: string, format: date, nullable: true }
         reason: { type: string, nullable: true }
+
+    # Not a request/response body - CourtschedulerAddJudiciaryAvailabilityRule and
+    # CourtschedulerUpdateJudiciaryAvailabilityRule both carry these same five fields, but
+    # openapi-generator's Spring codegen flattens allOf into a standalone class rather than
+    # Java inheritance, so the two generated types share no common supertype. This schema exists
+    # purely so JudiciaryAvailabilityService#populateEntityFields has a single generated POJO to
+    # take instead of five separate parameters.
+    CourtschedulerJudiciaryAvailabilityRuleDetails:
+      type: object
+      properties:
+        judiciaryId: { type: string, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        sessionType: { type: string, nullable: true }
 
     CourtschedulerAddJudiciaryAvailabilityRule:
       type: object

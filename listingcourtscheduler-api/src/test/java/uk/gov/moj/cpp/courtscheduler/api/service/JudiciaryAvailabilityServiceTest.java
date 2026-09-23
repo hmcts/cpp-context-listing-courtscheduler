@@ -19,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailability;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailability;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRuleQuery;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetJudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
@@ -399,7 +400,11 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId(), request.getPageSize(), request.getPageNumber(), request.getWithJudiciary());
+        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
+                .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
+                .withJudiciary(request.getWithJudiciary()));
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(2));
@@ -431,7 +436,11 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 20, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId(), request.getPageSize(), request.getPageNumber(), request.getWithJudiciary());
+        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
+                .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
+                .withJudiciary(request.getWithJudiciary()));
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -472,7 +481,11 @@ class JudiciaryAvailabilityServiceTest {
         when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Collections.singletonList(judiciary));
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId(), request.getPageSize(), request.getPageNumber(), request.getWithJudiciary());
+        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
+                .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
+                .withJudiciary(request.getWithJudiciary()));
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -508,7 +521,11 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId(), request.getPageSize(), request.getPageNumber(), request.getWithJudiciary());
+        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
+                .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
+                .withJudiciary(request.getWithJudiciary()));
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -536,7 +553,11 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, courtHouseId, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId(), request.getPageSize(), request.getPageNumber(), request.getWithJudiciary());
+        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
+                .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
+                .withJudiciary(request.getWithJudiciary()));
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(0));
@@ -565,7 +586,11 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, judiciaryId, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId(), request.getPageSize(), request.getPageNumber(), request.getWithJudiciary());
+        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
+                .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
+                .withJudiciary(request.getWithJudiciary()));
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -613,7 +638,11 @@ class JudiciaryAvailabilityServiceTest {
         when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Arrays.asList(judiciary1, judiciary2));
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId(), request.getPageSize(), request.getPageNumber(), request.getWithJudiciary());
+        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
+                .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
+                .withJudiciary(request.getWithJudiciary()));
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(2));
@@ -641,7 +670,11 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId(), request.getPageSize(), request.getPageNumber(), request.getWithJudiciary());
+        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
+                .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
+                .withJudiciary(request.getWithJudiciary()));
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));
@@ -667,7 +700,11 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId(), request.getPageSize(), request.getPageNumber(), request.getWithJudiciary());
+        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+                .startDate(request.getStartDate()).endDate(request.getEndDate())
+                .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
+                .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
+                .withJudiciary(request.getWithJudiciary()));
 
         assertNotNull(response);
         assertThat(response.getRules().size(), is(1));

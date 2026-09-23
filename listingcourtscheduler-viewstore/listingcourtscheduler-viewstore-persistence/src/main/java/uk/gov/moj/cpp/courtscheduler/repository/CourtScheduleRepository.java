@@ -65,11 +65,11 @@ public interface CourtScheduleRepository
     void deactivateSlots(@Param("courtScheduleIds") List<String> courtScheduleIds,
                          @Param("updatedOn") Date updatedOn);
 
-    @Query("SELECT entity.courtScheduleId, entity.ouCode, entity.createdOn "
+    @Query("SELECT entity.courtScheduleId as courtScheduleId, entity.ouCode as ouCode, entity.createdOn as createdOn "
             + "FROM CourtSchedule entity WHERE entity.courtRoomId = :courtRoomId "
             + "AND entity.sessionDate = :sessionDate AND entity.businessType = :businessType "
             + "AND entity.courtSession = :courtSession")
-    List<Object[]> findMatcherInfoRowsByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
+    List<MatcherInfoRow> findMatcherInfoRowsByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
             @Param(COURT_ROOM_ID) String courtRoomId,
             @Param(SESSION_DATE) LocalDate sessionDate,
             @Param(BUSINESS_TYPE) String businessType,
@@ -77,31 +77,61 @@ public interface CourtScheduleRepository
             org.springframework.data.domain.Pageable pageable);
 
     /**
+     * Strongly typed row projection for the matcher-info query. The generated OpenAPI model
+     * ({@link CourtScheduleMatcherInfo}) can't be targeted directly:
+     * <ul>
+     *   <li>a true JPQL {@code SELECT new ...()} constructor expression needs Hibernate to find a
+     *       constructor whose parameter types are assignable from the selected columns' types, but
+     *       the entity's {@code createdOn} is {@code java.util.Date} while the generated model's is
+     *       {@code OffsetDateTime} (openapi-generator always maps {@code format: date-time} to a
+     *       {@code java.time} type) - Hibernate rejects this at bootstrap ("Missing constructor for
+     *       type"), and</li>
+     *   <li>Spring Data's implicit class-based (DTO) projection for a plain (no {@code new}) column
+     *       select fails too - it converts each row to a {@code Map} first and there's no
+     *       {@code Map -> CourtScheduleMatcherInfo} {@code Converter}, so it throws
+     *       {@code ConverterNotFoundException}.</li>
+     * </ul>
+     * Both were empirically confirmed via {@code CourtScheduleRepositoryTest}. Only Spring Data's
+     * interface-based projections work here, and OpenAPI codegen only emits concrete classes, never
+     * interfaces, so there's no generated type that can stand in for this row shape. Note
+     * {@code getCreatedOn()} stays {@code Date}, not {@code OffsetDateTime}: interface projections
+     * don't run every accessor through a type-converting proxy either (confirmed the same way -
+     * {@code UnsupportedOperationException: Cannot project java.sql.Timestamp to
+     * java.time.OffsetDateTime}), so the conversion is done explicitly in
+     * {@link #findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession} instead.
+     */
+    interface MatcherInfoRow {
+        String getCourtScheduleId();
+
+        String getOuCode();
+
+        Date getCreatedOn();
+    }
+
+    /**
      * Wrapper preserving the legacy single-result signature ({@code max=1, OPTIONAL}). Spring
      * Data's {@code @Query} cannot mix a constructor projection with {@code Optional}/single
      * return; the underlying multi-row query is
      * {@link #findMatcherInfoRowsByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession}.
      * The {@code Pageable.ofSize(1)} pushes {@code LIMIT 1} to the DB so we don't ship
-     * the full match set just to take the first row. Raw-column selection (rather than a JPQL
-     * {@code SELECT new ...()} constructor-expression) because the generated OpenAPI model has
-     * no positional constructor, only no-arg + fluent setters.
+     * the full match set just to take the first row.
      */
     default CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
             final String courtRoomId,
             final LocalDate sessionDate,
             final String businessType,
             final String courtSession) {
-        final List<Object[]> rows = findMatcherInfoRowsByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
+        final List<MatcherInfoRow> rows = findMatcherInfoRowsByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(
                 courtRoomId, sessionDate, businessType, courtSession,
                 org.springframework.data.domain.PageRequest.of(0, 1));
         if (rows.isEmpty()) {
             return null;
         }
-        final Object[] row = rows.get(0);
+        final MatcherInfoRow row = rows.get(0);
         return new CourtScheduleMatcherInfo()
-                .courtScheduleId((String) row[0])
-                .ouCode((String) row[1])
-                .createdOn(DateUtils.toOffsetDateTime((java.util.Date) row[2]));
+                .courtScheduleId(row.getCourtScheduleId())
+                .ouCode(row.getOuCode())
+                .createdOn(DateUtils.toOffsetDateTime(row.getCreatedOn()));
     }
 
     @Query("SELECT entity FROM CourtSchedule entity WHERE entity.courtRoomId = :courtRoomId "

@@ -9,7 +9,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.DateSessionType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateJudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailability;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRuleQuery;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerJudiciaryAvailabilityRuleDetails;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailability;
@@ -76,7 +78,12 @@ public class JudiciaryAvailabilityService {
         final JudiciaryAvailabilityRule entity = new JudiciaryAvailabilityRule();
         entity.setId(randomUUID().toString());
 
-        populateEntityFields(entity, request.getJudiciaryId(), request.getCourtHouseId(), request.getStartDate(), request.getEndDate(), request.getSessionType());
+        populateEntityFields(entity, new CourtschedulerJudiciaryAvailabilityRuleDetails()
+                .judiciaryId(request.getJudiciaryId())
+                .courtHouseId(request.getCourtHouseId())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .sessionType(request.getSessionType()));
         entity.setRepeatDays(convertRepeatDaysToEntity(request.getRepeatDays()));
         entity.setUnavailabilities(convertUnavailabilitiesToEntity(request.getUnavailabilities(), entity));
 
@@ -98,7 +105,12 @@ public class JudiciaryAvailabilityService {
             throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
-        populateEntityFields(entity, request.getJudiciaryId(), request.getCourtHouseId(), request.getStartDate(), request.getEndDate(), request.getSessionType());
+        populateEntityFields(entity, new CourtschedulerJudiciaryAvailabilityRuleDetails()
+                .judiciaryId(request.getJudiciaryId())
+                .courtHouseId(request.getCourtHouseId())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .sessionType(request.getSessionType()));
 
         // Update repeat days (required field - always initialized)
         entity.getRepeatDays().clear();
@@ -259,17 +271,19 @@ public class JudiciaryAvailabilityService {
         return hasMatchingDates(d, d, compiled, unavailabilityDates);
     }
 
-    public CourtschedulerFindJudiciaryAvailabilityRule findJudiciaryAvailabilityRules(final LocalDate startDate, final LocalDate endDate,
-                                                                                       final String courtHouseId, final String judiciaryId,
-                                                                                       final Integer pageSizeParam, final Integer pageNumberParam,
-                                                                                       final Boolean withJudiciaryParam) {
+    public CourtschedulerFindJudiciaryAvailabilityRule findJudiciaryAvailabilityRules(final CourtschedulerFindJudiciaryAvailabilityRuleQuery query) {
+        final LocalDate startDate = query.getStartDate();
+        final LocalDate endDate = query.getEndDate();
+        final String courtHouseId = query.getCourtHouseId();
+        final String judiciaryId = query.getJudiciaryId();
+
         LOGGER.info("Finding judiciary availability rules for: startDate={}, endDate={}, courtHouseId={}, judiciaryId={}",
                 startDate, endDate, courtHouseId, judiciaryId);
 
         // Get default pagination values if not provided
-        final int pageSize = pageSizeParam != null ? pageSizeParam : 20;
-        final int pageNumber = pageNumberParam != null ? pageNumberParam : 1;
-        final boolean withJudiciary = Boolean.TRUE.equals(withJudiciaryParam);
+        final int pageSize = query.getPageSize() != null ? query.getPageSize() : 20;
+        final int pageNumber = query.getPageNumber() != null ? query.getPageNumber() : 1;
+        final boolean withJudiciary = Boolean.TRUE.equals(query.getWithJudiciary());
 
         // Find rules with pagination
         final java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = repository.findRulesByDateRangeWithPagination(
@@ -531,17 +545,20 @@ public class JudiciaryAvailabilityService {
 
     /**
      * Populates entity fields from request (judiciaryId, courtHouseId, startDate, endDate, sessionType).
-     * These fields are required as per contract.
+     * These fields are required as per contract. {@code CourtschedulerAddJudiciaryAvailabilityRule}
+     * and {@code CourtschedulerUpdateJudiciaryAvailabilityRule} share these five fields but no
+     * common Java supertype (openapi-generator flattens {@code allOf} into a standalone class
+     * rather than inheritance), so callers assemble the shared
+     * {@code CourtschedulerJudiciaryAvailabilityRuleDetails} from their own request before calling
+     * this method.
      */
     private void populateEntityFields(final JudiciaryAvailabilityRule entity,
-                                     final String judiciaryId, final String courtHouseId,
-                                     final LocalDate startDate, final LocalDate endDate,
-                                     final String sessionType) {
-        entity.setJudiciaryId(judiciaryId);
-        entity.setCourtHouseId(courtHouseId);
-        entity.setFromDate(startDate);
-        entity.setToDate(endDate);
-        entity.setSessionType(sessionType != null ? SessionType.valueOf(sessionType) : SessionType.AD);
+                                     final CourtschedulerJudiciaryAvailabilityRuleDetails details) {
+        entity.setJudiciaryId(details.getJudiciaryId());
+        entity.setCourtHouseId(details.getCourtHouseId());
+        entity.setFromDate(details.getStartDate());
+        entity.setToDate(details.getEndDate());
+        entity.setSessionType(details.getSessionType() != null ? SessionType.valueOf(details.getSessionType()) : SessionType.AD);
     }
 
     /**
