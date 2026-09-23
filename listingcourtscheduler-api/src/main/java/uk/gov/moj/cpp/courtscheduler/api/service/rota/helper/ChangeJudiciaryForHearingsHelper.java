@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class ChangeJudiciaryForHearingsHelper {
 
-    public static final String CHANGE_JUDICIARY_FOR_HEARINGS_COMMAND = "listing.command.change-judiciary-for-hearings";
+    private static final String JUDICIARY_ASSIGNMENT_SOURCE_AUTO = "AUTO";
 
     private static final Logger logger = LoggerFactory.getLogger(ChangeJudiciaryForHearingsHelper.class);
 
@@ -53,17 +53,12 @@ public class ChangeJudiciaryForHearingsHelper {
      * an empty {@code judiciary} array, so listing clears the judiciary from its hearings.
      * Court schedules without an allocated hearing produce no payload.
      *
-     * <p>{@code johSource} is deliberately omitted from the payload: listing treats a
-     * change-judiciary-for-hearings command without a johSource as an automated (rota-driven)
-     * update and ignores it for any hearing whose judiciary was assigned with an explicit
-     * source (e.g. MANUAL by a listing officer), so manual assignments are preserved.</p>
-     *
      * @param changedCourtScheduleIds the court schedule IDs whose judiciaries changed
      * @return the change-judiciary-for-hearings payloads, one per court schedule with data
      */
     public List<JsonObject> createChangeJudiciaryForHearingsPayloads(final List<String> changedCourtScheduleIds) {
         if (changedCourtScheduleIds == null || changedCourtScheduleIds.isEmpty()) {
-            logger.debug("No changed court schedule IDs provided - no change-judiciary-for-hearings payloads to build");
+            logger.info("No changed court schedule IDs provided - no change-judiciary-for-hearings payloads to build");
             return List.of();
         }
 
@@ -165,6 +160,7 @@ public class ChangeJudiciaryForHearingsHelper {
         return Json.createObjectBuilder()
                 .add("hearings", hearingsBuilder)
                 .add("judiciary", judiciaryBuilder)
+                .add("judiciaryAssignmentSource", JUDICIARY_ASSIGNMENT_SOURCE_AUTO)
                 .build();
     }
 
