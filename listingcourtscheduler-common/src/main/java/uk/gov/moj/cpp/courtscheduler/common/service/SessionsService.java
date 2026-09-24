@@ -32,9 +32,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils.updateTota
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.normaliseToHourMinute;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toListingSession;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toLocalTime;
 
 // (removed) replaced by Spring CommonPlatformQueryClient
@@ -46,7 +46,6 @@ import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
@@ -54,7 +53,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnit;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -89,7 +88,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -126,8 +124,6 @@ public class SessionsService {
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
     @Inject
     private CourtScheduleService courtScheduleService;
-    @Inject
-    private ReferenceDataMapperService referenceDataMapperService;
     @Inject
     private ReferenceDataService referenceDataService;
 
@@ -321,7 +317,7 @@ public class SessionsService {
             String jurisdiction = persistedJurisdiction;
 
             if (CROWN.equalsIgnoreCase(jurisdiction)) {
-                courtRoom = Optional.of(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
+                courtRoom = Optional.of(getCpCourtRoomForCourtCentre(courtRoomId, persistedCourtSchedule.getCourtHouseId()));
             } else {
                 courtRoom = Optional.of(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId)));
             }
@@ -374,9 +370,22 @@ public class SessionsService {
         return !persistedBusinessType.equals(updateCourtSchedule.getBusinessType()) && !isBusinessTypeChangeAllowed(updateCourtSchedule, persistedBusinessType, updatedBusinessType);
     }
 
+    /**
+     * SPRDT-1351: a session persisted under a retired business type (the SPRDT-1291 consolidation
+     * retires CROWN "FWT") can no longer have its slot/duration nature resolved from reference data.
+     * Moving such a session onto a current type is exactly the correction the court needs to make, so
+     * the change is permitted and only the update's own parameters are validated against the new
+     * type. Known persisted types keep the slot-nature-must-match rule.
+     */
     private boolean isBusinessTypeChangeAllowed(final UpdateCourtSchedule updateCourtSchedule, final String persistedBusinessTypeCode, final BusinessType updatedBusinessType) {
-        final BusinessType persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + persistedBusinessTypeCode));
-        return persistedBusinessType.isSlot() == updatedBusinessType.isSlot() && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
+        final Optional<BusinessType> persistedBusinessType = referenceDataCache.getRotaBusinessTypeByCode(persistedBusinessTypeCode);
+        if (persistedBusinessType.isEmpty()) {
+            logger.warn("{}{} - session persisted under a retired business type; allowing the change to {}",
+                    BUSINESS_TYPE_NOT_FOUND, persistedBusinessTypeCode, updatedBusinessType.getTypeCode());
+            return isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
+        }
+        return persistedBusinessType.get().isSlot() == updatedBusinessType.isSlot()
+                && isUpdateRequestParamsAreValidForUpdate(updateCourtSchedule, updatedBusinessType.isSlot());
     }
 
     private static boolean isUpdateRequestParamsAreValidForUpdate(final UpdateCourtSchedule updateCourtSchedule, final boolean isSlotBased) {
@@ -410,10 +419,6 @@ public class SessionsService {
         }
     }
 
-    public boolean isMigrated(final String ouCode) {
-        return courtMigrationRepository.findByOuCode(ouCode).isMigrated();
-    }
-
     public boolean isMigratedByCourtCentreId(final String courtCentreId) {
         return courtMigrationRepository.findByCourtCentreId(courtCentreId).isMigrated();
     }
@@ -421,32 +426,6 @@ public class SessionsService {
     public Map<String, Boolean> migratedMapByOuCode() {
         return courtMigrationRepository.findAll().stream()
                 .collect(Collectors.toMap(CourtSchedulerMigrationStatus::getOuCode, CourtSchedulerMigrationStatus::isMigrated));
-    }
-
-    public Result migrateOuCodes(OuCodeMigrateRequest ouCodeMigrateRequest) {
-        List<String> ouCodes = ouCodeMigrateRequest.getOuCodes();
-        boolean migrated = ouCodeMigrateRequest.isMigrated();
-        List<CourtSchedulerMigrationStatus> courtSchedulerMigrationStatusList = new ArrayList<>();
-        final AtomicBoolean isOuCodeNotPresent = new AtomicBoolean(false);
-
-        ouCodes.forEach(ouCode -> {
-            CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = courtMigrationRepository.findByOuCode(ouCode);
-            if (isNull(courtSchedulerMigrationStatus)) {
-                isOuCodeNotPresent.set(true);
-            }
-            courtSchedulerMigrationStatusList.add(courtSchedulerMigrationStatus);
-        });
-
-        if (isOuCodeNotPresent.get()) {
-            return new Result("One of the OuCode not present for migrate", false);
-        }
-
-        courtSchedulerMigrationStatusList.forEach(courtSchedulerMigrationStatus -> {
-            courtSchedulerMigrationStatus.setMigrated(migrated);
-            courtMigrationRepository.save(courtSchedulerMigrationStatus);
-        });
-
-        return Result.SUCCESS();
     }
 
     public CourtScheduleMatcherInfo findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession(final String courtRoomId,
@@ -714,8 +693,20 @@ public class SessionsService {
         return numberOfSavedJudiciaries.get();
     }
 
+    /**
+     * SPRDT-1351: display enrichment must survive a retired business type. Sessions persisted under a
+     * code that reference data no longer carries (the SPRDT-1291 consolidation retires CROWN "FWT")
+     * would otherwise fail every read, search and delete response that enriches them. The code itself
+     * stands in for the missing description so the session stays visible and editable.
+     */
     private String enrichBusinessDescription(final String businessType) {
-        return referenceDataCache.getRotaBusinessTypeByCode(businessType).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + businessType)).getTypeDescription();
+        return referenceDataCache.getRotaBusinessTypeByCode(businessType)
+                .map(BusinessType::getTypeDescription)
+                .orElseGet(() -> {
+                    logger.warn("{}{} - session persisted under a retired business type; using the code as its description",
+                            BUSINESS_TYPE_NOT_FOUND, businessType);
+                    return businessType;
+                });
     }
 
     private void processOnceFrequency(List<Session> sessionList, LocalDate startDate, List<CourtSchedule> courtScheduleList) {
@@ -821,8 +812,6 @@ public class SessionsService {
                 .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate))
                 .withIsDraft(!isNull(session.isDraft()) && session.isDraft())
                 .withJurisdiction(!isNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction());
-        // enrichSession populates oucode + courtRoomNumber on the builder, which we need
-        // before we can look up the CourtRoomSessionAllocation refdata.
         enrichSession(courtScheduleBuilder, session.getSlotsOrDuration());
 
         applyResolvedSessionTimes(courtScheduleBuilder, session, sessionDateCandidate, sessionStartTime, sessionEndTime);
@@ -830,13 +819,16 @@ public class SessionsService {
     }
 
     /**
-     * Resolves the session start/end times using precedence: 1. customStartTime / customEndTime
-     * supplied on the API request (if non-blank) 2. CourtRoomSessionAllocation refdata times for
-     * the (oucode, room, day-of-week + sessionType, businessType) 3. Hardcoded defaults from
-     * {@link DateUtils#getOrElseDefaultSessionStartAndEndTimeIfEmpty}
-     * <p>
-     * For ALL_DAY sessions, refdata start time is read from the AM allocation and the end time from
-     * the PM allocation when available.
+     * Resolves the session start/end times (SPRDT-809):
+     * <ul>
+     *   <li><b>End time</b> is always the fixed per-session-type default (AM 13:00, PM 17:00, AD 17:00) —
+     *       reference data is never consulted for the end.</li>
+     *   <li><b>Start time</b> for AM and ALL_DAY comes from the court centre's organisation-unit
+     *       {@code defaultStartTime} (looked up by {@code session.getCourtCentreId()}, the same UUID as
+     *       {@code organisation_unit.id}), falling back to the hardcoded default when absent. PM always
+     *       starts at the fixed afternoon default and never queries reference data.</li>
+     *   <li>A custom start/end supplied on the API request overrides its own field regardless of type.</li>
+     * </ul>
      */
     private void applyResolvedSessionTimes(final CourtSchedule.CourtScheduleBuilder builder,
                                            final Session session,
@@ -844,39 +836,39 @@ public class SessionsService {
                                            final String customStartTime,
                                            final String customEndTime) {
         final String sessionType = session.getSessionType();
-        final String businessType = session.getBusinessType();
 
-        final String refDataStartTime;
-        final String refDataEndTime;
-        if (ALL_DAY.equals(sessionType)) {
-            final Optional<CourtRoomSessionAllocation> amAllocation = lookupAllocation(builder, AM_SESSION, sessionDate, businessType);
-            final Optional<CourtRoomSessionAllocation> pmAllocation = lookupAllocation(builder, PM_SESSION, sessionDate, businessType);
-            refDataStartTime = amAllocation.map(CourtRoomSessionAllocation::getSessionStartTime).orElse(null);
-            refDataEndTime = pmAllocation.map(CourtRoomSessionAllocation::getSessionEndTime).orElse(null);
-        } else {
-            final Optional<CourtRoomSessionAllocation> allocation = lookupAllocation(builder, sessionType, sessionDate, businessType);
-            refDataStartTime = allocation.map(CourtRoomSessionAllocation::getSessionStartTime).orElse(null);
-            refDataEndTime = allocation.map(CourtRoomSessionAllocation::getSessionEndTime).orElse(null);
-        }
+        final String refDataStartTime = resolveRefDataStartTime(session);
 
         final DateUtils.SessionStartAndEndTime defaults = getOrElseDefaultSessionStartAndEndTimeIfEmpty(sessionType, null, null);
         final String resolvedStart = resolveSessionTime(customStartTime, refDataStartTime, defaults.sessionStartTime());
-        final String resolvedEnd = resolveSessionTime(customEndTime, refDataEndTime, defaults.sessionEndTime());
+        final String resolvedEnd = resolveSessionTime(customEndTime, null, defaults.sessionEndTime());
 
         builder.withSessionStartTime(combineDateAndTime(sessionDate, resolvedStart))
                 .withSessionEndTime(combineDateAndTime(sessionDate, resolvedEnd));
     }
 
-    private Optional<CourtRoomSessionAllocation> lookupAllocation(final CourtSchedule.CourtScheduleBuilder builder,
-                                                                  final String sessionType,
-                                                                  final LocalDate sessionDate,
-                                                                  final String businessType) {
-        if (isNull(builder.getOuCode()) || isNull(builder.getCourtRoomNumber()) || isNull(businessType)) {
-            return Optional.empty();
+    /**
+     * Court centre (organisation-unit) default start time — consulted for AM and ALL_DAY only. PM
+     * always starts at the fixed afternoon default and never queries reference data.
+     * <p>
+     * The upstream defaultStartTime has been observed in both {@code HH:mm} and {@code HH:mm:ss}
+     * form (confirmed live on ns-ste-ccm-22: {@code "10:30:00"}) — normalised via
+     * {@link DateUtils#normaliseToHourMinute} before use. An unparseable value falls back to the
+     * hardcoded default (logged at WARN) rather than failing {@code combineDateAndTime} downstream.
+     */
+    private String resolveRefDataStartTime(final Session session) {
+        if (PM_SESSION.equals(session.getSessionType())) {
+            return null;
         }
-        final String listingSession = toListingSession(sessionDate, sessionType);
-        return referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(
-                builder.getOuCode(), builder.getCourtRoomNumber(), listingSession, businessType);
+        final String rawStartTime = referenceDataCache.getOrganisationUnit(session.getCourtCentreId())
+                .map(OrganisationUnit::getDefaultStartTime)
+                .orElse(null);
+        final String normalisedStartTime = normaliseToHourMinute(rawStartTime);
+        if (StringUtils.isNotBlank(rawStartTime) && isNull(normalisedStartTime)) {
+            logger.warn("Unparseable organisation-unit defaultStartTime '{}' for courtCentreId {} - falling back to default start",
+                    rawStartTime, session.getCourtCentreId());
+        }
+        return normalisedStartTime;
     }
 
     private void saveCourtSchedules(List<CourtSchedule> courtScheduleList) {
@@ -890,7 +882,7 @@ public class SessionsService {
         final BusinessType businessType = referenceDataCache.getRotaBusinessTypeByCode(builder.getBusinessType()).orElseThrow(() -> new RuntimeException(BUSINESS_TYPE_NOT_FOUND + builder.getBusinessType()));
         CourtRoom courtRoom;
         if ("CROWN".equalsIgnoreCase(builder.getJurisdiction())) {
-            courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
+            courtRoom = getCpCourtRoomForCourtCentre(builder.getCourtRoomId(), builder.getCourtHouseId());
         } else {
             courtRoom = referenceDataCache.getRotaCourtRoomByCourtRoomId(builder.getCourtRoomId()).orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + builder.getCourtRoomId()));
         }
@@ -919,6 +911,25 @@ public class SessionsService {
             builder.withCourtHouseName(courtRoom.getOucodeL3Name());
             builder.withOperationalUnit(courtRoom.getOucodeL2Code());
         }
+    }
+
+    /**
+     * A CP courtroom shared between court centres has one membership per centre, each carrying
+     * that centre's OU-derived fields (ouCode, court house name, operational unit). The
+     * membership for the session's own centre must be used; enriching from another centre's
+     * membership would persist the wrong court house details. Validation guarantees a matching
+     * membership exists, so a miss here means stale reference data and the request must fail.
+     * Only a session with no court centre id at all (legacy data) falls back to an arbitrary
+     * membership, as there is nothing to match against.
+     */
+    private CourtRoom getCpCourtRoomForCourtCentre(final String courtRoomId, final String courtCentreId) {
+        if (isNull(courtCentreId)) {
+            logger.warn("No court centre id for session using courtroom {}; enriching from an arbitrary court centre membership", courtRoomId);
+            return referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)
+                    .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId));
+        }
+        return referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(courtRoomId, courtCentreId)
+                .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId + " in court centre " + courtCentreId));
     }
 
     public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor) {
@@ -1294,11 +1305,11 @@ public class SessionsService {
                 .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, s -> s));
 
 
-        // Get courtroom details
-        final Optional<CourtRoom> courtRoom = referenceDataCache.getCpCourtRoomByCourtRoomId(
+        // Get courtroom details; a courtroom shared between court centres has one entry per centre membership
+        final List<CourtRoom> courtRoomMemberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(
                 request.getCourtRoomId());
 
-        if (courtRoom.isEmpty()) {
+        if (courtRoomMemberships.isEmpty()) {
             // All sessions are ineligible if courtroom not found
             final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView> notFoundSessions = 
                     request.getCourtScheduleIds().stream()
@@ -1316,7 +1327,10 @@ public class SessionsService {
             return response;
         }
 
-        final String courtRoomCourtCentreId = courtRoom.get().getOucodeUUID();
+        final Set<String> courtRoomCourtCentreIds = courtRoomMemberships.stream()
+                .map(CourtRoom::getOucodeUUID)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
         // Track sessions with their error reasons
         final List<Pair<CourtSchedule, String>> sessionsWithErrors = new ArrayList<>();
@@ -1342,7 +1356,7 @@ public class SessionsService {
 
             // Check if courtroom belongs to the same court centre as the session
             final String sessionCourtCentreId = session.getCourtHouseId();
-            if (isNull(sessionCourtCentreId) || isNull(courtRoomCourtCentreId) || !sessionCourtCentreId.equals(courtRoomCourtCentreId)) {
+            if (isNull(sessionCourtCentreId) || !courtRoomCourtCentreIds.contains(sessionCourtCentreId)) {
                 sessionsWithErrors.add(Pair.of(session, "The new courtroom must belong to the same court centre as the session"));
                 continue;
             }
@@ -1400,7 +1414,12 @@ public class SessionsService {
         // Apply courtroom to eligible sessions and track failures
         for (final CourtSchedule session : eligibleSessions) {
             try {
-                assignCourtroomToSession(session.getCourtScheduleId(), request.getCourtRoomId(), courtRoom.get());
+                // eligible sessions passed the centre check, so a membership for their court house always exists
+                final CourtRoom courtRoomForSession = courtRoomMemberships.stream()
+                        .filter(c -> session.getCourtHouseId().equals(c.getOucodeUUID()))
+                        .findFirst()
+                        .orElse(courtRoomMemberships.get(0));
+                assignCourtroomToSession(session.getCourtScheduleId(), request.getCourtRoomId(), courtRoomForSession);
 
                 // Success - no error to add
             } catch (Exception e) {

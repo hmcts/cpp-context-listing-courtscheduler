@@ -1,0 +1,271 @@
+name: CI Build and Publish
+
+on:
+  workflow_call:
+    secrets:
+      AZURE_DEVOPS_ARTIFACT_USERNAME:
+        required: true
+      AZURE_DEVOPS_ARTIFACT_TOKEN:
+        required: true
+      HMCTS_ADO_PAT:
+        required: true
+    inputs:
+      environment:
+        required: true
+        type: string
+        default: dev
+      is_release:
+        required: false
+        type: boolean
+        default: false
+      is_publish:
+        required: true
+        type: boolean
+      trigger_docker:
+        required: true
+        type: boolean
+      trigger_deploy:
+        required: true
+        type: boolean
+
+
+jobs:
+  Artefact-Version:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    outputs:
+      artefact_version: ${{ steps.version.outputs.artefact_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Generate base version
+        id: artefact
+        uses: hmcts/artefact-version-action@v1
+        with:
+          release: ${{ inputs.is_release }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compose artefact version
+        id: version
+        env:
+          IS_RELEASE: ${{ inputs.is_release }}
+          RELEASE_VERSION: ${{ steps.artefact.outputs.release_version }}
+          DRAFT_VERSION: ${{ steps.artefact.outputs.draft_version }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Release builds keep the clean semver the version action produced.
+          if [ "${IS_RELEASE}" = "true" ]; then
+            echo "Release build -> ${RELEASE_VERSION}"
+            echo "artefact_version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Draft (non-release) build: rebuild the tag deterministically as
+          #   <base>[-<team-branch>]-<commit>
+          # e.g. team/pasthearings -> 25.0.1-pasthearings-93d493cc7
+          #      main               -> 25.0.1-93d493cc7
+          # NOTE: no datetime here on purpose — the deploy datetime suffix
+          # (_YYYYMMDDHHMMSS) is applied downstream by ADO (gh-artifact-to-acr),
+          # so it lives in exactly one place.
+          #
+          # Extract only the bare MAJOR.MINOR.PATCH. The version action derives its
+          # base from the latest git tag, which in this repo can be team-suffixed
+          # (draft_version=25.0.1.pasthearings.02-<sha>_<date>), so reduce it to
+          # X.Y.Z rather than "everything before the first dash".
+          if [[ "${DRAFT_VERSION}" =~ ^v?([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            base="${BASH_REMATCH[1]}"
+          else
+            base="${DRAFT_VERSION%%-*}"   # fallback: strip draft suffix only
+          fi
+          commit="${COMMIT_SHA:0:9}"          # 9-char short sha (matches legacy tags)
+
+          # team/<name> pushes embed <name>; main/master/dev/* get no infix.
+          case "${REF_NAME}" in
+            team/*)
+              branch="${REF_NAME#team/}"   # drop leading "team/"
+              branch="${branch//\//-}"     # nested "/" -> "-" (docker-tag safe)
+              version="${base}-${branch}-${commit}"
+              ;;
+            *)
+              version="${base}-${commit}"
+              ;;
+          esac
+
+          echo "Draft build (ref=${REF_NAME}) -> ${version}"
+          echo "artefact_version=${version}" >> "$GITHUB_OUTPUT"
+
+  Build:
+    # Single build phase: compiles every module, runs unit tests AND the
+    # integration tests (the IT subproject's `test` task spins up its own
+    # docker-compose stack — postgres + wiremock + azurite + app-from-bootJar —
+    # on this runner and tears it down), and produces the Spring Boot fat jar.
+    # Everything downstream (publish, docker, deploy) is therefore gated on the
+    # integration tests passing.
+    needs: [Artefact-Version]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    outputs:
+      repo_name: ${{ steps.repo_vars.outputs.repo_name }}
+      artefact_name: ${{ steps.repo_vars.outputs.artefact_name }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: current
+
+      - name: Gradle Build (compile + unit tests + integration tests + bootJar)
+        env:
+          ARTEFACT_VERSION: ${{ needs.Artefact-Version.outputs.artefact_version }}
+        run: |
+          echo "Building with ARTEFACT_VERSION=$ARTEFACT_VERSION"
+          ./gradlew build \
+            -DARTEFACT_VERSION=$ARTEFACT_VERSION
+
+      - name: Extract repo name
+        id: repo_vars
+        run: |
+          repo_name=${GITHUB_REPOSITORY##*/}
+          echo "repo_name=${repo_name}" >> $GITHUB_OUTPUT
+          echo "artefact_name=${repo_name}-${{ needs.Artefact-Version.outputs.artefact_version }}" >> $GITHUB_OUTPUT
+
+      - name: Upload Spring Boot fat jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-jar
+          path: listingcourtscheduler-api/build/libs/${{ steps.repo_vars.outputs.artefact_name }}.jar
+
+      # Publish reuses the outputs already compiled by the Gradle Build step
+      # above (same runner) — no recompile. Gated on is_publish so PR builds
+      # skip it. Previously a separate Provider-Deploy job that recompiled the
+      # whole tree from scratch just to publish.
+      - name: Gradle Publish
+        if: ${{ inputs.is_publish }}
+        env:
+          ARTEFACT_VERSION: ${{ needs.Artefact-Version.outputs.artefact_version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AZURE_DEVOPS_ARTIFACT_USERNAME: ${{ secrets.AZURE_DEVOPS_ARTIFACT_USERNAME }}
+          AZURE_DEVOPS_ARTIFACT_TOKEN: ${{ secrets.AZURE_DEVOPS_ARTIFACT_TOKEN }}
+        run: |
+          if [ -z "$AZURE_DEVOPS_ARTIFACT_USERNAME" ]; then
+            echo "::warning::AZURE_DEVOPS_ARTIFACT_USERNAME is null or not set"
+          fi
+
+          if [ -z "$AZURE_DEVOPS_ARTIFACT_TOKEN" ]; then
+            echo "::warning::AZURE_DEVOPS_ARTIFACT_TOKEN is null or not set"
+          fi
+
+          echo "Publishing artefact for version: $ARTEFACT_VERSION"
+
+          ./gradlew publish \
+            -DARTEFACT_VERSION=$ARTEFACT_VERSION \
+            -DGITHUB_REPOSITORY=${{ github.repository }} \
+            -DGITHUB_ACTOR=${{ github.actor }} \
+            -DGITHUB_TOKEN=$GITHUB_TOKEN \
+            -DAZURE_DEVOPS_ARTIFACT_USERNAME=$AZURE_DEVOPS_ARTIFACT_USERNAME \
+            -DAZURE_DEVOPS_ARTIFACT_TOKEN=$AZURE_DEVOPS_ARTIFACT_TOKEN
+
+      - name: Upload unit test reports
+        if: always()
+        uses: ./.github/actions/upload-test-reports
+        with:
+          artifact_name: unit-test-reports
+          path: |
+            listingcourtscheduler-api/build/reports/tests/test/
+            listingcourtscheduler-api/build/test-results/test/
+            listingcourtscheduler-cache/build/reports/tests/test/
+            listingcourtscheduler-cache/build/test-results/test/
+            listingcourtscheduler-common/build/reports/tests/test/
+            listingcourtscheduler-common/build/test-results/test/
+            listingcourtscheduler-domain/build/reports/tests/test/
+            listingcourtscheduler-domain/build/test-results/test/
+            listingcourtscheduler-rota-file-processor/build/reports/tests/test/
+            listingcourtscheduler-rota-file-processor/build/test-results/test/
+            listingcourtscheduler-viewstore/listingcourtscheduler-viewstore-persistence/build/reports/tests/test/
+            listingcourtscheduler-viewstore/listingcourtscheduler-viewstore-persistence/build/test-results/test/
+
+      - name: Upload integration test reports
+        if: always()
+        uses: ./.github/actions/upload-test-reports
+        with:
+          artifact_name: integration-test-reports
+          path: |
+            listingcourtscheduler-integration-test/build/reports/tests/test/
+            listingcourtscheduler-integration-test/build/test-results/test/
+
+  Build-Docker:
+    needs: [Build, Artefact-Version]
+    if: ${{ inputs.trigger_docker }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      # Download into the same build/libs/ layout the root Dockerfile expects
+      # (the ADO pipeline lands its downloaded jar in the same path).
+      - name: Download Spring Boot fat jar
+        uses: actions/download-artifact@v8
+        with:
+          name: app-jar
+          path: build/libs
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Packages
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image to GitHub
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ needs.Artefact-Version.outputs.artefact_version }}
+          build-args: |
+            BASE_IMAGE=eclipse-temurin:25-jre
+
+  Deploy:
+    # Needs Build (not a separate publish job) because the ADO pipeline pulls the
+    # maven artefact published by Build's Gradle Publish step. Build also exposes
+    # repo_name, so no need to re-derive it here.
+    needs: [Build, Artefact-Version]
+    if: ${{ inputs.trigger_deploy }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger ADO pipeline
+        uses: hmcts/trigger-ado-pipeline@v2
+        with:
+          pipeline_id: 460
+          ado_pat: ${{ secrets.HMCTS_ADO_PAT }}
+          template_parameters: >
+            {
+              "GROUP_ID": "uk.gov.hmcts.cp",
+              "ARTIFACT_ID": "${{ needs.Build.outputs.repo_name }}",
+              "ARTIFACT_VERSION": "${{ needs.Artefact-Version.outputs.artefact_version }}",
+              "TARGET_REPOSITORY": "${{ github.repository }}",
+              "agentDemand": "ubuntu-j25",
+              "baseImage": "hmcts/apm-services:25-jre"
+            }

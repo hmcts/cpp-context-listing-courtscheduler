@@ -9,6 +9,7 @@ import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_ALL_DAY_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toExactTimestamp;
@@ -23,6 +24,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
@@ -750,6 +752,36 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return existing.stream().findFirst();
     }
 
+    // SPRDT-1159 auto-created session shape: duration-based AD sessions with a fixed full-day
+    // capacity and overbooking disallowed. LNG when the caller pinned a courtroom (FINAL session),
+    // GENC otherwise (DRAFT session).
+    private static final String AUTO_SESSION_BUSINESS_TYPE_ROOM_PINNED = "LNG";
+    private static final String AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE = "GENC";
+    private static final String AUTO_SESSION_COURT_SESSION = "AD";
+    private static final int AUTO_SESSION_MAX_DURATION_MINS = 360;
+    /**
+     * SPRDT-1324: an AD session's end time is the fixed all-day default (17:00), never
+     * start + capacity — a session starting at 12:30 still ends at 17:00, matching the rule
+     * {@code SessionsService} applies to every other session-creation route
+     * ({@link uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils#DEFAULT_ALL_DAY_END_TIME}).
+     * Like every other session time it is a Europe/London wall-clock time, so the stored instant is
+     * 16:00 UTC while BST applies. Capacity stays {@value #AUTO_SESSION_MAX_DURATION_MINS} minutes
+     * and is unaffected.
+     */
+    private static final LocalTime AUTO_SESSION_END_TIME = LocalTime.parse(DEFAULT_ALL_DAY_END_TIME);
+
+    // SPRDT-1283 template-free auto-create defaults: used only when the centre has no session at
+    // all to copy metadata from. ouCode must come from the request (the court calendar reads
+    // sessions by ouCode); display metadata falls back to the request's names; the remaining
+    // NOT NULL columns take these fixed values.
+    private static final String AUTO_SESSION_PROFILE_ID = "CROWN-FB-AUTO";
+    private static final String AUTO_SESSION_PANEL = "ADULT";
+    private static final String AUTO_SESSION_ROOM_NAME = "Courtroom";
+    private static final int AUTO_SESSION_ROOM_NUMBER = 0;
+    private static final int AUTO_SESSION_HALF_DAY_MINS = 180;
+    private static final String AUTO_SESSION_JURISDICTION = "CROWN";
+    private static final LocalTime AUTO_SESSION_BREAK_TIME = LocalTime.of(13, 0);
+
 
     /**
      * Crown-only fallback search. Matches strictly on ouCode + sessionDate; relaxes businessType,
@@ -759,7 +791,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      *   - courtRoomId supplied    -> try non-draft at that room first, then draft at that room
      *   - courtRoomId not supplied -> try draft sessions (unallocated intent) at the centre
      *
-     * Each tier runs twice: once with strict availability, once with overbooking relaxation.
+     * Availability is deliberately not filtered (SPRDT-1159): search-and-book is overbooking-exempt,
+     * so the first session on the requested date/room is bookable regardless of remaining capacity.
+     * {@code durationInMinutes} only feeds the result's informational overbooked flag.
      *
      * @param earliestHearingTime Reserved for future refinement (prefer sessions covering this time).
      *                            Currently ignored because the existing court_schedule rows don't model
@@ -778,48 +812,191 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 ? new boolean[]{false, true}
                 : new boolean[]{true};
 
-        for (final boolean overbookingAllowed : new boolean[]{false, true}) {
-            for (final boolean isDraft : draftPreferenceOrder) {
-                final Optional<CourtSchedule> candidate = findCrownFallbackCandidate(
-                        courtCentreId, hearingDate, durationInMinutes,
-                        courtRoomId, isDraft, overbookingAllowed);
-                if (candidate.isPresent()) {
-                    // Build domain CourtSchedule with the exact fields downstream needs for the
-                    // response (sessionDate, sessionStartTime, sessionEndTime, businessType, isDraft,
-                    // ouCode, courtRoomId). convertForOverbooking() leaves sessionDate null, which
-                    // trips a NullPointerException when SlotsUpdateService renders the response.
-                    final CourtSchedule entity = candidate.get();
-                    final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule domain =
-                            uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
-                                    .withCourtScheduleId(entity.getCourtScheduleId())
-                                    .withOuCode(entity.getOuCode())
-                                    .withCourtRoomId(entity.getCourtRoomId())
-                                    .withCourtHouseId(entity.getCourtHouseId())
-                                    .withBusinessType(entity.getBusinessType())
-                                    .withCourtSession(entity.getCourtSession())
-                                    .withSessionDate(entity.getSessionDate())
-                                    .withIsDraft(entity.getIsDraft())
-                                    .withSessionStartTime(entity.getSessionStartTime())
-                                    .withSessionEndTime(entity.getSessionEndTime())
-                                    .build();
-                    return Optional.of(new CrownFallbackSearchResult(domain, overbookingAllowed));
-                }
+        for (final boolean isDraft : draftPreferenceOrder) {
+            final Optional<CourtSchedule> candidate = findCrownFallbackCandidate(
+                    courtCentreId, hearingDate, courtRoomId, isDraft);
+            if (candidate.isPresent()) {
+                // Build domain CourtSchedule with the exact fields downstream needs for the
+                // response (sessionDate, sessionStartTime, sessionEndTime, businessType, isDraft,
+                // ouCode, courtRoomId). convertForOverbooking() leaves sessionDate null, which
+                // trips a NullPointerException when SlotsUpdateService renders the response.
+                final CourtSchedule entity = candidate.get();
+                final boolean lacksCapacity = entity.getAvailableDuration() == null
+                        || entity.getAvailableDuration() < durationInMinutes;
+                return Optional.of(new CrownFallbackSearchResult(
+                        toCrownFallbackDomain(entity), lacksCapacity));
             }
         }
         return Optional.empty();
     }
 
+    /**
+     * SPRDT-1159 on-the-fly session creation: called when {@link #searchCrownFallbackSlots} finds
+     * nothing. Creates a duration-based AD session with a fixed {@value #AUTO_SESSION_MAX_DURATION_MINS}-minute
+     * capacity and overbooking disallowed. The session starts at the requested hearing time and, per
+     * SPRDT-1324, ends at the fixed all-day default {@value uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils#DEFAULT_ALL_DAY_END_TIME}
+     * Europe/London rather than start + capacity. FINAL ({@code is_draft=false}) with businessType
+     * {@value #AUTO_SESSION_BUSINESS_TYPE_ROOM_PINNED} when a courtRoomId was supplied, DRAFT with
+     * {@value #AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE} otherwise. Metadata the request cannot carry
+     * (listing profile, ouCode, court house/room names, panel) is copied from the latest active
+     * session at the court centre (room-scoped first when a room is supplied).
+     *
+     * <p>SPRDT-1283: a centre with no session at all to copy from no longer blocks creation — the
+     * session is built from the request's own metadata (ouCode/courtCentreName/courtRoomName) plus
+     * fixed defaults, starting at the requested hearing time. ouCode is the one field that cannot
+     * be defaulted (the court calendar reads sessions by ouCode), so empty is returned only when
+     * neither a template nor a request ouCode exists.</p>
+     */
+    @Override
+    @Transactional
+    public Optional<CrownFallbackSearchResult> createCrownFallbackSession(final CrownFallbackRequest request) {
+
+        final String courtCentreId = request.getCourtCentreId();
+        final LocalDate hearingDate = request.getHearingDate();
+        final String courtRoomId = request.getCourtRoomId();
+        final boolean hasCourtRoomId = request.hasCourtRoomId();
+
+        Optional<CourtSchedule> template = findLatestActiveSessionTemplate(courtCentreId, hasCourtRoomId ? courtRoomId : null);
+        if (template.isEmpty() && hasCourtRoomId) {
+            template = findLatestActiveSessionTemplate(courtCentreId, null);
+        }
+        if (template.isEmpty() && !request.hasOuCode()) {
+            return Optional.empty();
+        }
+        final CourtSchedule t = template.orElse(null);
+
+        final LocalTime startTime = resolveAutoSessionStartTime(request.getEarliestHearingTime(), t);
+
+        final CourtSchedule created = new CourtSchedule();
+        created.setCourtScheduleId(java.util.UUID.randomUUID().toString());
+        created.setListingProfileId(t != null ? t.getListingProfileId() : AUTO_SESSION_PROFILE_ID);
+        created.setOuCode(t != null ? t.getOuCode() : request.getOuCode());
+        created.setCourtHouseId(courtCentreId);
+        created.setCourtHouseName(t != null ? t.getCourtHouseName()
+                : firstNonBlank(request.getCourtCentreName(), request.getOuCode()));
+        // court_room_id is NOT NULL, and DRAFT sessions carry a room in the DB (rooms are stripped
+        // from draft responses downstream, ADR-005) — so the DRAFT case borrows the template's room,
+        // or a stable per-centre virtual room when the centre has no template. Room name/number are
+        // display-metadata approximations, the id is authoritative.
+        created.setCourtRoomId(hasCourtRoomId ? courtRoomId
+                : (t != null ? t.getCourtRoomId() : autoSessionVirtualRoomId(courtCentreId)));
+        created.setCourtRoomNumber(t != null ? t.getCourtRoomNumber() : AUTO_SESSION_ROOM_NUMBER);
+        created.setCourtRoomName(t != null ? t.getCourtRoomName()
+                : firstNonBlank(request.getCourtRoomName(), AUTO_SESSION_ROOM_NAME));
+        created.setOperationalUnit(t != null ? t.getOperationalUnit()
+                : firstNonBlank(request.getCourtCentreName(), request.getOuCode()));
+        created.setBusinessType(hasCourtRoomId
+                ? AUTO_SESSION_BUSINESS_TYPE_ROOM_PINNED
+                : AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE);
+        created.setPanel(t != null ? t.getPanel() : AUTO_SESSION_PANEL);
+        created.setCourtSession(AUTO_SESSION_COURT_SESSION);
+        created.setActive(true);
+        // Duration-based session: is_slot_based=false AND support_ad_split=false — the pair the
+        // availability aggregation requires before it computes available_duration_mins at all.
+        created.setSlotBased(false);
+        created.setSupportAdSplit(false);
+        created.setSessionDate(hearingDate);
+        created.setMaxSlots(t != null ? t.getMaxSlots() : 0);
+        created.setAvailableSlots(t != null ? t.getMaxSlots() : 0);
+        created.setMaxDuration(AUTO_SESSION_MAX_DURATION_MINS);
+        created.setAvailableDuration(AUTO_SESSION_MAX_DURATION_MINS);
+        created.setHasHearingsBooked(false);
+        created.setMaxAdMorningDuration(t != null ? t.getMaxAdMorningDuration() : AUTO_SESSION_HALF_DAY_MINS);
+        created.setMaxAdAfternoonDuration(t != null ? t.getMaxAdAfternoonDuration() : AUTO_SESSION_HALF_DAY_MINS);
+        created.setIsOverbookingAllowed(false);
+        created.setIsDraft(!hasCourtRoomId);
+        created.setJurisdiction(t != null ? t.getJurisdiction() : AUTO_SESSION_JURISDICTION);
+        created.setNationalBreakTime(t != null ? t.getNationalBreakTime()
+                : Date.from(hearingDate.atTime(AUTO_SESSION_BREAK_TIME).atZone(ZoneOffset.UTC).toInstant()));
+        created.setSessionStartTime(Date.from(hearingDate.atTime(startTime).atZone(ZoneOffset.UTC).toInstant()));
+        // The end is a London wall-clock time (BST-aware); the start is the requested UTC instant.
+        created.setSessionEndTime(Date.from(hearingDate.atTime(AUTO_SESSION_END_TIME).atZone(TimezoneUtils.LONDON_ZONE).toInstant()));
+
+        entityManager.persist(created);
+        entityManager.flush();
+
+        return Optional.of(new CrownFallbackSearchResult(toCrownFallbackDomain(created), false));
+    }
+
+    /**
+     * Start time for an auto-created session: the requested earliestHearingTime when parseable,
+     * else the template session's time of day, else 10:00.
+     */
+    private static LocalTime resolveAutoSessionStartTime(final String earliestHearingTime, final CourtSchedule template) {
+        if (earliestHearingTime != null && !earliestHearingTime.isBlank()) {
+            try {
+                return ZonedDateTime.parse(earliestHearingTime).toLocalTime();
+            } catch (final java.time.format.DateTimeParseException e) {
+                LOGGER.warn("[CROWN-FB][AUTO-SESSION] Unparseable earliestHearingTime '{}' — falling back to template/default start time", earliestHearingTime);
+            }
+        }
+        if (template != null && template.getSessionStartTime() != null) {
+            return template.getSessionStartTime().toInstant().atZone(ZoneOffset.UTC).toLocalTime();
+        }
+        return LocalTime.of(10, 0);
+    }
+
+    /**
+     * Stable per-centre virtual room for a DRAFT session auto-created at a centre with no template
+     * session: court_room_id is NOT NULL, and a deterministic UUID stops repeat auto-creates from
+     * fabricating a new room per booking (the draft-tier candidate search reuses the session anyway).
+     */
+    private static String autoSessionVirtualRoomId(final String courtCentreId) {
+        return java.util.UUID.nameUUIDFromBytes(
+                ("CROWN-FB-ROOM:" + courtCentreId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+    }
+
+    private static String firstNonBlank(final String preferred, final String fallback) {
+        return preferred != null && !preferred.isBlank() ? preferred : fallback;
+    }
+
+    private Optional<CourtSchedule> findLatestActiveSessionTemplate(final String courtCentreId, final String courtRoomId) {
+        final StringBuilder sql = new StringBuilder(
+                "SELECT s.id FROM court_schedule s WHERE s.active = true AND s.court_house_id = :courtCentreId ");
+        if (courtRoomId != null) {
+            sql.append(" AND s.court_room_id = :courtRoomId ");
+        }
+        sql.append(" ORDER BY s.session_start DESC ");
+        final jakarta.persistence.Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter(COURT_CENTRE_ID, courtCentreId);
+        if (courtRoomId != null) {
+            query.setParameter(COURT_ROOM_ID, courtRoomId);
+        }
+        query.setMaxResults(1);
+        @SuppressWarnings("unchecked")
+        final List<String> ids = query.getResultList();
+        if (ids.isEmpty()) {
+            return Optional.empty();
+        }
+        return ofNullable(entityManager.find(CourtSchedule.class, ids.get(0)));
+    }
+
+    private static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule toCrownFallbackDomain(final CourtSchedule entity) {
+        return uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule()
+                .withCourtScheduleId(entity.getCourtScheduleId())
+                .withOuCode(entity.getOuCode())
+                .withCourtRoomId(entity.getCourtRoomId())
+                .withCourtHouseId(entity.getCourtHouseId())
+                .withBusinessType(entity.getBusinessType())
+                .withCourtSession(entity.getCourtSession())
+                .withSessionDate(entity.getSessionDate())
+                .withIsDraft(entity.getIsDraft())
+                .withSessionStartTime(entity.getSessionStartTime())
+                .withSessionEndTime(entity.getSessionEndTime())
+                .build();
+    }
+
     private Optional<CourtSchedule> findCrownFallbackCandidate(
             final String courtCentreId,
             final LocalDate hearingDate,
-            final int durationInMinutes,
             final String courtRoomId,
-            final boolean isDraft,
-            final boolean allowOverbooking) {
+            final boolean isDraft) {
 
         // Filter on court_schedule.court_house_id (same UUID as courtCentreId, per the
         // domain CourtSchedule.courtHouseId comment). This lets listing callers supply a
         // single canonical id (courtCentreId UUID) instead of the historical ouCode+courtCentreId pair.
+        // No availability or overbooking predicate (SPRDT-1159): search-and-book is
+        // overbooking-exempt, so any active session on the date/room qualifies.
         final StringBuilder sql = new StringBuilder(
                 "SELECT s.id FROM court_schedule s "
                         + "WHERE s.active = true "
@@ -831,12 +1008,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             sql.append(" AND s.court_room_id = :courtRoomId ");
         }
 
-        if (!allowOverbooking) {
-            sql.append(" AND COALESCE(s.available_duration_mins, 0) >= :durationInMinutes ");
-        } else {
-            sql.append(" AND s.is_overbooking_allowed = true ");
-        }
-
         sql.append(" ORDER BY s.session_start ASC ");
 
         final jakarta.persistence.Query query = entityManager.createNativeQuery(sql.toString());
@@ -845,9 +1016,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         query.setParameter(IS_DRAFT, isDraft);
         if (courtRoomId != null && !courtRoomId.isBlank()) {
             query.setParameter(COURT_ROOM_ID, courtRoomId);
-        }
-        if (!allowOverbooking) {
-            query.setParameter("durationInMinutes", durationInMinutes);
         }
         query.setMaxResults(1);
 
@@ -1043,8 +1211,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     @Override
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findAdSessionsInRange(
             final String ouCode, final String courtRoomId, final String businessType,
-            final LocalDate fromInclusive, final LocalDate toInclusive) {
-        return queryAdWeekdaySessions(ouCode, courtRoomId, businessType, fromInclusive, toInclusive, null);
+            final LocalDate fromInclusive, final LocalDate toInclusive, final Boolean isDraft) {
+        return queryAdWeekdaySessions(ouCode, courtRoomId, businessType, fromInclusive, toInclusive, isDraft);
     }
 
     private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> queryAdWeekdaySessions(
@@ -1056,12 +1224,17 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 WHERE s.active = true
                   AND s.oucode = :ouCode
                   AND s.court_room_id = :courtRoomId
-                  AND s.rota_business_type = :businessType
                   AND s.court_session = 'AD'
                   AND EXTRACT(DOW FROM s.session_start) NOT IN (0, 6)
                   AND s.session_start >= :startDate
                   AND s.session_start <= :endDate
                 """);
+        // A same-room continuation keeps the block's business type; the SPRDT-1273 extend path
+        // passes null when the tail is pinned to the caller's main courtroom, whose sessions may
+        // run under any business type.
+        if (businessType != null) {
+            queryStr.append("  AND s.rota_business_type = :businessType\n");
+        }
         // CROWN anchor consecutive: all days must share the anchor's draft state (isDraft non-null).
         // The extend path passes null to leave draft state unconstrained.
         if (isDraft != null) {
@@ -1071,7 +1244,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final jakarta.persistence.Query query = entityManager.createNativeQuery(queryStr.toString());
         query.setParameter(OU_CODE, ouCode);
         query.setParameter(COURT_ROOM_ID, courtRoomId);
-        query.setParameter(BUSINESS_TYPE, businessType);
+        if (businessType != null) {
+            query.setParameter(BUSINESS_TYPE, businessType);
+        }
         query.setParameter(START_DATE, java.sql.Date.valueOf(fromInclusive));
         query.setParameter(END_DATE, java.sql.Date.valueOf(toInclusive));
         if (isDraft != null) {
@@ -1106,7 +1281,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                     cs.setAvailableSlots(cs.getAvailableSlots() - 1);
                 } else cs.setAvailableDuration(cs.getAvailableDuration() - hearing.getDuration());
 
-                boolean isCourtScheduleReleased = releaseOldListingsFromAllocatedListings(hearing.getHearingId());
+                // F3 (capacity drift): release via the RESTORING path. The old call
+                // (releaseOldListingsFromAllocatedListings) deleted the hearing's allocated_listings
+                // rows WITHOUT paying their minutes/slots back into court_schedule, while the deduction
+                // above charged the session again — so available_duration_mins leaked the hearing's full
+                // duration on every book→list cycle and sessions falsely reported no availability.
+                boolean isCourtScheduleReleased = !allocatedListingRepository.findByHearingId(hearing.getHearingId()).isEmpty();
+                if (isCourtScheduleReleased) {
+                    releaseOldAllocatedListings(hearing.getHearingId());
+                }
 
                 final boolean isOverbookingAllowed = findCourtScheduleById(hearing.getCourtScheduleId()).stream().findFirst()
                         .map(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isOverbookingAllowed)
@@ -1395,12 +1578,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             params.put(COURT_ROOM_ID, requestParam.courtRoomId());
         }
 
+        // Must mirror appendOptionalPredicates exactly — a bound parameter with no predicate
+        // (or a predicate with no bound parameter) is an immediate JPA failure.
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             params.put(BUSINESS_TYPE, requestParam.businessType());
-        } else {
-            if (isNotEmpty(requestParam.isSlotBased())) {
+            if (requestParam.isCrownMultiDaySearch() && isNotEmpty(requestParam.isSlotBased())) {
                 params.put("slotBased", requestParam.isSlotBased());
             }
+        } else if (isNotEmpty(requestParam.isSlotBased())) {
+            params.put("slotBased", requestParam.isSlotBased());
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
@@ -1465,12 +1651,18 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             query.append(" AND cs.court_room_id = :courtRoomId");
         }
 
+        // SPRDT-1276: for a CROWN multi-day search only, businessType and isSlotBased are
+        // independent predicates rather than alternatives. The historic if/else means supplying a
+        // businessType silently drops the is_slot_based filter, which would let slot-based
+        // sessions back into the search that forces isSlotBased=false. MAGISTRATES (and CROWN at
+        // or under a full day) keep the original either/or behaviour untouched.
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             query.append(" AND cs.rota_business_type = :businessType");
-        } else {
-            if (isNotEmpty(requestParam.isSlotBased())) {
+            if (requestParam.isCrownMultiDaySearch() && isNotEmpty(requestParam.isSlotBased())) {
                 query.append(" AND cs.is_slot_based = :slotBased");
             }
+        } else if (isNotEmpty(requestParam.isSlotBased())) {
+            query.append(" AND cs.is_slot_based = :slotBased");
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {

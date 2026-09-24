@@ -377,5 +377,3 @@ rule "API - Action - courtscheduler.search.court-schedules-by-id"
     $outcome.setSuccess(true);
 end
 
-
-

@@ -3,8 +3,11 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -15,13 +18,16 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -144,6 +150,146 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertTrue(result.isEmpty());
+    }
+
+    // SPRDT-1276: the CROWN multiday search forces courtSession=AD / isSlotBased=false. These two
+    // tests pin the repository half of that contract: the court_session predicate actually filters,
+    // and businessType no longer suppresses the is_slot_based predicate.
+
+    @Test
+    public void getMultidayHearingSlotCandidatesShouldExcludeAmSessionsWhenCourtSessionIsAd() {
+        // Two rooms, both with consecutive Mon+Tue sessions. CR01 sits AM, CR02 sits AD.
+        // A 2-day CROWN search must see CR02 only — before the fix an absent/AM court_session
+        // let the AM room through, which is the AM session on the ticket's screenshot.
+        final LocalDate monday  = LocalDate.of(2026, 6, 15);
+        final LocalDate tuesday = LocalDate.of(2026, 6, 16);
+        final String ouCode = "B99MC02";
+
+        for (LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR01", "TRF", "AM"));
+            courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR02", "TRF", "AD"));
+        }
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                tuesday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, null, "AD", false, null,
+                false, "720", null, "CROWN");
+
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(cs -> "CR02".equals(cs.getCourtRoomId())));
+    }
+
+    @Test
+    public void getMultidayHearingSlotCandidatesShouldApplyBothBusinessTypeAndIsSlotBasedForCrown() {
+        // Two rooms with the same businessType and the same consecutive days: CR01 duration-based,
+        // CR02 slot-based. Supplying businessType used to suppress the is_slot_based predicate
+        // (if/else), so both rooms came back. For a CROWN >360 search both predicates now apply
+        // and CR02 must drop out.
+        //
+        // The rooms must differ: unique index court_act_business_date_session_idx_am keys on
+        // (oucode, court_room_id, rota_business_type, session_start, court_session[AD->AM],
+        // is_draft), so one room cannot hold two sessions differing only by is_slot_based.
+        final LocalDate monday  = LocalDate.of(2026, 6, 22);
+        final LocalDate tuesday = LocalDate.of(2026, 6, 23);
+        final String ouCode = "B99MC03";
+
+        for (LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", date, "CR01", "TRF", "AD"));
+            final CourtSchedule slotBased = createCourtSchedule(ouCode, "ADULT", date, "CR02", "TRF", "AD");
+            slotBased.setSlotBased(true);
+            courtScheduleRepository.save(slotBased);
+        }
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                tuesday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", "AD", false, null,
+                false, "720", null, "CROWN");
+
+        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isSlotBased));
+        assertTrue(result.stream().allMatch(cs -> "CR01".equals(cs.getCourtRoomId())));
+    }
+
+    @Test
+    public void getCourtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForMagistrates() {
+        // MAGISTRATES regression guard for SPRDT-1276. The CROWN >360 carve-out must not reach
+        // here: businessType is supplied, so the caller's isSlotBased=true stays IGNORED and the
+        // duration-based row is still returned. If the carve-out ever loses its jurisdiction
+        // gate, the is_slot_based=true predicate is appended and this returns 0.
+        final LocalDate monday = LocalDate.of(2026, 7, 6);
+        final String ouCode = "B99MG01";
+
+        final CourtSchedule magsSchedule = createCourtSchedule(ouCode, "ADULT", monday, "CR01", "TRF", "AM");
+        magsSchedule.setJurisdiction("MAGISTRATES");
+        courtScheduleRepository.save(magsSchedule);
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", null, true, null,
+                false, "60", null, "MAGISTRATES");
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
+    @Test
+    public void getCourtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForMagistratesOverAFullDay() {
+        // The threshold alone must not trigger the carve-out — a MAGISTRATES search for 720
+        // minutes is still an ordinary search. Same expectation as the single-day MAGS case.
+        final LocalDate monday = LocalDate.of(2026, 7, 13);
+        final String ouCode = "B99MG02";
+
+        final CourtSchedule magsSchedule = createCourtSchedule(ouCode, "ADULT", monday, "CR01", "TRF", "AM");
+        magsSchedule.setJurisdiction("MAGISTRATES");
+        courtScheduleRepository.save(magsSchedule);
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", null, true, null,
+                false, "720", null, "MAGISTRATES");
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
+    @Test
+    public void getCourtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForSingleDayCrown() {
+        // CROWN at or below a full day is also outside the carve-out — 360 is not "> 360".
+        final LocalDate monday = LocalDate.of(2026, 7, 20);
+        final String ouCode = "B99CR01";
+
+        courtScheduleRepository.save(createCourtSchedule(ouCode, "ADULT", monday, "CR01", "TRF", "AD"));
+
+        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                "ADULT",
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, "TRF", null, true, null,
+                false, "360", null, "CROWN");
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
     }
 
     // -----------------------------------------------------------------------
@@ -398,6 +544,58 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         cs.setCourtScheduleId(courtScheduleId);
         courtScheduleRepository.save(cs);
         return courtScheduleId;
+    }
+
+    /**
+     * SPRDT-1324: an auto-created AD session ends at the fixed all-day default (17:00 Europe/London)
+     * whatever the requested hearing time is, rather than start + the session's 360-minute capacity.
+     * A 12:30 request used to produce an 18:30 end time, which put the session past the court day.
+     * The date is in British Summer Time so the test also proves the end is a London wall-clock
+     * time (16:00 UTC), not 17:00 UTC.
+     */
+    @Test
+    public void createCrownFallbackSessionShouldEndAtFivePmRegardlessOfStartTime() {
+        final String ouCode = random(String.class);
+        final String courtCentreId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2026, 8, 28);
+
+        // The template only supplies metadata to copy; it sits on an earlier date because an active
+        // session for the same room, business type and date would collide with the created one on the
+        // AM/PM uniqueness index.
+        final CourtSchedule template = createCourtSchedule(ouCode, "ADULT", sessionDate.minusDays(7), courtRoomId, "LNG", "AD");
+        template.setCourtHouseId(courtCentreId);
+        courtScheduleRepository.save(template);
+
+        final CrownFallbackRequest request = new CrownFallbackRequest()
+                .setHearingId(randomUUID().toString())
+                .setCourtCentreId(courtCentreId)
+                .setCourtRoomId(courtRoomId)
+                .setHearingDate(sessionDate)
+                .setEarliestHearingTime(sessionDate + "T12:30:00Z")
+                .setDurationInMinutes(10)
+                .setSource("CROWN_FB_LIST");
+
+        final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(request);
+
+        assertTrue(created.isPresent());
+        final LocalTime startTime = created.get().session().getSessionStartTime().toInstant()
+                .atZone(ZoneOffset.UTC).toLocalTime();
+        final Instant sessionEnd = created.get().session().getSessionEndTime().toInstant();
+        assertEquals(LocalTime.of(12, 30), startTime);
+        // 17:00 is a Europe/London wall-clock time, like every other session time in the viewstore
+        // (DateUtils.combineDateAndTime, TimezoneUtils.calculateNationalBreakTime). 2026-08-28 is in
+        // BST, so the stored instant must be 16:00 UTC — 17:00 UTC would show as 18:00 on the calendar.
+        assertEquals(sessionDate.atTime(17, 0), sessionEnd.atZone(LONDON_ZONE).toLocalDateTime());
+        assertEquals(LocalTime.of(16, 0), sessionEnd.atZone(ZoneOffset.UTC).toLocalTime());
+    }
+
+    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
+                                              final String courtRoomId, final String businessType,
+                                              final String courtSession) {
+        final CourtSchedule schedule = createCourtSchedule(ouCode, panel, sessionDate, courtRoomId, businessType);
+        schedule.setCourtSession(courtSession);
+        return schedule;
     }
 
     private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
